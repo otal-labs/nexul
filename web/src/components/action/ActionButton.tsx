@@ -13,16 +13,12 @@ export interface ActionButtonProps extends Omit<ButtonProps, "asChild">, ActionG
   icon?: LucideIcon;
   // Only the live control wears it: a locked destructive control loses its red.
   liveClassName?: string;
-  // A second permission the control also needs: the first refusal wins, so a link that runs two writes locks on either.
-  alsoNeeds?: ActionGate;
   // A control that goes to a page stays a link while live, so it opens in a new tab and reads as one.
   to?: string;
 }
 
-export const ActionButton = ({ permission, projectId, answer, verb, alsoNeeds, icon: Icon, liveClassName, to, children, ...props }: ActionButtonProps) => {
-  const first = useActionState({ permission, projectId, answer, verb });
-  const second = useActionState(alsoNeeds ?? { permission, projectId, answer, verb });
-  const action = first.state !== "live" ? first : second;
+export const ActionButton = ({ permission, projectId, answer, verb, icon: Icon, liveClassName, to, children, ...props }: ActionButtonProps) => {
+  const action = useActionState({ permission, projectId, answer, verb });
   return (
     <>
       {action.state === "live" && !to && (

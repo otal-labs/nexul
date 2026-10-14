@@ -7,12 +7,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectServices } from "@/components/project/ProjectServices";
 import { api } from "@/api/client";
 import type { ServiceDef } from "@/models/Service";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asViewer, memberWho } from "@/test/viewer";
 
-const access = vi.hoisted(() => ({ areas: ["stacks", "editProjects", "editStacks", "editDeploys"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+const DOOR_2 = ["projects:read", "stacks:read", "projects:create", "projects:write", "stacks:write", "deploys:write"];
+const viewer = vi.hoisted(() => ({ permissions: [] as string[], showLocked: false }));
 
 beforeEach(() => {
-  access.areas = ["stacks", "editProjects", "editStacks", "editDeploys"];
+  viewer.permissions = DOOR_2;
+  viewer.showLocked = false;
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 vi.mock("@/api/client", () => ({
@@ -37,12 +41,14 @@ const repo = (full: string, role = "app") => {
 
 const renderServices = (list: ServiceDef[] = services, repos: unknown[] = []) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url === "/api/services") return { data: list };
-    if (url === "/api/runners") return { data: runners };
-    if (url === "/api/projects/p-1/repos") return { data: repos };
-    return { data: [] };
-  });
+  vi.mocked(api.get).mockImplementation(
+    asViewer(memberWho(viewer.permissions, viewer.showLocked), (url: string) => {
+      if (url === "/api/services") return list;
+      if (url === "/api/runners") return runners;
+      if (url === "/api/projects/p-1/repos") return repos;
+      return [];
+    }),
+  );
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
@@ -98,16 +104,26 @@ describe("ProjectServices", () => {
   });
 
   it("shows no repository as waiting to someone who can't read stacks, whose service list is always empty", async () => {
-    access.areas = ["editProjects", "editStacks", "editDeploys"];
+    viewer.permissions = ["projects:read", "projects:write", "stacks:write", "deploys:write"];
     renderServices([], [repo("acme/portal")]);
     expect(await screen.findByText(/No services yet/)).toBeInTheDocument();
     expect(screen.queryByText("Attached, not deployed yet")).not.toBeInTheDocument();
   });
 
   it("hides New service and unlinks the cards without projects:write and stacks:read", async () => {
-    access.areas = [];
+    viewer.permissions = [];
     renderServices();
     expect(await screen.findByText("api")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("locks New service with the first thing its door needs that a role lacks, when a role shows locked actions", async () => {
+    viewer.permissions = ["projects:read", "stacks:read", "projects:create", "projects:write", "deploys:write"];
+    viewer.showLocked = true;
+    renderServices([]);
+    const locked = await screen.findByRole("button", { name: "New service" });
+    expect(locked).toHaveAttribute("aria-disabled", "true");
+    expect(locked).toHaveAccessibleDescription("Your role can't add a service");
+    expect(screen.queryByRole("link", { name: /new service/i })).not.toBeInTheDocument();
   });
 });

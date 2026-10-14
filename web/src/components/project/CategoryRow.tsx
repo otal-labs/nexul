@@ -1,8 +1,8 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { GripVerticalIcon } from "lucide-react";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
+import { ActionDragHandle } from "@/components/action/ActionDragHandle";
 import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS, type ConfigurableColorName } from "@/components/board/ticketTypeColor";
 import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
@@ -78,16 +78,15 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
             lifted && "z-10",
           )}
         >
-          <button
+          <ActionDragHandle
+            permission="projects:write"
+            projectId={category.project_id}
+            label={`Reorder ${category.name}`}
             ref={setActivatorNodeRef}
-            type="button"
-            aria-label={`Reorder ${category.name}`}
-            className="-ml-1 cursor-grab touch-none rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing"
+            className="-ml-1 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             {...attributes}
             {...listeners}
-          >
-            <GripVerticalIcon className="size-3.5" aria-hidden />
-          </button>
+          />
           {/* Always holds the dot column so names line up with or without a color. */}
           <span
             className={cn("size-2 shrink-0 rounded-full", isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : "bg-transparent")}
@@ -101,11 +100,12 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
           </span>
           <RowActionsMenu
             subject={category.name}
+            projectId={category.project_id}
             actions={[
-              { label: "Edit", onSelect: () => setEditing(true) },
-              { label: "Move up", disabled: first, onSelect: onMoveUp },
-              { label: "Move down", disabled: last, onSelect: onMoveDown },
-              { label: "Delete", destructive: true, onSelect: () => void remove() },
+              { label: "Edit", permission: "projects:write", onSelect: () => setEditing(true) },
+              { label: "Move up", permission: "projects:write", disabled: first, onSelect: onMoveUp },
+              { label: "Move down", permission: "projects:write", disabled: last, onSelect: onMoveDown },
+              { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => void remove() },
             ]}
           />
         </motion.div>

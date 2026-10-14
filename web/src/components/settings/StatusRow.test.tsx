@@ -1,15 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StatusRow } from "@/components/settings/StatusRow";
 import { StatusKind, type BoardStatus } from "@/models/Status";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-vi.mock("@/api/client", () => ({
-  api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-  errorMessage: vi.fn(),
-}));
+vi.mock("@/api/client", async () => {
+  const { asOwner } = await import("@/test/viewer");
+  return { api: { get: vi.fn(asOwner()), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -28,10 +29,14 @@ const renderRow = (overrides: Partial<BoardStatus> = {}) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <StatusRow status={status(overrides)} index={0} total={1} onMove={vi.fn()} />
+      <StatusRow projectId="p-1" status={status(overrides)} index={0} total={1} onMove={vi.fn()} />
     </QueryClientProvider>,
   );
 };
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+});
 
 describe("StatusRow", () => {
   // The kind is stated once by the group header (BoardSettingsSection), so
@@ -54,7 +59,7 @@ describe("StatusRow", () => {
     renderRow();
     expect(screen.queryByRole("button", { name: /^Move status/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Actions for Open" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Open" }));
     expect(screen.getByRole("button", { name: "Rename" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });

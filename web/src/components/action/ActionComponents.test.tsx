@@ -18,7 +18,7 @@ vi.mock("@/hooks/useActionState", () => ({ useActionState: mocks.useActionState 
 
 const REASON = "Your role can't delete roles";
 
-const controls: { name: string; control: string; tooltip: boolean; draw: (activate: () => void) => ReactElement }[] = [
+const controls: { name: string; control: string; tooltip: boolean; stays?: string; draw: (activate: () => void) => ReactElement }[] = [
   {
     name: "button",
     control: "Deploy",
@@ -49,6 +49,7 @@ const controls: { name: string; control: string; tooltip: boolean; draw: (activa
     name: "inline edit",
     control: "Rename Atlas",
     tooltip: true,
+    stays: "Atlas",
     draw: (activate) => (
       <ActionInlineEdit permission="projects:write" label="Rename Atlas" onEdit={activate}>
         Atlas
@@ -65,7 +66,7 @@ const controls: { name: string; control: string; tooltip: boolean; draw: (activa
 
 const locked: ActionState = { state: "locked", reason: REASON };
 
-describe.each(controls)("$name", ({ control, tooltip, draw }) => {
+describe.each(controls)("$name", ({ control, tooltip, stays, draw }) => {
   beforeEach(() => mocks.useActionState.mockReset());
 
   it("runs its action while live", async () => {
@@ -79,11 +80,12 @@ describe.each(controls)("$name", ({ control, tooltip, draw }) => {
     expect(screen.getByRole("button", { name: control })).not.toHaveAttribute("aria-disabled");
   });
 
-  it("is absent while hidden", () => {
+  it("is absent while hidden, leaving the value an inline edit showed", () => {
     mocks.useActionState.mockReturnValue({ state: "hidden" });
     render(draw(vi.fn()));
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    if (stays) expect(screen.getByText(stays)).toBeInTheDocument();
   });
 
   it("stays in the tab order while locked, announces its reason, and does nothing when activated", async () => {
@@ -123,7 +125,7 @@ describe("a button that needs two permissions and goes to a page", () => {
   const draw = () =>
     render(
       <MemoryRouter>
-        <ActionButton permission="stacks:write" alsoNeeds={{ permission: "projects:write" }} to="/wizard">
+        <ActionButton permission={["stacks:write", "projects:write"]} to="/wizard">
           Attach
         </ActionButton>
       </MemoryRouter>,
@@ -131,7 +133,9 @@ describe("a button that needs two permissions and goes to a page", () => {
 
   beforeEach(() => {
     mocks.useActionState.mockReset();
-    mocks.useActionState.mockImplementation(({ permission }: { permission: string }) => states[permission]);
+    mocks.useActionState.mockImplementation(({ permission }: { permission: string[] }) =>
+      permission.map((one) => states[one]!).find((state) => state.state !== "live") ?? { state: "live" },
+    );
     states["stacks:write"] = { state: "live" };
     states["projects:write"] = { state: "live" };
   });

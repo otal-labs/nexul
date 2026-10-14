@@ -3,19 +3,14 @@ import { SquareKanban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusMark } from "@/components/board/StatusIcon";
 import { StatusTransitionButtons } from "@/components/ticket/StatusTransitionButtons";
-import {
-  editableRowClass,
-  rowClass,
-  rowIconClass,
-  rowLabelClass,
-  rowValueClass,
-} from "@/components/ticket/ticketPropertyRowStyle";
+import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
+import { rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useTicketStatus } from "@/hooks/StatusHooks";
 import type { Ticket } from "@/models/Ticket";
 
 interface TicketStatusRowProps {
   ticket: Ticket;
-  onTransition?: (statusId: string) => Promise<void> | void;
+  onTransition: (statusId: string) => Promise<void> | void;
 }
 
 export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) => {
@@ -34,12 +29,12 @@ export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) 
     </>
   );
 
-  if (!onTransition) return <div className={rowClass}>{content}</div>;
-
   return (
     <Popover>
-      <PopoverTrigger className={editableRowClass} aria-label={`Status: ${name}`}>
-        {content}
+      <PopoverTrigger asChild>
+        <PropertyRowTrigger projectId={ticket.project_id} label={`Status: ${name}`}>
+          {content}
+        </PropertyRowTrigger>
       </PopoverTrigger>
       <PopoverContent className="w-44 p-1" align="start">
         <StatusTransitionButtons ticket={ticket} onTransition={onTransition} />

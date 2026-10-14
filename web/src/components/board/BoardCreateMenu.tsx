@@ -4,17 +4,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
+import { useActionStates } from "@/hooks/useActionState";
 import { useReportBugDialog } from "@/hooks/useReportBugDialog";
 
 interface BoardCreateMenuProps {
+  projectId?: string | undefined;
   onNewTicket: () => void;
   onNewCategory: () => void;
 }
 
 // One "+" entry point: separate buttons read as unrelated when both just add something to the board.
-export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuProps) => {
+export const BoardCreateMenu = ({ projectId, onNewTicket, onNewCategory }: BoardCreateMenuProps) => {
   const [open, setOpen] = useState(false);
   const reportBug = useReportBugDialog();
+  const states = useActionStates([{ permission: "tickets:write", projectId }, { permission: "projects:write", projectId }]);
+  if (states.every((state) => state.state === "hidden")) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -28,6 +32,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
         <div className="flex flex-col">
           <ActionMenuItem
             permission="tickets:write"
+            projectId={projectId}
             icon={TicketIcon}
             onSelect={() => {
               setOpen(false);
@@ -38,6 +43,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
           </ActionMenuItem>
           <ActionMenuItem
             permission="tickets:write"
+            projectId={projectId}
             icon={Bug}
             onSelect={() => {
               setOpen(false);
@@ -48,6 +54,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
           </ActionMenuItem>
           <ActionMenuItem
             permission="projects:write"
+            projectId={projectId}
             icon={TagIcon}
             onSelect={() => {
               setOpen(false);

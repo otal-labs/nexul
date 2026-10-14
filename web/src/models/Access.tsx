@@ -1,4 +1,4 @@
-import type { Area } from "@nexul/client-core/permissions";
+import { AREA_PERMISSION, type Area } from "@nexul/client-core/permissions";
 
 import type { InstanceArea } from "@/models/Permission";
 
@@ -25,11 +25,17 @@ export interface RouteAccess {
   needsProject?: boolean;
 }
 
-// A door into the project wizard needs what its first steps write: a new project, creating it and its setup; adding a service, the repository, stack and deploy.
-export const canRunWizard = (can: (area: Area) => boolean, creates: boolean): boolean => {
-  if (creates) return can("newProject") && can("editProjects");
-  return can("editProjects") && can("editStacks") && can("editDeploys");
-};
+// A door into the project wizard needs what its first steps write: a new project, creating it and its setup; adding a service, scanning the repository (which takes projects:create), then the project, stack and deploy writes.
+const DOOR_AREAS = {
+  create: ["newProject", "editProjects"],
+  add: ["newProject", "editProjects", "editStacks", "editDeploys"],
+} as const satisfies Record<string, readonly Area[]>;
+
+export const canRunWizard = (can: (area: Area) => boolean, creates: boolean): boolean =>
+  DOOR_AREAS[creates ? "create" : "add"].every((area) => can(area));
+
+// The same needs as permissions, for the action components that draw a door.
+export const wizardDoorPermissions = (creates: boolean) => DOOR_AREAS[creates ? "create" : "add"].map((area) => AREA_PERMISSION[area]);
 
 // The wizard's route serves both doors, so it opens for either.
 export const canOpenWizard = (can: (area: Area) => boolean): boolean => canRunWizard(can, true) || canRunWizard(can, false);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { XIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRemoveProjectRepo } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { leavingRowClass } from "@/hooks/useRowGlide";
@@ -10,12 +10,13 @@ import { RepoRole } from "@/enums/Project";
 import type { RepoRef } from "@/models/Project";
 
 interface RepoRowProps {
+  projectId: string;
   // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
   onLeave?: () => void;
   repo: RepoRef;
 }
 
-export const RepoRow = ({ onLeave, repo }: RepoRowProps) => {
+export const RepoRow = ({ projectId, onLeave, repo }: RepoRowProps) => {
   const removeRepo = useRemoveProjectRepo();
   const [leaving, setLeaving] = useState(false);
   const { open: confirm } = useConfirmationDialog();
@@ -43,17 +44,20 @@ export const RepoRow = ({ onLeave, repo }: RepoRowProps) => {
         )}
       </span>
       <span className="shrink-0 font-mono text-xs text-muted-foreground">{repo.connector_id}</span>
-      <Button
+      <ActionButton
+        permission="projects:write"
+        projectId={projectId}
+        verb="remove repositories"
         variant="ghost"
         size="icon"
-        className="size-8 shrink-0 hover:text-destructive"
+        icon={XIcon}
+        className="size-8 shrink-0"
+        liveClassName="hover:text-destructive"
         aria-label={`Remove ${repo.full_name}`}
         title={`Remove ${repo.full_name}`}
         loading={removeRepo.isPending}
         onClick={() => void remove()}
-      >
-        <XIcon className="size-4" />
-      </Button>
+      />
     </li>
   );
 };

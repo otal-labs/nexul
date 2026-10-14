@@ -3,16 +3,19 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { api } from "@/api/client";
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { BoardStatus } from "@/models/Status";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asViewer, memberWho } from "@/test/viewer";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 
 // TicketCard (T10) fetches ticket types and label colors via TanStack Query, so every render
 // needs a QueryClient ancestor; empty-array responses suffice since this file doesn't assert on badge colors (see TicketCard.test.tsx).
-vi.mock("@/api/client", () => ({
-  api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-  errorMessage: vi.fn(),
-}));
+vi.mock("@/api/client", async () => {
+  const { asOwner } = await import("@/test/viewer");
+  return { api: { get: vi.fn(asOwner()), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() };
+});
 
 // F6: TicketCard navigates directly via useNavigate, not an onSelect callback through KanbanColumn.
 const mockNavigate = vi.fn();
@@ -68,6 +71,7 @@ const renderColumn = (props: Partial<Parameters<typeof KanbanColumn>[0]> = {}) =
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   mockNavigate.mockReset();
 });
 
@@ -105,13 +109,13 @@ describe("KanbanColumn", () => {
     const user = userEvent.setup();
     const onAddTicket = vi.fn();
     renderColumn({ onAddTicket });
-    await user.click(screen.getByRole("button", { name: "New ticket in Open" }));
+    await user.click(await screen.findByRole("button", { name: "New ticket in Open" }));
     expect(onAddTicket).toHaveBeenCalledWith("open");
   });
 
-  it("exposes a grip that reorders the column, separate from the add button", () => {
+  it("exposes a grip that reorders the column, separate from the add button", async () => {
     renderColumn();
-    const grip = screen.getByRole("button", { name: "Reorder Open" });
+    const grip = await screen.findByRole("button", { name: "Reorder Open" });
     expect(grip).toHaveAttribute("aria-roledescription", "sortable");
     expect(screen.getByRole("button", { name: "New ticket in Open" })).not.toBe(grip);
   });
@@ -135,5 +139,35 @@ describe("KanbanColumn", () => {
     const heading = screen.getByRole("heading", { level: 4 });
     expect(heading.querySelector("span > svg")).not.toBeInTheDocument();
     expect(heading.querySelector(".rounded-full.bg-info")).toBeInTheDocument();
+  });
+
+  describe("for a member who may read the board and not write it", () => {
+    const readOnly = (showLocked: boolean) => vi.mocked(api.get).mockImplementation(asViewer(memberWho(["tickets:read", "projects:read"], showLocked)));
+
+    it("shows the column and its cards, which open but cannot be dragged, with no control that writes", async () => {
+      readOnly(false);
+      const user = userEvent.setup();
+      renderColumn();
+
+      const card = (await screen.findByText("Fix login")).closest("[aria-disabled]");
+      expect(card).toHaveAttribute("aria-disabled", "true");
+      expect(screen.queryByRole("button", { name: "Reorder Open" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "New ticket in Open" })).not.toBeInTheDocument();
+      await user.click(screen.getByText("Fix login"));
+      expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
+    });
+
+    it("locks the grip and the add button when a role shows locked actions, and adds nothing", async () => {
+      readOnly(true);
+      const user = userEvent.setup();
+      const onAddTicket = vi.fn();
+      renderColumn({ onAddTicket });
+
+      const add = await screen.findByRole("button", { name: "New ticket in Open" });
+      expect(add).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("button", { name: "Reorder Open" })).toHaveAttribute("aria-disabled", "true");
+      await user.click(add);
+      expect(onAddTicket).not.toHaveBeenCalled();
+    });
   });
 });

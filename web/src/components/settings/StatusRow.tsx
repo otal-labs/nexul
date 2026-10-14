@@ -8,13 +8,14 @@ import { cn } from "@/lib/utils";
 import { statusStage, type BoardStatus } from "@/models/Status";
 
 interface StatusRowProps {
+  projectId: string;
   status: BoardStatus;
   index: number;
   total: number;
   onMove: (direction: -1 | 1) => void;
 }
 
-export const StatusRow = ({ status, index, total, onMove }: StatusRowProps) => {
+export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRowProps) => {
   const renameStatus = useRenameStatus();
   const deleteStatus = useDeleteStatus();
   const [editing, setEditing] = useState(false);
@@ -73,11 +74,12 @@ export const StatusRow = ({ status, index, total, onMove }: StatusRowProps) => {
       )}
       <RowActionsMenu
         subject={status.name}
+        projectId={projectId}
         actions={[
-          { label: "Rename", onSelect: startEditing },
-          { label: "Move up", disabled: index === 0, onSelect: () => onMove(-1) },
-          { label: "Move down", disabled: index === total - 1, onSelect: () => onMove(1) },
-          { label: "Delete", destructive: true, onSelect: () => deleteStatus.mutate(status.id) },
+          { label: "Rename", permission: "projects:write", onSelect: startEditing },
+          { label: "Move up", permission: "projects:write", disabled: index === 0, onSelect: () => onMove(-1) },
+          { label: "Move down", permission: "projects:write", disabled: index === total - 1, onSelect: () => onMove(1) },
+          { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => deleteStatus.mutate(status.id) },
         ]}
       />
     </li>

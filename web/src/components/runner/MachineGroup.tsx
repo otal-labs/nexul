@@ -97,9 +97,8 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
           </div>
           <div className="-my-1 -mr-1.5 flex items-center">
             <ActionButton
-              permission="machines:write"
+              permission={["machines:write", "stacks:write"]}
               answer={machineAnswer(machine, "machines:write")}
-              alsoNeeds={{ permission: "stacks:write" }}
               verb="import from machines"
               variant="ghost"
               size="sm"

@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CanvasEmptyHint } from "@/components/topology/CanvasEmptyHint";
 import { resetViewer, viewer } from "@/test/viewerActions";
 
-const access = vi.hoisted(() => ({ areas: ["editProjects", "editStacks", "editDeploys"] as string[] }));
+const access = vi.hoisted(() => ({ areas: ["newProject", "editProjects", "editStacks", "editDeploys"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 beforeEach(() => {
-  access.areas = ["editProjects", "editStacks", "editDeploys"];
+  access.areas = ["newProject", "editProjects", "editStacks", "editDeploys"];
   resetViewer();
   viewer.instance = ["topology:write"];
 });

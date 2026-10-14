@@ -1,4 +1,5 @@
-import { ColorPicker } from "@/components/settings/ColorPicker";
+import { labelDotColor } from "@/components/board/ticketTypeColor";
+import { ColorSwatchButton } from "@/components/settings/ColorSwatchButton";
 import { useSetLabelColor } from "@/hooks/TicketHooks";
 
 interface LabelColorRowProps {
@@ -15,9 +16,12 @@ export const LabelColorRow = ({ label, color, projectId }: LabelColorRowProps) =
   return (
     <li className="flex items-center gap-2 px-3 py-1 text-sm">
       <span className="min-w-0 flex-1 truncate text-sm font-medium" title={label}>{label}</span>
-      <ColorPicker
+      <ColorSwatchButton
+        permission="tickets:write"
+        projectId={projectId}
         label={`Color for label ${label}`}
         value={color}
+        dotClass={labelDotColor(label, color)}
         allowNone={false}
         onChange={(next) => void setLabelColor.mutateAsync({ label, color: next, project_id: projectId })}
       />

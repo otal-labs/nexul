@@ -7,6 +7,7 @@ import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useActionStates } from "@/hooks/useActionState";
 import { MenuSeparator, menuItemClass, menuItemDestructiveClass } from "@/components/MenuItem";
 import { cn } from "@/lib/utils";
 
@@ -24,11 +25,16 @@ interface RowActionsMenuProps {
   /** Row name, e.g. "Sprint 1" — becomes the trigger's accessible name. */
   subject: string;
   actions: RowAction[];
+  // The project the actions write in, when the row isn't in the one in view.
+  projectId?: string | undefined;
 }
 
 // One menu instead of always-visible icon buttons, matching AccountMenu/BoardCreateMenu.
-export const RowActionsMenu = ({ subject, actions }: RowActionsMenuProps) => {
+export const RowActionsMenu = ({ subject, actions, projectId }: RowActionsMenuProps) => {
   const [open, setOpen] = useState(false);
+  // An action with no permission is always live, so a menu holding one keeps its trigger.
+  const states = useActionStates(actions.map((action) => ({ permission: action.permission ?? [], projectId, verb: action.verb })));
+  if (states.every((state) => state.state === "hidden")) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -49,6 +55,7 @@ export const RowActionsMenu = ({ subject, actions }: RowActionsMenuProps) => {
             <RowActionItem
               key={action.label}
               action={action}
+              projectId={projectId}
               // Destructive actions sit apart, after a rule.
               separated={action.destructive === true && i > 0 && !actions[i - 1]?.destructive}
               onDone={() => setOpen(false)}
@@ -62,11 +69,12 @@ export const RowActionsMenu = ({ subject, actions }: RowActionsMenuProps) => {
 
 interface RowActionItemProps {
   action: RowAction;
+  projectId: string | undefined;
   separated: boolean;
   onDone: () => void;
 }
 
-const RowActionItem = ({ action, separated, onDone }: RowActionItemProps) => {
+const RowActionItem = ({ action, projectId, separated, onDone }: RowActionItemProps) => {
   const select = () => {
     onDone();
     action.onSelect();
@@ -76,6 +84,7 @@ const RowActionItem = ({ action, separated, onDone }: RowActionItemProps) => {
       {action.permission && (
         <ActionMenuItem
           permission={action.permission}
+          projectId={projectId}
           verb={action.verb}
           separated={separated}
           destructive={action.destructive}

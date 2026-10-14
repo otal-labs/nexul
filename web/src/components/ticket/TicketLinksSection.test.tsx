@@ -9,6 +9,7 @@ import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import type { Ticket } from "@/models/Ticket";
 import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { withOwner } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -62,7 +63,7 @@ const statuses = [
 ];
 
 const mockApi = (set: TicketLinkSet) => {
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
+  vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
     if (url === "/api/tickets/t-1/ticket-links") return { data: set };
     if (url === "/api/statuses") return { data: statuses };
     if (url === "/api/ticket-types") {
@@ -84,7 +85,7 @@ const mockApi = (set: TicketLinkSet) => {
       };
     }
     return { data: [] };
-  });
+  }));
 };
 
 const renderSection = (overrides: Partial<Ticket> = {}) => {
@@ -131,9 +132,9 @@ describe("TicketLinksSection", () => {
     mockApi({ ...emptySet, blocks: [linked("t-4", 4, "mobile /books")] });
     const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Port the list to mobile." }] }] });
     const get = vi.mocked(api.get).getMockImplementation()!;
-    vi.mocked(api.get).mockImplementation(async (url: string) =>
+    vi.mocked(api.get).mockImplementation(withOwner(async (url: string) =>
       url === "/api/tickets/t-4" ? { data: { ...ticket, id: "t-4", title: "mobile /books", body } } : get(url),
-    );
+    ));
     renderSection();
     const key = await screen.findByRole("link", { name: /BKS-4/ });
     expect(key).toHaveTextContent(/^BKS-4$/);
@@ -181,7 +182,7 @@ describe("TicketLinksSection", () => {
   it("marks a ticket in another project of the workspace as blocked by this one, leaving out other workspaces", async () => {
     mockApi(emptySet);
     const get = vi.mocked(api.get).getMockImplementation()!;
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
+    vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
       if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS" }, { id: "p-2", prefix: "API" }] };
       if (url === "/api/tickets") {
         return {
@@ -193,7 +194,7 @@ describe("TicketLinksSection", () => {
         };
       }
       return get(url);
-    });
+    }));
     vi.mocked(api.post).mockResolvedValue({ data: emptySet });
     const user = userEvent.setup();
     renderSection();

@@ -10,6 +10,7 @@ import { api } from "@/api/client";
 import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { TicketPage } from "@/pages/TicketPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { withOwner } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -77,15 +78,18 @@ const reviewData = [
   },
 ];
 
-const mockTicket = (overrides: Record<string, unknown> = {}) => vi.mocked(api.get).mockImplementation((url: string) => {
-  if (url in overrides) return Promise.resolve({ data: overrides[url] });
-  if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
-  if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
-  if (url === "/api/statuses") return Promise.resolve({ data: statusData });
-  if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
-  if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
-  return Promise.resolve({ data: [] });
-});
+// Without an override the viewer is an Owner; an override for the permission read puts a member in their place.
+const mockTicket = (overrides: Record<string, unknown> = {}) => {
+  const read = withOwner((url: string) => {
+    if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
+    if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
+    if (url === "/api/statuses") return Promise.resolve({ data: statusData });
+    if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
+    if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
+    return Promise.resolve({ data: [] });
+  });
+  return vi.mocked(api.get).mockImplementation((url: string) => (url in overrides ? Promise.resolve({ data: overrides[url] }) : read(url)));
+};
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
@@ -108,7 +112,7 @@ describe("TicketPage", () => {
   });
 
   it("shows linked pull requests and their review status", async () => {
-    vi.mocked(api.get).mockImplementation((url: string) => {
+    vi.mocked(api.get).mockImplementation(withOwner((url: string) => {
       if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
       if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
@@ -117,7 +121,7 @@ describe("TicketPage", () => {
       if (url === "/api/ticket-types") return Promise.resolve({ data: [] });
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
       return Promise.resolve({ data: [] });
-    });
+    }));
     renderPage();
     expect(await screen.findByText("acme/app#42")).toBeInTheDocument();
     expect(screen.getByText("approved")).toBeInTheDocument();
@@ -136,14 +140,14 @@ describe("TicketPage", () => {
   });
 
   it("resolves a /tickets/PREFIX-NUMBER url to the same ticket as its uuid url", async () => {
-    vi.mocked(api.get).mockImplementation((url: string) => {
+    vi.mocked(api.get).mockImplementation(withOwner((url: string) => {
       if (url === "/api/tickets") return Promise.resolve({ data: [ticketData] });
       if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
       if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
       return Promise.resolve({ data: [] });
-    });
+    }));
     renderPage("/tickets/BE-7");
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(screen.getByText("BE-7")).toBeInTheDocument();
@@ -224,7 +228,19 @@ describe("TicketPage delete", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "More actions for BE-7" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Actions for BE-7" })).not.toBeInTheDocument();
+  });
+
+  it("is locked with the reason for someone whose role shows locked actions, and deletes nothing", async () => {
+    const user = userEvent.setup();
+    mockTicket({ "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:write"], show_locked_actions: true } });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for BE-7" }));
+    const remove = await screen.findByRole("button", { name: "Delete" });
+    expect(remove).toHaveAttribute("aria-disabled", "true");
+    await user.click(remove);
+    expect(api.delete).not.toHaveBeenCalled();
   });
 
   it("names the ticket and what goes with it, and deletes nothing when cancelled", async () => {
@@ -232,8 +248,8 @@ describe("TicketPage delete", () => {
     mockTicket(canDelete);
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for BE-7" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Delete BE-7?");
     expect(dialog).toHaveTextContent("Write migrations");
@@ -250,8 +266,8 @@ describe("TicketPage delete", () => {
     mockTicket(canDelete);
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for BE-7" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete ticket" }));
 
     expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-1");
@@ -263,8 +279,8 @@ describe("TicketPage delete", () => {
     mockTicket(canDelete);
     renderPage("/tickets/t-1", "t-1", true);
 
-    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for BE-7" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete ticket" }));
 
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Ticket deleted"));

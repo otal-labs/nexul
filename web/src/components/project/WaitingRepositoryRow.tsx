@@ -1,8 +1,8 @@
 import { Rocket } from "lucide-react";
-import { Link } from "react-router";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { wizardDoorPermissions } from "@/models/Access";
 import type { RepoRef } from "@/models/Project";
 
 interface WaitingRepositoryRowProps {
@@ -23,12 +23,9 @@ export const WaitingRepositoryRow = ({ projectId, repo }: WaitingRepositoryRowPr
           Attached, not deployed yet
         </span>
       </span>
-      <Button asChild variant="outline" size="sm" className="shrink-0">
-        <Link to={to}>
-          <Rocket className="size-3.5" aria-hidden />
-          Deploy this repository
-        </Link>
-      </Button>
+      <ActionButton permission={wizardDoorPermissions(false)} projectId={projectId} verb="add a service" variant="outline" size="sm" className="shrink-0" icon={Rocket} to={to}>
+        Deploy this repository
+      </ActionButton>
     </li>
   );
 };

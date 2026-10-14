@@ -6,7 +6,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -37,10 +37,9 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
       title="Repositories"
       description="Where this project's code lives. A tests repository is never deployed."
       footer={
-        <Button variant="outline" size="sm" onClick={() => void onAdd()}>
-          <PlusIcon className="size-4" />
+        <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
           Add repo
-        </Button>
+        </ActionButton>
       }
     >
       {isPending && <LoadingDisplay />}
@@ -50,7 +49,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
         <div ref={glideRef}>
           <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
             {repos.map((repo) => (
-              <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} onLeave={prepareGlide} />
+              <RepoRow key={`${repo.owner}/${repo.name}`} projectId={projectId} repo={repo} onLeave={prepareGlide} />
             ))}
           </EnterList>
         </div>

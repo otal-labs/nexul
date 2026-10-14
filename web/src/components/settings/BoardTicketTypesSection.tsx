@@ -8,6 +8,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TicketTypeRow } from "@/components/settings/TicketTypeRow";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { useCreateTicketType } from "@/hooks/TicketTypeHooks";
 import { SaveTicketTypeFormSchema, type SaveTicketTypeFormData } from "@/models/TicketType";
@@ -35,10 +36,9 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
       description="Each type has a color and a body template its new tickets start from."
       footer={
         !adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            <PlusIcon className="size-4" />
+          <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => setAdding(true)}>
             New ticket type
-          </Button>
+          </ActionButton>
         )
       }
     >

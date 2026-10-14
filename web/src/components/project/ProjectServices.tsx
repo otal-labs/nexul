@@ -5,10 +5,8 @@ import { WaitingRepositoryRow } from "@/components/project/WaitingRepositoryRow"
 import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { AddServiceLink } from "@/components/wizard/AddServiceLink";
-import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useWaitingRepos } from "@/hooks/useWaitingRepos";
-import { canRunWizard } from "@/models/Access";
 
 interface ProjectServicesProps {
   projectId: string;
@@ -16,8 +14,6 @@ interface ProjectServicesProps {
 
 export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
   const { data: services, isPending, error } = useFetchServices(projectId);
-  const can = useAreaAccess(projectId);
-  const canAdd = !!can && canRunWizard(can, false);
   const waiting = useWaitingRepos(projectId);
 
   return (
@@ -26,11 +22,9 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
       title="Services"
       description="What this project deploys, each with its own deploys, logs, and hostnames."
       footer={
-        canAdd && (
-          <AddServiceLink projectId={projectId} variant="outline" size="sm">
-            New service
-          </AddServiceLink>
-        )
+        <AddServiceLink projectId={projectId} variant="outline" size="sm">
+          New service
+        </AddServiceLink>
       }
     >
       {isPending && <LoadingDisplay />}

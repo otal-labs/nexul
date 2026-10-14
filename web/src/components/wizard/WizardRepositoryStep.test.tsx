@@ -18,15 +18,19 @@ const mocks = vi.hoisted(() => ({
 }));
 
 // The person's GitHub link answers on its own, so each test's GET mock stays about repositories.
-vi.mock("@/api/client", () => ({
-  api: {
-    get: (url: string, ...rest: unknown[]) =>
-      url === "/api/auth/github-link" ? Promise.resolve({ data: mocks.link }) : mocks.get(url, ...rest),
-    post: mocks.post,
-    put: mocks.put,
-  },
-  errorMessage: mocks.errorMessage,
-}));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return {
+    api: {
+      get: withOwner((url: string, ...rest: unknown[]) =>
+        url === "/api/auth/github-link" ? Promise.resolve({ data: mocks.link }) : mocks.get(url, ...rest),
+      ),
+      post: mocks.post,
+      put: mocks.put,
+    },
+    errorMessage: mocks.errorMessage,
+  };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -65,7 +69,7 @@ beforeEach(() => {
   mocks.errorMessage.mockReset();
   mocks.errorMessage.mockImplementation((error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "");
   useProjectWizardStore.getState().reset();
-  useWorkspaceStore.getState().selectWorkspace("", "");
+  useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
   mocks.get.mockResolvedValue({ data: { repositories: repos } });
   mocks.link = { state: "connected" };
 });

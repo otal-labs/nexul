@@ -1,7 +1,9 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { GripVerticalIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 
+import { ActionButton } from "@/components/action/ActionButton";
+import { ActionDragHandle } from "@/components/action/ActionDragHandle";
 import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
 import type { DropTargetData } from "@/components/board/dragMove";
@@ -53,16 +55,14 @@ const KanbanColumnImpl = ({
       )}
     >
       <h4 className="flex items-center gap-1.5 px-1 pt-1">
-        <button
+        <ActionDragHandle
+          permission="projects:write"
+          label={`Reorder ${column.name}`}
           ref={setActivatorNodeRef}
-          type="button"
-          aria-label={`Reorder ${column.name}`}
-          className="cursor-grab rounded-md p-0.5 text-muted-foreground/60 transition-colors duration-[120ms] ease-standard hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="transition-colors duration-[120ms] ease-standard focus-visible:ring-[3px] focus-visible:ring-ring/50"
           {...attributes}
           {...listeners}
-        >
-          <GripVerticalIcon className="size-3.5" aria-hidden />
-        </button>
+        />
         <span className="flex min-w-0 items-center gap-1.5">
           <StatusMark status={column} className="size-3.5" />
           <span className="truncate text-sm font-medium">{column.name}</span>
@@ -71,14 +71,16 @@ const KanbanColumnImpl = ({
           {tickets.length}
         </span>
         <span className="flex-1" />
-        <button
-          type="button"
+        <ActionButton
+          permission="tickets:write"
+          verb="create tickets"
+          variant="ghost"
+          size="icon"
+          icon={PlusIcon}
           onClick={() => onAddTicket(column.id)}
           aria-label={`New ticket in ${column.name}`}
-          className="rounded-md p-1 text-muted-foreground/60 transition-colors duration-[120ms] ease-standard hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <PlusIcon className="size-4" aria-hidden />
-        </button>
+          className="size-6 text-muted-foreground/60"
+        />
       </h4>
       {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count, not the window height. */}
       <EnterList as="div" className="flex max-h-[31.5rem] min-h-16 flex-col gap-1.5 overflow-y-auto">

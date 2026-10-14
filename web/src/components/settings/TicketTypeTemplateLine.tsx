@@ -1,5 +1,6 @@
 import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
 import { useFetchTemplates } from "@/hooks/TemplateHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { findTemplate } from "@/models/Template";
 import type { TicketType } from "@/models/TicketType";
 
@@ -12,6 +13,7 @@ interface TicketTypeTemplateLineProps {
 export const TicketTypeTemplateLine = ({ type, projectId }: TicketTypeTemplateLineProps) => {
   const { data: templates } = useFetchTemplates();
   const instance = findTemplate(templates, "ticket_body", type.name);
+  const canReset = useActionState({ permission: "templates:write" }).state === "live";
   if (!instance) return null;
   return (
     <TemplateOriginLine
@@ -19,7 +21,7 @@ export const TicketTypeTemplateLine = ({ type, projectId }: TicketTypeTemplateLi
       templateKey={instance.key}
       at={{ scope: "project", project_id: projectId }}
       state={type.body_template === instance.body ? "matches" : "differs"}
-      canReset
+      canReset={canReset}
     />
   );
 };

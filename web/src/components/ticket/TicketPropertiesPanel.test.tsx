@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketStatus, type Ticket } from "@/models/Ticket";
+import { withOwner } from "@/test/viewer";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -48,9 +50,10 @@ const allLabels = ["backend", "migrations", "urgent"];
 
 const renderPanel = (props: Partial<ComponentProps<typeof TicketPropertiesPanel>> = {}) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const handlers = { onTransition: vi.fn(), onSetType: vi.fn(), onAddLabel: vi.fn(), onRemoveLabel: vi.fn(), ...props };
   const utils = render(
     <QueryClientProvider client={client}>
-      <TicketPropertiesPanel ticket={ticket} {...props} />
+      <TicketPropertiesPanel ticket={ticket} {...handlers} />
     </QueryClientProvider>,
   );
   return {
@@ -58,42 +61,37 @@ const renderPanel = (props: Partial<ComponentProps<typeof TicketPropertiesPanel>
     rerenderWithTicket: (nextTicket: Ticket) =>
       utils.rerender(
         <QueryClientProvider client={client}>
-          <TicketPropertiesPanel ticket={nextTicket} {...props} />
+          <TicketPropertiesPanel ticket={nextTicket} {...handlers} />
         </QueryClientProvider>,
       ),
   };
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
-  vi.mocked(api.get).mockImplementation((url: string) => {
+  vi.mocked(api.get).mockImplementation(withOwner((url: string) => {
     if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
     if (url === "/api/tickets/labels") return Promise.resolve({ data: allLabels });
     if (url === "/api/ticket-types") return Promise.resolve({ data: ticketTypes });
     if (url === "/api/categories") return Promise.resolve({ data: categories });
     return Promise.resolve({ data: [] });
-  });
+  }));
 });
 
 describe("TicketPropertiesPanel", () => {
-  it("renders the status badge as the popover trigger", () => {
-    const onTransition = vi.fn();
-    renderPanel({ onTransition });
-    expect(screen.getByText("Status")).toBeInTheDocument();
-    expect(screen.getByText("In progress")).toBeInTheDocument();
-  });
-
-  it("does not render a status popover trigger when no transition handler is wired", () => {
+  it("renders the status badge as the popover trigger", async () => {
     renderPanel();
-    expect(screen.queryByRole("button", { name: /in progress/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Status: In progress" })).toBeInTheDocument();
+    expect(screen.getByText("Status")).toBeInTheDocument();
   });
 
-  it("renders the developer and tester rows, falling back to No one", () => {
+  it("renders the developer and tester rows, falling back to No one", async () => {
     const { rerenderWithTicket } = renderPanel();
-    expect(screen.getByRole("button", { name: "Developer: onik97" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Developer: onik97" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tester: no one" })).toBeInTheDocument();
 
     rerenderWithTicket({ ...ticket, developer: "", tester: "lena" });
@@ -106,7 +104,7 @@ describe("TicketPropertiesPanel", () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, tester: "" } });
     renderPanel();
 
-    await user.click(screen.getByRole("button", { name: "Tester: no one" }));
+    await user.click(await screen.findByRole("button", { name: "Tester: no one" }));
     await user.click(await screen.findByRole("button", { name: "No one" }));
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/tester", { login: "" });
   });
@@ -137,17 +135,12 @@ describe("TicketPropertiesPanel", () => {
     expect(screen.getByText("None")).toBeInTheDocument();
   });
 
-  it("does not render an add-label trigger when no handler is wired", () => {
-    renderPanel();
-    expect(screen.queryByRole("button", { name: "Add label" })).not.toBeInTheDocument();
-  });
-
   it("adds an existing label picked from the search list", async () => {
     const user = userEvent.setup();
     const onAddLabel = vi.fn();
     renderPanel({ onAddLabel });
 
-    await user.click(screen.getByRole("button", { name: "Add label" }));
+    await user.click(await screen.findByRole("button", { name: "Add label" }));
     await user.type(await screen.findByLabelText("Search labels"), "urg");
     await user.click(await screen.findByRole("button", { name: "urgent" }));
     expect(onAddLabel).toHaveBeenCalledWith("t-1", "urgent");
@@ -158,7 +151,7 @@ describe("TicketPropertiesPanel", () => {
     const onAddLabel = vi.fn();
     renderPanel({ onAddLabel });
 
-    await user.click(screen.getByRole("button", { name: "Add label" }));
+    await user.click(await screen.findByRole("button", { name: "Add label" }));
     await user.type(await screen.findByLabelText("Search labels"), "brand-new");
     await user.click(await screen.findByRole("button", { name: 'Create "brand-new"' }));
     expect(onAddLabel).toHaveBeenCalledWith("t-1", "brand-new");
@@ -167,21 +160,15 @@ describe("TicketPropertiesPanel", () => {
   it("removes a label via its hover-revealed remove button", async () => {
     const user = userEvent.setup();
     const onRemoveLabel = vi.fn();
-    renderPanel({ onAddLabel: vi.fn(), onRemoveLabel });
+    renderPanel({ onRemoveLabel });
 
-    await user.click(screen.getByRole("button", { name: "Remove label backend" }));
+    await user.click(await screen.findByRole("button", { name: "Remove label backend" }));
     expect(onRemoveLabel).toHaveBeenCalledWith("t-1", "backend");
   });
 
   it("shows the ticket's type name", async () => {
     renderPanel();
     expect(await screen.findByText("task")).toBeInTheDocument();
-  });
-
-  it("does not render a type popover trigger when no handler is wired", async () => {
-    renderPanel();
-    await screen.findByText("task");
-    expect(screen.queryByRole("button", { name: /task/i })).not.toBeInTheDocument();
   });
 
   it("opens the type popover and sets the type on pick", async () => {
@@ -200,7 +187,7 @@ describe("TicketPropertiesPanel", () => {
     vi.mocked(api.delete).mockResolvedValue({ data: null });
     const { rerenderWithTicket } = renderPanel();
 
-    await user.click(screen.getByRole("button", { name: "Category: No category" }));
+    await user.click(await screen.findByRole("button", { name: "Category: No category" }));
     await user.click(await screen.findByRole("button", { name: "Web" }));
     expect(api.post).toHaveBeenCalledWith("/api/categories/cat-web/tickets/t-1");
 

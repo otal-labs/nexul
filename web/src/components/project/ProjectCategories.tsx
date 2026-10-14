@@ -19,7 +19,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useRowGlide } from "@/hooks/useRowGlide";
@@ -77,10 +77,9 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
       title="Categories"
       description="Each category is a swimlane on the board, in this order. Drag a row to reorder."
       footer={
-        <Button variant="outline" size="sm" onClick={() => void onAdd()}>
-          <PlusIcon className="size-4" />
+        <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
           New category
-        </Button>
+        </ActionButton>
       }
     >
       {isPending && <LoadingDisplay />}

@@ -27,16 +27,20 @@ beforeEach(() => {
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn() }));
 
 // The person's GitHub link is connected throughout, so each test's GET mock stays about the wizard.
-vi.mock("@/api/client", () => ({
-  api: {
-    get: (url: string, ...rest: unknown[]) =>
-      url === "/api/auth/github-link" ? Promise.resolve({ data: { state: "connected" } }) : mocks.get(url, ...rest),
-    post: mocks.post,
-    put: mocks.put,
-    patch: mocks.patch,
-  },
-  errorMessage: vi.fn(() => ""),
-}));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return {
+    api: {
+      get: withOwner((url: string, ...rest: unknown[]) =>
+        url === "/api/auth/github-link" ? Promise.resolve({ data: { state: "connected" } }) : mocks.get(url, ...rest),
+      ),
+      post: mocks.post,
+      put: mocks.put,
+      patch: mocks.patch,
+    },
+    errorMessage: vi.fn(() => ""),
+  };
+});
 
 const project = {
   id: "p-1",
@@ -229,7 +233,8 @@ describe("ProjectWizardPage", () => {
       const user = userEvent.setup();
       renderPage("/acme/wizard/project/repository?project=p-1");
 
-      await user.click(await screen.findByRole("button", { name: /No repository yet/ }));
+      await screen.findByLabelText("Search repositories");
+      await user.click(screen.getByRole("button", { name: /No repository yet/ }));
 
       expect(await screen.findByText("Backend is ready for docs and tickets.")).toBeInTheDocument();
       expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
@@ -534,7 +539,7 @@ describe("ProjectWizardPage", () => {
     const attached = (full: string) => ({ owner: full.split("/")[0], name: full.split("/")[1], full_name: full, connector_id: "github", role: "app" });
 
     beforeEach(() => {
-      access.areas = ["tickets", "stacks", "newProject", "editProjects", "editStacks", "editDeploys"];
+      access.areas = ["tickets", "projects", "stacks", "newProject", "editProjects", "editStacks", "editDeploys"];
       mocks.post.mockResolvedValue({
         data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "web", services: [] }] },
       });

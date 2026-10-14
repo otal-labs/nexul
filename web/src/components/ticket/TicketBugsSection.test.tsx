@@ -10,6 +10,7 @@ import { TicketBugsSection } from "@/components/ticket/TicketBugsSection";
 import type { Ticket } from "@/models/Ticket";
 import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { withOwner } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -42,7 +43,7 @@ const ticket: Ticket = {
 };
 
 const mockApi = (set: TicketLinkSet) => {
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
+  vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
     if (url === "/api/tickets/t-1/ticket-links") return { data: set };
     if (url === "/api/statuses") {
       return { data: [{ id: "st-progress", name: "Doing", kind: "progress" }, { id: "st-shipped", name: "Shipped", kind: "done" }] };
@@ -53,7 +54,7 @@ const mockApi = (set: TicketLinkSet) => {
     if (url === "/api/tickets") return { data: [{ id: "t-1", project_id: "p-1", number: 1, title: "frontend /books" }] };
     if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS", name: "Books" }] };
     return { data: [] };
-  });
+  }));
 };
 
 const renderSection = (overrides: Partial<Ticket> = {}) => {

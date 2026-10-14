@@ -9,5 +9,5 @@ interface UnlinkBranchButtonProps {
 
 export const UnlinkBranchButton = ({ ticketId, branch }: UnlinkBranchButtonProps) => {
   const unlink = useUnlinkBranch();
-  return <UnlinkButton subject={`branch ${branch.branch}`} onUnlink={() => unlink.mutate({ id: ticketId, branch })} />;
+  return <UnlinkButton ticketId={ticketId} subject={`branch ${branch.branch}`} onUnlink={() => unlink.mutate({ id: ticketId, branch })} />;
 };

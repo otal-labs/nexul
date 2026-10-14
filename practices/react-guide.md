@@ -571,14 +571,15 @@ button, menu row, inline edit or drag handle (ADR 0152).
 
 | Control | Component | Takes |
 |---|---|---|
-| Button | `ActionButton` | the `Button` props, an optional `icon`, `to` (a link while live), `alsoNeeds` (a second gate, for a control that runs two writes), and the gate below |
+| Button | `ActionButton` | the `Button` props, an optional `icon`, `to` (a link while live), and the gate below |
 | Row of a popover menu | `ActionMenuItem` | `onSelect`, `icon`, `destructive`, `separated`, and the gate; a `RowAction` with a `permission` renders through it |
 | A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state; hidden, the value still shows as plain text |
 | The grip that starts a drag | `ActionDragHandle` | `label`, the sortable's ref, attributes and listeners as props, and the gate |
 
 The gate is `permission` (a `PermissionAction`, the typed union
 `make permission-catalog` writes to `client-core/permissionActions.ts`, never a
-string), plus `projectId`, `answer` (an item's own answer from `GET
+string; a list of them means the action writes through each, and the first one
+the viewer lacks decides the reason, and `answer` belongs to the first of them while the rest read role-wide), plus `projectId`, `answer` (an item's own answer from `GET
 /api/permissions/explain`) and `verb` (the words after "Your role can't", where
 the catalog's label reads clumsily) when the page has them. `actionState` in
 `@nexul/client-core/actionState` turns the gate and the viewer's `/me` into
@@ -588,6 +589,8 @@ is live for all of them); anyone else sees it
 locked, with "Your role can't <verb>" or the rule's sentence, when a role of
 theirs has Show locked actions on, and not at all otherwise.
 
+- An `ActionInlineEdit` the viewer can't take at all leaves its value on screen as plain text, and a popover trigger passes its props
+  through it (`PopoverTrigger asChild`), so a property row is one of these.
 - A locked control is a real element with `aria-disabled`, never `disabled`, so
   it stays in the tab order; it points `aria-describedby` at the reason and
   shows it in a tooltip on hover and focus (a menu row shows it as its second
@@ -616,7 +619,7 @@ theirs has Show locked actions on, and not at all otherwise.
   `answer={machineAnswer(machine, "machines:write")}` (`@nexul/client-core/actionState`). A row menu's Delete takes
   `deleteGate` beside `onDelete`, so it draws locked inside the Radix menu; the row leaves `onDelete` out when the gate
   is hidden.
-- Reach for `useActionState` only to gate something the four components don't
+- Reach for `useActionState` only to gate something the components above don't
   draw, such as whether a whole section renders.
 
 ### Form fragment

@@ -1,6 +1,9 @@
 import { CheckIcon, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import type { ActionGate } from "@nexul/client-core/actionState";
+
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { PopoverContent } from "@/components/ui/popover";
 import { MenuSeparator, menuItemClass } from "@/components/MenuItem";
 import { UnreadBadge } from "@/components/UnreadBadge";
@@ -10,18 +13,27 @@ interface SwitcherMenuProps {
   createLabel: string;
   // Absent for a viewer who may not create one.
   onCreate?: (() => void) | undefined;
+  // What creating needs; given, the row is locked or hidden by it instead of by the caller leaving onCreate out.
+  createGate?: ActionGate | undefined;
 }
 
-export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuProps) => (
+export const SwitcherMenu = ({ children, createLabel, onCreate, createGate }: SwitcherMenuProps) => (
   <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-1">
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
       <div className="flex flex-col">
-        <MenuSeparator />
-        <button type="button" onClick={onCreate} className={menuItemClass}>
-          <PlusIcon aria-hidden />
-          <span>{createLabel}</span>
-        </button>
+        {createGate && (
+          <ActionMenuItem {...createGate} icon={PlusIcon} separated onSelect={onCreate}>
+            {createLabel}
+          </ActionMenuItem>
+        )}
+        {!createGate && <MenuSeparator />}
+        {!createGate && (
+          <button type="button" onClick={onCreate} className={menuItemClass}>
+            <PlusIcon aria-hidden />
+            <span>{createLabel}</span>
+          </button>
+        )}
       </div>
     )}
   </PopoverContent>

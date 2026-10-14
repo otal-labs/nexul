@@ -48,7 +48,7 @@ export const LockedActionButton = ({ variant, size, className, reason, icon: Ico
       >
         {!glyphOnly && <LockIcon className="size-3.5" />}
         {!glyphOnly && children}
-        {glyphOnly && Icon && <Icon />}
+        {glyphOnly && (Icon ? <Icon /> : children)}
         {glyphOnly && <LockBadge />}
       </Button>
     </LockedReason>

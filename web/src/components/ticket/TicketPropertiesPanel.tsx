@@ -14,13 +14,13 @@ interface TicketPropertiesPanelProps {
   ticket: Ticket;
   /** The rail sections below Properties, in order. */
   children?: ReactNode;
-  onTransition?: (statusId: string) => Promise<void> | void;
-  onSetType?: (ticketId: string, typeId: string) => Promise<void> | void;
-  onAddLabel?: (ticketId: string, label: string) => Promise<void> | void;
-  onRemoveLabel?: (ticketId: string, label: string) => Promise<void> | void;
+  onTransition: (statusId: string) => Promise<void> | void;
+  onSetType: (ticketId: string, typeId: string) => Promise<void> | void;
+  onAddLabel: (ticketId: string, label: string) => Promise<void> | void;
+  onRemoveLabel: (ticketId: string, label: string) => Promise<void> | void;
 }
 
-// Rows fall back to a static display when their handler is missing (read-only / no permission).
+// A row the viewer can't write is locked or plain text, drawn by its own action component.
 // The ticket key already names the project, so the rail has no project row; moving lives in the board and MCP.
 export const TicketPropertiesPanel = ({
   ticket,
@@ -34,17 +34,13 @@ export const TicketPropertiesPanel = ({
     <section className="space-y-0.5">
       <h2 className={cn(microheaderClass, "px-2 pb-1")}>Properties</h2>
       <div className="flex flex-col">
-        <TicketStatusRow ticket={ticket} {...(onTransition ? { onTransition } : {})} />
+        <TicketStatusRow ticket={ticket} onTransition={onTransition} />
         <TicketCategoryRow ticket={ticket} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Developer} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Tester} />
         <TicketReporterRow ticket={ticket} />
-        <TicketLabelsRow
-          ticket={ticket}
-          {...(onAddLabel ? { onAddLabel } : {})}
-          {...(onRemoveLabel ? { onRemoveLabel } : {})}
-        />
-        <TicketTypeRow ticket={ticket} {...(onSetType ? { onSetType } : {})} />
+        <TicketLabelsRow ticket={ticket} onAddLabel={onAddLabel} onRemoveLabel={onRemoveLabel} />
+        <TicketTypeRow ticket={ticket} onSetType={onSetType} />
       </div>
     </section>
     {children}

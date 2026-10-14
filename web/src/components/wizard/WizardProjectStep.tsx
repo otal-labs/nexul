@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { FormInput } from "@/components/FormInput";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { useCreateProject } from "@/hooks/ProjectHooks";
@@ -50,9 +50,9 @@ export const WizardProjectStep = ({ onDone, onBack, continueLabel = "Continue" }
         transform={(value) => value.toUpperCase()}
       />
       <WizardFooter onBack={onBack}>
-        <Button type="submit" loading={form.formState.isSubmitting}>
+        <ActionButton permission="projects:create" type="submit" loading={form.formState.isSubmitting}>
           {continueLabel}
-        </Button>
+        </ActionButton>
       </WizardFooter>
     </form>
   );

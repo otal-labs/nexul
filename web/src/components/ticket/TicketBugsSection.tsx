@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -27,14 +28,17 @@ export const TicketBugsSection = ({ ticket }: TicketBugsSectionProps) => {
     <section className="space-y-2">
       <div className="flex items-center justify-between px-2">
         <h2 className={microheaderClass}>Bugs</h2>
-        <button
-          type="button"
+        <ActionButton
+          permission="tickets:write"
+          projectId={ticket.project_id}
+          verb="report bugs"
+          variant="ghost"
+          size="icon"
+          icon={PlusIcon}
           aria-label="Report a bug"
           onClick={() => void reportBug({ originId: ticket.id, projectId: ticket.project_id })}
-          className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
-        >
-          <PlusIcon className="size-3.5" aria-hidden />
-        </button>
+          className="size-5 text-muted-foreground [&_svg]:size-3.5"
+        />
       </div>
       {isPending && <LoadingDisplay label="Loading bugs…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load bugs." />}

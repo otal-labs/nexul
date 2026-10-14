@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BoardSettingsSection } from "@/components/settings/BoardSettingsSection";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -16,10 +17,10 @@ const mocks = vi.hoisted(() => ({
   errorMessage: vi.fn(),
 }));
 
-vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del },
-  errorMessage: mocks.errorMessage,
-}));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del }, errorMessage: mocks.errorMessage };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -63,6 +64,7 @@ const renderSection = (tab = "columns") => {
 
 describe("BoardSettingsSection", () => {
   beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockReset();
     mocks.put.mockReset();
     mocks.post.mockReset();
@@ -111,7 +113,7 @@ describe("BoardSettingsSection", () => {
 
     expect(await screen.findByRole("tab", { name: "Status columns" })).toHaveAttribute("aria-selected", "true");
     await user.click(screen.getByRole("tab", { name: "Label colors" }));
-    expect(await screen.findByRole("radiogroup", { name: "Color for label bug" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Color for label bug" })).toBeInTheDocument();
   });
 
   it("does not show the empty states while statuses are still loading", () => {
@@ -418,7 +420,8 @@ describe("BoardSettingsSection", () => {
     const user = userEvent.setup();
     renderSection("labels");
 
-    const colorPicker = within(await screen.findByRole("radiogroup", { name: "Color for label bug" }));
+    await user.click(await screen.findByRole("button", { name: "Color for label bug" }));
+    const colorPicker = within(screen.getByRole("radiogroup", { name: "Color for label bug" }));
     await user.click(colorPicker.getByRole("radio", { name: "orange" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/tickets/labels/bug/color", {

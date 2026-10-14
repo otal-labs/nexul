@@ -9,5 +9,5 @@ interface UnlinkPRButtonProps {
 
 export const UnlinkPRButton = ({ ticketId, pr }: UnlinkPRButtonProps) => {
   const unlink = useUnlinkPR();
-  return <UnlinkButton subject={`pull request #${pr.number}`} onUnlink={() => unlink.mutate({ id: ticketId, pr })} />;
+  return <UnlinkButton ticketId={ticketId} subject={`pull request #${pr.number}`} onUnlink={() => unlink.mutate({ id: ticketId, pr })} />;
 };

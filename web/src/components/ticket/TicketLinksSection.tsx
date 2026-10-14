@@ -34,7 +34,7 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
       {empty && <p className="px-2 text-xs text-muted-foreground">No links yet.</p>}
       {ticket.doc_id && (
         <LinkGroupSection title="Source">
-          <TicketSourceRow docId={ticket.doc_id} onRemove={() => setSource.mutate({ id: ticketId, docId: "" })} />
+          <TicketSourceRow docId={ticket.doc_id} projectId={ticket.project_id} onRemove={() => setSource.mutate({ id: ticketId, docId: "" })} />
         </LinkGroupSection>
       )}
       {links && links.blocked_by.length > 0 && (
@@ -44,6 +44,7 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
               key={t.id}
               ticket={t}
               waiting
+              hostProjectId={ticket.project_id}
               onRemove={() => removeBlocker.mutate({ id: ticketId, blockerId: t.id })}
             />
           ))}
@@ -55,6 +56,7 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
             <LinkedTicketRow
               key={t.id}
               ticket={t}
+              hostProjectId={t.project_id}
               onRemove={() => removeBlocker.mutate({ id: t.id, blockerId: ticketId })}
             />
           ))}
@@ -62,12 +64,12 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
       )}
       {links?.found_in && (
         <LinkGroupSection title="Found in">
-          <LinkedTicketRow ticket={links.found_in} onRemove={() => removeFoundIn.mutate({ id: ticketId })} />
+          <LinkedTicketRow ticket={links.found_in} hostProjectId={ticket.project_id} onRemove={() => removeFoundIn.mutate({ id: ticketId })} />
         </LinkGroupSection>
       )}
       {links?.origin_unknown && (
         <LinkGroupSection title="Found in">
-          <OriginUnknownRow onRemove={() => removeFoundIn.mutate({ id: ticketId })} />
+          <OriginUnknownRow projectId={ticket.project_id} onRemove={() => removeFoundIn.mutate({ id: ticketId })} />
         </LinkGroupSection>
       )}
     </section>
