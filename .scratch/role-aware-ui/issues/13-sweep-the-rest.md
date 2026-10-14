@@ -8,7 +8,7 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/react-
 
 ## What to build
 
-The same for every remaining area in research 01. Per-play Run on the play controls is done by permission-followups ticket 01.
+The same for every remaining area in research 01. Per-play Run on the play controls is done (#654).
 
 ## Acceptance criteria
 
