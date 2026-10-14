@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router";
 
-import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
+import { ActionButton } from "@/components/action/ActionButton";
+import { DangerAction, dangerButtonClass, DangerZone } from "@/components/settings/DangerZone";
 import { useDeleteStack } from "@/hooks/StackHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { useStackActions } from "@/hooks/useStackActions";
 import type { Stack } from "@/models/Stack";
 
 interface StackDangerZoneSectionProps {
@@ -15,6 +17,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
   const navigate = useNavigate();
   const deleteStack = useDeleteStack();
   const { open: confirmDelete } = useConfirmationDialog();
+  const answer = useStackActions(stack);
 
   const onDelete = async () => {
     const releaseClause =
@@ -48,9 +51,18 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
           )
         }
         action={
-          <DangerButton loading={deleteStack.isPending} onClick={() => void onDelete()}>
+          <ActionButton
+            permission="stacks:delete"
+            projectId={stack.project_id || undefined}
+            answer={answer("stacks:delete")}
+            variant="outline"
+            size="sm"
+            liveClassName={dangerButtonClass}
+            loading={deleteStack.isPending}
+            onClick={() => void onDelete()}
+          >
             Delete stack
-          </DangerButton>
+          </ActionButton>
         }
       />
     </DangerZone>

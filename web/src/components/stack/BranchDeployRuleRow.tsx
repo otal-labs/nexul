@@ -1,9 +1,10 @@
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { BranchDeployRuleOverridesForm } from "@/components/stack/BranchDeployRuleOverridesForm";
 import { useUpdateStack } from "@/hooks/StackHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { useStackActions } from "@/hooks/useStackActions";
 import { derivesClone, type BranchDeployRule, type Stack } from "@/models/Stack";
 
 interface BranchDeployRuleRowProps {
@@ -14,6 +15,7 @@ interface BranchDeployRuleRowProps {
 
 export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowProps) => {
   const updateStack = useUpdateStack();
+  const answer = useStackActions(stack);
   const [editing, setEditing] = useState(false);
   const { open: confirm } = useConfirmationDialog();
   const rules = stack.branch_deploy_rules ?? [];
@@ -54,13 +56,22 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
         </div>
         <div className="flex shrink-0 gap-1">
           {derivesClone(rule) && !editing && (
-            <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} variant="ghost" size="sm" onClick={() => setEditing(true)}>
               Overrides
-            </Button>
+            </ActionButton>
           )}
-          <Button variant="ghost" size="sm" className="hover:text-destructive" onClick={() => void remove()} loading={updateStack.isPending}>
+          <ActionButton
+            permission="stacks:write"
+            projectId={stack.project_id || undefined}
+            answer={answer("stacks:write")}
+            variant="ghost"
+            size="sm"
+            liveClassName="hover:text-destructive"
+            onClick={() => void remove()}
+            loading={updateStack.isPending}
+          >
             Remove
-          </Button>
+          </ActionButton>
         </div>
       </div>
       {editing && (

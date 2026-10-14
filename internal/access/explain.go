@@ -350,6 +350,17 @@ func (r refusal) Error() string {
 
 func (r refusal) Unwrap() error { return apperrs.ErrForbidden }
 
+// RefusalDetails is the structured side of a refusal, so a client shows the sentence without parsing the message.
+type RefusalDetails struct {
+	Action   permissions.Action `json:"action"`
+	Sentence string             `json:"sentence"`
+}
+
+// ErrorDetails satisfies httpx.DetailedError.
+func (r refusal) ErrorDetails() any {
+	return RefusalDetails{Action: r.action, Sentence: r.s.namer(r.ctx).named(r.src).Sentence}
+}
+
 // namer resolves what sources name, each name read once.
 type namer struct {
 	ctx   context.Context

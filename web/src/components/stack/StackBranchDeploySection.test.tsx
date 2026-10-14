@@ -5,12 +5,14 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
+import { asOwner } from "@/test/viewer";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { StackWithBranches } from "@/models/Stack";
 
-const mocks = vi.hoisted(() => ({ patch: vi.fn(), _delete: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), _delete: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
-  api: { patch: mocks.patch, delete: mocks._delete },
+  api: { get: mocks.get, patch: mocks.patch, delete: mocks._delete },
   errorMessage: () => "boom",
 }));
 
@@ -30,36 +32,41 @@ const stack: StackWithBranches = {
   ],
 };
 
-const renderSection = (s: StackWithBranches = stack) =>
+// The actions wait for the viewer's permissions, so the section is drawn once Add rule is.
+const renderSection = async (s: StackWithBranches = stack) => {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <StackBranchDeploySection stack={s} />
     </QueryClientProvider>,
   );
+  await screen.findByRole("button", { name: "Add rule" });
+};
 
 const patchedRules = () => mocks.patch.mock.calls[0]?.[1].branch_deploy_rules;
 
 describe("StackBranchDeploySection overrides", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    mocks.get.mockImplementation(asOwner());
     mocks.patch.mockImplementation((_url: string, body: unknown) => Promise.resolve({ data: body }));
   });
 
-  it("lists override keys on the rule row, never their values", () => {
-    renderSection();
+  it("lists override keys on the rule row, never their values", async () => {
+    await renderSection();
     expect(screen.getByText("overrides DATABASE_URL, REDIS_URL")).toBeInTheDocument();
     expect(screen.queryByText(/postgres:\/\/qa/)).not.toBeInTheDocument();
   });
 
-  it("offers overrides only on a rule that deploys its own copy", () => {
-    renderSection();
+  it("offers overrides only on a rule that deploys its own copy", async () => {
+    await renderSection();
     expect(screen.getAllByRole("button", { name: "Overrides" })).toHaveLength(1);
   });
 
   it("removing an override line saves the rule without it", async () => {
     const user = userEvent.setup();
-    renderSection();
+    await renderSection();
     await user.click(screen.getByRole("button", { name: "Overrides" }));
     const field = screen.getByRole("textbox", { name: "Overrides" });
     expect(field).toHaveValue("DATABASE_URL=postgres://qa\nREDIS_URL=redis://qa");
@@ -77,7 +84,7 @@ describe("StackBranchDeploySection overrides", () => {
   it("a rejected save keeps the overrides open without an unhandled rejection", async () => {
     mocks.patch.mockRejectedValue(new Error("Request failed with status code 400"));
     const user = userEvent.setup();
-    renderSection();
+    await renderSection();
     await user.click(screen.getByRole("button", { name: "Overrides" }));
     await user.click(screen.getByRole("button", { name: "Save overrides" }));
 
@@ -87,7 +94,7 @@ describe("StackBranchDeploySection overrides", () => {
 
   it("clearing every override drops the overrides from the rule", async () => {
     const user = userEvent.setup();
-    renderSection();
+    await renderSection();
     await user.click(screen.getByRole("button", { name: "Overrides" }));
     await user.clear(screen.getByRole("textbox", { name: "Overrides" }));
     await user.click(screen.getByRole("button", { name: "Save overrides" }));
@@ -97,7 +104,7 @@ describe("StackBranchDeploySection overrides", () => {
 
   it("a new wildcard rule saves its overrides; an in-place one never shows the field", async () => {
     const user = userEvent.setup();
-    renderSection({ ...stack, branch_deploy_rules: [] });
+    await renderSection({ ...stack, branch_deploy_rules: [] });
     await user.click(screen.getByRole("button", { name: "Add rule" }));
     await user.type(screen.getByLabelText("Branch pattern"), "main");
     expect(screen.queryByLabelText("Overrides (optional)")).not.toBeInTheDocument();
@@ -124,7 +131,7 @@ describe("StackBranchDeploySection removals", () => {
   it("tears a live branch deployment down only once confirmed", async () => {
     const user = userEvent.setup();
     const deployment = { ...stack, id: "stack-feat", name: "api-feature-x", branch: "feature/x", branch_deploy_rules: [] };
-    renderSection({ ...stack, branch_deployments: [deployment] });
+    await renderSection({ ...stack, branch_deployments: [deployment] });
 
     await user.click(screen.getByRole("button", { name: "Tear down" }));
     expect(mocks._delete).not.toHaveBeenCalled();
@@ -134,7 +141,7 @@ describe("StackBranchDeploySection removals", () => {
 
   it("removes a rule only once confirmed", async () => {
     const user = userEvent.setup();
-    renderSection();
+    await renderSection();
 
     await user.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
     expect(mocks.patch).not.toHaveBeenCalled();

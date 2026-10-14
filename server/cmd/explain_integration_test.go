@@ -147,6 +147,7 @@ func TestDocEdit_ForbiddenNamesTheRuleThatDeniedIt(t *testing.T) {
 	status, body := editOverHTTP(uEditor)
 	assert.Equal(t, http.StatusForbidden, status)
 	assert.Contains(t, body, denied)
+	assert.Contains(t, body, `"details":{"action":"docs:write","sentence":"Denied on doc Spec for u-editor"}`, "the sentence alone, for a client to show")
 	err := editOverMCP(uEditor)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	assert.Contains(t, err.Error(), denied)

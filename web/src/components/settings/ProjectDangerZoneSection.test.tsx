@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectDangerZoneSection } from "@/components/settings/ProjectDangerZoneSection";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Project } from "@/models/Project";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), delete: vi.fn() }));
@@ -16,8 +17,15 @@ const project = { id: "p-web", name: "Web", prefix: "WEB" } as Project;
 
 const person = (login: string) => ({ user_id: login, login, display_name: "", avatar_url: "" });
 
+const owner = { role_name: "Owner", roles: [{ id: "role-owner", name: "Owner", is_owner: true }], permissions: [] };
+
 const renderSection = (impact: unknown, people: unknown[]) => {
-  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url.endsWith("/people") ? { people, role_ids: [] } : impact }));
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  mocks.get.mockImplementation((url: string) => {
+    if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: owner });
+    if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
+    return Promise.resolve({ data: url.endsWith("/people") ? { people, role_ids: [] } : impact });
+  });
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
@@ -35,8 +43,8 @@ describe("ProjectDangerZoneSection", () => {
     const user = userEvent.setup();
     renderSection({ tickets: 0, repos: 0, services: 0 }, [person("bob"), person("sam")]);
 
-    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
-    await user.click(screen.getByRole("button", { name: "Remove project" }));
+    await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThanOrEqual(4));
+    await user.click(await screen.findByRole("button", { name: "Remove project" }));
 
     expect(await screen.findByText("2 people lose this project.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -46,8 +54,8 @@ describe("ProjectDangerZoneSection", () => {
     const user = userEvent.setup();
     renderSection({ tickets: 0, repos: 0, services: 0 }, []);
 
-    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
-    await user.click(screen.getByRole("button", { name: "Remove project" }));
+    await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThanOrEqual(4));
+    await user.click(await screen.findByRole("button", { name: "Remove project" }));
 
     expect(await screen.findByText("The project is empty. Removing it can't be undone.")).toBeInTheDocument();
     expect(screen.queryByText(/lose this project/)).not.toBeInTheDocument();

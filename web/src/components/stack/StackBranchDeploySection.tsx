@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -8,6 +9,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import { AddBranchDeployRuleForm } from "@/components/stack/AddBranchDeployRuleForm";
 import { BranchDeployRuleRow } from "@/components/stack/BranchDeployRuleRow";
 import { BranchDeploymentRow } from "@/components/stack/BranchDeploymentRow";
+import { useStackActions } from "@/hooks/useStackActions";
 import type { StackWithBranches } from "@/models/Stack";
 
 interface StackBranchDeploySectionProps {
@@ -17,6 +19,7 @@ interface StackBranchDeploySectionProps {
 // A derived stack (stack.branch set) never gets this section — it has no rules of its own.
 export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProps) => {
   const [adding, setAdding] = useState(false);
+  const answer = useStackActions(stack);
 
   const rules = stack.branch_deploy_rules ?? [];
   const branchDeployments = stack.branch_deployments ?? [];
@@ -33,9 +36,9 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
             {rules.length > 1 && `${rules.length} rules.`}
           </p>
           {!adding && (
-            <Button size="sm" onClick={() => setAdding(true)}>
+            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} size="sm" onClick={() => setAdding(true)}>
               Add rule
-            </Button>
+            </ActionButton>
           )}
           {adding && (
             <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>

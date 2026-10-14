@@ -55,9 +55,18 @@ api.interceptors.response.use(
   },
 );
 
+// A refusal names the rule or role behind it in `details.sentence`; the message around it only repeats the permission.
+const refusalSentence = (body: ApiErrorBody | undefined): string | undefined => {
+  if (body?.code !== "FORBIDDEN") return undefined;
+  const { sentence } = (body.details ?? {}) as { sentence?: unknown };
+  return typeof sentence === "string" && sentence !== "" ? sentence : undefined;
+};
+
 export const errorMessage = (error: unknown): string => {
   const e = error as AxiosError<ApiErrorBody>;
   const body = e?.response?.data;
+  const sentence = refusalSentence(body);
+  if (sentence) return sentence;
   const firstField = body?.errors ? Object.values(body.errors)[0]?.[0] : undefined;
   return firstField || body?.message || e?.message || "Something went wrong";
 };

@@ -7,6 +7,15 @@ export interface EntityAnswer {
   source: { sentence: string };
 }
 
+// GET /api/permissions/explain: one answer per action the item's rules may set.
+export interface EntityExplanation {
+  effective: readonly (EntityAnswer & { action: string })[];
+}
+
+// The item's answer for permission, or undefined when its rules don't set that action and the role-wide answer stands.
+export const answerFor = (explanation: EntityExplanation | undefined, permission: PermissionAction): EntityAnswer | undefined =>
+  explanation?.effective.find((answer) => answer.action === permission);
+
 export interface ActionGate {
   permission: PermissionAction;
   projectId?: string | undefined;

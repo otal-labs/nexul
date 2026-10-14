@@ -35,11 +35,16 @@ const renderPage = (initialEntry = "/acme/projects/p-1/settings") => {
   );
 };
 
+const owner = { role_name: "Owner", roles: [{ id: "role-owner", name: "Owner", is_owner: true }], permissions: [] };
+
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.delete).mockReset();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
+    if (url === "/api/workspaces/ws-1/me") return { data: owner };
+    if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url === "/api/projects") return { data: [project] };
     if (url === "/api/projects/p-1") return { data: project };
     if (url === "/api/projects/p-1/impact") return { data: { tickets: 0, repos: 0, services: 0 } };
@@ -128,13 +133,28 @@ describe("ProjectSettingsPage", () => {
     expect(api.patch).toHaveBeenCalledWith("/api/projects/p-1", { name: "Platform" });
   });
 
+  it("locks Remove project with the rule's sentence when a rule on this project denies it", async () => {
+    const sentence = "Denied on project Backend for role Member";
+    const defaultGet = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") {
+        return { data: { role_name: "Member", permissions: [], projects: [{ project_id: "p-1", actions: ["projects:delete"] }], show_locked_actions: true } };
+      }
+      if (url === "/api/permissions/explain") return { data: { effective: [{ action: "projects:delete", allowed: false, source: { sentence } }] } };
+      return defaultGet(url);
+    });
+    renderPage("/acme/projects/p-1/settings/danger");
+
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Remove project" })).toHaveAttribute("aria-disabled", "true"));
+    expect(screen.getByRole("button", { name: "Remove project" })).toHaveAccessibleDescription(sentence);
+  });
+
   it("blocks removal of a project with affected work from the danger zone", async () => {
     const user = userEvent.setup();
+    const defaultGet = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/projects") return { data: [project] };
-      if (url === "/api/projects/p-1") return { data: project };
       if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0 } };
-      return { data: [] };
+      return defaultGet(url);
     });
     renderPage("/acme/projects/p-1/settings/danger");
 

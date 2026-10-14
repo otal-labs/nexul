@@ -66,6 +66,7 @@ const serve = () =>
     if (url === "/api/ticket-types" && projectId === "p-1") return { data: [{ id: "tt-1", name: "Bug" }] };
     if (url === "/api/tickets/labels") return { data: ["urgent"] };
     if (url === "/api/categories") return { data: [] };
+    if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url.startsWith("/api/permissions")) return { data: { grants: [] } };
     throw new Error(`unexpected GET ${url}`);
   });

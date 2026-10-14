@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { PencilIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionInlineEdit } from "@/components/action/ActionInlineEdit";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import type { Project } from "@/models/Project";
 
 interface ProjectNameProps {
@@ -14,6 +15,7 @@ interface ProjectNameProps {
 
 export const ProjectName = ({ project, onRename, className }: ProjectNameProps) => {
   const [editing, setEditing] = useState(false);
+  const answer = useEntityActions("project", project.id);
   const form = useForm<{ name: string }>({ defaultValues: { name: project.name } });
 
   const saveRename = () => {
@@ -52,18 +54,16 @@ export const ProjectName = ({ project, onRename, className }: ProjectNameProps) 
         />
       )}
       {!editing && (
-        <>
-          <span className="flex-1 font-medium">{project.name}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="Rename project"
-            className={className}
-            onClick={() => setEditing(true)}
-          >
-            <PencilIcon className="size-4" />
-          </Button>
-        </>
+        <ActionInlineEdit
+          permission="projects:write"
+          projectId={project.id}
+          answer={answer("projects:write")}
+          label="Rename project"
+          onEdit={() => setEditing(true)}
+          className={cn("flex-1 font-medium", className)}
+        >
+          {project.name}
+        </ActionInlineEdit>
       )}
     </>
   );

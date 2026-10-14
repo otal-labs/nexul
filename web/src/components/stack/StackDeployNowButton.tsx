@@ -1,9 +1,9 @@
 import { RocketIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDeployStack } from "@/hooks/StackHooks";
+import { useStackActions } from "@/hooks/useStackActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { deployNowInput, deployPath, type Stack } from "@/models/Stack";
 
@@ -19,22 +19,26 @@ export const StackDeployNowButton = ({ stack, image, disabled }: StackDeployNowB
   const deploy = useDeployStack();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
-  const can = useAreaAccess(stack.project_id || undefined);
+  const answer = useStackActions(stack);
   const input = deployNowInput(stack, image);
-  if (!input || !can?.("editDeploys")) return null;
+  if (!input) return null;
 
   return (
-    <Button
+    <ActionButton
+      permission="deploys:write"
+      projectId={stack.project_id || undefined}
+      answer={answer("deploys:write")}
+      verb="deploy"
       type="button"
       variant="outline"
       size="sm"
+      icon={RocketIcon}
       loading={deploy.isPending}
       disabled={disabled}
       title={disabled ? "Save your changes first" : undefined}
       onClick={() => deploy.mutate({ stackId: stack.id, ...input }, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
     >
-      <RocketIcon aria-hidden />
       Deploy now
-    </Button>
+    </ActionButton>
   );
 };

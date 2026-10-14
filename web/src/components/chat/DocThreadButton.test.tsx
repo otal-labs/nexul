@@ -23,13 +23,19 @@ const conversation = {
   updated_at: "",
 };
 
+// The role-wide permissions, and the doc's own answers from explain, which stay empty when no rule sets one.
+const servePermissions = (permissions: string[]) =>
+  vi.mocked(api.get).mockImplementation((url) =>
+    Promise.resolve({ data: url.includes("/explain") ? { effective: [] } : { role_name: "member", permissions } }),
+  );
+
 const renderButton = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
-          <Route path="/" element={<DocThreadButton workspaceId="ws-1" docId="doc-1" />} />
+          <Route path="/" element={<DocThreadButton workspaceId="ws-1" docId="doc-1" projectId="p-1" />} />
           <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
@@ -45,7 +51,7 @@ beforeEach(() => {
 
 describe("DocThreadButton", () => {
   it("is hidden for a caller without docs:thread", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { role_name: "member", permissions: [] } });
+    servePermissions([]);
     renderButton();
     // Let the role query settle before asserting absence, or the button could just not have rendered yet.
     await new Promise((r) => setTimeout(r, 0));
@@ -54,7 +60,7 @@ describe("DocThreadButton", () => {
 
   it("gets or creates the thread and navigates to it for a caller with docs:thread", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: { role_name: "member", permissions: ["docs:thread"] } });
+    servePermissions(["docs:thread"]);
     vi.mocked(api.post).mockResolvedValue({ data: conversation });
     renderButton();
 

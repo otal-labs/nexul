@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackPage } from "@/pages/StackPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["projects", "topology", "editProjects", "editStacks", "editDeploys", "dns"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({
@@ -22,10 +23,11 @@ vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { t
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), _delete: vi.fn() }));
 
-vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post, patch: mocks.patch, delete: mocks._delete },
-  errorMessage: () => "boom",
-}));
+// The viewer is an Owner with no rule on any item; every other read is the test's own.
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), post: mocks.post, patch: mocks.patch, delete: mocks._delete }, errorMessage: () => "boom" };
+});
 
 const stack = {
   id: "stack-1",
@@ -72,6 +74,7 @@ describe("StackPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     manage.stack = false;
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
       if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
