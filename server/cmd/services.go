@@ -271,7 +271,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceHandler := voice.NewHandler(voiceSvc)
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, accessSvc)
-	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, accessSvc, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder}, accountGate{svc: authSvc, presence: presenceKeeper})
+	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, accessSvc, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder, roles: rolesSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
 	tenancySvc.SetProjects(tenancyProjectGate{projects: store.Projects, access: accessSvc})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
 	mentionsSvc.SetPeople(mentionPeopleSource{svc: tenancySvc})
@@ -282,7 +282,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	memoriesSvc := memories.NewService(store.Memories, accessSvc, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc})
 	memoriesSvc.SetDocLookup(memoriesDocLookup{docs: store.Docs, projects: store.Projects})
-	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc)
+	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc, rolesSvc)
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(store.WorkspaceMembers)
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs})

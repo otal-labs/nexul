@@ -9,6 +9,8 @@ interface RoleNameFieldsProps {
   creating: boolean;
   name: string;
   copiedFrom: Role | undefined;
+  // The roles to start from; the selected workspace's when not given.
+  copyable?: Role[] | undefined;
   onName: (name: string) => void;
   onStartFrom: (role: Role | undefined) => void;
 }
@@ -16,10 +18,10 @@ interface RoleNameFieldsProps {
 const NOTHING = "nothing";
 
 // The name, and on a new role a "Start from" that copies another role's permissions into the draft.
-export const RoleNameFields = ({ creating, name, copiedFrom, onName, onStartFrom }: RoleNameFieldsProps) => {
+export const RoleNameFields = ({ creating, name, copiedFrom, copyable: given, onName, onStartFrom }: RoleNameFieldsProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: roles } = useFetchWorkspaceRoles(workspaceId);
-  const copyable = (roles ?? []).filter((role) => !role.is_owner_role);
+  const { data: roles } = useFetchWorkspaceRoles(given ? "" : workspaceId);
+  const copyable = (given ?? roles ?? []).filter((role) => !role.is_owner_role);
 
   return (
     <div className="@container space-y-1.5">

@@ -17,10 +17,11 @@ import (
 
 // Service is the roles use-case layer: the workspace-scoped role catalog and its protected Owner role.
 type Service struct {
-	repo    Repo
-	members MemberGate
-	perms   PermissionGate
-	now     func() time.Time
+	repo      Repo
+	members   MemberGate
+	perms     PermissionGate
+	templates TemplateRoles
+	now       func() time.Time
 }
 
 // NewService wires the roles use-cases; members may be nil, wired later via SetMemberGate to break a cycle.

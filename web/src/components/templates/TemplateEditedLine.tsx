@@ -18,7 +18,7 @@ export const TemplateEditedLine = ({ template }: TemplateEditedLineProps) => {
     <p className="flex min-w-0">
       {template.edited && (
         <SettingsStatus tone="info" detail={detail || undefined}>
-          Edited
+          {template.added ? "Added" : "Edited"}
         </SettingsStatus>
       )}
       {!template.edited && <SettingsStatus tone="muted">Default</SettingsStatus>}

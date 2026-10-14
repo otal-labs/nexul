@@ -16,7 +16,8 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// Routes returns the templates endpoints: the instance layer by kind, and clone and reset at any layer.
+// Routes returns the templates endpoints: the instance layer by kind, clone and reset at any layer, and deleting a
+// template the instance added.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/templates", h.list)
@@ -25,6 +26,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/templates/{kind}", h.resetInstance)
 	mux.HandleFunc("POST /api/templates/clone", h.clone)
 	mux.HandleFunc("POST /api/templates/reset", h.reset)
+	mux.HandleFunc("POST /api/templates/delete", h.delete)
 	return mux
 }
 
@@ -94,6 +96,22 @@ func (h *Handler) reset(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := h.svc.Reset(r.Context(), req.Kind, req.Key, req.At)
 	respond(w, t, err)
+}
+
+func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
+	var req resetRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	respond(w, deleted{Kind: req.Kind, Key: req.Key, Deleted: true}, h.svc.Delete(r.Context(), req.Kind, req.Key))
+}
+
+// deleted is what a delete answers with, so the caller can confirm the effect.
+type deleted struct {
+	Kind    string `json:"kind"`
+	Key     string `json:"key"`
+	Deleted bool   `json:"deleted"`
 }
 
 func respond(w http.ResponseWriter, v any, err error) {

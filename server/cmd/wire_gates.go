@@ -329,13 +329,18 @@ func (g roleMemberGate) HolderEvents(ctx context.Context, workspaceID, roleID, a
 	return g.svc.RoleHolderEvents(ctx, workspaceID, roleID, actorID)
 }
 
-// workspaceDefaultsGate seeds a workspace's default plays and automations for tenancy's DefaultsGate seam (ADR 0017).
+// workspaceDefaultsGate seeds a workspace's template roles, default plays and automations for tenancy's DefaultsGate
+// seam (ADR 0017).
 type workspaceDefaultsGate struct {
 	plays       *plays.Service
 	automations *automations.Seeder
+	roles       *roles.Service
 }
 
 func (g workspaceDefaultsGate) SeedWorkspaceDefaults(ctx context.Context, workspaceID string) error {
+	if err := g.roles.SeedTemplateRoles(ctx, workspaceID); err != nil {
+		return err
+	}
 	if err := g.plays.SeedDefaults(ctx, workspaceID); err != nil {
 		return err
 	}

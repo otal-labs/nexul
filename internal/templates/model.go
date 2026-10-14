@@ -42,6 +42,8 @@ type Template struct {
 	Edited bool `json:"edited"`
 	// Follows says the kind's lower layer follows the instance live until edited, rather than copying it at creation.
 	Follows bool `json:"follows"`
+	// Added is true for a template the instance added itself: it has no code default, so it deletes rather than resets.
+	Added bool `json:"added"`
 	// Questions is Body parsed, for a kind whose text is a list of questions (the Interview template).
 	Questions any        `json:"questions,omitempty"`
 	UpdatedBy string     `json:"updated_by,omitempty"`
@@ -81,6 +83,10 @@ type Kind struct {
 	// Follows is true when the lower layer is stored only once edited, so an unedited one reads the instance live.
 	Follows  bool
 	Defaults []Default
+	// Addable lets the instance add templates of its own beside the defaults, each under a generated key.
+	Addable bool
+	// Title names a template from its body, for a kind whose text carries its own name; nil keeps the default's.
+	Title func(body string) string
 	// Check validates a body before it is stored at the instance; nil accepts any text.
 	Check func(body string) error
 	// Questions parses a body for the reader; nil for a kind whose text is not a list of questions.

@@ -11,6 +11,7 @@ import (
 type Repo interface {
 	// Get returns ErrNotFound for a template nobody has edited.
 	Get(ctx context.Context, kind, key string) (*Record, error)
+	// List returns every edited or added template by kind, then key.
 	List(ctx context.Context) ([]*Record, error)
 	Save(ctx context.Context, r *Record, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, kind, key string, evts ...eventbus.OutboxEvent) error

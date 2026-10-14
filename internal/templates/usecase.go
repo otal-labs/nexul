@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -46,6 +47,30 @@ func (s *Service) List(ctx context.Context) ([]*Template, error) {
 		for _, d := range k.Defaults {
 			out = append(out, instanceView(k, d, stored[k.Name+"\x00"+d.Key]))
 		}
+		if !k.Addable {
+			continue
+		}
+		// The repo lists by key, and a generated key sorts by when it was added.
+		for _, r := range records {
+			if r.Kind == k.Name && !hasDefault(k, r.Key) {
+				out = append(out, instanceView(k, Default{Key: r.Key, Name: r.Key}, r))
+			}
+		}
+	}
+	return out, nil
+}
+
+// Bodies is the instance's text for every template of kind, added ones after the defaults; the server's own read.
+func (s *Service) Bodies(ctx context.Context, kind string) ([]string, error) {
+	list, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, t := range list {
+		if t.Kind == kind {
+			out = append(out, t.Body)
+		}
 	}
 	return out, nil
 }
@@ -56,11 +81,7 @@ func (s *Service) Effective(ctx context.Context, kind, key string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	d, err := instanceDefault(k, key)
-	if err != nil {
-		return "", err
-	}
-	rec, err := s.record(ctx, k.Name, d.Key)
+	d, rec, err := s.instanceTemplate(ctx, k, key)
 	if err != nil {
 		return "", err
 	}
@@ -88,10 +109,34 @@ func (s *Service) Update(ctx context.Context, kind, key string, at Location, bod
 	if err := checkLocation(k, at); err != nil {
 		return nil, err
 	}
-	if err := s.write(ctx, k, key, at, body); err != nil {
+	key, err = s.write(ctx, k, key, at, body)
+	if err != nil {
 		return nil, err
 	}
 	return s.view(ctx, k, key, at)
+}
+
+// Delete removes a template the instance added; one that ships with Nexul only resets. It takes templates:write.
+func (s *Service) Delete(ctx context.Context, kind, key string) error {
+	k, err := s.kind(kind)
+	if err != nil {
+		return err
+	}
+	d, _, err := s.instanceTemplate(ctx, k, key)
+	if err != nil {
+		return err
+	}
+	if !k.Addable || hasDefault(k, d.Key) {
+		return fmt.Errorf("%w: the %s template %q ships with Nexul and can't be deleted; reset it to its default instead", apperrs.ErrInvalid, k.Name, d.Key)
+	}
+	if err := s.requireWrite(ctx); err != nil {
+		return err
+	}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Kind: k.Name, Key: d.Key, AuthorID: actorID(ctx), UpdatedAt: s.now().UTC(), Deleted: true}}
+	if err := s.repo.Delete(ctx, k.Name, d.Key, evt); err != nil {
+		return fmt.Errorf("delete instance template %s %s: %w", k.Name, d.Key, err)
+	}
+	return nil
 }
 
 // Reset returns a location to its default: the instance to the code default, a lower layer to the instance's text.
@@ -139,7 +184,8 @@ func (s *Service) Clone(ctx context.Context, kind, key string, from, to Location
 	if err != nil {
 		return nil, err
 	}
-	if err := s.write(ctx, k, key, to, body); err != nil {
+	key, err = s.write(ctx, k, key, to, body)
+	if err != nil {
 		return nil, err
 	}
 	return s.view(ctx, k, key, to)
@@ -153,33 +199,40 @@ func (s *Service) read(ctx context.Context, k *Kind, key string, at Location) (s
 	return body, err
 }
 
-func (s *Service) write(ctx context.Context, k *Kind, key string, at Location, body string) error {
+// write stores body and returns the key it went under: an addable kind with no key adds a template under a new one.
+func (s *Service) write(ctx context.Context, k *Kind, key string, at Location, body string) (string, error) {
 	if at.Scope != ScopeInstance {
-		return k.Layer.Write(ctx, at, key, body)
+		return key, k.Layer.Write(ctx, at, key, body)
 	}
-	d, err := instanceDefault(k, key)
-	if err != nil {
-		return err
+	d := Default{Key: ids.New()}
+	if !k.Addable || strings.TrimSpace(key) != "" {
+		var err error
+		if d, _, err = s.instanceTemplate(ctx, k, key); err != nil {
+			return "", err
+		}
 	}
 	if err := s.requireWrite(ctx); err != nil {
-		return err
+		return "", err
 	}
 	if k.Check != nil {
 		if err := k.Check(body); err != nil {
-			return err
+			return "", err
 		}
 	}
 	rec := &Record{Kind: k.Name, Key: d.Key, Body: body, UpdatedBy: actorID(ctx), UpdatedAt: s.now().UTC()}
 	if err := s.repo.Save(ctx, rec, s.event(rec.Kind, rec.Key, rec.UpdatedBy, rec.UpdatedAt, false)); err != nil {
-		return fmt.Errorf("save instance template %s %s: %w", k.Name, d.Key, err)
+		return "", fmt.Errorf("save instance template %s %s: %w", k.Name, d.Key, err)
 	}
-	return nil
+	return d.Key, nil
 }
 
 func (s *Service) resetInstance(ctx context.Context, k *Kind, key string) error {
-	d, err := instanceDefault(k, key)
+	d, _, err := s.instanceTemplate(ctx, k, key)
 	if err != nil {
 		return err
+	}
+	if !hasDefault(k, d.Key) {
+		return fmt.Errorf("%w: the instance added the %s template %q, so it has no default to reset to; delete it instead", apperrs.ErrInvalid, k.Name, d.Key)
 	}
 	if err := s.requireWrite(ctx); err != nil {
 		return err
@@ -193,11 +246,7 @@ func (s *Service) resetInstance(ctx context.Context, k *Kind, key string) error 
 
 func (s *Service) view(ctx context.Context, k *Kind, key string, at Location) (*Template, error) {
 	if at.Scope == ScopeInstance {
-		d, err := instanceDefault(k, key)
-		if err != nil {
-			return nil, err
-		}
-		rec, err := s.record(ctx, k.Name, d.Key)
+		d, rec, err := s.instanceTemplate(ctx, k, key)
 		if err != nil {
 			return nil, err
 		}
@@ -218,14 +267,46 @@ func (s *Service) view(ctx context.Context, k *Kind, key string, at Location) (*
 	if !k.Follows {
 		t.Edited = body != t.DefaultBody
 	}
-	return withQuestions(k, t), nil
+	return withParsed(k, t), nil
 }
 
-func withQuestions(k *Kind, t *Template) *Template {
+// withParsed fills in what the kind reads from the body: its questions, and its name where the text carries one.
+func withParsed(k *Kind, t *Template) *Template {
 	if k.Questions != nil {
 		t.Questions = k.Questions(t.Body)
 	}
+	if k.Title != nil {
+		t.Name = cmp.Or(k.Title(t.Body), t.Name)
+	}
 	return t
+}
+
+// instanceTemplate resolves key at the instance: a code default with its stored edit, or a template the instance added.
+func (s *Service) instanceTemplate(ctx context.Context, k *Kind, key string) (Default, *Record, error) {
+	d, err := instanceDefault(k, key)
+	if err != nil && (!k.Addable || !errors.Is(err, apperrs.ErrNotFound)) {
+		return Default{}, nil, err
+	}
+	if err != nil {
+		d = Default{Key: strings.TrimSpace(key), Name: strings.TrimSpace(key)}
+	}
+	rec, rerr := s.record(ctx, k.Name, d.Key)
+	if rerr != nil {
+		return Default{}, nil, rerr
+	}
+	if err != nil && rec == nil {
+		return Default{}, nil, err
+	}
+	return d, rec, nil
+}
+
+func hasDefault(k *Kind, key string) bool {
+	for _, d := range k.Defaults {
+		if d.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) record(ctx context.Context, kind, key string) (*Record, error) {
@@ -278,13 +359,13 @@ func instanceDefault(k *Kind, key string) (Default, error) {
 }
 
 func instanceView(k *Kind, d Default, rec *Record) *Template {
-	t := &Template{Kind: k.Name, Key: d.Key, Name: d.Name, Scope: ScopeInstance, Body: d.Body, DefaultBody: d.Body, Follows: k.Follows}
+	t := &Template{Kind: k.Name, Key: d.Key, Name: d.Name, Scope: ScopeInstance, Body: d.Body, DefaultBody: d.Body, Follows: k.Follows, Added: k.Addable && !hasDefault(k, d.Key)}
 	if rec == nil {
-		return withQuestions(k, t)
+		return withParsed(k, t)
 	}
 	at := rec.UpdatedAt
 	t.Body, t.Edited, t.UpdatedBy, t.UpdatedAt = rec.Body, true, rec.UpdatedBy, &at
-	return withQuestions(k, t)
+	return withParsed(k, t)
 }
 
 func checkLocation(k *Kind, at Location) error {

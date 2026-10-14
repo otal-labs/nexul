@@ -15,6 +15,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -171,7 +172,7 @@ func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
 
 		listed, err := f.tpl.List(as(uPlain))
 		require.NoError(t, err, "any member reads the instance templates")
-		assert.Len(t, listed, 15)
+		assert.Len(t, listed, 20)
 	})
 
 	t.Run("a copy resets to the instance version, not the code default", func(t *testing.T) {
@@ -326,4 +327,102 @@ func TestIntegration_TemplateEditorOpensEditsAndSavesItFromSettings(t *testing.T
 	assert.Equal(t, edited, template.Body)
 
 	assert.Equal(t, http.StatusForbidden, serve(uTemplater, http.MethodGet, "").Code, "templates:write alone opens no workspace's template")
+}
+
+// workspaceRoles reads a workspace's roles as names in list order, and each one by name.
+func workspaceRoles(t *testing.T, svc *coreServices, workspaceID string) ([]string, map[string]*roles.Role) {
+	t.Helper()
+	rs, err := svc.rolesSvc.List(context.Background(), workspaceID)
+	require.NoError(t, err)
+	var names []string
+	byName := map[string]*roles.Role{}
+	for _, r := range rs {
+		names = append(names, r.Name)
+		byName[r.Name] = r
+	}
+	return names, byName
+}
+
+func ticksOf(byName map[string]*roles.Role) map[string][]string {
+	out := map[string][]string{}
+	for name, r := range byName {
+		out[name] = r.WelcomeSteps
+	}
+	return out
+}
+
+// TestIntegration_TemplateRoles: a new workspace copies every template role beside Owner, as the instance holds it at
+// creation, and nothing that happens to the templates afterwards reaches it or any workspace that existed before.
+func TestIntegration_TemplateRoles(t *testing.T) {
+	f := newTemplateFixture(t)
+	existingNames, existing := workspaceRoles(t, f.svc, wsDefault)
+
+	f.setInstance(t, roles.TemplateKind, "client", `{"name":"Customer","permissions":["tickets:read"],"welcome_steps":["projects","phone"]}`)
+	added, err := f.tpl.Update(as(uTemplater), roles.TemplateKind, "", templates.Instance, `{"name":"Support","permissions":["tickets:read","chat:write"],"welcome_steps":["github"]}`)
+	require.NoError(t, err)
+	assert.True(t, added.Added)
+	assert.Equal(t, "Support", added.Name, "named from its body, not its generated key")
+
+	ws, _ := f.newWorkspace(t, "Beta", "BET")
+	names, copies := workspaceRoles(t, f.svc, ws.ID)
+	require.Equal(t, []string{"Owner", "Customer", "Junior Developer", "Senior Developer", "DevOps", "Administrator", "Support"}, names)
+	assert.Equal(t, map[string][]string{
+		"Owner": {"github", "computer"}, "Customer": {"projects", "phone"}, "Junior Developer": {"computer", "projects"},
+		"Senior Developer": {"github", "computer"}, "DevOps": {"deploy_server"}, "Administrator": {"github"}, "Support": {"github"},
+	}, ticksOf(copies))
+	assert.Equal(t, grant("tickets:read", "chat:write"), copies["Support"].Permissions)
+	assert.True(t, copies["Administrator"].Permissions.Has(permissions.RolesWrite))
+	for _, a := range copies["Administrator"].Permissions {
+		if permissions.AreaOf(a) == permissions.AreaInstance {
+			domain, _, _ := strings.Cut(string(a), ":")
+			assert.Contains(t, []string{"runners", "machines", "dns", "topology"}, domain, "Administrator holds none of the instance's own administration")
+		}
+	}
+
+	t.Run("later template edits and deletes leave every workspace as it was", func(t *testing.T) {
+		f.setInstance(t, roles.TemplateKind, "client", `{"name":"Client again","permissions":[],"welcome_steps":[]}`)
+		f.setInstance(t, roles.TemplateKind, added.Key, `{"name":"Support 2","permissions":[],"welcome_steps":[]}`)
+		_, err := f.tpl.Reset(as(uOwner), roles.TemplateKind, "devops", templates.Instance)
+		require.NoError(t, err)
+		require.NoError(t, f.tpl.Delete(as(uOwner), roles.TemplateKind, added.Key))
+
+		after, afterCopies := workspaceRoles(t, f.svc, ws.ID)
+		assert.Equal(t, names, after)
+		assert.Equal(t, ticksOf(copies), ticksOf(afterCopies))
+		assert.Equal(t, copies["Support"].Permissions, afterCopies["Support"].Permissions, "the deleted template's copy stays")
+		stillNames, still := workspaceRoles(t, f.svc, wsDefault)
+		assert.Equal(t, existingNames, stillNames, "a workspace from before gets no template role")
+		assert.Equal(t, ticksOf(existing), ticksOf(still))
+	})
+
+	t.Run("a shipped template resets but never deletes, and only templates:write changes any", func(t *testing.T) {
+		assert.Equal(t, invalid, outcome(f.tpl.Delete(as(uOwner), roles.TemplateKind, "client")))
+		_, err := f.tpl.Get(as(uOwner), roles.TemplateKind, added.Key, templates.Instance)
+		assert.Equal(t, notFound, outcome(err), "a deleted template is gone")
+		mine, err := f.tpl.Update(as(uTemplater), roles.TemplateKind, "", templates.Instance, `{"name":"Mine","permissions":[],"welcome_steps":[]}`)
+		require.NoError(t, err)
+		_, err = f.tpl.Reset(as(uOwner), roles.TemplateKind, mine.Key, templates.Instance)
+		assert.Equal(t, invalid, outcome(err), "an added template has no default to reset to")
+		for _, user := range []string{uSteward, uPlain} {
+			_, err := f.tpl.Update(as(user), roles.TemplateKind, "", templates.Instance, `{"name":"Theirs","permissions":[],"welcome_steps":[]}`)
+			assert.Equal(t, forbidden, outcome(err), user)
+			_, err = f.tpl.Update(as(user), roles.TemplateKind, mine.Key, templates.Instance, `{"name":"Theirs","permissions":[],"welcome_steps":[]}`)
+			assert.Equal(t, forbidden, outcome(err), user)
+			_, err = f.tpl.Reset(as(user), roles.TemplateKind, "client", templates.Instance)
+			assert.Equal(t, forbidden, outcome(err), user)
+			assert.Equal(t, forbidden, outcome(f.tpl.Delete(as(user), roles.TemplateKind, mine.Key)), user)
+		}
+	})
+}
+
+// TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles: the owner wizard binding the pre-seeded default
+// workspace seeds the template roles there too, beside the Owner role it creates.
+func TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles(t *testing.T) {
+	svc, store := wiredOver(t, mentionsTestDB(t))
+	seedMentionsUser(t, store, uOwner)
+
+	require.NoError(t, svc.tenancySvc.BindDefaultWorkspaceOwner(context.Background(), uOwner))
+	names, byName := workspaceRoles(t, svc, wsDefault)
+	require.Equal(t, []string{"Owner", "Client", "Junior Developer", "Senior Developer", "DevOps", "Administrator"}, names)
+	assert.Equal(t, []string{"projects"}, byName["Client"].WelcomeSteps)
 }

@@ -70,6 +70,19 @@ export const useResetInstanceTemplate = () => {
   });
 };
 
+// Deletes a template the instance added; workspaces holding a copy keep it.
+export const useDeleteInstanceTemplate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kind, key }: { kind: TemplateKind; key: string }) => api.post("/api/templates/delete", { kind, key }),
+    onSuccess: async () => {
+      await refreshTemplates(client);
+      toast.success("Template deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // Resets a workspace's or project's template to the instance's text.
 export const useResetTemplate = () => {
   const client = useQueryClient();
