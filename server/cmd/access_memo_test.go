@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -974,6 +975,53 @@ UNION ALL SELECT 'machine', m.id, 'person', NULL, ?, '["machines:see","machines:
 	none := cost(12, false)
 	assert.Equal(t, none, cost(2, true), "a few machines, each with rules")
 	assert.Equal(t, none, cost(12, true), "many machines, each with rules")
+}
+
+// TestStatements_ExplainCostsTheSameForAnyNumberOfActions: explain reads once however many actions it answers, never once per action.
+func TestStatements_ExplainCostsTheSameForAnyNumberOfActions(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().UTC()
+	const play = "play-explained"
+	entities := []struct{ kind, id, action string }{
+		{"doc", "doc-1", "docs:write"}, {"play", play, "plays:run"}, {"project", pGeneral, "tickets:write"}, {"stack", "stack-1", "deploys:write"},
+	}
+	// The person's rule denies all but what opens each entity, since an entity the reader can't open isn't explained.
+	opens := []permissions.Action{permissions.DocsRead, permissions.PlaysRead, permissions.StacksRead, permissions.ProjectsOpen}
+	every, err := json.Marshal(append(permissions.AllActions(), permissions.ProjectsOpen))
+	require.NoError(t, err)
+	denied, err := json.Marshal(slices.DeleteFunc(permissions.AllActions(), func(a permissions.Action) bool { return slices.Contains(opens, a) }))
+	require.NoError(t, err)
+	cost := func(rules func(kind, id, action string) string) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: play, WorkspaceID: wsDefault, Label: "Notes", Type: plays.TypeDoc,
+			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+		reader, err := f.store.Roles.Get(ctx, "role-reader")
+		require.NoError(t, err)
+		reader.Permissions = reader.Permissions.With(permissions.PlaysRead)
+		require.NoError(t, f.store.Roles.Update(ctx, reader))
+		out := map[string]int64{}
+		for _, e := range entities {
+			_, err := db.Exec(rules(e.kind, e.id, e.action))
+			require.NoError(t, err)
+			st.Reset()
+			_, err = f.svc.accessSvc.Explain(access.WithMemo(ctx, f.svc.accessSvc.NewMemo()), uReader, e.kind, e.id, "")
+			require.NoError(t, err, e.kind)
+			out[e.kind] = st.Count()
+		}
+		return out
+	}
+	one := cost(func(kind, id, action string) string {
+		return fmt.Sprintf(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+VALUES ('%s', '%s', 'role', 'role-reader', NULL, '["%s", "projects:open"]', '[]', 1, 1) ON CONFLICT DO UPDATE SET allow = excluded.allow`, kind, id, action)
+	})
+	all := cost(func(kind, id, _ string) string {
+		return fmt.Sprintf(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+VALUES ('%[1]s', '%[2]s', 'role', 'role-reader', NULL, '%[3]s', '[]', 1, 1), ('%[1]s', '%[2]s', 'role', 'role-writer', NULL, '%[3]s', '[]', 1, 1),
+('%[1]s', '%[2]s', 'person', NULL, '%[5]s', '[]', '%[4]s', 1, 1) ON CONFLICT DO UPDATE SET allow = excluded.allow, deny = excluded.deny`, kind, id, every, denied, uReader)
+	})
+	t.Logf("statements: one rule %v, rules on every action %v", one, all)
+	assert.Equal(t, one, all, "rules on every action")
+	assert.Equal(t, map[string]int64{"doc": 8, "play": 6, "project": 7, "stack": 8}, one, "the statements one explanation costs")
 }
 
 // TestStatements_MachineListCostsTheSameAtAnyLength: the machine list, the runner list, the queue and machine_list cost

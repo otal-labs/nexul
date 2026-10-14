@@ -84,10 +84,14 @@ const ruleBody = (resourceType: string, resourceId: string, { target, state, act
   return { resource_type: resourceType, resource_ids: [resourceId], ...to, actions, state };
 };
 
+// A folder's or project's rule reaches the docs and stacks under it, and its frame names none of them, so every open one rereads.
+const reaching: Record<string, string[]> = { folder: ["doc"], project: ["doc", "stack"] };
+
 const refreshRules = (client: QueryClient, resourceType: string, resourceId: string) =>
   Promise.all([
     client.invalidateQueries({ queryKey: [getGrantsKey, resourceType, resourceId] }),
     client.invalidateQueries({ queryKey: [getExplanationKey, resourceType, resourceId] }),
+    ...(reaching[resourceType] ?? []).map((kind) => client.invalidateQueries({ queryKey: [getExplanationKey, kind] })),
     resourceType === "project" && client.invalidateQueries({ queryKey: [getProjectPeopleKey, resourceId] }),
   ]);
 
@@ -117,13 +121,13 @@ interface GrantPayload {
 }
 
 // A rule changed on a doc, folder, play, project, stack, channel or computer: an open panel or people card on it rereads
-// its rules and answers. A workspace frame is the Access page's save, which names none of the channels it moved.
+// its rules and answers. A workspace frame is the Access page's save, which names none of the items it moved.
 export const permissionRulesFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => {
     if (resource_type !== "workspace") return refreshRules(client, resource_type, resource_id);
     return Promise.all([
       client.invalidateQueries({ queryKey: [getGrantsKey, "channel"] }),
-      client.invalidateQueries({ queryKey: [getExplanationKey, "channel"] }),
+      client.invalidateQueries({ queryKey: [getExplanationKey] }),
     ]);
   },
   "computer.grant_changed": ({ computer_id }: { computer_id: string }, { client }) => refreshRules(client, "computer", computer_id),

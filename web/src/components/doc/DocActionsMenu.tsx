@@ -1,29 +1,23 @@
 import { SettingsIcon } from "lucide-react";
 
-import { DocPermissionsButton } from "@/components/doc/DocPermissionsButton";
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSetDocLocked } from "@/hooks/DocHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import type { Doc } from "@/models/Doc";
 
 interface DocActionsMenuProps {
   doc: Doc;
-  onCreateTicket?: (() => void) | undefined;
+  onCreateTicket: () => void;
   onPermissions: () => void;
   onArchive: () => void;
   onRestore: () => void;
 }
 
-export const DocActionsMenu = ({
-  doc,
-  onCreateTicket,
-  onPermissions,
-  onArchive,
-  onRestore,
-}: DocActionsMenuProps) => {
-  const canLock = useHasPermission("docs:lock");
+export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, onRestore }: DocActionsMenuProps) => {
+  const answer = useEntityActions("doc", doc.id);
   const setLocked = useSetDocLocked();
   return (
     <Popover>
@@ -33,31 +27,31 @@ export const DocActionsMenu = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">
-        {onCreateTicket && (
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onCreateTicket}>
-            Create ticket from this doc
-          </Button>
-        )}
-        <DocPermissionsButton docId={doc.id} onOpen={onPermissions} />
-        {canLock && !doc.locked && (
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: true })}>
+        <ActionMenuItem permission="tickets:write" projectId={doc.project_id} onSelect={onCreateTicket}>
+          Create ticket from this doc
+        </ActionMenuItem>
+        <ActionMenuItem permission="permissions:write" answer={answer("permissions:write")} verb="manage this doc's permissions" onSelect={onPermissions}>
+          Permissions…
+        </ActionMenuItem>
+        {!doc.locked && (
+          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} onSelect={() => setLocked.mutate({ id: doc.id, locked: true })}>
             Lock
-          </Button>
+          </ActionMenuItem>
         )}
-        {canLock && doc.locked && (
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: false })}>
+        {doc.locked && (
+          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} onSelect={() => setLocked.mutate({ id: doc.id, locked: false })}>
             Unlock
-          </Button>
+          </ActionMenuItem>
         )}
         {!doc.archived && (
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onArchive}>
+          <ActionMenuItem permission="docs:write" answer={answer("docs:write")} verb="archive docs" onSelect={onArchive}>
             Archive
-          </Button>
+          </ActionMenuItem>
         )}
         {doc.archived && (
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onRestore}>
+          <ActionMenuItem permission="docs:write" answer={answer("docs:write")} verb="restore docs" onSelect={onRestore}>
             Restore
-          </Button>
+          </ActionMenuItem>
         )}
         <div className="mt-2 border-t border-border px-2 pt-2">
           <DocTicketsSection docId={doc.id} />

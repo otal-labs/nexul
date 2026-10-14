@@ -10,6 +10,7 @@ import { api } from "@/api/client";
 import { PlayForm } from "@/components/play/PlayForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SavePlayFormSchema, type Play, type SavePlayFormData } from "@/models/Play";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -88,11 +89,20 @@ const renderHarness = (editing?: Play) => {
   );
 };
 
+// The viewer's role-wide permissions, the play's own answers (none set), and what a rename would break.
+const serve = (impact: { count: number; automations: string[] } | undefined = undefined) =>
+  vi.mocked(api.get).mockImplementation(async (url: string) => {
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["plays:write"], show_locked_actions: true } };
+    if (url === "/api/permissions/explain") return { data: { effective: [] } };
+    return { data: url.endsWith("/rename-impact") && impact ? impact : [] };
+  });
+
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
-  vi.mocked(api.get).mockResolvedValue({ data: [] });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  serve();
 });
 
 describe("PlayForm", () => {
@@ -193,9 +203,25 @@ describe("PlayForm", () => {
     }));
   });
 
+  it("holds Save and shows the sentence when a rule on this play denies editing it", async () => {
+    const user = userEvent.setup();
+    const sentence = "Denied on play Fix with AI for role Member";
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["plays:write"], show_locked_actions: true } };
+      if (url === "/api/permissions/explain") return { data: { effective: [{ action: "plays:write", allowed: false, source: { sentence } }] } };
+      return { data: [] };
+    });
+    renderHarness(editingPlay);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(await screen.findByText(sentence)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
   describe("renaming", () => {
-    const impactOf = (impact: { count: number; automations: string[] }) =>
-      vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: url.endsWith("/rename-impact") ? impact : [] }));
+    const impactOf = serve;
 
     const rename = async (user: ReturnType<typeof userEvent.setup>) => {
       await user.click(screen.getByRole("button", { name: "Open" }));

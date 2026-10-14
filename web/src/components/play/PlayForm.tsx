@@ -1,3 +1,5 @@
+import { LockIcon } from "lucide-react";
+import { useEffect } from "react";
 import { Controller } from "react-hook-form";
 
 import { PermissionCheckRow } from "@/components/access/PermissionCheckRow";
@@ -8,7 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { playLabelError, useCreatePlay, useUpdatePlay } from "@/hooks/PlayHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useConfirmPlayRename } from "@/hooks/useConfirmPlayRename";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import { PLAY_STAGE_LABELS, PLAY_STAGES, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
 
 const TYPE_OPTIONS = PLAY_TYPES.map((type) => ({ value: type, label: PLAY_TYPE_LABELS[type] }));
@@ -22,11 +26,16 @@ interface PlayFormProps {
 }
 
 export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
-  const { control, watch, setValue, setError, onSubmit, setStayOpen } = useFormDialogContext<SavePlayFormData>();
+  const { control, watch, setValue, setError, onSubmit, setStayOpen, setBlocked } = useFormDialogContext<SavePlayFormData>();
   const { data: projects } = useFetchProjects();
   const createPlay = useCreatePlay(workspaceId);
   const updatePlay = useUpdatePlay(workspaceId);
   const confirmRename = useConfirmPlayRename(workspaceId);
+  const answer = useEntityActions("play", editing?.id ?? "", !!editing);
+  const write = useActionState({ permission: "plays:write", answer: answer("plays:write") });
+  // An existing play's own rules can refuse what the role allows; Save then waits, with the rule's sentence above.
+  const refused = !!editing && write.state !== "live";
+  useEffect(() => setBlocked(refused), [refused, setBlocked]);
   const type = watch("type");
   const excludedProjectIds = watch("excluded_project_ids");
 
@@ -55,6 +64,12 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
 
   return (
     <div className="space-y-4">
+      {write.state === "locked" && refused && (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LockIcon className="size-3.5 shrink-0" aria-hidden />
+          {write.reason}
+        </p>
+      )}
       <FormInput control={control} name="label" label="Label" placeholder="e.g. Fix with AI" autoFocus />
 
       {!editing && (

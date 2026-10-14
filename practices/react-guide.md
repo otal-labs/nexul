@@ -608,6 +608,10 @@ theirs has Show locked actions on, and not at all otherwise.
 - A page that gates a control by hand (`useHasPermission` beside a button, an
   `&&` on a permission) is the defect; move it onto a component. A request
   that writes and no component for its control is a missing component.
+- A detail page for a doc, play, project or stack passes each control `answer={answer("docs:lock")}` from
+  `useEntityActions(kind, id)`. Every component on the page that calls it shares one explain request, and a rule's
+  live frame rereads it. A list never calls it: its rows stay role-wide, and a refused click toasts the rule's
+  sentence, which `errorMessage` reads from the refusal's `details`.
 - Reach for `useActionState` only to gate something the four components don't
   draw, such as whether a whole section renders.
 

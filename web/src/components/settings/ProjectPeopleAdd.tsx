@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TargetChoices } from "@/components/access/TargetChoices";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import { useProjectPeopleActions } from "@/hooks/useProjectPeopleActions";
 import type { PermissionGrant } from "@/models/Permission";
 import { grantKey } from "@/models/PermissionPanel";
@@ -20,16 +21,25 @@ export const ProjectPeopleAdd = ({ project, grants }: ProjectPeopleAddProps) => 
   const [open, setOpen] = useState(false);
   const { roles, people } = usePanelTargets({ workspaceId: project.workspace_id });
   const { add, saving } = useProjectPeopleActions(project);
+  const answer = useEntityActions("project", project.id);
   const listed = grants.map(grantKey);
   const free = (t: { key: string }) => !listed.includes(t.key);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" loading={saving} className="text-muted-foreground">
-          <PlusIcon className="size-4" aria-hidden />
+        <ActionButton
+          permission="projects:access"
+          projectId={project.id}
+          answer={answer("projects:access")}
+          variant="ghost"
+          size="sm"
+          loading={saving}
+          className="text-muted-foreground"
+          icon={PlusIcon}
+        >
           Add a role or person
-        </Button>
+        </ActionButton>
       </PopoverTrigger>
       <PopoverContent align="start" className="max-h-80 w-64 overflow-y-auto p-1">
         <TargetChoices

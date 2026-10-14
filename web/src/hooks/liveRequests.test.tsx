@@ -21,6 +21,7 @@ import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useFetchTicket, useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
 import { useFetchActiveTrails } from "@/hooks/TrailHooks";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import { useFetchMyRole, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { mountLive } from "@/test/liveHarness";
@@ -60,6 +61,7 @@ const server: Record<string, unknown> = {
   "/api/workspaces/ws-1/people": { people: [{ user_id: "u-2", login: "lena", display_name: "Lena", avatar_url: "" }] },
   "/api/workspaces/ws-1/me": { role_name: "Editor", permissions: [] },
   "/api/team": { people: [], roles: [], workspaces: [] },
+  "/api/permissions/explain": { effective: [] },
 };
 
 const respond = (url: string) => server[url] ?? [];
@@ -401,6 +403,24 @@ describe("requests a live frame sends", () => {
     );
     const frame = { resource_type: "workspace", resource_id: "ws-1", target: "role", user_id: "" };
     expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
+  });
+
+  it("rereads only the changed doc's answers when a rule on it moves", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useEntityActions("doc", "d-1");
+        useEntityActions("doc", "d-2");
+      }),
+      respond,
+    );
+    const frame = { resource_type: "doc", resource_id: "d-1", target: "role", user_id: "", role_id: "r-9" };
+    expect(await requestsAfter("access.grant.changed", frame)).toEqual(["/api/permissions/explain?resource_type=doc&resource_id=d-1"]);
+  });
+
+  it("rereads the open doc's answers when a rule on its folder moves, since the frame names no doc", async () => {
+    const { requestsAfter } = await mountLive(view(() => useEntityActions("doc", "d-1")), respond);
+    const frame = { resource_type: "folder", resource_id: "f-1", target: "role", user_id: "", role_id: "r-9" };
+    expect(await requestsAfter("access.grant.changed", frame)).toEqual(["/api/permissions/explain?resource_type=doc&resource_id=d-1"]);
   });
 
   it("sends nothing when another computer's setup turn moves", async () => {

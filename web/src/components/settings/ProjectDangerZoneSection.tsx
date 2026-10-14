@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router";
 
-import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
+import { ActionButton } from "@/components/action/ActionButton";
+import { DangerAction, dangerButtonClass, DangerZone } from "@/components/settings/DangerZone";
 import { PeopleLoseProject } from "@/components/settings/PeopleLoseProject";
 import { useFetchProjectPeople } from "@/hooks/PeopleHooks";
 import { useDeleteProject, useFetchProjectDeleteImpact } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import type { DeleteImpact, Project } from "@/models/Project";
 
 interface ProjectDangerZoneSectionProps {
@@ -31,6 +33,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
   const { data: impact } = useFetchProjectDeleteImpact(project.id);
   const { data: people } = useFetchProjectPeople(project.id);
   const { open: confirmDelete } = useConfirmationDialog();
+  const answer = useEntityActions("project", project.id);
 
   const onDelete = async () => {
     if (!impact) return;
@@ -69,9 +72,18 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
           )
         }
         action={
-          <DangerButton loading={deleteProject.isPending} onClick={() => void onDelete()}>
+          <ActionButton
+            permission="projects:delete"
+            projectId={project.id}
+            answer={answer("projects:delete")}
+            variant="outline"
+            size="sm"
+            liveClassName={dangerButtonClass}
+            loading={deleteProject.isPending}
+            onClick={() => void onDelete()}
+          >
             Remove project
-          </DangerButton>
+          </ActionButton>
         }
       />
     </DangerZone>

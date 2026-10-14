@@ -37,13 +37,9 @@ export const DangerAction = ({ title, consequence, details, action }: DangerActi
   </li>
 );
 
+export const dangerButtonClass = "border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive";
+
 // Outline in the destructive hue: the solid red button is the confirm dialog's, where deleting is the main action.
 export const DangerButton = ({ className, ...props }: ButtonProps) => (
-  <Button
-    type="button"
-    variant="outline"
-    size="sm"
-    className={cn("border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive", className)}
-    {...props}
-  />
+  <Button type="button" variant="outline" size="sm" className={cn(dangerButtonClass, className)} {...props} />
 );

@@ -5,8 +5,9 @@ import { useNavigate } from "react-router";
 
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
+import { useStackActions } from "@/hooks/useStackActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { DeployRefFormSchema, deployPath, type Deploy, type DeployRefFormData, type Stack } from "@/models/Stack";
 
@@ -33,6 +34,7 @@ const BuildRefForm = ({ stack, deploy }: BuildRefFormProps) => {
     resolver: zodResolver(DeployRefFormSchema),
   });
   const isDeploying = deploy.isPending && !!deploy.variables?.ref;
+  const answer = useStackActions(stack);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
 
@@ -50,10 +52,18 @@ const BuildRefForm = ({ stack, deploy }: BuildRefFormProps) => {
       <div className="min-w-0 flex-1 basis-64">
         <FormInput control={form.control} name="ref" label="Build & deploy ref" placeholder={stack.build_source?.branch ?? "main"} />
       </div>
-      <Button type="submit" loading={isDeploying} disabled={deploy.isPending}>
-        <HammerIcon className="size-4" aria-hidden />
+      <ActionButton
+        permission="deploys:write"
+        projectId={stack.project_id || undefined}
+        answer={answer("deploys:write")}
+        verb="deploy"
+        type="submit"
+        icon={HammerIcon}
+        loading={isDeploying}
+        disabled={deploy.isPending}
+      >
         {isDeploying ? "Building & deploying…" : "Build & deploy"}
-      </Button>
+      </ActionButton>
     </form>
   );
 };
@@ -67,6 +77,7 @@ interface RedeployRowProps {
 // The runner's pre-built-image path only knows the run strategy: it removes the container and runs the image again.
 const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
   const isDeploying = deploy.isPending && !!deploy.variables?.image;
+  const answer = useStackActions(stack);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   return (
@@ -75,15 +86,19 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
         <p className="font-mono text-sm wrap-anywhere">{image}</p>
         <p className="text-xs text-muted-foreground">Pulls the image again and restarts the container.</p>
       </div>
-      <Button
+      <ActionButton
+        permission="deploys:write"
+        projectId={stack.project_id || undefined}
+        answer={answer("deploys:write")}
+        verb="deploy"
         type="button"
+        icon={RocketIcon}
         loading={isDeploying}
         disabled={deploy.isPending}
         onClick={() => deploy.mutate({ stackId: stack.id, image }, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       >
-        <RocketIcon className="size-4" aria-hidden />
         {isDeploying ? "Redeploying…" : "Redeploy"}
-      </Button>
+      </ActionButton>
     </div>
   );
 };
@@ -96,21 +111,26 @@ interface RollbackButtonProps {
 }
 
 const RollbackButton = ({ stack, image, deployPending, rollback }: RollbackButtonProps) => {
+  const answer = useStackActions(stack);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   return (
-    <Button
+    <ActionButton
+      permission="deploys:write"
+      projectId={stack.project_id || undefined}
+      answer={answer("deploys:write")}
+      verb="deploy"
       type="button"
       variant="outline"
       size="sm"
+      icon={RefreshCwIcon}
       onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       loading={rollback.isPending}
       disabled={deployPending}
       title={`Roll back to ${image}`}
     >
-      <RefreshCwIcon className="size-4" aria-hidden />
       {rollback.isPending ? "Rolling back…" : "Rollback"}
-    </Button>
+    </ActionButton>
   );
 };
 

@@ -39,7 +39,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
           doc={doc}
           workspaceId={workspaceId}
           {...(wsFactory ? { wsFactory } : {})}
-          onCreateTicket={createTicket && (() => void createTicket({ docId: doc.id }))}
+          onCreateTicket={() => void createTicket?.({ docId: doc.id })}
           onPermissions={() =>
             void openPermissions({ type: "doc", id: doc.id, name: doc.title, workspaceId, projectId: doc.project_id, folderId: doc.folder_id })
           }

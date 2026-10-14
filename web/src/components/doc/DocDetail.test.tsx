@@ -104,6 +104,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false } };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: writer } };
+    if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
     if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
@@ -298,7 +299,8 @@ describe("DocDetail", () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false } };
       if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["docs:thread"] } };
-      if (url === "/api/pairing/presence") return { data: { computers: {} } };
+      if (url === "/api/permissions/explain") return { data: { effective: [] } };
+    if (url === "/api/pairing/presence") return { data: { computers: {} } };
       if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
       if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
       if (url === "/api/docs/doc-1/clarification") return { data: noClarification };
@@ -374,6 +376,29 @@ describe("DocDetail", () => {
 
     await user.click(await screen.findByRole("button", { name: "Unlock" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
+  });
+
+  // A role that holds docs:lock still can't on a doc whose own rule denies it, and the page asks the server once.
+  it("locks Unlock with the doc's rule sentence when a rule on this doc denies it", async () => {
+    const user = userEvent.setup();
+    const sentence = "Denied on doc Storage Spine for role Member";
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") {
+        return { data: { role_name: "Member", permissions: ["docs:read", "docs:lock"], show_locked_actions: true } };
+      }
+      if (url === "/api/permissions/explain") return { data: { effective: [{ action: "docs:lock", allowed: false, source: { sentence } }] } };
+      return defaultGet!(url);
+    });
+    await renderDetail(new FakeSocket(), { ...doc, locked: true });
+
+    const unlock = await screen.findByRole("button", { name: "Unlock" });
+    await waitFor(() => expect(unlock).toHaveAttribute("aria-disabled", "true"));
+    await user.hover(unlock);
+    expect((await screen.findAllByText(sentence)).length).toBeGreaterThan(0);
+    await user.click(unlock);
+    expect(api.post).not.toHaveBeenCalledWith("/api/docs/doc-1/unlock");
+    expect(vi.mocked(api.get).mock.calls.filter(([url]) => url === "/api/permissions/explain")).toHaveLength(1);
   });
 
   it("shows a writer without docs:lock that the doc is locked, with no way to unlock it", async () => {

@@ -25,7 +25,8 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useDocCrumbs } from "@/hooks/useDocCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useDocView } from "@/hooks/useDocView";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useActionState } from "@/hooks/useActionState";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { Doc } from "@/models/Doc";
@@ -39,8 +40,7 @@ const collabIdentity = (me: MeResponse | undefined) => ({
 interface DocDetailProps {
   doc: Doc;
   workspaceId: string;
-  /** Omitted when the viewer may not create tickets, which hides the action. */
-  onCreateTicket?: (() => void) | undefined;
+  onCreateTicket: () => void;
   onPermissions: () => void;
   onArchive: () => void;
   onRestore: () => void;
@@ -50,8 +50,9 @@ interface DocDetailProps {
 
 export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onArchive, onRestore, wsFactory }: DocDetailProps) => {
   const token = useSessionStore((s) => s.token);
-  const canThread = useHasPermission("docs:thread");
-  const canWrite = useHasPermission("docs:write");
+  const answer = useEntityActions("doc", doc.id);
+  const canThread = useActionState({ permission: "docs:thread", projectId: doc.project_id, answer: answer("docs:thread") }).state === "live";
+  const canWrite = useActionState({ permission: "docs:write", projectId: doc.project_id, answer: answer("docs:write") }).state === "live";
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
   const { name: userName, avatar: userAvatar } = collabIdentity(me);
@@ -88,7 +89,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             {doc.locked && <DocLockedSignal docId={doc.id} />}
             <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
             <DocWatchButton docId={doc.id} />
-            <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
+            <DocThreadButton workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />
             <DocActionsMenu
               doc={doc}
               onCreateTicket={onCreateTicket}
