@@ -10,6 +10,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -17,7 +18,7 @@ import (
 
 // wireTemplates builds the instance layer over the template kinds and points each owning domain at it (ADR 0103);
 // the domains seed and resolve, the templates domain only stores the instance text and clones.
-func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Service, ten *tenancy.Service, pl *plays.Service, ws *workspace.Service) *templates.Service {
+func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Service, ten *tenancy.Service, pl *plays.Service, ws *workspace.Service, rl *roles.Service) *templates.Service {
 	builtins := plays.Builtins()
 	playDefaults := make([]templates.Default, len(builtins))
 	for i, b := range builtins {
@@ -26,6 +27,11 @@ func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Serv
 	typeDefaults := make([]templates.Default, len(workspace.DefaultTicketTypes))
 	for i, t := range workspace.DefaultTicketTypes {
 		typeDefaults[i] = templates.Default{Key: t.Name, Name: t.Name, Body: t.BodyTemplate}
+	}
+	shippedRoles := roles.ShippedTemplates()
+	roleDefaults := make([]templates.Default, len(shippedRoles))
+	for i, r := range shippedRoles {
+		roleDefaults[i] = templates.Default{Key: r.Key, Name: r.Body.Name, Body: r.Body.JSON()}
 	}
 	svc := templates.NewService(store.InstanceTemplates, gate,
 		templates.Kind{
@@ -45,11 +51,13 @@ func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Serv
 			{Key: agent.TemplateIntro, Name: "Intro", Body: agent.DefaultIntro},
 			{Key: agent.TemplateFooter, Name: "Footer", Body: agent.DefaultFooter},
 		}},
+		templates.Kind{Name: roles.TemplateKind, Defaults: roleDefaults, Addable: true, Check: roles.CheckTemplate, Title: roles.TemplateName},
 	)
 	mem.SetInstanceTemplates(svc)
 	ten.SetInstanceTemplates(svc)
 	pl.SetInstanceTemplates(svc)
 	ws.SetInstanceTemplates(svc)
+	rl.SetTemplateRoles(svc)
 	return svc
 }
 

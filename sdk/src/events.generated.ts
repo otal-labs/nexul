@@ -87,7 +87,7 @@ export interface EventPayloads {
   "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error": string; "requested_by": string; "created_at": string; "updated_at": string; };
   "instance.upgrade_requested": { "id": string; "version": string; };
-  "instance_template.updated": { "kind": "interview" | "mention_chip" | "play_instructions" | "ticket_body" | "agent_prompt"; "key": string; "author_id": string; "updated_at": string; "reset": boolean; };
+  "instance_template.updated": { "kind": "interview" | "mention_chip" | "play_instructions" | "ticket_body" | "agent_prompt" | "role"; "key": string; "author_id": string; "updated_at": string; "reset": boolean; "deleted"?: boolean; };
   "interview_answer.cleared": { "workspace_id": string; "project_id": string; "round": number; "question": string; "author_id": string; "at": string; };
   "interview_answer.saved": { "workspace_id": string; "project_id": string; "round": number; "question": string; "author_id": string; "at": string; };
   "interview_draft.dismissed": { "workspace_id": string; "project_id": string; "draft_id": string; "question": string; "author_id": string; "at": string; };
@@ -405,7 +405,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_requested": {"id":"fixture-id","version":"fixture-version"},
-  "instance_template.updated": {"kind":"interview","key":"fixture-key","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z","reset":false},
+  "instance_template.updated": {"kind":"interview","key":"fixture-key","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z","reset":false,"deleted":false},
   "interview_answer.cleared": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","round":1,"question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_answer.saved": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","round":1,"question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_draft.dismissed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","draft_id":"fixture-draft_id","question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},

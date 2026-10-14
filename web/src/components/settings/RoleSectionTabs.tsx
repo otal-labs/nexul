@@ -21,11 +21,13 @@ import {
 interface RoleSectionTabsProps {
   tab: RoleTab;
   onTab: (tab: RoleTab) => void;
+  // Where the workspace tab's permissions apply; the selected workspace's name when not given.
+  workspaceName?: string | undefined;
 }
 
 // One tab per area, each with its allowed count and a dot while it holds changes, then Welcome; only the open tab's
 // list scrolls.
-export const RoleSectionTabs = ({ tab, onTab }: RoleSectionTabsProps) => {
+export const RoleSectionTabs = ({ tab, onTab, workspaceName }: RoleSectionTabsProps) => {
   const { data: catalog = [] } = useFetchPermissionCatalog();
   const workspace = useSelectedWorkspace();
   const { actions, loaded, steps, loadedSteps } = useRoleDraft();
@@ -62,7 +64,7 @@ export const RoleSectionTabs = ({ tab, onTab }: RoleSectionTabsProps) => {
       </div>
       {sections.map(({ section, domains }) => (
         <TabsContent key={section.area} value={section.area} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">
-          <RoleSectionList section={section} line={sectionLine(section.area, workspace?.name ?? "")} domains={domains} />
+          <RoleSectionList section={section} line={sectionLine(section.area, workspaceName ?? workspace?.name ?? "")} domains={domains} />
         </TabsContent>
       ))}
       <TabsContent value={WELCOME_TAB} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">

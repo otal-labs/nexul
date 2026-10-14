@@ -25,6 +25,7 @@ const template = (over: Partial<Template>): Template => ({
   default_body: "## Stack",
   edited: false,
   follows: true,
+  added: false,
   ...over,
 });
 

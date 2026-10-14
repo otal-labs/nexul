@@ -4062,7 +4062,8 @@
           "mention_chip",
           "play_instructions",
           "ticket_body",
-          "agent_prompt"
+          "agent_prompt",
+          "role"
         ]
       },
       "key": {
@@ -4076,6 +4077,9 @@
         "format": "date-time"
       },
       "reset": {
+        "type": "boolean"
+      },
+      "deleted": {
         "type": "boolean"
       }
     },

@@ -9,6 +9,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
 import { InstanceTemplatesSection } from "@/components/templates/InstanceTemplatesSection";
+import { TemplateRolesSection } from "@/components/templates/TemplateRolesSection";
 import { TeamSection } from "@/components/team/TeamSection";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 
@@ -61,6 +62,7 @@ export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProp
     {section === "dns" && <GatewaysSection />}
     {section === "team" && <TeamSection />}
     {section === "templates" && <InstanceTemplatesSection />}
+    {section === "templates" && <TemplateRolesSection />}
     {section !== "connectors" && <InstanceAccessSection section={section} />}
   </>
 );

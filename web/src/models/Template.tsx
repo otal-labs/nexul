@@ -3,8 +3,12 @@ import { z } from "zod";
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 
 // Mirrors internal/templates/model.go (ADR 0103): a template resolves code default, then instance, then workspace or project.
+// These are the text kinds, grouped on the Templates card; template roles have a card of their own.
 export const TEMPLATE_KINDS = ["interview", "mention_chip", "play_instructions", "ticket_body", "agent_prompt"] as const;
-export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
+type TextTemplateKind = (typeof TEMPLATE_KINDS)[number];
+
+export const ROLE_TEMPLATE = "role";
+export type TemplateKind = TextTemplateKind | typeof ROLE_TEMPLATE;
 
 export type TemplateScope = "instance" | "workspace" | "project";
 
@@ -27,6 +31,8 @@ export interface Template {
   edited: boolean;
   // The workspace layer follows the instance live until edited (interview, chip) rather than copying it at creation.
   follows: boolean;
+  // The instance added it rather than Nexul shipping it: it deletes instead of resetting.
+  added: boolean;
   // The body parsed into questions, for the interview kind only.
   questions?: InterviewQuestion[];
   updated_by?: string;
@@ -35,7 +41,7 @@ export interface Template {
 
 export const INSTANCE: TemplateLocation = { scope: "instance" };
 
-export const TEMPLATE_GROUP_LABELS: Record<TemplateKind, string> = {
+export const TEMPLATE_GROUP_LABELS: Record<TextTemplateKind, string> = {
   interview: "Interview",
   mention_chip: "Mention chip",
   play_instructions: "Play instructions",
@@ -44,7 +50,7 @@ export const TEMPLATE_GROUP_LABELS: Record<TemplateKind, string> = {
 };
 
 // How each kind reaches workspaces and projects, under its group on the instance's Templates.
-export const TEMPLATE_GROUP_HINTS: Record<TemplateKind, string> = {
+export const TEMPLATE_GROUP_HINTS: Record<TextTemplateKind, string> = {
   interview: "Every workspace follows it until it edits its own.",
   mention_chip: "Every workspace follows it until it edits its own.",
   play_instructions: "Copied into each workspace when it is created.",
@@ -59,6 +65,7 @@ export const BELOW_SCOPE: Record<TemplateKind, "workspace" | "project" | null> =
   play_instructions: "workspace",
   ticket_body: "project",
   agent_prompt: null,
+  role: null,
 };
 
 // The permission writing a template of each kind takes.
@@ -68,6 +75,7 @@ export const WRITE_PERMISSION: Record<TemplateKind, string> = {
   play_instructions: "plays:write",
   ticket_body: "projects:write",
   agent_prompt: "templates:write",
+  role: "templates:write",
 };
 
 // Keys match ignoring case, the way the server matches a project's "Bug" type to the instance's "bug".

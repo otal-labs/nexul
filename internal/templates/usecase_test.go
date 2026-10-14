@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -57,6 +58,7 @@ func (f *fakeRepo) List(context.Context) ([]*Record, error) {
 		cp := *r
 		out = append(out, &cp)
 	}
+	slices.SortFunc(out, func(a, b *Record) int { return strings.Compare(a.Kind+"/"+a.Key, b.Kind+"/"+b.Key) })
 	return out, nil
 }
 
@@ -152,6 +154,7 @@ func newFixture() fixture {
 				return nil
 			}},
 		Kind{Name: "body", Below: ScopeProject, Defaults: []Default{{Key: "bug", Name: "bug", Body: "code bug"}, {Key: "task", Name: "task", Body: "code task"}}, Layer: copied},
+		Kind{Name: "badge", Addable: true, Defaults: []Default{{Key: "gold", Name: "Gold", Body: "code gold"}}},
 	)
 	svc.now = func() time.Time { return fixedNow }
 	return fixture{svc: svc, repo: repo, followed: followed, copied: copied,
@@ -209,6 +212,17 @@ func TestService_RefusesWhatItCannotPlace(t *testing.T) {
 			_, err := f.svc.Reset(as("admin"), "body", "chore", f.project)
 			return err
 		}, apperrs.ErrNotFound},
+		{"a write with no key to a kind the instance can't add to", func() error {
+			_, err := f.svc.Update(as("admin"), "body", "", Instance, "x")
+			return err
+		}, apperrs.ErrNotFound},
+		{"a delete of a kind the instance can't add to", func() error { return f.svc.Delete(as("admin"), "body", "bug") }, apperrs.ErrInvalid},
+		{"a delete of a template that ships", func() error { return f.svc.Delete(as("admin"), "badge", "gold") }, apperrs.ErrInvalid},
+		{"a delete of a template nobody added", func() error { return f.svc.Delete(as("admin"), "badge", "silver") }, apperrs.ErrNotFound},
+		{"an add without templates:write", func() error {
+			_, err := f.svc.Update(as("someone"), "badge", "", Instance, "x")
+			return err
+		}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -272,7 +286,7 @@ func TestService_InstanceLayer(t *testing.T) {
 	for _, t := range list {
 		keys = append(keys, t.Kind+"/"+t.Key+"="+t.Body)
 	}
-	assert.Equal(t, []string{"note/=code note", "body/bug=ours", "body/task=code task"}, keys, "registration order, stored text where edited")
+	assert.Equal(t, []string{"note/=code note", "body/bug=ours", "body/task=code task", "badge/gold=code gold"}, keys, "registration order, stored text where edited")
 
 	got, err = f.svc.Reset(as("admin"), "body", "bug", Instance)
 	require.NoError(t, err)
@@ -346,6 +360,17 @@ func TestTemplateUpdateTool(t *testing.T) {
 	read, err := MCPTools(f.svc)[0].Call(as("member"), json.RawMessage(`{"kind":"body","key":"bug","scope":"project","project_id":"p-1"}`))
 	require.NoError(t, err)
 	assert.Equal(t, "via mcp", read.(*Template).Body)
+
+	added, err := call(`{"kind":"badge","scope":"instance","body":"via mcp"}`)
+	require.NoError(t, err)
+	assert.True(t, added.Added, "a body with no key adds to an addable kind")
+	_, err = call(`{"kind":"badge","key":"` + added.Key + `","scope":"instance","delete":true,"reset":true}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a delete is one change too")
+	_, err = call(`{"kind":"badge","key":"` + added.Key + `","scope":"workspace","workspace_id":"ws-1","delete":true}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "only the instance holds what can be deleted")
+	gone, err := tool.Call(as("admin"), json.RawMessage(`{"kind":"badge","key":"`+added.Key+`","scope":"instance","delete":true}`))
+	require.NoError(t, err)
+	assert.Equal(t, deleted{Kind: "badge", Key: added.Key, Deleted: true}, gone)
 }
 
 func TestHandler(t *testing.T) {
@@ -374,6 +399,54 @@ func TestHandler(t *testing.T) {
 		routes.ServeHTTP(rec, httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body)).WithContext(as(tt.user)))
 		assert.Equal(t, tt.want, rec.Code, "%s %s as %s: %s", tt.method, tt.path, tt.user, rec.Body.String())
 	}
+}
+
+// TestHandler_AddedTemplates: an addable kind adds under a generated key, lists after its defaults in the order added,
+// edits by that key, and deletes rather than resets; the shipped ones only reset.
+func TestHandler_AddedTemplates(t *testing.T) {
+	f := newFixture()
+	routes := NewHandler(f.svc).Routes()
+	serve := func(user, method, path, body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		routes.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(as(user)))
+		return rec
+	}
+	add := func(body string) Template {
+		rec := serve("admin", http.MethodPut, "/api/templates/badge", `{"body":"`+body+`"}`)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var got Template
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+		return got
+	}
+
+	first, second := add("first"), add("second")
+	assert.True(t, first.Added)
+	assert.NotEqual(t, first.Key, second.Key)
+	list, err := f.svc.List(as("member"))
+	require.NoError(t, err)
+	var badges []string
+	for _, tpl := range list {
+		if tpl.Kind == "badge" {
+			badges = append(badges, tpl.Body)
+		}
+	}
+	assert.Equal(t, []string{"code gold", "first", "second"}, badges)
+
+	assert.Equal(t, http.StatusOK, serve("admin", http.MethodPut, "/api/templates/badge", `{"key":"`+first.Key+`","body":"first again"}`).Code)
+	bodies, err := f.svc.Bodies(as("member"), "badge")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"code gold", "first again", "second"}, bodies, "an edit keeps its key and its place")
+
+	del := func(user, key string) int {
+		return serve(user, http.MethodPost, "/api/templates/delete", `{"kind":"badge","key":"`+key+`"}`).Code
+	}
+	assert.Equal(t, http.StatusBadRequest, serve("admin", http.MethodPost, "/api/templates/delete", `{`).Code)
+	assert.Equal(t, http.StatusBadRequest, serve("admin", http.MethodDelete, "/api/templates/badge?key="+first.Key, "").Code, "an added template has nothing to reset to")
+	assert.Equal(t, http.StatusBadRequest, del("admin", "gold"), "a shipped template only resets")
+	assert.Equal(t, http.StatusForbidden, del("member", first.Key))
+	assert.Equal(t, http.StatusOK, del("admin", first.Key))
+	assert.Equal(t, UpdatedEvent{Kind: "badge", Key: first.Key, AuthorID: "admin", UpdatedAt: fixedNow, Deleted: true}, f.repo.events[len(f.repo.events)-1].Payload)
+	assert.Equal(t, http.StatusNotFound, del("admin", first.Key))
 }
 
 func TestHandler_GetBelowTheInstance_ReadsThatLocation(t *testing.T) {
