@@ -1,9 +1,11 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
+import { machineAnswer } from "@nexul/client-core/actionState";
+
+import { ActionButton } from "@/components/action/ActionButton";
 import { AddRunnerForm } from "@/components/runner/AddRunnerForm";
 import { RunnerInstallCommands } from "@/components/runner/RunnerInstallCommands";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -14,17 +16,19 @@ import {
 } from "@/components/ui/dialog";
 import { useCreateRunnerEnrollment } from "@/hooks/RunnerHooks";
 import { cn } from "@/lib/utils";
+import type { Machine } from "@/models/Runner";
 
 interface AddRunnerDialogProps {
-  // Set from a machine's header: the runner joins that machine's pool; the label hides in a narrow @container.
-  machineName?: string;
+  // Set from a machine's header: the runner joins that machine's pool, on the viewer's Manage of it; the label hides in a narrow @container.
+  machine?: Pick<Machine, "name" | "actions">;
   triggerSize?: "default" | "sm";
   triggerVariant?: "default" | "outline" | "ghost";
 }
 
 // Closing the dialog drops the enrollment, so reopening always starts from a fresh form and a fresh code.
-export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerVariant = "default" }: AddRunnerDialogProps) => {
+export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVariant = "default" }: AddRunnerDialogProps) => {
   const [open, setOpen] = useState(false);
+  const machineName = machine?.name;
   const enroll = useCreateRunnerEnrollment();
   const onOpenChange = (next: boolean) => {
     setOpen(next);
@@ -34,15 +38,18 @@ export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerV
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button
+        <ActionButton
+          permission={machine ? "machines:write" : "machines:create"}
+          answer={machine && machineAnswer(machine, "machines:write")}
+          verb="add runners"
           type="button"
           size={triggerSize}
           variant={triggerVariant}
+          icon={Plus}
           {...(machineName && { "aria-label": "Add a runner to this machine", title: "Add a runner to this machine" })}
         >
-          <Plus className="size-4" aria-hidden />
           <span className={cn(machineName && "hidden @lg:inline")}>Add runner</span>
-        </Button>
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

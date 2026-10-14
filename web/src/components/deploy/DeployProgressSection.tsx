@@ -39,7 +39,7 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
       </div>
       {!terminal && (
         <div className="flex justify-end @3xl:col-start-2">
-          <DeployCancelButton deployId={deploy.id} />
+          <DeployCancelButton deploy={deploy} />
         </div>
       )}
     </section>

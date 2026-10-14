@@ -4,10 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ delete: vi.fn(), confirm: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { delete: mocks.delete }, errorMessage: () => "Something went wrong" }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 vi.mock("@/hooks/useConfirmationDialog", () => ({ useConfirmationDialog: () => ({ open: mocks.confirm }) }));
 
 const runner = {
@@ -19,16 +21,20 @@ const runner = {
   version: "v0.1.4",
 };
 
-const renderButton = (connected: boolean) =>
+const manageable = { actions: ["machines:see", "machines:write"] };
+
+const renderButton = (connected: boolean, machine: { actions: string[] } = manageable) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RemoveRunnerButton runner={{ ...runner, connected }} />
+      <RemoveRunnerButton runner={{ ...runner, connected }} machine={machine} />
     </QueryClientProvider>,
   );
 
 describe("RemoveRunnerButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetViewer();
+    viewer.showLocked = true;
     mocks.delete.mockResolvedValue({});
   });
 
@@ -61,5 +67,25 @@ describe("RemoveRunnerButton", () => {
     await user.click(screen.getByRole("button", { name: "Remove alpha" }));
 
     await waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/runners/r-1"));
+  });
+
+  it("is locked on a machine the viewer only sees, and removes nothing", async () => {
+    const user = userEvent.setup();
+    renderButton(true, { actions: ["machines:see"] });
+
+    const button = screen.getByRole("button", { name: "Remove alpha" });
+    await user.click(button);
+
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription("Your role can't remove runners");
+    expect(mocks.confirm).not.toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("is gone for a viewer whose roles don't show locked actions", () => {
+    viewer.showLocked = false;
+    renderButton(true, { actions: ["machines:see"] });
+
+    expect(screen.queryByRole("button", { name: "Remove alpha" })).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RocketIcon } from "lucide-react";
 import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActionState } from "@nexul/client-core/actionState";
@@ -111,5 +112,51 @@ describe.each(controls)("$name", ({ control, tooltip, draw }) => {
 
     if (tooltip) expect(await screen.findByRole("tooltip")).toHaveTextContent(REASON);
     if (!tooltip) expect(screen.getByText(REASON)).toBeVisible();
+  });
+});
+
+describe("a button that needs two permissions and goes to a page", () => {
+  const states: Record<string, ActionState> = {
+    "stacks:write": { state: "live" },
+    "projects:write": { state: "live" },
+  };
+  const draw = () =>
+    render(
+      <MemoryRouter>
+        <ActionButton permission="stacks:write" alsoNeeds={{ permission: "projects:write" }} to="/wizard">
+          Attach
+        </ActionButton>
+      </MemoryRouter>,
+    );
+
+  beforeEach(() => {
+    mocks.useActionState.mockReset();
+    mocks.useActionState.mockImplementation(({ permission }: { permission: string }) => states[permission]);
+    states["stacks:write"] = { state: "live" };
+    states["projects:write"] = { state: "live" };
+  });
+
+  it("is a link while both are held", () => {
+    draw();
+
+    expect(screen.getByRole("link", { name: "Attach" })).toHaveAttribute("href", "/wizard");
+  });
+
+  it("locks with the second permission's reason when only it is missing", () => {
+    states["projects:write"] = locked;
+    draw();
+
+    const button = screen.getByRole("button", { name: "Attach" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription(REASON);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("is hidden when either is hidden", () => {
+    states["stacks:write"] = { state: "hidden" };
+    draw();
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

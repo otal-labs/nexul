@@ -1,17 +1,21 @@
-import { CheckIcon, PencilIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
+import { machineAnswer } from "@nexul/client-core/actionState";
+
+import { ActionInlineEdit } from "@/components/action/ActionInlineEdit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUpdateMachine } from "@/hooks/RunnerHooks";
+import type { Machine } from "@/models/Runner";
 
 interface EditableStackRootProps {
-  machineId: string;
-  stackRoot: string;
+  machine: Pick<Machine, "id" | "stack_root" | "actions">;
 }
 
 // editing/draft are genuine local UI state (F5); the mutation is the only source of the saved value.
-export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootProps) => {
+export const EditableStackRoot = ({ machine }: EditableStackRootProps) => {
+  const { id: machineId, stack_root: stackRoot } = machine;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(stackRoot);
   const updateMachine = useUpdateMachine();
@@ -74,13 +78,14 @@ export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootPro
   }
 
   return (
-    <button
-      type="button"
-      onClick={startEdit}
-      className="group inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+    <ActionInlineEdit
+      permission="machines:write"
+      answer={machineAnswer(machine, "machines:write")}
+      label={`Edit stack root ${stackRoot}`}
+      onEdit={startEdit}
+      className="font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
     >
       {stackRoot}
-      <PencilIcon className="size-3 opacity-0 transition-opacity duration-150 ease-standard group-hover:opacity-100" aria-hidden />
-    </button>
+    </ActionInlineEdit>
   );
 };

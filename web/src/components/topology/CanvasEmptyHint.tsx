@@ -2,6 +2,7 @@ import { WorkflowIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { EmptyState } from "@/components/EmptyState";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -29,9 +30,9 @@ export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
                 <Link to={wsPath("/wizard/project/repository")}>Add a service</Link>
               </Button>
             )}
-            <Button variant="outline" onClick={onAddNode}>
+            <ActionButton permission="topology:write" verb="add topology nodes" variant="outline" onClick={onAddNode}>
               Add a node
-            </Button>
+            </ActionButton>
           </div>
         }
       />

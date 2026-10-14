@@ -2,11 +2,20 @@ import type { ComponentType, ReactNode } from "react";
 
 import * as Context from "@/components/ui/context-menu";
 import * as Dropdown from "@/components/ui/dropdown-menu";
+import type { ActionGate } from "@nexul/client-core/actionState";
+
 import type { PanelEntity } from "@/models/PermissionPanel";
 
 // The dropdown and context menu primitives share one shape, so a row's items render in either.
 export interface MenuParts {
-  Item: ComponentType<{ children: ReactNode; onSelect?: () => void; variant?: "default" | "destructive" }>;
+  Item: ComponentType<{
+    children: ReactNode;
+    onSelect?: (event: Event) => void;
+    variant?: "default" | "destructive";
+    className?: string;
+    "aria-disabled"?: boolean;
+    "aria-describedby"?: string;
+  }>;
   Separator: ComponentType;
   Sub: ComponentType<{ children: ReactNode }>;
   SubTrigger: ComponentType<{ children: ReactNode }>;
@@ -59,6 +68,8 @@ export interface RowMenu {
   /** Shown only once the viewer may set the entity's rules; the row brings the opener so the panel stays out of the shell. */
   permissions?: { entity: PanelEntity; onOpen: () => void } | undefined;
   onDelete?: (() => void) | undefined;
+  /** Draws Delete through the action state: locked with the reason when the viewer's role shows it. The row leaves onDelete out when the gate hides it. */
+  deleteGate?: ActionGate | undefined;
 }
 
 // The row's own actions, before Permissions… and Delete.

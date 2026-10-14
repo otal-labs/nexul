@@ -1,6 +1,7 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDeleteStack } from "@/hooks/StackHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import type { Stack } from "@/models/Stack";
 
 interface BranchDeploymentRowProps {
@@ -10,6 +11,7 @@ interface BranchDeploymentRowProps {
 export const BranchDeploymentRow = ({ deployment }: BranchDeploymentRowProps) => {
   const deleteStack = useDeleteStack();
   const { open: confirm } = useConfirmationDialog();
+  const answer = useEntityActions("stack", deployment.derived_from ?? "", !!deployment.derived_from && !!deployment.project_id);
 
   // A tear-down deletes the branch's own stack, containers and all; the next matching push makes a new one.
   const tearDown = async () => {
@@ -29,9 +31,19 @@ export const BranchDeploymentRow = ({ deployment }: BranchDeploymentRowProps) =>
         </p>
         <p className="wrap-anywhere font-mono text-muted-foreground">branch {deployment.branch}</p>
       </div>
-      <Button variant="ghost" size="sm" className="hover:text-destructive" onClick={() => void tearDown()} loading={deleteStack.isPending}>
+      <ActionButton
+        permission="stacks:delete"
+        projectId={deployment.project_id || undefined}
+        answer={answer("stacks:delete")}
+        verb="tear down branch deployments"
+        variant="ghost"
+        size="sm"
+        liveClassName="hover:text-destructive"
+        onClick={() => void tearDown()}
+        loading={deleteStack.isPending}
+      >
         Tear down
-      </Button>
+      </ActionButton>
     </li>
   );
 };

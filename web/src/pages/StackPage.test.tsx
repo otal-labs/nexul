@@ -393,16 +393,10 @@ describe("StackPage", () => {
     expect(screen.getByText("d-1")).toBeInTheDocument();
   });
 
-  it("drops the back link and the attach-repository link for a viewer without those areas", async () => {
+  it("drops the back link for a viewer without the projects area", async () => {
     access.areas = [];
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: { ...stack, managed: false } });
-      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
-      return Promise.resolve({ data: [] });
-    });
     renderPage();
     expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /back to project/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 });

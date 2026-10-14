@@ -4,12 +4,13 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RunnersPanel } from "@/components/runner/RunnersPanel";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
-const access = vi.hoisted(() => ({ areas: ["editStacks"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area), useIsInstanceOwner: () => false }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 beforeEach(() => {
-  access.areas = ["editStacks"];
+  resetViewer();
+  viewer.workspace = ["stacks:write"];
 });
 
 const mocks = vi.hoisted(() => ({
@@ -135,10 +136,10 @@ describe("RunnersPanel", () => {
   });
 
   it.each([
-    ["can't write stacks", [], ["machines:write"]],
-    ["doesn't manage the machine", ["editStacks"], ["machines:delete"]],
-  ])("hides Import from this machine from someone who %s, the two things the import writes", async (_, areas, actions) => {
-    access.areas = areas;
+    ["can't write stacks", [], ["machines:write"], true],
+    ["doesn't manage the machine", ["stacks:write"], ["machines:delete"], false],
+  ])("hides Import from this machine from someone who %s, the two things the import writes", async (_, workspace, actions, addsRunner) => {
+    viewer.workspace = workspace;
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/runners") return Promise.resolve({ data: [onlineRunner] });
       if (url === "/api/machines") return Promise.resolve({ data: [{ ...machine, actions }] });
@@ -147,6 +148,6 @@ describe("RunnersPanel", () => {
     renderPanel();
     expect(await screen.findByRole("heading", { name: "prod" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /import from this machine/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /add a runner to this machine/i })).toBeInTheDocument();
+    expect(!!screen.queryByRole("button", { name: /add a runner to this machine/i })).toBe(addsRunner);
   });
 });

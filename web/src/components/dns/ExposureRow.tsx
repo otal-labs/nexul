@@ -45,6 +45,7 @@ export const ExposureRow = ({ onLeave, exposure, gateway, container }: ExposureR
       </div>
       <ConfirmDestroyButton
         icon={Trash2}
+        gate={{ permission: "dns:delete", verb: "remove exposures" }}
         idleLabel={`Unexpose ${exposure.hostname}`}
         confirmLabel="Unexpose"
         loading={removeExposure.isPending}

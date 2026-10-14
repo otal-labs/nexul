@@ -26,6 +26,7 @@ import { ServiceNode as ServiceNodeView } from "@/components/topology/ServiceNod
 import { TopologyPalette } from "@/components/topology/TopologyPalette";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useTopologyView } from "@/hooks/useTopologyView";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { NodeType, type ExternalNode, type NetworkNode, type RelationEdge, type TopologyNode } from "@/models/Topology";
@@ -47,6 +48,8 @@ export const TopologyFlow = () => {
   const can = useAreaAccess();
   const canOpenStack = can?.("stacks") ?? false;
   const canReadLogs = can?.("stackLogs") ?? false;
+  const canWrite = useActionState({ permission: "topology:write" }).state === "live";
+  const canDelete = useActionState({ permission: "topology:delete" }).state === "live";
   const nodes = useFlowStore((s) => s.nodes);
   const storeViewport = useFlowStore((s) => s.setViewport);
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
@@ -60,7 +63,7 @@ export const TopologyFlow = () => {
   // Pan and zoom are part of the map: saved a moment after the camera stops, so a reload opens where it was left.
   const viewportSave = useRef<number | undefined>(undefined);
   const handleMoveEnd: OnMoveEnd = (_, viewport) => {
-    if (isPending) return;
+    if (isPending || !canWrite) return;
     // Restoring the saved camera on load ends a move too; the same values are not worth a write.
     const saved = useFlowStore.getState().viewport;
     if (saved && saved.x === viewport.x && saved.y === viewport.y && saved.zoom === viewport.zoom) return;
@@ -108,6 +111,10 @@ export const TopologyFlow = () => {
         onNodeClick={handleNodeClick}
         onNodeDragStop={handleNodeDragStop}
         onMoveEnd={handleMoveEnd}
+        nodesDraggable={canWrite}
+        nodesConnectable={canWrite}
+        edgesReconnectable={canWrite}
+        deleteKeyCode={canDelete ? "Backspace" : null}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />

@@ -54,7 +54,7 @@ describe("RunnerRow", () => {
   });
 
   it("names a runner by its short id when it shares the machine's name", () => {
-    renderRow({ runner: { ...idleRunner, id: "12aa2fd2-c2ac-7416", name: "prod" }, machineName: "prod" });
+    renderRow({ runner: { ...idleRunner, id: "12aa2fd2-c2ac-7416", name: "prod" }, machine: { id: "m-1", name: "prod", stack_root: "/srv", first_seen: "", last_seen: "", actions: ["machines:write"] } });
     expect(screen.getByText("runner 12aa2fd2")).toBeInTheDocument();
     expect(screen.queryByText("prod")).not.toBeInTheDocument();
   });

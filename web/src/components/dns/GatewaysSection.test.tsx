@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { pickOption } from "@/test/pickOption";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const zones = [{ id: "z1", name: "example.com", status: "active" }];
 const tunnels = [{ id: "t1", name: "instance", account_id: "acct", status: "active", created_at: "", updated_at: "" }];
@@ -54,6 +56,8 @@ const renderSection = () => {
 
 describe("GatewaysSection", () => {
   beforeEach(() => {
+    resetViewer();
+    viewer.instance = ["dns:write", "dns:delete"];
     mocks.get.mockReset();
     mocks.post.mockReset();
     mocks.delete.mockReset();
@@ -151,5 +155,30 @@ describe("GatewaysSection", () => {
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/dns/gateways/gw1");
     expect(mocks.toast.error).toHaveBeenCalledWith("gateway gw1 still has 2 exposure(s) — remove them first");
+  });
+
+  it.each([
+    ["hides", false],
+    ["locks", true],
+  ])("%s every write from someone whose role holds no DNS action", async (_name, showLocked) => {
+    viewer.instance = [];
+    viewer.showLocked = showLocked;
+    mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/dns/gateways" ? [gateway] : [] }));
+    renderSection();
+    const user = userEvent.setup();
+    await screen.findByText("nexul");
+
+    const writes = [
+      screen.queryByRole("link", { name: "Set up DNS" }) ?? screen.queryByRole("button", { name: "Set up DNS" }),
+      screen.queryByRole("button", { name: "Create gateway" }),
+      screen.queryByRole("button", { name: /delete gateway on nexul/i }),
+    ].filter((control) => control !== null);
+    expect(writes).toHaveLength(showLocked ? 3 : 0);
+    for (const control of writes) {
+      await user.click(control);
+      expect(control).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.delete).not.toHaveBeenCalled();
   });
 });

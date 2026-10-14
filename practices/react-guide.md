@@ -571,9 +571,9 @@ button, menu row, inline edit or drag handle (ADR 0152).
 
 | Control | Component | Takes |
 |---|---|---|
-| Button | `ActionButton` | the `Button` props, an optional `icon`, and the gate below |
+| Button | `ActionButton` | the `Button` props, an optional `icon`, `to` (a link while live), `alsoNeeds` (a second gate, for a control that runs two writes), and the gate below |
 | Row of a popover menu | `ActionMenuItem` | `onSelect`, `icon`, `destructive`, `separated`, and the gate; a `RowAction` with a `permission` renders through it |
-| A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state |
+| A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state; hidden, the value still shows as plain text |
 | The grip that starts a drag | `ActionDragHandle` | `label`, the sortable's ref, attributes and listeners as props, and the gate |
 
 The gate is `permission` (a `PermissionAction`, the typed union
@@ -612,6 +612,10 @@ theirs has Show locked actions on, and not at all otherwise.
   `useEntityActions(kind, id)`. Every component on the page that calls it shares one explain request, and a rule's
   live frame rereads it. A list never calls it: its rows stay role-wide, and a refused click toasts the rule's
   sentence, which `errorMessage` reads from the refusal's `details`.
+- A machine answers from the `actions` its card carries, not the role-wide union: pass
+  `answer={machineAnswer(machine, "machines:write")}` (`@nexul/client-core/actionState`). A row menu's Delete takes
+  `deleteGate` beside `onDelete`, so it draws locked inside the Radix menu; the row leaves `onDelete` out when the gate
+  is hidden.
 - Reach for `useActionState` only to gate something the four components don't
   draw, such as whether a whole section renders.
 

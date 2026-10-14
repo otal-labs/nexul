@@ -1,16 +1,21 @@
-import { useEffect, useState, type ComponentType } from "react";
-import { XIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { XIcon, type LucideIcon } from "lucide-react";
 
+import type { ActionGate } from "@nexul/client-core/actionState";
+
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 
 interface ConfirmDestroyButtonProps {
-  icon: ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   idleLabel: string;
   confirmLabel?: string;
   onConfirm: () => void;
   disabled?: boolean;
   loading?: boolean;
   armMs?: number;
+  // The permission the delete needs; without it the button is always live.
+  gate?: ActionGate;
 }
 
 // Arms into confirm/cancel instead of firing on first click; auto-reverts so it can't linger as a trap.
@@ -22,6 +27,7 @@ export const ConfirmDestroyButton = ({
   disabled = false,
   loading = false,
   armMs = 4000,
+  gate,
 }: ConfirmDestroyButtonProps) => {
   const [armed, setArmed] = useState(false);
 
@@ -33,7 +39,23 @@ export const ConfirmDestroyButton = ({
 
   return (
     <span className="inline-flex items-center gap-1">
-      {!armed && (
+      {!armed && gate && (
+        <ActionButton
+          {...gate}
+          type="button"
+          variant="ghost"
+          size="icon"
+          icon={Icon}
+          aria-label={idleLabel}
+          title={idleLabel}
+          className="size-8"
+          liveClassName="hover:text-destructive"
+          disabled={disabled}
+          loading={loading}
+          onClick={() => setArmed(true)}
+        />
+      )}
+      {!armed && !gate && (
         <Button
           type="button"
           variant="ghost"

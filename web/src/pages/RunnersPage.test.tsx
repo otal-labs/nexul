@@ -1,14 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RunnersPage } from "@/pages/RunnersPage";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), holds: [] as string[] }));
+const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
-vi.mock("@/hooks/AccessHooks", () => ({ useHasInstancePermission: (value: string) => mocks.holds.includes(value) }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const renderPage = () => {
   mocks.get.mockImplementation((url: string) =>
@@ -24,18 +25,26 @@ const renderPage = () => {
 };
 
 describe("RunnersPage", () => {
+  beforeEach(resetViewer);
+
   it("renders the page heading and panels, with Add runner for someone who may add machines", async () => {
-    mocks.holds = ["machines:create"];
+    viewer.instance = ["machines:create"];
     renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Runners" })).toBeInTheDocument();
     expect(await screen.findByText("Waiting for a runner")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add runner/ })).toBeInTheDocument();
   });
 
-  it("offers no Add runner to someone who may not add machines", async () => {
-    mocks.holds = [];
+  it.each([
+    ["hides Add runner", false],
+    ["locks Add runner", true],
+  ])("%s from someone who may not add machines", async (_name, showLocked) => {
+    viewer.showLocked = showLocked;
     renderPage();
     expect(await screen.findByText("Waiting for a runner")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Add runner/ })).not.toBeInTheDocument();
+
+    const add = screen.queryByRole("button", { name: /Add runner/ });
+    expect(!!add).toBe(showLocked);
+    expect(add === null || add.getAttribute("aria-disabled") === "true").toBe(true);
   });
 });

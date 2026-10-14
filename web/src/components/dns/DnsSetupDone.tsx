@@ -1,10 +1,10 @@
 import { Trash2Icon } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { useDeleteDnsRecord } from "@/hooks/DnsHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { DnsRecord, DnsSetupResult } from "@/models/DNS";
 
 interface DnsSetupDoneProps {
@@ -16,7 +16,6 @@ interface DnsSetupDoneProps {
 export const DnsSetupDone = ({ result, onRecordDeleted }: DnsSetupDoneProps) => {
   const { record } = result;
   const navigate = useNavigate();
-  const canDelete = useHasPermission("dns:delete");
   const deleteRecord = useDeleteDnsRecord();
   const { open: confirm } = useConfirmationDialog();
 
@@ -40,16 +39,19 @@ export const DnsSetupDone = ({ result, onRecordDeleted }: DnsSetupDoneProps) => 
         <Button className="w-full sm:w-auto" onClick={() => navigate("/")}>
           Continue to Nexul
         </Button>
-        {record && canDelete && (
-          <Button
+        {record && (
+          <ActionButton
+            permission="dns:delete"
+            verb="delete DNS records"
             variant="ghost"
-            className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
+            icon={Trash2Icon}
+            className="w-full text-muted-foreground sm:w-auto"
+            liveClassName="hover:text-destructive"
             loading={deleteRecord.isPending}
             onClick={() => void onDelete(record)}
           >
-            <Trash2Icon className="size-4" aria-hidden />
             Delete this record
-          </Button>
+          </ActionButton>
         )}
       </div>
     </div>

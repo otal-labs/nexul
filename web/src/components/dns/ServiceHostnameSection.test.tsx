@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
 import type { Container } from "@/models/Stack";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const containers: Container[] = [
   { id: "svc-api", stack_id: "stack-1", name: "api", declared: {}, status: "healthy", ports: ["8080:8080"] },
@@ -60,6 +62,8 @@ const gateway = {
 
 describe("ServiceHostnameSection", () => {
   beforeEach(() => {
+    resetViewer();
+    viewer.instance = ["dns:write", "dns:delete"];
     mocks.get.mockReset();
     mocks.post.mockReset();
     mocks.delete.mockReset();
@@ -191,5 +195,34 @@ describe("ServiceHostnameSection", () => {
       "/api/dns/exposures",
       expect.objectContaining({ hostname: "api.example.com", service_id: "svc-api", zone_id: "z1", zone: "example.com" }),
     );
+  });
+
+  it.each([
+    ["hides", false],
+    ["locks", true],
+  ])("%s Expose and Unexpose from someone whose role holds no DNS action", async (_name, showLocked) => {
+    viewer.instance = [];
+    viewer.showLocked = showLocked;
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/connectors") return { data: cloudflareConnector(true) };
+      if (url === "/api/dns/gateways") return { data: [gateway] };
+      if (url === "/api/dns/exposures") {
+        return { data: [{ id: "exp1", gateway_id: "gw1", hostname: "api.example.com", service_id: "svc-api", service: "api", port: 8080, zone_id: "z1", zone: "example.com", created_at: "", updated_at: "" }] };
+      }
+      return { data: [] };
+    });
+    renderSection();
+    const user = userEvent.setup();
+    await screen.findByText("api.example.com");
+
+    const writes = [screen.queryByRole("button", { name: /^expose$/i }), screen.queryByRole("button", { name: /unexpose api.example.com/i })].filter(
+      (control) => control !== null,
+    );
+    expect(writes).toHaveLength(showLocked ? 2 : 0);
+    for (const control of writes) {
+      await user.click(control);
+      expect(control).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(mocks.delete).not.toHaveBeenCalled();
   });
 });
