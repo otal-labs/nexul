@@ -107,6 +107,9 @@ type AccountGate interface {
 type WorkspacePermissionGate interface {
 	// WorkspacePermissions returns the workspace-scoped action names userID holds in workspaceID.
 	WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string
+	// GrantablePermissions is WorkspacePermissions without the instance-area actions userID does not hold at instance
+	// level, which an Owner of the workspace does not hold by being its Owner (ADR 0151).
+	GrantablePermissions(ctx context.Context, userID, workspaceID string) []string
 }
 
 // ProjectGate reads where a project lives and what someone holds inside it, without tenancy importing workspace or

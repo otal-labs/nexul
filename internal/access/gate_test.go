@@ -50,7 +50,9 @@ func TestRequire(t *testing.T) {
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
 	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
-	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
+	roles.set("ws-default", "ivy", RoleInfo{IsOwnerRole: true})
+	s.SetInstanceAreas("ws-default", nil)
+	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}, "ivy": {"ws-default"}}})
 	alice := identity.WithActor(context.Background(), identity.Actor{ID: "alice"})
 	defaultAutomation := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1", WorkspaceID: "ws-a"}})
 
@@ -69,7 +71,7 @@ func TestRequire(t *testing.T) {
 			return s.Require(defaultAutomation, "ws-b", permissions.TicketsRead)
 		}, apperrs.ErrNotFound},
 		{"a shipped default automation cannot reach another workspace's project", func() error {
-			s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a", "p-2": "ws-b"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
+			s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a", "p-2": "ws-b"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}, "ivy": {"ws-default"}}})
 			return s.RequireProject(defaultAutomation, "p-2", permissions.TicketsWrite)
 		}, apperrs.ErrNotFound},
 		{"an actor with no id is not a member", func() error {
@@ -87,8 +89,14 @@ func TestRequire(t *testing.T) {
 		{"an instance-level action held nowhere is forbidden", func() error {
 			return s.RequireAnywhere(alice, permissions.TopologyRead)
 		}, apperrs.ErrForbidden},
-		{"an Owner of any workspace holds every instance-level action", func() error {
+		{"an Owner of another workspace holds no instance-level action", func() error {
 			return s.RequireAnywhere(identity.WithActor(context.Background(), identity.Actor{ID: "olga"}), permissions.InstanceWrite)
+		}, apperrs.ErrForbidden},
+		{"the instance Owner holds every instance-level action", func() error {
+			return s.RequireAnywhere(identity.WithActor(context.Background(), identity.Actor{ID: "ivy"}), permissions.InstanceWrite)
+		}, nil},
+		{"an Owner of another workspace still holds a workspace action anywhere", func() error {
+			return s.RequireAnywhere(identity.WithActor(context.Background(), identity.Actor{ID: "olga"}), permissions.ProjectsCreate)
 		}, nil},
 	}
 	for _, tt := range tests {
@@ -104,23 +112,31 @@ func TestRequire(t *testing.T) {
 }
 
 // TestPermissionsAnywhere pins what /me reports as the caller's instance-level grid: the union across every
-// workspace they belong to, so a client shows the same instance areas the server lets through.
+// workspace they belong to, the instance Owner holding all of it, so a client shows the same instance areas the server lets through.
 func TestPermissionsAnywhere(t *testing.T) {
 	roles := newFakeRoles()
 	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.TopologyRead)})
 	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.AccountsRead, permissions.DNSRead)})
 	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
+	roles.set("ws-default", "ivy", RoleInfo{IsOwnerRole: true})
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
-	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
+	s.SetInstanceAreas("ws-default", nil)
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}, "ivy": {"ws-default"}}})
 
 	got, err := s.PermissionsAnywhere(context.Background(), "alice")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"topology:read", "dns:read", "accounts:read"}, got)
 
-	got, err = s.PermissionsAnywhere(context.Background(), "olga")
+	got, err = s.PermissionsAnywhere(context.Background(), "ivy")
 	require.NoError(t, err)
 	assert.Len(t, got, len(permissions.AllActions()))
+
+	got, err = s.PermissionsAnywhere(context.Background(), "olga")
+	require.NoError(t, err)
+	assert.Contains(t, got, "projects:create", "an Owner holds the workspace actions")
+	assert.NotContains(t, got, "instance:write", "but no instance area's by right")
+	assert.NotContains(t, got, "dns:read")
 
 	got, err = s.PermissionsAnywhere(context.Background(), "stranger")
 	require.NoError(t, err)

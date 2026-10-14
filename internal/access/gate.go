@@ -218,8 +218,8 @@ func (s *Service) WorkspacesWith(ctx context.Context, action permissions.Action)
 	return out, nil
 }
 
-// HoldsAnywhere is HoldsArea on the instance area action belongs to; an Owner of any workspace holds every action,
-// which is all instance-level power there is (ADR 0088).
+// HoldsAnywhere is HoldsArea on the instance area action belongs to; the instance Owner holds every action, anyone else
+// the roles and rules that give it (ADR 0088, ADR 0151).
 func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {
 	return s.HoldsArea(ctx, userID, permissions.InstanceAreaOf(action), action)
 }

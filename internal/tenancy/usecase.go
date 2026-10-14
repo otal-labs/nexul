@@ -388,9 +388,10 @@ func (s *Service) requireManageWorkspaceMembers(ctx context.Context, actorID, wo
 	return s.requireWorkspacePermission(ctx, actorID, workspaceID, permissions.MembersWrite)
 }
 
-// requireHolds refuses a grant in workspaceID carrying an action actorID does not hold there (ADR 0088).
+// requireHolds refuses a grant in workspaceID carrying an action actorID does not hold there, or an instance area's they
+// do not hold at instance level (ADR 0088, ADR 0151).
 func (s *Service) requireHolds(ctx context.Context, actorID, workspaceID string, grant permissions.Set) error {
-	return permissions.RequireHeld(grant, permissions.SetOfStrings(s.wsPerms.WorkspacePermissions(ctx, actorID, workspaceID)))
+	return permissions.RequireHeld(grant, permissions.SetOfStrings(s.wsPerms.GrantablePermissions(ctx, actorID, workspaceID)))
 }
 
 // requireHoldsRole refuses assigning roleID unless actorID holds every action it grants in workspaceID.

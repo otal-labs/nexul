@@ -56,9 +56,10 @@ func (s *Service) RequireArea(ctx context.Context, area string, action permissio
 	return nil
 }
 
-// HoldsArea reports whether userID holds action on the instance area keyed area: an Owner of any workspace always,
-// otherwise the roles they hold in any workspace, then the area's rules for those roles, of which Allow wins, then the
-// rule naming them (ADR 0148). An empty area answers from the roles alone.
+// HoldsArea reports whether userID holds action on the instance area keyed area: the instance Owner always, otherwise
+// the roles they hold in any workspace, then the area's rules for those roles, of which Allow wins, then the rule
+// naming them (ADR 0148, ADR 0151). An empty area answers from the roles alone, and from any Owner for an action that
+// belongs to no instance area.
 func (s *Service) HoldsArea(ctx context.Context, userID, area string, action permissions.Action) (bool, error) {
 	held, _, err := s.decideArea(ctx, userID, area, action, true)
 	return held, err
@@ -72,12 +73,14 @@ func (s *Service) decideArea(ctx context.Context, userID, area string, action pe
 	}
 	allowed, src := false, sourceOf(SourceRole, resourceTypeWorkspace, "", TargetPerson, userID, false)
 	var roleIDs []string
+	ownsAnother := false
 	for _, workspaceID := range workspaceIDs {
 		ws := s.layers(ctx, userID, workspaceID, "")
-		if ws.owner {
+		if ws.owner && s.ownerHolds(workspaceID, area, action) {
 			held, src := decide(ws, action, noRules)
 			return held, src, nil
 		}
+		ownsAnother = ownsAnother || ws.owner
 		roleIDs = append(roleIDs, ws.roles.roleIDs()...)
 		if allowed {
 			continue
@@ -86,6 +89,9 @@ func (s *Service) decideArea(ctx context.Context, userID, area string, action pe
 		if held, from := ws.granted(action); held || len(ws.roles.roleIDs()) > 0 {
 			allowed, src = held, from
 		}
+	}
+	if ownsAnother && !allowed {
+		src = sourceOf(SourceInstanceOwner, resourceTypeInstanceArea, area, TargetPerson, userID, false)
 	}
 	if area == "" {
 		return allowed, src, nil
@@ -102,6 +108,21 @@ func (s *Service) decideArea(ctx context.Context, userID, area string, action pe
 	}
 	allowed, src = applyRules(allowed, src, r, roleIDs, action)
 	return allowed, src, nil
+}
+
+// ownerHolds is whether being Owner of workspaceID settles action on area: the default workspace's Owner holds every
+// area, and any Owner holds an action that no instance area is about (ADR 0151).
+func (s *Service) ownerHolds(workspaceID, area string, action permissions.Action) bool {
+	return workspaceID == s.ownerWorkspace || (area == "" && permissions.AreaOf(action) != permissions.AreaInstance)
+}
+
+// onlyInstanceOwner words a refusal by another workspace's Owner role as the instance Owner's alone, leaving a rule's
+// answer as it is.
+func onlyInstanceOwner(src Source, area string) Source {
+	if src.Kind != SourceRole || src.State != StateDeny {
+		return src
+	}
+	return sourceOf(SourceInstanceOwner, resourceTypeInstanceArea, area, src.TargetType, src.TargetID, false)
 }
 
 // heldOnAnyArea is whether userID holds action on at least one area listing it, or from the roles alone when none does.
@@ -207,12 +228,16 @@ func (s *Service) explainRoleArea(ctx context.Context, actorID, key, roleID stri
 		return nil, fmt.Errorf("rules for role %s on %s: %w", roleID, key, err)
 	}
 	held.ID = roleID
-	ws := workspaceLayers{workspaceID: workspaceID, member: true, owner: held.IsOwner, roles: RolesHeld(held)}
+	instanceOwner := held.IsOwner && workspaceID == s.ownerWorkspace
+	ws := workspaceLayers{workspaceID: workspaceID, member: true, owner: instanceOwner, roles: RolesHeld(held)}
 	n := s.namer(ctx)
 	out := &Explanation{ResourceType: resourceTypeInstanceArea, ResourceID: key, RoleID: roleID, Effective: make([]Answer, 0, len(area.Actions))}
 	for _, a := range area.Actions {
 		with, src := decide(ws, a, func() []*Rules { return []*Rules{{Roles: own[key]}} })
 		without, from := decide(ws, a, func() []*Rules { return []*Rules{{Roles: atFallback(own[key], a)}} })
+		if held.IsOwner && !instanceOwner {
+			src, from = onlyInstanceOwner(src, key), onlyInstanceOwner(from, key)
+		}
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
 	}
 	return out, nil

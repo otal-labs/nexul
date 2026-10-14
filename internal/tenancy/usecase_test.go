@@ -383,6 +383,10 @@ func newFakeWorkspacePermissionGate() *fakeWorkspacePermissionGate {
 	return &fakeWorkspacePermissionGate{perms: map[string][]string{}}
 }
 
+func (g *fakeWorkspacePermissionGate) GrantablePermissions(ctx context.Context, userID, workspaceID string) []string {
+	return g.WorkspacePermissions(ctx, userID, workspaceID)
+}
+
 func (g *fakeWorkspacePermissionGate) WorkspacePermissions(_ context.Context, userID, _ string) []string {
 	// Mirrors access.Service.WorkspacePermissions' guarantee of a non-nil (if possibly empty) slice, so callers never see `null` on the wire for a member with no permissions.
 	if perms, ok := g.perms[userID]; ok {

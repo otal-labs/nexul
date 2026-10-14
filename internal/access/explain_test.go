@@ -331,10 +331,11 @@ func TestExplain(t *testing.T) {
 }
 
 var explainRoles = map[string]HeldRole{
-	"role-owner":  {ID: "role-owner", IsOwner: true},
-	"role-dev":    {ID: "role-dev", Permissions: permissions.SetOf(permissions.DocsRead, permissions.DocsWrite, permissions.TicketsRead)},
-	"role-client": {ID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead, permissions.DocsRead)},
-	"role-member": {ID: "role-member", Permissions: channelMember},
+	"role-owner":   {ID: "role-owner", IsOwner: true},
+	"role-owner-b": {ID: "role-owner-b", IsOwner: true},
+	"role-dev":     {ID: "role-dev", Permissions: permissions.SetOf(permissions.DocsRead, permissions.DocsWrite, permissions.TicketsRead)},
+	"role-client":  {ID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead, permissions.DocsRead)},
+	"role-member":  {ID: "role-member", Permissions: channelMember},
 }
 
 // TestExplainRole: a role's answers are a holder of it alone's, and its Fallback leaves out its own rule on the entity.

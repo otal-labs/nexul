@@ -86,8 +86,8 @@ type teamFixture struct {
 	online       map[string]bool
 }
 
-// newTeamFixture: admin owns Nexul and dana owns Acme, so both hold every instance-level permission; admin is only
-// a Viewer in dana's Acme.
+// newTeamFixture: admin owns Nexul, the instance's workspace, so holds every instance-level permission, and dana owns
+// Acme; admin is only a Viewer in dana's Acme.
 func newTeamFixture(t *testing.T) teamFixture {
 	t.Helper()
 	ctx := t.Context()
@@ -108,6 +108,7 @@ func newTeamFixture(t *testing.T) teamFixture {
 
 	nexul, err := svc.Create(ctx, "admin", "Nexul")
 	require.NoError(t, err)
+	accessSvc.SetInstanceAreas(nexul.ID, nil)
 	acme, err := svc.Create(ctx, "dana", "Acme")
 	require.NoError(t, err)
 	editor, err := rolesSvc.Create(ctx, nexul.ID, "admin", "Editor", permissions.SetOf(permissions.DocsWrite), nil)

@@ -390,6 +390,8 @@ func sentence(r NamedSource) string {
 	switch r.Kind {
 	case SourceOwner:
 		return "Owner of " + r.EntityName
+	case SourceInstanceOwner:
+		return "Only the instance Owner holds this unless a rule gives it"
 	case SourceMember:
 		return memberSentence(r, allowed)
 	case SourceRole:

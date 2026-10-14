@@ -27,7 +27,7 @@ vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team car
 
 const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
 
-// The Owner of a workspace holds every instance bit.
+// The instance Owner holds every instance bit.
 const ownerBits = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read", "templates:write"];
 
 const routeGet = (anywhere: string[], permissions: string[] = []) => (url: string) => {

@@ -108,7 +108,9 @@ func (r RoleInfo) sourceRole(action permissions.Action) string {
 
 // The kinds of Source: what decided an answer.
 const (
-	SourceOwner          = "owner"
+	SourceOwner = "owner"
+	// SourceInstanceOwner is an instance area an Owner of another workspace holds nothing on, the instance Owner alone holding it by right.
+	SourceInstanceOwner  = "instance_owner"
 	SourceMember         = "member"
 	SourceRole           = "role"
 	SourceRule           = "rule"

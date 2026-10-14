@@ -14,6 +14,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type InstanceURLGate interface {
@@ -56,7 +57,53 @@ type InvitationPreview struct {
 type InvitationService struct {
 	repo        InvitationRepo
 	instanceURL InstanceURLGate
+	roleNames   RoleNameGate
+	perms       WorkspacePermissionGate
 	now         func() time.Time
+}
+
+// SetRoleGrants wires the reads that hold an invitation's roles to what its creator holds at instance level (ADR 0151);
+// unset, only the storage rules apply.
+func (s *InvitationService) SetRoleGrants(roleNames RoleNameGate, perms WorkspacePermissionGate) {
+	s.roleNames, s.perms = roleNames, perms
+}
+
+// requireHeldInstanceAreas refuses an invitation giving a role that carries an instance-area action actorID does not
+// hold at instance level, whatever they own (ADR 0088, ADR 0151).
+func (s *InvitationService) requireHeldInstanceAreas(ctx context.Context, actorID string, grants []*InvitationGrant) error {
+	if s.perms == nil || s.roleNames == nil {
+		return nil
+	}
+	for _, g := range grants {
+		if g == nil {
+			continue
+		}
+		held := permissions.SetOfStrings(s.perms.GrantablePermissions(ctx, actorID, g.WorkspaceID))
+		for _, roleID := range g.Held() {
+			given, err := s.roleNames.RolePermissions(ctx, g.WorkspaceID, roleID)
+			if errors.Is(err, apperrs.ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("read role %s: %w", roleID, err)
+			}
+			if err := permissions.RequireHeld(instanceAreaActions(given), held); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// instanceAreaActions is the part of set that belongs to an instance area.
+func instanceAreaActions(set permissions.Set) permissions.Set {
+	var out permissions.Set
+	for _, a := range set {
+		if permissions.AreaOf(a) == permissions.AreaInstance {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 func NewInvitationService(repo InvitationRepo, instanceURL InstanceURLGate) *InvitationService {
@@ -82,6 +129,9 @@ func (s *InvitationService) Create(ctx context.Context, actorID string, input Cr
 		if err := RefusePerPersonAccess(g.Allow, g.Deny, g.EveryProject, len(g.ProjectAccess)); err != nil {
 			return nil, err
 		}
+	}
+	if err := s.requireHeldInstanceAreas(ctx, actorID, input.Grants); err != nil {
+		return nil, err
 	}
 	duration, err := invitationDuration(input.ExpiresInDays)
 	if err != nil {
