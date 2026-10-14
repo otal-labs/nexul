@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -121,4 +122,25 @@ func TestMachinesRepo_Touch_UnknownID_NotFound(t *testing.T) {
 	s := newTestStore(t)
 	err := s.Machines.Touch(context.Background(), "missing", "x", time.Now())
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestMachinesRepo_DeletingAMachineDeletesItsRules(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	s := New(db, testEncKey)
+	ctx := context.Background()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("bob", "bob", "bob"))
+	require.NoError(t, err)
+	require.NoError(t, s.Machines.Create(ctx, newTestMachine("m-1", "prod")))
+	require.NoError(t, s.Machines.Create(ctx, newTestMachine("m-2", "stage")))
+	require.NoError(t, s.Access.Set(ctx, "machine", "m-1", "bob", permissions.SetOf(permissions.MachinesSee), nil))
+	require.NoError(t, s.Access.Set(ctx, "machine", "m-2", "bob", permissions.SetOf(permissions.MachinesSee), nil))
+
+	_, err = db.Exec(`DELETE FROM machines WHERE id = 'm-1'`)
+	require.NoError(t, err)
+
+	_, err = s.Access.Get(ctx, "machine", "m-1", "bob")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a machine's rules go with it")
+	_, err = s.Access.Get(ctx, "machine", "m-2", "bob")
+	require.NoError(t, err, "another machine's stay")
 }

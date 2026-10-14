@@ -144,6 +144,9 @@ func noRules() []*Rules { return nil }
 // Decide is userID's answer for action on a doc, folder, play, project, stack, or channel, with what decided it: the evaluator every check
 // uses, so an explanation can never disagree with enforcement.
 func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID string, action permissions.Action) (bool, Source, error) {
+	if resourceType == resourceTypeMachine {
+		return s.decideMachine(ctx, userID, resourceID, action)
+	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
 	if err != nil {
 		return false, Source{}, err
@@ -168,6 +171,9 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	ctx = s.memoized(ctx)
 	if resourceType == resourceTypeInstanceArea {
 		return s.explainArea(ctx, actorID, resourceID, userID)
+	}
+	if resourceType == resourceTypeMachine {
+		return s.explainMachine(ctx, actorID, resourceID, userID)
 	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
 	if err != nil {
@@ -202,6 +208,9 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 	ctx = s.memoized(ctx)
 	if resourceType == resourceTypeInstanceArea {
 		return s.explainRoleArea(ctx, actorID, resourceID, roleID)
+	}
+	if resourceType == resourceTypeMachine {
+		return s.explainRoleMachine(ctx, actorID, resourceID, roleID)
 	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
 	if err != nil {
@@ -393,6 +402,8 @@ func sentence(r NamedSource) string {
 		return "Read by every member"
 	case SourceChannelMember:
 		return channelMemberSentence(r, allowed)
+	case SourceNotOnMachine:
+		return "Not found: no rule lets " + targetName(r) + " see machine " + r.EntityName
 	case SourceNotInProject:
 		if r.TargetType == TargetRole {
 			return "Not listed on project " + r.EntityName
@@ -400,6 +411,13 @@ func sentence(r NamedSource) string {
 		return "Not found: " + r.TargetName + " isn't in project " + r.EntityName
 	}
 	return ""
+}
+
+func targetName(r NamedSource) string {
+	if r.TargetType == TargetRole {
+		return "role " + r.TargetName
+	}
+	return r.TargetName
 }
 
 func roleSentence(r NamedSource, allowed bool) string {

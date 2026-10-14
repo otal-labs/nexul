@@ -243,7 +243,7 @@ var manageAction = map[string]permissions.Action{
 }
 
 // grantFrame reaches the person whose rule changed, or the holders of the role it names, and whoever manages the rules
-// it changed: a doc's or a play's, or for Project access the project's workspace.
+// it changed: a doc's or a play's, a machine's Manage holders and the instance Owner, or for Project access the project's workspace.
 func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		ResourceType string `json:"resource_type"`
@@ -272,6 +272,8 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	case "instance_area":
 		owner, err := a.access.IsInstanceOwner(ctx, actorID(ctx))
 		return err == nil && owner
+	case "machine":
+		return a.access.RequireMachine(ctx, p.ResourceID, permissions.MachinesWrite) == nil
 	}
 	return false
 }

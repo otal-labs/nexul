@@ -919,3 +919,49 @@ func TestStatements_TeamListCostsTheSameForAnyNumberOfPeople(t *testing.T) {
 	}
 	assert.Equal(t, cost(2), cost(40))
 }
+
+// TestStatements_MachineRulesCostTheSameAtAnyLength: rules for roles and a person on every machine cost a machine check,
+// the machines a person sees, and a machine's four answers, for the instance Owner and for another member, no
+// statement more than none, at a few machines or many: the rules reaching a person come in one read by type.
+func TestStatements_MachineRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture, user string) error{
+		"a machine check": func(ctx context.Context, f permFixture, _ string) error {
+			return f.svc.accessSvc.RequireMachine(ctx, "mach-1", permissions.MachinesSee)
+		},
+		"the machines seen": func(ctx context.Context, f permFixture, user string) error {
+			_, err := f.svc.accessSvc.MachinesSeen(ctx, user)
+			return err
+		},
+		"a machine's permissions": func(ctx context.Context, f permFixture, user string) error {
+			_, err := f.svc.accessSvc.MachinePermissions(ctx, user, "mach-1")
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
+INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) SELECT 'mach-' || i, 'box ' || i, '/data/nexul', '', 1, 1 FROM n`, n)
+		require.NoError(t, err)
+		if rules {
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'machine', m.id, 'role', r.id, NULL, '["machines:see","machines:deploy"]', '["machines:delete"]', 1, 1 FROM machines m, roles r
+WHERE r.id IN ('role-reader', 'role-writer')
+UNION ALL SELECT 'machine', m.id, 'person', NULL, ?, '["machines:see","machines:write"]', '[]', 1, 1 FROM machines m`, uReader)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for _, user := range []string{uOwner, uReader} {
+			for name, run := range paths {
+				ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: user}), f.svc.accessSvc.NewMemo())
+				st.Reset()
+				// Without rules another member finds nothing, which is an answer too.
+				_ = run(ctx, f, user)
+				out[user+" "+name] = st.Count()
+			}
+		}
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few machines, each with rules")
+	assert.Equal(t, none, cost(12, true), "many machines, each with rules")
+}

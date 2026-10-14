@@ -14,11 +14,11 @@ func Topics() []eventbus.Topic {
 	}
 }
 
-// GrantEvent is the payload of a rule on a doc, folder, play, project, channel, stack, or instance area changing; it reaches the
+// GrantEvent is the payload of a rule on a doc, folder, play, project, channel, stack, machine, or instance area changing; it reaches the
 // person it names, or a role's holders, whose open reads refetch, and an instance area's also the instance Owner. A save
 // of a workspace's Access page is one event on the workspace, which reaches every member.
 type GrantEvent struct {
-	ResourceType string `json:"resource_type" enum:"doc,folder,play,project,channel,stack,workspace,instance_area" jsonschema:"What the rule sits on; a folder's rules reach every doc in it, a stack's its deploys and branch deployments; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github)."`
+	ResourceType string `json:"resource_type" enum:"doc,folder,play,project,channel,stack,workspace,instance_area,machine" jsonschema:"What the rule sits on; a folder's rules reach every doc in it, a stack's its deploys and branch deployments; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github); machine is a machine, by id."`
 	ResourceID   string `json:"resource_id"`
 	Target       string `json:"target" enum:"person,role" jsonschema:"Whom the rule names: a person, as user_id, or a role, as role_id."`
 	UserID       string `json:"user_id"`

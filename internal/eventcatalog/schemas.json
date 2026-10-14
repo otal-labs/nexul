@@ -4,7 +4,7 @@
     "properties": {
       "resource_type": {
         "type": "string",
-        "description": "What the rule sits on; a folder's rules reach every doc in it, a stack's its deploys and branch deployments; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github).",
+        "description": "What the rule sits on; a folder's rules reach every doc in it, a stack's its deploys and branch deployments; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github); machine is a machine, by id.",
         "enum": [
           "doc",
           "folder",
@@ -13,7 +13,8 @@
           "channel",
           "stack",
           "workspace",
-          "instance_area"
+          "instance_area",
+          "machine"
         ]
       },
       "resource_id": {

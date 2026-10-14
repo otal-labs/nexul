@@ -46,6 +46,9 @@ const (
 	RunnersDelete      Action = "runners:delete"
 	MachinesRead       Action = "machines:read"
 	MachinesWrite      Action = "machines:write"
+	MachinesDeploy     Action = "machines:deploy"
+	MachinesDelete     Action = "machines:delete"
+	MachinesCreate     Action = "machines:create"
 	DNSRead            Action = "dns:read"
 	DNSWrite           Action = "dns:write"
 	DNSDelete          Action = "dns:delete"
@@ -99,6 +102,13 @@ const (
 // grid and ParseAction refuses it (ADR 0148).
 const ProjectsOpen Action = "projects:open"
 
+// MachinesSee is See on a machine: held only through the machine's rules, never by a role or a token, so it is off the
+// grid and ParseAction refuses it (ADR 0151).
+const MachinesSee Action = "machines:see"
+
+// MachineActions are what a machine's rules may set, See first; Manage is machines:write.
+var MachineActions = []Action{MachinesSee, MachinesDeploy, MachinesWrite, MachinesDelete}
+
 // The computer permissions, off the grid like ProjectsOpen: held only through a rule a computer's owner writes for a
 // named person, never by a role, an invitation or a token (ADR 0148).
 const (
@@ -123,6 +133,7 @@ const (
 	access   = "access"
 	template = "template"
 	post     = "post"
+	deploy   = "deploy"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -140,6 +151,9 @@ var verbLabel = map[Action]string{
 	ProjectsCreate:   "Create projects",
 	ProjectsAccess:   "Manage this project's access",
 	ChannelsPost:     "Post in channels",
+	MachinesDeploy:   "Deploy to machines",
+	MachinesWrite:    "Manage machines",
+	MachinesCreate:   "Add machines",
 }
 
 // Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
@@ -181,7 +195,7 @@ var domainTable = []domainInfo{
 	{"members", "members and invites", []string{read, write, delete}, AreaWorkspace},
 	{"roles", "roles", []string{read, write, delete, clone}, AreaWorkspace},
 	{"runners", "runners", []string{read, write, delete}, AreaInstance},
-	{"machines", "machines", []string{read, write}, AreaInstance},
+	{"machines", "machines", []string{read, write, deploy, delete, create}, AreaInstance},
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
@@ -219,7 +233,7 @@ var instanceAreas = []InstanceArea{
 	{"dns", "DNS and gateways", []Action{DNSRead, DNSWrite, DNSDelete}},
 	{"templates", "instance templates", []Action{TemplatesRead, TemplatesWrite}},
 	{"accounts", "accounts", []Action{AccountsRead, AccountsWrite, AccountsDelete}},
-	{"runners", "runners and machines", []Action{RunnersRead, RunnersWrite, RunnersDelete, MachinesRead, MachinesWrite}},
+	{"runners", "runners and machines", []Action{RunnersRead, RunnersWrite, RunnersDelete, MachinesRead, MachinesWrite, MachinesCreate}},
 	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
 	{"automations", "automation hosts", []Action{AutomationsRead, AutomationsWrite, AutomationsDelete}},
 	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},
@@ -284,6 +298,9 @@ func Catalog() []Info {
 }
 
 func label(value Action, a, display string) string {
+	if l, ok := verbLabel[value]; ok {
+		return l
+	}
 	switch a {
 	case read:
 		return "Read " + display
@@ -352,10 +369,10 @@ func ParseAction(s string) (Action, bool) {
 	return a, true
 }
 
-// ParseRuleAction is ParseAction for a rule on an entity, which may also set what only a rule holds: In this project and
-// the computer permissions.
+// ParseRuleAction is ParseAction for a rule on an entity, which may also set what only a rule holds: In this project,
+// See on a machine and the computer permissions.
 func ParseRuleAction(s string) (Action, bool) {
-	if a := Action(strings.TrimSpace(s)); a == ProjectsOpen || slices.Contains(ComputerActions, a) {
+	if a := Action(strings.TrimSpace(s)); a == ProjectsOpen || a == MachinesSee || slices.Contains(ComputerActions, a) {
 		return a, true
 	}
 	return ParseAction(s)

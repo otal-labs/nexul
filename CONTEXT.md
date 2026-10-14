@@ -598,6 +598,21 @@ number of runners per machine is the scaling knob. Replaces "target is the runne
 2026-09-07 once built.
 _Avoid_: Host, node, server (in the UI)
 
+**Machine rules**:
+The rules a machine carries, each naming a role of any workspace or a person and
+holding four permissions in Allow, Fallback or Deny: **See**, **Deploy to**,
+**Manage** and **Delete**. Machines are opt-in, as projects are: See is held only
+through a machine's rules, and a machine someone can't See is not found, and so is
+every other action on it. On a machine they See, the other three come from the
+union of their roles' bits across their workspaces, then the machine's rules for
+those roles, of which Allow wins, then a rule naming them. The instance Owner
+holds all four on every machine and is never denied; an Owner of another
+workspace holds nothing here by right. The instance Owner and anyone holding
+Manage on the machine write its rules, and nobody allows, or lifts a Deny on,
+what they don't hold there. **Add machines** is not one of them: it is an
+instance-area permission that lets a person bring in a new machine.
+_Avoid_: Machine access
+
 **Wizard**:
 A guided multi-step flow that ends in something working, reached under
 `/wizard/<context>/<step-owner>` (for example `/wizard/onboarding/owner`,
