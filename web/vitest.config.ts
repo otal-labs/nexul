@@ -12,8 +12,8 @@ export default defineConfig({
       "@nexul/client-core": path.resolve(__dirname, "../client-core"),
     },
   },
-  // The modules shared with the phone app live beside web/ and their tests run here; the route guard also reads native/src.
-  server: { fs: { allow: [".", "../client-core", "../native/src"] } },
+  // The modules shared with the phone app live beside web/ and their tests run here.
+  server: { fs: { allow: [".", "../client-core"] } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

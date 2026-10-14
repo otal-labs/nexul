@@ -8,11 +8,13 @@ type Routes = Record<string, readonly string[]>;
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SPAN = "\u0000";
 
-// Source text of every web and phone module that can send a request, tests excluded.
-const modules: Record<string, string> = {
-  ...import.meta.glob<string>(["../web/src/**/*.{ts,tsx}", "!../web/src/**/*.test.{ts,tsx}", "!../web/src/**/*.d.ts", "!../web/src/test/**"], { query: "?raw", import: "default", eager: true }),
-  ...import.meta.glob<string>(["../native/src/**/*.{ts,tsx}", "!../native/src/**/*.test.{ts,tsx}", "!../native/src/**/*.d.ts"], { query: "?raw", import: "default", eager: true }),
-};
+// Source text of every web and phone module that can send a request, tests excluded; read from disk, since a Vite import loads the phone tsconfig that needs its packages; vitest runs from web/.
+const root = `${ts.sys.resolvePath(`${ts.sys.getCurrentDirectory()}/..`)}/`;
+const modules: Record<string, string> = Object.fromEntries(
+  ts.sys
+    .readDirectory(root, [".ts", ".tsx"], ["**/*.test.ts", "**/*.test.tsx", "**/*.d.ts", "web/src/test"], ["web/src/**/*", "native/src/**/*"])
+    .map((file) => [`../${file.slice(root.length)}`, ts.sys.readFile(file) ?? ""]),
+);
 
 // What a URL expression can resolve through: the file's own constants and the arrow helpers every module defines.
 interface Reach {
