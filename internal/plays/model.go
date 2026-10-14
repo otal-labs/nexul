@@ -64,6 +64,12 @@ type Play struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// Listed is a play in one caller's list, with whether its own rules and their roles let them run it.
+type Listed struct {
+	Play
+	CanRun bool `json:"can_run"`
+}
+
 // TargetType names what a play was fired from and pairs with Type; an interview target's id is its project's id.
 type TargetType string
 

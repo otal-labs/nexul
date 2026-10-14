@@ -15,6 +15,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
 )
@@ -195,4 +196,57 @@ func TestPlays_TheStarterReadsTheirRun(t *testing.T) {
 	}
 	_, err := runner.Stop(as(uReader), "tr-writer")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a run the caller can't read can't be steered")
+}
+
+// hiddenCanRun is the hidden play's can_run in a JSON list of plays, nil when the list leaves it out.
+func hiddenCanRun(t *testing.T, raw []byte) *bool {
+	t.Helper()
+	var list []struct {
+		ID     string `json:"id"`
+		CanRun *bool  `json:"can_run"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &list), string(raw))
+	for _, p := range list {
+		if p.ID == hiddenPlay {
+			require.NotNil(t, p.CanRun, "a listed play says whether the caller can run it")
+			return p.CanRun
+		}
+	}
+	return nil
+}
+
+// TestPlays_CanRunFollowsThePlaysOwnRules: a play's own Run allow lets someone whose roles hold no plays:run run it,
+// and its Run deny leaves it seen but not runnable, in the plays list, the run menus and play_list alike.
+func TestPlays_CanRunFollowsThePlaysOwnRules(t *testing.T) {
+	f, _ := playSeeFixture(t)
+	s := f.svc
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "play", []string{hiddenPlay}, access.Targets{UserIDs: []string{uWriter}},
+		[]permissions.Action{permissions.PlaysRun}, access.StateDeny))
+	defs := plays.NewHandler(s.playsSvc).Routes()
+	playList := tool(t, plays.MCPTools(s.playsSvc), "play_list")
+	ws := "/api/workspaces/" + wsDefault + "/plays"
+	yes, no := true, false
+	for _, tt := range []struct {
+		user         string
+		listed, menu *bool
+	}{
+		{uPlain, &yes, &yes},
+		{uWriter, &no, nil},
+	} {
+		t.Run(tt.user, func(t *testing.T) {
+			assert.Equal(t, tt.listed, hiddenCanRun(t, serveAs(defs, tt.user, http.MethodGet, ws, "").Body.Bytes()), "the plays list")
+			assert.Equal(t, tt.menu, hiddenCanRun(t, serveAs(defs, tt.user, http.MethodGet, ws+"/applicable?type=doc&project_id="+pGeneral, "").Body.Bytes()), "the run menus")
+			assert.Equal(t, tt.listed, hiddenCanRun(t, pageItems(t, s.accessSvc, playList, tt.user, `{"workspace_id":"`+wsDefault+`"}`)), "play_list")
+			assert.Equal(t, tt.menu, hiddenCanRun(t, pageItems(t, s.accessSvc, playList, tt.user, `{"workspace_id":"`+wsDefault+`","type":"doc","project_id":"`+pGeneral+`"}`)), "play_list with type")
+		})
+	}
+}
+
+// pageItems is a list tool's page of items as one JSON list.
+func pageItems(t *testing.T, a *access.Service, tl mcptool.Tool, user, args string) []byte {
+	t.Helper()
+	_, page := callPage(t, a, tl, user, args)
+	raw, err := json.Marshal(page.Items)
+	require.NoError(t, err)
+	return raw
 }

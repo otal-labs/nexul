@@ -40,7 +40,7 @@ const waiting: Clarification = {
 
 const play = (id: string, key: string, label: string) => ({
   id, workspace_id: "ws-1", label, type: "doc", description: "", instructions: "", enabled: true, show_when_stage: null,
-  excluded_project_ids: [], builtin_key: key, created_by: "", created_at: "", updated_at: "",
+  excluded_project_ids: [], builtin_key: key, created_by: "", created_at: "", updated_at: "", can_run: true,
 });
 
 const client_ = ["docs:read", "docs:write"];

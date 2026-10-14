@@ -12,7 +12,7 @@ No implementation is approved by this spec. Each ticket is independently scoped.
 
 | Ticket | Status | Scope |
 | --- | --- | --- |
-| [01: Per-play Run controls](issues/01-per-play-run-controls.md) | needs-triage | A play's own Run allow must reach its button. |
+| [01: Per-play Run controls](issues/01-per-play-run-controls.md) | done | A play's own Run allow must reach its button. |
 | [02: See and Run explanations](issues/02-see-and-run-explanations.md) | needs-triage | Explain the See prerequisite when Run is allowed. |
 | [03: Phone locked mentions](issues/03-phone-locked-mentions.md) | done | Inert doc and ticket references on the phone. |
 | [04: Phone acceptance verification](issues/04-phone-acceptance-verification.md) | wontfix | Preserve the explicitly skipped verification gap. |

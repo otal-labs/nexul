@@ -193,7 +193,7 @@ describe("TicketPage sections", () => {
   it("puts Plays directly under Properties, above Development", async () => {
     mockTicket({
       "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },
-      "/api/workspaces/ws-1/plays/applicable": [{ id: "play-1", label: "Fix with AI", type: "ticket", description: "", show_when_stage: "progress" }],
+      "/api/workspaces/ws-1/plays/applicable": [{ id: "play-1", label: "Fix with AI", type: "ticket", description: "", show_when_stage: "progress", can_run: true }],
     });
     renderPage();
 

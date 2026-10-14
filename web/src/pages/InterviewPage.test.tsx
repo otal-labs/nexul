@@ -8,7 +8,7 @@ import { api } from "@/api/client";
 import type { InterviewAnswer } from "@/models/InterviewAnswer";
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import type { Memory } from "@/models/Memory";
-import type { Play } from "@/models/Play";
+import type { ListedPlay } from "@/models/Play";
 import type { Trail } from "@/models/Trail";
 import { InterviewPage } from "@/pages/InterviewPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -58,7 +58,7 @@ const renderPage = (entry = "/acme/projects/BE/interview", client = new QueryCli
     </QueryClientProvider>,
   );
 
-const interviewPlay: Play = {
+const interviewPlay: ListedPlay = {
   id: "play-interview",
   workspace_id: "ws-1",
   label: "Interview",
@@ -72,6 +72,7 @@ const interviewPlay: Play = {
   created_by: "",
   created_at: "",
   updated_at: "",
+  can_run: true,
 };
 
 const organised: InterviewQuestion = {
@@ -104,7 +105,7 @@ interface Setup {
   memories?: Memory[];
   questions?: InterviewQuestion[];
   answers?: InterviewAnswer[];
-  plays?: Play[];
+  plays?: ListedPlay[];
   trails?: () => Trail[];
 }
 
@@ -247,7 +248,7 @@ describe("InterviewPage", () => {
   });
 
   it("never offers the drafting play as the interview's run", async () => {
-    const draftPlay: Play = { ...interviewPlay, id: "play-draft", label: "Draft interview", description: "Drafts answers.", builtin_key: "interview-draft" };
+    const draftPlay: ListedPlay = { ...interviewPlay, id: "play-draft", label: "Draft interview", description: "Drafts answers.", builtin_key: "interview-draft" };
     mockApi({ answers: [stored(0, organised.text), stored(0, testing.text, { skipped: true, text: "" })], plays: [draftPlay, interviewPlay] });
     renderPage();
     expect(await screen.findByRole("button", { name: /Done/ })).toHaveAttribute("title", interviewPlay.description);
@@ -274,7 +275,7 @@ describe("InterviewPage", () => {
   });
 
   it("offers Audit via AI only once the memory exists", async () => {
-    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const auditPlay: ListedPlay = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
     mockApi({ answers: [stored(0, organised.text), stored(0, testing.text)], plays: [auditPlay, interviewPlay] });
     const { unmount } = renderPage();
     expect(await screen.findByRole("button", { name: /Done/ })).toHaveAttribute("title", interviewPlay.description);
@@ -288,7 +289,7 @@ describe("InterviewPage", () => {
   });
 
   it("treats the empty memory a drafting run creates as no memory yet", async () => {
-    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const auditPlay: ListedPlay = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
     mockApi({ memories: [{ ...interview, body: emptyDocJson }], plays: [auditPlay, interviewPlay] });
     renderPage();
 
@@ -299,7 +300,7 @@ describe("InterviewPage", () => {
   });
 
   it("links the doc a finished audit wrote, and the memory's run line ignores the audit", async () => {
-    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const auditPlay: ListedPlay = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
     const followUp = waitingTrail({ id: "tr-0", state: "done", question: null, ended_at: "2026-10-03T10:00:00Z" });
     const audit = waitingTrail({ id: "tr-a", play_id: "play-audit", play_label: "Audit via AI", state: "done", question: null, started_at: "2026-10-04T09:00:00Z", ended_at: "2026-10-04T09:30:00Z" });
     const doc = (id: string, title: string, created_at: string, created_by = "u-1") => ({
@@ -327,7 +328,7 @@ describe("InterviewPage", () => {
   });
 
   it("shows a running audit beside a memory that stays ready, with only the audit's Stop", async () => {
-    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const auditPlay: ListedPlay = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
     const audit = waitingTrail({ id: "tr-a", play_id: "play-audit", play_label: "Audit via AI", state: "running", question: null });
     mockApi({ memories: [interview], plays: [auditPlay, interviewPlay], trails: () => [audit] });
     const base = vi.mocked(api.get).getMockImplementation()!;

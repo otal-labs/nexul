@@ -9,11 +9,11 @@ import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useRunBlockedReason } from "@/hooks/PairingProjectHooks";
-import type { Play, PlayType } from "@/models/Play";
+import type { ListedPlay, PlayType } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
 interface PlayButtonProps {
-  play: Play;
+  play: ListedPlay;
   projectId: string;
   targetType: PlayType;
   targetId: string;
@@ -31,9 +31,8 @@ const disabledReason = (running: boolean, waiting: boolean, blocked: string | un
   return blocked ?? "";
 };
 
-// Hidden without plays:run; the starter or a plays:write holder gets Stop while a run occupies the target.
+// Hidden unless the play's can_run says the viewer may run it; the starter or a plays:write holder gets Stop while a run occupies the target.
 export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className }: PlayButtonProps) => {
-  const canRun = useHasPermission("plays:run");
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
   const blocked = useRunBlockedReason(projectId);
@@ -43,7 +42,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   const [dialogOpen, setDialogOpen] = useState(false);
   const [trailOpen, setTrailOpen] = useState(false);
 
-  if (!canRun) return null;
+  if (!play.can_run) return null;
 
   const running = activeTrail !== undefined;
   // Stop sits on the button of the play that is running; a sibling only reads as disabled.

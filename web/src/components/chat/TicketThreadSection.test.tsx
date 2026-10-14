@@ -64,7 +64,7 @@ describe("TicketThreadSection", () => {
     mockGetByUrl({
       "/api/chat/tickets/thread-status": { t1: false },
       "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },
-      "/api/workspaces/ws-1/plays": [{ id: "play-1", workspace_id: "ws-1", label: "Fix with AI", type: "ticket", description: "", instructions: "", enabled: true, show_when_stage: "progress", excluded_project_ids: [] }],
+      "/api/workspaces/ws-1/plays": [{ id: "play-1", workspace_id: "ws-1", label: "Fix with AI", type: "ticket", description: "", instructions: "", enabled: true, show_when_stage: "progress", excluded_project_ids: [], can_run: true }],
       "/api/plays/queue": playQueue({
         items: [
           queueItem({ target_id: "t1", person_id: "", status: "didnt_run", reason: "nobody to run it on: the ticket has no developer", decided_at: "2026-10-10T09:00:00Z" }),

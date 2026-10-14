@@ -121,8 +121,8 @@ type UpdateInput struct {
 	ExcludedProjectIDs []string
 }
 
-// List returns the plays of workspaceID the caller can see, sorted by label.
-func (s *Service) List(ctx context.Context, workspaceID string) ([]*Play, error) {
+// List returns the plays of workspaceID the caller can see, sorted by label, each saying whether they can run it.
+func (s *Service) List(ctx context.Context, workspaceID string) ([]Listed, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
@@ -131,12 +131,12 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Play, error)
 	if err != nil {
 		return nil, fmt.Errorf("list plays for workspace %s: %w", workspaceID, err)
 	}
-	return s.holding(ctx, actorID(ctx), workspaceID, list, permissions.PlaysRead), nil
+	return s.listed(ctx, actorID(ctx), workspaceID, list), nil
 }
 
 // ListApplicable returns workspaceID's enabled plays of playType that apply to a run on projectID for userID:
 // not excluded for that project, matching stage for a ticket play, and ones they can see and run.
-func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, projectID string, playType Type, stage *Stage) ([]*Play, error) {
+func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, projectID string, playType Type, stage *Stage) ([]Listed, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
@@ -161,20 +161,24 @@ func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, proje
 		}
 		out = append(out, p)
 	}
-	return s.holding(ctx, userID, workspaceID, out, permissions.PlaysRead, permissions.PlaysRun), nil
+	return slices.DeleteFunc(s.listed(ctx, userID, workspaceID, out), func(l Listed) bool { return !l.CanRun }), nil
 }
 
-// holding keeps the plays of list userID holds every one of actions on, from one read of the rules on them.
-func (s *Service) holding(ctx context.Context, userID, workspaceID string, list []*Play, actions ...permissions.Action) []*Play {
+// listed keeps the plays of list userID can see, each with whether they can run it, from one read of the rules on them.
+func (s *Service) listed(ctx context.Context, userID, workspaceID string, list []*Play) []Listed {
 	ids := make([]string, 0, len(list))
 	for _, p := range list {
 		ids = append(ids, p.ID)
 	}
-	for _, action := range actions {
-		held := s.perm.PlaysWith(ctx, userID, workspaceID, action, ids)
-		list = slices.DeleteFunc(slices.Clone(list), func(p *Play) bool { return !held[p.ID] })
+	sees := s.perm.PlaysWith(ctx, userID, workspaceID, permissions.PlaysRead, ids)
+	runs := s.perm.PlaysWith(ctx, userID, workspaceID, permissions.PlaysRun, ids)
+	out := make([]Listed, 0, len(list))
+	for _, p := range list {
+		if sees[p.ID] {
+			out = append(out, Listed{Play: *p, CanRun: runs[p.ID]})
+		}
 	}
-	return list
+	return out
 }
 
 // Get returns a single play scoped to workspaceID; a play from another workspace, or one the caller can't see, is

@@ -115,7 +115,7 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 | `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
 | `autoplays:delete` | delete auto plays |
 
-A role gives these for every play; a play's own rules turn **See this play**, **Run**, **Edit** and **Delete** on or off for that play alone.
+A role gives these for every play; a play's own rules turn **See this play**, **Run**, **Edit** and **Delete** on or off for that play alone. A play whose own rule allows you **Run** shows its button even when your roles don't hold `plays:run`, and one whose rule denies it keeps its button hidden.
 
 Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link once that computer lists the T3 project. `computer_list` with a computer's id lists its T3 projects.
 

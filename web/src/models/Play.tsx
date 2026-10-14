@@ -48,6 +48,11 @@ export interface Play {
   updated_at: string;
 }
 
+// A play as a list hands it to one person: can_run is whether its own rules and their roles let them run it.
+export interface ListedPlay extends Play {
+  can_run: boolean;
+}
+
 // show_when_stage is "" for no stage (any play but a ticket play) rather than null, so it plugs straight into FormSelect's
 // empty-value sentinel; the refine below is the client-side half of the same rule the API enforces.
 export const SavePlayFormSchema = z

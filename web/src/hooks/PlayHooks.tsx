@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
-import type { Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
+import type { ListedPlay, Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -21,7 +21,7 @@ export const getPlayRenameImpactKey = "getPlayRenameImpact";
 export const useFetchWorkspacePlays = (workspaceId: string) =>
   useQuery({
     queryKey: [getWorkspacePlaysKey, workspaceId],
-    queryFn: async () => (await api.get<Play[]>(`/api/workspaces/${workspaceId}/plays`)).data,
+    queryFn: async () => (await api.get<ListedPlay[]>(`/api/workspaces/${workspaceId}/plays`)).data,
     enabled: workspaceId !== "",
   });
 
@@ -117,7 +117,7 @@ export const useFetchApplicablePlays = (workspaceId: string, projectId: string, 
     queryKey: [getApplicablePlaysKey, workspaceId, projectId, type, stage ?? null],
     queryFn: async () =>
       (
-        await api.get<Play[]>(`/api/workspaces/${workspaceId}/plays/applicable`, {
+        await api.get<ListedPlay[]>(`/api/workspaces/${workspaceId}/plays/applicable`, {
           params: { project_id: projectId, type, ...(stage ? { stage } : {}) },
         })
       ).data,
