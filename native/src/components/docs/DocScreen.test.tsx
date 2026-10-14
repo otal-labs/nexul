@@ -1,6 +1,6 @@
 import type { Clarification, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
@@ -40,7 +40,7 @@ const round = (questions: ClarificationQuestion[], extra: Partial<ClarificationR
 });
 
 const clarification = (rounds: ClarificationRound[], extra: Partial<Clarification> = {}): Clarification => ({
-  rounds, running: false, closed: false, can_close: false, ...extra,
+  rounds, running: false, closed: false, can_answer: true, can_close: false, ...extra,
 });
 
 const waiting = clarification([round([question("q1"), question("q2")])]);
@@ -53,13 +53,14 @@ const serve = (clarificationBody: Clarification | ApiError) =>
     return Promise.resolve(clarificationBody);
   });
 
-const renderScreen = (openedOn?: "doc" | "questions") => {
+const renderScreen = async (openedOn?: "doc" | "questions") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const rendered = await render(
     <QueryClientProvider client={client}>
       <DocScreen docId="doc-1" {...(openedOn && { openedOn })} />
     </QueryClientProvider>,
   );
+  return { ...rendered, client };
 };
 
 beforeEach(() => {
@@ -136,14 +137,47 @@ describe("DocScreen questions", () => {
     expect(answer.props.numberOfLines).toBeUndefined();
   });
 
-  test("a reader sees the questions and answers and no way to change them", async () => {
-    mockCanWrite = false;
-    serve(clarification([round([question("q1", { selected: ["One fixed slot"] }), question("q2")])]));
+  test("a reader sees the questions and answers and no way to change them, whatever their role holds", async () => {
+    serve(clarification([round([question("q1", { selected: ["One fixed slot"] }), question("q2")])], { can_answer: false }));
     await renderScreen("questions");
 
     expect(await screen.findByText("One fixed slot")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
     expect(screen.queryByLabelText("Anything else?")).toBeNull();
+  });
+
+  test("a member who may edit only this doc, through a rule on it, answers though their role cannot", async () => {
+    mockCanWrite = false;
+    serve(waiting);
+    await renderScreen("questions");
+
+    expect(await screen.findByRole("button", { name: "Next" })).toBeTruthy();
+    expect(screen.getByLabelText("Anything else?")).toBeTruthy();
+  });
+
+  test("an answer someone else saves to the open question shows in its row and opens the next one", async () => {
+    serve(waiting);
+    const { client } = await renderScreen("questions");
+    expect(await screen.findByText("Question 1 of 2")).toBeTruthy();
+
+    serve(clarification([round([question("q1", { selected: ["By service (Suggested)"] }), question("q2")])]));
+    await act(() => client.invalidateQueries());
+
+    expect(await screen.findByText("Question 2 of 2")).toBeTruthy();
+    expect(screen.queryByText("Question 1 of 2")).toBeNull();
+    expect(screen.getByText("By service")).toBeTruthy();
+  });
+
+  test("an answer someone else saves to the open question leaves what this person has typed in it", async () => {
+    serve(waiting);
+    const { client } = await renderScreen("questions");
+    await userEvent.setup().press(await screen.findByRole("radio", { name: "One fixed slot" }));
+
+    serve(clarification([round([question("q1", { selected: ["By service (Suggested)"] }), question("q2")])]));
+    await act(() => client.invalidateQueries());
+
+    expect(await screen.findByText("Question 1 of 2")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "One fixed slot" })).toBeChecked();
   });
 
   test("Anything else? saves the text of the newest round", async () => {

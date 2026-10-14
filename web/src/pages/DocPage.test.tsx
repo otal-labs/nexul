@@ -20,7 +20,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const noClarification = { rounds: [], running: false, closed: false, can_close: false };
+const noClarification = { rounds: [], running: false, closed: false, can_answer: true, can_close: false };
 
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -5,7 +5,6 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDoc, useFetchDocClarification } from "@/hooks/DocHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { clarificationPhase } from "@nexul/client-core/clarification";
 
 interface DocQuestionsPanelProps {
@@ -17,7 +16,6 @@ interface DocQuestionsPanelProps {
 export const DocQuestionsPanel = ({ docId }: DocQuestionsPanelProps) => {
   const { data: clarification, error, isPending } = useFetchDocClarification(docId);
   const { data: doc } = useFetchDoc(docId);
-  const canWrite = useHasPermission("docs:write");
   return (
     <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
       <section aria-label="Questions" className="mx-auto min-w-0 max-w-3xl">
@@ -35,7 +33,7 @@ export const DocQuestionsPanel = ({ docId }: DocQuestionsPanelProps) => {
         {clarification && clarification.can_close && clarificationPhase(clarification) === "none" && (
           <EmptyRow className="mt-5">No questions yet. Clarify via AI asks about what the doc leaves open, one round at a time.</EmptyRow>
         )}
-        {clarification && <ClarificationRoundsFeed clarification={clarification} readOnly={!canWrite} />}
+        {clarification && <ClarificationRoundsFeed clarification={clarification} readOnly={!clarification.can_answer} />}
       </section>
     </div>
   );

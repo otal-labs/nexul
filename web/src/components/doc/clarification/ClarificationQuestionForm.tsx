@@ -9,10 +9,12 @@ interface ClarificationQuestionFormProps {
   prevKey: string | null;
   nextKey: string | null;
   onMove: (key: string | null) => void;
+  // Names this question while the person has typed an answer into it, and null once there is none.
+  onDraft: (key: string | null) => void;
 }
 
 // A doc question's open row: nothing picked up front, even the (Suggested) option; Next and Skip save, Clear makes it pending.
-export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey, onMove }: ClarificationQuestionFormProps) => {
+export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey, onMove, onDraft }: ClarificationQuestionFormProps) => {
   const answer = useAnswerDocQuestion(question.doc_id);
   const clear = useClearDocAnswer(question.doc_id);
 
@@ -28,6 +30,7 @@ export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey
       whyLabel="Why we're asking:"
       onBack={prevKey !== null ? () => onMove(prevKey) : undefined}
       onSubmit={submit}
+      onEdit={(drafted) => onDraft(drafted ? question.id : null)}
       onClear={() => clear.mutate(question.id)}
       busy={answer.isPending || clear.isPending}
     />

@@ -107,6 +107,8 @@ type Clarification struct {
 	// Running is a round being written now; Closed is the newest round closed, until another round reopens it.
 	Running bool `json:"running"`
 	Closed  bool `json:"closed"`
+	// CanAnswer is docs:write on this doc, through its role or a rule on the doc, which answering takes.
+	CanAnswer bool `json:"can_answer"`
 	// CanClose is docs:write plus plays:run on the Clarify play, which closing and the no-gaps signal take.
 	CanClose bool `json:"can_close"`
 }

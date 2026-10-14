@@ -404,7 +404,7 @@ describe("PlayRunDialog", () => {
     });
     const clarification = (questions: unknown[]) => ({
       rounds: [{ doc_id: "d-1", round: 1, questions: [question("old")] }, { doc_id: "d-1", round: 2, questions }],
-      running: false, closed: false, can_close: true,
+      running: false, closed: false, can_answer: true, can_close: true,
     });
 
     const renderClarify = (data: unknown) => {

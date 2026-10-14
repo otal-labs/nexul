@@ -252,6 +252,16 @@ Senior Developer, DevOps, Administrator) that the instance edits and adds to
 in Settings → Templates. The owner finishes setup without a computer, and
 Team shows how far each person got and who each invitation let in. ADR 0149.
 
+### Clarifying a doc
+
+A client writes what they need in a doc. "Clarify via AI" asks the gaps as
+rounds of question cards on the doc page and in the phone app, and anyone who
+can edit that doc, by role or by a rule on the doc alone, answers, skips, or
+adds a question of their own. Once a round finds no gaps, the answers are
+written into the doc, the developer closes it, and "To tickets via AI" cuts it
+into work. The people answering see only the questions, never the agent, and
+the doc is locked only while a round runs. ADR 0121.
+
 ---
 
 ## Now — improving what's built
@@ -285,11 +295,6 @@ history; the tunnel is deleted once the app has paired it. Setup gives each
 provider its own switch and run, and sets them up side by side; a provider
 switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).
-
-Planned: **clarifying a doc**. A client writes what they need in a doc;
-"Clarify via AI" asks the gaps as rounds of question cards on the doc
-page and in the phone app, the client answers, and once nothing is left
-the answers are written into the doc. The map is in `.scratch/doc-clarify/`.
 
 Planned: **projects before code**. The project wizard offers "No
 repository yet" and "Attach without deploying" as plain choices instead of a

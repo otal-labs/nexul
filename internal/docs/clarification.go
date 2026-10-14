@@ -51,7 +51,8 @@ func (s *Service) clarificationOf(ctx context.Context, d *Doc) (*Clarification, 
 	if err != nil {
 		return nil, err
 	}
-	c := &Clarification{Rounds: rounds, CanClose: s.canClose(ctx, d)}
+	canAnswer := s.can(ctx, d.ID, permissions.DocsWrite)
+	c := &Clarification{Rounds: rounds, CanAnswer: canAnswer, CanClose: canAnswer && s.canRunClarify(ctx, d)}
 	s.redact(ctx, d, c.CanClose, rounds...)
 	for _, r := range rounds {
 		c.Running = c.Running || r.Running
@@ -100,10 +101,11 @@ func (s *Service) redact(ctx context.Context, d *Doc, canClose bool, rounds ...*
 }
 
 func (s *Service) canClose(ctx context.Context, d *Doc) bool {
-	if s.clarify == nil || !s.can(ctx, d.ID, permissions.DocsWrite) {
-		return false
-	}
-	return s.clarify.CanRunClarify(ctx, actorID(ctx), d.ProjectID)
+	return s.can(ctx, d.ID, permissions.DocsWrite) && s.canRunClarify(ctx, d)
+}
+
+func (s *Service) canRunClarify(ctx context.Context, d *Doc) bool {
+	return s.clarify != nil && s.clarify.CanRunClarify(ctx, actorID(ctx), d.ProjectID)
 }
 
 // AnswerQuestion saves picked options and text, or a skip, as the answer to one of the doc's questions, replacing any

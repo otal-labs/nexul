@@ -35,7 +35,7 @@ const round = (n: number, questions: ClarificationQuestion[], extra: Partial<Cla
 
 const waiting: Clarification = {
   rounds: [round(1, [question("q1", 1, { selected: ["Email"], answered_at: "2026-10-01T01:00:00Z" }), question("q2", 1)])],
-  running: false, closed: false, can_close: false,
+  running: false, closed: false, can_answer: true, can_close: false,
 };
 
 const play = (id: string, key: string, label: string) => ({
@@ -68,13 +68,16 @@ const renderPanel = (held: string[], shown: Doc = doc) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData([getMeKey], { user: { id: "u-1", name: "Alice" } });
   client.setQueryData([getMyRoleKey, "ws-1"], { role_name: "Member", permissions: held });
-  return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <DocQuestionsPanel docId={shown.id} />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <DocQuestionsPanel docId={shown.id} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    ),
+    client,
+  };
 };
 
 beforeEach(() => {
@@ -144,13 +147,55 @@ describe("DocQuestionsPanel", () => {
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/docs/doc-1/clarification/questions/q1"));
   });
 
-  it("shows a reader without docs:write the rounds with nothing to open", async () => {
-    serve(waiting);
-    renderPanel(["docs:read"]);
+  it("shows someone who may not edit this doc the rounds with nothing to open, whatever their role holds", async () => {
+    serve({ ...waiting, can_answer: false });
+    renderPanel(client_);
 
     expect(await screen.findByText("Question q2?")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Question q2\?/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Anything else?")).not.toBeInTheDocument();
+  });
+
+  it("lets a member who may edit only this doc, through a rule on it, answer though their role cannot", async () => {
+    serve(waiting);
+    renderPanel(["docs:read"]);
+
+    expect(await screen.findByRole("radio", { name: "Email" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Anything else?")).toBeInTheDocument();
+  });
+
+  describe("when someone else answers the open question", () => {
+    const q1 = waiting.rounds[0]!.questions[0]!;
+    const thirdOf = (q2: Partial<ClarificationQuestion>, q3: Partial<ClarificationQuestion> = {}): Clarification => ({
+      ...waiting,
+      rounds: [round(1, [q1, question("q2", 1, q2), question("q3", 1, q3)])],
+    });
+
+    it("shows their answer in its row and opens the next question", async () => {
+      serve(thirdOf({}));
+      const { client } = renderPanel(client_);
+      expect(await screen.findByText("Question 2 of 3")).toBeInTheDocument();
+
+      serve(thirdOf({ text: "Customers" }));
+      await client.invalidateQueries();
+
+      expect(await screen.findByText("Question 3 of 3")).toBeInTheDocument();
+      expect(screen.queryByText("Question 2 of 3")).not.toBeInTheDocument();
+      expect(screen.getByText("Customers")).toBeInTheDocument();
+    });
+
+    it("leaves the question open for a person who has already picked an answer in it", async () => {
+      serve(thirdOf({}));
+      const { client } = renderPanel(client_);
+      await userEvent.setup().click(await screen.findByRole("radio", { name: "Email" }));
+
+      serve(thirdOf({ text: "Customers" }));
+      await client.invalidateQueries();
+
+      await waitFor(() => expect(screen.getByText("2 of 3 answered")).toBeInTheDocument());
+      expect(screen.getByText("Question 2 of 3")).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Email" })).toBeChecked();
+    });
   });
 
   it("tells a client more questions are on the way while a round runs, and a developer which round runs", async () => {

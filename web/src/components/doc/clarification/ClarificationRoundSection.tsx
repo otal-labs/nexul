@@ -16,11 +16,12 @@ interface ClarificationRoundSectionProps {
   open: boolean;
   onToggleFold: () => void;
   onMove: (key: string | null) => void;
+  onDraft: (key: string | null) => void;
   around: (key: string) => { prevKey: string | null; nextKey: string | null };
 }
 
 // One round as a foldable section of numbered rows, ending with its "Anything else?".
-export const ClarificationRoundSection = ({ round, number, current, readOnly, folded, open, onToggleFold, onMove, around }: ClarificationRoundSectionProps) => {
+export const ClarificationRoundSection = ({ round, number, current, readOnly, folded, open, onToggleFold, onMove, onDraft, around }: ClarificationRoundSectionProps) => {
   return (
     <div>
       <QuestionSection label={`Round ${number}`} meta={countLine(round.questions.map(questionRow))} folded={folded} onToggle={onToggleFold}>
@@ -38,6 +39,7 @@ export const ClarificationRoundSection = ({ round, number, current, readOnly, fo
                 question={question}
                 progress={`Question ${i + 1} of ${round.questions.length}`}
                 onMove={onMove}
+                onDraft={onDraft}
                 {...around(question.id)}
               />
             </QuestionChecklistRow>

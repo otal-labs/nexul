@@ -129,6 +129,18 @@ func TestIntegration_Clarification(t *testing.T) {
 		assert.NotNil(t, c.Rounds[1].NoGapsAt)
 	})
 
+	t.Run("can_answer follows the doc's own rules, whatever the role says, and agrees with answering", func(t *testing.T) {
+		require.NoError(t, f.store.Access.Set(ctx, "doc", f.doc, uReader, grant("docs:write"), nil))
+		require.NoError(t, f.store.Access.Set(ctx, "doc", f.doc, uEditor, nil, grant("docs:write")))
+		for user, want := range map[string]bool{uReader: true, uEditor: false} {
+			c, err := s.Clarification(as(user), f.doc)
+			require.NoError(t, err)
+			assert.Equal(t, want, c.CanAnswer, user)
+			_, err = s.AnswerQuestion(as(user), f.doc, qid, docs.Answer{Text: "Staff"})
+			assert.Equal(t, want, err == nil, user+" answers exactly when can_answer says so")
+		}
+	})
+
 	t.Run("live frames reach whoever reads the doc", func(t *testing.T) {
 		a := liveAudience{access: f.svc.accessSvc}
 		frame := docs.ClarificationAnswerEvent{Doc: docs.WatchedDoc{ID: f.doc, ProjectID: pGeneral}, Round: 1, QuestionID: qid, Question: "Who signs in?", AuthorID: uEditor}

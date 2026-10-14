@@ -36,11 +36,12 @@ export interface ClarificationRound {
   questions: ClarificationQuestion[];
 }
 
-// Mirrors docs.Clarification as the viewer sees it; can_close is docs:write plus plays:run on Clarify via AI.
+// Mirrors docs.Clarification as the viewer sees it; can_answer is docs:write on this doc, can_close adds plays:run on Clarify via AI.
 export interface Clarification {
   rounds: ClarificationRound[];
   running: boolean;
   closed: boolean;
+  can_answer: boolean;
   can_close: boolean;
 }
 

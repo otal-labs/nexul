@@ -13,6 +13,8 @@ interface QuestionFormProps {
   // The draft an unanswered row opens with.
   initialDraft?: AnswerValue | undefined;
   onBack?: (() => void) | undefined;
+  // Told after each change the person makes to the draft whether it now holds an answer.
+  onEdit?: ((drafted: boolean) => void) | undefined;
   // value null is a skip.
   onSubmit: (value: AnswerValue | null) => void;
   // Given, an answered or skipped row offers to make it pending again.
@@ -26,12 +28,17 @@ interface QuestionFormProps {
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next.
 export const QuestionForm = ({
-  row, progress, whyLabel, initialDraft, onBack, onSubmit, onClear, busy, drafted, note, multiline = false,
+  row, progress, whyLabel, initialDraft, onBack, onEdit, onSubmit, onClear, busy, drafted, note, multiline = false,
 }: QuestionFormProps) => {
   const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer) ?? initialDraft);
   const idPrefix = useId();
   const canNext = hasAnswer(draft) && !busy;
   const answered = row.answer !== undefined && (row.answer.skipped || hasAnswer(row.answer));
+
+  const edit = (value: AnswerValue) => {
+    setDraft(value);
+    onEdit?.(hasAnswer(value));
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement) || !canNext) return;
@@ -48,7 +55,7 @@ export const QuestionForm = ({
           {row.why}
         </p>
       )}
-      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={setDraft} drafted={drafted} note={note} multiline={multiline} />
+      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={edit} drafted={drafted} note={note} multiline={multiline} />
       <div className="mt-4 flex items-center justify-end gap-2">
         {onClear && answered && (
           <Button variant="ghost" size="sm" className="mr-auto" disabled={busy} onClick={onClear}>
