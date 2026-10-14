@@ -886,6 +886,9 @@ person; which projects they are In follows from those roles. The
 link expires after one or seven days and is not bound to a provider identity.
 Revoking it, or its roles or its maker's right to give them going away, ends it
 early; an accepted or ended link stays on record.
+It is only for someone with no account yet. An existing account that opens it
+is turned away, and the link stays unused for the person it was meant for.
+Adding an existing person to a workspace happens on Team.
 _Avoid_: Allowlist entry, invite code, join link
 
 **Account status**:

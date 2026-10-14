@@ -78,6 +78,9 @@ git history, and anything durable it decided is an ADR.
 - `.scratch/machine-permissions/` — each machine carries rules (See, Deploy to,
   Manage, Delete) and only the instance Owner holds the instance by right
   (ADR 0151); spec and build tickets 01–06.
+- `.scratch/invitations/` — invitations that explain themselves: role
+  descriptions, the invite page before and after sign-in, existing accounts
+  turned away. Spec and build tickets 01–05.
 - `.scratch/role-aware-ui/` — hide or lock actions a role can't take on every
   web and phone screen, and close the one-way doors. Map complete 2026-10-13
   with `spec.md`; build tickets 08–23. The five persona walks are in
