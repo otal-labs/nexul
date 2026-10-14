@@ -31,7 +31,7 @@ The end screen reads "You're set up" when everything is done. Otherwise it reads
 
 ## Welcome in the account menu
 
-The account menu is the name and picture at the bottom of the sidebar. While someone has Welcome steps, its first row is **Welcome**, with how many are left, and under it one row per step that isn't done; skipped ones say **Skipped**. Each row opens the wizard on that step. When every step is done the row shows the count instead, such as "3/3", and stays, so the wizard is always one click away.
+The account menu is the name and picture at the bottom of the sidebar. While someone has Welcome steps, its first row is **Welcome**, with how many are left, and under it one row per step that isn't done; skipped ones say **Skipped**. Each row opens the wizard on that step. When nothing is left to do, the row shows how many steps are done instead, such as "3/3", and stays, so the wizard is always one click away.
 
 A red dot on the picture means a step is still to do. Only steps left to do light it: a skipped step doesn't, and neither does a done one. **Your projects** doesn't light it at first either, because nobody can add themselves to a project. The dot clears by itself as steps get done, in every open tab.
 
