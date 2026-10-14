@@ -8,9 +8,12 @@ interface RoleDraftContextValue {
   steps: WelcomeStep[];
   loadedSteps: WelcomeStep[];
   setSteps: (steps: WelcomeStep[]) => void;
+  showLocked: boolean;
+  loadedShowLocked: boolean;
+  setShowLocked: (on: boolean) => void;
 }
 
-// The role dialog's held permissions and welcome steps, provided by the dialog so its tabs and rows edit them without threading.
+// The role dialog's held permissions, welcome steps and locked-actions switch, provided by the dialog so its tabs and rows edit them without threading.
 export const RoleDraftContext = createContext<RoleDraftContextValue | null>(null);
 
 export const useRoleDraft = (): RoleDraftContextValue => {

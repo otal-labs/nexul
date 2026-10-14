@@ -111,9 +111,9 @@ func newTeamFixture(t *testing.T) teamFixture {
 	accessSvc.SetInstanceAreas(nexul.ID, nil)
 	acme, err := svc.Create(ctx, "dana", "Acme")
 	require.NoError(t, err)
-	editor, err := rolesSvc.Create(ctx, nexul.ID, "admin", "Editor", permissions.SetOf(permissions.DocsWrite), nil)
+	editor, err := rolesSvc.Create(ctx, nexul.ID, "admin", "Editor", permissions.SetOf(permissions.DocsWrite), nil, false)
 	require.NoError(t, err)
-	viewer, err := rolesSvc.Create(ctx, acme.ID, "dana", "Viewer", permissions.SetOf(permissions.DocsRead), nil)
+	viewer, err := rolesSvc.Create(ctx, acme.ID, "dana", "Viewer", permissions.SetOf(permissions.DocsRead), nil, false)
 	require.NoError(t, err)
 	ownerID, err := svc.MemberRoleID(ctx, nexul.ID, "admin")
 	require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestIntegration_ListTeam_WithoutMembersWriteAnywhere_IsForbidden(t *testing
 func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t *testing.T) {
 	ctx := t.Context()
 	f := newTeamFixture(t)
-	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", permissions.SetOf(permissions.MembersWrite), nil)
+	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", permissions.SetOf(permissions.MembersWrite), nil, false)
 	require.NoError(t, err)
 	require.NoError(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "bob", manager.ID))
 	f.online["carol"], f.online["dana"] = true, true

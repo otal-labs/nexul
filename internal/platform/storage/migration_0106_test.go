@@ -36,13 +36,11 @@ INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token
 	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
-	dev, err := s.Roles.Get(t.Context(), "role-dev")
-	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.TicketsWrite), dev.Permissions)
-	assert.Empty(t, dev.WelcomeSteps)
-	owner, err := s.Roles.Get(t.Context(), "role-owner")
-	require.NoError(t, err)
-	assert.Empty(t, owner.WelcomeSteps, "the Owner role's steps live in code, never in its row")
+	devPerms, devSteps := storedRole(t, db, "role-dev")
+	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.TicketsWrite), devPerms)
+	assert.Empty(t, devSteps)
+	_, ownerSteps := storedRole(t, db, "role-owner")
+	assert.Empty(t, ownerSteps, "the Owner role's steps live in code, never in its row")
 
 	var records, enrolled int
 	require.NoError(t, db.QueryRow(`SELECT COUNT(*) FROM welcome_step_states`).Scan(&records))

@@ -43,7 +43,7 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   const [leaving, setLeaving] = useState(false);
 
   const duplicate = () =>
-    createRole.mutate({ name: copyName(role.name, roles.map((r) => r.name)), actions: role.permissions, welcome_steps: role.welcome_steps });
+    createRole.mutate({ name: copyName(role.name, roles.map((r) => r.name)), actions: role.permissions, welcome_steps: role.welcome_steps, show_locked_actions: role.show_locked_actions });
 
   const remove = async () => {
     const held = holders?.length ?? 0;

@@ -98,7 +98,7 @@ func newWorkspaceListCall(rolesErr error) func(context.Context, json.RawMessage)
 	rs := fakeRoles{err: rolesErr, byWorkspace: map[string][]*roles.Role{
 		"ws-1": {
 			{ID: "role-owner", WorkspaceID: "ws-1", Name: "Owner", IsOwnerRole: true},
-			{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: permissions.SetOf(permissions.DocsRead, permissions.RolesClone)},
+			{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: permissions.SetOf(permissions.DocsRead, permissions.RolesClone), ShowLockedActions: true},
 		},
 	}}
 	return WorkspaceTools(&ws, rs, &fakeLimits{err: apperrs.ErrForbidden}, &fakeAccounts{}, nil)[0].Call
@@ -155,7 +155,7 @@ func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {
 	assert.Equal(t, []tenancy.Person{{UserID: "u-1", Login: "LewisWelch94", DisplayName: "Lewis", AvatarURL: "https://avatars.example/1"}}, got.People)
 	assert.Equal(t, []roles.RoleResult{
 		{ID: "role-owner", WorkspaceID: "ws-1", Name: "Owner", IsOwnerRole: true, Permissions: []string{}},
-		{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: []string{"docs:read", "roles:clone"}},
+		{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: []string{"docs:read", "roles:clone"}, ShowLockedActions: true},
 	}, got.Roles)
 	assert.Equal(t, permissions.Catalog(), got.PermissionCatalog)
 	assert.Contains(t, got.PermissionCatalog, permissions.Info{Value: permissions.RolesClone, Label: "Clone roles to another workspace", Domain: "roles", Action: "clone", Area: permissions.AreaWorkspace})

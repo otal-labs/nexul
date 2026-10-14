@@ -15,7 +15,9 @@ type Role struct {
 	Permissions permissions.Set `json:"permissions"`
 	IsOwnerRole bool            `json:"is_owner_role"`
 	// WelcomeSteps are the Welcome wizard steps the role gives its holders, as welcomestep keys.
-	WelcomeSteps []string  `json:"welcome_steps"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	WelcomeSteps []string `json:"welcome_steps"`
+	// ShowLockedActions shows its holders an action they can't take dimmed with the reason, instead of leaving it out (ADR 0152).
+	ShowLockedActions bool      `json:"show_locked_actions"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }

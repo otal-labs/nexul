@@ -21,6 +21,8 @@ type TemplateBody struct {
 	Name         string          `json:"name"`
 	Permissions  permissions.Set `json:"permissions"`
 	WelcomeSteps []string        `json:"welcome_steps"`
+	// ShowLockedActions is the switch the copy starts with (ADR 0152).
+	ShowLockedActions bool `json:"show_locked_actions"`
 }
 
 // ShippedTemplate is one Template role Nexul ships, under its stable key.
@@ -38,16 +40,17 @@ func (b TemplateBody) JSON() string {
 // ParseTemplate reads a Template role's body, refusing a missing name, an action off the grid, or an unknown step.
 func ParseTemplate(body string) (TemplateBody, error) {
 	var raw struct {
-		Name         string   `json:"name"`
-		Permissions  []string `json:"permissions"`
-		WelcomeSteps []string `json:"welcome_steps"`
+		Name              string   `json:"name"`
+		Permissions       []string `json:"permissions"`
+		WelcomeSteps      []string `json:"welcome_steps"`
+		ShowLockedActions bool     `json:"show_locked_actions"`
 	}
 	dec := json.NewDecoder(strings.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&raw); err != nil {
-		return TemplateBody{}, fmt.Errorf(`%w: a role template is JSON {"name", "permissions", "welcome_steps"}: %v`, apperrs.ErrInvalid, err)
+		return TemplateBody{}, fmt.Errorf(`%w: a role template is JSON {"name", "permissions", "welcome_steps", "show_locked_actions"}: %v`, apperrs.ErrInvalid, err)
 	}
-	b := TemplateBody{Name: strings.TrimSpace(raw.Name)}
+	b := TemplateBody{Name: strings.TrimSpace(raw.Name), ShowLockedActions: raw.ShowLockedActions}
 	if b.Name == "" {
 		return TemplateBody{}, fmt.Errorf("%w: a role template needs a name", apperrs.ErrInvalid)
 	}
@@ -115,7 +118,7 @@ func (s *Service) SeedTemplateRoles(ctx context.Context, workspaceID string) err
 			continue
 		}
 		taken[strings.ToLower(t.Name)] = true
-		r := &Role{ID: ids.New(), WorkspaceID: workspaceID, Name: t.Name, Permissions: t.Permissions, WelcomeSteps: t.WelcomeSteps, CreatedAt: now, UpdatedAt: now}
+		r := &Role{ID: ids.New(), WorkspaceID: workspaceID, Name: t.Name, Permissions: t.Permissions, WelcomeSteps: t.WelcomeSteps, ShowLockedActions: t.ShowLockedActions, CreatedAt: now, UpdatedAt: now}
 		if err := s.repo.Create(ctx, r); err != nil {
 			return fmt.Errorf("copy template role %q into workspace %s: %w", t.Name, workspaceID, err)
 		}
@@ -149,7 +152,7 @@ func ShippedTemplates() []ShippedTemplate {
 			Permissions: set("tickets:read", "tickets:write", "docs:read", "docs:write", "docs:thread",
 				"attachments:read", "attachments:write", "memories:read", "repos:read", "reviews:read", "repositories:read",
 				"stacks:read", "stacks:logs", "deploys:read", "plays:read", "plays:run"),
-			WelcomeSteps: []string{welcomestep.Computer, welcomestep.Projects},
+			WelcomeSteps: []string{welcomestep.Computer, welcomestep.Projects}, ShowLockedActions: true,
 		}},
 		{"senior_developer", TemplateBody{
 			Name: "Senior Developer",
@@ -162,14 +165,14 @@ func ShippedTemplates() []ShippedTemplate {
 				"projects:read", "projects:write", "projects:create",
 				"plays:read", "plays:write", "plays:delete", "plays:run", "autoplays:read", "autoplays:write",
 				"dns:read", "topology:read"),
-			WelcomeSteps: []string{welcomestep.GitHub, welcomestep.Computer},
+			WelcomeSteps: []string{welcomestep.GitHub, welcomestep.Computer}, ShowLockedActions: true,
 		}},
 		{"devops", TemplateBody{
 			Name:         "DevOps",
 			Permissions:  set(devops...),
-			WelcomeSteps: []string{welcomestep.DeployServer},
+			WelcomeSteps: []string{welcomestep.DeployServer}, ShowLockedActions: true,
 		}},
-		{"administrator", TemplateBody{Name: "Administrator", Permissions: administrator(), WelcomeSteps: []string{welcomestep.GitHub}}},
+		{"administrator", TemplateBody{Name: "Administrator", Permissions: administrator(), WelcomeSteps: []string{welcomestep.GitHub}, ShowLockedActions: true}},
 	}
 }
 

@@ -358,7 +358,7 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 	existingNames, existing := workspaceRoles(t, f.svc, wsDefault)
 
 	f.setInstance(t, roles.TemplateKind, "client", `{"name":"Customer","permissions":["tickets:read"],"welcome_steps":["projects","phone"]}`)
-	added, err := f.tpl.Update(as(uTemplater), roles.TemplateKind, "", templates.Instance, `{"name":"Support","permissions":["tickets:read","chat:write"],"welcome_steps":["github"]}`)
+	added, err := f.tpl.Update(as(uTemplater), roles.TemplateKind, "", templates.Instance, `{"name":"Support","permissions":["tickets:read","chat:write"],"welcome_steps":["github"],"show_locked_actions":true}`)
 	require.NoError(t, err)
 	assert.True(t, added.Added)
 	assert.Equal(t, "Support", added.Name, "named from its body, not its generated key")
@@ -371,6 +371,9 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 		"Senior Developer": {"github", "computer"}, "DevOps": {"deploy_server"}, "Administrator": {"github"}, "Support": {"github"},
 	}, ticksOf(copies))
 	assert.Equal(t, grant("tickets:read", "chat:write"), copies["Support"].Permissions)
+	assert.Equal(t, map[string]bool{"Customer": false, "Junior Developer": true, "Support": true}, map[string]bool{
+		"Customer": copies["Customer"].ShowLockedActions, "Junior Developer": copies["Junior Developer"].ShowLockedActions, "Support": copies["Support"].ShowLockedActions,
+	}, "a copy starts with the switch its template holds")
 	assert.True(t, copies["Administrator"].Permissions.Has(permissions.RolesWrite))
 	assert.False(t, copies["Administrator"].Permissions.Has(permissions.WorkspacesCreate), "making a workspace stays with Owner")
 	assert.False(t, copies["Administrator"].Permissions.Has("workspaces:delete"), "removing a workspace stays with Owner")
@@ -427,4 +430,10 @@ func TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles(t *testing.T
 	names, byName := workspaceRoles(t, svc, wsDefault)
 	require.Equal(t, []string{"Owner", "Client", "Junior Developer", "Senior Developer", "DevOps", "Administrator"}, names)
 	assert.Equal(t, []string{"projects"}, byName["Client"].WelcomeSteps)
+	shown := map[string]bool{}
+	for name, r := range byName {
+		shown[name] = r.ShowLockedActions
+	}
+	assert.Equal(t, map[string]bool{"Owner": false, "Client": false, "Junior Developer": true, "Senior Developer": true, "DevOps": true, "Administrator": true}, shown,
+		"a new workspace shows locked actions to developers and above, not to clients")
 }

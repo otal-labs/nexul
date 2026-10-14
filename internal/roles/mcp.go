@@ -11,12 +11,13 @@ import (
 )
 
 type roleUpdateIn struct {
-	ID           string    `json:"id,omitempty" jsonschema:"The role to change, from workspace_list with the workspace's id. Omit to create a role, or to clone one with clone_from_id."`
-	WorkspaceID  string    `json:"workspace_id" jsonschema:"The workspace the role is in; with clone_from_id, the workspace to copy it into."`
-	Name         *string   `json:"name,omitempty" jsonschema:"The role's name, for example Reviewers. Required to create; omit to keep the current one."`
-	Permissions  *[]string `json:"permissions,omitempty" jsonschema:"The role's whole permission set as values from permission_catalog, for example [\"docs:read\",\"docs:write\"]; it replaces the current set and [] clears it. Omit to keep the current set."`
-	WelcomeSteps *[]string `json:"welcome_steps,omitempty" jsonschema:"The Welcome wizard steps the role gives its holders, from github, computer, projects, deploy_server and phone; it replaces the current list and [] clears it. A step added here is given again to everyone holding the role. Omit to keep the current list."`
-	CloneFromID  string    `json:"clone_from_id,omitempty" jsonschema:"The id of a custom role in another workspace to copy, name, permissions and welcome steps, into workspace_id instead of writing a new one."`
+	ID                string    `json:"id,omitempty" jsonschema:"The role to change, from workspace_list with the workspace's id. Omit to create a role, or to clone one with clone_from_id."`
+	WorkspaceID       string    `json:"workspace_id" jsonschema:"The workspace the role is in; with clone_from_id, the workspace to copy it into."`
+	Name              *string   `json:"name,omitempty" jsonschema:"The role's name, for example Reviewers. Required to create; omit to keep the current one."`
+	Permissions       *[]string `json:"permissions,omitempty" jsonschema:"The role's whole permission set as values from permission_catalog, for example [\"docs:read\",\"docs:write\"]; it replaces the current set and [] clears it. Omit to keep the current set."`
+	WelcomeSteps      *[]string `json:"welcome_steps,omitempty" jsonschema:"The Welcome wizard steps the role gives its holders, from github, computer, projects, deploy_server and phone; it replaces the current list and [] clears it. A step added here is given again to everyone holding the role. Omit to keep the current list."`
+	ShowLockedActions *bool     `json:"show_locked_actions,omitempty" jsonschema:"Whether holders of the role see an action they can't take dimmed with the reason, instead of not seeing it at all; off for a new role. Omit to keep the current setting."`
+	CloneFromID       string    `json:"clone_from_id,omitempty" jsonschema:"The id of a custom role in another workspace to copy, name, permissions, welcome steps and the show locked actions switch, into workspace_id instead of writing a new one."`
 }
 
 type roleDeleteIn struct {
@@ -24,14 +25,20 @@ type roleDeleteIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace the role is in."`
 }
 
+// sendsFields is whether the call carries any field of the role itself.
+func (in roleUpdateIn) sendsFields() bool {
+	return in.Name != nil || in.Permissions != nil || in.WelcomeSteps != nil || in.ShowLockedActions != nil
+}
+
 // RoleResult is a role as MCP tools return it: what an agent needs to assign, edit, or clone it.
 type RoleResult struct {
-	ID           string   `json:"id"`
-	WorkspaceID  string   `json:"workspace_id"`
-	Name         string   `json:"name"`
-	IsOwnerRole  bool     `json:"is_owner_role"`
-	Permissions  []string `json:"permissions"`
-	WelcomeSteps []string `json:"welcome_steps"`
+	ID                string   `json:"id"`
+	WorkspaceID       string   `json:"workspace_id"`
+	Name              string   `json:"name"`
+	IsOwnerRole       bool     `json:"is_owner_role"`
+	Permissions       []string `json:"permissions"`
+	WelcomeSteps      []string `json:"welcome_steps"`
+	ShowLockedActions bool     `json:"show_locked_actions"`
 }
 
 // ToRoleResult shapes a role for an MCP result.
@@ -40,7 +47,7 @@ func ToRoleResult(r *Role) RoleResult {
 	for _, a := range r.Permissions {
 		perms = append(perms, string(a))
 	}
-	return RoleResult{ID: r.ID, WorkspaceID: r.WorkspaceID, Name: r.Name, IsOwnerRole: r.IsOwnerRole, Permissions: perms, WelcomeSteps: r.WelcomeSteps}
+	return RoleResult{ID: r.ID, WorkspaceID: r.WorkspaceID, Name: r.Name, IsOwnerRole: r.IsOwnerRole, Permissions: perms, WelcomeSteps: r.WelcomeSteps, ShowLockedActions: r.ShowLockedActions}
 }
 
 type roleDeleted struct {
@@ -55,7 +62,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func roleUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("role_update", "Create, clone, or update role",
-		"Creates, clones, or changes a workspace role. Without id it creates a role in workspace_id from name, permissions and welcome_steps; "+
+		"Creates, clones, or changes a workspace role. Without id it creates a role in workspace_id from name, permissions, welcome_steps and show_locked_actions; "+
 			"with clone_from_id it copies that custom role from its own workspace into workspace_id, renamed to \"<name> (copy)\" when the name is taken; "+
 			"with id it changes only the fields you send. "+
 			"workspace_list with the workspace's id lists its roles and the permission_catalog of valid permissions, and the Owner role can't be edited or cloned. "+
@@ -77,8 +84,8 @@ func updateRole(ctx context.Context, s *Service, in roleUpdateIn) (*Role, error)
 		return nil, err
 	}
 	if in.CloneFromID != "" {
-		if in.ID != "" || in.Name != nil || in.Permissions != nil || in.WelcomeSteps != nil {
-			return nil, fmt.Errorf("%w: clone_from_id copies the source's name, permissions and welcome steps into workspace_id as a new role; omit id, name, permissions and welcome_steps, then change the copy with role_update and its id", apperrs.ErrInvalid)
+		if in.sendsFields() || in.ID != "" {
+			return nil, fmt.Errorf("%w: clone_from_id copies the source's name, permissions, welcome steps and show_locked_actions into workspace_id as a new role; omit id, name, permissions, welcome_steps and show_locked_actions, then change the copy with role_update and its id", apperrs.ErrInvalid)
 		}
 		return s.Clone(ctx, "", in.CloneFromID, in.WorkspaceID, actorID)
 	}
@@ -88,19 +95,19 @@ func updateRole(ctx context.Context, s *Service, in roleUpdateIn) (*Role, error)
 	}
 	steps := deref(in.WelcomeSteps, nil)
 	if in.ID == "" {
-		return s.Create(ctx, in.WorkspaceID, actorID, deref(in.Name, ""), perms, steps)
+		return s.Create(ctx, in.WorkspaceID, actorID, deref(in.Name, ""), perms, steps, deref(in.ShowLockedActions, false))
 	}
 	r, err := s.Get(ctx, in.WorkspaceID, in.ID)
 	if err != nil {
 		return nil, fmt.Errorf("%w (workspace_list with the workspace's id lists its roles)", err)
 	}
-	if in.Name == nil && in.Permissions == nil && in.WelcomeSteps == nil {
+	if !in.sendsFields() {
 		return r, nil
 	}
 	if in.Permissions == nil {
 		perms = r.Permissions
 	}
-	return s.Update(ctx, in.WorkspaceID, in.ID, actorID, deref(in.Name, r.Name), perms, steps)
+	return s.Update(ctx, in.WorkspaceID, in.ID, actorID, deref(in.Name, r.Name), perms, steps, in.ShowLockedActions)
 }
 
 func roleDeleteTool(s *Service) mcptool.Tool {

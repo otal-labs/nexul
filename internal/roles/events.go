@@ -14,4 +14,5 @@ type RoleEvent struct {
 	WorkspaceID       string   `json:"workspace_id"`
 	ActorID           string   `json:"actor_id,omitempty"`
 	WelcomeStepsAdded []string `json:"welcome_steps_added" jsonschema:"The Welcome wizard steps this save ticked that the role did not tick before; each is given again to everyone holding the role."`
+	ShowLockedActions bool     `json:"show_locked_actions" jsonschema:"Whether the role, as saved, shows its holders an action they can't take dimmed with the reason; false when the role went."`
 }

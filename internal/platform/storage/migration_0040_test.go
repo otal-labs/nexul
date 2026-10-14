@@ -24,7 +24,6 @@ INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at
 	require.NoError(t, err)
 	require.NoError(t, applyMigration(db, "0040_stacks_logs_permission", string(script)))
 	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
-	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	for id, want := range map[string]permissions.Set{
 		"role-ops":     permissions.SetOf(permissions.DeploysWrite, permissions.StacksRead, permissions.StacksWrite, permissions.StacksLogs),
@@ -32,8 +31,7 @@ INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at
 		"role-granted": permissions.SetOf(permissions.StacksLogs, permissions.StacksWrite),
 		"role-empty":   nil,
 	} {
-		role, err := s.Roles.Get(t.Context(), id)
-		require.NoError(t, err)
-		assert.Equal(t, want, role.Permissions, id)
+		perms, _ := storedRole(t, db, id)
+		assert.Equal(t, want, perms, id)
 	}
 }

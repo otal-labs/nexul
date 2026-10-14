@@ -61,6 +61,7 @@ const role = (overrides: Record<string, unknown> = {}) => ({
   name: "Editor",
   permissions: [],
   welcome_steps: [],
+  show_locked_actions: false,
   is_owner_role: false,
   created_at: "",
   updated_at: "",
@@ -164,6 +165,7 @@ describe("RoleSettingsSection", () => {
       name: "Support",
       actions: ["plays:read", "members:read", "roles:read", "projects:read", "projects:write"],
       welcome_steps: [],
+      show_locked_actions: false,
     });
     expect(toast.success).toHaveBeenCalledWith("Support created");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -196,7 +198,7 @@ describe("RoleSettingsSection", () => {
 
     await openMenu(user, "Editor", "Edit");
     await user.click(tab("Workspace"));
-    expect(rowNames().slice(1, 3)).toEqual([
+    expect(rowNames().slice(2, 4)).toEqual([
       "Create projectsA new project lists its creator and the roles they pick.",
       "Edit the workspace Interview templateChange the questions every interview in this workspace asks.",
     ]);
@@ -220,6 +222,7 @@ describe("RoleSettingsSection", () => {
       name: "Editor",
       actions: ["projects:create", "memories:template", "projects:access", "memories:read"],
       welcome_steps: [],
+      show_locked_actions: false,
     });
   });
 
@@ -257,6 +260,7 @@ describe("RoleSettingsSection", () => {
       name: "Auditor",
       actions: ["members:read"],
       welcome_steps: ["computer"],
+      show_locked_actions: false,
     });
   });
 
@@ -298,6 +302,7 @@ describe("RoleSettingsSection", () => {
       name: "Reviewer",
       actions: ["members:read", "members:write", "roles:read", "roles:write"],
       welcome_steps: [],
+      show_locked_actions: false,
     });
     expect(toast.success).toHaveBeenCalledWith("Reviewer saved");
   });
@@ -372,8 +377,8 @@ describe("RoleSettingsSection", () => {
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
-  it("duplicates a role under a free copy name, its welcome steps included", async () => {
-    mockRoles([ownerRole, role({ permissions: ["roles:read"], welcome_steps: ["github"] }), role({ id: "role-copy", name: "Editor (copy)" })]);
+  it("duplicates a role under a free copy name, its welcome steps and locked-actions switch included", async () => {
+    mockRoles([ownerRole, role({ permissions: ["roles:read"], welcome_steps: ["github"], show_locked_actions: true }), role({ id: "role-copy", name: "Editor (copy)" })]);
     mocks.post.mockResolvedValue({ data: role() });
     const user = userEvent.setup();
     renderSection();
@@ -384,7 +389,39 @@ describe("RoleSettingsSection", () => {
       name: "Editor (copy 2)",
       actions: ["roles:read"],
       welcome_steps: ["github"],
+      show_locked_actions: true,
     });
+  });
+
+  it("switches Show locked actions in the Workspace tab, marks it unsaved, and saves it with the rest of the role", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read"] })]);
+    mocks.patch.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(tab("Workspace"));
+    expect(ability("Show locked actions")).not.toBeChecked();
+    await user.click(ability("Show locked actions"));
+    expect(tab("Workspace")).toHaveAccessibleName(/unsaved changes/);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
+      name: "Editor",
+      actions: ["members:read"],
+      welcome_steps: [],
+      show_locked_actions: true,
+    });
+  });
+
+  it("opens a role that shows locked actions with the switch on", async () => {
+    mockRoles([ownerRole, role({ show_locked_actions: true })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(tab("Workspace"));
+    expect(ability("Show locked actions")).toBeChecked();
   });
 
   it("saves the steps ticked in the Welcome tab in the wizard's order, with the rest of the role", async () => {
@@ -407,6 +444,7 @@ describe("RoleSettingsSection", () => {
       name: "Editor",
       actions: ["members:read"],
       welcome_steps: ["github", "phone"],
+      show_locked_actions: false,
     });
   });
 
@@ -465,6 +503,7 @@ describe("RoleSettingsSection", () => {
       name: "Editor",
       actions: ["roles:read", "roles:clone"],
       welcome_steps: [],
+      show_locked_actions: false,
     });
   });
 });

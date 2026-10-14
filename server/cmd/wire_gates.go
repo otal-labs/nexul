@@ -215,6 +215,14 @@ func (g roleNameGate) IsOwnerRole(ctx context.Context, workspaceID, roleID strin
 	return r.IsOwnerRole, nil
 }
 
+func (g roleNameGate) ShowLockedActions(ctx context.Context, workspaceID, roleID string) (bool, error) {
+	r, err := g.svc.Get(ctx, workspaceID, roleID)
+	if err != nil {
+		return false, err
+	}
+	return r.ShowLockedActions, nil
+}
+
 func (g roleNameGate) RolePermissions(ctx context.Context, workspaceID, roleID string) (permissions.Set, error) {
 	r, err := g.svc.Get(ctx, workspaceID, roleID)
 	if err != nil {

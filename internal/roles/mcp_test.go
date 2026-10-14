@@ -75,6 +75,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"changing the Owner role's steps is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-owner-src","welcome_steps":[]}`, apperrs.ErrInvalid},
 		{"an unknown welcome step is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":["profile"]}`, apperrs.ErrInvalid},
 		{"clone with welcome steps is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","welcome_steps":[]}`, apperrs.ErrInvalid},
+		{"clone with the switch is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","show_locked_actions":true}`, apperrs.ErrInvalid},
 		{"delete without roles:write is forbidden", "u-plain", "role_delete", `{"workspace_id":"ws-src","id":"role-editors"}`, apperrs.ErrForbidden},
 		{"delete of a missing role is not found", "u-owner", "role_delete", `{"workspace_id":"ws-src","id":"ghost"}`, apperrs.ErrNotFound},
 		{"delete of the Owner role is invalid", "u-owner", "role_delete", `{"workspace_id":"ws-src","id":"role-owner-src"}`, apperrs.ErrInvalid},
@@ -93,7 +94,7 @@ func TestMCPTools_CloneErrorsSayWhatToOmit(t *testing.T) {
 	s, _ := newToolFixture(t)
 	_, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","name":"X"}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Contains(t, err.Error(), "omit id, name, permissions and welcome_steps")
+	assert.Contains(t, err.Error(), "omit id, name, permissions, welcome_steps and show_locked_actions")
 }
 
 func TestRoleUpdate_Creates(t *testing.T) {
@@ -151,6 +152,23 @@ func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 			assert.Equal(t, ToRoleResult(stored), got)
 		})
 	}
+}
+
+func TestRoleUpdate_ShowLockedActionsIsSetAloneAndOnCreate(t *testing.T) {
+	s, repo := newToolFixture(t)
+	created, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-src","name":"Developers","show_locked_actions":true}`)
+	require.NoError(t, err)
+	assert.True(t, created.(RoleResult).ShowLockedActions)
+
+	out, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-src","id":"role-editors","show_locked_actions":true}`)
+	require.NoError(t, err)
+	got := out.(RoleResult)
+	assert.True(t, got.ShowLockedActions)
+	assert.Equal(t, "Editors", got.Name, "the switch alone changes nothing else")
+	assert.Equal(t, []string{"docs:read", "memories:clone", "plays:run"}, got.Permissions)
+	stored, err := repo.Get(context.Background(), "role-editors")
+	require.NoError(t, err)
+	assert.True(t, stored.ShowLockedActions)
 }
 
 func TestRoleDelete_ReturnsWhatItDeleted(t *testing.T) {

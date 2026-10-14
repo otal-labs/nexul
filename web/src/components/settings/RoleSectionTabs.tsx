@@ -7,6 +7,7 @@ import { RoleWelcomeList } from "@/components/settings/RoleWelcomeList";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useRoleDraft } from "@/hooks/useRoleDraft";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { PermissionArea } from "@/models/Permission";
 import {
   ROLE_SECTIONS,
   WELCOME_TAB,
@@ -30,10 +31,12 @@ interface RoleSectionTabsProps {
 export const RoleSectionTabs = ({ tab, onTab, workspaceName }: RoleSectionTabsProps) => {
   const { data: catalog = [] } = useFetchPermissionCatalog();
   const workspace = useSelectedWorkspace();
-  const { actions, loaded, steps, loadedSteps } = useRoleDraft();
+  const { actions, loaded, steps, loadedSteps, showLocked, loadedShowLocked } = useRoleDraft();
   const sections = ROLE_SECTIONS.map((section) => {
     const domains = sectionDomains(catalog, section.area);
-    return { section, domains, tally: sectionTally(domains, actions), changed: changedIn(catalog, section.area, actions, loaded) };
+    return { section, domains, tally: sectionTally(domains, actions), changed:
+        changedIn(catalog, section.area, actions, loaded) || (section.area === PermissionArea.Workspace && showLocked !== loadedShowLocked),
+    };
   });
 
   return (

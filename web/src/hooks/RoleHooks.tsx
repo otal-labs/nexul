@@ -39,6 +39,7 @@ interface RoleInput {
   name: string;
   actions: string[];
   welcome_steps: WelcomeStep[];
+  show_locked_actions: boolean;
 }
 
 // `actions` must match the /api/permissions/catalog vocabulary exactly — unknowns drop silently server-side.

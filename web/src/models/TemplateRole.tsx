@@ -8,6 +8,7 @@ interface TemplateRoleBody {
   name: string;
   permissions: string[];
   welcome_steps: WelcomeStep[];
+  show_locked_actions: boolean;
 }
 
 const readBody = (body: string): Partial<TemplateRoleBody> => {
@@ -27,11 +28,12 @@ export const templateRole = (template: Template): Role => {
     name: body.name ?? template.name,
     permissions: body.permissions ?? [],
     welcome_steps: body.welcome_steps ?? [],
+    show_locked_actions: body.show_locked_actions ?? false,
     is_owner_role: false,
     created_at: "",
     updated_at: template.updated_at ?? "",
   };
 };
 
-export const templateRoleBody = (name: string, permissions: string[], welcomeSteps: WelcomeStep[]): string =>
-  JSON.stringify({ name, permissions, welcome_steps: welcomeSteps } satisfies TemplateRoleBody);
+export const templateRoleBody = (name: string, permissions: string[], welcomeSteps: WelcomeStep[], showLockedActions: boolean): string =>
+  JSON.stringify({ name, permissions, welcome_steps: welcomeSteps, show_locked_actions: showLockedActions } satisfies TemplateRoleBody);

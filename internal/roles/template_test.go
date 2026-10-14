@@ -24,9 +24,9 @@ func TestParseTemplate_RefusesWhatNoRoleCouldHold(t *testing.T) {
 		assert.ErrorIs(t, CheckTemplate(body), apperrs.ErrInvalid, name)
 	}
 
-	got, err := ParseTemplate(`{"name":" Support ","permissions":["tickets:write","tickets:read","tickets:read"],"welcome_steps":["projects","github"]}`)
+	got, err := ParseTemplate(`{"name":" Support ","permissions":["tickets:write","tickets:read","tickets:read"],"welcome_steps":["projects","github"],"show_locked_actions":true}`)
 	require.NoError(t, err)
-	assert.Equal(t, TemplateBody{Name: "Support", Permissions: permissions.SetOf("tickets:read", "tickets:write"), WelcomeSteps: []string{"github", "projects"}}, got)
+	assert.Equal(t, TemplateBody{Name: "Support", Permissions: permissions.SetOf("tickets:read", "tickets:write"), WelcomeSteps: []string{"github", "projects"}, ShowLockedActions: true}, got)
 }
 
 type fakeTemplateRoles struct {

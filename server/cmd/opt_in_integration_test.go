@@ -400,3 +400,27 @@ func TestIntegration_MeReadsEachProjectFromItsOwnList(t *testing.T) {
 	assert.Contains(t, owner.Permissions, "tickets:read")
 	assert.GreaterOrEqual(t, len(owner.Projects), 2, "the Owner is in every project")
 }
+
+// TestIntegration_MeShowsLockedActionsWhileARoleOfTheirsHasTheSwitchOn: /me follows the switch an Owner sets on a role,
+// through the real role gate, and the Owner role never carries it.
+func TestIntegration_MeShowsLockedActionsWhileARoleOfTheirsHasTheSwitchOn(t *testing.T) {
+	f := newPermFixture(t)
+	listedClient(t, f)
+	show := func(user string) bool {
+		me, err := f.svc.tenancySvc.MyAccess(as(user), wsDefault, user)
+		require.NoError(t, err)
+		return me.ShowLockedActions
+	}
+	assert.False(t, show(uClient), "a role starts with the switch off")
+
+	on, off := true, false
+	role, err := f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", grant("tickets:read", "chat:write"), nil, &on)
+	require.NoError(t, err)
+	assert.True(t, role.ShowLockedActions)
+	assert.True(t, show(uClient))
+	assert.False(t, show(uOwner), "Owner can do everything, so it has nothing locked")
+
+	_, err = f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", grant("tickets:read", "chat:write"), nil, &off)
+	require.NoError(t, err)
+	assert.False(t, show(uClient))
+}

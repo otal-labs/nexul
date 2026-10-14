@@ -661,13 +661,15 @@ The copy is never rewritten afterwards, so editing a template role changes
 only workspaces created after the edit. Five ship with Nexul (Client, Junior
 Developer, Senior Developer, DevOps and Administrator). They can be reset but
 not deleted. The instance can add its own template roles and delete them.
+Show locked actions is on in every shipped template role but Client.
 _Avoid_: Default role, preset, starter role
 
 **Locked action**:
 An action shown dimmed with the reason it is refused, such as "Your role
 can't deploy" or "Denied on stack api for bob", instead of being left out.
-Only people holding a Role with **Show locked actions** on see it; for
-everyone else an action they can't take is not there. A thing they can't read
+Only people holding a Role with **Show locked actions** on, a switch each
+role carries that is off for a new role, see it; for everyone else an action
+they can't take is not there. A thing they can't read
 is not found either way.
 _Avoid_: Disabled button, greyed out, read-only mode
 

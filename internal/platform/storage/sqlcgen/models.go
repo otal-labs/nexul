@@ -942,14 +942,15 @@ type ProjectRepo struct {
 }
 
 type Role struct {
-	ID           string
-	WorkspaceID  string
-	Name         string
-	IsOwnerRole  int64
-	CreatedAt    int64
-	UpdatedAt    int64
-	Permissions  string
-	WelcomeSteps string
+	ID                string
+	WorkspaceID       string
+	Name              string
+	IsOwnerRole       int64
+	CreatedAt         int64
+	UpdatedAt         int64
+	Permissions       string
+	WelcomeSteps      string
+	ShowLockedActions int64
 }
 
 type Runner struct {

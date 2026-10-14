@@ -38,6 +38,7 @@ interface RoleEdits {
   name?: string;
   actions?: string[];
   steps?: WelcomeStep[];
+  showLocked?: boolean;
   copiedFrom?: Role | undefined;
 }
 
@@ -58,8 +59,10 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
   const actions = edits.actions ?? loaded;
   const loadedSteps = role?.welcome_steps ?? NO_STEPS;
   const steps = edits.steps ?? loadedSteps;
+  const loadedShowLocked = role?.show_locked_actions ?? false;
+  const showLocked = edits.showLocked ?? loadedShowLocked;
   const named = name.trim().length > 0;
-  const dirty = name !== loadedName || !sameActions(actions, loaded) || !sameActions(steps, loadedSteps);
+  const dirty = name !== loadedName || !sameActions(actions, loaded) || !sameActions(steps, loadedSteps) || showLocked !== loadedShowLocked;
   const title = creating ? `New ${template ? "template " : ""}role` : `Edit ${role.name}`;
 
   const finish = () => {
@@ -82,9 +85,9 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
   };
 
   const save = () => {
-    const input = { name: name.trim(), actions, welcome_steps: steps };
+    const input = { name: name.trim(), actions, welcome_steps: steps, show_locked_actions: showLocked };
     if (template) {
-      saveTemplate.mutate({ kind: ROLE_TEMPLATE, key: template.key ?? "", body: templateRoleBody(input.name, actions, steps) }, { onSuccess: finish });
+      saveTemplate.mutate({ kind: ROLE_TEMPLATE, key: template.key ?? "", body: templateRoleBody(input.name, actions, steps, showLocked) }, { onSuccess: finish });
       return;
     }
     if (!role) {
@@ -101,6 +104,9 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
     steps,
     loadedSteps,
     setSteps: (next: WelcomeStep[]) => setEdits((current) => ({ ...current, steps: next })),
+    showLocked,
+    loadedShowLocked,
+    setShowLocked: (next: boolean) => setEdits((current) => ({ ...current, showLocked: next })),
   };
 
   return (
@@ -136,6 +142,7 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
                 copiedFrom: from,
                 actions: from?.permissions ?? NO_ACTIONS,
                 steps: from?.welcome_steps ?? NO_STEPS,
+                showLocked: from?.show_locked_actions ?? false,
               }))
             }
           />

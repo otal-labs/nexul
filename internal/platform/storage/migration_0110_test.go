@@ -38,7 +38,7 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 `)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db))
+	migrateUpTo(t, db, "0111") // 0111 adds the show_locked_actions field to the shipped developer Template roles, which its own test covers.
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ctx := t.Context()
 

@@ -43,9 +43,8 @@ INSERT INTO conversations (id, workspace_id, kind, name, created_by, created_at,
 		"role-reader":  permissions.SetOf(permissions.DocsRead),
 		"role-empty":   nil,
 	} {
-		role, err := s.Roles.Get(ctx, id)
-		require.NoError(t, err)
-		assert.Equal(t, want, role.Permissions, id)
+		perms, _ := storedRole(t, db, id)
+		assert.Equal(t, want, perms, id)
 	}
 
 	install, err := s.IntegrationInstalls.GetByID(ctx, "install-chat")

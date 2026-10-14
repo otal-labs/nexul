@@ -50,6 +50,8 @@ export interface MyWorkspaceInfo {
   projects?: { project_id: string; actions: string[] }[];
   // False until an Owner finishes the workspace's one-time access setup; a server from before it sends none.
   access_setup_finished?: boolean;
+  // True when any role the viewer holds shows an action they can't take dimmed with the reason (ADR 0152); a server from before it sends none.
+  show_locked_actions?: boolean;
 }
 
 // The one place client-side permission logic lives: a thin wrapper the server resolves, the client just reads.

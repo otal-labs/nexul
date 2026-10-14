@@ -341,11 +341,17 @@ type fakeRoleNameGate struct {
 	names   map[string]string
 	isOwner map[string]bool
 	perms   map[string]permissions.Set
-	err     error
+	// showLocked holds the roles whose switch is on.
+	showLocked map[string]bool
+	err        error
 }
 
 func newFakeRoleNameGate() *fakeRoleNameGate {
-	return &fakeRoleNameGate{names: map[string]string{}, isOwner: map[string]bool{}, perms: map[string]permissions.Set{}}
+	return &fakeRoleNameGate{names: map[string]string{}, isOwner: map[string]bool{}, perms: map[string]permissions.Set{}, showLocked: map[string]bool{}}
+}
+
+func (g *fakeRoleNameGate) ShowLockedActions(_ context.Context, _, roleID string) (bool, error) {
+	return g.showLocked[roleID], g.err
 }
 
 // RolePermissions is empty unless registered, so assigning an unregistered role grants nothing to check.
