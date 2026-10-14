@@ -16,16 +16,23 @@ interface ClarificationQuestionFormProps {
   prevKey: string | null;
   nextKey: string | null;
   onMove: (key: string | null) => void;
+  // Names this question while the person has typed an answer into it, and null once there is none.
+  onDraft: (key: string | null) => void;
 }
 
 // An open row's body: nothing picked up front, even the (Suggested) option; Next and Skip save, Clear makes it pending.
-export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey, onMove }: ClarificationQuestionFormProps) => {
+export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey, onMove, onDraft }: ClarificationQuestionFormProps) => {
   const answer = useAnswerDocQuestion(question.doc_id);
   const clear = useClearDocAnswer(question.doc_id);
   const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(question));
   const busy = answer.isPending || clear.isPending;
   const answered = question.skipped || hasAnswer(question);
   const failure = answer.error ?? clear.error;
+
+  const edit = (value: AnswerValue | undefined) => {
+    setDraft(value);
+    onDraft(hasAnswer(value) ? question.id : null);
+  };
 
   const submit = (value: AnswerValue | null) =>
     answer.mutate(
@@ -42,11 +49,11 @@ export const ClarificationQuestionForm = ({ question, progress, prevKey, nextKey
           {question.why}
         </Text>
       )}
-      <ClarificationOptions item={questionRow(question).item} draft={draft} onDraft={setDraft} />
+      <ClarificationOptions item={questionRow(question).item} draft={draft} onDraft={edit} />
       {failure && <Text role="alert" className="mt-2 text-sm leading-snug text-destructive">{errorMessage(failure)}</Text>}
       <View className="mt-3 flex-row flex-wrap items-center justify-end gap-x-1">
         {answered && (
-          <Button variant="ghost" size="sm" disabled={busy} onPress={() => clear.mutate(question.id, { onSuccess: () => setDraft(undefined) })} className="mr-auto">
+          <Button variant="ghost" size="sm" disabled={busy} onPress={() => clear.mutate(question.id, { onSuccess: () => edit(undefined) })} className="mr-auto">
             <Text>Clear answer</Text>
           </Button>
         )}

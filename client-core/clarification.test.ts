@@ -20,7 +20,7 @@ const round = (n: number, questions: ClarificationQuestion[], extra: Partial<Cla
 });
 
 const clarification = (rounds: ClarificationRound[], extra: Partial<Clarification> = {}): Clarification => ({
-  rounds, running: false, closed: false, can_close: true, ...extra,
+  rounds, running: false, closed: false, can_answer: true, can_close: true, ...extra,
 });
 
 // Round 2 found no gaps, so the server's round 3 is the second one that asked something.

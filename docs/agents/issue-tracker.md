@@ -57,10 +57,6 @@ git history, and anything durable it decided is an ADR.
   built and shipped; two tickets are left: 16, the owner's walkthrough on the
   nightly, and 17, the guide pages and glossary terms. Wire research in
   `research/`.
-- `.scratch/doc-clarify/` — "Clarify via AI": an agent asks a doc's gaps
-  as rounds of question cards on the doc page and in the phone app, the
-  client answers, and a round with no gaps left writes the doc. Wayfinder
-  map charted 2026-10-04; carries the build.
 - `.scratch/project-paths/` — starting a project without deploying it:
   "No repository yet" and "Attach without deploying" on the wizard's
   Repository step, the early Done screens, and the way back to deploying.
@@ -99,8 +95,8 @@ git history, and anything durable it decided is an ADR.
 ## History
 
 On 2026-10-14 the efforts whose tickets had all shipped were removed: LLM
-setup, integrations, plays, the phone app, ticket flow and the interview as
-questions.
+setup, integrations, plays, the phone app, ticket flow, the interview as
+questions and clarifying a doc.
 
 Before 2026-08-15 this repo tracked work as `docs/{ws,cus,dr}-XX.md` workstream
 documents with a dashboard in `orchestrator.md`, driven by three GitHub Actions

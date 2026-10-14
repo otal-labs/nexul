@@ -149,3 +149,10 @@ Answers live on the Interview page now, but the play still creates a project's
 (`GetOrCreateInterviewThread` in `internal/chat`), and the messages it collects
 are never shown. The T3 protocol 2 changes have merged, so the thread can go once
 the run no longer needs it for the session.
+
+## The clarification push notification is untested on a device
+
+The questions and round-answered notices reach the inbox once each on the web and the phone, but no one has
+checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
+round each push once, and that tapping one opens the doc on Questions.
+

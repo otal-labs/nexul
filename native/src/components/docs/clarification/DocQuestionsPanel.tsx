@@ -6,7 +6,6 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Text } from "@/components/ui/text";
 import { useFetchDocClarification } from "@/hooks/DocHooks";
-import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import type { Doc } from "@/models/Doc";
 
 interface DocQuestionsPanelProps {
@@ -16,7 +15,6 @@ interface DocQuestionsPanelProps {
 // The Questions side, in the body's place; a locked doc still takes answers, and a reader sees them read-only.
 export const DocQuestionsPanel = ({ doc }: DocQuestionsPanelProps) => {
   const { data: clarification, error, isPending } = useFetchDocClarification(doc.id);
-  const canWrite = useAreaAccess(doc.project_id)?.("editDocs") ?? false;
   return (
     <View className="px-5">
       {isPending && <LoadingDisplay message="Loading the questions" />}
@@ -29,7 +27,7 @@ export const DocQuestionsPanel = ({ doc }: DocQuestionsPanelProps) => {
           <View className="mt-1">
             <ClarificationStatusLine clarification={clarification} locked={doc.locked} />
           </View>
-          <ClarificationRoundsFeed clarification={clarification} readOnly={!canWrite} />
+          <ClarificationRoundsFeed clarification={clarification} readOnly={!clarification.can_answer} />
         </View>
       )}
     </View>

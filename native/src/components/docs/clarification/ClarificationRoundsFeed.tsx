@@ -1,5 +1,5 @@
 import { askedRounds, questionRow, startsFolded, takesAnythingElse, type Clarification, type ClarificationRound } from "@nexul/client-core/clarification";
-import { firstPendingKey, keysAround } from "@nexul/client-core/questionChecklist";
+import { firstPendingKey, followOpenKey, keysAround, openRow, type OpenRow } from "@nexul/client-core/questionChecklist";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -15,19 +15,20 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
   const rounds = askedRounds(clarification);
   const rows = rounds.flatMap((r) => r.questions.map(questionRow));
   const newest = rounds.at(-1);
-  // Chosen once, so someone else's answer arriving live never moves the row this person is in.
-  const [openKey, setOpenKey] = useState<string | null>(() => firstPendingKey(rows));
+  const [open, setOpen] = useState<OpenRow>(() => openRow(rows, firstPendingKey(rows)));
+  const [draftKey, setDraftKey] = useState<string | null>(null);
   const [seenRound, setSeenRound] = useState(newest?.round);
   const [folds, setFolds] = useState<Record<number, boolean>>({});
   const locked = readOnly || clarification.closed;
   const arrived = newest !== undefined && newest.round !== seenRound;
-  const opened = arrived ? firstPendingKey(newest.questions.map(questionRow)) : openKey;
+  const opened = arrived ? firstPendingKey(newest.questions.map(questionRow)) : followOpenKey(rows, open, draftKey);
   const current = locked ? null : opened;
 
   const folded = (r: ClarificationRound) => folds[r.round] ?? startsFolded(clarification, r, current);
 
   const move = (key: string | null) => {
-    setOpenKey(key);
+    setOpen(openRow(rows, key));
+    setDraftKey(null);
     setSeenRound(newest?.round);
     const round = rounds.find((r) => r.questions.some((q) => q.id === key));
     if (round) setFolds((f) => ({ ...f, [round.round]: false }));
@@ -46,6 +47,7 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
           open={!locked && takesAnythingElse(clarification, round)}
           onToggleFold={() => setFolds((f) => ({ ...f, [round.round]: !folded(round) }))}
           onMove={move}
+          onDraft={setDraftKey}
           around={(key) => keysAround(rows, key)}
         />
       ))}

@@ -58,7 +58,7 @@ const flushConnect = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
 const writer = ["docs:read", "docs:write"];
 
-const noClarification = { rounds: [], running: false, closed: false, can_close: false };
+const noClarification = { rounds: [], running: false, closed: false, can_answer: true, can_close: false };
 
 const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -420,7 +420,7 @@ describe("DocDetail", () => {
     const clarification = {
       rounds: [{ doc_id: "doc-1", round: 1, started_by: "u-2", trail_id: "tr-1", started_at: "", running: false,
         anything_else: "", anything_else_reply: "", questions: [question] }],
-      running: false, closed: false, can_close: false,
+      running: false, closed: false, can_answer: true, can_close: false,
     };
     const defaultGet = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation(async (url: string) =>

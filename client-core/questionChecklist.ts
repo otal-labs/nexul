@@ -54,6 +54,26 @@ export const nextPendingKey = (rows: ChecklistRow[], key: string): string | null
   return firstPendingKey(ordered);
 };
 
+// The row a person opened, and whether it was still unanswered when they did.
+export interface OpenRow {
+  key: string | null;
+  waiting: boolean;
+}
+
+export const openRow = (rows: ChecklistRow[], key: string | null): OpenRow => ({
+  key,
+  waiting: rows.some((r) => r.key === key && rowStatus(r) === "pending"),
+});
+
+// The row to show open: one opened unanswered and since answered by someone else gives way to the next, unless typed in (draftKey).
+export const followOpenKey = (rows: ChecklistRow[], open: OpenRow, draftKey: string | null): string | null => {
+  if (draftKey !== null) return draftKey;
+  if (open.key === null || !open.waiting) return open.key;
+  const row = rows.find((r) => r.key === open.key);
+  if (!row || rowStatus(row) === "pending") return open.key;
+  return nextPendingKey(rows, open.key);
+};
+
 export const answerValue = (answer: ChecklistAnswer | undefined): AnswerValue | undefined => {
   if (!answer || answer.skipped) return undefined;
   return { selected: answer.selected, text: answer.text };
