@@ -128,10 +128,10 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	}
 
 	assert.True(t, reaches(uReader, ticketFrame))
-	_, err = s.rolesSvc.Update(as(uOwner), wsDefault, "role-reader", uOwner, "Reader", grant("docs:read"), nil, nil)
+	_, err = s.rolesSvc.Update(as(uOwner), wsDefault, "role-reader", uOwner, "Reader", nil, grant("docs:read"), nil, nil)
 	require.NoError(t, err)
 	assert.False(t, reaches(uReader, ticketFrame), "a role losing tickets:read")
-	_, err = s.rolesSvc.Update(as(uOwner), wsDefault, "role-reader", uOwner, "Reader", grant("tickets:read", "docs:read"), nil, nil)
+	_, err = s.rolesSvc.Update(as(uOwner), wsDefault, "role-reader", uOwner, "Reader", nil, grant("tickets:read", "docs:read"), nil, nil)
 	require.NoError(t, err)
 	assert.True(t, reaches(uReader, ticketFrame), "the role given it back")
 	require.NoError(t, s.tenancySvc.RemoveMember(as(uOwner), uOwner, wsDefault, uReader))

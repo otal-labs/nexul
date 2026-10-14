@@ -59,6 +59,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"missing workspace_id is invalid", "u-owner", "role_update", `{"name":"X"}`, apperrs.ErrInvalid},
 		{"an unknown permission is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","name":"X","permissions":["docs:fly"]}`, apperrs.ErrInvalid},
 		{"create without a name is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src"}`, apperrs.ErrInvalid},
+		{"clone with a description is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","description":"X"}`, apperrs.ErrInvalid},
 		{"clone with a name is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","name":"X"}`, apperrs.ErrInvalid},
 		{"clone with permissions is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","permissions":[]}`, apperrs.ErrInvalid},
 		{"clone with an id is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","id":"role-editors"}`, apperrs.ErrInvalid},
@@ -94,15 +95,16 @@ func TestMCPTools_CloneErrorsSayWhatToOmit(t *testing.T) {
 	s, _ := newToolFixture(t)
 	_, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","name":"X"}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Contains(t, err.Error(), "omit id, name, permissions, welcome_steps and show_locked_actions")
+	assert.Contains(t, err.Error(), "omit id, name, description, permissions, welcome_steps and show_locked_actions")
 }
 
 func TestRoleUpdate_Creates(t *testing.T) {
 	s, repo := newToolFixture(t)
-	out, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-src","name":"Reviewers","permissions":["docs:write","docs:read"]}`)
+	out, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-src","name":"Reviewers","description":"Reviews the docs.","permissions":["docs:write","docs:read"]}`)
 	require.NoError(t, err)
 	got := out.(RoleResult)
 	assert.Equal(t, "Reviewers", got.Name)
+	assert.Equal(t, "Reviews the docs.", got.Description)
 	assert.Equal(t, "ws-src", got.WorkspaceID)
 	assert.False(t, got.IsOwnerRole)
 	assert.Equal(t, []string{"docs:read", "docs:write"}, got.Permissions)
@@ -128,15 +130,18 @@ func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 		name      string
 		args      string
 		wantName  string
+		wantDesc  string
 		wantPerms []string
 		wantSteps []string
 	}{
-		{"name only keeps permissions and steps", `{"workspace_id":"ws-src","id":"role-editors","name":"Writers"}`, "Writers", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
-		{"permissions only keeps the name", `{"workspace_id":"ws-src","id":"role-editors","permissions":["roles:clone"]}`, "Editors", []string{"roles:clone"}, []string{"computer"}},
-		{"an empty permission list clears them", `{"workspace_id":"ws-src","id":"role-editors","permissions":[]}`, "Editors", []string{}, []string{"computer"}},
-		{"steps only keeps the rest", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":["phone","github"]}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{"github", "phone"}},
-		{"an empty step list clears them", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":[]}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{}},
-		{"nothing sent changes nothing", `{"workspace_id":"ws-src","id":"role-editors"}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
+		{"name only keeps the description, permissions and steps", `{"workspace_id":"ws-src","id":"role-editors","name":"Writers"}`, "Writers", "Writes the docs.", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
+		{"permissions only keeps the name", `{"workspace_id":"ws-src","id":"role-editors","permissions":["roles:clone"]}`, "Editors", "Writes the docs.", []string{"roles:clone"}, []string{"computer"}},
+		{"an empty permission list clears them", `{"workspace_id":"ws-src","id":"role-editors","permissions":[]}`, "Editors", "Writes the docs.", []string{}, []string{"computer"}},
+		{"steps only keeps the rest", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":["phone","github"]}`, "Editors", "Writes the docs.", []string{"docs:read", "memories:clone", "plays:run"}, []string{"github", "phone"}},
+		{"an empty step list clears them", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":[]}`, "Editors", "Writes the docs.", []string{"docs:read", "memories:clone", "plays:run"}, []string{}},
+		{"description only replaces it, trimmed", `{"workspace_id":"ws-src","id":"role-editors","description":" Reviews the docs. "}`, "Editors", "Reviews the docs.", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
+		{"an empty description clears it", `{"workspace_id":"ws-src","id":"role-editors","description":""}`, "Editors", "", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
+		{"nothing sent changes nothing", `{"workspace_id":"ws-src","id":"role-editors"}`, "Editors", "Writes the docs.", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,6 +150,7 @@ func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 			require.NoError(t, err)
 			got := out.(RoleResult)
 			assert.Equal(t, tt.wantName, got.Name)
+			assert.Equal(t, tt.wantDesc, got.Description)
 			assert.Equal(t, tt.wantPerms, got.Permissions)
 			assert.Equal(t, tt.wantSteps, got.WelcomeSteps)
 			stored, err := repo.Get(context.Background(), "role-editors")

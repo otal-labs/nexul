@@ -70,7 +70,7 @@ func withOwnerSteps(r *Role) *Role {
 
 // Create makes a new custom role in workspaceID; actorUserID must hold roles:write or the Owner bypass. A welcome step
 // and the show locked actions switch give no power, so they need nothing more.
-func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name string, perms permissions.Set, steps []string, showLockedActions bool) (*Role, error) {
+func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name, description string, perms permissions.Set, steps []string, showLockedActions bool) (*Role, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	name = strings.TrimSpace(name)
 	if workspaceID == "" {
@@ -79,7 +79,11 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 	if name == "" {
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
 	}
-	steps, err := welcomestep.Parse(steps)
+	description, err := checkDescription(description)
+	if err != nil {
+		return nil, err
+	}
+	steps, err = welcomestep.Parse(steps)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +98,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 		ID:                ids.New(),
 		WorkspaceID:       workspaceID,
 		Name:              name,
+		Description:       description,
 		Permissions:       perms,
 		WelcomeSteps:      steps,
 		ShowLockedActions: showLockedActions,
@@ -161,13 +166,20 @@ func (s *Service) requireMember(ctx context.Context, workspaceID, actorUserID st
 	return nil
 }
 
-// Update renames a custom role and replaces its permissions and welcome steps, nil steps keeping the ones it has, and
-// sets the show locked actions switch unless it is nil; the Owner role can't be renamed or edited. The steps the save
-// adds are named on role.updated, which gives them again.
-func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set, steps []string, showLockedActions *bool) (*Role, error) {
+// Update renames a custom role and replaces its permissions and welcome steps, a nil description or nil steps keeping
+// what it has, and sets the show locked actions switch unless it is nil; the Owner role can't be renamed or edited. The
+// steps the save adds are named on role.updated, which gives them again.
+func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, description *string, perms permissions.Set, steps []string, showLockedActions *bool) (*Role, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
+	}
+	if description != nil {
+		checked, err := checkDescription(*description)
+		if err != nil {
+			return nil, err
+		}
+		description = &checked
 	}
 	steps, err := welcomestep.Parse(steps)
 	if err != nil {
@@ -192,6 +204,9 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 		added = welcomestep.Added(r.WelcomeSteps, steps)
 		r.WelcomeSteps = steps
 	}
+	if description != nil {
+		r.Description = *description
+	}
 	if showLockedActions != nil {
 		r.ShowLockedActions = *showLockedActions
 	}
@@ -199,7 +214,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 	r.Permissions = perms
 	r.UpdatedAt = s.now().UTC()
 	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{
-		RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, WelcomeStepsAdded: added, ShowLockedActions: r.ShowLockedActions,
+		RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, Description: r.Description, WelcomeStepsAdded: added, ShowLockedActions: r.ShowLockedActions,
 	}}
 	if err := s.repo.Update(ctx, r, event); err != nil {
 		return nil, fmt.Errorf("update role %s: %w", roleID, err)
@@ -224,7 +239,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID s
 	if err != nil {
 		return fmt.Errorf("list holders of role %s: %w", roleID, err)
 	}
-	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID}}
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, Description: r.Description}}
 	if err := s.repo.Delete(ctx, roleID, append(holders, event)...); err != nil {
 		return fmt.Errorf("delete role %s: %w", roleID, err)
 	}
@@ -268,6 +283,7 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 		ID:                ids.New(),
 		WorkspaceID:       targetWorkspaceID,
 		Name:              freeName(source.Name, taken),
+		Description:       source.Description,
 		Permissions:       permissions.SetOf(source.Permissions...),
 		WelcomeSteps:      slices.Clone(source.WelcomeSteps),
 		ShowLockedActions: source.ShowLockedActions,

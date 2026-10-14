@@ -26,6 +26,7 @@ INSERT INTO instance_templates (kind, key, body, updated_by, updated_at) VALUES
 	require.NoError(t, err)
 
 	migrateUpTo(t, db, "0112")
+	withRoleDescription(t, db)
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	for _, id := range []string{"role-owner", "role-devops"} {

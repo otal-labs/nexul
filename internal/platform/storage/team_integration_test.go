@@ -111,9 +111,9 @@ func newTeamFixture(t *testing.T) teamFixture {
 	accessSvc.SetInstanceAreas(nexul.ID, nil)
 	acme, err := svc.Create(ctx, "dana", "Acme")
 	require.NoError(t, err)
-	editor, err := rolesSvc.Create(ctx, nexul.ID, "admin", "Editor", permissions.SetOf(permissions.DocsWrite), nil, false)
+	editor, err := rolesSvc.Create(ctx, nexul.ID, "admin", "Editor", "", permissions.SetOf(permissions.DocsWrite), nil, false)
 	require.NoError(t, err)
-	viewer, err := rolesSvc.Create(ctx, acme.ID, "dana", "Viewer", permissions.SetOf(permissions.DocsRead), nil, false)
+	viewer, err := rolesSvc.Create(ctx, acme.ID, "dana", "Viewer", "Reads the docs.", permissions.SetOf(permissions.DocsRead), nil, false)
 	require.NoError(t, err)
 	ownerID, err := svc.MemberRoleID(ctx, nexul.ID, "admin")
 	require.NoError(t, err)
@@ -160,6 +160,7 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	require.Len(t, acmeRoles, 2)
 	assert.True(t, acmeRoles[0].IsOwner, "the Owner role is listed first")
 	assert.Equal(t, "Viewer", acmeRoles[1].Name)
+	assert.Equal(t, "Reads the docs.", acmeRoles[1].Description, "a role picker shows what each role does")
 
 	bob := personByLogin(t, team, "bob")
 	require.Len(t, bob.Workspaces, 1)
@@ -174,6 +175,9 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	held := map[string]string{}
 	for _, m := range admin.Workspaces {
 		held[m.WorkspaceName] = m.RoleName
+		if m.WorkspaceName == "Acme" {
+			assert.Equal(t, "Reads the docs.", m.Roles[0].Description)
+		}
 	}
 	assert.Equal(t, map[string]string{"Nexul": "Owner", "Acme": "Viewer"}, held)
 	assert.True(t, admin.Workspaces[0].IsOwner || admin.Workspaces[1].IsOwner)
@@ -188,7 +192,7 @@ func TestIntegration_ListTeam_WithoutMembersWriteAnywhere_IsForbidden(t *testing
 func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t *testing.T) {
 	ctx := t.Context()
 	f := newTeamFixture(t)
-	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", permissions.SetOf(permissions.MembersWrite), nil, false)
+	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", "", permissions.SetOf(permissions.MembersWrite), nil, false)
 	require.NoError(t, err)
 	require.NoError(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "bob", manager.ID))
 	f.online["carol"], f.online["dana"] = true, true

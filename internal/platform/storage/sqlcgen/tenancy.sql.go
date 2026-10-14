@@ -402,7 +402,7 @@ func (q *Queries) ListProjectRoleIDs(ctx context.Context, projectID string) ([]s
 }
 
 const listTeamMemberships = `-- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.description AS role_description, r.is_owner_role
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
@@ -411,12 +411,13 @@ ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.
 `
 
 type ListTeamMembershipsRow struct {
-	UserID        string
-	WorkspaceID   string
-	WorkspaceName string
-	RoleID        sql.NullString
-	RoleName      sql.NullString
-	IsOwnerRole   sql.NullInt64
+	UserID          string
+	WorkspaceID     string
+	WorkspaceName   string
+	RoleID          sql.NullString
+	RoleName        sql.NullString
+	RoleDescription sql.NullString
+	IsOwnerRole     sql.NullInt64
 }
 
 func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembershipsRow, error) {
@@ -434,6 +435,7 @@ func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembership
 			&i.WorkspaceName,
 			&i.RoleID,
 			&i.RoleName,
+			&i.RoleDescription,
 			&i.IsOwnerRole,
 		); err != nil {
 			return nil, err
@@ -450,13 +452,14 @@ func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembership
 }
 
 const listTeamRoles = `-- name: ListTeamRoles :many
-SELECT id, workspace_id, name, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id
+SELECT id, workspace_id, name, description, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id
 `
 
 type ListTeamRolesRow struct {
 	ID          string
 	WorkspaceID string
 	Name        string
+	Description string
 	IsOwnerRole int64
 }
 
@@ -473,6 +476,7 @@ func (q *Queries) ListTeamRoles(ctx context.Context) ([]ListTeamRolesRow, error)
 			&i.ID,
 			&i.WorkspaceID,
 			&i.Name,
+			&i.Description,
 			&i.IsOwnerRole,
 		); err != nil {
 			return nil, err

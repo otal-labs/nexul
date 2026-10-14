@@ -34,8 +34,10 @@ func NewHandler(svc *Service) *Handler {
 }
 
 type roleRequest struct {
-	Name    string   `json:"name"`
-	Actions []string `json:"actions"`
+	Name string `json:"name"`
+	// Description left out keeps a role's description, so a client from before it never clears one.
+	Description *string  `json:"description"`
+	Actions     []string `json:"actions"`
 	// WelcomeSteps left out keeps a role's steps, so a client from before them never clears any.
 	WelcomeSteps []string `json:"welcome_steps"`
 	// ShowLockedActions left out keeps a role's switch (off for a new role), so a client from before it never clears it.
@@ -73,7 +75,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	role, err := h.svc.Create(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()), req.Name, setFromActions(req.Actions), req.WelcomeSteps, deref(req.ShowLockedActions, false))
+	role, err := h.svc.Create(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()), req.Name, deref(req.Description, ""), setFromActions(req.Actions), req.WelcomeSteps, deref(req.ShowLockedActions, false))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -96,7 +98,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	role, err := h.svc.Update(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context()), req.Name, setFromActions(req.Actions), req.WelcomeSteps, req.ShowLockedActions)
+	role, err := h.svc.Update(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context()), req.Name, req.Description, setFromActions(req.Actions), req.WelcomeSteps, req.ShowLockedActions)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

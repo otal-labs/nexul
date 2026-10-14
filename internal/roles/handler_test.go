@@ -155,6 +155,32 @@ func TestHandler_Update(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
 		assert.Equal(t, []string{"phone"}, r.WelcomeSteps)
 	})
+	t.Run("a request without description keeps the role's, and one over 140 characters is refused", func(t *testing.T) {
+		h, repo, members := newTestHandler(t)
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-dev", WorkspaceID: "ws-1", Name: "Dev", Description: "Works tickets."}))
+		patch := func(body string) (int, Role) {
+			rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/roles/role-dev", body, "u-owner")
+			stored, err := repo.Get(context.Background(), "role-dev")
+			require.NoError(t, err)
+			return rec.Code, *stored
+		}
+
+		code, stored := patch(`{"name":"Developer","actions":[]}`)
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, "Works tickets.", stored.Description)
+		code, stored = patch(`{"name":"Developer","actions":[],"description":"` + strings.Repeat("a", 141) + `"}`)
+		assert.Equal(t, http.StatusBadRequest, code)
+		assert.Equal(t, "Works tickets.", stored.Description, "a refused save changes nothing")
+		// The cap counts characters, not bytes, so a description in any script gets the same 140.
+		umlauts := strings.Repeat("ü", 140)
+		code, stored = patch(`{"name":"Developer","actions":[],"description":"` + umlauts + `"}`)
+		assert.Equal(t, http.StatusOK, code)
+		assert.Equal(t, umlauts, stored.Description)
+		code, stored = patch(`{"name":"Developer","actions":[],"description":""}`)
+		assert.Equal(t, http.StatusOK, code)
+		assert.Empty(t, stored.Description)
+	})
 	t.Run("owner role can't be renamed", func(t *testing.T) {
 		h, repo, members := newTestHandler(t)
 		seedOwner(t, repo, members, "ws-1", "u-owner")

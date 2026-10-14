@@ -666,7 +666,8 @@ _Avoid_: Onboarding, getting started, first-login wizard
 
 **Template role**:
 A Role kept as an Instance template. A new workspace starts with a copy of
-each one beside its Owner role, including the Welcome wizard steps it ticks.
+each one beside its Owner role, including its one-line description and the
+Welcome wizard steps it ticks.
 The copy is never rewritten afterwards, so editing a template role changes
 only workspaces created after the edit. Five ship with Nexul (Client, Junior
 Developer, Senior Developer, DevOps and Administrator). They can be reset but

@@ -6,6 +6,7 @@ import type { Template } from "@/models/Template";
 // Mirrors internal/roles/template.go: a Template role's body, the JSON each new workspace copies into a role of its own.
 interface TemplateRoleBody {
   name: string;
+  description: string;
   permissions: string[];
   welcome_steps: WelcomeStep[];
   show_locked_actions: boolean;
@@ -26,6 +27,7 @@ export const templateRole = (template: Template): Role => {
     id: template.key,
     workspace_id: "",
     name: body.name ?? template.name,
+    description: body.description ?? "",
     permissions: body.permissions ?? [],
     welcome_steps: body.welcome_steps ?? [],
     show_locked_actions: body.show_locked_actions ?? false,
@@ -35,5 +37,11 @@ export const templateRole = (template: Template): Role => {
   };
 };
 
-export const templateRoleBody = (name: string, permissions: string[], welcomeSteps: WelcomeStep[], showLockedActions: boolean): string =>
-  JSON.stringify({ name, permissions, welcome_steps: welcomeSteps, show_locked_actions: showLockedActions } satisfies TemplateRoleBody);
+export const templateRoleBody = (
+  name: string,
+  description: string,
+  permissions: string[],
+  welcomeSteps: WelcomeStep[],
+  showLockedActions: boolean,
+): string =>
+  JSON.stringify({ name, description, permissions, welcome_steps: welcomeSteps, show_locked_actions: showLockedActions } satisfies TemplateRoleBody);
