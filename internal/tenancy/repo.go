@@ -64,6 +64,8 @@ type InvitationRepo interface {
 	History(ctx context.Context, actorID string, since, now time.Time) (accepted, ended []*Invitation, err error)
 	Revoke(ctx context.Context, actorID, invitationID string, now time.Time, events ...eventbus.OutboxEvent) error
 	Redeem(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*InvitationAdmission, error)
+	// ProjectsListingRoles is the projects whose rules let any of roleIDs in, each once, in their list order.
+	ProjectsListingRoles(ctx context.Context, roleIDs []string) ([]InvitationProject, error)
 }
 
 // RoleGate creates a new workspace's Owner role without tenancy importing roles (ADR 0017).

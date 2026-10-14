@@ -22,7 +22,7 @@ func TestMapInvitationAcceptance_NamesEveryRoleOfAGrant(t *testing.T) {
 		Roles: []*tenancy.TeamRole{{ID: "r-dev", Name: "Developer", Description: "Works tickets."}, {ID: "r-front", Name: "Frontend"}},
 	}}}
 
-	details := mapInvitationAcceptance(svc, t.Context(), invitation)
+	details := mapInvitationAcceptance(svc, t.Context(), invitation, nil)
 
 	require.Len(t, details.Grants, 1)
 	assert.Equal(t, "nexul.example.com", details.InstanceName)

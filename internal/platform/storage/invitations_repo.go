@@ -277,6 +277,18 @@ func revokeInvitationRow(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, ro
 	return enqueueInvitationEvents(ctx, tx, events)
 }
 
+func (r *InvitationsRepo) ProjectsListingRoles(ctx context.Context, roleIDs []string) ([]tenancy.InvitationProject, error) {
+	rows, err := r.q.ListInvitationRoleProjects(ctx, idsJSON(roleIDs))
+	if err != nil {
+		return nil, fmt.Errorf("list projects listing roles: %w", err)
+	}
+	out := make([]tenancy.InvitationProject, len(rows))
+	for i, row := range rows {
+		out[i] = tenancy.InvitationProject{WorkspaceID: row.WorkspaceID, ID: row.ID, Name: row.Name}
+	}
+	return out, nil
+}
+
 //nolint:gocyclo // Redemption stays in one transaction so every identity, membership, receipt, and outbox write rolls back together.
 func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, identity tenancy.InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*tenancy.InvitationAdmission, error) {
 	if !validTokenHash(acceptanceHash) || identity.Provider == "" || identity.ProviderUserID == "" || identity.ID == "" || identity.Login == "" {

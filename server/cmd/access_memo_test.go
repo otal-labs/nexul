@@ -1065,3 +1065,36 @@ UNION ALL SELECT 'machine', 'mach-' || i, 'role', NULL, 'role-reader', '["machin
 	}
 	assert.Equal(t, cost(2), cost(12))
 }
+
+// TestStatements_InvitationProjectsCostOneReadForAnyNumberOfRoles: the projects an invitation's roles let in come back
+// in one statement, whether the link gives one role or many, each listed on two projects.
+func TestStatements_InvitationProjectsCostOneReadForAnyNumberOfRoles(t *testing.T) {
+	cost := func(n int) (int64, int) {
+		f, st, db := newCountedFixtureDB(t)
+		for _, insert := range []string{
+			`INSERT INTO roles (id, workspace_id, name, created_at, updated_at) SELECT 'role-invited-' || i, 'workspace-default', 'Invited ' || i, 1, 1 FROM n`,
+			`INSERT INTO projects (id, name, position, workspace_id, created_at, updated_at) SELECT 'p-invited-' || i, 'Invited ' || i, i, 'workspace-default', 1, 1 FROM n`,
+			`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'project', 'p-invited-' || i, 'role', 'role-invited-' || i, '["projects:open"]', '[]', 1, 1 FROM n
+UNION ALL SELECT 'project', 'project-general', 'role', 'role-invited-' || i, '["projects:open"]', '[]', 1, 1 FROM n`,
+		} {
+			_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?) `+insert, n)
+			require.NoError(t, err)
+		}
+		grant := &tenancy.InvitationGrant{WorkspaceID: wsDefault}
+		for i := range n {
+			grant.RoleIDs = append(grant.RoleIDs, fmt.Sprintf("role-invited-%d", i+1))
+		}
+		st.Reset()
+		projects, err := f.svc.invitationSvc.GrantProjects(context.Background(), &tenancy.Invitation{Grants: []*tenancy.InvitationGrant{grant}})
+		require.NoError(t, err)
+		return st.Count(), len(projects[wsDefault])
+	}
+	one, oneProjects := cost(1)
+	many, manyProjects := cost(30)
+
+	assert.Equal(t, int64(1), one)
+	assert.Equal(t, one, many)
+	assert.Equal(t, 2, oneProjects)
+	assert.Equal(t, 31, manyProjects, "each project once, however many of the roles list it")
+}

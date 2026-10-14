@@ -154,3 +154,14 @@ WHERE oauth_state_hash = ? AND expires_at > ? AND acceptance_hash IS NULL;
 UPDATE invitation_oauth_handoffs
 SET admitted_user_id = ?, completed_at = ?
 WHERE acceptance_hash = ? AND completed_at IS NULL AND expires_at > ?;
+
+-- name: ListInvitationRoleProjects :many
+-- The projects whose rules let any of the roles in (projects:open), each once, in the order the projects list them.
+SELECT DISTINCT p.workspace_id, p.id, p.name, p.position
+FROM permission_overwrites po
+JOIN roles r ON r.id = po.role_id
+JOIN projects p ON p.id = po.resource_id AND p.workspace_id = r.workspace_id
+WHERE po.role_id IN (SELECT value FROM json_each(sqlc.arg(role_ids)))
+  AND po.resource_type = 'project' AND po.target = 'role'
+  AND EXISTS (SELECT 1 FROM json_each(po.allow) a WHERE a.value = 'projects:open')
+ORDER BY p.workspace_id, p.position, p.id;

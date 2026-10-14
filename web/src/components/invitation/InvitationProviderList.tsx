@@ -8,8 +8,10 @@ interface InvitationProviderListProps {
 }
 
 export const InvitationProviderList = ({ providers, disabled, onSelect }: InvitationProviderListProps) => (
-  <div className="space-y-3">
-    <p className="text-center text-sm text-muted-foreground">Sign in to accept.</p>
-    {providers.map((provider) => <InvitationProviderButton key={provider} provider={provider} disabled={disabled} onSelect={onSelect} />)}
+  <div className="mt-7 space-y-3">
+    <p className="text-center text-[13px] text-muted-foreground">Sign in to accept</p>
+    <div className="grid gap-2">
+      {providers.map((provider, index) => <InvitationProviderButton key={provider} provider={provider} primary={index === 0} disabled={disabled} onSelect={onSelect} />)}
+    </div>
   </div>
 );

@@ -33,6 +33,9 @@ type invitationRepoFake struct {
 	redeemErr    error
 	revokeErr    error
 	redeemed     []InvitationIdentity
+	projects     []InvitationProject
+	projectsErr  error
+	projectReads [][]string
 }
 
 func (f *invitationRepoFake) Create(_ context.Context, invitation *Invitation, tokenHash string, events ...eventbus.OutboxEvent) error {
@@ -92,6 +95,11 @@ func (f *invitationRepoFake) Redeem(_ context.Context, _ string, identity Invita
 	f.redeemed = append(f.redeemed, identity)
 	f.events = append(f.events, events...)
 	return &InvitationAdmission{UserID: identity.ID, Created: true}, nil
+}
+
+func (f *invitationRepoFake) ProjectsListingRoles(_ context.Context, roleIDs []string) ([]InvitationProject, error) {
+	f.projectReads = append(f.projectReads, roleIDs)
+	return f.projects, f.projectsErr
 }
 
 type invitationURLFake struct{ url string }
@@ -208,4 +216,36 @@ func TestInvitationService_List_ReachesBackThirtyDaysForAcceptedAndEndedLinks(t 
 	require.NoError(t, err)
 	assert.Equal(t, &InvitationList{Invitations: repo.listed, Accepted: repo.accepted, Ended: repo.ended}, got)
 	assert.Equal(t, svc.now().Add(-30*24*time.Hour), repo.historySince)
+}
+
+func TestInvitationService_GrantProjects_ReadsEveryRoleOnceAndGroupsByWorkspace(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	repo.projects = []InvitationProject{{WorkspaceID: "ws-1", ID: "p-1", Name: "Website relaunch"}, {WorkspaceID: "ws-2", ID: "p-2", Name: "Billing API"}, {WorkspaceID: "ws-1", ID: "p-3", Name: "Mobile app"}}
+	invitation := &Invitation{Grants: []*InvitationGrant{{WorkspaceID: "ws-1", RoleIDs: []string{"r-client", "r-reviewer"}}, {WorkspaceID: "ws-2", RoleID: "r-junior"}}}
+
+	got, err := svc.GrantProjects(t.Context(), invitation)
+
+	require.NoError(t, err)
+	assert.Equal(t, [][]string{{"r-client", "r-reviewer", "r-junior"}}, repo.projectReads)
+	assert.Equal(t, []InvitationProject{repo.projects[0], repo.projects[2]}, got["ws-1"])
+	assert.Equal(t, []InvitationProject{repo.projects[1]}, got["ws-2"])
+}
+
+func TestInvitationService_GrantProjects_ReadFails_ReturnsTheError(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	repo.projectsErr = errors.New("disk gone")
+
+	_, err := svc.GrantProjects(t.Context(), &Invitation{Grants: []*InvitationGrant{{WorkspaceID: "ws-1", RoleID: "r-client"}}})
+
+	require.ErrorIs(t, err, repo.projectsErr)
+}
+
+func TestInvitationService_InstanceName_IsTheHostOfItsURL(t *testing.T) {
+	t.Parallel()
+	for url, want := range map[string]string{"https://nexul.example.com/": "nexul.example.com", "https://nexul.example.com:8443": "nexul.example.com:8443", "": ""} {
+		svc := NewInvitationService(&invitationRepoFake{}, invitationURLFake{url: url})
+		assert.Equal(t, want, svc.InstanceName(t.Context()), url)
+	}
 }
