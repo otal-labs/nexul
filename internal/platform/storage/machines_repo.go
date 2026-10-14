@@ -7,6 +7,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -111,6 +112,43 @@ func (r *MachinesRepo) Touch(ctx context.Context, id, reportedHostname string, a
 			return fmt.Errorf("touch machine %s: %w", id, apperrs.ErrNotFound)
 		}
 		return nil
+	})
+}
+
+func (r *MachinesRepo) Dependents(ctx context.Context, name string) (runner.MachineDependents, error) {
+	stacks, err := r.q.ListMachineStackNames(ctx, name)
+	if err != nil {
+		return runner.MachineDependents{}, fmt.Errorf("list stacks on machine %s: %w", name, err)
+	}
+	gateways, err := r.q.ListMachineGatewayNetworks(ctx, name)
+	if err != nil {
+		return runner.MachineDependents{}, fmt.Errorf("list gateways on machine %s: %w", name, err)
+	}
+	return runner.MachineDependents{Stacks: stacks, Gateways: gateways}, nil
+}
+
+// Delete leaves the machine's rules to the machines_rules_ad trigger.
+func (r *MachinesRepo) Delete(ctx context.Context, m *runner.Machine, at time.Time, evt eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.DeleteMachine(ctx, m.ID)
+		if err != nil {
+			return fmt.Errorf("delete machine %s: %w", m.ID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("delete machine %s: %w", m.ID, apperrs.ErrNotFound)
+		}
+		revoked := sqlcgen.RevokeMachineRunnerCredentialsParams{RevokedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, MachineID: m.ID}
+		if err := q.RevokeMachineRunnerCredentials(ctx, revoked); err != nil {
+			return fmt.Errorf("revoke credentials of runners on machine %s: %w", m.ID, err)
+		}
+		if err := q.DeleteMachineRunners(ctx, m.ID); err != nil {
+			return fmt.Errorf("delete runners on machine %s: %w", m.ID, err)
+		}
+		if err := q.DeleteMachineEnrollments(ctx, m.Name); err != nil {
+			return fmt.Errorf("delete enrollment codes for machine %s: %w", m.Name, err)
+		}
+		return insertOutboxRow(ctx, tx, evt.ID, evt.Topic, evt.Payload)
 	})
 }
 

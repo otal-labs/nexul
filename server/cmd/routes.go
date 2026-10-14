@@ -122,6 +122,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// (deploy domain, below) shares the prefix.
 	apiMux.Handle("GET /api/machines", runnerRoutes)
 	apiMux.Handle("PATCH /api/machines/{id}", runnerRoutes)
+	apiMux.Handle("DELETE /api/machines/{id}", runnerRoutes)
 	apiMux.Handle("POST /api/machines/{id}/discover", runnerRoutes)
 	apiMux.Handle("POST /api/machines/{id}/import", deployHandler)
 	apiMux.Handle("GET /api/machines/deployable", deployHandler)
@@ -169,6 +170,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
+			"machine":     machineHostKind{svc: runnerSvc},
 		},
 		DNS:         svc.dnsSvc,
 		Automations: svc.automationsSvc,
@@ -391,6 +393,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/runners/latest-version", "Latest published runner version", "runners")
 	spec.Register("GET", "/api/machines", "List the machines the caller sees", "machines")
 	spec.Register("PATCH", "/api/machines/{id}", "Needs Manage on the machine: rename it or change its stack root", "machines")
+	spec.Register("DELETE", "/api/machines/{id}", "Needs Delete on the machine: refused, naming each, while a stack or gateway targets it or a runner on it is connected", "machines")
 	spec.Register("POST", "/api/machines/{id}/discover", "Needs Manage on the machine: scan its containers and networks", "machines")
 	spec.Register("POST", "/api/machines/{id}/import", "Adopt ticked discovery selections as unmanaged stacks", "machines")
 	spec.Register("GET", "/api/machines/deployable", "List the machines the caller may Deploy to, the choices for where a stack runs", "machines")

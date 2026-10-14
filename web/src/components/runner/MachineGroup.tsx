@@ -7,13 +7,16 @@ import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { RowActions } from "@/components/listpane/RowActions";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
-import type { RowMenu } from "@/components/listpane/rowMenu";
+import { offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
+import { MachineDeleteDetails } from "@/components/runner/MachineDeleteDetails";
 import { MachinePeopleRow } from "@/components/runner/MachinePeopleRow";
 import { RunnerRow } from "@/components/runner/RunnerRow";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useDeleteMachine } from "@/hooks/MachineHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { machineEntity } from "@/models/PermissionPanel";
@@ -43,8 +46,24 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
   const wsPath = useWorkspacePath();
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
+  const canDelete = hasPermission(machine.actions, "machines:delete");
+  const deleteMachine = useDeleteMachine();
+  const { open: confirmDelete } = useConfirmationDialog();
   const entity = machineEntity(machine);
-  const menu: RowMenu = { permissions: manages ? { entity, onOpen: () => void openPermissions(entity) } : undefined };
+  const onDelete = async () => {
+    const ok = await confirmDelete({
+      title: `Delete machine ${machine.name}?`,
+      message:
+        "Adding a runner on it again brings the machine back, without its rules. It is refused while a stack or gateway uses it or a runner on it is connected.",
+      details: <MachineDeleteDetails machine={machine} runners={runners} />,
+      confirmLabel: "Delete machine",
+    });
+    if (ok) deleteMachine.mutate(machine.id);
+  };
+  const menu: RowMenu = {
+    permissions: manages ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
+    onDelete: canDelete ? () => void onDelete() : undefined,
+  };
   const online = runners.filter((r) => r.connected).length;
   const tone = toneOf(online, runners.length);
   const status = tone === "partial" ? `${online} of ${runners.length} online` : tone;
@@ -90,7 +109,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
               </Button>
             )}
             <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="ghost" />
-            {manages && <RowActions itemLabel={machine.name} {...menu} />}
+            {offersMenu(menu, manages) && <RowActions itemLabel={machine.name} {...menu} />}
           </div>
           <div className="col-span-2 overflow-hidden">
             <div className="-ml-4 flex flex-wrap gap-y-1 font-mono text-xs text-muted-foreground">

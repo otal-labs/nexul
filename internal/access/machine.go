@@ -265,6 +265,26 @@ func (s *Service) requireNamed(ctx context.Context, name string, action permissi
 	return err
 }
 
+// MachineViewers addresses a deleted machine's live frame, because its rules go with it.
+func (s *Service) MachineViewers(ctx context.Context, machineID string) ([]string, error) {
+	users, err := s.users.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	ctx = s.memoized(ctx)
+	viewers := []string{}
+	for _, u := range users {
+		view, err := s.machineView(ctx, u.ID, machineID)
+		if err != nil {
+			return nil, err
+		}
+		if view(permissions.MachinesSee, false).seen {
+			viewers = append(viewers, u.ID)
+		}
+	}
+	return viewers, nil
+}
+
 // MachinesSeen is the ids of the machines userID sees, from one read of the rules reaching them however many machines
 // carry any: every machine for the instance Owner. A list filters by it in SQL (ADR 0140).
 func (s *Service) MachinesSeen(ctx context.Context, userID string) ([]string, error) {

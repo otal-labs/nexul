@@ -74,6 +74,7 @@
   "interview_source.added",
   "interview_source.changed",
   "interview_source.removed",
+  "machine.deleted",
   "memory.created",
   "memory.deleted",
   "memory.updated",

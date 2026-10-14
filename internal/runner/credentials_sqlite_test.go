@@ -2,6 +2,7 @@ package runner_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -110,6 +111,7 @@ func (e *recordingExecutor) snapshot() (builds, uninstalls []string) {
 }
 
 type instance struct {
+	db    *sql.DB
 	store *storage.Store
 	svc   *runner.Service
 	bus   *syncBus
@@ -148,7 +150,7 @@ func newInstance(t *testing.T) *instance {
 	mux.Handle("/ws/runner", h)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &instance{store: store, svc: svc, bus: bus, srv: srv}
+	return &instance{db: db, store: store, svc: svc, bus: bus, srv: srv}
 }
 
 func (in *instance) post(t *testing.T, path string, body any) (int, map[string]any) {

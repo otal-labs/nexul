@@ -1,9 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { refetchRunnersAndQueue } from "@/hooks/RunnerHooks";
-import type { LiveFollower } from "@/lib/live";
+import { getRunnerEnrollmentsKey, refetchRunnersAndQueue } from "@/hooks/RunnerHooks";
+import { dropRow, type LiveFollower } from "@/lib/live";
 import type { DeployTarget, GroupedDiscovery, ImportRequest, ImportResult, Machine } from "@/models/Machine";
 
 const getMachinesKey = "machines";
@@ -22,11 +22,35 @@ export const useFetchDeployTargets = () =>
     queryFn: async () => (await api.get<DeployTarget[]>("/api/machines/deployable")).data,
   });
 
+// A deleted machine takes its offline runners, its waiting codes and its place in the deploy picker with it.
+const machineGone = (client: QueryClient, machineId: string) => {
+  dropRow(client, [getMachinesKey], machineId);
+  return Promise.all([
+    client.invalidateQueries({ queryKey: [getMachinesKey, "deployable"] }),
+    client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey], exact: true }),
+    refetchRunnersAndQueue(client),
+  ]);
+};
+
 // A rule on a machine can add or take away where the viewer may deploy, and which machines, runners and jobs they see.
 export const machineFollower: LiveFollower = {
+  "machine.deleted": ({ machine_id }: { machine_id: string }, { client }) => machineGone(client, machine_id),
   "access.grant.changed": ({ resource_type }: { resource_type: string }, { client }) =>
     resource_type === "machine" &&
     Promise.all([client.invalidateQueries({ queryKey: [getMachinesKey] }), refetchRunnersAndQueue(client)]),
+};
+
+// A refusal names each stack, gateway or connected runner still on the machine, and the toast shows it.
+export const useDeleteMachine = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (machineId: string) => (await api.delete(`/api/machines/${machineId}`)).data,
+    onSuccess: async (_data, machineId) => {
+      await machineGone(client, machineId);
+      toast.success("Machine deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
 };
 
 export const useDiscoverMachine = () =>

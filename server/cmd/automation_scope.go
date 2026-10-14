@@ -44,7 +44,7 @@ var scopeRules = map[string]scopeRule{
 	"computer.setup_turn_changed": instanceScope, "computer.setup_finished": instanceScope,
 	"computer.setup_turn_activity": instanceScope, "computer.harness_switched": instanceScope,
 	"runner.connected": instanceScope, "runner.disconnected": instanceScope, "runner.heartbeat": instanceScope,
-	"runner.personal_changed": instanceScope, "runner.facts_reported": instanceScope, "computer.facts_changed": instanceScope,
+	"runner.personal_changed": instanceScope, "machine.deleted": instanceScope, "runner.facts_reported": instanceScope, "computer.facts_changed": instanceScope,
 	"computer.pair_failed": instanceScope, "computer.move_requested": instanceScope, "computer.grant_changed": instanceScope,
 	"computer.removed": instanceScope, "github_link.changed": instanceScope, "welcome.progress_changed": instanceScope,
 	"instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope,

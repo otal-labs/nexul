@@ -4550,6 +4550,30 @@
       "invitation_id"
     ]
   },
+  "machine.deleted": {
+    "type": "object",
+    "properties": {
+      "machine_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The people who saw the machine when it went; the frame reaches only them."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "machine_id",
+      "name",
+      "user_ids"
+    ]
+  },
   "memory.created": {
     "type": "object",
     "properties": {

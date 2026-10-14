@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -33,6 +34,12 @@ type CreatedMachine struct {
 	Owner   string
 }
 
+// MachineDependents are the stacks and gateways that still target a machine, each as it reads in a refusal.
+type MachineDependents struct {
+	Stacks   []string
+	Gateways []string
+}
+
 // MachineRepo persists machines.
 type MachineRepo interface {
 	Create(ctx context.Context, m *Machine) error
@@ -45,4 +52,9 @@ type MachineRepo interface {
 	SetStackRoot(ctx context.Context, id, stackRoot string) error
 	// Touch refreshes last_seen and records the reported hostname hint; called at connect and on every heartbeat.
 	Touch(ctx context.Context, id, reportedHostname string, at time.Time) error
+	// Dependents names the stacks and gateways that target the machine called name.
+	Dependents(ctx context.Context, name string) (MachineDependents, error)
+	// Delete removes the machine with its rules, its runners and their credentials (revoked at at) and the codes still
+	// waiting to enroll one, and writes evt, in one transaction; an unknown id is apperrs.ErrNotFound.
+	Delete(ctx context.Context, m *Machine, at time.Time, evt eventbus.OutboxEvent) error
 }

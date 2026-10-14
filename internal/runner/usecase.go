@@ -67,6 +67,7 @@ type Service struct {
 	bus      Publisher
 	gate     Gate
 	creators CreatorGate
+	viewers  ViewerGate
 	// automationsHosts lets machine_list show each machine's automations hosts; nil lists none.
 	automationsHosts AutomationsHostLister
 	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
@@ -172,6 +173,9 @@ func (s *Service) WithGate(g Gate) *Service {
 	s.gate = g
 	if c, ok := g.(CreatorGate); ok {
 		s.creators = c
+	}
+	if v, ok := g.(ViewerGate); ok {
+		s.viewers = v
 	}
 	return s
 }

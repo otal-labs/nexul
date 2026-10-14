@@ -21,3 +21,22 @@ UPDATE machines SET stack_root = ? WHERE id = ?;
 
 -- name: TouchMachine :execrows
 UPDATE machines SET last_seen = ?, reported_hostname = ? WHERE id = ?;
+
+-- name: ListMachineStackNames :many
+SELECT name FROM stacks WHERE machine = ? ORDER BY name;
+
+-- name: ListMachineGatewayNetworks :many
+SELECT docker_network FROM dns_gateways WHERE machine = ? ORDER BY created_at;
+
+-- name: DeleteMachine :execrows
+DELETE FROM machines WHERE id = ?;
+
+-- name: RevokeMachineRunnerCredentials :exec
+UPDATE runner_credentials SET revoked_at = ?
+WHERE revoked_at IS NULL AND runner_id IN (SELECT id FROM runners WHERE machine_id = ? AND owner_user_id = '');
+
+-- name: DeleteMachineRunners :exec
+DELETE FROM runners WHERE machine_id = ? AND owner_user_id = '';
+
+-- name: DeleteMachineEnrollments :exec
+DELETE FROM runner_enrollment_codes WHERE machine = ? AND owner_user_id = '';

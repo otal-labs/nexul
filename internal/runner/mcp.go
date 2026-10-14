@@ -35,7 +35,7 @@ type machineResult struct {
 	// Actions are what you hold on this machine: machines:see, machines:deploy, machines:write (Manage), machines:delete.
 	Actions permissions.Set `json:"actions"`
 	Runners []runnerResult  `json:"runners"`
-	// AutomationsHosts are the automations hosts filed under this machine; their ids are host_delete's.
+	// AutomationsHosts are the automations hosts filed under this machine; their ids are host_delete's, as is the machine's own.
 	AutomationsHosts []automationsHostResult `json:"automations_hosts"`
 }
 
@@ -81,7 +81,7 @@ func machineListTool(s *Service) mcptool.Tool {
 			"version, and running job, and its automations hosts, plus the deploys queued for a runner on them; a "+
 			"build or deploy job's id is its "+
 			"deploy's id for deploy_get. A machine you are not on is left out, as it is everywhere else. Use a machine's "+
-			"name as stack_create's machine and its id for machine_discover and machine_import. open_enrollments lists "+
+			"name as stack_create's machine and its id for machine_discover, machine_import and, with kind machine, host_delete. open_enrollments lists "+
 			"the unused enrollment codes you may revoke, never the codes themselves; host_delete revokes one by its id. "+
 			"Returns at most 100 machines per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},

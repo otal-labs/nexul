@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createMachine = `-- name: CreateMachine :exec
@@ -31,6 +32,36 @@ func (q *Queries) CreateMachine(ctx context.Context, arg CreateMachineParams) er
 		arg.FirstSeen,
 		arg.LastSeen,
 	)
+	return err
+}
+
+const deleteMachine = `-- name: DeleteMachine :execrows
+DELETE FROM machines WHERE id = ?
+`
+
+func (q *Queries) DeleteMachine(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteMachine, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteMachineEnrollments = `-- name: DeleteMachineEnrollments :exec
+DELETE FROM runner_enrollment_codes WHERE machine = ? AND owner_user_id = ''
+`
+
+func (q *Queries) DeleteMachineEnrollments(ctx context.Context, machine string) error {
+	_, err := q.db.ExecContext(ctx, deleteMachineEnrollments, machine)
+	return err
+}
+
+const deleteMachineRunners = `-- name: DeleteMachineRunners :exec
+DELETE FROM runners WHERE machine_id = ? AND owner_user_id = ''
+`
+
+func (q *Queries) DeleteMachineRunners(ctx context.Context, machineID string) error {
+	_, err := q.db.ExecContext(ctx, deleteMachineRunners, machineID)
 	return err
 }
 
@@ -68,6 +99,60 @@ func (q *Queries) GetMachineByName(ctx context.Context, name string) (Machine, e
 		&i.LastSeen,
 	)
 	return i, err
+}
+
+const listMachineGatewayNetworks = `-- name: ListMachineGatewayNetworks :many
+SELECT docker_network FROM dns_gateways WHERE machine = ? ORDER BY created_at
+`
+
+func (q *Queries) ListMachineGatewayNetworks(ctx context.Context, machine string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listMachineGatewayNetworks, machine)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var docker_network string
+		if err := rows.Scan(&docker_network); err != nil {
+			return nil, err
+		}
+		items = append(items, docker_network)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMachineStackNames = `-- name: ListMachineStackNames :many
+SELECT name FROM stacks WHERE machine = ? ORDER BY name
+`
+
+func (q *Queries) ListMachineStackNames(ctx context.Context, machine string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listMachineStackNames, machine)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMachines = `-- name: ListMachines :many
@@ -153,6 +238,21 @@ func (q *Queries) RenameMachine(ctx context.Context, arg RenameMachineParams) (i
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const revokeMachineRunnerCredentials = `-- name: RevokeMachineRunnerCredentials :exec
+UPDATE runner_credentials SET revoked_at = ?
+WHERE revoked_at IS NULL AND runner_id IN (SELECT id FROM runners WHERE machine_id = ? AND owner_user_id = '')
+`
+
+type RevokeMachineRunnerCredentialsParams struct {
+	RevokedAt sql.NullInt64
+	MachineID string
+}
+
+func (q *Queries) RevokeMachineRunnerCredentials(ctx context.Context, arg RevokeMachineRunnerCredentialsParams) error {
+	_, err := q.db.ExecContext(ctx, revokeMachineRunnerCredentials, arg.RevokedAt, arg.MachineID)
+	return err
 }
 
 const setMachineStackRoot = `-- name: SetMachineStackRoot :execrows
