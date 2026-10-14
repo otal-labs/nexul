@@ -328,7 +328,7 @@ func (s *Service) importStack(ctx context.Context, projectID, machineName, slugS
 		return stack, nil
 	}
 	stack.UpdatedAt = now
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicStackCreated, Payload: StackEvent{Stack: *stack, Services: newly}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicStackCreated, Payload: newStackEvent(*stack, newly)}
 	if err := s.stacks.Update(ctx, stack, evt); err != nil {
 		return nil, fmt.Errorf("publish adopted containers for stack %s: %w", slug, err)
 	}

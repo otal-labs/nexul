@@ -531,6 +531,13 @@ name, and the checkout directory under the stack root. Never generated or
 suffixed: a duplicate is rejected, because every routing mechanism addresses
 the container by this name.
 
+**Stack environment**:
+The variables a stack's next deploy starts its containers with, a name and a value each, and the overrides on
+its branch deploy rules. Saving one redeploys nothing; Deploy now ships it. Every value is treated as secret:
+whoever holds `stacks:write` on the stack is sent them, and anyone else gets the names with empty values and
+`env_masked` set. An event and an MCP result never carry a value.
+_Avoid_: Secrets (no value is marked, all are held back), config, settings
+
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with

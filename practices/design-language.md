@@ -751,13 +751,15 @@ most then "+N more"); Hostnames is the first as a link with an arrow, then
 "+N more". Under the well a facts grid holds the rest: a mono microheader
 over each value (Image for a run stack, Runner, Strategy, Repository, or
 Network when no repository is attached). Below it the page is the settings shell:
-`SettingsSectionNav` driving a `/:section` path segment (Overview, Logs, Exposures, Branch deploys,
+`SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);
 a nav with two jobs (Your settings' You and Instance settings)
 labels each group with a mono microheader, and a group with nothing the
-viewer may open shows no label. A card's action lives in its footer strip (`footer` prop: Rollback,
+viewer may open shows no label. Environment is one card of mono name and
+value rows, values dots until the card's Reveal toggle, with Deploy now in the footer beside Save; someone who can't change
+the stack sees the names over dots and nothing to edit. A card's action lives in its footer strip (`footer` prop: Rollback,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box, except permission and access rows

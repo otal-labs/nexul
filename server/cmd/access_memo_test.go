@@ -669,8 +669,8 @@ func TestStatements_StackRulesCostTheSameAtAnyLength(t *testing.T) {
 	cost := func(n int, rules bool) map[string]int64 {
 		f, st, db := newCountedFixtureDB(t)
 		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
-INSERT INTO stacks (id, project_id, name, slug, machine, strategy, created_at, updated_at)
-SELECT 'stack-g-' || i, ?, 'web ' || i, 'web-' || i, 'm1', 'run', 1, 1 FROM n`, n, pGeneral)
+INSERT INTO stacks (id, project_id, name, slug, machine, strategy, env, created_at, updated_at)
+SELECT 'stack-g-' || i, ?, 'web ' || i, 'web-' || i, 'm1', 'run', '{"TOKEN":"secret"}', 1, 1 FROM n`, n, pGeneral)
 		require.NoError(t, err)
 		_, err = db.Exec(`INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, created_at, updated_at)
 SELECT 'deploy-' || id, id, name, 'm1', 'web:1', 'healthy', 'run', 1, 1 FROM stacks WHERE id LIKE 'stack-g-%'`)
@@ -694,8 +694,9 @@ UNION ALL SELECT 'stack', s.id, 'person', NULL, ?, '["stacks:read","deploys:read
 	none := cost(12, false)
 	// Each list costs one read past what it cost before stack rules, the reader's stack rules: the topology's no
 	// membership read and no instance check, which its workspace's stacks never need. The two lists that reach the
-	// instance's stacks add the machines the reader sees, one read of rules and of roles however many machines exist.
-	assert.Equal(t, map[string]int64{"stack_list": 9, "deploy_list": 11, "the topology canvas's stacks": 6, "a stack's read": 6,
+	// instance's stacks add the machines the reader sees, one read of rules and of roles however many machines exist. The
+	// stacks hold env, so the two stack lists read one more statement for the stacks the reader may change, whose values they keep.
+	assert.Equal(t, map[string]int64{"stack_list": 10, "deploy_list": 11, "the topology canvas's stacks": 7, "a stack's read": 6,
 		"a deploy's read": 7, "a stack's frame": 5}, none, "with no stack rules")
 	assert.Equal(t, none, cost(2, true), "a few stacks, each with rules")
 	assert.Equal(t, none, cost(12, true), "many stacks, each with rules")

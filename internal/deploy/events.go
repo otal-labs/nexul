@@ -144,6 +144,11 @@ type StackEvent struct {
 	Services []Container `json:"services,omitempty"`
 }
 
+// newStackEvent builds the payload with the env and rule override values emptied: a bus event is no place for a secret.
+func newStackEvent(stack Stack, services []Container) StackEvent {
+	return StackEvent{Stack: stack.withoutEnvValues(), Services: services}
+}
+
 // StackDeletedEvent is the stack.deleted payload; consumers drop their own state keyed on the stack id.
 // ServiceIDs carries the stack's container ids at the moment of deletion, since the rows themselves are
 // already gone by the time a subscriber (e.g. topology, dropping their nodes) sees this event.

@@ -150,13 +150,14 @@ export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => 
   };
 };
 
-export const useUpdateStackEnv = () => {
+// quiet leaves the confirmation to a Save button that answers Saved itself.
+export const useUpdateStackEnv = ({ quiet = false }: { quiet?: boolean } = {}) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStackKey] });
-      toast.success("Environment saved");
+      if (!quiet) toast.success("Environment saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -181,6 +182,8 @@ export const useCreateStack = () => {
 
 export const stackFollower: LiveFollower = {
   "deploy.updated": (frame: DeployFrame, { client }) => refetchDeployHistory(client, getStackDeploysKey, frame),
+  // The frame carries the keys and no values, so the stack's own read refetches to show a change made elsewhere.
+  "service.updated": ({ stack }: { stack: { id: string } }, { client }) => client.invalidateQueries({ queryKey: [getStackKey, stack.id] }),
   // A stack's rule can hide it or its deploys from whom it names, so its lists and its own reads refetch; a machine's
   // rule does the same to the instance's stacks on it.
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) => {

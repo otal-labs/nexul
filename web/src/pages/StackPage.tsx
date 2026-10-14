@@ -9,6 +9,7 @@ import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySe
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
 import { ServicesSection } from "@/components/stack/ServicesSection";
 import { StackDeployActions } from "@/components/stack/StackDeployActions";
+import { StackEnvironmentSection } from "@/components/stack/StackEnvironmentSection";
 import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
@@ -77,6 +78,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
                 <ServicesSection stackId={stack.id} />
               </>
             )}
+            {section === "environment" && <StackEnvironmentSection stack={stack} image={image} />}
             {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
             {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
             {section === "branches" && <StackBranchDeploySection stack={stack} />}

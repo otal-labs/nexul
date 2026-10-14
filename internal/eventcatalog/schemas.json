@@ -5900,9 +5900,14 @@
           },
           "env": {
             "type": "object",
+            "description": "Environment variables. Only someone who can write the stack is sent the values; an event and a reader's read carry the keys with empty values.",
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "env_masked": {
+            "type": "boolean",
+            "description": "True when the values of env and of the branch deploy rules' overrides were withheld, so every value is empty and only the keys are real."
           },
           "docker_network": {
             "type": "string"
@@ -6151,9 +6156,14 @@
           },
           "env": {
             "type": "object",
+            "description": "Environment variables. Only someone who can write the stack is sent the values; an event and a reader's read carry the keys with empty values.",
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "env_masked": {
+            "type": "boolean",
+            "description": "True when the values of env and of the branch deploy rules' overrides were withheld, so every value is empty and only the keys are real."
           },
           "docker_network": {
             "type": "string"

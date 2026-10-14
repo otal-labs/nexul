@@ -30,6 +30,15 @@ describe("the stack follower", () => {
     expect(stale(client)).toEqual([false, false]);
   });
 
+  it("refetches the read of the stack an update frame names, so another editor's environment shows, and no other stack's", async () => {
+    const client = seeded([
+      [["getStack", "s-1"], { id: "s-1" }],
+      [["getStack", "s-2"], { id: "s-2" }],
+    ]);
+    await followFrame(stackFollower, "service.updated", { stack: { id: "s-1" } }, client);
+    expect([isStale(client, ["getStack", "s-1"]), isStale(client, ["getStack", "s-2"])]).toEqual([true, false]);
+  });
+
   it("refetches the stack lists and the named stack's reads when its rule changes, and nothing for another entity's", async () => {
     const client = seeded([
       [["getStacks", "all"], []],

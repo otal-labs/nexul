@@ -198,6 +198,37 @@ func TestDeploy_PublishRedactsEnvValues(t *testing.T) {
 	assert.Equal(t, map[string]string{"DB_PASSWORD": "", "PORT": ""}, payload.Env)
 }
 
+// TestStackEvents_CarryEnvKeysNeverValues: service.created and service.updated reach every reader and integration, so they carry keys only.
+func TestStackEvents_CarryEnvKeysNeverValues(t *testing.T) {
+	stacks := newFakeStackRepo()
+	projects := newFakeProjects()
+	projects.exists["proj-1"] = true
+	s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
+	input := validStack()
+	input.ID = ""
+	input.Env = map[string]string{"DB_PASSWORD": "sup3rSecretValue"}
+	created, err := s.CreateStack(context.Background(), input, nil)
+	require.NoError(t, err)
+	changed := *created
+	changed.Env = map[string]string{"DB_PASSWORD": "an0therSecretValue", "PORT": "8080"}
+	_, err = s.UpdateStack(context.Background(), changed)
+	require.NoError(t, err)
+
+	require.Len(t, stacks.outbox, 2)
+	for _, evt := range stacks.outbox {
+		raw, err := json.Marshal(evt.Payload)
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "SecretValue", evt.Topic)
+		var e StackEvent
+		require.NoError(t, json.Unmarshal(raw, &e))
+		assert.Contains(t, e.Stack.Env, "DB_PASSWORD", "%s: the key still travels", evt.Topic)
+		assert.True(t, e.Stack.EnvMasked, evt.Topic)
+	}
+	got, err := s.GetStack(context.Background(), created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "an0therSecretValue", got.Env["DB_PASSWORD"], "the stack keeps its values")
+}
+
 // deployRequestedPayload decodes an outbox event's payload as
 // DeployRequestedEvent, round-tripping through JSON the way the real relay
 // does (repo.of returns the Go value the use-case handed to the repo, not

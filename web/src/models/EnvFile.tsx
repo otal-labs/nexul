@@ -5,7 +5,7 @@ export interface ParsedEnvFile {
   duplicateKeys: string[];
 }
 
-const KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+export const KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const QUOTES = ["'", '"'];
 
 const unquote = (value: string): string => {

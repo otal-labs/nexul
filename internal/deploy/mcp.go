@@ -395,7 +395,7 @@ func declaredFromCandidate(svc candidateServiceIn) Declared {
 }
 
 type envPatchIn struct {
-	Set   map[string]string `json:"set,omitempty" jsonschema:"Keys to add or overwrite, with their values."`
+	Set   map[string]string `json:"set,omitempty" jsonschema:"Keys to add or overwrite, with their values; an empty string blanks a value."`
 	Unset []string          `json:"unset,omitempty" jsonschema:"Keys to remove."`
 }
 

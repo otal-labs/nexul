@@ -399,7 +399,7 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 	evt := eventbus.OutboxEvent{
 		ID:      ids.New(),
 		Topic:   TopicStackCreated,
-		Payload: StackEvent{Stack: stack, Services: services},
+		Payload: newStackEvent(stack, services),
 	}
 	if err := s.stacks.Create(ctx, &stack, evt); err != nil {
 		return nil, fmt.Errorf("create stack %s: %w", stack.Name, err)
@@ -429,7 +429,7 @@ func (s *Service) GetStack(ctx context.Context, id string) (*Stack, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get stack %s: %w", id, err)
 	}
-	return stack, nil
+	return s.readableBy(ctx, stack)
 }
 
 // GetServiceByName returns a stack by name, since dns exposures reference stacks by name, not id.
@@ -466,7 +466,11 @@ func (s *Service) ListScopedStacks(ctx context.Context, projectID, workspaceID s
 	if err != nil {
 		return nil, fmt.Errorf("list stacks: %w", err)
 	}
-	return stacks, nil
+	readable, err := s.readableListBy(ctx, stacks, workspaceID, projectID == "" && workspaceID == "")
+	if err != nil {
+		return nil, fmt.Errorf("list stacks: %w", err)
+	}
+	return readable, nil
 }
 
 func baseStacks(stacks []*Stack) []*Stack {
@@ -484,14 +488,19 @@ func (s *Service) ListBranchDeployments(ctx context.Context, baseStackID string)
 	if strings.TrimSpace(baseStackID) == "" {
 		return nil, fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
 	}
-	if _, err := s.loadStack(ctx, baseStackID, permissions.StacksRead); err != nil {
+	base, err := s.loadStack(ctx, baseStackID, permissions.StacksRead)
+	if err != nil {
 		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
 	}
 	stacks, err := s.stacks.ListByDerivedFrom(ctx, baseStackID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
 	}
-	return stacks, nil
+	readable, err := s.readableBranchesBy(ctx, base, stacks)
+	if err != nil {
+		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
+	}
+	return readable, nil
 }
 
 // UpdateStack validates and persists a definition change and publishes stack.updated via the outbox.
@@ -529,7 +538,7 @@ func (s *Service) UpdateStack(ctx context.Context, stack Stack) (*Stack, error) 
 	evt := eventbus.OutboxEvent{
 		ID:      ids.New(),
 		Topic:   TopicStackUpdated,
-		Payload: StackEvent{Stack: stack},
+		Payload: newStackEvent(stack, nil),
 	}
 	if err := s.stacks.Update(ctx, &stack, evt); err != nil {
 		return nil, fmt.Errorf("update stack %s: %w", stack.ID, err)
@@ -1058,6 +1067,7 @@ func (s *Service) listScope(ctx context.Context, workspaceID string, action perm
 
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.
 func applyStackDefaults(stack Stack) Stack {
+	stack.EnvMasked = false
 	if stack.Strategy == StrategyCompose && strings.TrimSpace(stack.ComposePath) == "" {
 		stack.ComposePath = defaultComposePath
 	}
