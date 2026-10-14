@@ -31,3 +31,21 @@ describe("a rule on a machine", () => {
     expect([isStale(client, ["machines", "deployable"]), isStale(client, ["runners"])]).toEqual([false, false]);
   });
 });
+
+describe("a machine that was deleted", () => {
+  const machine = (id: string) => ({ id, name: id });
+
+  it("leaves the machine list at once and refetches what hung off it", async () => {
+    const client = seeded([
+      [["machines"], [machine("m-1"), machine("m-2")]],
+      [["machines", "deployable"], [machine("m-1")]],
+      [["runners"], []],
+      [["runnerQueue"], []],
+      [["runnerEnrollments"], []],
+    ]);
+    await followFrame(machineFollower, "machine.deleted", { machine_id: "m-1", name: "m-1", user_ids: [] }, client);
+    expect(client.getQueryData(["machines"])).toEqual([machine("m-2")]);
+    expect(isStale(client, ["machines", "deployable"])).toBe(true);
+    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"]), isStale(client, ["runnerEnrollments"])]).toEqual([true, true, true]);
+  });
+});

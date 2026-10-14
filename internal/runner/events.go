@@ -19,6 +19,7 @@ const (
 	TopicPersonalChanged = "runner.personal_changed"
 	// TopicFactsReported is ephemeral and never bridged to a socket: a personal runner's report, for pairing.
 	TopicFactsReported         = "runner.facts_reported"
+	TopicMachineDeleted        = "machine.deleted"
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
 	TopicDeployBuildStarted    = "deploy.build_started"
@@ -42,6 +43,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicRunnerHeartbeat, Payload: RunnerHeartbeatEvent{}},
 		{Name: TopicPersonalChanged, Payload: PersonalChangedEvent{}},
 		{Name: TopicFactsReported, Payload: FactsReportedEvent{}},
+		{Name: TopicMachineDeleted, Payload: MachineDeletedEvent{}},
 		{Name: TopicDeployBuildStarted, Payload: BuildStartedEvent{}},
 		{Name: TopicDeployBuildProgress, Payload: BuildProgressEvent{}},
 		{Name: TopicDeployBuildCompleted, Payload: BuildCompletedEvent{}},
@@ -116,6 +118,13 @@ type FactsReportedEvent struct {
 	UserID      string `json:"user_id" jsonschema:"The person who owns the computer."`
 	Facts       Facts  `json:"facts"`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// MachineDeletedEvent is a machine going. The machine's rules go with it, so the frame names the people who saw it.
+type MachineDeletedEvent struct {
+	MachineID string   `json:"machine_id"`
+	Name      string   `json:"name"`
+	UserIDs   []string `json:"user_ids" jsonschema:"The people who saw the machine when it went; the frame reaches only them."`
 }
 
 func personalChanged(r *Runner, state, hostname string) PersonalChangedEvent {

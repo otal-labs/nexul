@@ -175,6 +175,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicDeployStatusChanged:    deployFrame,
 	runner.TopicRunnerConnected:        runnerFrame,
 	runner.TopicRunnerDisconnected:     runnerFrame,
+	runner.TopicMachineDeleted:         recipientFrame,
 	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
@@ -231,7 +232,7 @@ func computerGrantFrame(ctx context.Context, _ liveAudience, raw json.RawMessage
 	return decode(raw, &p) && me != "" && (p.OwnerID == me || p.UserID == me)
 }
 
-// recipientFrame reaches only the people whose inbox the frame names.
+// recipientFrame reaches only the people whose inbox the frame names, or who saw the machine it says went.
 func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		UserIDs []string `json:"user_ids"`

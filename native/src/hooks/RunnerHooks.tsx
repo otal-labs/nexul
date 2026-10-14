@@ -9,7 +9,7 @@ export const getRunnersKey = "getRunners";
 const runnersQuery = defineQuery({
   key: getRunnersKey,
   fetch: () => api.get<Runner[]>("/api/runners"),
-  refreshes: { "runner.connected": "all", "runner.disconnected": "all" },
+  refreshes: { "runner.connected": "all", "runner.disconnected": "all", "machine.deleted": "all" },
 });
 
 export const useFetchRunners = () => useQuery(runnersQuery.options());

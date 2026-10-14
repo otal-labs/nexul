@@ -33,6 +33,14 @@ Every runner belongs to a machine, and a stack deploys to a machine rather than 
 
 Each machine has a stack root, the directory its stack checkouts live under (`stacks/<slug>/repo`). Change it next to **root** on the machine's group on the **Runners** page. A stack keeps its location once it has deployed.
 
+## Deleting a machine
+
+A machine you hold **Delete** on has **Delete** in the **⋯** menu on its group on the **Runners** page, and in its right-click menu. The confirm names what goes: the machine, the rules for who sees, deploys to, manages and deletes it, and any runner that is offline. Those runners lose their credential, so one that comes back online uninstalls itself. An offline machine is deleted the same way as any other.
+
+A machine can't be deleted while anything uses it. The delete is refused and the message names what is in the way: each stack deployed to the machine (a branch deployment too), each gateway on it, and each runner on it that is connected. For example `machine "edge-box" is still used by stack api, stack web, connected runner build-box-1; move or remove them first`. Move a stack to another machine or delete it from its own page, delete the gateway, and remove a connected runner (see below), then delete the machine. Nothing is removed for you.
+
+Deleting a machine takes **Delete** on it, not **Manage**, and a machine you can't see is not found. Everyone who saw the machine sees its group leave the page at once. To bring one back, add a runner on a machine of that name: you get every action on the new machine, and the old rules don't return. Agents delete a machine with `host_delete` and `kind: "machine"`, the machine's `id` from `machine_list`, and get the same refusal.
+
 ## Adding a runner
 
 1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add a runner to this machine** on that machine instead. A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
@@ -65,7 +73,7 @@ For more runners on one machine, run a new command per runner, each with its own
 
 ## Removing a runner
 
-Click the remove button on the runner's row and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`.
+Click the remove button on the runner's row and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`. A machine with a connected runner can't be deleted until that runner is removed.
 
 A connected runner uninstalls itself right away, and a job it was running fails. An offline runner uninstalls itself the next time it comes online, so a removed runner never comes back.
 

@@ -1,14 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { MachineGroup } from "@/components/runner/MachineGroup";
-import type { Machine } from "@/models/Runner";
+import type { Machine, Runner } from "@/models/Runner";
 
-vi.mock("@/api/client", () => ({ api: { get: vi.fn() }, errorMessage: vi.fn() }));
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/client")>()),
+  api: { get: vi.fn(), delete: vi.fn() },
+}));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => () => false, useIsInstanceOwner: () => true }));
 
 const machine = (actions: string[]): Machine => ({
@@ -26,11 +32,16 @@ beforeEach(() => {
   }) as typeof api.get);
 });
 
-const renderCard = (actions: string[]) =>
+const runner = (name: string, connected: boolean): Runner => ({
+  id: `r-${name}`, name, connected, last_seen: "2026-08-12T12:00:00Z", running_job: null, version: "v0.3.0", machine: "edge-box",
+});
+
+const renderCard = (actions: string[], runners: Runner[] = []) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter>
-        <MachineGroup machine={machine(actions)} runners={[]} />
+        <MachineGroup machine={machine(actions)} runners={runners} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -56,5 +67,59 @@ describe("MachineGroup people", () => {
     await user.pointer({ keys: "[MouseRight]", target: screen.getByRole("heading", { name: "edge-box" }) });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/permissions?resource_type=machine&resource_id=m-1");
+  });
+});
+
+describe("MachineGroup delete", () => {
+  const openDelete = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    return within(await screen.findByRole("dialog"));
+  };
+
+  beforeEach(() => {
+    vi.mocked(api.delete).mockReset().mockResolvedValue({ data: undefined });
+    vi.mocked(toast.error).mockClear();
+  });
+
+  it("names what goes in the confirm, and deletes nothing when it is cancelled", async () => {
+    const user = userEvent.setup();
+    renderCard(["machines:see", "machines:delete"], [runner("builder", false), runner("live", true)]);
+
+    const dialog = await openDelete(user);
+    expect(dialog.getByText(/The offline runner/)).toHaveTextContent("builder");
+    expect(dialog.getByText(/The offline runner/)).not.toHaveTextContent("live");
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes the machine once confirmed, for a card that is offline", async () => {
+    const user = userEvent.setup();
+    renderCard(["machines:see", "machines:delete"], [runner("builder", false)]);
+
+    await user.click((await openDelete(user)).getByRole("button", { name: "Delete machine" }));
+
+    expect(api.delete).toHaveBeenCalledWith("/api/machines/m-1");
+  });
+
+  it("shows the refusal that names what still uses the machine", async () => {
+    const refusal = 'machine "edge-box" is still used by stack api, connected runner live; move or remove them first';
+    vi.mocked(api.delete).mockRejectedValue({ response: { status: 409, data: { message: refusal, code: "CONFLICT" } } });
+    const user = userEvent.setup();
+    renderCard(["machines:see", "machines:delete"]);
+
+    await user.click((await openDelete(user)).getByRole("button", { name: "Delete machine" }));
+
+    expect(toast.error).toHaveBeenCalledWith(refusal);
+  });
+
+  it("offers no Delete to someone who manages the machine without holding Delete", async () => {
+    const user = userEvent.setup();
+    renderCard(["machines:see", "machines:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
+    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
   });
 });

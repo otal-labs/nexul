@@ -101,6 +101,7 @@ export interface EventPayloads {
   "invitation.deleted": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "invitation.redeemed": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "invitation.revoked": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
+  "machine.deleted": { "machine_id": string; "name": string; "user_ids": string[]; };
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; };
   "memory.deleted": { "id": string; "workspace_id": string; "project_id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; "author_via"?: string; };
@@ -264,6 +265,7 @@ export const TOPICS: Topic[] = [
   "invitation.deleted",
   "invitation.redeemed",
   "invitation.revoked",
+  "machine.deleted",
   "memory.created",
   "memory.deleted",
   "memory.updated",
@@ -425,6 +427,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "invitation.deleted": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "invitation.redeemed": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
+  "machine.deleted": {"machine_id":"fixture-machine_id","name":"fixture-name","user_ids":["fixture-user_ids"]},
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id","author_via":"fixture-author_via"},

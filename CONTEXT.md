@@ -619,7 +619,9 @@ _Avoid_: Checkout (there is no git checkout of Nexul on a server)
 A server runners and automations hosts run on. Runners belong to a machine;
 a service targets a machine and any of its runners may take the job, so the
 number of runners per machine is the scaling knob. Replaces "target is the runner" from
-2026-09-07 once built.
+2026-09-07 once built. Deleting one takes Delete on it and is refused while a stack or
+gateway targets it or one of its runners is connected, naming each (ADR 0153); a free
+machine goes with its offline runners and its rules.
 _Avoid_: Host, node, server (in the UI)
 
 **Machine rules**:

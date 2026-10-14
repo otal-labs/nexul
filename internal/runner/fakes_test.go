@@ -370,6 +370,9 @@ func (f *fakeRunnerRepo) connectedCount() int {
 type fakeMachineRepo struct {
 	mu       sync.Mutex
 	machines map[string]*Machine
+	// dependents are what Dependents reports for every machine; deleted are the events Delete wrote.
+	dependents MachineDependents
+	deleted    []eventbus.OutboxEvent
 }
 
 func newFakeMachineRepo() *fakeMachineRepo {
@@ -463,6 +466,21 @@ func (f *fakeMachineRepo) Touch(_ context.Context, id, reportedHostname string, 
 	}
 	m.ReportedHostname = reportedHostname
 	m.LastSeen = at
+	return nil
+}
+
+func (f *fakeMachineRepo) Dependents(context.Context, string) (MachineDependents, error) {
+	return f.dependents, nil
+}
+
+func (f *fakeMachineRepo) Delete(_ context.Context, m *Machine, _ time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.machines[m.ID]; !ok {
+		return apperrs.ErrNotFound
+	}
+	delete(f.machines, m.ID)
+	f.deleted = append(f.deleted, evt)
 	return nil
 }
 

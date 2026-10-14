@@ -33,6 +33,7 @@ func (h *HTTPHandler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/runners/{id}", h.remove)
 	mux.HandleFunc("GET /api/machines", h.listMachines)
 	mux.HandleFunc("PATCH /api/machines/{id}", h.updateMachine)
+	mux.HandleFunc("DELETE /api/machines/{id}", h.deleteMachine)
 	mux.HandleFunc("POST /api/machines/{id}/discover", h.discoverMachine)
 	return mux
 }
@@ -168,6 +169,14 @@ func (h *HTTPHandler) updateMachine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, m)
+}
+
+func (h *HTTPHandler) deleteMachine(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DeleteMachine(r.Context(), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // discoverMachine dispatches a discover job to the machine and returns the report grouped for the wizard (spec §8).

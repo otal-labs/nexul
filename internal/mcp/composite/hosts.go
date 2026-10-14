@@ -36,8 +36,8 @@ type hostCreateIn struct {
 }
 
 type hostDeleteIn struct {
-	Kind   string `json:"kind" jsonschema:"What to remove: runner or automations."`
-	ID     string `json:"id,omitempty" jsonschema:"The host's id, from machine_list. Send this or code_id."`
+	Kind   string `json:"kind" jsonschema:"What to remove: runner, automations or machine."`
+	ID     string `json:"id,omitempty" jsonschema:"The host's or machine's id, from machine_list. Send this or code_id."`
 	CodeID string `json:"code_id,omitempty" jsonschema:"An unused enrollment code's id, from host_create's result or machine_list's open_enrollments, to revoke instead of removing a host. Only a runner's codes can be revoked."`
 }
 
@@ -67,11 +67,13 @@ type hostDeleted struct {
 
 func hostDeleteTool(kinds map[string]HostKind) mcptool.Tool {
 	return mcptool.New("host_delete", "Remove host",
-		"Removes a runner or automations host, or with code_id revokes an unused runner enrollment code so it enrolls "+
-			"nothing. Removing a host: its credential is revoked and its record deleted, so it can never "+
-			"connect again. A connected host is told to uninstall its own service; an offline one is refused as "+
+		"Removes a runner or automations host, deletes a machine, or with code_id revokes an unused runner enrollment "+
+			"code so it enrolls nothing. Removing a host: its credential is revoked and its record deleted, so it can "+
+			"never connect again. A connected host is told to uninstall its own service; an offline one is refused as "+
 			"removed when it returns and uninstalls itself then. Work it is running fails. A runner needs Manage "+
 			"on its machine, and a runner on a machine you can't see is not found; an automations host needs automations:delete. "+
+			"Deleting a machine (kind machine) needs Delete on it and is refused, naming each, while a stack or gateway "+
+			"targets it or a runner on it is connected; its offline runners and its rules go with it. "+
 			"A code is revoked by the person who made it, by someone who manages its machine, or by the instance Owner.",
 		mcptool.Hints{},
 		func(ctx context.Context, in hostDeleteIn) (any, error) {

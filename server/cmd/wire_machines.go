@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -140,6 +142,19 @@ func (k runnerHostKind) Remove(ctx context.Context, id string) error {
 
 func (k runnerHostKind) RevokeCode(ctx context.Context, id string) error {
 	return k.svc.RevokeEnrollment(ctx, id)
+}
+
+// machineHostKind lets host_delete remove a machine, so deleting one costs no tool of its own; a machine is never enrolled.
+type machineHostKind struct {
+	svc *runner.Service
+}
+
+func (k machineHostKind) Enroll(context.Context, string, string) (any, error) {
+	return nil, fmt.Errorf("%w: a machine appears when a runner enrolls on it; use host_create with kind runner and a machine name", apperrs.ErrInvalid)
+}
+
+func (k machineHostKind) Remove(ctx context.Context, id string) error {
+	return k.svc.DeleteMachine(ctx, id)
 }
 
 // automationsHostKind adapts the automations host use-cases to the shared host_create and host_delete MCP tools.

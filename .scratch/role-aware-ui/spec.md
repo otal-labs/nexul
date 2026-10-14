@@ -107,7 +107,7 @@ rule changes; if no frame names the item, the build adds an id beside the existi
 | Tunnel delete | refuse while hostnames use it, naming them; remove its CNAME | a Delete with a confirm; the refusal shown as a toast that names the hostnames |
 | Stack environment | mask secret values for readers; `PATCH` already edits | an Environment section on the stack page, "Applies on the next deploy", Deploy now, reveal for writers |
 | Deploy retry | record the deploy's commit; Retry rebuilds it with current settings | Retry on a failed deploy; Rollback hidden without an image |
-| Machine delete | `DELETE /api/machines/{id}`, refused while stacks target it, naming them; MCP `machine_delete` | Delete on the machine card; the refusal shown as a toast |
+| Machine delete | `DELETE /api/machines/{id}`, refused while stacks target it, naming them; MCP `host_delete` with `kind` `machine` | Delete on the machine card; the refusal shown as a toast |
 | Branch and PR unlink | unlink in the ticket use-case; `ticket_update` gains `unlink_branch` and `unlink_pr` | Unlink on each linked branch and PR |
 | Enrollment codes | list open codes and revoke one | open codes under Runners and Computers, each with Revoke |
 | Notification unread | mark unread; `notification_update` takes it | "Mark unread" on a notification |
@@ -119,7 +119,7 @@ rule changes; if no frame names the item, the build adds an id beside the existi
 
 - **UI**: every screen in research 01, at 768, 1024 and 1440, and the phone's writes.
 - **HTTP**: the new and changed routes above, each classified for audit.
-- **MCP**: `machine_delete`; `ticket_update` unlinks; `notification_update` unread; `workspace_update` archived;
+- **MCP**: `host_delete` takes `kind` `machine`; `ticket_update` unlinks; `notification_update` unread; `workspace_update` archived;
   `role_update` takes the switch; an enrollment code revoke is added only inside the tool budget
   (`practices/mcp.md`).
 - **Events**: `machine.deleted`, `workspace.archived`, `workspace.restored` and `deploy.retried`, each with payload

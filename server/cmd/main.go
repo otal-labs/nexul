@@ -238,6 +238,7 @@ var livePushTopics = []string{
 	docs.TopicClarificationClosed,
 	runner.TopicRunnerConnected,
 	runner.TopicRunnerDisconnected,
+	runner.TopicMachineDeleted,
 	runner.TopicDeployBuildStarted,
 	runner.TopicDeployBuildProgress,
 	runner.TopicDeployBuildCompleted,

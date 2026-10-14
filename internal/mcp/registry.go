@@ -54,7 +54,7 @@ type RegistryOptions struct {
 	GitGate       gitprovider.Gate
 	Repository    *repository.Service
 	Runner        *runner.Service
-	// Hosts adapts each host kind (runner, automations host) to the shared host_create and host_delete tools.
+	// Hosts adapts each host kind (runner, automations host, machine) to the shared host_create and host_delete tools.
 	Hosts       map[string]composite.HostKind
 	DNS         *dns.Service
 	Automations *automations.Service
