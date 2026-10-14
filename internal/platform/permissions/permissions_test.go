@@ -56,7 +56,7 @@ func TestAreaOf(t *testing.T) {
 		{PlaysRun, AreaWorkspace},
 		{MembersWrite, AreaWorkspace},
 		{WorkspacesCreate, AreaWorkspace},
-		{AutomationsRead, AreaInstance},
+		{AutomationsRead, AreaWorkspace},
 		{"events:read", AreaInstance},
 		{TopologyRead, AreaInstance},
 	}

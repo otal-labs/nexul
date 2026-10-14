@@ -200,7 +200,7 @@ var domainTable = []domainInfo{
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
 	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.
 	{"botwebhook", "bots", []string{read, write, delete}, AreaWorkspace},
-	{"automations", "automations", []string{read, write, delete}, AreaInstance},
+	{"automations", "automations", []string{read, write, delete}, AreaWorkspace},
 	{"integrations", "integrations", []string{read, write, delete}, AreaInstance},
 	{"connectors", "connectors", []string{read, write}, AreaInstance},
 	{"events", "events", []string{read}, AreaInstance},
@@ -231,7 +231,6 @@ var instanceAreas = []InstanceArea{
 	{"accounts", "accounts", []Action{AccountsRead, AccountsWrite, AccountsDelete}},
 	{"machines", "adding machines", []Action{MachinesCreate}},
 	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
-	{"automations", "automation hosts", []Action{AutomationsRead, AutomationsWrite, AutomationsDelete}},
 	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},
 	{"audit", "the audit log", []Action{AuditRead}},
 }

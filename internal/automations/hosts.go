@@ -35,11 +35,13 @@ type HostView struct {
 
 // HostEnrollmentCode is a stored one-time code, bound to the host name it enrolls and optionally its machine.
 type HostEnrollmentCode struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	CodeHash string
+	Name     string
+	Machine  string
+	// EnrolledBy is the person who made the code, checked again when it is used; empty for the server's own.
+	EnrolledBy string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
 }
 
 // HostCredential is a host's stored credential hash; a removed host's stays behind revoked.
@@ -105,6 +107,8 @@ type HostStore interface {
 	// GetHostByName returns the host enrolled under name, or apperrs.ErrNotFound.
 	GetHostByName(ctx context.Context, name string) (*Host, error)
 	ListHosts(ctx context.Context) ([]Host, error)
+	// ListHostsOn lists the hosts filed under the machines with these ids, for a caller who sees only some.
+	ListHostsOn(ctx context.Context, machineIDs []string) ([]Host, error)
 	TouchHost(ctx context.Context, id string, at time.Time) error
 }
 

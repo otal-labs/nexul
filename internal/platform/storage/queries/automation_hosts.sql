@@ -7,6 +7,12 @@ SELECT * FROM automation_hosts WHERE name = ?;
 -- name: ListAutomationHosts :many
 SELECT * FROM automation_hosts ORDER BY created_at, id;
 
+-- name: ListAutomationHostsOn :many
+SELECT h.* FROM automation_hosts h
+JOIN machines m ON m.name = h.machine
+WHERE m.id IN (SELECT value FROM json_each(sqlc.arg(machine_ids)))
+ORDER BY h.created_at, h.id;
+
 -- name: CreateAutomationHost :exec
 INSERT INTO automation_hosts (id, name, machine, os, arch, version, last_seen, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
@@ -20,7 +26,7 @@ DELETE FROM automation_hosts WHERE id = ?;
 DELETE FROM automation_host_enrollment_codes WHERE expires_at <= ?;
 
 -- name: CreateAutomationHostEnrollmentCode :exec
-INSERT INTO automation_host_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?);
+INSERT INTO automation_host_enrollment_codes (code_hash, name, machine, created_at, expires_at, enrolled_by) VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetAutomationHostEnrollmentCode :one
 SELECT * FROM automation_host_enrollment_codes WHERE code_hash = ? AND expires_at > ?;

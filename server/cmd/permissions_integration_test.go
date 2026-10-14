@@ -428,7 +428,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"automations hosts: list", func(ctx context.Context) error {
 			_, err := s.automationHostsSvc.List(ctx)
 			return err
-		}, map[string]string{uOwner: ok, uReader: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: ok, uOutsider: ok}},
 		{"connectors: list", func(ctx context.Context) error {
 			_, err := s.connectorsSvc.List(ctx)
 			return err
@@ -544,10 +544,10 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"automations hosts: enroll one", func(ctx context.Context) error {
 			_, err := s.automationHostsSvc.CreateEnrollment(ctx, "jobs-"+actorID(ctx), "")
 			return err
-		}, instance},
+		}, map[string]string{uOwner: ok, uSteward: forbidden, uPlain: forbidden, uManager: forbidden, uOutsider: forbidden}},
 		{"automations hosts: remove one", func(ctx context.Context) error {
 			return s.automationHostsSvc.Remove(ctx, "host-ghost")
-		}, map[string]string{uOwner: notFound, uSteward: notFound, uPlain: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: notFound, uSteward: notFound, uPlain: notFound, uOutsider: notFound}},
 		{"connectors: register an app", func(ctx context.Context) error {
 			_, err := s.connectorsSvc.SetAppConfig(ctx, actorID(ctx), "connector-ghost", "id", "secret", "", "")
 			return err

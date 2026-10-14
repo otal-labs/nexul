@@ -194,13 +194,14 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 }
 
 // SetHost places an automation on the automations host hostID; empty places it on the bundled instance host. Its
-// live connection drops, so the new host's worker takes over.
+// live connection drops, so the new host's worker takes over. A host takes Deploy to on its machine beside
+// automations:write here, and one on a machine the actor can't see is not found.
 func (s *Service) SetHost(ctx context.Context, actorID, id, hostID string) (*Automation, error) {
 	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, err
 	}
-	next, err := s.resolveHost(ctx, strings.TrimSpace(hostID))
+	next, err := s.resolveHost(actorCtx(ctx, actorID), strings.TrimSpace(hostID))
 	if err != nil {
 		return nil, err
 	}
@@ -235,6 +236,9 @@ func (s *Service) resolveHost(ctx context.Context, hostID string) (*string, erro
 	}
 	if host.Name == InstanceHostName {
 		return nil, nil
+	}
+	if err := s.hosts.requireOnHost(ctx, host, permissions.MachinesDeploy); err != nil {
+		return nil, err
 	}
 	return &host.ID, nil
 }
@@ -398,11 +402,16 @@ func requirePermission(ctx context.Context, perm PermissionGate, actorID, worksp
 	if perm == nil {
 		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
-	// The use-cases name their actor; an adapter has already put the same one on ctx.
-	if _, ok := identity.ActorFromCtx(ctx); !ok {
-		ctx = identity.WithActor(ctx, identity.Actor{ID: actorID})
+	return perm.Require(actorCtx(ctx, actorID), workspaceID, action)
+}
+
+// actorCtx puts actorID on ctx unless an adapter already did: the use-cases name their actor, and the adapter has put
+// the same one there.
+func actorCtx(ctx context.Context, actorID string) context.Context {
+	if _, ok := identity.ActorFromCtx(ctx); ok {
+		return ctx
 	}
-	return perm.Require(ctx, workspaceID, action)
+	return identity.WithActor(ctx, identity.Actor{ID: actorID})
 }
 
 // mintToken generates a raw token, its hash, and a display prefix to recognize it without seeing it again.

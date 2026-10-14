@@ -642,7 +642,8 @@ frames of its runners leave out a machine someone can't See, and adding a runner
 to a machine that exists, discovering what runs on it or removing a runner takes
 Manage on it. A runner enrolled under a machine name nobody has makes the
 machine, and its adder gets a rule with all four permissions in the same write;
-the maker of an enrollment code is checked again when the code is used.
+the maker of an enrollment code is checked again when the code is used. An
+automations host follows its machine the same way.
 _Avoid_: Machine access
 
 **Wizard**:
@@ -697,7 +698,11 @@ _Avoid_: Rule, workflow (the v1 rule engine is gone)
 A named service that runs the automations placed on it, each automation on
 exactly one host. The one `nexul install` puts on the instance's own server is
 named `instance` and is where new automations go; more can be installed on
-other machines.
+other machines. A host follows its machine's rules (Machine rules): seeing it
+takes See on the machine, adding or removing one takes Manage, and placing an
+automation on it takes Deploy to there, beside `automations:write` in the
+automation's workspace. A host on a machine Nexul doesn't know yet is the
+instance Owner's alone.
 _Avoid_: Automations container, runner (a runner builds and deploys)
 
 **Enrollment code**:
@@ -958,8 +963,8 @@ _Avoid_: Whole instance, admin settings
 One part of the instance a Permission overwrite may sit on, outside every
 workspace: the instance itself (its URL, upgrades, failed events), Sign-in
 providers, each Connector, DNS and gateways, Instance templates, accounts,
-adding machines, the topology registry, automation hosts, integrations,
-and the audit log. Each names the permissions its rules may set. A person holds
+adding machines, the topology registry, integrations, and the audit log.
+Each names the permissions its rules may set. A person holds
 one of them through a role in any workspace they are in, then the area's rules
 for their roles, of which Allow wins, then a rule naming them. Only the instance
 Owner, the Owner of the default workspace, holds every area and is never denied
