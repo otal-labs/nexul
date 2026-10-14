@@ -9,6 +9,7 @@
 @import "@livekit/components-styles/themes/default";
 @import "@livekit/components-styles/components/layout";
 @import "@livekit/components-styles/components/participant";
+@source "./proto";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

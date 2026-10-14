@@ -12,6 +12,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { TabSegmentContext } from "@/hooks/useTabPath";
 import { ErrorPage } from "@/pages/ErrorPage";
+import { ProtoInvitationsPage } from "@/proto/invitations/ProtoInvitationsPage";
 import {
   AccessPage,
   AutomationPage,
@@ -116,6 +117,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/invite", element: <InvitePreviewPage /> },
+      { path: "/proto/invitations", element: <ProtoInvitationsPage /> },
       // The handoff link's landing and re-entry for a wrong GitHub App; the API only accepts either while no user exists.
       { path: "/setup", element: <SetupPage /> },
       ...(loggedIn
