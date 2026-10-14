@@ -15,7 +15,7 @@ const (
 	TopicRunnerDisconnected = "runner.disconnected"
 	TopicRunnerHeartbeat    = "runner.heartbeat"
 	// TopicPersonalChanged is ephemeral: a personal runner enrolling, connecting, disconnecting or removed, in place of
-	// runner.connected and runner.disconnected, which every runners:read holder hears (ADR 0146).
+	// runner.connected and runner.disconnected, which everyone who sees the runner's machine hears (ADR 0146).
 	TopicPersonalChanged = "runner.personal_changed"
 	// TopicFactsReported is ephemeral and never bridged to a socket: a personal runner's report, for pairing.
 	TopicFactsReported         = "runner.facts_reported"
@@ -79,6 +79,7 @@ type RunnerConnectedEvent struct {
 	RunnerID   string `json:"runner_id"`
 	Name       string `json:"name,omitempty"`
 	EnrolledBy string `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
+	MachineID  string `json:"machine_id,omitempty" jsonschema:"The machine the runner belongs to; the frame reaches only people who see that machine."`
 }
 
 // RunnerDisconnectedEvent is published when a runner disconnects or is dropped for a heartbeat timeout.
@@ -86,6 +87,7 @@ type RunnerDisconnectedEvent struct {
 	RunnerID   string `json:"runner_id"`
 	Reason     string `json:"reason,omitempty"`
 	EnrolledBy string `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
+	MachineID  string `json:"machine_id,omitempty" jsonschema:"The machine the runner belongs to; the frame reaches only people who see that machine."`
 }
 
 // Personal runner states a PersonalChangedEvent reports.

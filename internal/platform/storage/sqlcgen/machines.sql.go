@@ -104,6 +104,40 @@ func (q *Queries) ListMachines(ctx context.Context) ([]Machine, error) {
 	return items, nil
 }
 
+const listMachinesIn = `-- name: ListMachinesIn :many
+SELECT id, name, stack_root, reported_hostname, first_seen, last_seen FROM machines WHERE id IN (SELECT value FROM json_each(?1)) ORDER BY name
+`
+
+func (q *Queries) ListMachinesIn(ctx context.Context, ids interface{}) ([]Machine, error) {
+	rows, err := q.db.QueryContext(ctx, listMachinesIn, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Machine
+	for rows.Next() {
+		var i Machine
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.StackRoot,
+			&i.ReportedHostname,
+			&i.FirstSeen,
+			&i.LastSeen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const renameMachine = `-- name: RenameMachine :execrows
 UPDATE machines SET name = ? WHERE id = ?
 `

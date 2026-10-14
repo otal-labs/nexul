@@ -40,8 +40,9 @@ func hostCreateTool(kinds map[string]HostKind) mcptool.Tool {
 		"Enrolls a new runner or automations host: mints a one-time enrollment code and returns it with the "+
 			"one-line install commands for Linux or macOS and for Windows that carry it. Run one of them on the "+
 			"machine; it installs the host as a service, which trades the code for its own credential. The code is "+
-			"shown only in this result, is valid for one hour and enrolls exactly the named host. Needs "+
-			"runners:write in any workspace, or automations:write for an automations host.",
+			"shown only in this result, is valid for one hour and enrolls exactly the named host. A runner "+
+			"on a machine that exists needs Manage on it; one that makes a new machine needs Add machines, and its "+
+			"adder then holds every permission on the machine. An automations host needs automations:write.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in hostCreateIn) (any, error) {
 			kind, err := hostKind(kinds, in.Kind)
@@ -61,8 +62,8 @@ func hostDeleteTool(kinds map[string]HostKind) mcptool.Tool {
 	return mcptool.New("host_delete", "Remove host",
 		"Removes a runner or automations host: its credential is revoked and its record deleted, so it can never "+
 			"connect again. A connected host is told to uninstall its own service; an offline one is refused as "+
-			"removed when it returns and uninstalls itself then. Work it is running fails. Needs runners:delete in "+
-			"any workspace, or automations:delete for an automations host.",
+			"removed when it returns and uninstalls itself then. Work it is running fails. A runner needs Manage "+
+			"on its machine, and a runner on a machine you can't see is not found; an automations host needs automations:delete.",
 		mcptool.Hints{},
 		func(ctx context.Context, in hostDeleteIn) (any, error) {
 			kind, err := hostKind(kinds, in.Kind)

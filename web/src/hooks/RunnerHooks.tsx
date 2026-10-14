@@ -72,7 +72,10 @@ const followJob = ({ id }: { id: string }, { client }: { client: QueryClient }) 
   ]);
 
 export const runnerFollower: LiveFollower = {
-  ...followEach(["runner.connected", "runner.disconnected"], (_payload: unknown, { client }) => refetch(client, getRunnersKey)),
+  // A runner on a machine the viewer just got to see brings that machine with it.
+  ...followEach(["runner.connected", "runner.disconnected"], (_payload: unknown, { client }) =>
+    Promise.all([refetch(client, getRunnersKey), refetch(client, getMachinesKey)]),
+  ),
   ...followEach(["deploy.build_started", "deploy.build_progress", "deploy.build_completed", "deploy.deploy_progress"], followJob),
   // A finished job frees its runner, which takes the next queued one.
   "deploy.status_changed": (_payload: unknown, { client }) => Promise.all([refetch(client, getRunnersKey), refetch(client, getRunnerQueueKey)]),

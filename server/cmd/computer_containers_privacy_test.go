@@ -32,7 +32,7 @@ func connectComputerRunner(t *testing.T, c privacyCast, srv *httptest.Server, co
 	require.NoError(t, c.store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{CodeHash: codeHash, Name: "computer-ab12cd34", OwnerUserID: "u-alice", ComputerID: computerID, CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
 	credential, credentialHash, err := hostcred.MintCredential("nxr_")
 	require.NoError(t, err)
-	require.NoError(t, c.store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "r-laptop", Name: "computer-ab12cd34", OwnerUserID: "u-alice", ComputerID: computerID, LastSeen: now, CreatedAt: now}, credentialHash, now))
+	require.NoError(t, c.store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "r-laptop", Name: "computer-ab12cd34", OwnerUserID: "u-alice", ComputerID: computerID, LastSeen: now, CreatedAt: now}, credentialHash, now, nil))
 
 	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/runner", &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + credential}}})
 	require.NoError(t, err)

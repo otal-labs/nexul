@@ -53,7 +53,7 @@ func (sc storeScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([
 // formerAdminActions is everything the instance-admin flag used to open (ADR 0088).
 var formerAdminActions = []permissions.Action{
 	permissions.InstanceRead, permissions.InstanceWrite, permissions.AccountsRead, permissions.AccountsWrite,
-	permissions.AccountsDelete, permissions.WorkspacesCreate, permissions.RunnersWrite, permissions.RunnersDelete,
+	permissions.AccountsDelete, permissions.WorkspacesCreate,
 	permissions.AutomationsWrite, permissions.AutomationsDelete, permissions.ConnectorsWrite,
 	permissions.IntegrationsRead, permissions.IntegrationsWrite, permissions.IntegrationsDelete, permissions.AuditRead,
 }

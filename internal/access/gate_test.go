@@ -46,7 +46,7 @@ func (f fakeScopes) WorkspaceIDsForUser(_ context.Context, userID string) ([]str
 func TestRequire(t *testing.T) {
 	roles := newFakeRoles()
 	roles.set("ws-a", "alice", RoleInfo{})
-	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.RunnersRead)})
+	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.AutomationsRead)})
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
 	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
@@ -82,7 +82,7 @@ func TestRequire(t *testing.T) {
 			return s.RequireProject(alice, "p-gone", permissions.Member)
 		}, apperrs.ErrNotFound},
 		{"an instance-level read held in any of the caller's workspaces passes", func() error {
-			return s.RequireAnywhere(alice, permissions.RunnersRead)
+			return s.RequireAnywhere(alice, permissions.AutomationsRead)
 		}, nil},
 		{"an instance-level action held nowhere is forbidden", func() error {
 			return s.RequireAnywhere(alice, permissions.TopologyRead)
@@ -107,7 +107,7 @@ func TestRequire(t *testing.T) {
 // workspace they belong to, so a client shows the same instance areas the server lets through.
 func TestPermissionsAnywhere(t *testing.T) {
 	roles := newFakeRoles()
-	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.RunnersRead)})
+	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.TopologyRead)})
 	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.AccountsRead, permissions.DNSRead)})
 	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
 	s := newService(newFakeRepo(), newFakeUsers())
@@ -116,7 +116,7 @@ func TestPermissionsAnywhere(t *testing.T) {
 
 	got, err := s.PermissionsAnywhere(context.Background(), "alice")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"runners:read", "dns:read", "accounts:read"}, got)
+	assert.Equal(t, []string{"topology:read", "dns:read", "accounts:read"}, got)
 
 	got, err = s.PermissionsAnywhere(context.Background(), "olga")
 	require.NoError(t, err)

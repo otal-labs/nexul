@@ -29,6 +29,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -209,6 +210,14 @@ func newCountedFixture(t *testing.T) (permFixture, *testutil.Statements) {
 // newCountedFixtureDB is newCountedFixture with the database itself, for a test that bulk-loads rows in SQL.
 func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.DB) {
 	t.Helper()
+	db, st := countedDB(t)
+	svc, store := wiredOver(t, db)
+	return seedPermFixture(t, db, svc, store), st, db
+}
+
+// countedDB is a migrated database with the general project, counting every statement run on it.
+func countedDB(t *testing.T) (*sql.DB, *testutil.Statements) {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "counted.db")
 	plain, err := storage.OpenDB(path)
 	require.NoError(t, err)
@@ -220,8 +229,7 @@ func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.
 	require.NoError(t, err)
 	db, st := testutil.OpenCounted(inner)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	svc, store := wiredOver(t, db)
-	return seedPermFixture(t, db, svc, store), st, db
+	return db, st
 }
 
 // grow adds n of every listed thing to the fixture's project: docs shared with the reader, tickets with threads the
@@ -964,4 +972,46 @@ UNION ALL SELECT 'machine', m.id, 'person', NULL, ?, '["machines:see","machines:
 	none := cost(12, false)
 	assert.Equal(t, none, cost(2, true), "a few machines, each with rules")
 	assert.Equal(t, none, cost(12, true), "many machines, each with rules")
+}
+
+// TestStatements_MachineListCostsTheSameAtAnyLength: the machine list, the runner list, the queue and machine_list cost
+// the same statements over 2 machines as over 12, each with a runner and rules for a person and for a role, for the
+// instance Owner and for people who see them through rules: the machines a person sees come in one read and filter the
+// lists in SQL, never a check per machine.
+func TestStatements_MachineListCostsTheSameAtAnyLength(t *testing.T) {
+	cost := func(n int) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		svc := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(f.svc.accessSvc)
+		machineList := tool(t, runner.MCPTools(svc), "machine_list")
+		for _, insert := range []string{
+			`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) SELECT 'mach-' || i, 'box-' || i, '/data/nexul', '', 1, 1 FROM n`,
+			`INSERT INTO runners (id, name, last_seen, connected, created_at, version, machine_id) SELECT 'r-' || i, 'runner-' || i, 1, 0, 1, 'v1', 'mach-' || i FROM n`,
+			`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at)
+SELECT 'machine', 'mach-' || i, 'person', 'u-writer', NULL, '["machines:see","machines:deploy"]', '[]', 1, 1 FROM n
+UNION ALL SELECT 'machine', 'mach-' || i, 'role', NULL, 'role-reader', '["machines:see"]', '[]', 1, 1 FROM n`,
+		} {
+			_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?) `+insert, n)
+			require.NoError(t, err)
+		}
+		paths := map[string]func(ctx context.Context) error{
+			"the machine list": func(ctx context.Context) error { _, err := svc.ListMachines(ctx); return err },
+			"the runner list":  func(ctx context.Context) error { _, err := svc.ListRunners(ctx); return err },
+			"the queue":        func(ctx context.Context) error { _, err := svc.ListQueue(ctx); return err },
+			"machine_list": func(ctx context.Context) error {
+				_, err := machineList.Call(ctx, json.RawMessage(`{}`))
+				return err
+			},
+		}
+		out := map[string]int64{}
+		for _, user := range []string{uOwner, uReader, uWriter} {
+			for name, run := range paths {
+				ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: user}), f.svc.accessSvc.NewMemo())
+				st.Reset()
+				require.NoError(t, run(ctx), "%s as %s", name, user)
+				out[user+" "+name] = st.Count()
+			}
+		}
+		return out
+	}
+	assert.Equal(t, cost(2), cost(12))
 }

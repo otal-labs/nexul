@@ -60,7 +60,7 @@ func explainFixture(t *testing.T) (*Service, *fakeNames) {
 		permissions.TicketsRead, permissions.PlaysRead, permissions.PlaysRun)})
 	roles.set("ws", "sam", RoleInfo{RoleID: "role-plain"})
 	roles.set("ws", "lena", RoleInfo{RoleID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead,
-		permissions.DocsRead, permissions.RunnersRead)})
+		permissions.DocsRead, permissions.TopologyRead)})
 	roles.set("ws", "nina", RolesHeld())
 	s := newService(repo, newFakeUsers())
 	s.SetRoles(roles)
@@ -116,7 +116,7 @@ func TestDecide_Source(t *testing.T) {
 			src(SourceNotInProject, "project", "p-back", TargetPerson, "lena", StateDeny), "Not found: lena isn't in project Backoffice"},
 		{"a project action with no project named", "lena", "", permissions.TicketsRead, "", "", false,
 			src(SourceOutsideProject, "workspace", "ws", TargetPerson, "lena", StateDeny), "Not allowed: it counts only inside a project"},
-		{"an instance action from the role", "lena", "", permissions.RunnersRead, "", "", true,
+		{"an instance action from the role", "lena", "", permissions.TopologyRead, "", "", true,
 			src(SourceRole, "workspace", "ws", TargetRole, "role-client", StateAllow), "Allowed by role Client"},
 		{"no role", "nina", "", permissions.ChatWrite, "", "", false,
 			src(SourceRole, "workspace", "ws", TargetPerson, "nina", StateDeny), "Not allowed: nina holds no role"},

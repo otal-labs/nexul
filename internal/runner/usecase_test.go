@@ -121,6 +121,15 @@ func (ownerGate) RequireAnywhere(ctx context.Context, action permissions.Action)
 	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 }
 
+func (ownerGate) RequireMachine(ctx context.Context, _ string, action permissions.Action) error {
+	return ownerGate{}.RequireAnywhere(ctx, action)
+}
+
+func (ownerGate) CallerMachines(ctx context.Context) ([]string, bool, error) {
+	actor, ok := identity.ActorFromCtx(ctx)
+	return nil, !ok || actor.ID == "admin-1", nil
+}
+
 // asAdmin is a context carrying the Owner newUpgradeService recognizes.
 func asAdmin() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "admin-1"})

@@ -25,6 +25,7 @@ import (
 // workspace's Owner role and carol through a role granted every bit.
 type privacyCast struct {
 	h                       http.Handler
+	db                      *sql.DB
 	store                   *storage.Store
 	svc                     *coreServices
 	alice, owner, everyBits string
@@ -32,7 +33,12 @@ type privacyCast struct {
 
 func newPrivacyCast(t *testing.T) (privacyCast, *sql.DB) {
 	t.Helper()
-	db := mentionsTestDB(t)
+	return privacyCastOver(t, mentionsTestDB(t))
+}
+
+// privacyCastOver is newPrivacyCast over db, for a test that counts the statements it runs.
+func privacyCastOver(t *testing.T, db *sql.DB) (privacyCast, *sql.DB) {
+	t.Helper()
 	h, store, svc := routerOver(t, db)
 	ctx := t.Context()
 	now := time.Now()
@@ -56,7 +62,7 @@ func newPrivacyCast(t *testing.T) (privacyCast, *sql.DB) {
 		tokens[user], _, err = svc.authSvc.MintPAT(ctx, user, "privacy test")
 		require.NoError(t, err)
 	}
-	return privacyCast{h: h, store: store, svc: svc, alice: tokens["u-alice"], owner: tokens["u-bob"], everyBits: tokens["u-carol"]}, db
+	return privacyCast{h: h, db: db, store: store, svc: svc, alice: tokens["u-alice"], owner: tokens["u-bob"], everyBits: tokens["u-carol"]}, db
 }
 
 // seedRunners writes a deploy runner on machine m1 and alice's personal runner, the way enrollment leaves them.
@@ -69,11 +75,14 @@ VALUES ('r-laptop', 'computer-ab12cd34', 1, 1, 1, 'v1', '', 'u-alice', 'c-laptop
 	require.NoError(t, err)
 }
 
-// TestRunners_ListNeverShowsAPersonalRunner: runners:read and machines:read open the deploy runners and machines,
-// never a person's computer, even for someone holding every bit or the workspace Owner's bypass.
+// TestRunners_ListNeverShowsAPersonalRunner: seeing a machine opens its deploy runners, never a person's computer, even
+// for someone holding every bit with a rule on the machine or the instance Owner's bypass.
 func TestRunners_ListNeverShowsAPersonalRunner(t *testing.T) {
 	c, db := newPrivacyCast(t)
 	seedRunners(t, db)
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('machine', 'm-1', 'person', 'u-carol', '["machines:see"]', '[]', 1, 1)`)
+	require.NoError(t, err)
 
 	for who, token := range map[string]string{"workspace Owner": c.owner, "every bit": c.everyBits} {
 		rec := callAPI(t, c.h, http.MethodGet, "/api/runners", token, "")

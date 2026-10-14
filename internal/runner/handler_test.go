@@ -419,7 +419,7 @@ func TestHandler_ServeHTTP_IdentityComesFromTheRecord(t *testing.T) {
 	h.mu.Unlock()
 	evs := bus.topicEvents(TopicRunnerConnected)
 	require.Len(t, evs, 1)
-	assert.Equal(t, RunnerConnectedEvent{RunnerID: "r-7", Name: "build-box"}, decodeEvent[RunnerConnectedEvent](t, evs[0]))
+	assert.Equal(t, RunnerConnectedEvent{RunnerID: "r-7", Name: "build-box", MachineID: "m-prod"}, decodeEvent[RunnerConnectedEvent](t, evs[0]))
 }
 
 func TestHandler_HeartbeatTimeout(t *testing.T) {

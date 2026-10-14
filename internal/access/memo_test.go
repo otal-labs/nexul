@@ -44,7 +44,7 @@ func TestMemo_AFailedReadIsNotRemembered(t *testing.T) {
 func TestProjectsWith_AnswersAsEachProjectsCheck(t *testing.T) {
 	s, repo := projectsFixture(t)
 	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
-	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.RunnersRead, permissions.ChatWrite}
+	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.TopologyRead, permissions.ChatWrite}
 
 	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
 		for _, action := range actions {

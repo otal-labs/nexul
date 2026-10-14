@@ -83,7 +83,7 @@ const workspaceRoutes: RouteObject[] = [
   { path: "board", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "tickets/:ticketId", handle: projectGate("tickets"), element: <TicketPage /> },
-  { path: "runners", handle: gate("runners"), element: <RunnersPage /> },
+  { path: "runners", element: <RunnersPage /> },
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },
   ...staticTabs("access", ["channels"], "access", <AccessPage />),

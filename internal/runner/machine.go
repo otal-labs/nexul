@@ -18,12 +18,21 @@ type Machine struct {
 	LastSeen         time.Time `json:"last_seen"`
 }
 
+// CreatedMachine is a machine an enrollment brings into being, with the person who gets every action on it in the same
+// write (ADR 0151); Owner is empty for a machine the server itself enrolls.
+type CreatedMachine struct {
+	Machine *Machine
+	Owner   string
+}
+
 // MachineRepo persists machines.
 type MachineRepo interface {
 	Create(ctx context.Context, m *Machine) error
 	Get(ctx context.Context, id string) (*Machine, error)
 	GetByName(ctx context.Context, name string) (*Machine, error)
 	List(ctx context.Context) ([]*Machine, error)
+	// ListIn returns the machines ids names, in one statement however many there are.
+	ListIn(ctx context.Context, ids []string) ([]*Machine, error)
 	Rename(ctx context.Context, id, name string) error
 	SetStackRoot(ctx context.Context, id, stackRoot string) error
 	// Touch refreshes last_seen and records the reported hostname hint; called at connect and on every heartbeat.

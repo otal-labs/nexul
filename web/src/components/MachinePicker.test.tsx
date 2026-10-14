@@ -55,7 +55,7 @@ describe("MachinePicker", () => {
     });
 
   it("links an empty machine list to the Runners page for someone who can open it", async () => {
-    mockEmptyMachines(["runners:read"]);
+    mockEmptyMachines(["machines:create"]);
     renderPicker();
 
     expect(await screen.findByRole("link", { name: "Add a runner" })).toHaveAttribute("href", "/acme/runners");

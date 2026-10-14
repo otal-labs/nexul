@@ -59,6 +59,10 @@ type allowGate struct{}
 
 func (allowGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
+func (allowGate) RequireMachine(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerMachines(context.Context) ([]string, bool, error) { return nil, true, nil }
+
 type settings struct{ url string }
 
 func (s settings) GetInstanceURL(context.Context) (string, error) { return s.url, nil }
@@ -119,6 +123,8 @@ func newInstance(t *testing.T) *instance {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() }) // the process is done with it either way
 	require.NoError(t, storage.Migrate(db))
+	_, err = db.Exec(`INSERT INTO users (id, login, created_at, updated_at) VALUES ('admin', 'admin', 1, 1)`)
+	require.NoError(t, err)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	bus := &syncBus{handlers: map[string][]eventbus.Handler{}}
 	h := runner.NewHandler(runner.HandlerConfig{

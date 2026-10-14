@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -64,6 +65,7 @@ type Service struct {
 	upgrades UpgradeRepo
 	bus      Publisher
 	gate     Gate
+	creators CreatorGate
 	// automationsHosts lets machine_list show each machine's automations hosts; nil lists none.
 	automationsHosts AutomationsHostLister
 	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
@@ -148,15 +150,28 @@ func (s *Service) WithManaged(managed ManagedLookup) *Service {
 	return s
 }
 
-// Gate is the permission check runners and machines pass through; both are instance-wide, so a caller needs the
-// action in any workspace they belong to (the access domain, ADR 0042).
+// Gate is the permission check runners and machines pass through: the instance areas (the access domain, ADR 0042) and
+// each machine's own rules (ADR 0151).
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	// RequireMachine is not found for a machine the caller can't see, whatever the action.
+	RequireMachine(ctx context.Context, machineID string, action permissions.Action) error
+	// CallerMachines lists the machines the caller sees; all is true when they see every one without asking.
+	CallerMachines(ctx context.Context) (machineIDs []string, all bool, err error)
 }
 
-// WithGate wires the permission check; unset, only the server's own calls pass.
+// CreatorGate answers for the person who made an enrollment code, whose rights are read again when the code is used.
+type CreatorGate interface {
+	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
+	MachinePermissions(ctx context.Context, userID, machineID string) (permissions.Set, error)
+}
+
+// WithGate wires the permission checks; unset, only the server's own calls pass.
 func (s *Service) WithGate(g Gate) *Service {
 	s.gate = g
+	if c, ok := g.(CreatorGate); ok {
+		s.creators = c
+	}
 	return s
 }
 
@@ -167,12 +182,48 @@ func (s *Service) require(ctx context.Context, action permissions.Action) error 
 	return s.gate.RequireAnywhere(ctx, action)
 }
 
-// ListRunners returns every runner with its presence state and current job; unseen runners are absent.
+func (s *Service) requireMachine(ctx context.Context, machineID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireMachine(ctx, machineID, action)
+}
+
+// reach is the machines the caller sees: every one for the server and the instance Owner.
+type reach struct {
+	ids []string
+	all bool
+}
+
+func (s *Service) reach(ctx context.Context) (reach, error) {
+	if s.gate == nil {
+		return reach{all: true}, permissions.Ungated(ctx)
+	}
+	ids, all, err := s.gate.CallerMachines(ctx)
+	if err != nil {
+		return reach{}, fmt.Errorf("list the machines the caller sees: %w", err)
+	}
+	return reach{ids: ids, all: all}, nil
+}
+
+// visibleMachines lists the machines r reaches; nil without a machine repo.
+func (s *Service) visibleMachines(ctx context.Context, r reach) ([]*Machine, error) {
+	if s.machines == nil {
+		return nil, nil
+	}
+	if r.all {
+		return s.machines.List(ctx)
+	}
+	return s.machines.ListIn(ctx, r.ids)
+}
+
+// ListRunners returns the runners on the machines the caller sees with their presence state and current job.
 func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
-	if err := s.require(ctx, permissions.RunnersRead); err != nil {
+	r, err := s.reach(ctx)
+	if err != nil {
 		return nil, err
 	}
-	rs, err := s.repo.List(ctx)
+	rs, err := s.runnersOf(ctx, r)
 	if err != nil {
 		return nil, fmt.Errorf("list runners: %w", err)
 	}
@@ -180,60 +231,79 @@ func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
 	for _, st := range s.live.Runners() {
 		running[st.RunnerID] = st.RunningJob
 	}
-	machineNames := s.machineNames(ctx)
+	machineNames, err := s.machineNames(ctx, r)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]RunnerView, 0, len(rs))
-	for _, r := range rs {
+	for _, rn := range rs {
 		out = append(out, RunnerView{
-			ID:         r.ID,
-			Name:       r.Name,
-			Version:    r.Version,
-			Connected:  r.Connected,
-			LastSeen:   r.LastSeen,
-			RunningJob: running[r.ID],
-			Machine:    machineNames[r.MachineID],
+			ID:         rn.ID,
+			Name:       rn.Name,
+			Version:    rn.Version,
+			Connected:  rn.Connected,
+			LastSeen:   rn.LastSeen,
+			RunningJob: running[rn.ID],
+			Machine:    machineNames[rn.MachineID],
 		})
 	}
 	return out, nil
 }
 
-// machineNames resolves every machine id to its name in one pass; a lookup failure yields an empty map, so a
-// runner list still renders without machine names rather than failing outright.
-func (s *Service) machineNames(ctx context.Context) map[string]string {
-	if s.machines == nil {
-		return nil
+func (s *Service) runnersOf(ctx context.Context, r reach) ([]*Runner, error) {
+	if r.all {
+		return s.repo.List(ctx)
 	}
-	ms, err := s.machines.List(ctx)
+	return s.repo.ListOn(ctx, r.ids)
+}
+
+// machineNames resolves the id of every machine r reaches to its name in one pass; without a machine repo it is empty,
+// so a runner list still renders without machine names.
+func (s *Service) machineNames(ctx context.Context, r reach) (map[string]string, error) {
+	ms, err := s.visibleMachines(ctx, r)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list machines: %w", err)
 	}
 	out := make(map[string]string, len(ms))
 	for _, m := range ms {
 		out[m.ID] = m.Name
 	}
-	return out
+	return out, nil
 }
 
-// ListQueue returns the deploys waiting for a runner, FIFO order.
+// ListQueue returns the deploys waiting for a runner on a machine the caller sees, FIFO order; a deploy aimed at no
+// machine in particular is the server's and the instance Owner's to see.
 func (s *Service) ListQueue(ctx context.Context) ([]QueuedJob, error) {
-	if err := s.require(ctx, permissions.RunnersRead); err != nil {
+	r, err := s.reach(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return s.live.Queue(), nil
+	queue := s.live.Queue()
+	if r.all {
+		return queue, nil
+	}
+	names, err := s.machineNames(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(names))
+	for _, name := range names {
+		seen[name] = true
+	}
+	return slices.DeleteFunc(slices.Clone(queue), func(j QueuedJob) bool { return !seen[j.Target] }), nil
 }
 
-// ListMachines returns every machine.
+// ListMachines returns the machines the caller sees.
 func (s *Service) ListMachines(ctx context.Context) ([]*Machine, error) {
-	if err := s.require(ctx, permissions.MachinesRead); err != nil {
+	r, err := s.reach(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if s.machines == nil {
-		return nil, nil
-	}
-	return s.machines.List(ctx)
+	return s.visibleMachines(ctx, r)
 }
 
-// listAutomationsHosts is the hosts machine_list files under each machine; a caller who may not read them gets none.
-func (s *Service) listAutomationsHosts(ctx context.Context) ([]AutomationsHost, error) {
+// listAutomationsHosts is the hosts machine_list files under each machine of r; a caller who may not read them gets none.
+func (s *Service) listAutomationsHosts(ctx context.Context, r reach, machines []*Machine) ([]AutomationsHost, error) {
 	if s.automationsHosts == nil {
 		return nil, nil
 	}
@@ -241,13 +311,23 @@ func (s *Service) listAutomationsHosts(ctx context.Context) ([]AutomationsHost, 
 	if permissions.Refused(err) {
 		return nil, nil
 	}
-	return hosts, err
+	if err != nil || r.all {
+		return hosts, err
+	}
+	names := make(map[string]bool, len(machines))
+	for _, m := range machines {
+		names[m.Name] = true
+	}
+	return slices.DeleteFunc(slices.Clone(hosts), func(h AutomationsHost) bool { return !names[h.Machine] }), nil
 }
 
-// GetMachine returns one machine by id.
+// GetMachine returns one machine by id; one the caller can't see is not found.
 func (s *Service) GetMachine(ctx context.Context, id string) (*Machine, error) {
 	if s.machines == nil {
 		return nil, fmt.Errorf("%w: machines are not configured", apperrs.ErrConflict)
+	}
+	if err := s.requireMachine(ctx, id, permissions.MachinesSee); err != nil {
+		return nil, err
 	}
 	return s.machines.Get(ctx, id)
 }
@@ -257,7 +337,7 @@ func (s *Service) UpdateMachine(ctx context.Context, id, name, stackRoot string)
 	if s.machines == nil {
 		return nil, fmt.Errorf("%w: machines are not configured", apperrs.ErrConflict)
 	}
-	if err := s.require(ctx, permissions.MachinesWrite); err != nil {
+	if err := s.requireMachine(ctx, id, permissions.MachinesWrite); err != nil {
 		return nil, err
 	}
 	if name != "" {
@@ -309,7 +389,7 @@ func (s *Service) DiscoverUnmanaged(ctx context.Context, machineID string) (Disc
 // before anything is adopted. A describe failure (no Cloudflare connector, unknown tunnel) is carried on the
 // row as TunnelError rather than failing the whole scan.
 func (s *Service) DiscoverForImport(ctx context.Context, machineID string) (GroupedDiscovery, error) {
-	if err := s.require(ctx, permissions.MachinesRead); err != nil {
+	if err := s.requireMachine(ctx, machineID, permissions.MachinesWrite); err != nil {
 		return GroupedDiscovery{}, err
 	}
 	report, err := s.DiscoverUnmanaged(ctx, machineID)

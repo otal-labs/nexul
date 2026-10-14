@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
-  { to: "/runners", label: "Runners", icon: Cpu, area: "runners" },
+  { to: "/runners", label: "Runners", icon: Cpu },
   { to: "/topology", label: "Topology", icon: Network, area: "topology" },
   { to: "/automations", label: "Automations", icon: Workflow, area: "automations", wip: true },
   { to: "/access", label: "Access", icon: ShieldCheck, area: "access" },
@@ -28,7 +28,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   );
   const canOpen = useCanOpen();
   const wsPath = useWorkspacePath();
-  const entries = deployNav.filter((entry) => canOpen(entry.area) === true);
+  const entries = deployNav.filter((entry) => !entry.area || canOpen(entry.area) === true);
 
   if (entries.length === 0) return null;
 

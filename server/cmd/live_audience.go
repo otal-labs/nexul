@@ -171,8 +171,8 @@ var liveRules = map[string]liveRule{
 	runner.TopicDeployBuildCompleted:   deployFrame,
 	runner.TopicDeployDeployProgress:   deployFrame,
 	runner.TopicDeployStatusChanged:    deployFrame,
-	runner.TopicRunnerConnected:        anywhere(permissions.RunnersRead),
-	runner.TopicRunnerDisconnected:     anywhere(permissions.RunnersRead),
+	runner.TopicRunnerConnected:        runnerFrame,
+	runner.TopicRunnerDisconnected:     runnerFrame,
 	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
@@ -314,6 +314,14 @@ func workspaceFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bo
 		WorkspaceID string `json:"workspace_id"`
 	}
 	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+}
+
+// runnerFrame reaches whoever sees the machine the runner belongs to; a frame naming none reaches nobody.
+func runnerFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		MachineID string `json:"machine_id"`
+	}
+	return decode(raw, &p) && p.MachineID != "" && a.access.RequireMachine(ctx, p.MachineID, permissions.MachinesSee) == nil
 }
 
 func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

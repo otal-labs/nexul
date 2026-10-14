@@ -49,7 +49,7 @@ Every workspace has an **Owner** role. It can't be renamed, deleted, or limited:
 
 A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, each level including the ones before it. Plays' first level is **See**. Some areas carry extra checkboxes under their name, such as docs' **Threads**, **Clone**, and **Lock**, which need **Read** first (plays' **Run** needs **See**). A few permissions are a plain yes or no, set with a switch at the top of their tab. The editor has three permission tabs, each with the number of areas and switches it allows, a dot while it holds unsaved changes, and a top row that sets every area in it at once, leaving the switches as they are:
 
-- **Instance**: areas that apply across every workspace on this install, such as runners, machines, DNS and gateways, connectors, accounts, and the audit log.
+- **Instance**: areas that apply across every workspace on this install, such as adding machines, DNS and gateways, connectors, accounts, and the audit log.
 - **Workspace**: across the workspace, whatever project someone is in. It leads with **Create projects** (`projects:create`) and **Edit the workspace Interview template** (`memories:template`), then areas such as chat, channels, plays, members, and roles.
 - **In projects**: a project's areas, such as tickets, docs, memories, and stacks, which a holder has only inside the projects they're in. It leads with **Manage this project's access** (`projects:access`): choosing who's in a project and what they can do there.
 
@@ -67,8 +67,8 @@ Five roles ship with Nexul as templates. Every new workspace, a fresh install's 
 |---|---|---|
 | Client | Read and write tickets, docs (with their threads) and attachments; read memories | Your projects |
 | Junior Developer | The same, plus read pull requests, code reviews, repositories, stacks and deploys with their logs, and see and run plays | Your computer, Your projects |
-| Senior Developer | Delete in most project areas, write repositories, stacks and deploys, create projects, edit plays and auto plays, edit the Interview template, and read runners, machines, DNS and the topology | Connect GitHub, Your computer |
-| DevOps | Write tickets, docs, repositories, stacks and deploys, delete stacks, and manage runners, machines, DNS and gateways, and the topology registry | Add a deploy server |
+| Senior Developer | Delete in most project areas, write repositories, stacks and deploys, create projects, edit plays and auto plays, edit the Interview template, and read DNS and the topology | Connect GitHub, Your computer |
+| DevOps | Write tickets, docs, repositories, stacks and deploys, delete stacks, and deploy to, manage and delete machines, DNS and gateways, and the topology registry | Add a deploy server |
 | Administrator | Every project and workspace permission plus the deploy infrastructure, except making or removing a workspace and the instance's own administration, which stay with the Owner | Connect GitHub |
 
 All five can chat and use channels, voice, mentions, and notifications.
@@ -77,7 +77,7 @@ All five can chat and use channels, voice, mentions, and notifications.
 
 ### Instance permissions
 
-Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, runners and machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: whoever owns a workspace holds all of them, which is why `workspaces:create` is as strong as Owner.
+Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, adding machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: whoever owns a workspace holds all of them, which is why `workspaces:create` is as strong as Owner.
 
 To hand out one part of the instance without a custom role, such as letting bob manage DNS but not connectors, the instance Owner (the Owner of the default workspace) sets a rule on that **instance area** for a role or a person, the same Allow, Fallback and Deny as on a project. A role rule names a role of any workspace and reaches its holders. The areas and what each rule may set:
 
@@ -89,7 +89,7 @@ To hand out one part of the instance without a custom role, such as letting bob 
 | DNS and gateways | `dns` | `dns:read`, `dns:write`, `dns:delete` |
 | Instance templates | `templates` | `templates:read`, `templates:write` |
 | Accounts | `accounts` | `accounts:read`, `accounts:write`, `accounts:delete` |
-| Runners and machines | `runners` | `runners:read`, `runners:write`, `runners:delete`, `machines:read`, `machines:write` |
+| Adding machines | `machines` | `machines:create` |
 | The topology registry | `topology` | `topology:read`, `topology:write`, `topology:delete` |
 | Automation hosts | `automations` | `automations:read`, `automations:write`, `automations:delete` |
 | Integrations | `integrations` | `integrations:read`, `integrations:write`, `integrations:delete` |
@@ -97,7 +97,7 @@ To hand out one part of the instance without a custom role, such as letting bob 
 
 A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. An Owner of any workspace is never denied, so nobody can lock the instance away from its Owners. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it.
 
-Only the instance Owner sees or changes these rules. In **Settings**, each instance entry ends with an **Access** card listing its areas: Instance, Team (accounts), Sign-in providers, DNS and Templates each show their own, Connectors has one row per connector on its **Access** tab, and the areas without an entry of their own (runners and machines, the topology registry, automation hosts, integrations, the audit log) sit under Instance. Each row says whose rules it carries, and opens the permissions panel on that area: the roles of every workspace, each named with its workspace ("Member in Northwind"), and every account, with **Check access** showing a person's answer for each permission and the rule or role it came from. A Deny on a read that a person or role holds today asks first, since a rule beats every role they hold and it may be their last way in.
+Only the instance Owner sees or changes these rules. In **Settings**, each instance entry ends with an **Access** card listing its areas: Instance, Team (accounts), Sign-in providers, DNS and Templates each show their own, Connectors has one row per connector on its **Access** tab, and the areas without an entry of their own (adding machines, the topology registry, automation hosts, integrations, the audit log) sit under Instance. Each row says whose rules it carries, and opens the permissions panel on that area: the roles of every workspace, each named with its workspace ("Member in Northwind"), and every account, with **Check access** showing a person's answer for each permission and the rule or role it came from. A Deny on a read that a person or role holds today asks first, since a rule beats every role they hold and it may be their last way in.
 
 To let sam manage DNS but not connectors: open **Settings → DNS**, then **DNS and gateways** in its Access card, add sam, set **Read** and **Create and update** to Allow, and save. Sam now sees DNS under Settings and nothing under Connectors, and **Check access** on sam reads "Allowed on DNS and gateways for sam" for both, and "Not allowed: role Member doesn't grant it" for Delete. With the API:
 

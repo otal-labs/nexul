@@ -256,6 +256,21 @@ func (s *Service) MachinesSeen(ctx context.Context, userID string) ([]string, er
 	return ids, nil
 }
 
+// CallerMachines lists the machines the caller on ctx sees, so a list filters by them in SQL (ADR 0140). all is true for
+// a caller who sees every machine without asking, the server's own calls and the instance Owner, and ids is then empty.
+func (s *Service) CallerMachines(ctx context.Context) (machineIDs []string, all bool, err error) {
+	userID, checked := caller(ctx)
+	if !checked {
+		return nil, true, nil
+	}
+	ctx = s.memoized(ctx)
+	if _, owner, err := s.instanceOwnerSource(ctx, userID); err != nil || owner {
+		return nil, owner, err
+	}
+	machineIDs, err = s.MachinesSeen(ctx, userID)
+	return machineIDs, false, err
+}
+
 // requireMachineSeen is not found for a machine the actor can't see, so a write or a read of its rules never confirms it.
 func (s *Service) requireMachineSeen(ctx context.Context, actorID, machineID string) error {
 	view, err := s.machineView(ctx, actorID, machineID)

@@ -5651,6 +5651,10 @@
       "enrolled_by": {
         "type": "string",
         "description": "Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."
+      },
+      "machine_id": {
+        "type": "string",
+        "description": "The machine the runner belongs to; the frame reaches only people who see that machine."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5670,6 +5674,10 @@
       "enrolled_by": {
         "type": "string",
         "description": "Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."
+      },
+      "machine_id": {
+        "type": "string",
+        "description": "The machine the runner belongs to; the frame reaches only people who see that machine."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

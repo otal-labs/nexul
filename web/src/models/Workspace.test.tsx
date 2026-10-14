@@ -48,7 +48,7 @@ describe("switchWorkspacePath", () => {
     expect(switchWorkspacePath("/a/configuration/roles", "b", access([], ["danger"]))).toBe("/b");
   });
 
-  it.each(["/a/board/ONLY", "/a/docs", "/a/runners", "/a/stacks/s-1", "/a/wizard/project/project"])(
+  it.each(["/a/board/ONLY", "/a/docs", "/a/stacks/s-1", "/a/wizard/project/project"])(
     "goes home from %s when the viewer can't open that section there",
     (from) => {
       expect(switchWorkspacePath(from, "b", access([]))).toBe("/b");

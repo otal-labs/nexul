@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -47,12 +48,14 @@ type fakeRunnerRepo struct {
 	credErr     error
 	// machines backs the handler's machine lookups in tests built on this repo.
 	machines *fakeMachineRepo
+	// owners is who each machine an enrollment created was given to, by machine id.
+	owners map[string]string
 }
 
 func newFakeRunnerRepo() *fakeRunnerRepo {
 	return &fakeRunnerRepo{
 		runners: map[string]*Runner{}, codes: map[string]*EnrollmentCode{}, credentials: map[string]*Credential{},
-		machines: newFakeMachineRepo(),
+		machines: newFakeMachineRepo(), owners: map[string]string{},
 	}
 }
 
@@ -165,7 +168,7 @@ func (f *fakeRunnerRepo) GetEnrollment(_ context.Context, codeHash string, now t
 	return &cp, nil
 }
 
-func (f *fakeRunnerRepo) Enroll(_ context.Context, codeHash string, r *Runner, credentialHash string, now time.Time) error {
+func (f *fakeRunnerRepo) Enroll(ctx context.Context, codeHash string, r *Runner, credentialHash string, now time.Time, created *CreatedMachine) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	e, ok := f.codes[codeHash]
@@ -176,6 +179,12 @@ func (f *fakeRunnerRepo) Enroll(_ context.Context, codeHash string, r *Runner, c
 		if existing.Name == r.Name {
 			return apperrs.ErrConflict
 		}
+	}
+	if created != nil {
+		if err := f.machines.Create(ctx, created.Machine); err != nil {
+			return err
+		}
+		f.owners[created.Machine.ID] = created.Owner
 	}
 	delete(f.codes, codeHash)
 	cp := *r
@@ -249,6 +258,20 @@ func (f *fakeRunnerRepo) List(context.Context) ([]*Runner, error) {
 		}
 		cp := *r
 		out = append(out, &cp)
+	}
+	return out, nil
+}
+
+func (f *fakeRunnerRepo) ListOn(ctx context.Context, machineIDs []string) ([]*Runner, error) {
+	all, err := f.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []*Runner
+	for _, r := range all {
+		if slices.Contains(machineIDs, r.MachineID) {
+			out = append(out, r)
+		}
 	}
 	return out, nil
 }
@@ -351,6 +374,20 @@ func (f *fakeMachineRepo) List(_ context.Context) ([]*Machine, error) {
 	for _, m := range f.machines {
 		cp := *m
 		out = append(out, &cp)
+	}
+	return out, nil
+}
+
+func (f *fakeMachineRepo) ListIn(ctx context.Context, ids []string) ([]*Machine, error) {
+	all, err := f.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []*Machine
+	for _, m := range all {
+		if slices.Contains(ids, m.ID) {
+			out = append(out, m)
+		}
 	}
 	return out, nil
 }

@@ -11,6 +11,14 @@ A runner is a service on one of your machines. It connects out to the instance o
 
 A computer someone adds for their own agent work runs a runner of its own too. It never builds or deploys, and it never shows on the **Runners** page or as a machine, for anyone: only the person who added it sees it, with their computers.
 
+## Who sees a machine
+
+The **Runners** page opens for every member and shows the machines you are on, with their runners and the jobs queued for them. A machine you aren't on isn't there at all: not in the list, not in a picker, not over the API or MCP, and its runners' live updates never reach you. The instance Owner (the Owner of the default workspace) sees every machine. Everyone else is put on a machine by a rule on it, for a role or for a person, and an Owner of another workspace is no exception.
+
+What you can do on a machine you are on comes from three permissions: **Deploy to**, **Manage** and **Delete**. Your roles' `machines:deploy`, `machines:write` and `machines:delete` set them, and the machine's rules can allow or deny each on top. Adding a runner to a machine that exists, changing its stack root, discovering what runs on it and removing one of its runners all take **Manage**.
+
+After an upgrade from a release that listed every machine to everyone who could read machines, only the instance Owner is on each machine, and the old `runners` and `machines:read` permissions are gone. Add people back with a rule on each machine.
+
 ## Machines
 
 Every runner belongs to a machine, and a stack deploys to a machine rather than to a runner. Any connected, idle runner on that machine picks up the job, so you scale a machine by adding runners to it. Jobs wait in the queue while no runner on the machine is connected.
@@ -19,7 +27,7 @@ Each machine has a stack root, the directory its stack checkouts live under (`st
 
 ## Adding a runner
 
-1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add a runner to this machine** on that machine instead.
+1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add a runner to this machine** on that machine instead. A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
 2. Type a **Runner name**: lower case letters, digits and dashes, up to 32 characters. The runner joins a machine named after the computer's hostname, so runners on one computer share a machine.
 3. Click **Create install command** and copy the command for the machine's system:
 
@@ -37,11 +45,13 @@ The install sets up Docker the same way the [server install](/docs/guide/install
 
 The code in the command works once, for an hour. If the install fails, create a new command. Agents can do the same with the `host_create` MCP tool and `kind: "runner"`.
 
+A runner that makes a new machine puts you on it with **See**, **Deploy to**, **Manage** and **Delete**, in the same step; you hold no more than that, and the instance Owner or anyone with Manage on the machine can take you off. The code checks you again when the runner uses it: if someone else's machine bears that name by then, or you can no longer add machines, the install is refused and you create a new command.
+
 For more runners on one machine, run a new command per runner, each with its own name. Each one is a separate service, and the machine runs one job per runner at a time.
 
 ## Removing a runner
 
-Click the remove button on the runner's row and confirm. Agents use `host_delete` with `kind: "runner"`.
+Click the remove button on the runner's row and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`.
 
 A connected runner uninstalls itself right away, and a job it was running fails. An offline runner uninstalls itself the next time it comes online, so a removed runner never comes back.
 

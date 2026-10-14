@@ -92,7 +92,7 @@ const sectionLandings: Record<string, { area?: RouteArea; path: string }> = {
   memories: { area: "memories", path: "/memories" },
   chat: { path: "/chat" },
   inbox: { path: "/inbox" },
-  runners: { area: "runners", path: "/runners" },
+  runners: { path: "/runners" },
   topology: { area: "topology", path: "/topology" },
   stacks: { area: "topology", path: "/topology" },
   automations: { area: "automations", path: "/automations" },

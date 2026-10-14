@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -161,6 +162,36 @@ func TestRows_DocListReadsNoneOfTheReadersDocRules(t *testing.T) {
 	assert.Equal(t, before, [2][2]int64{cost(listed), cost(everywhere)}, "statements and rows, with no rule and with 6,000")
 }
 
+// TestRows_MachineListsReadOnlyTheMachinesTheCallerSees: over 3,000 machines with a runner each, a person on five of
+// them gets the machine list, the runner list and machine_list back with about those rows, where listing every machine
+// and dropping the unseen ones in Go read all 3,000.
+func TestRows_MachineListsReadOnlyTheMachinesTheCallerSees(t *testing.T) {
+	f, st, db := newCountedFixtureDB(t)
+	for _, insert := range []string{
+		`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) SELECT printf('mach-%05d', i), printf('box-%05d', i), '/data/nexul', '', 1, 1 FROM n`,
+		`INSERT INTO runners (id, name, last_seen, connected, created_at, version, machine_id) SELECT printf('r-%05d', i), printf('runner-%05d', i), 1, 0, 1, 'v1', printf('mach-%05d', i) FROM n`,
+		`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at)
+			SELECT 'machine', printf('mach-%05d', i), 'person', 'u-writer', NULL, '["machines:see"]', '[]', 1, 1 FROM n WHERE i <= 5`,
+	} {
+		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000) ` + insert)
+		require.NoError(t, err)
+	}
+	svc := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(f.svc.accessSvc)
+	machineList := tool(t, runner.MCPTools(svc), "machine_list")
+
+	st.Reset()
+	ids, page := callPage(t, f.svc.accessSvc, machineList, uWriter, `{}`)
+	assert.Len(t, ids, 5)
+	assert.Equal(t, 5, page.Total)
+	assert.Less(t, st.Rows(), int64(100), "rows handed back for machine_list")
+
+	st.Reset()
+	runners, err := svc.ListRunners(as(uWriter))
+	require.NoError(t, err)
+	assert.Len(t, runners, 5)
+	assert.Less(t, st.Rows(), int64(100), "rows handed back for the runner list")
+}
+
 // explain is SQLite's query plan for query, its detail lines joined.
 func explain(t *testing.T, db interface {
 	Query(string, ...any) (*sql.Rows, error)
@@ -214,7 +245,44 @@ func listParityFixture(t *testing.T) permFixture {
 	withRoleRulesOnDocs(t, db)
 	withFolderRules(t, f)
 	withStackRules(t, f)
+	withMachineRules(t, db)
 	return f
+}
+
+// withMachineRules gives the fixture five machines, each with a runner, and rules of every shape: a role seeing one, a
+// person seeing another though their role is denied it, a person denied one their role sees, a machine with no rule,
+// and one a role sees that its holder's own rule hides.
+func withMachineRules(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) VALUES
+    ('mach-a', 'box-a', '/data/nexul', '', 1, 1), ('mach-b', 'box-b', '/data/nexul', '', 1, 1), ('mach-c', 'box-c', '/data/nexul', '', 1, 1),
+    ('mach-d', 'box-d', '/data/nexul', '', 1, 1), ('mach-e', 'box-e', '/data/nexul', '', 1, 1);
+INSERT INTO runners (id, name, last_seen, connected, created_at, version, machine_id)
+SELECT 'r-' || substr(id, 6), 'runner-' || substr(id, 6), 1, 0, 1, 'v1', id FROM machines;
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at) VALUES
+    ('machine', 'mach-a', 'role', NULL, 'role-reader', '["machines:see"]', '[]', 1, 1),
+    ('machine', 'mach-a', 'role', NULL, 'role-plain', '["machines:see"]', '[]', 1, 1),
+    ('machine', 'mach-b', 'role', NULL, 'role-writer', '[]', '["machines:see"]', 1, 1),
+    ('machine', 'mach-b', 'person', 'u-writer', NULL, '["machines:see"]', '[]', 1, 1),
+    ('machine', 'mach-c', 'role', NULL, 'role-plain', '["machines:see"]', '[]', 1, 1),
+    ('machine', 'mach-c', 'person', 'u-plain', NULL, '[]', '["machines:see"]', 1, 1),
+    ('machine', 'mach-e', 'role', NULL, 'role-reader', '["machines:see"]', '[]', 1, 1),
+    ('machine', 'mach-e', 'person', 'u-reader', NULL, '[]', '["machines:see"]', 1, 1)`)
+	require.NoError(t, err)
+}
+
+// rowByRowMachines is every machine a single See check opens for user, in name order.
+func rowByRowMachines(t *testing.T, f permFixture, user string) []string {
+	t.Helper()
+	ms, err := f.store.Machines.List(context.Background())
+	require.NoError(t, err)
+	var out []string
+	for _, m := range ms {
+		if f.svc.accessSvc.RequireMachine(as(user), m.ID, permissions.MachinesSee) == nil {
+			out = append(out, m.ID)
+		}
+	}
+	return out
 }
 
 // withStackRules gives the fixture's stacks rules of every shape and stack-1 a branch deployment that follows them: a
@@ -339,6 +407,8 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	deployList := tool(t, deploy.MCPTools(s.deploySvc), "deploy_list")
 	stackList := tool(t, deploy.MCPTools(s.deploySvc), "stack_list")
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
+	runners := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(s.accessSvc)
+	machineList := tool(t, runner.MCPTools(runners), "machine_list")
 
 	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient, uUnlisted, uNoRole} {
 		t.Run(user, func(t *testing.T) {
@@ -363,6 +433,19 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 			assert.Equal(t, rowByRowStacks(t, f, user), pageThrough(t, s.accessSvc, stackList, user, ""), "stack_list")
 
 			assert.Equal(t, rowByRowInbox(t, f, user), pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
+
+			assert.Equal(t, rowByRowMachines(t, f, user), pageThrough(t, s.accessSvc, machineList, user, ""), "machine_list")
+			rs, err := runners.ListRunners(as(user))
+			require.NoError(t, err)
+			var seenRunners []string
+			for _, r := range rs {
+				seenRunners = append(seenRunners, "r-"+r.Name[len("runner-"):])
+			}
+			wantRunners := make([]string, 0)
+			for _, id := range rowByRowMachines(t, f, user) {
+				wantRunners = append(wantRunners, "r-"+id[len("mach-"):])
+			}
+			assert.ElementsMatch(t, wantRunners, seenRunners, "the runners on the machines seen")
 		})
 	}
 }

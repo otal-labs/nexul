@@ -226,9 +226,12 @@ func TestScopeAllows(t *testing.T) {
 		{"members: write", "POST", "/api/members", []Scope{Scope("members:write")}, true},
 		{"roles: write", "POST", "/api/roles", []Scope{Scope("roles:write")}, true},
 
-		{"runner enrollment denylisted even with runners:write", "POST", "/api/runners/enrollments", []Scope{Scope("runners:write")}, false},
+		{"runner enrollment denylisted even with machines:write", "POST", "/api/runners/enrollments", []Scope{Scope("machines:write")}, false},
 		{"instance upgrade denylisted even with instance:write", "POST", "/api/instance/upgrade", []Scope{Scope("instance:write")}, false},
-		{"runners list still allowed", "GET", "/api/runners", []Scope{Scope("runners:read")}, true},
+		{"runners list takes the machines:deploy scope", "GET", "/api/runners", []Scope{Scope("machines:deploy")}, true},
+		{"machines list takes the machines:deploy scope", "GET", "/api/machines", []Scope{Scope("machines:deploy")}, true},
+		{"removing a runner takes machines:write", "DELETE", "/api/runners/r1", []Scope{Scope("machines:write")}, true},
+		{"the gone runners scopes open nothing", "GET", "/api/runners", []Scope{Scope("runners:read")}, false},
 
 		{"unknown domain", "GET", "/api/billing", []Scope{ScopeEventsRead}, false},
 		{"empty scopes denied", "GET", "/api/tickets", empty, false},
@@ -254,7 +257,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 99)
+	assert.Len(t, seen, 95)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

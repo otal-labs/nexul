@@ -33,7 +33,14 @@ var (
 	errRunnerRemoved = apperrs.WithCode("runner_removed", fmt.Errorf("%w: this runner was removed", apperrs.ErrUnauthorized))
 	errComputerCode  = apperrs.WithCode("computer_code", fmt.Errorf("%w: this code adds a computer; run it with nexul install computer, as Add a computer shows it", apperrs.ErrConflict))
 	errRunnerCode    = apperrs.WithCode("runner_code", fmt.Errorf("%w: this code enrolls a runner, not a computer; make a new code with Add a computer", apperrs.ErrConflict))
+	errCantAdd       = apperrs.WithCode("code_cant_add", fmt.Errorf("%w: the person who made this code can no longer add machines; make a new code", apperrs.ErrForbidden))
 )
+
+// errMachineTaken refuses a code whose machine now belongs to people its maker isn't one of, so a code can't land a
+// runner on someone else's machine.
+func errMachineTaken(name string) error {
+	return apperrs.WithCode("machine_taken", fmt.Errorf("%w: the machine %s is not one the person who made this code manages; make a new code for it", apperrs.ErrConflict, name))
+}
 
 // ComputerClaims are what a computer's enrollment token carries: the instance to enroll with, the one-time code, the
 // computer it adds and the code's expiry. The installer reads the server without the key; only this instance can
@@ -52,9 +59,10 @@ func (s *Service) WithEnrollDir(dir string) *Service {
 }
 
 // CreateEnrollment mints a one-hour code for a runner named name, optionally bound to machine, and renders the
-// install one-liners that carry it. It needs runners:write.
+// install one-liners that carry it. A runner on an existing machine takes Manage on it, and one on a new machine
+// (or none named) takes Add machines.
 func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (Enrollment, error) {
-	if err := s.require(ctx, permissions.RunnersWrite); err != nil {
+	if err := s.requireEnrollable(ctx, strings.TrimSpace(machine)); err != nil {
 		return Enrollment{}, err
 	}
 	instanceURL, err := s.instanceURL(ctx)
@@ -70,6 +78,21 @@ func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (E
 		return Enrollment{}, err
 	}
 	return Enrollment{Code: code, ExpiresAt: expiresAt, Commands: installCommands(instanceURL, strings.TrimSpace(name), code)}, nil
+}
+
+// requireEnrollable is the check on a code for a runner on machine: Manage on it when it exists, else Add machines.
+func (s *Service) requireEnrollable(ctx context.Context, machine string) error {
+	if machine == "" || s.machines == nil {
+		return s.require(ctx, permissions.MachinesCreate)
+	}
+	m, err := s.machines.GetByName(ctx, machine)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return s.require(ctx, permissions.MachinesCreate)
+	}
+	if err != nil {
+		return fmt.Errorf("get machine %s: %w", machine, err)
+	}
+	return s.requireMachine(ctx, m.ID, permissions.MachinesWrite)
 }
 
 // CreatePersonalEnrollment mints a one-hour code that enrolls a personal runner for userID's computerID and renders
@@ -183,12 +206,12 @@ func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, erro
 		return Enrolled{}, apperrs.WithCode("name_mismatch", fmt.Errorf("%w: this code enrolls a runner named %s", apperrs.ErrConflict, code.Name))
 	}
 	machine := enrolledMachine(code.Machine, req.Machine, code.Name)
-	machineID, err := s.machineFor(ctx, machine, strings.TrimSpace(req.StackRoot), now)
+	machineID, created, err := s.machineFor(ctx, machine, strings.TrimSpace(req.StackRoot), code.EnrolledBy, now)
 	if err != nil {
 		return Enrolled{}, err
 	}
 	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, MachineID: machineID, EnrolledBy: code.EnrolledBy}
-	credential, err := s.enroll(ctx, codeHash, r, now)
+	credential, err := s.enroll(ctx, codeHash, r, now, created)
 	if err != nil {
 		return Enrolled{}, err
 	}
@@ -225,7 +248,7 @@ func (s *Service) enrollPersonal(ctx context.Context, codeHash string, code *Enr
 		return Enrolled{}, errInvalidCode
 	}
 	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, OwnerUserID: code.OwnerUserID, ComputerID: code.ComputerID}
-	credential, err := s.enroll(ctx, codeHash, r, now)
+	credential, err := s.enroll(ctx, codeHash, r, now, nil)
 	if errors.Is(err, apperrs.ErrConflict) {
 		return Enrolled{}, fmt.Errorf("%w: this computer already has its runner; remove the computer to add it again", apperrs.ErrConflict)
 	}
@@ -237,14 +260,17 @@ func (s *Service) enrollPersonal(ctx context.Context, codeHash string, code *Enr
 }
 
 // enroll consumes the code, stores r and returns its new credential, once.
-func (s *Service) enroll(ctx context.Context, codeHash string, r *Runner, now time.Time) (string, error) {
+func (s *Service) enroll(ctx context.Context, codeHash string, r *Runner, now time.Time, created *CreatedMachine) (string, error) {
 	credential, credentialHash, err := hostcred.MintCredential(credentialPrefix)
 	if err != nil {
 		return "", err
 	}
-	err = s.repo.Enroll(ctx, codeHash, r, credentialHash, now)
+	err = s.repo.Enroll(ctx, codeHash, r, credentialHash, now, created)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return "", errInvalidCode
+	}
+	if created != nil && errors.Is(err, apperrs.ErrConflict) && !s.runnerNameTaken(ctx, r.Name) {
+		return "", errMachineTaken(created.Machine.Name)
 	}
 	if err != nil {
 		return "", fmt.Errorf("enroll runner %s: %w", r.Name, err)
@@ -252,40 +278,78 @@ func (s *Service) enroll(ctx context.Context, codeHash string, r *Runner, now ti
 	return credential, nil
 }
 
-// machineFor finds or creates the machine named name; a new machine takes stackRoot, else the default.
-func (s *Service) machineFor(ctx context.Context, name, stackRoot string, now time.Time) (string, error) {
+// machineFor resolves the machine a code's runner lands on and, for a name no machine has, the machine to create with it.
+// The person who made the code is checked again here against what they hold now: Manage on a machine that exists, Add
+// machines for one that doesn't, so a name taken since the code was made never lands a runner on someone else's machine.
+// A code with no maker is the server's own and creates its machine unchecked.
+func (s *Service) machineFor(ctx context.Context, name, stackRoot, maker string, now time.Time) (string, *CreatedMachine, error) {
 	if s.machines == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	m, err := s.machines.GetByName(ctx, name)
 	if err == nil {
-		return m.ID, nil
+		return m.ID, nil, s.makerManages(ctx, maker, m)
 	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
-		return "", fmt.Errorf("get machine %s: %w", name, err)
+		return "", nil, fmt.Errorf("get machine %s: %w", name, err)
+	}
+	if err := s.makerMayAdd(ctx, maker); err != nil {
+		return "", nil, err
 	}
 	if stackRoot == "" {
 		stackRoot = defaultStackRoot
 	}
 	m = &Machine{ID: ids.New(), Name: name, StackRoot: stackRoot, ReportedHostname: name, FirstSeen: now, LastSeen: now}
-	if err := s.machines.Create(ctx, m); err != nil {
-		return "", fmt.Errorf("create machine %s: %w", name, err)
+	return m.ID, &CreatedMachine{Machine: m, Owner: maker}, nil
+}
+
+func (s *Service) makerManages(ctx context.Context, maker string, m *Machine) error {
+	if maker == "" || s.creators == nil {
+		return nil
 	}
-	return m.ID, nil
+	held, err := s.creators.MachinePermissions(ctx, maker, m.ID)
+	if errors.Is(err, apperrs.ErrNotFound) || (err == nil && !held.Has(permissions.MachinesWrite)) {
+		return errMachineTaken(m.Name)
+	}
+	if err != nil {
+		return fmt.Errorf("read what %s holds on machine %s: %w", maker, m.Name, err)
+	}
+	return nil
+}
+
+func (s *Service) makerMayAdd(ctx context.Context, maker string) error {
+	if maker == "" || s.creators == nil {
+		return nil
+	}
+	held, err := s.creators.HoldsAnywhere(ctx, maker, permissions.MachinesCreate)
+	if err != nil {
+		return fmt.Errorf("read whether %s adds machines: %w", maker, err)
+	}
+	if !held {
+		return errCantAdd
+	}
+	return nil
+}
+
+// runnerNameTaken tells a runner name that was taken while a code was used from the machine name that was, which the
+// store reports the same way.
+func (s *Service) runnerNameTaken(ctx context.Context, name string) bool {
+	_, err := s.repo.GetByName(ctx, name)
+	return err == nil
 }
 
 // RemoveRunner revokes a runner's credential, deletes its record and, when it is connected, tells it to
-// uninstall itself. It needs runners:delete.
+// uninstall itself. It takes Manage on the runner's machine, and a runner on a machine the caller can't see is not found.
 func (s *Service) RemoveRunner(ctx context.Context, id string) error {
-	if err := s.require(ctx, permissions.RunnersDelete); err != nil {
-		return err
-	}
 	r, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get runner %s: %w", id, err)
 	}
 	if r.Personal() {
 		return fmt.Errorf("get runner %s: %w", id, apperrs.ErrNotFound)
+	}
+	if err := s.requireMachine(ctx, r.MachineID, permissions.MachinesWrite); err != nil {
+		return err
 	}
 	return s.remove(ctx, r)
 }
@@ -351,7 +415,7 @@ func (s *Service) remove(ctx context.Context, r *Runner) error {
 		s.publish(ctx, TopicPersonalChanged, personalChanged(r, PersonalRemoved, ""))
 		return nil
 	}
-	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: r.ID, Reason: "removed", EnrolledBy: r.EnrolledBy})
+	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: r.ID, Reason: "removed", EnrolledBy: r.EnrolledBy, MachineID: r.MachineID})
 	return nil
 }
 
