@@ -1,7 +1,7 @@
 # Wayfinder map: every screen shows a person only what their roles let them do
 
 Charted 2026-10-13 with the owner, from the persona walks of the welcome wizard effort
-(`.scratch/onboarding/research/persona-gaps.md`). About a dozen screens show buttons a role can't use and refuse
+(`research/persona-gaps.md`). About a dozen screens show buttons a role can't use and refuse
 them only after the click: project settings, deploy, rollback, delete stack, gateways, exposures, "Link branch/PR",
 topology "Add a node", and Runners without `machines:read`. Four things can be made but never undone from the web:
 a machine, a Cloudflare tunnel, a stack's environment after launch, and a failed deploy.

@@ -1,7 +1,7 @@
 # 01: Every action and the permission it needs
 
 Read statically from commit `0e023490` (branch `spec/role-aware-ui`) on 2026-10-13. Nothing was run. Builds on
-`.scratch/onboarding/research/persona-gaps.md`, which was read at an older master; every row below was re-read at this
+`persona-gaps.md`, which was read at an older master; every row below was re-read at this
 commit.
 
 ## Method

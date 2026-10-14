@@ -206,6 +206,18 @@ resumes. A ticket shows what is queued, paused, skipped or didn't run. The
 decisions check is now an ordinary play with its own auto play, and
 automations start a play by name with `runPlay`.
 
+### A welcome wizard for every role
+
+A newcomer's first sign-in opens a short wizard with their profile, then just
+the steps their roles ask for: connect GitHub, add their computer, see their
+projects, add a deploy server, get the phone app. Every step can be skipped,
+and what is left waits under Welcome in the account menu with a red dot until
+it is done or skipped; giving a step again through a role brings it back.
+New workspaces start with five template roles (Client, Junior Developer,
+Senior Developer, DevOps, Administrator) that the instance edits and adds to
+in Settings → Templates. The owner finishes setup without a computer, and
+Team shows how far each person got and who each invitation let in. ADR 0149.
+
 ---
 
 ## Now — improving what's built
@@ -268,15 +280,6 @@ repository yet" and "Attach without deploying" as plain choices instead of a
 muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
-
-Planned: **a welcome wizard for every role**. A newcomer gets a short wizard
-with just the steps their roles ask for: connect GitHub, add their computer,
-see their projects, add a deploy server, get the phone app. Every step can be
-skipped, and anything left waits at the top of the account menu with a red
-dot. Workspaces start with ready-made roles (Client, Junior Developer, Senior
-Developer, DevOps, Administrator) that the instance can edit and add to, the
-owner can finish setting up without a computer, and Team shows how far each
-person got. Spec in `.scratch/onboarding/`, built after the permission rework.
 
 Planned: **screens that know your role**. Every button that changes something
 is hidden from people whose roles can't use it, or, for roles that should know

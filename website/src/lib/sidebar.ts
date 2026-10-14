@@ -11,6 +11,7 @@ export const guideGroups = [
 		items: [
 			guide('projects-and-repositories'),
 			guide('people-and-access'),
+			guide('welcome-wizard'),
 			guide('docs-tickets-and-board'),
 			guide('chat-and-voice'),
 			guide('bots'),

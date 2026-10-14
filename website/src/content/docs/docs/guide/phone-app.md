@@ -27,6 +27,8 @@ The phone signs in with a code from a computer where you're already signed in. T
 2. In the app, press **Scan the code** and point the camera at the QR code. Your phone's own camera app works too.
 3. The card in the web app shows your phone as connected.
 
+The [Welcome wizard](/docs/guide/welcome-wizard/)'s **Get the phone app** step shows the same code, for anyone whose role gives that step.
+
 The code works once, for two minutes. If it runs out, press **New code**. Without a camera, press **Enter it by hand** in the app and type the instance address and the 12-character code shown under the QR code.
 
 The phone stays signed in for 90 days after you last used it. It shows under **Devices** with its model, in the web app and in the app's **More → Your settings → Devices**. Sign it out from either.

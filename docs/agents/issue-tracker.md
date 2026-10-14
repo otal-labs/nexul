@@ -104,16 +104,13 @@ git history, and anything durable it decided is an ADR.
   controls, See/Run explanations, phone locked mentions, and the phone acceptance
   verification the owner skipped. Scope and ticket index in `spec.md`; ADR 0148
   records the shipped permission model.
-- `.scratch/onboarding/` — the Welcome wizard, the steps each Role ticks,
-  Template roles, the account menu dot and progress on Team. Map complete
-  2026-10-13 with `spec.md`; build tickets 08–15; the permission
-  prerequisite has merged. The five persona walks are in `research/persona-gaps.md`.
 - `.scratch/machine-permissions/` — each machine carries rules (See, Deploy to,
   Manage, Delete) and only the instance Owner holds the instance by right
   (ADR 0151); spec and build tickets 01–06.
 - `.scratch/role-aware-ui/` — hide or lock actions a role can't take on every
   web and phone screen, and close the one-way doors. Map complete 2026-10-13
-  with `spec.md`; build tickets 08–23.
+  with `spec.md`; build tickets 08–23. The five persona walks are in
+  `research/persona-gaps.md`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
