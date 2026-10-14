@@ -76,6 +76,7 @@ const renderLayout = (path = "/") => {
           <Route element={<Layout />}>
             <Route path="/" element={<div>page-content</div>} />
             <Route path="/wizard/onboarding/owner" element={<div>page-content</div>} />
+            <Route path="/invite" element={<div>page-content</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -190,9 +191,9 @@ describe("Layout", () => {
     await vi.waitFor(() => expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-1"));
   });
 
-  it("hides the sidebar on onboarding routes so the wizard owns the viewport", () => {
+  it.each(["/wizard/onboarding/owner", "/invite"])("hides the sidebar on %s so the page owns the viewport", (path) => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout("/wizard/onboarding/owner");
+    renderLayout(path);
     expect(screen.getByText("page-content")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Nexul" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();

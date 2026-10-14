@@ -120,14 +120,6 @@ when the note ends in an image, so a note an agent wrote changes bytes on
 its first human save even when nothing visible changed. Seen in the ticket
 flow walkthrough; normalise the trailing newline in one direction.
 
-## The invite dialog's role picker is greyed out on a fresh install
-
-On a fresh install the role picker in the invite dialog is disabled with no
-hint until a custom role exists
-(`web/src/components/member/InvitationGrantRow.tsx:60`, disabled while there
-are no assignable roles), so the inviter cannot tell why or what to do. Seen
-2026-10-04 in the Clarify via AI walkthrough.
-
 ## Channel threads have no Bots menu item
 
 Bots can bind to any conversation kind, and DMs, ticket threads, and doc
@@ -155,3 +147,12 @@ the run no longer needs it for the session.
 The questions and round-answered notices reach the inbox once each on the web and the phone, but no one has
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
+
+## A Google or Discord login shows as "@name@example.com"
+
+Google and Discord sign-ins store the lowercased email as the login, and every
+place that prints a login puts "@" in front of it: the invite page's identity
+row ("Lena Example @lena@example.com · Discord"), the existing-account
+refusal, Team's person dialog and the settings header. Seen 2026-10-14 in the
+invitations walkthrough. Print an email login without the "@", or carry the
+provider's username to these rows instead.

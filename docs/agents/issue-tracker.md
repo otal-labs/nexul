@@ -67,9 +67,6 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/invitations/` — invitations that explain themselves: role
-  descriptions, the invite page before and after sign-in, existing accounts
-  turned away. Spec and build tickets 01–05.
 - `.scratch/role-aware-ui/` — hide or lock actions a role can't take on every
   web and phone screen, and close the one-way doors. Map complete 2026-10-13
   with `spec.md`; build tickets 08–23. The five persona walks are in
@@ -98,6 +95,9 @@ git history, and anything durable it decided is an ADR.
 On 2026-10-14 the efforts whose tickets had all shipped were removed: LLM
 setup, integrations, plays, the phone app, ticket flow, the interview as
 questions and clarifying a doc.
+Later that day invitations followed, after its walkthrough on a real install:
+role descriptions, the invite page before and after sign-in, and existing
+accounts turned away.
 
 Before 2026-08-15 this repo tracked work as `docs/{ws,cus,dr}-XX.md` workstream
 documents with a dashboard in `orchestrator.md`, driven by three GitHub Actions

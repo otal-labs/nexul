@@ -22,8 +22,8 @@ export const Layout = () => {
   useLiveEvents(token ? buildLiveURL(token) : null);
   const { data: unread } = useFetchUnreadCount(isLoggedIn);
   useEnsureWorkspaceSelected(isLoggedIn);
-  // Wizards and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
-  const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(useLocation().pathname);
+  // Wizards, the invite page and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
+  const onboarding = /^\/(?:(?:[^/]+\/)?wizard\/|invite$)/.test(useLocation().pathname);
   const frame = useRef<HTMLDivElement>(null);
   usePageEntrance(frame);
 

@@ -293,6 +293,17 @@ unlink a ticket's branch or pull request; delete a ticket; archive and restore
 docs and workspaces; revoke an unused runner code; mark a notification unread.
 ADRs 0152 and 0153.
 
+### Invitations that explain themselves
+
+Every role carries a one-line description, written in the role editor and
+shown in the invite dialog and on the invite page. Before sign-in the page
+names the instance, each workspace and the roles it gives with what they mean,
+and no project. After sign-in each workspace lists the projects its roles reach
+now, with Decline beside Accept. A link that expired or was deleted says only
+that, and someone who already has an account is turned away without using up
+the link meant for someone new. Nexul sends no email: the admin copies the
+link and sends it.
+
 ---
 
 ## Now — improving what's built
@@ -332,12 +343,6 @@ repository yet" and "Attach without deploying" as plain choices instead of a
 muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
-
-Planned: **invitations that explain themselves**. The invite page says what
-each role means in one line, and after signing in, which projects it opens.
-A link that expired or was deleted says so plainly, and someone who already has
-an account is turned away without using up the link meant for someone else.
-Spec in `.scratch/invitations/`.
 
 ---
 
