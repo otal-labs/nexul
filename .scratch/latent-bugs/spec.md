@@ -156,3 +156,13 @@ The questions and round-answered notices reach the inbox once each on the web an
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
 
+
+## A machine typed by name tells a member who can't see it that it exists
+
+`stack_create`, `PATCH /api/stacks/{id}` and the gateway paths resolve a machine name with
+`RequireMachineNamed` (`internal/access/machine.go`). A name no machine bears answers 400 "machine ... does not
+exist", but a name of a machine the caller can't See answers 404 "not found: machine <id>", so anyone with
+`stacks:write` can probe which names exist and reads the id of one they can't see. Answer a machine they can't See
+exactly as an unknown name, with the name and no id, and update the tests that expect the 404 by name
+(`server/cmd/machine_deploy_test.go`). Seen on a real install while walking ticket 06 of the machine permissions
+effort.

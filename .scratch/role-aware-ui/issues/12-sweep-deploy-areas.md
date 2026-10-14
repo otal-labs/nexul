@@ -9,7 +9,9 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/react-
 ## What to build
 
 The same for research 01's stacks and deploys, runners and machines, DNS, gateways and exposures, and topology
-tables. Runners stops needing `machines:read` to load.
+tables. The Runners page opens for every member and lists the machines they see; its buttons follow the
+`actions` each machine carries: Add runner, Import and removing a runner need `machines:write`, so a member who
+only sees a machine gets them hidden or locked.
 
 ## Acceptance criteria
 

@@ -9,8 +9,7 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/go.md`
 ## What to build
 
 - `DELETE /api/machines/{id}` and MCP `machine_delete`: refused while stacks target the machine, naming them.
-- It takes Delete (`machines:delete`) on the machine once `.scratch/machine-permissions/` ticket 03 has landed,
-  `machines:write` until then.
+- It takes Delete (`machines:delete`) on the machine (ADR 0151).
 - Publishes `machine.deleted` with a live follower.
 - The web adds Delete on the machine card.
 - The ADR for the refusing deletes.

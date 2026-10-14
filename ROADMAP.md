@@ -262,6 +262,22 @@ written into the doc, the developer closes it, and "To tickets via AI" cuts it
 into work. The people answering see only the questions, never the agent, and
 the doc is locked only while a round runs. ADR 0121.
 
+### Machine permissions
+
+Each machine carries rules of its own, for a role of any workspace or one
+person: See, Deploy to, Manage and Delete, each Allow, Fallback or Deny. A
+machine is opt-in, as a project is: someone it doesn't list can't find it in
+the Runners page, a picker, the API, MCP or the live updates, and typing its
+name into a stack tool gets nothing. Deploy to is checked when a stack is
+aimed at a machine and on every deploy a person starts; a deploy the server
+starts after a push still runs. Adding a machine is its own permission, and
+whoever adds one gets all four actions on it. Only the Owner of the default
+workspace holds the instance by right; the Owner of another workspace is full
+Owner inside it and reaches a machine or an instance area through a rule. On
+upgrade every machine starts with only the instance Owner on it. The Runners
+page has a People on this machine row for the instance Owner and Manage
+holders. ADR 0151.
+
 ---
 
 ## Now — improving what's built
@@ -329,10 +345,6 @@ without changing the core architecture.
   computer or instance area can allow, fall back or deny any permission for a
   role or one person, with the rule that decided every answer shown
   (shipped, ADR 0148; remaining gaps in `.scratch/permission-followups/`).
-- **Machine permissions** — each machine says who sees it and who may deploy
-  to, manage or delete it, for a role or one person; a new machine shows only
-  to the instance Owner, and only the instance Owner holds the instance by
-  right (ADR 0151, `.scratch/machine-permissions/`).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.
