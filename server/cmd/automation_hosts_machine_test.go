@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,21 +82,12 @@ func TestAutomationHosts_NotOnTheMachineIsNotListed(t *testing.T) {
 			require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 			over := callTool(t, c.h, p.token, "machine_list", `{}`)
 			for _, host := range []string{"jobs-edge", "jobs-core", "jobs-lost"} {
-				want := containsString(p.sees, host)
+				want := slices.Contains(p.sees, host)
 				assert.Equal(t, want, strings.Contains(rec.Body.String(), host), "GET /api/automation-hosts lists %s", host)
 				assert.Equal(t, want, strings.Contains(over, host), "machine_list lists %s", host)
 			}
 		})
 	}
-}
-
-func containsString(list []string, s string) bool {
-	for _, item := range list {
-		if item == s {
-			return true
-		}
-	}
-	return false
 }
 
 // TestAutomationHosts_AddingAndRemovingTakeManageOnTheMachine: a code for a host on an existing machine and removing a
