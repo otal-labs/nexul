@@ -1,6 +1,6 @@
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { RefusedPerson } from "@/models/Invitation";
-import { providerLabel } from "@/models/User";
+import { providerLabel, loginHandle } from "@/models/User";
 import { cn } from "@/lib/utils";
 
 // "Lena Fischer @lena · GitHub": who the invite page is talking to.
@@ -12,7 +12,7 @@ export const InvitationIdentityRow = ({ person, className }: { person: RefusedPe
       <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" />
       <p className="min-w-0 truncate text-[13px]">
         <span className="font-medium">{person.name || person.login}</span>
-        <span className="font-mono text-xs text-muted-foreground"> @{person.login}{provider && ` · ${provider}`}</span>
+        <span className="font-mono text-xs text-muted-foreground"> {loginHandle(person.login)}{provider && ` · ${provider}`}</span>
       </p>
     </div>
   );

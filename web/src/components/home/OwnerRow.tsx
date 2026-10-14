@@ -7,6 +7,7 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useCreateDM, useFetchConversations } from "@/hooks/ChatHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { findDM } from "@/models/Chat";
+import { loginHandle } from "@/models/User";
 
 interface OwnerRowProps {
   person: Person;
@@ -42,7 +43,7 @@ export const OwnerRow = ({ person, workspaceId }: OwnerRowProps) => {
       >
         <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" />
         <span className="min-w-0 flex-1 truncate text-sm">{personLabel(person)}</span>
-        <span className="font-mono text-xs text-muted-foreground">@{person.login}</span>
+        <span className="font-mono text-xs text-muted-foreground">{loginHandle(person.login)}</span>
       </button>
     </li>
   );

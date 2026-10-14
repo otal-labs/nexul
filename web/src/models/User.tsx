@@ -40,6 +40,9 @@ export const identityAccount = (identity: Identity): string => {
   return identity.username || identity.login;
 };
 
+// A Google or Discord login is an email, which reads wrong behind an "@".
+export const loginHandle = (login: string): string => (login.includes("@") ? login : `@${login}`);
+
 export const providerLabel: Record<Provider, string> = { github: "GitHub", google: "Google", discord: "Discord" };
 
 // The one rule for which avatar to show: the manual override if set, else the provider-sourced one.

@@ -7,7 +7,7 @@ import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { UpdateDot } from "@/components/UpdateDot";
 import { useWelcomeProgress } from "@/hooks/WelcomeHooks";
 import { avatarGradient } from "@/lib/avatarGradient";
-import { effectiveAvatar, userLabel } from "@/models/User";
+import { effectiveAvatar, userLabel, loginHandle } from "@/models/User";
 import type { User } from "@/models/User";
 import { welcomeMenuSummary } from "@/utils/WelcomeMenuUtility";
 
@@ -39,7 +39,7 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
       <button
         type="button"
         aria-label={collapsed ? `Account menu for ${userLabel(user)}${left > 0 ? `, ${welcomeLabel}` : ""}` : undefined}
-        title={collapsed ? undefined : `@${user.login}`}
+        title={collapsed ? undefined : loginHandle(user.login)}
         className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
         <span className="relative shrink-0">

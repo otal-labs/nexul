@@ -12,6 +12,7 @@ import { useFetchTemplates } from "@/hooks/TemplateHooks";
 import { getThemeDefinition } from "@/lib/themePalettes";
 import { useThemeStore } from "@/stores/themeStore";
 import { formatShortDate } from "@/utils/TimeUtility";
+import { loginHandle } from "@/models/User";
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -31,7 +32,7 @@ const ProfileMeta = () => {
   const { data: me } = useFetchMe();
   return (
     <Facts
-      parts={[me && <span className="font-mono">@{me.user.login}</span>, me && `Joined ${formatShortDate(me.user.created_at)}`]}
+      parts={[me && <span className="font-mono">{loginHandle(me.user.login)}</span>, me && `Joined ${formatShortDate(me.user.created_at)}`]}
     />
   );
 };

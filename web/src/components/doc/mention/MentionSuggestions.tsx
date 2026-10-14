@@ -5,6 +5,7 @@ import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { cn, keepInView } from "@/lib/utils";
 import type { MentionSearchResult } from "@/models/Mention";
+import { loginHandle } from "@/models/User";
 
 export interface MentionSuggestionsRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
@@ -37,7 +38,7 @@ const MentionSuggestionRow = ({ item, selected, onSelect }: MentionSuggestionRow
       {!isPerson && <Icon className="h-4 w-4 shrink-0" />}
       <span className="min-w-0 truncate">{item.title}</span>
       {isPerson && item.login && item.login !== item.title && (
-        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">@{item.login}</span>
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{loginHandle(item.login)}</span>
       )}
       {item.type === "ticket" && item.status_label && (
         <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
