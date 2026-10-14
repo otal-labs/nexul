@@ -15,7 +15,7 @@ const access = (areas: RouteArea[], configurationSections: string[] = ["roles", 
   configurationSections,
 });
 
-const everything = access(["tickets", "docs", "memories", "runners", "topology", "automations", "wizard"]);
+const everything = access(["tickets", "docs", "memories", "topology", "automations", "wizard"]);
 
 describe("switchWorkspacePath", () => {
   it.each([

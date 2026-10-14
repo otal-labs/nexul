@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { machineAnswer, type EntityAnswer } from "@nexul/client-core/actionState";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
@@ -74,6 +75,14 @@ export const useFetchMachines = () =>
     queryKey: [getMachinesKey],
     queryFn: async () => (await api.get<Machine[]>("/api/machines")).data,
   });
+
+// A machine missing from the list is one the viewer can't see, so it reads as refused; undefined until the list loads.
+export const useDeployToAnswer = (name: string | undefined): EntityAnswer | undefined => {
+  const { data: machines } = useFetchMachines();
+  if (!machines || !name) return undefined;
+  const machine = machines.find((m) => m.name === name);
+  return { allowed: !!machine && machineAnswer(machine, "machines:deploy").allowed, source: { sentence: `No Deploy to on machine ${name}` } };
+};
 
 export const useUpdateMachine = () => {
   const client = useQueryClient();

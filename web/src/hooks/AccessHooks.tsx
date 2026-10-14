@@ -48,11 +48,17 @@ export const useHasInstancePermission = (value: string): boolean => {
 // Whether the viewer is the instance Owner, who alone sees and sets the rules on instance areas.
 export const useIsInstanceOwner = (): boolean => !!useFetchMe().data?.instance_owner;
 
+// Whether the viewer may add machines, which the auth /me answers as it does every instance action (ADR 0151); undefined until it arrives.
+export const useCanAddMachines = (): boolean | undefined => {
+  const { data: me } = useFetchMe();
+  return me && (me.instance_owner || hasPermission(me.instance_permissions, "machines:create"));
+};
+
 // The Runners link is for whoever sees a machine or can add one; the route itself still opens for every member.
 export const useShowRunnersLink = (): boolean => {
-  const { data: me } = useFetchMe();
+  const canAdd = useCanAddMachines();
   const { data: machines } = useFetchMachines();
-  return (machines?.length ?? 0) > 0 || me?.instance_owner === true || hasPermission(me?.instance_permissions, "machines:create");
+  return (machines?.length ?? 0) > 0 || canAdd === true;
 };
 
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.

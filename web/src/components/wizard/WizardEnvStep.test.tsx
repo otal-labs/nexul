@@ -29,6 +29,8 @@ const stack = {
   updated_at: "",
 };
 
+const machines = [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "", actions: ["machines:see", "machines:deploy"] }];
+
 const renderStep = (onDone = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -46,7 +48,7 @@ beforeEach(() => {
   mocks.post.mockReset();
   mocks.post.mockResolvedValue({ data: { id: "d1", stack_id: "stack-1", status: "pending", kind: "build" } });
   useProjectWizardStore.getState().reset();
-  mocks.get.mockResolvedValue({ data: stack });
+  mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/machines" ? machines : stack }));
 });
 
 describe("WizardEnvStep", () => {
@@ -58,7 +60,7 @@ describe("WizardEnvStep", () => {
     expect(await screen.findByLabelText("API_KEY")).toBeInTheDocument();
     expect(screen.getByLabelText("DB_URL")).toBeInTheDocument();
     await user.type(screen.getByLabelText("API_KEY"), "secret");
-    await user.click(screen.getByRole("button", { name: /save & deploy/i }));
+    await user.click(await screen.findByRole("button", { name: /save & deploy/i }));
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.patch).toHaveBeenCalledWith(
@@ -88,7 +90,7 @@ describe("WizardEnvStep", () => {
     expect(screen.getByLabelText("DB_URL")).toHaveValue("postgres://x");
     expect(screen.getByText("Also saving: EXTRA")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /save & deploy/i }));
+    await user.click(await screen.findByRole("button", { name: /save & deploy/i }));
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.patch).toHaveBeenCalledWith(
       "/api/stacks/stack-1",
@@ -106,7 +108,7 @@ describe("WizardEnvStep", () => {
     await user.clear(paste);
     await user.click(paste);
     await user.paste("API_KEY=from-paste");
-    await user.click(screen.getByRole("button", { name: /save & deploy/i }));
+    await user.click(await screen.findByRole("button", { name: /save & deploy/i }));
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.patch).toHaveBeenCalledWith(
@@ -126,7 +128,7 @@ describe("WizardEnvStep", () => {
     await user.paste("API_KEY=1\noops");
 
     expect(screen.getByText("Line 2 isn't KEY=value")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /save & deploy/i })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: /save & deploy/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Fields" })).toBeDisabled();
     expect(mocks.patch).not.toHaveBeenCalled();
   });

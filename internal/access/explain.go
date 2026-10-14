@@ -191,7 +191,7 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	}
 	n := s.namer(ctx)
 	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, UserID: userID, Effective: make([]Answer, 0, len(e.actions))}
-	noDeploy, err := s.stackNoDeployTo(ctx, userID, e)
+	noDeploy, err := s.stackNoDeployTo(ctx, e, s.viewerOf(userID), TargetPerson, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,11 +217,11 @@ func refusedBy(held bool, src Source, by *Source) (bool, Source) {
 }
 
 // stackNoDeployTo refuses a stack's deploys:write without Deploy to on its machine, as a deploy start does (ADR 0151).
-func (s *Service) stackNoDeployTo(ctx context.Context, userID string, e entity) (*Source, error) {
+func (s *Service) stackNoDeployTo(ctx context.Context, e entity, viewer machineViewer, targetType, targetID string) (*Source, error) {
 	if e.kind != resourceTypeStack {
 		return nil, nil
 	}
-	src, refused, err := s.noDeployTo(ctx, userID, e.machine)
+	src, refused, err := s.noDeployTo(ctx, viewer, targetType, targetID, e.machine)
 	if err != nil || !refused {
 		return nil, err
 	}
@@ -276,9 +276,20 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		scope, _ := s.channelScope(ctx, e.id)
 		private = scope.Private
 	}
+	roleView := func(ctx context.Context, machineID string) (machineView, error) {
+		return s.roleMachineView(ctx, machineID, roleID)
+	}
+	noDeploy, err := s.stackNoDeployTo(ctx, e, roleView, TargetRole, roleID)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range e.actions {
 		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolder, own[e.id], private)
 		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a), private)
+		if a == permissions.DeploysWrite {
+			with, src = refusedBy(with, src, noDeploy)
+			without, from = refusedBy(without, from, noDeploy)
+		}
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
 	}
 	requireSee(out.Effective)

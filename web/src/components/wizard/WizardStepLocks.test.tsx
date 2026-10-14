@@ -41,11 +41,15 @@ const project = { id: "p-1", name: "Storefront", workspace_id: "ws-1" } as Proje
 const role = { id: "r-dev", workspace_id: "ws-1", name: "Developer", permissions: [], is_owner_role: false, created_at: "", updated_at: "" };
 const repository = { id: 1, owner: "acme", name: "api", full_name: "acme/api", default_branch: "main", html_url: "", provider: "github" };
 
+const DEPLOYABLE = ["machines:see", "machines:deploy"];
+// What the viewer holds on the machine the stack runs on; null is a machine they can't see, which the list leaves out.
+let machineHeld: string[] | null = DEPLOYABLE;
+
 const data = (url: string): unknown => {
   if (url.startsWith("/api/permissions?")) return { grants: [] };
   if (url === "/api/workspaces/ws-1/roles") return [role];
   if (url === "/api/workspaces/ws-1/people") return { people: [] };
-  if (url === "/api/machines") return [{ id: "m-1", name: "prod", stack_root: "/data", first_seen: "", last_seen: "" }];
+  if (url === "/api/machines") return machineHeld ? [{ id: "m-1", name: "prod", stack_root: "/data", first_seen: "", last_seen: "", actions: machineHeld }] : [];
   if (url === "/api/stacks/stack-1") return stack;
   if (url === "/api/auth/github-link") return { state: "connected" };
   if (url === "/api/dns/exposures" || url === "/api/stacks/stack-1/services") return [];
@@ -67,6 +71,7 @@ interface Row {
   step: () => ReactElement;
   control: { role: "button" | "checkbox"; name: string };
   reason: string;
+  machine?: string[] | null;
 }
 
 const rows: Row[] = [
@@ -112,6 +117,34 @@ const rows: Row[] = [
     reason: "Your role can't save the environment and deploy",
   },
   {
+    name: "Environment deploys to a machine they see but hold no Deploy to on",
+    holds: ["stacks:write", "deploys:write"],
+    machine: ["machines:see"],
+    step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
+    control: { role: "button", name: "Save & deploy" },
+    reason: "No Deploy to on machine prod",
+  },
+  {
+    name: "Environment deploys to a machine they can't see",
+    holds: ["stacks:write", "deploys:write"],
+    machine: null,
+    step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
+    control: { role: "button", name: "Save & deploy" },
+    reason: "No Deploy to on machine prod",
+  },
+  {
+    name: "Service attaches a stack and starts its deploy on a machine they hold no Deploy to on",
+    holds: ["stacks:write", "deploys:write"],
+    machine: ["machines:see"],
+    step: () => {
+      seedService([]);
+      useProjectWizardStore.getState().setAttachStackId("stack-1");
+      return <WizardServiceStep onDone={vi.fn()} />;
+    },
+    control: { role: "button", name: "Attach" },
+    reason: "No Deploy to on machine prod",
+  },
+  {
     name: "Deploy branches saves the rules",
     holds: ["deploys:write"],
     step: () => <BranchRulesForm stack={stack} exposure={undefined} defaultPort="" networks={[]} onDone={vi.fn()} onSkip={vi.fn()} />,
@@ -132,7 +165,10 @@ const renderStep = (step: Row["step"]) =>
 // Hidden is also how a control looks before the viewer's permissions arrive, so wait for them before asserting it is gone.
 const viewerKnown = () => vi.waitFor(() => expect(client.getQueryState([getMyRoleKey, "ws-1"])?.status).toBe("success"));
 
-const serve = (holds: string[], showLocked: boolean) => vi.mocked(api.get).mockImplementation(asViewer(memberWho(holds, showLocked), data));
+const serve = (holds: string[], showLocked: boolean, machine: string[] | null = DEPLOYABLE) => {
+  machineHeld = machine;
+  vi.mocked(api.get).mockImplementation(asViewer(memberWho(holds, showLocked), data));
+};
 
 describe("a wizard step the viewer's role stops short of", () => {
   beforeEach(() => {
@@ -142,8 +178,8 @@ describe("a wizard step the viewer's role stops short of", () => {
     client.clear();
   });
 
-  it.each(rows)("$name: locked with the reason when a role shows locked actions", async ({ holds, step, control, reason }) => {
-    serve(holds, true);
+  it.each(rows)("$name: locked with the reason when a role shows locked actions", async ({ holds, step, control, reason, machine }) => {
+    serve(holds, true, machine);
     renderStep(step);
 
     const locked = await screen.findByRole(control.role, { name: control.name });
@@ -152,11 +188,12 @@ describe("a wizard step the viewer's role stops short of", () => {
     if (control.role === "checkbox") expect(screen.getByText(reason)).toBeInTheDocument();
   });
 
-  it.each(rows)("$name: shows no way to write, and no lock, otherwise", async ({ holds, step, control, reason }) => {
-    serve(holds, false);
+  it.each(rows)("$name: shows no way to write, and no lock, otherwise", async ({ holds, step, control, reason, machine }) => {
+    serve(holds, false, machine);
     renderStep(step);
 
     await viewerKnown();
+    await vi.waitFor(() => expect(client.isFetching()).toBe(0));
     if (control.role === "button") await vi.waitFor(() => expect(screen.queryByRole("button", { name: control.name })).not.toBeInTheDocument());
     if (control.role === "checkbox") expect(await screen.findByRole("checkbox", { name: control.name })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText(reason)).not.toBeInTheDocument();

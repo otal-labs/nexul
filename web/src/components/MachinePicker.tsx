@@ -2,7 +2,7 @@ import type { Control, FieldValues, Path } from "react-hook-form";
 
 import { FixLink } from "@/components/FixLink";
 import { FormCombobox } from "@/components/FormCombobox";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useCanAddMachines } from "@/hooks/AccessHooks";
 import { useFetchDeployTargets } from "@/hooks/MachineHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
@@ -15,9 +15,8 @@ interface MachinePickerProps<T extends FieldValues> {
 // and it offers only the machines the viewer may deploy to.
 export const MachinePicker = <T extends FieldValues>({ control, name }: MachinePickerProps<T>) => {
   const { data: machines } = useFetchDeployTargets();
-  const can = useAreaAccess();
+  const canAdd = useCanAddMachines();
   const wsPath = useWorkspacePath();
-  const canOpenRunners = can?.("runners");
   const options = (machines ?? []).map((machine) => ({ value: machine.name, label: machine.name }));
 
   return (
@@ -26,8 +25,8 @@ export const MachinePicker = <T extends FieldValues>({ control, name }: MachineP
       {machines && machines.length === 0 && (
         <p className="text-xs text-muted-foreground">
           No machine you can deploy to yet.{" "}
-          {canOpenRunners && <FixLink to={wsPath("/runners")} label="Add a runner" />}
-          {canOpenRunners === false && "Ask an admin for access to a machine."}
+          {canAdd && <FixLink to={wsPath("/runners")} label="Add a runner" />}
+          {canAdd === false && "Ask an admin for access to a machine."}
         </p>
       )}
     </div>

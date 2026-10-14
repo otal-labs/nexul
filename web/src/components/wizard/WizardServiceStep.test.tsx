@@ -18,7 +18,7 @@ vi.mock("@/api/client", async () => {
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const machines = [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }];
+const machines = [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "", actions: ["machines:see", "machines:deploy"] }];
 
 const repository = { id: 1, owner: "onik97", name: "api", full_name: "onik97/api", default_branch: "main", html_url: "", provider: "github" };
 
@@ -138,6 +138,7 @@ describe("WizardServiceStep", () => {
     useProjectWizardStore.getState().setCandidate({ kind: "compose", path: "docker-compose.yml", name: "api", services: [] });
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/stacks/stack-9") return { data: attachStack };
+      if (url === "/api/machines") return { data: machines };
       return { data: [] };
     });
     mocks.patch.mockResolvedValue({ data: { ...attachStack, build_source: { repo_owner: "onik97", repo_name: "api", branch: "main", compose_path: "docker-compose.yml" }, compose_path: "docker-compose.yml" } });
@@ -172,6 +173,7 @@ describe("WizardServiceStep", () => {
     useProjectWizardStore.getState().setCandidate({ kind: "dockerfile", path: "Dockerfile", name: "api", services: [] });
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/stacks/stack-9") return { data: attachStack };
+      if (url === "/api/machines") return { data: machines };
       return { data: [] };
     });
     mocks.patch.mockResolvedValue({ data: attachStack });

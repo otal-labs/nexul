@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MachinePicker } from "@/components/MachinePicker";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asViewer, memberWho } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn() },
@@ -46,24 +47,18 @@ describe("MachinePicker", () => {
     expect(api.get).toHaveBeenCalledWith("/api/machines/deployable");
   });
 
-  const mockEmptyMachines = (permissions: string[]) =>
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
-      return { data: [] };
-    });
-
-  it("links an empty machine list to the Runners page for someone who can open it", async () => {
-    mockEmptyMachines(["machines:create"]);
+  // Adding a machine is an instance permission: the workspace's own permissions never offer it.
+  it.each([
+    { who: "the instance Owner", workspace: [], instance: { instance_permissions: [], instance_owner: true }, link: true },
+    { who: "someone holding Add machines on the instance", workspace: [], instance: { instance_permissions: ["machines:create"], instance_owner: false }, link: true },
+    { who: "a workspace role that lists Add machines but holds nothing on the instance", workspace: ["machines:create"], instance: { instance_permissions: [], instance_owner: false }, link: false },
+  ])("with no machine to deploy to, links Runners for $who: $link", async ({ workspace, instance, link }) => {
+    vi.mocked(api.get).mockImplementation(asViewer(memberWho(workspace, false), () => [], instance));
     renderPicker();
 
-    expect(await screen.findByRole("link", { name: "Add a runner" })).toHaveAttribute("href", "/acme/runners");
-  });
-
-  it("says who to ask, with no link, when the viewer can't open Runners", async () => {
-    mockEmptyMachines([]);
-    renderPicker();
-
-    expect(await screen.findByText(/Ask an admin for access to a machine/)).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(await screen.findByText(/No machine you can deploy to yet/)).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole("link", { name: "Add a runner" }) !== null).toBe(link));
+    if (link) expect(screen.getByRole("link", { name: "Add a runner" })).toHaveAttribute("href", "/acme/runners");
+    if (!link) expect(await screen.findByText(/Ask an admin for access to a machine/)).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { CandidateChoice } from "@/components/wizard/CandidateChoice";
 import { declaredFrom } from "@/components/wizard/declaredFrom";
 import { MachinePicker } from "@/components/MachinePicker";
+import { useDeployToAnswer } from "@/hooks/RunnerHooks";
 import { useCreateStack, useDeployStack, useFetchStack, useUpdateStack } from "@/hooks/StackHooks";
 import type { Candidate, Repo } from "@/models/Repository";
 import type { BuildSource, CreateStackInput } from "@/models/Stack";
@@ -73,6 +74,7 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
     isPending: isAttachPending,
     error: attachError,
   } = useFetchStack(attachStackId ?? undefined);
+  const deployTo = useDeployToAnswer(attachStack?.machine);
 
   const form = useForm<ServiceFormData>({
     defaultValues: { name: name || candidate?.name || "", machine: "" },
@@ -136,9 +138,16 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
           <span className="font-mono text-foreground">{attachStack.machine}</span>.
         </p>
         <WizardFooter onBack={onBack}>
-          <ActionButton permission={writes} projectId={projectId} verb={envStepFollows ? "attach stacks" : "attach stacks and deploy"} type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
-            Attach
-          </ActionButton>
+          {envStepFollows && (
+            <ActionButton permission={writes} projectId={projectId} verb="attach stacks" type="button" onClick={() => void onAttach()} loading={updateStack.isPending}>
+              Attach
+            </ActionButton>
+          )}
+          {!envStepFollows && deployTo && (
+            <ActionButton permission={["machines:deploy", ...STACK_AND_DEPLOY]} answer={deployTo} projectId={projectId} verb="attach stacks and deploy" type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
+              Attach
+            </ActionButton>
+          )}
         </WizardFooter>
       </div>
     );
