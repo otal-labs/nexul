@@ -12,12 +12,14 @@ const ProviderIcon = ({ provider }: { provider: InvitationProvider }) => {
 
 interface InvitationProviderButtonProps {
   provider: InvitationProvider;
+  // The first provider the owner turned on takes the ember, the rest are outline.
+  primary: boolean;
   disabled: boolean;
   onSelect: (provider: InvitationProvider) => void;
 }
 
-export const InvitationProviderButton = ({ provider, disabled, onSelect }: InvitationProviderButtonProps) => (
-  <Button type="button" variant={provider === "github" ? "default" : "outline"} className="w-full" disabled={disabled} onClick={() => onSelect(provider)}>
+export const InvitationProviderButton = ({ provider, primary, disabled, onSelect }: InvitationProviderButtonProps) => (
+  <Button type="button" variant={primary ? "default" : "outline"} className="w-full" disabled={disabled} onClick={() => onSelect(provider)}>
     <ProviderIcon provider={provider} />Continue with {labels[provider]}
   </Button>
 );

@@ -85,8 +85,16 @@ type InvitationGrant struct {
 	RoleName      string `json:"role_name"`
 	// Roles is every role the grant gives; RoleID and RoleName name the first.
 	Roles []InvitationRole `json:"roles"`
-	Allow []string         `json:"allow"`
-	Deny  []string         `json:"deny"`
+	// Projects is what the roles let in today, named only after sign-in; the preview never carries them.
+	Projects []InvitationProject `json:"projects"`
+	Allow    []string            `json:"allow"`
+	Deny     []string            `json:"deny"`
+}
+
+// InvitationProject is one project a grant's roles let in.
+type InvitationProject struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // InvitationRole is one role an invitation grant gives.

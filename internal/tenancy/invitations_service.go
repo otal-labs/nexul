@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -48,10 +49,19 @@ type InvitationProjectPreview struct {
 	ProjectName string `json:"project_name"`
 }
 
+// InvitationProject is a project an invitation's roles let in, named only to someone who has signed in.
+type InvitationProject struct {
+	WorkspaceID string
+	ID          string
+	Name        string
+}
+
+// InvitationPreview is what anyone holding the link may read: no project names, so a forwarded link reveals only the roles.
 type InvitationPreview struct {
-	InstanceURL string                    `json:"instance_url"`
-	ExpiresAt   time.Time                 `json:"expires_at"`
-	Grants      []*InvitationGrantPreview `json:"grants"`
+	InstanceName string                    `json:"instance_name"`
+	InstanceURL  string                    `json:"instance_url"`
+	ExpiresAt    time.Time                 `json:"expires_at"`
+	Grants       []*InvitationGrantPreview `json:"grants"`
 }
 
 type InvitationService struct {
@@ -112,6 +122,36 @@ func NewInvitationService(repo InvitationRepo, instanceURL InstanceURLGate) *Inv
 
 func (s *InvitationService) InstanceURL(ctx context.Context) string {
 	return strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/")
+}
+
+// InstanceName is how an invitation names the instance: the host of its URL.
+func (s *InvitationService) InstanceName(ctx context.Context) string {
+	instanceURL := s.InstanceURL(ctx)
+	parsed, err := url.Parse(instanceURL)
+	if err != nil || parsed.Host == "" {
+		return instanceURL
+	}
+	return parsed.Host
+}
+
+// GrantProjects is the projects each grant's roles let in today, by workspace, read in one statement for every role.
+func (s *InvitationService) GrantProjects(ctx context.Context, invitation *Invitation) (map[string][]InvitationProject, error) {
+	var roleIDs []string
+	for _, grant := range invitation.Grants {
+		roleIDs = append(roleIDs, grant.Held()...)
+	}
+	if len(roleIDs) == 0 {
+		return nil, nil
+	}
+	projects, err := s.repo.ProjectsListingRoles(ctx, roleIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list invitation projects: %w", err)
+	}
+	byWorkspace := map[string][]InvitationProject{}
+	for _, project := range projects {
+		byWorkspace[project.WorkspaceID] = append(byWorkspace[project.WorkspaceID], project)
+	}
+	return byWorkspace, nil
 }
 
 func (s *InvitationService) Create(ctx context.Context, actorID string, input CreateInvitationInput) (*CreatedInvitation, error) {
@@ -237,7 +277,7 @@ func (s *InvitationService) Redeem(ctx context.Context, acceptanceHash string, i
 }
 
 func (s *InvitationService) preview(ctx context.Context, invitation *Invitation) *InvitationPreview {
-	preview := &InvitationPreview{InstanceURL: strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/"), ExpiresAt: invitation.ExpiresAt, Grants: make([]*InvitationGrantPreview, 0, len(invitation.Grants))}
+	preview := &InvitationPreview{InstanceName: s.InstanceName(ctx), InstanceURL: s.InstanceURL(ctx), ExpiresAt: invitation.ExpiresAt, Grants: make([]*InvitationGrantPreview, 0, len(invitation.Grants))}
 	for _, grant := range invitation.Grants {
 		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, Roles: grant.Roles, Projects: []InvitationProjectPreview{}})
 	}

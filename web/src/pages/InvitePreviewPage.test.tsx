@@ -29,14 +29,16 @@ describe("InvitePreviewPage", () => {
     window.history.replaceState(null, "", "/invite#raw-token");
   });
 
-  it("clears the raw fragment immediately and renders a public preview", async () => {
-    mocks.post.mockResolvedValue({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }, { id: "r-2", name: "Frontend" }] }], expires_at: "2026-09-21T00:00:00Z", providers: ["github"] } });
+  it("clears the raw fragment immediately and renders a public preview of each role and what it means, with no projects", async () => {
+    mocks.post.mockResolvedValue({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor", description: "Edits tickets and docs." }, { id: "r-2", name: "Frontend" }], projects: [] }], expires_at: "2026-09-21T00:00:00Z", providers: ["github"] } });
     renderPage();
     expect(window.location.hash).toBe("");
     expect(await screen.findByRole("heading", { name: /join private nexul/i })).toBeInTheDocument();
-    expect(screen.getByText("Engineering")).toBeInTheDocument();
-    expect(screen.getByText("Editor")).toBeInTheDocument();
-    expect(screen.getByText("Frontend")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Engineering" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").map((role) => role.textContent)).toEqual(["EditorEdits tickets and docs.", "Frontend"]);
+    expect(screen.getByText("Sign in to accept")).toBeInTheDocument();
+    expect(screen.queryByText(/projects?:|No projects yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText("You may be added to more projects later.")).not.toBeInTheDocument();
   });
 
   it("says only that the link is gone when the server can't find it", async () => {
@@ -80,6 +82,23 @@ describe("InvitePreviewPage", () => {
     Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/invite", search: "", hash: "", assign: vi.fn() } });
     await user.click(await screen.findByRole("button", { name: /continue with github/i }));
     expect(api.post).toHaveBeenCalledWith("/api/invitations/oauth", { provider: "github", token: "raw-token" });
+  });
+
+  it("names after sign-in the projects each workspace's roles reach, and who is accepting", async () => {
+    window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
+    mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [
+      { workspace_id: "ws-1", workspace_name: "Northwind", role_id: "r-1", role_name: "Client", roles: [{ id: "r-1", name: "Client", description: "Reads the projects you're added to." }], projects: [{ id: "p-1", name: "Website relaunch" }, { id: "p-2", name: "Mobile app" }] },
+      { workspace_id: "ws-2", workspace_name: "Acme Internal", role_id: "r-2", role_name: "Reviewer", roles: [{ id: "r-2", name: "Reviewer" }], projects: [] },
+    ], expires_at: "later", authenticated_user: { id: "", provider: "github", login: "lena", name: "Lena Fischer" }, acceptance_token: "acceptance-token" } });
+    renderPage();
+    expect(await screen.findByText("Website relaunch, Mobile app")).toBeInTheDocument();
+    expect(screen.getByText("2 projects:")).toBeInTheDocument();
+    expect(screen.getByText("No projects yet")).toBeInTheDocument();
+    expect(screen.getByText("You may be added to more projects later.")).toBeInTheDocument();
+    expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
+    expect(screen.getByText(/@lena · GitHub/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+    expect(screen.queryByText("Sign in to accept")).not.toBeInTheDocument();
   });
 
   it("shows authenticated grants and redeems only after explicit acceptance", async () => {

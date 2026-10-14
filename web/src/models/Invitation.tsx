@@ -14,13 +14,24 @@ export const getInvitationPreviewKey = "getInvitationPreview";
 
 export type InvitationProvider = (typeof InvitationProvider)[keyof typeof InvitationProvider];
 
+export interface InvitationRole extends Pick<TeamRole, "id" | "name"> {
+  description?: string;
+}
+
+// A project a grant's roles let in; only the acceptance, after sign-in, names them.
+export interface InvitationProject {
+  id: string;
+  name: string;
+}
+
 export interface InvitationGrant {
   workspace_id: string;
   workspace_name: string;
   // Every role the grant gives; role_id and role_name name the first.
-  roles: Pick<TeamRole, "id" | "name">[];
+  roles: InvitationRole[];
   role_id: string;
   role_name: string;
+  projects?: InvitationProject[];
 }
 
 export interface InvitationPreview {

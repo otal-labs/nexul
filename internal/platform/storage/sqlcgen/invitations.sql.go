@@ -507,6 +507,53 @@ func (q *Queries) ListInvitationJoins(ctx context.Context) ([]ListInvitationJoin
 	return items, nil
 }
 
+const listInvitationRoleProjects = `-- name: ListInvitationRoleProjects :many
+SELECT DISTINCT p.workspace_id, p.id, p.name, p.position
+FROM permission_overwrites po
+JOIN roles r ON r.id = po.role_id
+JOIN projects p ON p.id = po.resource_id AND p.workspace_id = r.workspace_id
+WHERE po.role_id IN (SELECT value FROM json_each(?1))
+  AND po.resource_type = 'project' AND po.target = 'role'
+  AND EXISTS (SELECT 1 FROM json_each(po.allow) a WHERE a.value = 'projects:open')
+ORDER BY p.workspace_id, p.position, p.id
+`
+
+type ListInvitationRoleProjectsRow struct {
+	WorkspaceID string
+	ID          string
+	Name        string
+	Position    int64
+}
+
+// The projects whose rules let any of the roles in (projects:open), each once, in the order the projects list them.
+func (q *Queries) ListInvitationRoleProjects(ctx context.Context, roleIds interface{}) ([]ListInvitationRoleProjectsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listInvitationRoleProjects, roleIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInvitationRoleProjectsRow
+	for rows.Next() {
+		var i ListInvitationRoleProjectsRow
+		if err := rows.Scan(
+			&i.WorkspaceID,
+			&i.ID,
+			&i.Name,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInvitationsByActor = `-- name: ListInvitationsByActor :many
 SELECT id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed_by
 FROM invitations
