@@ -74,6 +74,9 @@ git history, and anything durable it decided is an ADR.
   web and phone screen, and close the one-way doors. Map complete 2026-10-13
   with `spec.md`; build tickets 08–23. The five persona walks are in
   `research/persona-gaps.md`.
+- `.scratch/automation-hosts/` — automations hosts follow their machine's rules, placing an
+  automation on one takes Deploy to there, and `automations:*` become workspace actions (ADR 0154).
+  Tickets 01–02.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
