@@ -8,6 +8,8 @@ import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import type { JSONContent } from "@tiptap/core";
 
+import type { MentionRef } from "@nexul/client-core/mention";
+
 import { CaretOffNodes } from "@/components/doc/caretOffNodes";
 import { CodeBlockView } from "@/components/doc/codeBlock/CodeBlockView";
 import { AttachmentImageView } from "@/components/doc/image/AttachmentImageView";
@@ -21,7 +23,7 @@ import { MentionNodeView } from "@/components/doc/mention/MentionNodeView";
 import { currentRecordRef, RecordLinkMentions } from "@/components/doc/mention/recordLinks";
 import { PlusMenuExtension, SlashCommandExtension } from "@/components/doc/slashCommand/slashCommandExtension";
 import { searchMentions } from "@/hooks/MentionHooks";
-import type { MentionRef, MentionSearchResult } from "@/models/Mention";
+import type { MentionSearchResult } from "@/models/Mention";
 
 // Matches a canonical mention link: the URL is the identifier, the label is just display text.
 const mentionLinkRe = /^\[([^\]]+)\]\((\/(?:tickets|docs|people)\/)([a-zA-Z0-9-]+)\)/;

@@ -1,8 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import type { MentionChipData, MentionRef } from "@nexul/client-core/mention";
+
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { MentionChipData, MentionRef, MentionSearchResult } from "@/models/Mention";
+import type { MentionSearchResult } from "@/models/Mention";
 import { pause } from "@/lib/pause";
 
 export const resolveMentionsKey = "resolveMentions";

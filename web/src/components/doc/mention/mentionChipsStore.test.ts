@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { MentionChipData } from "@nexul/client-core/mention";
+
 import { getChips, publishChips, subscribeChips } from "@/components/doc/mention/mentionChipsStore";
-import type { MentionChipData } from "@/models/Mention";
 
 const chip: MentionChipData = { type: "ticket", id: "t-1", title: "Fix the bug", can_open: true };
 

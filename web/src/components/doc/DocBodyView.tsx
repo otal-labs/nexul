@@ -1,13 +1,14 @@
 import { useEffect, useMemo } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 
+import type { MentionChipData } from "@nexul/client-core/mention";
+
 import {
   buildEditorExtensions,
   extractMentionRefs,
 } from "@/components/doc/mention/editorExtensions";
 import { publishChips } from "@/components/doc/mention/mentionChipsStore";
 import { useResolveMentions } from "@/hooks/MentionHooks";
-import type { MentionChipData } from "@/models/Mention";
 import { isStructuredBody, parseBodyToJSON } from "@/utils/RichtextUtility";
 
 interface DocBodyViewProps {

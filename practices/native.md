@@ -48,8 +48,8 @@ as written. In particular:
 - Imports by full path through the `@/` alias (`native/src`), `import type`
   for types, no barrels, no `index.ts`. A module the web runs too is imported
   from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:
-  the permission table, chat and embed rules, people, the live socket and the
-  query retry rule. tsconfig's `paths` name it for Metro, which watches the
+  the permission table, chat and embed rules, mention text, people, the live
+  socket and the query retry rule. tsconfig's `paths` name it for Metro, which watches the
   folder, and `jest.config.js` maps it; its tests run once, in the web's job.
 - Naming: `XxxScreen`, `XxxFeed`, `XxxRow`, `XxxHooks.tsx`, `xxxStore.tsx`,
   `src/models/Xxx.tsx` with the interface and its Zod schema together.
@@ -78,7 +78,10 @@ as written. In particular:
   and, per project they are in, what they hold there, so a tab opens on what
   they hold in any project and a project's own screen on that project's
   (`useAreaAccess(projectId)`); a member no project lists sees no project and
-  keeps Inbox, Chat and More. Lists carry only what the viewer can open. A screen whose project is taken away while it
+  keeps Inbox, Chat and More. Lists carry only what the viewer can open. A doc
+  or ticket mention in a body (`DocBody`) the viewer can't open keeps its text,
+  followed by a lock image whose alt text is "You don't have access", and is not
+  a link. A screen whose project is taken away while it
   is open (the Board's pick, a ticket, a doc) shows `ProjectRevokedState`
   with a way to the Inbox; a project it never showed stays plain not found. Detail screens push onto the tab's stack and use the platform
   back gesture; a push into another tab passes `{ withAnchor: true }` so that

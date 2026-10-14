@@ -1,3 +1,5 @@
+import type { MentionRef, MentionType } from "@nexul/client-core/mention";
+
 export interface DocListItem {
   id: string;
   project_id: string;
@@ -61,26 +63,46 @@ const wrapMark = (text: string, mark: RichMark): string => {
   return text;
 };
 
-// Mirrors richtext.MentionHref: a mention is a link to its target, and an unknown kind renders nothing.
+// A person mention reads as their name; a doc or ticket one was already written by the body's MentionWriter.
 const mentionMarkdown = (attrs: Record<string, unknown> = {}): string => {
-  const label = String(attrs.label ?? "");
-  const id = String(attrs.id ?? "");
-  if (attrs.type === "ticket") return `[${label}](/tickets/${id})`;
-  if (attrs.type === "doc") return `[${label}](/docs/${id})`;
-  if (attrs.type === "person") return `**@${label}**`;
+  if (attrs.type === "person") return `**@${String(attrs.label ?? "")}**`;
   return "";
 };
 
 // Names a person mention by user id; undefined keeps the login the mention was saved with.
 export type MentionName = (userId: string) => string | undefined;
 
-// Swaps each person mention's stored login for the name People gives it now.
-const namePeople = (nodes: RichNode[], nameFor: MentionName): RichNode[] =>
+// Writes a doc or ticket mention as markdown, from its target and the label it was saved with.
+export type MentionWriter = (type: MentionType, id: string, label: string) => string;
+
+// Mirrors richtext.MentionHref: a mention is a link to its target.
+export const linkMention: MentionWriter = (type, id, label) => `[${label}](/${type === "ticket" ? "tickets" : "docs"}/${id})`;
+
+const isRecordMention = (node: RichNode): node is RichNode & { attrs: { type: MentionType } } =>
+  node.type === "mention" && (node.attrs?.type === "doc" || node.attrs?.type === "ticket");
+
+// Swaps each person mention's stored login for the name People gives it now, and writes each doc and ticket mention.
+const writeMentions = (nodes: RichNode[], nameFor: MentionName, write: MentionWriter): RichNode[] =>
   nodes.map((node) => {
+    if (isRecordMention(node)) return { type: "text", text: write(node.attrs.type, String(node.attrs.id ?? ""), String(node.attrs.label ?? "")) };
     const name = node.type === "mention" && node.attrs?.type === "person" ? nameFor(String(node.attrs.id ?? "")) : undefined;
-    const content = node.content && namePeople(node.content, nameFor);
+    const content = node.content && writeMentions(node.content, nameFor, write);
     return { ...node, ...(name !== undefined && { attrs: { ...node.attrs, label: name } }), ...(content && { content }) };
   });
+
+// Every doc and ticket a body mentions, once each, in the order they appear.
+export const mentionRefs = (body: string): MentionRef[] => {
+  const refs = new Map<string, MentionRef>();
+  const visit = (nodes: RichNode[]) => {
+    for (const node of nodes) {
+      const id = String(node.attrs?.id ?? "");
+      if (isRecordMention(node) && id) refs.set(`${node.attrs.type}:${id}`, { type: node.attrs.type, id });
+      visit(node.content ?? []);
+    }
+  };
+  visit(parseRichBody(body) ?? []);
+  return [...refs.values()];
+};
 
 const renderInlineMarkdown = (nodes: RichNode[]): string =>
   nodes
@@ -139,10 +161,10 @@ const renderBlockMarkdown = (node: RichNode, depth = 0): string => {
 
 // Converts a doc's stored body to markdown for the shared MessageBody/MessageMarkdown renderer; a legacy
 // non-JSON body (none in production data today) passes through unchanged, mirroring richtext.ToMarkdown.
-export const richBodyToMarkdown = (body: string, nameFor: MentionName = () => undefined): string => {
+export const richBodyToMarkdown = (body: string, nameFor: MentionName = () => undefined, write: MentionWriter = linkMention): string => {
   const blocks = parseRichBody(body);
   if (!blocks) return body;
-  return namePeople(blocks, nameFor)
+  return writeMentions(blocks, nameFor, write)
     .map((node) => renderBlockMarkdown(node))
     .join("\n\n");
 };

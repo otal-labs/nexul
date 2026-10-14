@@ -39,6 +39,7 @@ const useMarkdownStyle = (own: boolean): MarkdownStyle => {
       blockquote: { ...body, color: mutedForeground, borderColor: border, backgroundColor: "transparent" },
       code: { fontFamily: mono, color: foreground, backgroundColor: surface, borderColor: border },
       thematicBreak: { color: border, height: 1 },
+      inlineImage: { size: 15 },
       codeBlock: {
         fontFamily: mono,
         fontSize: 13,

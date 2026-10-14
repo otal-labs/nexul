@@ -4,4 +4,6 @@ export interface Workspace {
   name: string;
   // Names the workspace in web URLs (/<slug>/tickets/WEB-1), and picks the workspace a ticket key resolves in.
   slug: string;
+  // The ticket mention's {ticket.Field} layout, always the resolved text.
+  mention_chip_template: string;
 }
