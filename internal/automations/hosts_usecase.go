@@ -360,7 +360,7 @@ func (h *HostsService) Assignments(ctx context.Context, credential string) (Assi
 	}
 	out := Assignments{Automations: []Assignment{}}
 	for _, a := range placed {
-		if !a.Enabled {
+		if !a.Runs() {
 			continue
 		}
 		out.Automations = append(out.Automations, Assignment{ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash)})
@@ -407,8 +407,8 @@ func (h *HostsService) authenticateToken(ctx context.Context, raw string) (*Auto
 	if a.TokenRevokedAt != nil {
 		return nil, fmt.Errorf("%w: automation token revoked", apperrs.ErrUnauthorized)
 	}
-	if !a.Enabled {
-		return nil, errSwitchedOff
+	if !a.Runs() {
+		return nil, refusalWhyNotRunning(a)
 	}
 	host, err := h.placement(ctx, a)
 	if errors.Is(err, apperrs.ErrNotFound) {

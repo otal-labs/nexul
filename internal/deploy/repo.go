@@ -45,7 +45,7 @@ type StackRepo interface {
 	ListByProject(ctx context.Context, projectID string) ([]*Stack, error)
 	// ListReached lists the base stacks of projectID, else of workspaceID, else every one, that scope keeps.
 	ListReached(ctx context.Context, projectID, workspaceID string, scope DeployScope) ([]*Stack, error)
-	// ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.
+	// ListByBuildRepo returns every base stack of a live workspace whose build source references this repository, for the push consumer.
 	ListByBuildRepo(ctx context.Context, owner, name string) ([]*Stack, error)
 	// ListByDerivedFrom returns a base stack's branch deployments, oldest first.
 	ListByDerivedFrom(ctx context.Context, baseStackID string) ([]*Stack, error)

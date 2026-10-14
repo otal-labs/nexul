@@ -312,7 +312,9 @@ func (q *Queries) ListReachedStacks(ctx context.Context, arg ListReachedStacksPa
 }
 
 const listStacksByBuildRepo = `-- name: ListStacksByBuildRepo :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ? ORDER BY name
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ?
+  AND NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = stacks.project_id AND w.archived_at IS NOT NULL)
+ORDER BY name
 `
 
 type ListStacksByBuildRepoParams struct {

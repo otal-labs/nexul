@@ -41,3 +41,5 @@ nobody holds; and guessing a custom automation's workspace from its creator's me
 is ambiguous for anyone in more than one workspace.
 
 Amends ADRs 0046, 0047, and 0087. Decided 2026-10-01.
+
+Amended: an archived workspace's automations are delivered nothing, handed no secrets or host assignment, and refused their tokens, the way a switched-off one is. A restore moves their cursors to the newest event, so what happened while it was archived is skipped, not replayed.

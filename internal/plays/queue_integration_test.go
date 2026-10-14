@@ -362,6 +362,40 @@ func TestDispatch_PressedRunTakesTheSlot(t *testing.T) {
 	assert.Equal(t, plays.QueueStarted, r.only(t, "t-1").Status)
 }
 
+func (r *rig) setArchived(t *testing.T, archived bool) {
+	t.Helper()
+	var at *time.Time
+	if archived {
+		at = &r.clock
+	}
+	require.NoError(t, r.store.Workspaces.SetArchived(t.Context(), ws, at, r.clock))
+}
+
+// A run queued before the archive waits rather than ending, and starts after a restore.
+func TestArchivedWorkspace_AutoPlaysMatchAndStartNothingUntilRestored(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	for _, id := range []string{"t-waiting", "t-archived", "t-restored"} {
+		r.ticket(id)
+	}
+	r.unblock(t, "t-waiting")
+
+	r.setArchived(t, true)
+	r.unblock(t, "t-archived")
+	assert.Empty(t, r.queued(t, "t-archived"), "its auto plays match nothing")
+	assert.Negative(t, r.dispatch(t), "the queue has nothing to start or wake for")
+	assert.Equal(t, plays.QueueQueued, r.only(t, "t-waiting").Status, "a run queued earlier waits")
+	assert.Zero(t, r.Resolves(), "and no computer was asked to start it")
+
+	r.setArchived(t, false)
+	r.clock = r.clock.Add(time.Minute)
+	r.unblock(t, "t-restored")
+	assert.Len(t, r.queued(t, "t-restored"), 1, "auto plays match again")
+	r.dispatch(t)
+	assert.Equal(t, plays.QueueStarted, r.only(t, "t-waiting").Status, "and the waiting run starts")
+}
+
 func TestDispatch_OneRunPerTicket(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")

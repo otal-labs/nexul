@@ -22,4 +22,6 @@ SELECT auto_play_daily_cap FROM workspaces WHERE id = ?;
 UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?;
 
 -- name: ListEnabledAutoPlaysByMoment :many
-SELECT * FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1 ORDER BY created_at, id;
+SELECT * FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = auto_plays.workspace_id AND w.archived_at IS NOT NULL)
+ORDER BY created_at, id;

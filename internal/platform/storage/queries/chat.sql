@@ -70,7 +70,9 @@ UPDATE conversations SET agent_synced_at = ? WHERE id = ?;
 UPDATE conversations SET agent_seen = ? WHERE id = ?;
 
 -- name: GetConversationByAgentThread :one
-SELECT * FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != '' LIMIT 1;
+SELECT * FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != ''
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = conversations.workspace_id AND w.archived_at IS NOT NULL)
+LIMIT 1;
 
 -- name: GetMessage :one
 SELECT * FROM messages WHERE id = ?;

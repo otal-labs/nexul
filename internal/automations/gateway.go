@@ -76,9 +76,9 @@ func isSelfRead(r *http.Request, automationID string) bool {
 	return r.URL.Path == self || strings.HasPrefix(r.URL.Path, self+"/")
 }
 
-// refusal is what a refused token is told: only a switched-off automation learns why, every other refusal is bare.
+// refusal is what a refused token is told: only an automation that does not run learns why, every other refusal is bare.
 func refusal(err error) error {
-	if errors.Is(err, errSwitchedOff) {
+	if errors.Is(err, errSwitchedOff) || errors.Is(err, errWorkspaceArchived) {
 		return err
 	}
 	return apperrs.ErrUnauthorized

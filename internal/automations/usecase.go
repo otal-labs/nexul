@@ -54,14 +54,25 @@ func (s *Service) SetHosts(h *HostsService) {
 // errSwitchedOff refuses a switched-off automation's token the way a revoked one is refused, saying why.
 var errSwitchedOff = apperrs.WithCode("automation_switched_off", fmt.Errorf("%w: automation is switched off", apperrs.ErrUnauthorized))
 
-// AuthenticateToken resolves the automation a token acts for; revocation and switching off both refuse it at once.
+// errWorkspaceArchived refuses the token of an automation in an archived workspace, which runs nothing until a restore.
+var errWorkspaceArchived = apperrs.WithCode("automation_workspace_archived", fmt.Errorf("%w: the automation's workspace is archived", apperrs.ErrUnauthorized))
+
+// refusalWhyNotRunning is why an automation that does not run is refused: switched off, else its workspace is archived.
+func refusalWhyNotRunning(a *Automation) error {
+	if !a.Enabled {
+		return errSwitchedOff
+	}
+	return errWorkspaceArchived
+}
+
+// AuthenticateToken resolves the automation a token acts for; revocation, switching off and archiving its workspace all refuse it at once.
 func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Automation, error) {
 	a, err := s.AuthenticateDialin(ctx, raw)
 	if err != nil {
 		return nil, err
 	}
-	if !a.Enabled {
-		return nil, errSwitchedOff
+	if !a.Runs() {
+		return nil, refusalWhyNotRunning(a)
 	}
 	return a, nil
 }

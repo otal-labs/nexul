@@ -72,9 +72,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 		"auto-automations": {"automations:write"},
 		"auto-empty":       nil,
 	} {
-		automation, err := s.Automations.Get(ctx, id)
-		require.NoError(t, err)
-		assert.ElementsMatch(t, want, scopeStrings(automation.Scopes), id)
+		assert.ElementsMatch(t, want, storedAutomationScopes(t, db, id), id)
 	}
 
 	var allow, deny string

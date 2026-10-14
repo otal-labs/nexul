@@ -41,7 +41,9 @@ FROM stacks s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?;
 DELETE FROM permission_overwrites WHERE resource_type = 'stack' AND resource_id = ?;
 
 -- name: ListStacksByBuildRepo :many
-SELECT * FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ? ORDER BY name;
+SELECT * FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ?
+  AND NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = stacks.project_id AND w.archived_at IS NOT NULL)
+ORDER BY name;
 
 -- name: ListStacksByDerivedFrom :many
 SELECT * FROM stacks WHERE derived_from = ? ORDER BY created_at;

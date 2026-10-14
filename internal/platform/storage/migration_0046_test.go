@@ -54,12 +54,8 @@ INSERT INTO conversations (id, workspace_id, kind, name, created_by, created_at,
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"docs:read"}, scopeStrings(install.Scopes))
 
-	automation, err := s.Automations.Get(ctx, "auto-chat")
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"channels:delete", "channels:write", "chat:write"}, scopeStrings(automation.Scopes))
-	automation, err = s.Automations.Get(ctx, "auto-empty")
-	require.NoError(t, err)
-	assert.Empty(t, automation.Scopes)
+	assert.ElementsMatch(t, []string{"channels:delete", "channels:write", "chat:write"}, storedAutomationScopes(t, db, "auto-chat"))
+	assert.Empty(t, storedAutomationScopes(t, db, "auto-empty"))
 
 	for id, general := range map[string]bool{"conv-general": true, "conv-eng": false, "conv-voice": false} {
 		c, err := s.Chat.GetConversation(ctx, id)

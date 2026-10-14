@@ -99,7 +99,7 @@ func (r *StacksRepo) RuleScope(ctx context.Context, id string) (access.StackScop
 	return access.StackScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, BaseID: row.DerivedFrom, Machine: row.Machine}, nil
 }
 
-// ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.
+// ListByBuildRepo returns every base stack of a live workspace whose build source references this repository, for the push consumer.
 func (r *StacksRepo) ListByBuildRepo(ctx context.Context, owner, name string) ([]*deploy.Stack, error) {
 	rows, err := r.q.ListStacksByBuildRepo(ctx, sqlcgen.ListStacksByBuildRepoParams{BuildRepoOwner: owner, BuildRepoName: name})
 	if err != nil {

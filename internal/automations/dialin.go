@@ -204,9 +204,9 @@ func (h *DialinHandler) handleConn(ctx context.Context, automationID string, ws 
 	h.readLoop(ctx, c)
 }
 
-// secretsFor withholds the workspace's secrets from a switched-off automation, which may only announce its code.
+// secretsFor withholds the workspace's secrets from an automation that does not run, which may only announce its code.
 func (h *DialinHandler) secretsFor(ctx context.Context, a *Automation) (map[string]string, error) {
-	if !a.Enabled {
+	if !a.Runs() {
 		return map[string]string{}, nil
 	}
 	return h.cfg.Secrets.AllSecrets(ctx, a.WorkspaceID)
@@ -318,7 +318,7 @@ func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) b
 		h.log.Warn("automation lookup failed during delivery", "automation_id", c.id, "error", err)
 		return true
 	}
-	if !automation.Enabled || len(automation.Subscriptions) == 0 {
+	if !automation.Runs() || len(automation.Subscriptions) == 0 {
 		return true
 	}
 	cursor, _, err := h.cfg.Cursors.Get(ctx, c.id)
@@ -337,7 +337,7 @@ func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) b
 // deliverBatch delivers events in order, skipping other workspaces' past the cursor; false means the connection is closing.
 func (h *DialinHandler) deliverBatch(ctx context.Context, c *automationConn, workspaceID string, events []LogEvent) bool {
 	for _, ev := range events {
-		// Re-read per event: a disable mid-batch must hold even if the host never stops its worker.
+		// Re-read per event: a disable or archive mid-batch must hold even if the host never stops its worker.
 		if !h.enabled(ctx, c.id) {
 			return true
 		}
@@ -377,7 +377,7 @@ func (h *DialinHandler) inScope(ctx context.Context, workspaceID string, ev LogE
 
 func (h *DialinHandler) enabled(ctx context.Context, automationID string) bool {
 	a, err := h.cfg.Repo.Get(ctx, automationID)
-	return err == nil && a.Enabled
+	return err == nil && a.Runs()
 }
 
 // ensureCursor writes a row even if zero, so a later connect never mistakes itself for the first (ADR 0046).

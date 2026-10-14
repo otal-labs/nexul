@@ -61,7 +61,7 @@ func (r *AutomationsRepo) Get(ctx context.Context, id string) (*automations.Auto
 	if err != nil {
 		return nil, fmt.Errorf("get automation %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toAutomation(row)
+	return toAutomationIn(row.Automation, row.WorkspaceArchived)
 }
 
 func (r *AutomationsRepo) GetByTokenHash(ctx context.Context, hash string) (*automations.Automation, error) {
@@ -69,7 +69,7 @@ func (r *AutomationsRepo) GetByTokenHash(ctx context.Context, hash string) (*aut
 	if err != nil {
 		return nil, fmt.Errorf("get automation by token: %w", notFoundIfNoRows(err))
 	}
-	return toAutomation(row)
+	return toAutomationIn(row.Automation, row.WorkspaceArchived)
 }
 
 func (r *AutomationsRepo) List(ctx context.Context) ([]automations.Automation, error) {
@@ -79,7 +79,7 @@ func (r *AutomationsRepo) List(ctx context.Context) ([]automations.Automation, e
 	}
 	var out []automations.Automation
 	for _, row := range rows {
-		a, err := toAutomation(row)
+		a, err := toAutomationIn(row.Automation, row.WorkspaceArchived)
 		if err != nil {
 			return nil, fmt.Errorf("scan automation: %w", err)
 		}
@@ -135,6 +135,16 @@ func (r *AutomationsRepo) Delete(ctx context.Context, id string) error {
 		}
 		return nil
 	})
+}
+
+// toAutomationIn is toAutomation plus whether the automation's workspace is archived, which the row's query reads beside it.
+func toAutomationIn(row sqlcgen.Automation, workspaceArchived bool) (*automations.Automation, error) {
+	a, err := toAutomation(row)
+	if err != nil {
+		return nil, err
+	}
+	a.WorkspaceArchived = workspaceArchived
+	return a, nil
 }
 
 func toAutomation(row sqlcgen.Automation) (*automations.Automation, error) {

@@ -140,7 +140,9 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 }
 
 const listEnabledAutoPlaysByMoment = `-- name: ListEnabledAutoPlaysByMoment :many
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1 ORDER BY created_at, id
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = auto_plays.workspace_id AND w.archived_at IS NOT NULL)
+ORDER BY created_at, id
 `
 
 type ListEnabledAutoPlaysByMomentParams struct {

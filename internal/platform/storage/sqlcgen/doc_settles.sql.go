@@ -24,6 +24,7 @@ SELECT s.doc_id, s.first, s.actor_id, d.project_id, d.title
 FROM doc_settles s
 JOIN docs d ON d.id = s.doc_id
 WHERE s.due_at <= ? AND d.archived = 0
+  AND NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = d.project_id AND w.archived_at IS NOT NULL)
 ORDER BY s.due_at, s.doc_id
 `
 

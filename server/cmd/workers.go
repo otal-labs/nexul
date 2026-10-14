@@ -20,12 +20,6 @@ import (
 
 // startBackgroundWorkers must run after event subscriptions, so the outbox relay never outruns consumers.
 func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *storage.Store, bus *inprocess.Bus, svc *coreServices, logger *slog.Logger) (wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler) {
-	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits().Next, Logger: logger})
-	go func() {
-		if err := relay.Run(ctx); err != nil {
-			logger.Error("outbox relay stopped", "error", err)
-		}
-	}()
 	// The sole occupancy feed on localhost/dev, where LiveKit's webhook can't reach back to this instance.
 	go svc.voiceSvc.RunReconciliation(ctx, logger)
 	go svc.repoHooks.ensureAll(ctx, store.Projects.ListAllRepos, logger)
@@ -86,6 +80,13 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)
 	svc.automationHostsSvc.SetConnectionRegistry(automationsDialin)
+	// Last of the wiring a consumer reads, so no event is handled against a half-built server.
+	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits().Next, Logger: logger})
+	go func() {
+		if err := relay.Run(ctx); err != nil {
+			logger.Error("outbox relay stopped", "error", err)
+		}
+	}()
 	// `nexul install` enrolls the bundled automations host from this file; it goes away once that host is enrolled.
 	if err := svc.automationHostsSvc.WriteInstanceEnrollment(ctx); err != nil {
 		fail(fmt.Errorf("write instance automations host enrollment: %w", err))
