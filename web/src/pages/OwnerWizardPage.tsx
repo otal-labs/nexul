@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -6,6 +7,7 @@ import type { WorkspaceSetupData } from "@/components/auth/SetupWorkspaceStep";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { WorkspaceReady } from "@/components/auth/WorkspaceReady";
 import { useCompleteOwnerWizard, useFetchSettings } from "@/hooks/AuthHooks";
+import { getWelcomeKey } from "@/hooks/WelcomeHooks";
 import { useRenameWorkspace } from "@/hooks/WorkspaceHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { slugify } from "@/models/Workspace";
@@ -31,6 +33,7 @@ const STEP_COPY = [
 // Progress lives in the store, not local state, because step 3's Connect leaves the SPA and remounts this page.
 export const OwnerWizardPage = () => {
   const navigate = useNavigate();
+  const client = useQueryClient();
   const step = useOwnerWizardStore((s) => s.step);
   const setStep = useOwnerWizardStore((s) => s.setStep);
   const resetProgress = useOwnerWizardStore((s) => s.reset);
@@ -64,7 +67,11 @@ export const OwnerWizardPage = () => {
   const onFinish = async () => {
     resetProgress();
     setConfirmed(true);
-    await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
+    // Progress read before this person became Owner gave no steps; the hand-over must not reuse it.
+    await Promise.all([
+      new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS)),
+      client.invalidateQueries({ queryKey: [getWelcomeKey], refetchType: "none" }),
+    ]);
     navigate("/wizard/welcome", { replace: true });
   };
 

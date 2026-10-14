@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getWelcomeKey } from "@/hooks/WelcomeHooks";
 import { OwnerWizardPage } from "@/pages/OwnerWizardPage";
 import type { ConnectorStatus } from "@/models/Connectors";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
@@ -56,8 +57,7 @@ vi.mock("@/hooks/WorkspaceHooks", () => ({
   useRenameWorkspace: () => ({ mutateAsync: mocks.renameWorkspaceMutateAsync }),
 }));
 
-const renderPage = () => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const renderPage = (client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/wizard/onboarding/owner"]}>
@@ -197,5 +197,19 @@ describe("OwnerWizardPage", () => {
     expect(screen.getByText("Next, what's yours to set up: GitHub and your computer.")).toBeInTheDocument();
     expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(useOwnerWizardStore.getState().step).toBe(1);
+  });
+
+  it("hands over without reusing welcome progress read before the person became Owner", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData([getWelcomeKey], { first_run_done: false, in_a_project: false, steps: [], dot: false });
+    const user = userEvent.setup();
+    renderPage(client);
+
+    await user.click(screen.getByRole("button", { name: "Step1 continue" }));
+    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(client.getQueryState([getWelcomeKey])?.isInvalidated).toBe(true);
   });
 });
