@@ -7,7 +7,7 @@ import {
   type Clarification,
   type ClarificationQuestion,
   type ClarificationRound,
-} from "@/models/Clarification";
+} from "@nexul/client-core/clarification";
 
 const question = (round: number, answered_at: string): ClarificationQuestion => ({
   id: `q-${round}-${answered_at}`, doc_id: "d", round, position: 1, question: "Which?", why: "", options: [],

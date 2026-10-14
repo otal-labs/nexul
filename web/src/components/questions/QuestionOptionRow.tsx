@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { QuestionOption } from "@/models/Question";
+import type { QuestionOption } from "@nexul/client-core/question";
 import { cn } from "@/lib/utils";
 
 interface QuestionOptionRowProps {

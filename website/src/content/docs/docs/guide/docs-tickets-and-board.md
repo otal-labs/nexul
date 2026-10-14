@@ -40,6 +40,8 @@ When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the do
 
 The doc keeps its author's words until that last round. It's locked only while a round runs.
 
+On the [phone app](/docs/guide/phone-app/) the same **Doc | Questions** switch sits under the doc's title. Answer there the same way; someone who can only read the doc sees the questions and answers but can't change them. Tapping a notice about questions opens the doc on **Questions**; any other way in opens it on **Doc**.
+
 ## Tickets
 
 Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. Set a **Developer** to build it and a **Tester** to check it, both optional.

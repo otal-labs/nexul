@@ -2,8 +2,8 @@ import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { QuestionStep } from "@/components/questions/QuestionStep";
-import { answerValue, type ChecklistRow } from "@/models/QuestionChecklist";
-import type { AnswerValue } from "@/models/Question";
+import { answerValue, type ChecklistRow } from "@nexul/client-core/questionChecklist";
+import { hasAnswer, type AnswerValue } from "@nexul/client-core/question";
 
 interface QuestionFormProps {
   row: ChecklistRow;
@@ -23,9 +23,6 @@ interface QuestionFormProps {
   note?: ReactNode;
   multiline?: boolean;
 }
-
-const hasAnswer = (draft: AnswerValue | undefined): boolean =>
-  (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next.
 export const QuestionForm = ({

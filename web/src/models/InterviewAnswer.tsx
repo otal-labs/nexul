@@ -1,7 +1,8 @@
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import { draftValue, sourceName, type InterviewDraft, type InterviewSource } from "@/models/InterviewSource";
-import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswers, type QuestionItem } from "@/models/Question";
-import type { ChecklistDraft, ChecklistRow } from "@/models/QuestionChecklist";
+import { optionValue, type AnswerValue, type QuestionItem } from "@nexul/client-core/question";
+import type { HarnessQuestion, QuestionAnswers } from "@/models/Question";
+import type { ChecklistDraft, ChecklistRow } from "@nexul/client-core/questionChecklist";
 import type { Trail } from "@/models/Trail";
 
 // Mirrors internal/plays skippedAnswer: a skipped live follow-up is sent as this text, since a harness may refuse an empty answer.

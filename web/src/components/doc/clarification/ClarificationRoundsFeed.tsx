@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 import { ClarificationRoundSection } from "@/components/doc/clarification/ClarificationRoundSection";
-import { askedRounds, clarificationPhase, questionRow, type Clarification, type ClarificationRound } from "@/models/Clarification";
-import { firstPendingKey, nextPendingKey } from "@/models/QuestionChecklist";
+import { askedRounds, questionRow, startsFolded, takesAnythingElse, type Clarification, type ClarificationRound } from "@nexul/client-core/clarification";
+import { firstPendingKey, keysAround } from "@nexul/client-core/questionChecklist";
 
 interface ClarificationRoundsFeedProps {
   clarification: Clarification;
@@ -24,23 +24,14 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
   const arrived = newest !== undefined && newest.round !== seenRound;
   const opened = arrived ? firstPendingKey(newest.questions.map(questionRow)) : openKey;
   const current = locked ? null : opened;
-  // The newest round takes its "Anything else?" until the next round runs or one finds no gaps.
-  const phase = clarificationPhase(clarification);
-  const answering = phase === "waiting" || phase === "answered";
 
-  const folded = (r: ClarificationRound) =>
-    folds[r.round] ?? (closed || (r !== newest && !r.questions.some((q) => q.id === current)));
+  const folded = (r: ClarificationRound) => folds[r.round] ?? startsFolded(clarification, r, current);
 
   const move = (key: string | null) => {
     setOpenKey(key);
     setSeenRound(newest?.round);
     const round = rounds.find((r) => r.questions.some((q) => q.id === key));
     if (round) setFolds((f) => ({ ...f, [round.round]: false }));
-  };
-
-  const around = (key: string) => {
-    const at = rows.findIndex((r) => r.key === key);
-    return { prevKey: rows[at - 1]?.key ?? null, nextKey: nextPendingKey(rows, key) };
   };
 
   return (
@@ -53,10 +44,10 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
           current={current}
           readOnly={locked}
           folded={folded(round)}
-          open={round === newest && !locked && answering}
+          open={!locked && takesAnythingElse(clarification, round)}
           onToggleFold={() => setFolds((f) => ({ ...f, [round.round]: !folded(round) }))}
           onMove={move}
-          around={around}
+          around={(key) => keysAround(rows, key)}
         />
       ))}
     </div>

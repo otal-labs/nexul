@@ -6,9 +6,9 @@ import { InterviewSuggestionCard } from "@/components/memory/InterviewSuggestion
 import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
 import { QuestionSection } from "@/components/questions/QuestionSection";
 import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
-import type { AnswerValue } from "@/models/Question";
+import type { AnswerValue } from "@nexul/client-core/question";
 import type { InterviewRow, InterviewSectionData } from "@/models/InterviewAnswer";
-import { countLine, firstPendingKey, nextPendingKey, rowStatus } from "@/models/QuestionChecklist";
+import { countLine, firstPendingKey, nextPendingKey, rowStatus } from "@nexul/client-core/questionChecklist";
 
 interface InterviewChecklistFeedProps {
   projectId: string;

@@ -1,26 +1,9 @@
+import type { AnswerValue, QuestionItem } from "@nexul/client-core/question";
+
 // Mirrors internal/harness Question and QuestionAnswer: what a turn stopped to ask, and how the user answered.
-export interface QuestionOption {
-  label: string;
-  description?: string;
-  value?: string;
-}
-
-export interface QuestionItem {
-  id: string;
-  text: string;
-  header?: string;
-  options: QuestionOption[];
-  multi_select?: boolean;
-}
-
 export interface HarnessQuestion {
   request_id: string;
   questions: QuestionItem[];
-}
-
-export interface AnswerValue {
-  selected?: string[];
-  text?: string;
 }
 
 export type QuestionAnswers = Record<string, AnswerValue>;
@@ -28,9 +11,6 @@ export type QuestionAnswers = Record<string, AnswerValue>;
 export interface QuestionAnswer {
   answers: QuestionAnswers;
 }
-
-// What the harness wants back for an option; the label when it carries no explicit value.
-export const optionValue = (option: QuestionOption): string => option.value ?? option.label;
 
 // One answer as a line: the free text, else the chosen values.
 export const answerText = (answer: AnswerValue | undefined): string => {

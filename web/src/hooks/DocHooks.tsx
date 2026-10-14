@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@/models/Clarification";
+import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
 import { followEach, type LiveFollower } from "@/lib/live";
 

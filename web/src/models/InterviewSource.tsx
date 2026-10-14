@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { AnswerValue } from "@/models/Question";
+import type { AnswerValue } from "@nexul/client-core/question";
 import type { Trail } from "@/models/Trail";
 
 // Mirrors internal/memories SourcePath..SourceText.

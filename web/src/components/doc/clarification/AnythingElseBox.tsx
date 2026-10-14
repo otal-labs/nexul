@@ -1,6 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
 import { useSaveAnythingElse } from "@/hooks/DocHooks";
-import type { ClarificationRound } from "@/models/Clarification";
+import type { ClarificationRound } from "@nexul/client-core/clarification";
 
 interface AnythingElseBoxProps {
   round: ClarificationRound;

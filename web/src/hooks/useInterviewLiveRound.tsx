@@ -5,7 +5,8 @@ import { getInterviewAnswersKey } from "@/hooks/MemoryHooks";
 import { useActiveTrail, useAnswerTrail } from "@/hooks/TrailHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { liveSection, type InterviewRow, type InterviewSectionData } from "@/models/InterviewAnswer";
-import type { AnswerValue, QuestionAnswers } from "@/models/Question";
+import type { AnswerValue } from "@nexul/client-core/question";
+import type { QuestionAnswers } from "@/models/Question";
 
 // The live follow-ups of a waiting interview run: a section after the stored ones, its answers collected row by row and
 // sent together on the trail once the last is given; the stored round then arrives in its place.

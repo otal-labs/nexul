@@ -6,7 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDoc, useFetchDocClarification } from "@/hooks/DocHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { clarificationPhase } from "@/models/Clarification";
+import { clarificationPhase } from "@nexul/client-core/clarification";
 
 interface DocQuestionsPanelProps {
   docId: string;

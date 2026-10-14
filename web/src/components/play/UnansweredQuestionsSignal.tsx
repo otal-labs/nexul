@@ -1,7 +1,7 @@
 import { CircleAlert } from "lucide-react";
 
 import { useFetchDocClarification } from "@/hooks/DocHooks";
-import { unansweredInNewestRound } from "@/models/Clarification";
+import { unansweredInNewestRound } from "@nexul/client-core/clarification";
 
 interface UnansweredQuestionsSignalProps {
   docId: string;
