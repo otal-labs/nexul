@@ -299,6 +299,10 @@ without changing the core architecture.
   computer or instance area can allow, fall back or deny any permission for a
   role or one person, with the rule that decided every answer shown
   (shipped, ADR 0148; remaining gaps in `.scratch/permission-followups/`).
+- **Machine permissions** — each machine says who sees it and who may deploy
+  to, manage or delete it, for a role or one person; a new machine shows only
+  to the instance Owner, and only the instance Owner holds the instance by
+  right (ADR 0151, `.scratch/machine-permissions/`).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.

@@ -2,6 +2,9 @@
 
 **Status:** needs-triage
 
+Runners and machines have left this spec: each machine carries its own rules instead of belonging to a
+workspace (ADR 0151, `.scratch/machine-permissions/`). What follows about runners is superseded.
+
 Carried over from the retired workspace requirements document, which said these
 three move "from implicit instance-level to explicit workspace-level scoping",
 and gave the reason for integrations plainly: so their events and permissions
