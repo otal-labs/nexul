@@ -1,6 +1,6 @@
 import { ProviderMark } from "@/components/ProviderMarks";
 import type { TeamPerson } from "@/models/Team";
-import { providerLabel } from "@/models/User";
+import { providerLabel, loginHandle } from "@/models/User";
 
 interface TeamSignInAccountsProps {
   person: TeamPerson;
@@ -26,7 +26,7 @@ export const TeamSignInAccounts = ({ person }: TeamSignInAccountsProps) => {
           <span aria-hidden>·</span>
         </span>
       ))}
-      {!named && <span className="shrink-0 font-mono">@{person.login} ·</span>}
+      {!named && <span className="shrink-0 font-mono">{loginHandle(person.login)} ·</span>}
     </>
   );
 };

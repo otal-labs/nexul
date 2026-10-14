@@ -29,6 +29,8 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
   const toggle = (roleId: string) => onChange(value.includes(roleId) ? value.filter((id) => id !== roleId) : [...value, roleId]);
   const givable = choices?.filter((choice) => choice.givable) ?? [];
   const locked = choices?.filter((choice) => !choice.givable) ?? [];
+  // Counts only what you may give, so a role like Owner never makes the list look unfinished.
+  const ticked = givable.filter((choice) => value.includes(choice.role.id)).length;
 
   return (
     <section className="space-y-1">
@@ -36,7 +38,7 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
         <Microheader>{title}</Microheader>
         {choices && (
           <span className="font-mono text-xs text-muted-foreground tabular-nums">
-            {value.length} of {choices.length}
+            {ticked} of {givable.length}
           </span>
         )}
       </div>

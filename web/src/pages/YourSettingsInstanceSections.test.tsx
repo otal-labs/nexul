@@ -31,7 +31,7 @@ const settings = { instance_url: "https://deploy.example.com", settings_version:
 const ownerBits = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read", "templates:write"];
 
 const routeGet = (anywhere: string[], permissions: string[] = []) => (url: string) => {
-  if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
+  if (url === "/api/auth/me") return Promise.resolve({ data: { user: { login: "alice" }, instance_permissions: anywhere } });
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions } });
   if (url === "/api/team") return Promise.reject(new Error("403"));
   if (url === "/api/connectors") {

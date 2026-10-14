@@ -84,11 +84,11 @@ describe("Team dialog", () => {
 
     const confirm = dialog.getByRole("button", { name: "Confirm" });
     expect(confirm).toBeDisabled();
-    expect(await dialog.findByText("1 of 4")).toBeInTheDocument();
+    expect(await dialog.findByText("1 of 2")).toBeInTheDocument();
     await user.click(dialog.getByRole("checkbox", { name: /Editor/ }));
 
     expect(mocks.patch).not.toHaveBeenCalled();
-    expect(dialog.getByText("2 of 4")).toBeInTheDocument();
+    expect(dialog.getByText("2 of 2")).toBeInTheDocument();
     expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
     await user.click(confirm);
 

@@ -15,6 +15,7 @@ import { errorMessage } from "@/api/client";
 import { hasAddWithoutRoles, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
 import { personName, presenceText } from "@/utils/TeamUtility";
 import { formatRelativeTime } from "@/utils/TimeUtility";
+import { loginHandle } from "@/models/User";
 
 interface TeamPersonDialogProps {
   personId: string | null;
@@ -82,7 +83,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
             <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />
             <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle dir="auto" className="line-clamp-2 break-words">{personName(person)}</DialogTitle>
-              <DialogDescription className="truncate font-mono text-xs">@{person.login}</DialogDescription>
+              <DialogDescription className="truncate font-mono text-xs">{loginHandle(person.login)}</DialogDescription>
               <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 {presenceText(person)}
                 {person.joined && (
