@@ -63,8 +63,8 @@ const workspaceRoutes: RouteObject[] = [
   { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
-  { path: "wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },
-  { path: "wizard/project/:step", handle: gate("newProject"), element: <ProjectWizardPage /> },
+  { path: "wizard/project/import", handle: gate("editStacks"), element: <ProjectWizardImportPage /> },
+  { path: "wizard/project/:step", handle: gate("wizard"), element: <ProjectWizardPage /> },
   {
     path: "topology",
     handle: gate("topology"),

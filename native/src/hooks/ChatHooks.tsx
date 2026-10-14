@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { useEffect } from "react";
 
 import { applyReaction, conversationLabel, upsertMessage, type Conversation, type DMLabelContext, type UnreadCounts } from "@nexul/client-core/chat";
+import { requires } from "@nexul/client-core/requires";
 
 import { api } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
@@ -116,7 +117,7 @@ export const applyCachedReaction = (client: QueryClient, change: ReactionChange)
 export const usePostMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) => api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body }),
+    mutationFn: requires("channels:post", (body: string) => api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body })),
     onMutate: async (body) => {
       await client.cancelQueries({ queryKey: [getChatMessagesKey, conversationId] });
       const now = new Date().toISOString();
@@ -144,7 +145,7 @@ export const usePostMessage = (conversationId: string) => {
 export const useEditMessage = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, body }: { messageId: string; body: string }) => api.patch<Message>(`/api/chat/messages/${messageId}`, { body }),
+    mutationFn: requires("none", ({ messageId, body }: { messageId: string; body: string }) => api.patch<Message>(`/api/chat/messages/${messageId}`, { body })),
     onSuccess: (message) => upsertCachedMessage(client, message),
   });
 };
@@ -152,7 +153,7 @@ export const useEditMessage = () => {
 export const useDeleteMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (messageId: string) => api.delete<null>(`/api/chat/messages/${messageId}`),
+    mutationFn: requires("none", (messageId: string) => api.delete<null>(`/api/chat/messages/${messageId}`)),
     onSuccess: (_result, messageId) => markCachedMessageDeleted(client, conversationId, messageId, new Date().toISOString()),
   });
 };
@@ -163,8 +164,7 @@ export const useMarkThreadRead = (conversationId: string, lastMessageId: string 
   const workspaceId = useCurrentWorkspaceId();
   useEffect(() => {
     if (!conversationId || !lastMessageId) return;
-    void api
-      .post<null>(`/api/chat/conversations/${conversationId}/read`)
+    void requires("none", api.post<null>(`/api/chat/conversations/${conversationId}/read`))
       .then(() => client.invalidateQueries({ queryKey: [getChatUnreadKey, workspaceId] }))
       .catch(() => undefined);
   }, [client, conversationId, lastMessageId, workspaceId]);

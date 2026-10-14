@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { canRunWizard } from "@/models/Access";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> {
@@ -15,8 +16,9 @@ interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> 
 // Drop-in door-2 trigger: opens the project wizard at the repository step, project preselected when known.
 // Exported for pages this ticket doesn't own (Topology's empty state) to render without duplicating the route.
 export const AddServiceLink = ({ projectId, children, variant, size, className, ...props }: AddServiceLinkProps) => {
-  const canAdd = useAreaAccess()?.("newProject") ?? false;
-const wsPath = useWorkspacePath();
+  const can = useAreaAccess(projectId);
+  const wsPath = useWorkspacePath();
+  const canAdd = !!can && canRunWizard(can, !projectId);
   if (!canAdd) return null;
   return (
     <Button asChild variant={variant} size={size} className={className} {...props}>

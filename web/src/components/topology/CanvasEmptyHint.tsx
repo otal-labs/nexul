@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { canRunWizard } from "@/models/Access";
 
 interface CanvasEmptyHintProps {
   onAddNode: () => void;
@@ -12,7 +13,8 @@ interface CanvasEmptyHintProps {
 
 // Wrapper ignores pointer events so pan/zoom still work underneath; only the CTAs are interactive.
 export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
-  const canAddService = useAreaAccess()?.("newProject") ?? false;
+  const can = useAreaAccess();
+  const canAddService = !!can && canRunWizard(can, false);
   const wsPath = useWorkspacePath();
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">

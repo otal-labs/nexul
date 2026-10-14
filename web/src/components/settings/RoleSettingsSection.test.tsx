@@ -349,7 +349,7 @@ describe("RoleSettingsSection", () => {
   });
 
   it("deletes a role nobody holds after confirming", async () => {
-    mockRoles([ownerRole, role()], ["roles:delete"]);
+    mockRoles([ownerRole, role()], ["roles:write"]);
     mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
@@ -362,7 +362,7 @@ describe("RoleSettingsSection", () => {
   });
 
   it("deletes a role people hold after a confirm that says how many lose it", async () => {
-    mockRoles([ownerRole, role()], ["roles:delete"], [holder("role-editor"), { ...holder("role-editor"), id: "u-lena", login: "lena", name: "Lena" }]);
+    mockRoles([ownerRole, role()], ["roles:write"], [holder("role-editor"), { ...holder("role-editor"), id: "u-lena", login: "lena", name: "Lena" }]);
     mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
@@ -377,33 +377,19 @@ describe("RoleSettingsSection", () => {
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
-  it("leaves Delete out of the menu for a viewer whose roles can't delete roles", async () => {
-    mockRoles([ownerRole, role()], ["roles:write"]);
-    const user = userEvent.setup();
-    renderSection();
-
-    await screen.findAllByText("nobody");
-    await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
-
-    expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
-  });
-
-  it("shows Delete locked with its reason to a viewer whose role shows locked actions, and picking it deletes nothing", async () => {
+  it("shows Clone locked with its reason to a viewer whose role shows locked actions, and picking it opens nothing", async () => {
     mockRoles([ownerRole, role()], ["roles:write"], [], true);
     const user = userEvent.setup();
     renderSection();
 
     await screen.findAllByText("nobody");
     await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
-    const item = await screen.findByRole("button", { name: "Delete" });
+    const item = await screen.findByRole("button", { name: "Clone to workspace…" });
     expect(item).toHaveAttribute("aria-disabled", "true");
-    expect(item).toHaveAccessibleDescription("Your role can't delete roles");
+    expect(item).toHaveAccessibleDescription("Your role can't clone roles to another workspace");
     await user.click(item);
 
-    expect(screen.queryByRole("dialog", { name: "Delete Editor?" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(mocks.delete).not.toHaveBeenCalled();
   });
 
   it("duplicates a role under a free copy name, its welcome steps and locked-actions switch included", async () => {

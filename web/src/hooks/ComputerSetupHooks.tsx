@@ -1,6 +1,8 @@
 import { queryOptions, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getHarnessProvidersKey, useListComputers } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
@@ -43,14 +45,14 @@ export interface RunSetupInput {
 export const useRunSetup = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ models, options, folder, providers, provider }: RunSetupInput) => {
+    mutationFn: requires("none", async ({ models, options, folder, providers, provider }: RunSetupInput) => {
       if (provider) {
         const url = `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`;
         return (await api.post<SetupRun>(url, { model: models[provider] ?? "", model_options: options[provider] ?? [], folder })).data;
       }
       const body = { models, model_options: options, folder, ...(providers && providers.length > 0 ? { providers } : {}) };
       return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, body)).data;
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });
       toast.success("Setup started");
@@ -63,7 +65,7 @@ export const useRunSetup = (computerId: string) => {
 export const useUpdateSkills = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/skills`)).data,
+    mutationFn: requires("none", async () => (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/skills`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });
       toast.success("Skills update started");
@@ -77,8 +79,8 @@ export const useSaveSetupChoices = (computerId: string) => {
   const client = useQueryClient();
   const key = [getComputerSetupKey, computerId];
   return useMutation({
-    mutationFn: async (choices: SetupChoices) =>
-      (await api.put<ComputerSetup>(`/api/pairing/computers/${computerId}/setup/choices`, choices)).data,
+    mutationFn: requires("none", async (choices: SetupChoices) =>
+      (await api.put<ComputerSetup>(`/api/pairing/computers/${computerId}/setup/choices`, choices)).data),
     // The switch flips under the finger, not a round trip later.
     onMutate: async (choices) => {
       await client.cancelQueries({ queryKey: key, exact: true });

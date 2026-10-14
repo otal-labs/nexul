@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api } from "@/api/client";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { defineQuery } from "@/lib/liveQuery";
@@ -38,7 +40,7 @@ export const useFetchUnreadCount = (enabled = true) => {
 export const useMarkNotificationRead = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post(`/api/notifications/${id}/read`),
+    mutationFn: requires("none", (id: string) => api.post(`/api/notifications/${id}/read`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getNotificationsKey] });
       await client.invalidateQueries({ queryKey: [getUnreadCountKey] });
@@ -49,8 +51,8 @@ export const useMarkNotificationRead = () => {
 export const useMarkAllNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      api.post(inWorkspace("/api/notifications/read-all", useWorkspaceStore.getState().selectedWorkspaceId)),
+    mutationFn: requires("none", () =>
+      api.post(`/api/notifications/read-all?workspace_id=${encodeURIComponent(useWorkspaceStore.getState().selectedWorkspaceId ?? "")}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getNotificationsKey] });
       await client.invalidateQueries({ queryKey: [getUnreadCountKey] });

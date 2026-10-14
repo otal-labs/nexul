@@ -8,6 +8,7 @@ import { AddServiceLink } from "@/components/wizard/AddServiceLink";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useWaitingRepos } from "@/hooks/useWaitingRepos";
+import { canRunWizard } from "@/models/Access";
 
 interface ProjectServicesProps {
   projectId: string;
@@ -15,7 +16,8 @@ interface ProjectServicesProps {
 
 export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
   const { data: services, isPending, error } = useFetchServices(projectId);
-  const canAdd = useAreaAccess()?.("newProject") ?? false;
+  const can = useAreaAccess(projectId);
+  const canAdd = !!can && canRunWizard(can, false);
   const waiting = useWaitingRepos(projectId);
 
   return (

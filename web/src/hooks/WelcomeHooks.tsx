@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import type { WelcomeProgress, WelcomeStep } from "@nexul/client-core/welcome";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
@@ -22,7 +23,7 @@ const settle = (client: QueryClient, progress: WelcomeProgress) => client.setQue
 export const useSkipWelcomeStep = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (step: WelcomeStep) => (await api.post<WelcomeProgress>(`/api/me/welcome/${step}/skip`)).data,
+    mutationFn: requires("none", async (step: WelcomeStep) => (await api.post<WelcomeProgress>(`/api/me/welcome/${step}/skip`)).data),
     onSuccess: (progress) => settle(client, progress),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -32,7 +33,7 @@ export const useSkipWelcomeStep = () => {
 export const useFinishWelcomeFirstRun = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.post<WelcomeProgress>("/api/me/welcome/first-run")).data,
+    mutationFn: requires("none", async () => (await api.post<WelcomeProgress>("/api/me/welcome/first-run")).data),
     onSuccess: (progress) => {
       settle(client, progress);
       client.setQueryData<MeResponse>([getMeKey], (me) => me && { ...me, needs_first_login_wizard: false, user: { ...me.user, first_login_done: true } });

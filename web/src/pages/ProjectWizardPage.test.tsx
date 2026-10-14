@@ -534,7 +534,7 @@ describe("ProjectWizardPage", () => {
     const attached = (full: string) => ({ owner: full.split("/")[0], name: full.split("/")[1], full_name: full, connector_id: "github", role: "app" });
 
     beforeEach(() => {
-      access.areas = ["tickets", "stacks", "newProject"];
+      access.areas = ["tickets", "stacks", "newProject", "editProjects", "editStacks", "editDeploys"];
       mocks.post.mockResolvedValue({
         data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "web", services: [] }] },
       });

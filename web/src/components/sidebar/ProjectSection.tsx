@@ -11,6 +11,7 @@ import { useAccessSetupState } from "@/hooks/AccessGridHooks";
 import { useAnyProjectAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { canRunWizard } from "@/models/Access";
 import { inSetup, NEW_PROJECT_PATH } from "@/models/Project";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,7 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const can = useAnyProjectAreaAccess();
-  const canCreate = can?.("newProject") ?? false;
+  const canCreate = !!can && canRunWizard(can, true);
   // The switcher only earns its place when the viewer can open something inside some project.
   const readsProjects = !!can && (["projects", "tickets", "memories", "docs"] as const).some((area) => can(area));
   // While the one-time access setup is open its row stands in for the project's pages.

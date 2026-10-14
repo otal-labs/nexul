@@ -15,6 +15,11 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const held = vi.hoisted(() => ({ permissions: [] as string[] }));
+vi.mock("@/hooks/useActionState", () => ({
+  useActionState: ({ permission }: { permission: string }) => (held.permissions.includes(permission) ? { state: "live" } : { state: "hidden" }),
+}));
+
 const mockReferenceData = () =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Books", prefix: "BKS" }] };
@@ -40,6 +45,7 @@ const renderWithDialogs = () =>
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  held.permissions = ["tickets:write", "projects:write"];
 });
 
 describe("BoardCreateMenu", () => {
@@ -53,6 +59,24 @@ describe("BoardCreateMenu", () => {
 
     expect(onNewTicket).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "New ticket" })).not.toBeInTheDocument();
+  });
+
+  it("offers New category on projects:write alone and the ticket entries on tickets:write alone", async () => {
+    const user = userEvent.setup();
+    held.permissions = ["projects:write"];
+    const { unmount } = render(<BoardCreateMenu onNewTicket={() => {}} onNewCategory={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByRole("button", { name: "New category" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New ticket" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Report a bug" })).not.toBeInTheDocument();
+    unmount();
+
+    held.permissions = ["tickets:write"];
+    render(<BoardCreateMenu onNewTicket={() => {}} onNewCategory={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByRole("button", { name: "New ticket" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Report a bug" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New category" })).not.toBeInTheDocument();
   });
 
   it("fires onNewCategory from the menu", async () => {

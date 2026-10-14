@@ -2,6 +2,7 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 import { toast } from "sonner";
 
 import { applyReaction } from "@nexul/client-core/chat";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -27,8 +28,8 @@ export const applyCachedReaction = (client: QueryClient, conversationId: string,
 export const useReactToMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ messageId, emoji, reacted }: ReactionChange) =>
-      (await api.put<Message>(`/api/chat/messages/${messageId}/reactions`, { emoji, reacted })).data,
+    mutationFn: requires("none", async ({ messageId, emoji, reacted }: ReactionChange) =>
+      (await api.put<Message>(`/api/chat/messages/${messageId}/reactions`, { emoji, reacted })).data),
     onMutate: (change) => applyCachedReaction(client, conversationId, change),
     onSuccess: (message) => upsertCachedMessage(client, message),
     onError: (error, change) => {

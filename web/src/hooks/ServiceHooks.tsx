@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
 import { latestDeploy, type Deploy, type ServiceDef } from "@/models/Service";
@@ -42,8 +44,8 @@ export const useFetchServiceDeploys = (serviceId: string | undefined, pollMs?: n
 export const useCreateService = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Partial<ServiceDef>) =>
-      (await api.post<ServiceDef>("/api/services", payload)).data,
+    mutationFn: requires("stacks:write", async (payload: Partial<ServiceDef>) =>
+      (await api.post<ServiceDef>("/api/services", payload)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getServicesKey] });
       toast.success("Service created");
@@ -55,8 +57,8 @@ export const useCreateService = () => {
 export const useUpdateService = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: Partial<ServiceDef> }) =>
-      (await api.patch<ServiceDef>(`/api/services/${id}`, payload)).data,
+    mutationFn: requires("stacks:write", async ({ id, payload }: { id: string; payload: Partial<ServiceDef> }) =>
+      (await api.patch<ServiceDef>(`/api/services/${id}`, payload)).data),
     onSuccess: async (_data, vars) => {
       await client.invalidateQueries({ queryKey: [getServiceKey, vars.id] });
       await client.invalidateQueries({ queryKey: [getServicesKey] });
@@ -69,7 +71,7 @@ export const useUpdateService = () => {
 export const useDeleteService = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/services/${id}`),
+    mutationFn: requires("stacks:delete", async (id: string) => api.delete(`/api/services/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getServicesKey] });
       toast.success("Service removed");
@@ -81,8 +83,8 @@ export const useDeleteService = () => {
 export const useDeployService = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ serviceId, image, ref }: { serviceId: string; image?: string; ref?: string }) =>
-      (await api.post<Deploy>("/api/deploys", { service_id: serviceId, image, ref })).data,
+    mutationFn: requires("deploys:write", async ({ serviceId, image, ref }: { serviceId: string; image?: string; ref?: string }) =>
+      (await api.post<Deploy>("/api/deploys", { service_id: serviceId, image, ref })).data),
     onSuccess: async (_data, vars) => {
       await client.invalidateQueries({ queryKey: [getServiceDeploysKey, vars.serviceId] });
       toast.success("Deploy triggered");
@@ -94,8 +96,8 @@ export const useDeployService = () => {
 export const useRollbackService = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (serviceId: string) =>
-      (await api.post<Deploy>(`/api/services/${serviceId}/rollback`)).data,
+    mutationFn: requires("deploys:write", async (serviceId: string) =>
+      (await api.post<Deploy>(`/api/services/${serviceId}/rollback`)).data),
     onSuccess: async (_data, serviceId) => {
       await client.invalidateQueries({ queryKey: [getServiceDeploysKey, serviceId] });
       toast.success("Rollback triggered");

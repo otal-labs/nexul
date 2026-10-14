@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type {
   CreateGatewayFormData,
@@ -27,21 +29,21 @@ export const useFetchDnsZones = (enabled = true) =>
 
 export const useCreateInstanceRecord = () =>
   useMutation({
-    mutationFn: async (input: {
+    mutationFn: requires("dns:write", async (input: {
       zone_id: string;
       zone: string;
       type: RecordType;
       target: string;
-    }) => (await api.post<DnsRecord>("/api/dns/instance-record", input)).data,
+    }) => (await api.post<DnsRecord>("/api/dns/instance-record", input)).data),
     onSuccess: () => toast.success("Instance record created"),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
 export const useDeleteDnsRecord = () =>
   useMutation({
-    mutationFn: async ({ zoneId, recordId }: { zoneId: string; recordId: string }) => {
+    mutationFn: requires("dns:delete", async ({ zoneId, recordId }: { zoneId: string; recordId: string }) => {
       await api.delete(`/api/dns/zones/${encodeURIComponent(zoneId)}/records/${encodeURIComponent(recordId)}`);
-    },
+    }),
     onSuccess: () => toast.success("DNS record deleted"),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -69,8 +71,8 @@ export const useFetchTunnelStatus = (tunnelId: string | undefined) =>
 export const useCreateTunnel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; account_id: string }) =>
-      (await api.post<Tunnel>("/api/dns/tunnels", input)).data,
+    mutationFn: requires("dns:write", async (input: { name: string; account_id: string }) =>
+      (await api.post<Tunnel>("/api/dns/tunnels", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
       toast.success("Tunnel created");
@@ -82,13 +84,13 @@ export const useCreateTunnel = () => {
 export const useRouteTunnelHostname = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
+    mutationFn: requires("dns:write", async (input: {
       tunnel_id: string;
       hostname: string;
       zone_id: string;
       zone: string;
       service: string;
-    }) => (await api.post<Tunnel>(`/api/dns/tunnels/${encodeURIComponent(input.tunnel_id)}/route`, input)).data,
+    }) => (await api.post<Tunnel>(`/api/dns/tunnels/${encodeURIComponent(input.tunnel_id)}/route`, input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
       toast.success("Hostname routed to tunnel");
@@ -101,8 +103,8 @@ export const useRouteTunnelHostname = () => {
 export const useDeleteTunnel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (tunnelId: string) =>
-      (await api.delete(`/api/dns/tunnels/${encodeURIComponent(tunnelId)}`)).data,
+    mutationFn: requires("dns:delete", async (tunnelId: string) =>
+      (await api.delete(`/api/dns/tunnels/${encodeURIComponent(tunnelId)}`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
       toast.success("Tunnel deleted");
@@ -114,13 +116,13 @@ export const useDeleteTunnel = () => {
 export const useProvisionTunnelAgent = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { tunnel_id: string; target: string; docker_network: string }) =>
+    mutationFn: requires("dns:write", async (input: { tunnel_id: string; target: string; docker_network: string }) =>
       (
         await api.post<{ service_id: string }>(
           `/api/dns/tunnels/${encodeURIComponent(input.tunnel_id)}/agent`,
           input,
         )
-      ).data,
+      ).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
       toast.success("cloudflared deployed");
@@ -132,11 +134,11 @@ export const useProvisionTunnelAgent = () => {
 export const useProvisionReverseProxy = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
+    mutationFn: requires("dns:write", async (input: {
       target: string;
       docker_network: string;
       image?: string;
-    }) => (await api.post<{ service_id: string }>("/api/dns/reverse-proxy", input)).data,
+    }) => (await api.post<{ service_id: string }>("/api/dns/reverse-proxy", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getServicesKey] });
       toast.success("Reverse proxy deployed");
@@ -157,7 +159,7 @@ export const useFetchGateways = (enabled = true) =>
 export const useCreateGateway = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateGatewayFormData) => (await api.post<Gateway>("/api/dns/gateways", input)).data,
+    mutationFn: requires("dns:write", async (input: CreateGatewayFormData) => (await api.post<Gateway>("/api/dns/gateways", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsGatewaysKey] });
       await client.invalidateQueries({ queryKey: [getServicesKey] });
@@ -170,8 +172,8 @@ export const useCreateGateway = () => {
 export const useDeleteGateway = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (gatewayId: string) =>
-      (await api.delete(`/api/dns/gateways/${encodeURIComponent(gatewayId)}`)).data,
+    mutationFn: requires("dns:delete", async (gatewayId: string) =>
+      (await api.delete(`/api/dns/gateways/${encodeURIComponent(gatewayId)}`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsGatewaysKey] });
       toast.success("Gateway deleted");
@@ -193,8 +195,8 @@ export const useCreateExposure = () => {
   const client = useQueryClient();
   return useMutation({
     // gateway_id is optional: the backend reuses or provisions one for the target's machine when omitted (spec §7).
-    mutationFn: async (input: ExposeServiceFormData & { gateway_id?: string }) =>
-      (await api.post<Exposure>("/api/dns/exposures", input)).data,
+    mutationFn: requires("dns:write", async (input: ExposeServiceFormData & { gateway_id?: string }) =>
+      (await api.post<Exposure>("/api/dns/exposures", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsExposuresKey] });
       toast.success("Service exposed");
@@ -209,13 +211,13 @@ export const useCreateExposure = () => {
 export const useCreateServiceExposure = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
+    mutationFn: requires("dns:write", async (input: {
       hostname: string;
       service_id: string;
       port: number;
       zone_id: string;
       zone: string;
-    }) => (await api.post<Exposure>("/api/dns/exposures", input)).data,
+    }) => (await api.post<Exposure>("/api/dns/exposures", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsExposuresKey] });
       toast.success("Service exposed");
@@ -227,8 +229,8 @@ export const useCreateServiceExposure = () => {
 export const useDeleteExposure = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (exposureId: string) =>
-      (await api.delete(`/api/dns/exposures/${encodeURIComponent(exposureId)}`)).data,
+    mutationFn: requires("dns:delete", async (exposureId: string) =>
+      (await api.delete(`/api/dns/exposures/${encodeURIComponent(exposureId)}`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsExposuresKey] });
       toast.success("Service unexposed");
@@ -238,12 +240,12 @@ export const useDeleteExposure = () => {
 };
 
 // One tunnel ticker check (ingress, record or reachable); resolves with what the server found.
-export const verifyTunnelCheck = async (tunnelId: string, check: string) =>
+export const verifyTunnelCheck = requires("dns:read", async (tunnelId: string, check: string) =>
   (
     await api.post<{ detail: string }>(`/api/dns/tunnels/${encodeURIComponent(tunnelId)}/verify`, null, {
       params: { check },
     })
-  ).data.detail;
+  ).data.detail);
 
 const getDnsResolveKey = "dnsResolve";
 
@@ -259,8 +261,8 @@ export const useResolveHost = (host: string, address: PublicAddress) =>
 // Retry-safe on the server: a second call for the same domain redeploys the same gateway. Errors render inline.
 export const useDeployInstanceProxy = () =>
   useMutation({
-    mutationFn: async ({ domain, email }: { domain: string; email: string }) =>
-      (await api.post<{ service_id: string }>("/api/dns/instance-proxy", email ? { domain, email } : { domain })).data,
+    mutationFn: requires("dns:write", async ({ domain, email }: { domain: string; email: string }) =>
+      (await api.post<{ service_id: string }>("/api/dns/instance-proxy", email ? { domain, email } : { domain })).data),
   });
 
 // Each DNS list is one instance-wide read; a change refetches the list of its kind.

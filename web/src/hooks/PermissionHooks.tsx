@@ -1,6 +1,8 @@
 import { type QueryClient, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getDocsKey } from "@/hooks/DocHooks";
@@ -92,9 +94,9 @@ const refreshRules = (client: QueryClient, resourceType: string, resourceId: str
 export const useSaveRules = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ resourceType, resourceId, changes }: SaveRulesInput) => {
+    mutationFn: requires("permissions:write", async ({ resourceType, resourceId, changes }: SaveRulesInput) => {
       for (const change of changes) await api.put("/api/permissions", ruleBody(resourceType, resourceId, change));
-    },
+    }),
     onSuccess: async (_, { resourceType, resourceId, changes, done }) => {
       await refreshRules(client, resourceType, resourceId);
       if (resourceType === "doc" || resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocsKey] });

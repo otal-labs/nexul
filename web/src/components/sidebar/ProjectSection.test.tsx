@@ -26,7 +26,7 @@ const projects = [
 // A project the wizard made on some other device: the server's record is all this browser has to go on.
 const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished: false, steps: { project: "done", people: "done", repository: "skipped" } } };
 
-const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:create", "projects:read", "projects:write", "tickets:read"];
+const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:create", "projects:read", "projects:write", "stacks:write", "deploys:write", "tickets:read"];
 
 interface MeExtra {
   projects?: { project_id: string; actions: string[] }[];

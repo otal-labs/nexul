@@ -15,6 +15,7 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/hooks/useActionState", () => ({ useActionState: () => ({ state: "live" }) }));
 
 const zones = [{ id: "z1", name: "example.com", status: "active" }];
 const services = [

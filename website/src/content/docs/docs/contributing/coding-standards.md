@@ -108,7 +108,8 @@ with stable props.
 Every control that changes something is drawn by an action component, which
 hides it or shows it locked with the reason from the viewer's permissions. The
 permission is a typed value from `make permission-catalog`, so a misspelt one
-fails typecheck.
+fails typecheck. Every request that writes declares the permission its route
+checks, and a test reads those declarations against the server's route table.
 
 ## The phone app
 

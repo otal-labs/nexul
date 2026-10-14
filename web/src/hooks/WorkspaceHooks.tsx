@@ -4,6 +4,7 @@ import { useLocation, useNavigate, type Location, type NavigateFunction } from "
 import { toast } from "sonner";
 
 import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { replaceWorkspaceSlug, type Workspace, type WorkspaceArchiveFrame, type WorkspaceUpdate } from "@/models/Workspace";
@@ -65,8 +66,8 @@ export const useHasPermission = (value: string): boolean => {
 export const useRenameWorkspace = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: string; name: string; slug?: string }) =>
-      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data,
+    mutationFn: requires("workspaces:write", async ({ id, ...body }: { id: string; name: string; slug?: string }) =>
+      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
     },
@@ -101,8 +102,8 @@ export const useUpdateWorkspace = () => {
   const navigate = useNavigate();
   const location = useLocation();
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: string; name?: string; slug?: string }) =>
-      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data,
+    mutationFn: requires("workspaces:write", async ({ id, ...body }: { id: string; name?: string; slug?: string }) =>
+      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data),
     onSuccess: (saved) =>
       followWorkspaceUpdate(client, navigate, location, { workspace_id: saved.id, name: saved.name, slug: saved.slug }),
   });
@@ -112,12 +113,12 @@ export const useUpdateWorkspace = () => {
 export const useUpdateMentionChipTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { id: string; template: string }) =>
+    mutationFn: requires("workspaces:write", async (payload: { id: string; template: string }) =>
       (
         await api.patch<Workspace>(`/api/workspaces/${payload.id}/mention-chip-template`, {
           mention_chip_template: payload.template,
         })
-      ).data,
+      ).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
     },
@@ -128,7 +129,7 @@ export const useUpdateMentionChipTemplate = () => {
 export const useCreateWorkspace = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => (await api.post<Workspace>("/api/workspaces", { name })).data,
+    mutationFn: requires("workspaces:create", async (name: string) => (await api.post<Workspace>("/api/workspaces", { name })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
       toast.success("Workspace created");
@@ -166,7 +167,7 @@ export const useArchiveWorkspace = () => {
   const client = useQueryClient();
   const navigate = useNavigate();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/archive`)).data,
+    mutationFn: requires("workspaces:delete", async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/archive`)).data),
     onSuccess: async (archived) => {
       leaveWorkspace(client, navigate, archived.id);
       toast.success(`${archived.name} archived`, { id: archiveToast(archived.id) });
@@ -179,7 +180,7 @@ export const useArchiveWorkspace = () => {
 export const useRestoreWorkspace = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/restore`)).data,
+    mutationFn: requires("instance:write", async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/restore`)).data),
     onSuccess: async (restored) => {
       await refreshWorkspaceLists(client);
       toast.success(`${restored.name} restored`);

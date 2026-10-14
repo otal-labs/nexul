@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, joinAPIURL } from "@/api/client";
 import { getBootstrapStatusKey } from "@/hooks/AuthHooks";
 import { useSetupPassStore } from "@/stores/setupPassStore";
@@ -15,7 +17,7 @@ export const useUnlockSetup = () => {
   const client = useQueryClient();
   const unlock = useSetupPassStore((s) => s.unlock);
   return useMutation({
-    mutationFn: async (code: string) => (await api.post<SetupPass>("/api/setup/unlock", { code })).data,
+    mutationFn: requires("none", async (code: string) => (await api.post<SetupPass>("/api/setup/unlock", { code })).data),
     onSuccess: (pass, code) => unlock(pass, code),
     onError: async (error) => {
       if ((error as AxiosError).response?.status === 409) {
@@ -31,8 +33,8 @@ export const useSetInstanceUrl = () => {
   return useMutation({
     // attempts > 1 covers a certificate still being issued: the server's HTTPS check fails until it lands.
     mutationFn: async ({ url, attempts }: { url: string; attempts: number }) =>
-      retry(attempts, FINISH_RETRY_MS, async () =>
-        (await api.put<{ instance_url: string }>("/api/setup/instance-url", { url })).data,
+      retry(attempts, FINISH_RETRY_MS, requires("none", async () =>
+        (await api.put<{ instance_url: string }>("/api/setup/instance-url", { url })).data),
       ),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getBootstrapStatusKey] });
@@ -48,12 +50,12 @@ export const useFetchPublicAddress = () =>
   });
 
 export const useStartGitHubManifest = () =>
-  useMutation({ mutationFn: async () => (await api.post<GitHubManifestStart>("/api/setup/github-app/start")).data });
+  useMutation({ mutationFn: requires("none", async () => (await api.post<GitHubManifestStart>("/api/setup/github-app/start")).data) });
 
 export const useCompleteGitHubManifest = () =>
   useMutation({
-    mutationFn: async (callback: { code: string; state: string }) => {
+    mutationFn: requires("none", async (callback: { code: string; state: string }) => {
       await api.post("/api/setup/github-app/callback", callback);
-    },
+    }),
     onSuccess: () => window.location.assign(joinAPIURL("/auth/github")),
   });

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
+import { requires } from "@nexul/client-core/requires";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
 import { followEach, type LiveFollower } from "@/lib/live";
 
@@ -55,7 +56,7 @@ export const docChanged = (client: QueryClient, doc: Doc) => {
 export const useCreateDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SaveDocFormData) => (await api.post<Doc>("/api/docs", input)).data,
+    mutationFn: requires("docs:write", async (input: SaveDocFormData) => (await api.post<Doc>("/api/docs", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       toast.success("Doc created");
@@ -68,8 +69,8 @@ export const useCreateDoc = () => {
 export const useUpdateDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, title, body }: { id: string; title: string; body: string }) =>
-      (await api.put<Doc>(`/api/docs/${id}`, { title, body })).data,
+    mutationFn: requires("docs:write", async ({ id, title, body }: { id: string; title: string; body: string }) =>
+      (await api.put<Doc>(`/api/docs/${id}`, { title, body })).data),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       await client.invalidateQueries({ queryKey: [getDocKey, vars.id] });
@@ -81,7 +82,7 @@ export const useUpdateDoc = () => {
 export const useArchiveDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post<Doc>(`/api/docs/${id}/archive`)).data,
+    mutationFn: requires("docs:write", async (id: string) => (await api.post<Doc>(`/api/docs/${id}/archive`)).data),
     onSuccess: async (_, id) => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       await client.invalidateQueries({ queryKey: [getDocKey, id] });
@@ -94,7 +95,7 @@ export const useArchiveDoc = () => {
 export const useRestoreDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post<Doc>(`/api/docs/${id}/restore`)).data,
+    mutationFn: requires("docs:write", async (id: string) => (await api.post<Doc>(`/api/docs/${id}/restore`)).data),
     onSuccess: async (_, id) => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       await client.invalidateQueries({ queryKey: [getDocKey, id] });
@@ -107,8 +108,8 @@ export const useRestoreDoc = () => {
 export const useSetDocLocked = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, locked }: { id: string; locked: boolean }) =>
-      (await api.post<Doc>(`/api/docs/${id}/${locked ? "lock" : "unlock"}`)).data,
+    mutationFn: requires("docs:lock", async ({ id, locked }: { id: string; locked: boolean }) =>
+      (await api.post<Doc>(`/api/docs/${id}/${locked ? "lock" : "unlock"}`)).data),
     onSuccess: async (_, { id, locked }) => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       await client.invalidateQueries({ queryKey: [getDocKey, id] });
@@ -122,8 +123,8 @@ export const useSetDocLocked = () => {
 export const useCloneDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, projectId }: { id: string; projectId: string }) =>
-      (await api.post<Doc>(`/api/docs/${id}/clone`, { project_id: projectId })).data,
+    mutationFn: requires("docs:clone", async ({ id, projectId }: { id: string; projectId: string }) =>
+      (await api.post<Doc>(`/api/docs/${id}/clone`, { project_id: projectId })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       toast.success("Doc cloned");
@@ -135,9 +136,9 @@ export const useCloneDoc = () => {
 export const useDeleteDoc = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("docs:delete", async (id: string) => {
       await api.delete(`/api/docs/${id}`);
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       toast.success("Doc deleted");
@@ -157,10 +158,10 @@ export const useFetchDocWatchers = (docId: string) =>
 export const useSetDocWatching = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (watching: boolean) => {
+    mutationFn: requires("docs:read", async (watching: boolean) => {
       const url = `/api/docs/${docId}/watchers/me`;
       return (watching ? await api.put<DocWatchers>(url) : await api.delete<DocWatchers>(url)).data;
-    },
+    }),
     onSuccess: (watchers) => {
       client.setQueryData([getDocWatchersKey, docId], watchers);
       toast.success(watchers.watching ? "Watching this doc" : "Stopped watching this doc");
@@ -181,8 +182,8 @@ const patchQuestion = (client: QueryClient, saved: ClarificationQuestion) =>
 export const useAnswerDocQuestion = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ questionId, answer }: { questionId: string; answer: ClarificationAnswerInput }) =>
-      (await api.put<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`, answer)).data,
+    mutationFn: requires("docs:write", async ({ questionId, answer }: { questionId: string; answer: ClarificationAnswerInput }) =>
+      (await api.put<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`, answer)).data),
     onSuccess: async (saved) => {
       patchQuestion(client, saved);
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
@@ -194,8 +195,8 @@ export const useAnswerDocQuestion = (docId: string) => {
 export const useClearDocAnswer = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (questionId: string) =>
-      (await api.delete<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`)).data,
+    mutationFn: requires("docs:write", async (questionId: string) =>
+      (await api.delete<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`)).data),
     onSuccess: async (saved) => {
       patchQuestion(client, saved);
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
@@ -207,8 +208,8 @@ export const useClearDocAnswer = (docId: string) => {
 export const useSaveAnythingElse = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ round, text }: { round: number; text: string }) =>
-      (await api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text })).data,
+    mutationFn: requires("docs:write", async ({ round, text }: { round: number; text: string }) =>
+      (await api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text })).data),
     onSuccess: async (saved) => {
       patchRound(client, docId, saved.round, (r) => ({ ...saved, questions: r.questions }));
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
@@ -221,7 +222,7 @@ export const useSaveAnythingElse = (docId: string) => {
 export const useCloseClarification = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.post<Clarification>(`/api/docs/${docId}/clarification/close`)).data,
+    mutationFn: requires("docs:write", async () => (await api.post<Clarification>(`/api/docs/${docId}/clarification/close`)).data),
     onSuccess: (closed) => {
       client.setQueryData([getDocClarificationKey, docId], closed);
       toast.success("Questions closed");

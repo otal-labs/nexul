@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useCreateDM, useFetchConversations } from "@/hooks/ChatHooks";
+import { usePerson } from "@/hooks/PeopleHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { findDM } from "@/models/Chat";
@@ -14,10 +15,12 @@ export const useOpenDirectMessage = (userId: string): (() => void) | undefined =
   const { data: conversations } = useFetchConversations(workspaceId);
   const createDM = useCreateDM(workspaceId);
   const can = useAreaAccess();
+  const owner = usePerson(userId).owner === true;
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const existing = me && conversations ? findDM(conversations, [me.user.id, userId]) : undefined;
-  if (!existing && !can?.("newConversation")) return undefined;
+  // The server lets anyone message an Owner, so only a DM with someone else takes chat:write.
+  if (!existing && !owner && !can?.("newConversation")) return undefined;
 
   const open = (dmId: string) => void navigate(wsPath(`/chat/${dmId}`));
   return () => {

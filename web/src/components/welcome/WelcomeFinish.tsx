@@ -5,6 +5,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useWelcomeFlow } from "@/hooks/useWelcomeFlow";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { canRunWizard } from "@/models/Access";
 import { laterTitle } from "@/models/WelcomeWizard";
 import { workspacePath } from "@/models/Workspace";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ const useExit = (): Exit => {
   const { data: projects } = useFetchProjects();
   const can = useAreaAccess();
   if (!workspace) return { label: "Go to Nexul", to: "/" };
-  if (projects?.length === 0 && can?.("newProject")) {
+  if (projects?.length === 0 && can && canRunWizard(can, true)) {
     return { label: "Create your first project", to: workspacePath(workspace.slug, "/wizard/project/project") };
   }
   return { label: `Go to ${workspace.name}`, to: `/${workspace.slug}` };

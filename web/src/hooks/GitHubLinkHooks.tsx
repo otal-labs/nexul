@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import type { GitHubLinkStatus } from "@/models/GitHubLink";
@@ -17,7 +19,7 @@ export const useFetchGitHubLink = () =>
 export const useDisconnectGitHub = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => api.delete("/api/auth/github-link"),
+    mutationFn: requires("none", async () => api.delete("/api/auth/github-link")),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getGitHubLinkKey] }),

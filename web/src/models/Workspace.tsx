@@ -106,7 +106,7 @@ const sectionLandings: Record<string, { area?: RouteArea; path: string }> = {
   topology: { area: "topology", path: "/topology" },
   stacks: { area: "topology", path: "/topology" },
   automations: { area: "automations", path: "/automations" },
-  wizard: { area: "newProject", path: "/wizard/project/project" },
+  wizard: { area: "wizard", path: "/wizard/project/project" },
 };
 
 const configurationLanding = (section: string | undefined, access: WorkspaceAccess): string | undefined => {

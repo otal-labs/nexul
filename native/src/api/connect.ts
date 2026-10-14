@@ -1,3 +1,5 @@
+import { requires } from "@nexul/client-core/requires";
+
 import { requestJSON } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import type { About, ConnectDevice, ConnectExchange } from "@/models/Connect";
@@ -21,8 +23,11 @@ export const fetchAbout = async (host: string): Promise<About> => {
   return body;
 };
 
-export const exchangeConnectCode = (host: string, code: string, device: ConnectDevice): Promise<ConnectExchange> =>
-  requestJSON<ConnectExchange>(`${host}/api/auth/connect-codes/exchange`, {
-    method: "POST",
-    body: { code, device },
-  });
+export const exchangeConnectCode = requires(
+  "none",
+  (host: string, code: string, device: ConnectDevice): Promise<ConnectExchange> =>
+    requestJSON<ConnectExchange>(`${host}/api/auth/connect-codes/exchange`, {
+      method: "POST",
+      body: { code, device },
+    }),
+);

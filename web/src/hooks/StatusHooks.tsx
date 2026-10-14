@@ -1,6 +1,8 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { stageMoved } from "@/hooks/TicketLinkHooks";
 import { StatusKind, type BoardStatus } from "@/models/Status";
@@ -37,7 +39,7 @@ export const useTicketStatus = (ticket: Pick<Ticket, "project_id" | "status">) =
 export const useCreateStatus = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: requires("projects:write", async ({
       project_id,
       name,
       kind,
@@ -47,7 +49,7 @@ export const useCreateStatus = () => {
       name: string;
       kind: StatusKind;
       icon: string;
-    }) => (await api.post<BoardStatus>("/api/statuses", { project_id, name, kind, icon })).data,
+    }) => (await api.post<BoardStatus>("/api/statuses", { project_id, name, kind, icon })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStatusesKey] });
       await client.invalidateQueries({ queryKey: [getProjectStatusesKey] });
@@ -60,7 +62,7 @@ export const useCreateStatus = () => {
 export const useRenameStatus = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: requires("projects:write", async ({
       id,
       name,
       kind,
@@ -70,7 +72,7 @@ export const useRenameStatus = () => {
       name: string;
       kind: StatusKind;
       icon: string;
-    }) => (await api.patch<BoardStatus>(`/api/statuses/${id}`, { name, kind, icon })).data,
+    }) => (await api.patch<BoardStatus>(`/api/statuses/${id}`, { name, kind, icon })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStatusesKey] });
       await client.invalidateQueries({ queryKey: [getProjectStatusesKey] });
@@ -83,8 +85,8 @@ export const useRenameStatus = () => {
 export const useReorderStatuses = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ project_id, ids }: { project_id: string; ids: string[] }) =>
-      api.post("/api/statuses/reorder", { project_id, ids }),
+    mutationFn: requires("projects:write", async ({ project_id, ids }: { project_id: string; ids: string[] }) =>
+      api.post("/api/statuses/reorder", { project_id, ids })),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStatusesKey] });
       await client.invalidateQueries({ queryKey: [getProjectStatusesKey] });
@@ -97,7 +99,7 @@ export const useReorderStatuses = () => {
 export const useDeleteStatus = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/statuses/${id}`),
+    mutationFn: requires("projects:delete", async (id: string) => api.delete(`/api/statuses/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStatusesKey] });
       await client.invalidateQueries({ queryKey: [getProjectStatusesKey] });

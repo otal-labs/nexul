@@ -2,6 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { uploadAttachment } from "@/hooks/AttachmentHooks";
 import { attachmentPath, type Attachment } from "@/models/Attachment";
@@ -34,7 +36,7 @@ export const useComposerAttachments = (conversationId: string) => {
   });
 
   const remove = useMutation({
-    mutationFn: (attachmentId: string) => api.delete(attachmentPath(attachmentId)),
+    mutationFn: requires("none", (attachmentId: string) => api.delete(attachmentPath(attachmentId))),
     onSuccess: (_, attachmentId) =>
       setPending((current) => {
         const found = current.find((item) => item.attachment.id === attachmentId);

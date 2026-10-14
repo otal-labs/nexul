@@ -125,6 +125,20 @@ describe("a channel's settings", () => {
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual(["Send a message"]);
   });
 
+  it("offers a message to an Owner without chat:write, which the server allows, and to no one else", async () => {
+    permissions = ["channels:read"];
+    conversations = [channel({ private: true, participant_ids: ["u1", "u2", "u3"] })];
+    const bob = people[1] as (typeof people)[number];
+    people[1] = { ...bob, owner: true } as typeof bob;
+    const u = user();
+    renderSidebar();
+    const dialog = await openSettings(u);
+    await u.click(await within(dialog).findByRole("button", { name: "Actions for Bob" }));
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual(["Send a message"]);
+    people[1] = bob;
+    expect(within(dialog).queryByRole("button", { name: "Actions for Sam" })).not.toBeInTheDocument();
+  });
+
   it("opens the channel's permissions panel from its settings, closing them first, for whoever holds channels:write", async () => {
     const u = user();
     renderSidebar();

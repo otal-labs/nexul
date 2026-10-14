@@ -7,11 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackPage } from "@/pages/StackPage";
 
-const access = vi.hoisted(() => ({ areas: ["projects", "topology", "newProject", "dns"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+const access = vi.hoisted(() => ({ areas: ["projects", "topology", "editProjects", "editStacks", "editDeploys", "dns"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({
+  useAreaAccess: () => (area: string) => access.areas.includes(area),
+  useHasInstancePermission: (value: string) => access.areas.includes(value.split(":")[0] ?? ""),
+}));
 
 beforeEach(() => {
-  access.areas = ["projects", "topology", "newProject", "dns"];
+  access.areas = ["projects", "topology", "editProjects", "editStacks", "editDeploys", "dns"];
 });
 
 const manage = vi.hoisted(() => ({ stack: false }));

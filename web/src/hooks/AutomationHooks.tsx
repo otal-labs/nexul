@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { Automation, AutomationTokenMint } from "@/models/Automation";
 import type { PermissionInfo } from "@/models/Permission";
@@ -37,8 +39,8 @@ export const useCreateAutomation = () => {
   const client = useQueryClient();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   return useMutation({
-    mutationFn: async (input: { name: string; scopes: string[] }) =>
-      (await api.post<AutomationTokenMint>("/api/automations", { ...input, workspace_id: workspaceId })).data,
+    mutationFn: requires("automations:write", async (input: { name: string; scopes: string[] }) =>
+      (await api.post<AutomationTokenMint>("/api/automations", { ...input, workspace_id: workspaceId })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationsKey] });
       toast.success("Automation created");
@@ -50,8 +52,8 @@ export const useCreateAutomation = () => {
 export const useUpdateAutomationConfig = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (configValues: Record<string, string>) =>
-      (await api.patch<Automation>(`/api/automations/${id}/config`, { config_values: configValues })).data,
+    mutationFn: requires("automations:write", async (configValues: Record<string, string>) =>
+      (await api.patch<Automation>(`/api/automations/${id}/config`, { config_values: configValues })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });
     },
@@ -62,8 +64,8 @@ export const useUpdateAutomationConfig = (id: string) => {
 export const useSetAutomationEnabled = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) =>
-      (await api.patch<Automation>(`/api/automations/${id}/enabled`, { enabled })).data,
+    mutationFn: requires("automations:write", async ({ id, enabled }: { id: string; enabled: boolean }) =>
+      (await api.patch<Automation>(`/api/automations/${id}/enabled`, { enabled })).data),
     onSuccess: async (automation) => {
       await client.invalidateQueries({ queryKey: [getAutomationsKey] });
       await client.invalidateQueries({ queryKey: ["getAutomation", automation.id] });
@@ -77,8 +79,8 @@ export const useSetAutomationEnabled = () => {
 export const useSetAutomationHost = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (hostId: string | null) =>
-      (await api.patch<Automation>(`/api/automations/${id}/host`, { host_id: hostId })).data,
+    mutationFn: requires("automations:write", async (hostId: string | null) =>
+      (await api.patch<Automation>(`/api/automations/${id}/host`, { host_id: hostId })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });
       toast.success("Automation moved");
@@ -90,7 +92,7 @@ export const useSetAutomationHost = (id: string) => {
 export const useDeleteAutomation = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.delete(`/api/automations/${id}`)).data,
+    mutationFn: requires("automations:delete", async (id: string) => (await api.delete(`/api/automations/${id}`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationsKey] });
       toast.success("Automation deleted");
@@ -103,7 +105,7 @@ export const useDeleteAutomation = () => {
 export const useMintAutomationToken = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.post<AutomationTokenMint>(`/api/automations/${id}/token`)).data,
+    mutationFn: requires("automations:write", async () => (await api.post<AutomationTokenMint>(`/api/automations/${id}/token`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });
     },
@@ -114,7 +116,7 @@ export const useMintAutomationToken = (id: string) => {
 export const useRevokeAutomationToken = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.delete<Automation>(`/api/automations/${id}/token`)).data,
+    mutationFn: requires("automations:write", async () => (await api.delete<Automation>(`/api/automations/${id}/token`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });
       toast.success("Token revoked");

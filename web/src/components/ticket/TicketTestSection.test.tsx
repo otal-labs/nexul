@@ -15,7 +15,13 @@ vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => a
 
 beforeEach(() => {
   access.areas = ["stacks"];
+  held.permissions = ["tickets:write"];
 });
+
+const held = vi.hoisted(() => ({ permissions: [] as string[] }));
+vi.mock("@/hooks/useActionState", () => ({
+  useActionState: ({ permission }: { permission: string }) => (held.permissions.includes(permission) ? { state: "live" } : { state: "hidden" }),
+}));
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -107,6 +113,15 @@ describe("TicketTestSection", () => {
     expect(await screen.findByText(/No test environment yet/)).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "web" })).toHaveAttribute("href", "/acme/stacks/s-1/branches");
     expect(screen.getByText(/No Acceptance criteria section/)).toBeInTheDocument();
+  });
+
+  it("offers Pass and Fail only to someone who can write tickets, which the server needs for both", async () => {
+    mockApi({ url: "" });
+    held.permissions = ["tickets:read"];
+    renderSection();
+    expect(await screen.findByText("The form signs you in")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Fail" })).not.toBeInTheDocument();
   });
 
   it("passes the ticket", async () => {

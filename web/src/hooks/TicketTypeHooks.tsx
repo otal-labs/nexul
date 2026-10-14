@@ -1,6 +1,8 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { TicketType } from "@/models/TicketType";
 import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
@@ -21,8 +23,8 @@ export const useFetchProjectTicketTypes = (projectId: string | undefined) => use
 export const useCreateTicketType = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ project_id, name }: { project_id: string; name: string }) =>
-      (await api.post<TicketType>("/api/ticket-types", { project_id, name })).data,
+    mutationFn: requires("projects:write", async ({ project_id, name }: { project_id: string; name: string }) =>
+      (await api.post<TicketType>("/api/ticket-types", { project_id, name })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getTicketTypesKey] });
       await client.invalidateQueries({ queryKey: [getProjectTicketTypesKey] });
@@ -36,8 +38,8 @@ export const useCreateTicketType = () => {
 export const useRenameTicketType = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name, color }: { id: string; name: string; color: string }) =>
-      (await api.patch<TicketType>(`/api/ticket-types/${id}`, { name, color })).data,
+    mutationFn: requires("projects:write", async ({ id, name, color }: { id: string; name: string; color: string }) =>
+      (await api.patch<TicketType>(`/api/ticket-types/${id}`, { name, color })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getTicketTypesKey] });
       await client.invalidateQueries({ queryKey: [getProjectTicketTypesKey] });
@@ -50,8 +52,8 @@ export const useRenameTicketType = () => {
 export const useSetTicketTypeTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body_template }: { id: string; body_template: string }) =>
-      (await api.put<TicketType>(`/api/ticket-types/${id}/template`, { body_template })).data,
+    mutationFn: requires("projects:write", async ({ id, body_template }: { id: string; body_template: string }) =>
+      (await api.put<TicketType>(`/api/ticket-types/${id}/template`, { body_template })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getTicketTypesKey] });
       await client.invalidateQueries({ queryKey: [getProjectTicketTypesKey] });
@@ -64,7 +66,7 @@ export const useSetTicketTypeTemplate = () => {
 export const useDeleteTicketType = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/ticket-types/${id}`),
+    mutationFn: requires("projects:delete", async (id: string) => api.delete(`/api/ticket-types/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getTicketTypesKey] });
       await client.invalidateQueries({ queryKey: [getProjectTicketTypesKey] });

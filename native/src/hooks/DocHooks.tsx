@@ -1,4 +1,5 @@
 import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
+import { requires } from "@nexul/client-core/requires";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
@@ -71,8 +72,8 @@ const savedQuestion = (client: QueryClient, docId: string) => async (saved: Clar
 export const useAnswerDocQuestion = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ questionId, answer }: { questionId: string; answer: ClarificationAnswerInput }) =>
-      api.put<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`, answer),
+    mutationFn: requires("docs:write", ({ questionId, answer }: { questionId: string; answer: ClarificationAnswerInput }) =>
+      api.put<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`, answer)),
     onSuccess: savedQuestion(client, docId),
   });
 };
@@ -80,7 +81,7 @@ export const useAnswerDocQuestion = (docId: string) => {
 export const useClearDocAnswer = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (questionId: string) => api.delete<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`),
+    mutationFn: requires("docs:write", (questionId: string) => api.delete<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`)),
     onSuccess: savedQuestion(client, docId),
   });
 };
@@ -88,8 +89,8 @@ export const useClearDocAnswer = (docId: string) => {
 export const useSaveAnythingElse = (docId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ round, text }: { round: number; text: string }) =>
-      api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text }),
+    mutationFn: requires("docs:write", ({ round, text }: { round: number; text: string }) =>
+      api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text })),
     onSuccess: async (saved) => {
       patchRound(client, docId, saved.round, (r) => ({ ...saved, questions: r.questions }));
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });

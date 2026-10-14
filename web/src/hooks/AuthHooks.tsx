@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -42,8 +44,8 @@ export const useFetchMe = () =>
 export const useCompleteOwnerWizard = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (instance_url: string) =>
-      (await api.post<MeResponse>("/api/auth/onboarding/owner", { instance_url })).data,
+    mutationFn: requires("none", async (instance_url: string) =>
+      (await api.post<MeResponse>("/api/auth/onboarding/owner", { instance_url })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
       toast.success("Workspace ready");
@@ -56,8 +58,8 @@ export const useCompleteOwnerWizard = () => {
 export const useUpdateProfile = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { display_name: string; avatar_override_url: string }) =>
-      (await api.put<User>("/api/auth/profile", payload)).data,
+    mutationFn: requires("none", async (payload: { display_name: string; avatar_override_url: string }) =>
+      (await api.put<User>("/api/auth/profile", payload)).data),
     onSuccess: async () => {
       // No toast: Settings answers in its Save button and the wizard moves on.
       await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
@@ -75,8 +77,8 @@ export const useFetchSettings = () =>
 export const useUpdateSettings = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (instance_url: string) =>
-      (await api.put<InstanceSettings>("/api/auth/settings", { instance_url })).data,
+    mutationFn: requires("instance:write", async (instance_url: string) =>
+      (await api.put<InstanceSettings>("/api/auth/settings", { instance_url })).data),
     onSuccess: async () => {
       // No toast: the card's Save answers, and its row already says new connection tokens use the address.
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
@@ -89,13 +91,13 @@ export const useUpdateSettings = () => {
 export const useUpdateProviderOAuth = (provider: OptionalProvider, label: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { client_id: string; client_secret: string }) =>
+    mutationFn: requires("instance:write", async (data: { client_id: string; client_secret: string }) =>
       (
         await api.put<{ provider: OptionalProvider; client_id: string; callback: string; configured: boolean }>(
           `/api/auth/settings/oauth/${provider}`,
           data,
         )
-      ).data,
+      ).data),
     onSuccess: async (data) => {
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
       await client.invalidateQueries({ queryKey: [getBootstrapStatusKey] });
@@ -108,10 +110,10 @@ export const useUpdateProviderOAuth = (provider: OptionalProvider, label: string
 // Mints and copies in one step; the caller shows the tick, so success needs no toast.
 export const useCopyConnectionToken = () =>
   useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("instance:read", async () => {
       const { token } = (await api.post<ConnectionToken>("/api/auth/connection-token")).data;
       await navigator.clipboard.writeText(token);
-    },
+    }),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
@@ -124,7 +126,7 @@ export const useListPATs = () =>
 export const useMintPAT = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => (await api.post<MintPATResponse>("/api/auth/tokens", { name })).data,
+    mutationFn: requires("none", async (name: string) => (await api.post<MintPATResponse>("/api/auth/tokens", { name })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPATsKey] });
       toast.success("Token created. Copy it now. It won't be shown again.");
@@ -136,8 +138,8 @@ export const useMintPAT = () => {
 export const useRevokePAT = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      (await api.delete<{ tokens: PersonalAccessToken[] }>(`/api/auth/tokens/${id}`)).data,
+    mutationFn: requires("none", async (id: string) =>
+      (await api.delete<{ tokens: PersonalAccessToken[] }>(`/api/auth/tokens/${id}`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPATsKey] });
       toast.success("Token revoked");
@@ -155,13 +157,13 @@ export const useListSessions = () =>
 // A mutation, not a query: a code is issued only when the user asks, so visiting the page requests nothing.
 export const useConnectCode = () =>
   useMutation({
-    mutationFn: async () => (await api.post<ConnectCode>("/api/auth/connect-codes")).data,
+    mutationFn: requires("none", async () => (await api.post<ConnectCode>("/api/auth/connect-codes")).data),
   });
 
 export const useSignOutSession = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/auth/sessions/${id}`),
+    mutationFn: requires("none", async (id: string) => api.delete(`/api/auth/sessions/${id}`)),
     onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -170,7 +172,7 @@ export const useSignOutSession = () => {
 export const useSignOutOtherSessions = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => api.delete("/api/auth/sessions/others"),
+    mutationFn: requires("none", async () => api.delete("/api/auth/sessions/others")),
     onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -186,8 +188,8 @@ export const useFetchIdentities = () =>
 // The link lands back on Profile unless returnTo names another page the server allows.
 export const useStartIdentityLink = (returnTo?: string) =>
   useMutation({
-    mutationFn: async (provider: Provider) =>
-      (await api.post<{ url: string }>("/api/auth/identities/link", { provider, return_to: returnTo })).data,
+    mutationFn: requires("none", async (provider: Provider) =>
+      (await api.post<{ url: string }>("/api/auth/identities/link", { provider, return_to: returnTo })).data),
     onSuccess: (data) => window.location.assign(data.url),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -195,7 +197,7 @@ export const useStartIdentityLink = (returnTo?: string) =>
 export const useUnlinkIdentity = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (provider: Provider) => api.delete(`/api/auth/identities/${provider}`),
+    mutationFn: requires("none", async (provider: Provider) => api.delete(`/api/auth/identities/${provider}`)),
     onSuccess: async (_, provider) => {
       // Unlinking GitHub forgets its token too, so the GitHub row goes stale with the identities.
       await client.invalidateQueries({ queryKey: [getIdentitiesKey] });
@@ -211,7 +213,7 @@ export const useLogout = () => {
   const navigate = useNavigate();
   const logout = useSessionStore((s) => s.logout);
   return useMutation({
-    mutationFn: async () => api.delete("/api/auth/sessions/current"),
+    mutationFn: requires("none", async () => api.delete("/api/auth/sessions/current")),
     onSettled: () => {
       logout();
       // Replace, not push: the current URL would 404 once the router rebuilds logged-out.
@@ -230,8 +232,8 @@ export const useBootstrapStatus = () =>
 export const useBootstrap = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { instance_url: string; client_id: string; client_secret: string; app_slug: string }) =>
-      (await api.post<BootstrapResponse>("/api/auth/bootstrap", data)).data,
+    mutationFn: requires("none", async (data: { instance_url: string; client_id: string; client_secret: string; app_slug: string }) =>
+      (await api.post<BootstrapResponse>("/api/auth/bootstrap", data)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getBootstrapStatusKey] });
     },

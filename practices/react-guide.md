@@ -593,6 +593,18 @@ theirs has Show locked actions on, and not at all otherwise.
   shows it in a tooltip on hover and focus (a menu row shows it as its second
   line); Enter and Space do nothing; a locked destructive control loses its red.
   It is not a loading button: a pending request still takes `loading`.
+- Every request that writes declares the permission its route checks:
+  `requires("tickets:write", (id: string) => api.patch(...))` from
+  `@nexul/client-core/requires` wraps the function that sends it, or the call
+  itself where no function stands apart (`requires("none", api.post(...))`).
+  The permission is a `PermissionAction`, or `"none"` for a person's own
+  records and public plumbing, so a typo fails `typecheck`. A route's
+  permission is its row in `server/cmd/route_permissions.go`, written to
+  `client-core/routePermissions.json` by `make permission-catalog`, and
+  `client-core/routePermissions.test.ts` fails on a write with no `requires`,
+  one the table disagrees with, or a URL it can't read (write it as a string
+  or template literal, or a path helper that returns one). A new route gets
+  its row first, then `make permission-catalog`.
 - A page that gates a control by hand (`useHasPermission` beside a button, an
   `&&` on a permission) is the defect; move it onto a component. A request
   that writes and no component for its control is a missing component.

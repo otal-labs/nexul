@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import type { MemberStep } from "@/models/MemberDraft";
@@ -42,12 +44,12 @@ const memberPath = (workspaceId: string, userId: string) =>
 export const useApplyMemberStep = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, step }: { userId: string; step: MemberStep }) => {
+    mutationFn: requires("members:write", ({ userId, step }: { userId: string; step: MemberStep }) => {
       const path = memberPath(step.workspaceId, userId);
       if (step.kind === "add") return api.put(path, step.body);
       if (step.kind === "remove") return api.delete(path);
       return api.patch(path, step.body);
-    },
+    }),
     onSuccess: () => invalidateTeam(client),
   });
 };
@@ -57,12 +59,12 @@ const computersDisconnected = "Their computers were disconnected.";
 
 export const useUpdateAccountStatus = () =>
   useTeamMutation(
-    ({ id, status }: { id: string; status: "active" | "disabled" }) => api.patch(`/api/auth/accounts/${encodeURIComponent(id)}`, { status }),
+    requires("accounts:write", ({ id, status }: { id: string; status: "active" | "disabled" }) => api.patch(`/api/auth/accounts/${encodeURIComponent(id)}`, { status })),
     ({ status }) => (status === "disabled" ? `Account disabled. ${computersDisconnected}` : "Account status updated"),
   );
 
 export const useRemoveAccount = () =>
-  useTeamMutation((id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`), () => `Account removed. ${computersDisconnected}`);
+  useTeamMutation(requires("accounts:delete", (id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`)), () => `Account removed. ${computersDisconnected}`);
 
 // The Team follows account and membership changes made anywhere; presence frames name nobody, so it refetches whole.
 // A person's Welcome wizard progress refetches the Team only while it holds that person.

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { Deploy, DeployLogLine, DeployStatus } from "@/models/Stack";
 import type { LiveFollower } from "@/lib/live";
@@ -25,7 +27,7 @@ export const useFetchDeployLog = (id: string | undefined) =>
 export const useCancelDeploy = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.post(`/api/deploys/${id}/cancel`),
+    mutationFn: requires("deploys:write", async (id: string) => api.post(`/api/deploys/${id}/cancel`)),
     onSuccess: async (_data, id) => {
       await client.invalidateQueries({ queryKey: [getDeployKey, id] });
       toast.success("Cancel requested");

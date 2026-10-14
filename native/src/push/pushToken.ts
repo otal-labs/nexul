@@ -1,10 +1,11 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { requestJSON } from "@/api/client";
 
 const CHANNEL_ID = "default";
-const PUSH_TOKEN_PATH = "/api/auth/sessions/current/push-token";
 
 // Set by the owner's one-time Expo/Firebase setup (ticket 13); empty until then.
 const pushProjectId = (): string | undefined => {
@@ -22,8 +23,8 @@ const ensurePermission = async (): Promise<boolean> => {
   return requested.granted;
 };
 
-const putPushToken = (host: string, token: string, pushToken: string) =>
-  requestJSON(`${host}${PUSH_TOKEN_PATH}`, { method: "PUT", body: { push_token: pushToken }, token });
+const putPushToken = requires("none", (host: string, token: string, pushToken: string) =>
+  requestJSON(`${host}/api/auth/sessions/current/push-token`, { method: "PUT", body: { push_token: pushToken }, token }));
 
 // A missing project id or a denied permission skips registration, logs once, never nags.
 export const registerPushToken = async (host: string, token: string): Promise<void> => {

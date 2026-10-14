@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey 
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -71,7 +73,7 @@ const refreshInbox = async (client: QueryClient) => {
 export const useMarkNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (ids: string[]) => Promise.all(ids.map((id) => api.post(`/api/notifications/${id}/read`))),
+    mutationFn: async (ids: string[]) => Promise.all(ids.map(requires("none", (id) => api.post(`/api/notifications/${id}/read`)))),
     onSuccess: () => refreshInbox(client),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -80,7 +82,7 @@ export const useMarkNotificationsRead = () => {
 export const useMarkNotificationUnread = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.post(`/api/notifications/${id}/unread`),
+    mutationFn: requires("none", async (id: string) => api.post(`/api/notifications/${id}/unread`)),
     onSuccess: () => refreshInbox(client),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -89,10 +91,10 @@ export const useMarkNotificationUnread = () => {
 export const useMarkAllNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
+    mutationFn: requires("none", async () =>
       api.post("/api/notifications/read-all", undefined, {
         params: { workspace_id: useWorkspaceStore.getState().selectedWorkspaceId },
-      }),
+      })),
     onSuccess: async () => {
       await refreshInbox(client);
       toast.success("All notifications marked read");

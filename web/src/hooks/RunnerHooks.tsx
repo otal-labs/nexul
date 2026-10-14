@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { Machine, OpenEnrollment, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentInput } from "@/models/Runner";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -33,8 +35,8 @@ export const useOpenEnrollments = (computers: boolean) =>
 export const useCreateRunnerEnrollment = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, machine }: RunnerEnrollmentInput) =>
-      (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine })).data,
+    mutationFn: requires("machines:create", async ({ name, machine }: RunnerEnrollmentInput) =>
+      (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine })).data),
     onSuccess: () => client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -43,7 +45,7 @@ export const useCreateRunnerEnrollment = () => {
 export const useRevokeEnrollment = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/runners/enrollments/${id}`),
+    mutationFn: requires("machines:write", async (id: string) => api.delete(`/api/runners/enrollments/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey] });
       toast.success("Code revoked");
@@ -55,7 +57,7 @@ export const useRevokeEnrollment = () => {
 export const useRemoveRunner = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/runners/${id}`),
+    mutationFn: requires("machines:write", async (id: string) => api.delete(`/api/runners/${id}`)),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getRunnersKey] }),
@@ -76,8 +78,8 @@ export const useFetchMachines = () =>
 export const useUpdateMachine = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, stackRoot }: { id: string; stackRoot: string }) =>
-      (await api.patch<Machine>(`/api/machines/${id}`, { stack_root: stackRoot })).data,
+    mutationFn: requires("machines:write", async ({ id, stackRoot }: { id: string; stackRoot: string }) =>
+      (await api.patch<Machine>(`/api/machines/${id}`, { stack_root: stackRoot })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMachinesKey] });
       toast.success("Stack root updated");

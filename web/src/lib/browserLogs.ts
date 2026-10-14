@@ -1,3 +1,5 @@
+import { requires } from "@nexul/client-core/requires";
+
 import { api } from "@/api/client";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -37,7 +39,7 @@ const flush = () => {
   const records = queue.splice(0, MAX_BATCH);
   if (records.length === 0) return;
   // ponytail: dropped on failure, no retry — a log relay that retries can amplify the outage it reports.
-  void api.post("/api/logs", { records }).catch(() => undefined);
+  void requires("none", api.post("/api/logs", { records })).catch(() => undefined);
   if (queue.length > 0) schedule();
 };
 
