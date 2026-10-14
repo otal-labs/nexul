@@ -224,6 +224,18 @@ describe("InboxPage", () => {
     expect(within(folder).queryByText("EP01")).not.toBeInTheDocument();
   });
 
+  it("puts a read notification back to unread from its menu", async () => {
+    mockApi();
+    vi.mocked(api.post).mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderPage();
+
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    await user.pointer({ keys: "[MouseRight]", target: await within(list).findByText("Spec") });
+    await user.click(await screen.findByRole("menuitem", { name: "Mark unread" }));
+    expect(api.post).toHaveBeenCalledWith("/api/notifications/n2/unread");
+  });
+
   it("marks all notifications read", async () => {
     mockApi();
     vi.mocked(api.post).mockResolvedValue({ data: undefined });

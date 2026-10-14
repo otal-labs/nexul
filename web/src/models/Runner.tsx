@@ -72,3 +72,13 @@ export const RunnerEnrollmentSchema = z.object({
 });
 
 export type RunnerEnrollment = z.infer<typeof RunnerEnrollmentSchema>;
+
+// An unused code its maker may still revoke; never the code itself. A computer's carries computer_id.
+export interface OpenEnrollment {
+  id: string;
+  name: string;
+  machine?: string;
+  computer_id?: string;
+  created_at: string;
+  expires_at: string;
+}

@@ -73,11 +73,11 @@ func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (E
 		return Enrollment{}, fmt.Errorf("%w: set the instance URL in settings before adding a runner", apperrs.ErrConflict)
 	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	code, expiresAt, err := s.mintEnrollment(ctx, name, machine, actor.ID, enrollmentTTL)
+	code, minted, err := s.mintEnrollment(ctx, name, machine, actor.ID, enrollmentTTL)
 	if err != nil {
 		return Enrollment{}, err
 	}
-	return Enrollment{Code: code, ExpiresAt: expiresAt, Commands: installCommands(instanceURL, strings.TrimSpace(name), code)}, nil
+	return Enrollment{ID: minted.ID, Code: code, ExpiresAt: minted.ExpiresAt, Commands: installCommands(instanceURL, strings.TrimSpace(name), code)}, nil
 }
 
 // requireEnrollable is the check on a code for a runner on machine: Manage on it when it exists, else Add machines.
@@ -131,27 +131,27 @@ func (s *Service) CreatePersonalEnrollment(ctx context.Context, userID, computer
 	}
 	site := cmp.Or(strings.TrimRight(s.install.SiteURL, "/"), hostcred.DefaultSite)
 	unix, windows := hostcred.ComputerCommands(site, strings.TrimRight(s.install.ReleaseURL, "/"), token)
-	return Enrollment{Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix, Windows: windows}}, nil
+	return Enrollment{ID: code.ID, Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix, Windows: windows}}, nil
 }
 
-func (s *Service) mintEnrollment(ctx context.Context, name, machine, enrolledBy string, ttl time.Duration) (string, time.Time, error) {
+func (s *Service) mintEnrollment(ctx context.Context, name, machine, enrolledBy string, ttl time.Duration) (string, *EnrollmentCode, error) {
 	name = strings.TrimSpace(name)
 	if !hostcred.NamePattern.MatchString(name) {
-		return "", time.Time{}, fmt.Errorf("%w: a runner name is 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit", apperrs.ErrInvalid)
+		return "", nil, fmt.Errorf("%w: a runner name is 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit", apperrs.ErrInvalid)
 	}
 	_, err := s.repo.GetByName(ctx, name)
 	if err == nil {
-		return "", time.Time{}, fmt.Errorf("%w: a runner named %s is already enrolled; remove it first", apperrs.ErrConflict, name)
+		return "", nil, fmt.Errorf("%w: a runner named %s is already enrolled; remove it first", apperrs.ErrConflict, name)
 	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
-		return "", time.Time{}, err
+		return "", nil, err
 	}
 	code := &EnrollmentCode{Name: name, Machine: strings.TrimSpace(machine), EnrolledBy: enrolledBy}
 	raw, err := s.storeCode(ctx, code, ttl)
 	if err != nil {
-		return "", time.Time{}, err
+		return "", nil, err
 	}
-	return raw, code.ExpiresAt, nil
+	return raw, code, nil
 }
 
 // storeCode mints a raw code for code and stores its hash, valid for ttl.
@@ -161,7 +161,7 @@ func (s *Service) storeCode(ctx context.Context, code *EnrollmentCode, ttl time.
 		return "", err
 	}
 	now := s.now().UTC()
-	code.CodeHash, code.CreatedAt, code.ExpiresAt = hash, now, now.Add(ttl)
+	code.ID, code.CodeHash, code.CreatedAt, code.ExpiresAt = ids.New(), hash, now, now.Add(ttl)
 	if err := s.repo.CreateEnrollment(ctx, code); err != nil {
 		return "", fmt.Errorf("create enrollment for %s: %w", code.Name, err)
 	}

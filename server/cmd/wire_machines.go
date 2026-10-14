@@ -138,6 +138,10 @@ func (k runnerHostKind) Remove(ctx context.Context, id string) error {
 	return k.svc.RemoveRunner(ctx, id)
 }
 
+func (k runnerHostKind) RevokeCode(ctx context.Context, id string) error {
+	return k.svc.RevokeEnrollment(ctx, id)
+}
+
 // automationsHostKind adapts the automations host use-cases to the shared host_create and host_delete MCP tools.
 type automationsHostKind struct {
 	svc *automations.HostsService

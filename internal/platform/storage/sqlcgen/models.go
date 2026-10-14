@@ -983,6 +983,7 @@ type RunnerEnrollmentCode struct {
 	OwnerUserID string
 	ComputerID  string
 	EnrolledBy  string
+	ID          string
 }
 
 type Service struct {

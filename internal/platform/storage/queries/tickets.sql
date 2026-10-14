@@ -48,6 +48,9 @@ DELETE FROM tickets WHERE id = ?;
 INSERT INTO ticket_pr_links (ticket_id, pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state, linked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(ticket_id, pr_owner, pr_repo, pr_number) DO NOTHING;
 
+-- name: DeleteTicketPRLink :exec
+DELETE FROM ticket_pr_links WHERE ticket_id = ? AND pr_owner = ? AND pr_repo = ? AND pr_number = ?;
+
 -- name: ListTicketPRLinks :many
 SELECT pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state FROM ticket_pr_links WHERE ticket_id = ? ORDER BY linked_at;
 
@@ -69,6 +72,9 @@ UPDATE tickets SET finished_at = ? WHERE id = ? AND finished_at IS NULL;
 -- name: LinkTicketBranch :exec
 INSERT INTO ticket_branch_links (ticket_id, branch_owner, branch_repo, branch_name, linked_at) VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(ticket_id, branch_owner, branch_repo, branch_name) DO NOTHING;
+
+-- name: DeleteTicketBranchLink :exec
+DELETE FROM ticket_branch_links WHERE ticket_id = ? AND branch_owner = ? AND branch_repo = ? AND branch_name = ?;
 
 -- name: ListTicketBranchLinks :many
 SELECT branch_owner, branch_repo, branch_name FROM ticket_branch_links WHERE ticket_id = ? ORDER BY linked_at;

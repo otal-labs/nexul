@@ -203,6 +203,41 @@ func TestIntegration_TicketLinksPRAndFinishes(t *testing.T) {
 	assert.Equal(t, 1, pub.count(tickets.TopicFinished))
 }
 
+func TestIntegration_TicketUnlinkRemovesOnlyThatTicketsLink(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+
+	a, err := svc.Create(ctx, "project-general", "A", "", "", "")
+	require.NoError(t, err)
+	b, err := svc.Create(ctx, "project-general", "B", "", "", "")
+	require.NoError(t, err)
+	shared := tickets.PRRef{Owner: "acme", Repo: "app", Number: 42}
+	other := tickets.PRRef{Owner: "acme", Repo: "app", Number: 43}
+	for _, id := range []string{a.ID, b.ID} {
+		require.NoError(t, svc.LinkPR(ctx, id, shared))
+		require.NoError(t, svc.LinkBranch(ctx, id, "acme", "app", "feat/login"))
+	}
+	require.NoError(t, svc.LinkPR(ctx, a.ID, other))
+
+	require.NoError(t, svc.UnlinkPR(ctx, a.ID, shared))
+	require.NoError(t, svc.UnlinkBranch(ctx, a.ID, "acme", "app", "feat/login"))
+	require.NoError(t, svc.UnlinkPR(ctx, a.ID, shared), "a link that is already gone is a no-op")
+
+	prs, branches, err := svc.ListLinks(ctx, a.ID)
+	require.NoError(t, err)
+	require.Len(t, prs, 1)
+	assert.Equal(t, 43, prs[0].Number)
+	assert.Empty(t, branches)
+
+	prs, branches, err = svc.ListLinks(ctx, b.ID)
+	require.NoError(t, err)
+	require.Len(t, prs, 1)
+	assert.Equal(t, 42, prs[0].Number)
+	require.Len(t, branches, 1)
+}
+
 func TestIntegration_TicketDevStatusBatchesAcrossTickets(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)

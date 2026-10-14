@@ -312,6 +312,18 @@ func (r *TicketsRepo) LinkPR(ctx context.Context, id string, ref tickets.PRRef, 
 	})
 }
 
+func (r *TicketsRepo) UnlinkPR(ctx context.Context, id string, ref tickets.PRRef) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).DeleteTicketPRLink(ctx, sqlcgen.DeleteTicketPRLinkParams{
+			TicketID: id, PrOwner: ref.Owner, PrRepo: ref.Repo, PrNumber: int64(ref.Number),
+		})
+		if err != nil {
+			return fmt.Errorf("unlink pr from ticket %s: %w", id, err)
+		}
+		return nil
+	})
+}
+
 func (r *TicketsRepo) ListPRLinks(ctx context.Context, id string) ([]tickets.PRLink, error) {
 	rows, err := r.q.ListTicketPRLinks(ctx, id)
 	if err != nil {
@@ -414,6 +426,18 @@ func (r *TicketsRepo) LinkBranch(ctx context.Context, id string, link tickets.Br
 		})
 		if err != nil {
 			return fmt.Errorf("link branch to ticket %s: %w", id, err)
+		}
+		return nil
+	})
+}
+
+func (r *TicketsRepo) UnlinkBranch(ctx context.Context, id string, link tickets.BranchLink) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).DeleteTicketBranchLink(ctx, sqlcgen.DeleteTicketBranchLinkParams{
+			TicketID: id, BranchOwner: link.Owner, BranchRepo: link.Repo, BranchName: link.Branch,
+		})
+		if err != nil {
+			return fmt.Errorf("unlink branch from ticket %s: %w", id, err)
 		}
 		return nil
 	})

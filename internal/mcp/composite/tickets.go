@@ -410,6 +410,8 @@ type ticketUpdateIn struct {
 	RemoveBlockerIDs []string      `json:"remove_blocker_ids,omitempty" jsonschema:"Ids or keys of blockers to remove."`
 	LinkPR           *prLinkIn     `json:"link_pr,omitempty" jsonschema:"A pull request to link to the ticket."`
 	LinkBranch       *branchLinkIn `json:"link_branch,omitempty" jsonschema:"A branch to link to the ticket."`
+	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink from the ticket; one that is not linked changes nothing."`
+	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink from the ticket; one that is not linked changes nothing."`
 }
 
 type prLinkIn struct {
@@ -418,6 +420,12 @@ type prLinkIn struct {
 	Number int    `json:"number" jsonschema:"The pull request number, for example 42."`
 	Title  string `json:"title,omitempty" jsonschema:"The pull request's title."`
 	SHA    string `json:"sha,omitempty" jsonschema:"The pull request's head commit."`
+}
+
+type prRefIn struct {
+	Owner  string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
+	Repo   string `json:"repo" jsonschema:"The repository name, for example nexul."`
+	Number int    `json:"number" jsonschema:"The pull request number, for example 42."`
 }
 
 type branchLinkIn struct {
@@ -434,7 +442,7 @@ type ticketUpdateResult struct {
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
 		"Changes a ticket: its title and body, project, status column and place in it, type, category, developer "+
-			"and tester, source doc, labels, found-in link, blockers, and linked pull request or branch. Only the fields "+
+			"and tester, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. Only the fields "+
 			"you send change; an omitted field keeps its value. The changes apply in the order the fields are listed here and "+
 			"stop at the first failure, whose message names the field and the ones already applied. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete. Returns "+
@@ -603,6 +611,14 @@ func (u ticketUpdate) linkSteps(in ticketUpdateIn) []step {
 	}
 	if b := in.LinkBranch; b != nil {
 		steps = append(steps, step{"link_branch", "", func(ctx context.Context) error { return u.t.LinkBranch(ctx, u.id, b.Owner, b.Repo, b.Branch) }})
+	}
+	if pr := in.UnlinkPR; pr != nil {
+		steps = append(steps, step{"unlink_pr", "", func(ctx context.Context) error {
+			return u.t.UnlinkPR(ctx, u.id, tickets.PRRef{Owner: pr.Owner, Repo: pr.Repo, Number: pr.Number})
+		}})
+	}
+	if b := in.UnlinkBranch; b != nil {
+		steps = append(steps, step{"unlink_branch", "", func(ctx context.Context) error { return u.t.UnlinkBranch(ctx, u.id, b.Owner, b.Repo, b.Branch) }})
 	}
 	return steps
 }

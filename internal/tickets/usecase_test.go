@@ -314,6 +314,22 @@ func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, evt
 	return true, nil
 }
 
+func (f *fakeRepo) UnlinkPR(_ context.Context, id string, ref PRRef) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prLinks[id] = slices.DeleteFunc(f.prLinks[id], func(l PRLink) bool {
+		return l.Owner == ref.Owner && l.Repo == ref.Repo && l.Number == ref.Number
+	})
+	return nil
+}
+
+func (f *fakeRepo) UnlinkBranch(_ context.Context, id string, link BranchLink) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.branchLinks[id] = slices.DeleteFunc(f.branchLinks[id], func(l BranchLink) bool { return l == link })
+	return nil
+}
+
 func (f *fakeRepo) LinkBranch(_ context.Context, id string, link BranchLink) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1213,6 +1229,28 @@ func TestLinkBranch(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
+}
+
+func TestUnlink_Errors(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService(newFakeRepo())
+	created, err := s.Create(ctx, "p-1", "ticket", "", "", "")
+	require.NoError(t, err)
+	tests := []struct {
+		name string
+		call func() error
+		want error
+	}{
+		{"a pr of a missing ticket is not found", func() error { return s.UnlinkPR(ctx, "nope", validPRRef()) }, apperrs.ErrNotFound},
+		{"a branch of a missing ticket is not found", func() error { return s.UnlinkBranch(ctx, "nope", "acme", "app", "b") }, apperrs.ErrNotFound},
+		{"an incomplete pr is invalid", func() error { return s.UnlinkPR(ctx, created.ID, PRRef{Owner: "acme"}) }, apperrs.ErrInvalid},
+		{"an incomplete branch is invalid", func() error { return s.UnlinkBranch(ctx, created.ID, "acme", "app", " ") }, apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.ErrorIs(t, tt.call(), tt.want)
+		})
+	}
 }
 
 func TestCanTransition(t *testing.T) {

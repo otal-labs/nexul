@@ -134,6 +134,20 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, id string) e
 	return nil
 }
 
+// MarkUnread puts one of the user's notifications back to unread, so it counts in their badge again.
+func (s *NotificationService) MarkUnread(ctx context.Context, userID, id string) error {
+	if strings.TrimSpace(userID) == "" {
+		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+	}
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("%w: notification id is required", apperrs.ErrInvalid)
+	}
+	if err := s.repo.MarkUnread(ctx, userID, id); err != nil {
+		return fmt.Errorf("mark notification %s unread: %w", id, err)
+	}
+	return nil
+}
+
 // MarkAllRead marks every notification of the user in one workspace (or every workspace) as read.
 func (s *NotificationService) MarkAllRead(ctx context.Context, userID, workspaceID string) error {
 	if strings.TrimSpace(userID) == "" {

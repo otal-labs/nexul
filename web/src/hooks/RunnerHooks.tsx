@@ -2,12 +2,13 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Machine, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentInput } from "@/models/Runner";
+import type { Machine, OpenEnrollment, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentInput } from "@/models/Runner";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getRunnersKey = "runners";
 export const getRunnerQueueKey = "runnerQueue";
 export const getMachinesKey = "machines";
+export const getRunnerEnrollmentsKey = "runnerEnrollments";
 
 export const useRunners = () =>
   useQuery({
@@ -21,12 +22,35 @@ export const useRunnerQueue = () =>
     queryFn: async () => (await api.get<QueuedJob[]>("/api/runners/queue")).data,
   });
 
-export const useCreateRunnerEnrollment = () =>
-  useMutation({
+// The unused codes the viewer may revoke, runner and computer codes alike; a caller shows the kind it wants.
+export const useOpenEnrollments = (computers: boolean) =>
+  useQuery({
+    queryKey: [getRunnerEnrollmentsKey],
+    queryFn: async () => (await api.get<OpenEnrollment[]>("/api/runners/enrollments")).data,
+    select: (codes) => codes.filter((c) => !!c.computer_id === computers),
+  });
+
+export const useCreateRunnerEnrollment = () => {
+  const client = useQueryClient();
+  return useMutation({
     mutationFn: async ({ name, machine }: RunnerEnrollmentInput) =>
       (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine })).data,
+    onSuccess: () => client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+export const useRevokeEnrollment = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.delete(`/api/runners/enrollments/${id}`),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey] });
+      toast.success("Code revoked");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
 
 export const useRemoveRunner = () => {
   const client = useQueryClient();
@@ -78,8 +102,10 @@ const followJob = ({ id }: { id: string }, { client }: { client: QueryClient }) 
 export const runnerFollower: LiveFollower = {
   // A runner on a machine the viewer just got to see brings that machine with it.
   ...followEach(["runner.connected", "runner.disconnected"], (_payload: unknown, { client }) =>
-    Promise.all([refetch(client, getRunnersKey), refetch(client, getMachinesKey)]),
+    Promise.all([refetch(client, getRunnersKey), refetch(client, getMachinesKey), refetch(client, getRunnerEnrollmentsKey)]),
   ),
+  // A personal runner enrolling spends its computer's code.
+  "runner.personal_changed": (_payload: unknown, { client }) => refetch(client, getRunnerEnrollmentsKey),
   ...followEach(["deploy.build_started", "deploy.build_progress", "deploy.build_completed", "deploy.deploy_progress"], followJob),
   // A finished job frees its runner, which takes the next queued one.
   "deploy.status_changed": (_payload: unknown, { client }) => Promise.all([refetch(client, getRunnersKey), refetch(client, getRunnerQueueKey)]),

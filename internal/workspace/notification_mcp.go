@@ -20,6 +20,7 @@ type notificationUpdateIn struct {
 	ID          string `json:"id,omitempty" jsonschema:"One notification's id, from notification_list, to mark read."`
 	All         bool   `json:"all,omitzero" jsonschema:"true marks every one of your notifications read. Send instead of id."`
 	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"With all, marks only this workspace's notifications read, from workspace_list. Omit for every workspace."`
+	Unread      bool   `json:"unread,omitzero" jsonschema:"true with id puts that notification back to unread instead of marking it read. Not allowed with all."`
 }
 
 type notificationResult struct {
@@ -69,10 +70,11 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				}
 				return mcptool.PageOf(out, total, in.Window()), nil
 			}),
-		mcptool.New("notification_update", "Mark notifications read",
+		mcptool.New("notification_update", "Mark notifications read or unread",
 			"Marks one of your notifications read by id, or every one of them with all true; send exactly one of the two. "+
+				"With id and unread true it puts that notification back to unread instead, so it counts in your badge again. "+
 				"Use notification_list to find ids and what is unread. "+
-				"It only ever touches your own inbox, and marking a read notification again changes nothing.",
+				"It only ever touches your own inbox, and marking a notification the way it already is changes nothing.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in notificationUpdateIn) (any, error) {
 				userID, err := notificationCaller(ctx)
@@ -81,6 +83,15 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				}
 				if (in.ID == "") != in.All {
 					return nil, fmt.Errorf("%w: send either id for one notification or all true for every one", apperrs.ErrInvalid)
+				}
+				if in.Unread && in.All {
+					return nil, fmt.Errorf("%w: unread works on one notification, so send id and not all", apperrs.ErrInvalid)
+				}
+				if in.Unread {
+					if err := s.MarkUnread(ctx, userID, in.ID); err != nil {
+						return nil, err
+					}
+					return notificationUpdated{ID: in.ID}, nil
 				}
 				if in.All {
 					if err := s.MarkAllRead(ctx, userID, in.WorkspaceID); err != nil {

@@ -90,6 +90,48 @@ func (q *Queries) DeleteTicket(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const deleteTicketBranchLink = `-- name: DeleteTicketBranchLink :exec
+DELETE FROM ticket_branch_links WHERE ticket_id = ? AND branch_owner = ? AND branch_repo = ? AND branch_name = ?
+`
+
+type DeleteTicketBranchLinkParams struct {
+	TicketID    string
+	BranchOwner string
+	BranchRepo  string
+	BranchName  string
+}
+
+func (q *Queries) DeleteTicketBranchLink(ctx context.Context, arg DeleteTicketBranchLinkParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTicketBranchLink,
+		arg.TicketID,
+		arg.BranchOwner,
+		arg.BranchRepo,
+		arg.BranchName,
+	)
+	return err
+}
+
+const deleteTicketPRLink = `-- name: DeleteTicketPRLink :exec
+DELETE FROM ticket_pr_links WHERE ticket_id = ? AND pr_owner = ? AND pr_repo = ? AND pr_number = ?
+`
+
+type DeleteTicketPRLinkParams struct {
+	TicketID string
+	PrOwner  string
+	PrRepo   string
+	PrNumber int64
+}
+
+func (q *Queries) DeleteTicketPRLink(ctx context.Context, arg DeleteTicketPRLinkParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTicketPRLink,
+		arg.TicketID,
+		arg.PrOwner,
+		arg.PrRepo,
+		arg.PrNumber,
+	)
+	return err
+}
+
 const getTicket = `-- name: GetTicket :one
 SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets WHERE id = ?
 `

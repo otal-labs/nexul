@@ -379,6 +379,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/automation-hosts/self/assignments", "The enabled automations placed on the calling host, each with its worker's token (host credential)", "automation-hosts")
 	spec.Register("GET", "/api/runners", "List the runners on the machines the caller sees", "runners")
 	spec.Register("POST", "/api/runners/enrollments", "Mint a one-time runner enrollment code and its install commands; Manage on the machine it names, or Add machines for a new one", "runners")
+	spec.Register("GET", "/api/runners/enrollments", "List the unused enrollment codes you may revoke: your own, those of machines you manage, and every one for the instance Owner", "runners")
+	spec.Register("DELETE", "/api/runners/enrollments/{id}", "Revoke an unused enrollment code you made or manage the machine of; one you may not revoke is not found", "runners")
 	spec.Register("POST", "/api/runners/enroll", "Trade an enrollment code for the runner's own credential (public)", "runners")
 	spec.Register("DELETE", "/api/runners/{id}", "Needs Manage on the runner's machine: remove a runner, revoking its credential", "runners")
 	spec.Register("POST", "/api/runners/self/remove", "Remove the runner whose credential is the bearer token", "runners")

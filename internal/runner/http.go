@@ -28,6 +28,8 @@ func (h *HTTPHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/runners/queue", h.queue)
 	mux.HandleFunc("GET /api/runners/latest-version", h.latestVersion)
 	mux.HandleFunc("POST /api/runners/enrollments", h.createEnrollment)
+	mux.HandleFunc("GET /api/runners/enrollments", h.listEnrollments)
+	mux.HandleFunc("DELETE /api/runners/enrollments/{id}", h.revokeEnrollment)
 	mux.HandleFunc("DELETE /api/runners/{id}", h.remove)
 	mux.HandleFunc("GET /api/machines", h.listMachines)
 	mux.HandleFunc("PATCH /api/machines/{id}", h.updateMachine)
@@ -90,6 +92,23 @@ func (h *HTTPHandler) createEnrollment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, e)
+}
+
+func (h *HTTPHandler) listEnrollments(w http.ResponseWriter, r *http.Request) {
+	codes, err := h.svc.ListEnrollments(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, codes)
+}
+
+func (h *HTTPHandler) revokeEnrollment(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RevokeEnrollment(r.Context(), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *HTTPHandler) enroll(w http.ResponseWriter, r *http.Request) {

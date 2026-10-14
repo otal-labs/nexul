@@ -114,10 +114,11 @@ func (q *Queries) CreateRunnerCredential(ctx context.Context, arg CreateRunnerCr
 }
 
 const createRunnerEnrollmentCode = `-- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO runner_enrollment_codes (id, code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerEnrollmentCodeParams struct {
+	ID          string
 	CodeHash    string
 	Name        string
 	Machine     string
@@ -130,6 +131,7 @@ type CreateRunnerEnrollmentCodeParams struct {
 
 func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunnerEnrollmentCodeParams) error {
 	_, err := q.db.ExecContext(ctx, createRunnerEnrollmentCode,
+		arg.ID,
 		arg.CodeHash,
 		arg.Name,
 		arg.Machine,
@@ -148,6 +150,18 @@ DELETE FROM runners WHERE id = ?
 
 func (q *Queries) DeleteRunner(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteRunner, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteRunnerEnrollmentCodeByID = `-- name: DeleteRunnerEnrollmentCodeByID :execrows
+DELETE FROM runner_enrollment_codes WHERE id = ?
+`
+
+func (q *Queries) DeleteRunnerEnrollmentCodeByID(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteRunnerEnrollmentCodeByID, id)
 	if err != nil {
 		return 0, err
 	}
@@ -298,7 +312,7 @@ func (q *Queries) GetRunnerCredential(ctx context.Context, credentialHash string
 }
 
 const getRunnerEnrollmentCode = `-- name: GetRunnerEnrollmentCode :one
-SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by, id FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
 `
 
 type GetRunnerEnrollmentCodeParams struct {
@@ -318,8 +332,80 @@ func (q *Queries) GetRunnerEnrollmentCode(ctx context.Context, arg GetRunnerEnro
 		&i.OwnerUserID,
 		&i.ComputerID,
 		&i.EnrolledBy,
+		&i.ID,
 	)
 	return i, err
+}
+
+const getRunnerEnrollmentCodeByID = `-- name: GetRunnerEnrollmentCodeByID :one
+SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by, id FROM runner_enrollment_codes WHERE id = ? AND expires_at > ?
+`
+
+type GetRunnerEnrollmentCodeByIDParams struct {
+	ID        string
+	ExpiresAt int64
+}
+
+func (q *Queries) GetRunnerEnrollmentCodeByID(ctx context.Context, arg GetRunnerEnrollmentCodeByIDParams) (RunnerEnrollmentCode, error) {
+	row := q.db.QueryRowContext(ctx, getRunnerEnrollmentCodeByID, arg.ID, arg.ExpiresAt)
+	var i RunnerEnrollmentCode
+	err := row.Scan(
+		&i.CodeHash,
+		&i.Name,
+		&i.Machine,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.OwnerUserID,
+		&i.ComputerID,
+		&i.EnrolledBy,
+		&i.ID,
+	)
+	return i, err
+}
+
+const listRunnerEnrollmentCodes = `-- name: ListRunnerEnrollmentCodes :many
+SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by, id FROM runner_enrollment_codes
+WHERE expires_at > ?1 AND (owner_user_id = ?2 OR (owner_user_id = '' AND computer_id = '' AND enrolled_by != ''))
+ORDER BY created_at, id
+`
+
+type ListRunnerEnrollmentCodesParams struct {
+	Now    int64
+	UserID string
+}
+
+// A person's own computer codes, and every deploy runner's code that has a maker; the server's own code has none.
+func (q *Queries) ListRunnerEnrollmentCodes(ctx context.Context, arg ListRunnerEnrollmentCodesParams) ([]RunnerEnrollmentCode, error) {
+	rows, err := q.db.QueryContext(ctx, listRunnerEnrollmentCodes, arg.Now, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RunnerEnrollmentCode
+	for rows.Next() {
+		var i RunnerEnrollmentCode
+		if err := rows.Scan(
+			&i.CodeHash,
+			&i.Name,
+			&i.Machine,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.OwnerUserID,
+			&i.ComputerID,
+			&i.EnrolledBy,
+			&i.ID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRunners = `-- name: ListRunners :many

@@ -220,7 +220,7 @@ func TestEnroll_CodeRefusals_RealSQLite(t *testing.T) {
 	require.NoError(t, err)
 	past := time.Now().Add(-2 * time.Hour)
 	require.NoError(t, in.store.Runners.CreateEnrollment(context.Background(), &runner.EnrollmentCode{
-		CodeHash: hash, Name: "late-box", CreatedAt: past, ExpiresAt: past.Add(time.Hour),
+		ID: "id-late", CodeHash: hash, Name: "late-box", CreatedAt: past, ExpiresAt: past.Add(time.Hour),
 	}))
 	status, body = in.post(t, "/api/runners/enroll", map[string]string{"code": expired, "name": "late-box"})
 	assert.Equal(t, http.StatusUnauthorized, status, "an expired code enrolls nothing")

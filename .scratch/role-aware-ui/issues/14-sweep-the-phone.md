@@ -10,6 +10,7 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/native
 
 Move the phone's writes onto its action components (research 01's phone table): ticket status, assign to me, and
 the rest.
+- A read inbox row gains Mark unread through `POST /api/notifications/{id}/unread` (a swipe or an accessibility action, beside the one that marks it read).
 
 ## Acceptance criteria
 

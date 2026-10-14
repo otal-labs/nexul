@@ -104,6 +104,8 @@ type Repo interface {
 	Delete(ctx context.Context, id string, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
 	LinkPR(ctx context.Context, id string, ref PRRef, state PRState) error
+	// UnlinkPR removes a PR's link; a link that is not there is a no-op.
+	UnlinkPR(ctx context.Context, id string, ref PRRef) error
 	ListPRLinks(ctx context.Context, id string) ([]PRLink, error)
 	// ListPRLinksBatch is the dev-status batch endpoint's data source, keyed by ticket id.
 	ListPRLinksBatch(ctx context.Context, ids []string) (map[string][]PRLink, error)
@@ -114,5 +116,7 @@ type Repo interface {
 	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once.
 	SetFinishedAt(ctx context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error)
 	LinkBranch(ctx context.Context, id string, link BranchLink) error
+	// UnlinkBranch removes a branch's link; a link that is not there is a no-op.
+	UnlinkBranch(ctx context.Context, id string, link BranchLink) error
 	ListBranchLinks(ctx context.Context, id string) ([]BranchLink, error)
 }

@@ -236,6 +236,31 @@ func TestNotificationsRepo_MarkRead_NotFoundForOtherUser(t *testing.T) {
 	assert.Equal(t, readAt, *ns[0].ReadAt, "reading it again keeps the first read time, so retention is never extended")
 }
 
+func TestNotificationsRepo_MarkUnread_ClearsTheReadTimeSoRetentionSparesIt(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	mustCreateUser(t, s, "u2", "alice")
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{newTestNotification("n1", "u1", false)}))
+	readAt := time.Date(2026, 5, 1, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, s.Notifications.MarkRead(ctx, "u1", "n1", readAt))
+
+	require.ErrorIs(t, s.Notifications.MarkUnread(ctx, "u2", "n1"), apperrs.ErrNotFound)
+	require.NoError(t, s.Notifications.MarkUnread(ctx, "u1", "n1"))
+
+	ns, err := inbox(ctx, s, "u1", "", 50)
+	require.NoError(t, err)
+	assert.False(t, ns[0].Read)
+	assert.Nil(t, ns[0].ReadAt)
+	count, err := s.Notifications.UnreadByProject(ctx, "u1", "")
+	require.NoError(t, err)
+	assert.Equal(t, []workspace.UnreadGroup{{Unread: 1}}, count)
+	read, _, err := s.Notifications.DeleteExpired(ctx, readAt.Add(time.Hour), time.Time{})
+	require.NoError(t, err)
+	assert.Zero(t, read, "the read-retention sweep must not delete a notification that is unread again")
+}
+
 func TestNotificationsRepo_MarkAllRead_ScopedToUser(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

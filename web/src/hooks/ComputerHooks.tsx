@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
+import { getRunnerEnrollmentsKey } from "@/hooks/RunnerHooks";
 import type { Computer, ComputerEnrollment, RenameComputerFormData } from "@/models/Pairing";
 import { sharedComputers } from "@/models/SharedComputer";
 
@@ -16,7 +17,10 @@ export const useEnrollComputer = () => {
     mutationFn: async (computerId: string | undefined) =>
       (await api.post<ComputerEnrollment>("/api/pairing/computers/enrollments", computerId ? { id: computerId } : {})).data,
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getComputersKey] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getComputersKey] }),
+        client.invalidateQueries({ queryKey: [getRunnerEnrollmentsKey] }),
+      ]);
     },
   });
 };

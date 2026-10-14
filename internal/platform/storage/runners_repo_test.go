@@ -150,7 +150,7 @@ var enrollNow = time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 func mustCreateEnrollment(t *testing.T, s *Store, hash, name string, expiresAt time.Time) {
 	t.Helper()
 	require.NoError(t, s.Runners.CreateEnrollment(context.Background(), &runner.EnrollmentCode{
-		CodeHash: hash, Name: name, Machine: "m", CreatedAt: enrollNow, ExpiresAt: expiresAt,
+		ID: "id-" + hash, CodeHash: hash, Name: name, Machine: "m", CreatedAt: enrollNow, ExpiresAt: expiresAt,
 	}))
 }
 
@@ -167,7 +167,7 @@ func TestRunnersRepo_GetEnrollment_UnknownOrExpired_NotFound(t *testing.T) {
 
 	got, err := s.Runners.GetEnrollment(context.Background(), "h-live", enrollNow)
 	require.NoError(t, err)
-	assert.Equal(t, runner.EnrollmentCode{CodeHash: "h-live", Name: "a", Machine: "m", CreatedAt: enrollNow, ExpiresAt: enrollNow.Add(time.Hour)}, *got)
+	assert.Equal(t, runner.EnrollmentCode{ID: "id-h-live", CodeHash: "h-live", Name: "a", Machine: "m", CreatedAt: enrollNow, ExpiresAt: enrollNow.Add(time.Hour)}, *got)
 }
 
 func TestRunnersRepo_CreateEnrollment_PrunesExpiredCodes(t *testing.T) {

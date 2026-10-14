@@ -906,6 +906,41 @@ func (s *Service) LinkBranch(ctx context.Context, id, owner, repo, branch string
 	return nil
 }
 
+// UnlinkPR removes a PR's link to the ticket; a link that is not there is a no-op. A later PR event that still
+// names the ticket links it again.
+func (s *Service) UnlinkPR(ctx context.Context, id string, ref PRRef) error {
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("%w: ticket id is required", apperrs.ErrInvalid)
+	}
+	if ref.Owner == "" || ref.Repo == "" || ref.Number < 1 {
+		return fmt.Errorf("%w: pr ref is incomplete", apperrs.ErrInvalid)
+	}
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
+		return fmt.Errorf("unlink pr from ticket %s: %w", id, err)
+	}
+	if err := s.repo.UnlinkPR(ctx, id, ref); err != nil {
+		return fmt.Errorf("unlink pr from ticket %s: %w", id, err)
+	}
+	return nil
+}
+
+// UnlinkBranch removes a branch's link to the ticket; a link that is not there is a no-op.
+func (s *Service) UnlinkBranch(ctx context.Context, id, owner, repo, branch string) error {
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("%w: ticket id is required", apperrs.ErrInvalid)
+	}
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repo) == "" || strings.TrimSpace(branch) == "" {
+		return fmt.Errorf("%w: branch link is incomplete", apperrs.ErrInvalid)
+	}
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
+		return fmt.Errorf("unlink branch from ticket %s: %w", id, err)
+	}
+	if err := s.repo.UnlinkBranch(ctx, id, BranchLink{Owner: owner, Repo: repo, Branch: branch}); err != nil {
+		return fmt.Errorf("unlink branch from ticket %s: %w", id, err)
+	}
+	return nil
+}
+
 // ListByPR returns the tickets a pull request is linked to.
 func (s *Service) ListByPR(ctx context.Context, owner, repo string, number int) ([]*Ticket, error) {
 	if owner == "" || repo == "" || number < 1 {

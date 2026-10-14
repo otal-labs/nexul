@@ -77,6 +77,9 @@ func TestNotificationMCPTools_Errors(t *testing.T) {
 		{"update with neither id nor all", notifAs("u1"), "notification_update", `{}`, apperrs.ErrInvalid},
 		{"update with all false", notifAs("u1"), "notification_update", `{"all":false}`, apperrs.ErrInvalid},
 		{"update with both id and all", notifAs("u1"), "notification_update", `{"id":"n1","all":true}`, apperrs.ErrInvalid},
+		{"unread with all", notifAs("u1"), "notification_update", `{"all":true,"unread":true}`, apperrs.ErrInvalid},
+		{"unread without an id", notifAs("u1"), "notification_update", `{"unread":true}`, apperrs.ErrInvalid},
+		{"unread another user's notification", notifAs("u2"), "notification_update", `{"id":"n1","unread":true}`, apperrs.ErrNotFound},
 		{"update a missing notification", notifAs("u1"), "notification_update", `{"id":"nope"}`, apperrs.ErrNotFound},
 		{"update another user's notification", notifAs("u2"), "notification_update", `{"id":"n1"}`, apperrs.ErrNotFound},
 	}
@@ -95,6 +98,17 @@ func TestNotificationUpdate_OneIDLeavesTheRestAsTheyWere(t *testing.T) {
 	assert.Equal(t, notificationUpdated{ID: "n1", Read: true}, out)
 	assert.Equal(t, map[string]bool{"n1": true, "n2": false}, readState(t, s, "u1"))
 	assert.Equal(t, map[string]bool{"n3": false}, readState(t, s, "u2"))
+}
+
+func TestNotificationUpdate_UnreadPutsOneBack(t *testing.T) {
+	s := seededInbox(t)
+	_, err := callNotificationTool(notifAs("u1"), t, s, "notification_update", `{"all":true}`)
+	require.NoError(t, err)
+
+	out, err := callNotificationTool(notifAs("u1"), t, s, "notification_update", `{"id":"n2","unread":true}`)
+	require.NoError(t, err)
+	assert.Equal(t, notificationUpdated{ID: "n2"}, out)
+	assert.Equal(t, map[string]bool{"n1": true, "n2": false}, readState(t, s, "u1"))
 }
 
 func TestNotificationUpdate_AllTouchesOnlyTheCallersInbox(t *testing.T) {

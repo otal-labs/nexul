@@ -58,6 +58,8 @@ type NotificationRepo interface {
 	Page(ctx context.Context, userID string, f InboxFilter, scope *InboxScope, w paging.Window) ([]*Notification, int, error)
 	UnreadByProject(ctx context.Context, userID, workspaceID string) ([]UnreadGroup, error)
 	MarkRead(ctx context.Context, userID, id string, at time.Time) error
+	// MarkUnread puts one of the user's notifications back to unread; an unknown id is apperrs.ErrNotFound.
+	MarkUnread(ctx context.Context, userID, id string) error
 	MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error
 	// DeleteExpired returns how many read notifications and how many old ones it deleted.
 	DeleteExpired(ctx context.Context, readBefore, createdBefore time.Time) (read, old int64, err error)

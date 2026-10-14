@@ -165,6 +165,20 @@ func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string, _ time.Ti
 	return nil
 }
 
+func (f *fakeNotifRepo) MarkUnread(_ context.Context, userID, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.markErr != nil {
+		return f.markErr
+	}
+	n, ok := f.notifs[id]
+	if !ok || n.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	n.Read = false
+	return nil
+}
+
 func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

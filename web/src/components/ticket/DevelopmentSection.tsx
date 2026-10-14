@@ -155,7 +155,7 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
           {hasLinks && (
             <ul className="flex flex-col">
               {groupLinksByRepo({ prs, branches }).map((links) => (
-                <RepoLinksRow key={`${links.owner}/${links.repo}`} links={links} />
+                <RepoLinksRow key={`${links.owner}/${links.repo}`} ticketId={ticketId} links={links} />
               ))}
             </ul>
           )}

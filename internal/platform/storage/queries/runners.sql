@@ -32,7 +32,19 @@ SELECT * FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY c
 DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 
 -- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO runner_enrollment_codes (id, code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListRunnerEnrollmentCodes :many
+-- A person's own computer codes, and every deploy runner's code that has a maker; the server's own code has none.
+SELECT * FROM runner_enrollment_codes
+WHERE expires_at > sqlc.arg(now) AND (owner_user_id = sqlc.arg(user_id) OR (owner_user_id = '' AND computer_id = '' AND enrolled_by != ''))
+ORDER BY created_at, id;
+
+-- name: GetRunnerEnrollmentCodeByID :one
+SELECT * FROM runner_enrollment_codes WHERE id = ? AND expires_at > ?;
+
+-- name: DeleteRunnerEnrollmentCodeByID :execrows
+DELETE FROM runner_enrollment_codes WHERE id = ?;
 
 -- name: GetRunnerEnrollmentCode :one
 SELECT * FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;

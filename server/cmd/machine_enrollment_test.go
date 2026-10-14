@@ -138,3 +138,103 @@ func TestEnrollment_ACodeOfSomeoneWhoCanNoLongerAddMachinesIsRefused(t *testing.
 	_, err = c.store.Machines.GetByName(t.Context(), "gone-box")
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+// openCodes lists the unused enrollment codes token's person may revoke.
+func openCodes(t *testing.T, c privacyCast, token string) []map[string]any {
+	t.Helper()
+	rec := callAPI(t, c.h, http.MethodGet, "/api/runners/enrollments", token, "")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var got []map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	return got
+}
+
+// TestEnrollmentCodes_AMakerRevokesTheirCodeAndItEnrollsNothing: an unused code is listed to its maker without the code
+// or its hash, a stranger sees nothing and finds nothing to revoke, and once the maker revokes it the installer's
+// request is refused like any unknown code and a second revoke is not found.
+func TestEnrollmentCodes_AMakerRevokesTheirCodeAndItEnrollsNothing(t *testing.T) {
+	c := enrollmentCast(t)
+	code, status, body := mintRunnerCode(t, c, c.everyBits, "fresh-runner", "fresh-box")
+	require.Equal(t, http.StatusCreated, status, body)
+
+	listed := openCodes(t, c, c.everyBits)
+	require.Len(t, listed, 1)
+	assert.Equal(t, "fresh-runner", listed[0]["name"])
+	assert.Equal(t, "fresh-box", listed[0]["machine"])
+	raw := callAPI(t, c.h, http.MethodGet, "/api/runners/enrollments", c.everyBits, "").Body.String()
+	assert.NotContains(t, raw, code, "the code is shown once, when it is made")
+	assert.NotContains(t, raw, "hash")
+	id := listed[0]["id"].(string)
+
+	assert.Empty(t, openCodes(t, c, c.alice), "a member who made no code and manages no machine sees none")
+	assert.Equal(t, http.StatusNotFound, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+id, c.alice, "").Code)
+	status, _ = enrollRunner(t, c, code, "fresh-runner")
+	require.Equal(t, http.StatusCreated, status, "the stranger's attempt revoked nothing")
+
+	code, status, body = mintRunnerCode(t, c, c.everyBits, "second-runner", "second-box")
+	require.Equal(t, http.StatusCreated, status, body)
+	id = openCodes(t, c, c.everyBits)[0]["id"].(string)
+	assert.Equal(t, http.StatusNoContent, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+id, c.everyBits, "").Code)
+	assert.Empty(t, openCodes(t, c, c.everyBits))
+	status, body = enrollRunner(t, c, code, "second-runner")
+	assert.Equal(t, http.StatusUnauthorized, status, "a revoked code enrolls nothing: %s", body)
+	assert.Equal(t, http.StatusNotFound, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+id, c.everyBits, "").Code)
+}
+
+// TestEnrollmentCodes_WhoManagesTheMachineOrOwnsTheInstanceSeesAnotherPersonsCode: a code names a machine, so someone
+// who manages that machine, and the instance Owner, may revoke it too; seeing the machine is not enough.
+func TestEnrollmentCodes_WhoManagesTheMachineOrOwnsTheInstanceSeesAnotherPersonsCode(t *testing.T) {
+	c := enrollmentCast(t)
+	_, err := c.db.Exec(`UPDATE permission_overwrites SET allow = '["machines:see","machines:write"]' WHERE resource_id = 'm-edge' AND user_id = 'u-carol'`)
+	require.NoError(t, err)
+	_, status, body := mintRunnerCode(t, c, c.everyBits, "edge-two", "edge-box")
+	require.Equal(t, http.StatusCreated, status, body)
+	_, err = c.db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('machine', 'm-edge', 'person', 'u-alice', '["machines:see"]', '[]', 1, 1)`)
+	require.NoError(t, err)
+
+	assert.Len(t, openCodes(t, c, c.owner), 1, "the instance Owner")
+	assert.Empty(t, openCodes(t, c, c.alice), "seeing the machine is not managing it")
+
+	_, err = c.db.Exec(`UPDATE permission_overwrites SET allow = '["machines:see","machines:write"]' WHERE resource_id = 'm-edge' AND user_id = 'u-alice'`)
+	require.NoError(t, err)
+	listed := openCodes(t, c, c.alice)
+	require.Len(t, listed, 1, "managing the machine")
+	assert.Equal(t, http.StatusNoContent, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+listed[0]["id"].(string), c.alice, "").Code)
+	assert.Empty(t, openCodes(t, c, c.everyBits))
+}
+
+// TestEnrollmentCodes_AComputersCodeIsItsOwnersAloneEvenFromTheInstanceOwner: the code that adds a person's computer is
+// listed and revoked by that person only, so no one else learns they are adding a computer.
+func TestEnrollmentCodes_AComputersCodeIsItsOwnersAloneEvenFromTheInstanceOwner(t *testing.T) {
+	c := enrollmentCast(t)
+	computerID, _ := addComputer(t, c, c.alice, "Alice Laptop")
+
+	listed := openCodes(t, c, c.alice)
+	require.Len(t, listed, 1)
+	assert.Equal(t, computerID, listed[0]["computer_id"])
+	id := listed[0]["id"].(string)
+	assert.Empty(t, openCodes(t, c, c.owner), "the instance Owner")
+	assert.Empty(t, openCodes(t, c, c.everyBits))
+	assert.Equal(t, http.StatusNotFound, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+id, c.owner, "").Code)
+
+	assert.Equal(t, http.StatusNoContent, callAPI(t, c.h, http.MethodDelete, "/api/runners/enrollments/"+id, c.alice, "").Code)
+	assert.Empty(t, openCodes(t, c, c.alice))
+}
+
+// TestEnrollmentCodes_AgentsListAndRevokeThroughTheHostTools: host_create returns the code's id, machine_list shows the
+// open code without the code itself, and host_delete with code_id revokes it.
+func TestEnrollmentCodes_AgentsListAndRevokeThroughTheHostTools(t *testing.T) {
+	c := enrollmentCast(t)
+	created := callTool(t, c.h, c.everyBits, "host_create", `{"kind":"runner","name":"agent-runner","machine":"agent-box"}`)
+	assert.Contains(t, created, `\"id\"`)
+
+	listed := callTool(t, c.h, c.everyBits, "machine_list", `{}`)
+	assert.Contains(t, listed, "open_enrollments")
+	assert.Contains(t, listed, "agent-runner")
+	id := openCodes(t, c, c.everyBits)[0]["id"].(string)
+
+	assert.Contains(t, callTool(t, c.h, c.everyBits, "host_delete", `{"kind":"runner","code_id":"`+id+`"}`), `\"deleted\":true`)
+	assert.Empty(t, openCodes(t, c, c.everyBits))
+	assert.Contains(t, callToolResult(t, c.h, c.alice, "host_delete", `{"kind":"runner","code_id":"`+id+`"}`), "isError")
+}

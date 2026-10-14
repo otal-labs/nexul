@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,9 +8,12 @@ import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
 import type { TicketLinks } from "@/models/Ticket";
 
 vi.mock("@/api/client", () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
   errorMessage: vi.fn(),
 }));
+
+const perms = vi.hoisted(() => ({ canWrite: true }));
+vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: (value: string) => value !== "tickets:write" || perms.canWrite }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -34,6 +37,8 @@ const renderSection = () => {
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  vi.mocked(api.delete).mockReset();
+  perms.canWrite = true;
 });
 
 describe("DevelopmentSection", () => {
@@ -100,6 +105,41 @@ describe("DevelopmentSection", () => {
       repo: "app",
       number: 99,
     });
+  });
+
+  it("unlinks a branch and shows the links the server answers with", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockResolvedValue({ data: links });
+    vi.mocked(api.delete).mockResolvedValue({ data: { prs: links.prs, branches: [] } });
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Unlink branch ticket/1" }));
+
+    expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-1/branches", { params: { owner: "acme", repo: "app", branch: "ticket/1" } });
+    await waitFor(() => expect(screen.queryByRole("link", { name: "ticket/1" })).not.toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "#42 Fix login, open" })).toBeInTheDocument();
+  });
+
+  it("unlinks a pull request and keeps the others", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockResolvedValue({ data: links });
+    vi.mocked(api.delete).mockResolvedValue({ data: { prs: [links.prs[1]], branches: links.branches } });
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Unlink pull request #42" }));
+
+    expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-1/prs", { params: { owner: "acme", repo: "app", number: 42 } });
+    await waitFor(() => expect(screen.queryByRole("link", { name: "#42 Fix login, open" })).not.toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "#43 Fix auth, merged" })).toBeInTheDocument();
+  });
+
+  it("offers no unlink to someone who cannot write tickets", async () => {
+    perms.canWrite = false;
+    vi.mocked(api.get).mockResolvedValue({ data: links });
+    renderSection();
+
+    expect(await screen.findByRole("link", { name: "ticket/1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Unlink/ })).not.toBeInTheDocument();
   });
 
   it("shows an error state", async () => {
