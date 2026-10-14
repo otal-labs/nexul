@@ -69,24 +69,21 @@ func (r *InvitationsRepo) GetByTokenHash(ctx context.Context, tokenHash string, 
 		candidate, err := readInvitation(ctx, q, row)
 		if err != nil {
 			if errors.Is(err, apperrs.ErrInvalid) {
-				if deleteErr := deleteInvitation(ctx, q, tx, row.ID, "invalid grant"); deleteErr != nil {
-					return deleteErr
+				if endErr := endInvitation(ctx, q, tx, row.ID, "invalid grant", now); endErr != nil {
+					return endErr
 				}
 				invalidated = true
 				return nil
 			}
 			return err
 		}
-		if err := validateInvitationPackage(ctx, q, candidate, candidate.InvitedBy); err != nil {
-			if deleteErr := deleteInvitation(ctx, q, tx, candidate.ID, "creator authority or grant invalid"); deleteErr != nil {
-				return deleteErr
-			}
+		if !now.Before(candidate.ExpiresAt) {
 			invalidated = true
 			return nil
 		}
-		if !now.Before(candidate.ExpiresAt) {
-			if err := deleteInvitation(ctx, q, tx, candidate.ID, "expired"); err != nil {
-				return err
+		if err := validateInvitationPackage(ctx, q, candidate, candidate.InvitedBy); err != nil {
+			if endErr := endInvitation(ctx, q, tx, candidate.ID, "creator authority or grant invalid", now); endErr != nil {
+				return endErr
 			}
 			invalidated = true
 			return nil
@@ -155,15 +152,15 @@ func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Tim
 			invitation, err := readInvitation(ctx, q, row)
 			if err != nil {
 				if errors.Is(err, apperrs.ErrInvalid) {
-					if deleteErr := deleteInvitation(ctx, q, tx, row.ID, "invalid grant"); deleteErr != nil {
-						return deleteErr
+					if endErr := endInvitation(ctx, q, tx, row.ID, "invalid grant", now); endErr != nil {
+						return endErr
 					}
 					continue
 				}
 				return err
 			}
-			if !now.Before(invitation.ExpiresAt) || validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy) != nil {
-				if err := deleteInvitation(ctx, q, tx, invitation.ID, "expired or invalid"); err != nil {
+			if validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy) != nil {
+				if err := endInvitation(ctx, q, tx, invitation.ID, "creator authority or grant invalid", now); err != nil {
 					return err
 				}
 				continue
@@ -176,6 +173,49 @@ func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Tim
 		return nil, err
 	}
 	return invitations, nil
+}
+
+// History is the links actorID may manage that were accepted, or expired or ended early, since since, newest first.
+// A link whose role or workspace is gone keeps who made it and when, without its grants.
+func (r *InvitationsRepo) History(ctx context.Context, actorID string, since, now time.Time) (accepted, ended []*tenancy.Invitation, err error) {
+	rows, err := r.q.ListManageableInvitationHistory(ctx, sqlcgen.ListManageableInvitationHistoryParams{
+		Since: sql.NullInt64{Int64: since.Unix(), Valid: true}, Now: now.Unix(), UserID: actorID, Limit: maxInvitationList,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list invitation history: %w", err)
+	}
+	for _, row := range rows {
+		invitation, err := readInvitation(ctx, r.q, row)
+		if errors.Is(err, apperrs.ErrInvalid) {
+			invitation, err = invitationHeader(row), nil
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		if invitation.RedeemedAt != nil {
+			accepted = append(accepted, invitation)
+			continue
+		}
+		ended = append(ended, invitation)
+	}
+	return accepted, ended, nil
+}
+
+// Joins is the first invitation each person accepted, read in one statement.
+func (r *InvitationsRepo) Joins(ctx context.Context) (map[string]*tenancy.Joined, error) {
+	rows, err := r.q.ListInvitationJoins(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list invitation joins: %w", err)
+	}
+	out := make(map[string]*tenancy.Joined, len(rows))
+	for _, row := range rows {
+		at, _, err := optionalInt(row.RedeemedAt)
+		if err != nil {
+			return nil, fmt.Errorf("read when %s joined: %w", row.RedeemedBy.String, err)
+		}
+		out[row.RedeemedBy.String] = &tenancy.Joined{InvitedBy: row.InvitedBy, AcceptedAt: time.Unix(at, 0).UTC()}
+	}
+	return out, nil
 }
 
 func (r *InvitationsRepo) Revoke(ctx context.Context, actorID, invitationID string, now time.Time, events ...eventbus.OutboxEvent) error {
@@ -218,24 +258,21 @@ func requireInvitationManager(ctx context.Context, q *sqlcgen.Queries, actorID, 
 }
 
 func revokeInvitationRow(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, row sqlcgen.Invitation, now time.Time, events []eventbus.OutboxEvent) error {
-	if row.RedeemedAt.Valid {
+	if row.RedeemedAt.Valid || row.ExpiresAt <= now.Unix() {
 		return apperrs.ErrNotFound
 	}
 	invitation, err := readInvitation(ctx, q, row)
 	if err != nil {
 		if errors.Is(err, apperrs.ErrInvalid) {
-			return deleteInvitation(ctx, q, tx, row.ID, "invalid grant")
+			return endInvitation(ctx, q, tx, row.ID, "invalid grant", now)
 		}
 		return err
 	}
-	if !now.Before(invitation.ExpiresAt) {
-		return deleteInvitation(ctx, q, tx, row.ID, "expired")
-	}
 	if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
-		return deleteInvitation(ctx, q, tx, row.ID, "creator authority or grant invalid")
+		return endInvitation(ctx, q, tx, row.ID, "creator authority or grant invalid", now)
 	}
-	if err := removeInvitation(ctx, q, row.ID); err != nil {
-		return err
+	if _, err := q.EndInvitation(ctx, sqlcgen.EndInvitationParams{Now: now.Unix(), ID: row.ID}); err != nil {
+		return fmt.Errorf("end invitation %s: %w", row.ID, err)
 	}
 	return enqueueInvitationEvents(ctx, tx, events)
 }
@@ -278,23 +315,19 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			return invalidInvitation()
 		}
 		if invitationRow.ExpiresAt <= now.Unix() {
-			if err := deleteInvitation(ctx, q, tx, handoff.InvitationID, "expired"); err != nil {
-				return err
-			}
-			invalidatedInvitationID = handoff.InvitationID
-			return nil
+			return invalidInvitation()
 		}
 		invitation, err := readInvitation(ctx, q, invitationRow)
 		if err != nil {
-			if deleteErr := deleteInvitation(ctx, q, tx, handoff.InvitationID, "invalid grant"); deleteErr != nil {
-				return deleteErr
+			if endErr := endInvitation(ctx, q, tx, handoff.InvitationID, "invalid grant", now); endErr != nil {
+				return endErr
 			}
 			invalidatedInvitationID = handoff.InvitationID
 			return nil
 		}
 		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
-			if deleteErr := deleteInvitation(ctx, q, tx, invitation.ID, "creator authority or grant invalid"); deleteErr != nil {
-				return deleteErr
+			if endErr := endInvitation(ctx, q, tx, invitation.ID, "creator authority or grant invalid", now); endErr != nil {
+				return endErr
 			}
 			invalidatedInvitationID = invitation.ID
 			return nil
@@ -509,14 +542,7 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 	if err != nil {
 		return nil, fmt.Errorf("list invitation grants: %w", err)
 	}
-	invitation := &tenancy.Invitation{ID: row.ID, InvitedBy: row.InvitedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC()}
-	if row.RedeemedAt.Valid {
-		redeemedAt := time.Unix(row.RedeemedAt.Int64, 0).UTC()
-		invitation.RedeemedAt = &redeemedAt
-	}
-	if row.RedeemedBy.Valid {
-		invitation.RedeemedBy = row.RedeemedBy.String
-	}
+	invitation := invitationHeader(row)
 	var grant *tenancy.InvitationGrant
 	for _, grantRow := range grantRows {
 		role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grantRow.RoleID, WorkspaceID: grantRow.WorkspaceID})
@@ -545,28 +571,33 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 	return invitation, nil
 }
 
+func invitationHeader(row sqlcgen.Invitation) *tenancy.Invitation {
+	invitation := &tenancy.Invitation{ID: row.ID, InvitedBy: row.InvitedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC()}
+	if row.RedeemedAt.Valid {
+		redeemedAt := time.Unix(row.RedeemedAt.Int64, 0).UTC()
+		invitation.RedeemedAt = &redeemedAt
+	}
+	if row.RedeemedBy.Valid {
+		invitation.RedeemedBy = row.RedeemedBy.String
+	}
+	return invitation
+}
+
 func insertInvitation(ctx context.Context, q *sqlcgen.Queries, invitation *tenancy.Invitation, tokenHash string) error {
 	return q.CreateInvitation(ctx, sqlcgen.CreateInvitationParams{ID: invitation.ID, TokenHash: tokenHash, InvitedBy: invitation.InvitedBy, CreatedAt: invitation.CreatedAt.Unix(), ExpiresAt: invitation.ExpiresAt.Unix()})
 }
 
-func deleteInvitation(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, id, reason string) error {
-	deleted, err := q.DeleteInvitation(ctx, id)
+// endInvitation stops a link that can no longer be honoured and keeps its row for the Invitations tab's history.
+func endInvitation(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, id, reason string, now time.Time) error {
+	ended, err := q.EndInvitation(ctx, sqlcgen.EndInvitationParams{Now: now.Unix(), ID: id})
 	if err != nil {
-		return fmt.Errorf("delete invitation %s: %w", id, err)
+		return fmt.Errorf("end invitation %s: %w", id, err)
 	}
-	if deleted == 0 {
+	if ended == 0 {
 		return nil
 	}
 	if err := insertOutboxRow(ctx, tx, ids.New(), tenancy.TopicInvitationDeleted, tenancy.InvitationEvent{InvitationID: id, Reason: reason}); err != nil {
 		return fmt.Errorf("record invitation deletion %s: %w", id, err)
-	}
-	return nil
-}
-
-func removeInvitation(ctx context.Context, q *sqlcgen.Queries, id string) error {
-	_, err := q.DeleteInvitation(ctx, id)
-	if err != nil {
-		return fmt.Errorf("delete invitation %s: %w", id, err)
 	}
 	return nil
 }

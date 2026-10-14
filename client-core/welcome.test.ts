@@ -17,7 +17,7 @@ describe("the dot rule", () => {
   });
 
   it("shows while any step lights it", () => {
-    expect(showsDot({ first_run_done: true, dot: false, steps: [step({ state: "done" }), step({ key: "projects" })] })).toBe(false);
-    expect(showsDot({ first_run_done: true, dot: false, steps: [step({ state: "done" }), step({ key: "phone" })] })).toBe(true);
+    expect(showsDot({ first_run_done: true, dot: false, in_a_project: true, steps: [step({ state: "done" }), step({ key: "projects" })] })).toBe(false);
+    expect(showsDot({ first_run_done: true, dot: false, in_a_project: true, steps: [step({ state: "done" }), step({ key: "phone" })] })).toBe(true);
   });
 });

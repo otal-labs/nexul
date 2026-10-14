@@ -37,7 +37,7 @@ beforeEach(() => {
   mocks.get.mockReset();
   mocks.post.mockReset();
   useSessionStore.setState({ token: "t", isLoggedIn: true });
-  progress = { first_run_done: true, steps: [], dot: false };
+  progress = { first_run_done: true, steps: [], dot: false, in_a_project: true };
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/me/welcome") return { data: progress };
     if (url === "/api/auth/me") return { data: me };
@@ -77,20 +77,20 @@ const railSteps = async () => {
 
 describe("WelcomeWizardPage", () => {
   it("lists Profile, then only the steps the person's roles give them", async () => {
-    progress = { first_run_done: false, steps: [step("github", "done"), step("phone", "left")], dot: true };
+    progress = { first_run_done: false, steps: [step("github", "done"), step("phone", "left")], dot: true, in_a_project: true };
     renderWizard();
     expect(await screen.findByRole("heading", { name: "Introduce yourself" })).toBeInTheDocument();
     expect(await railSteps()).toEqual(["Profile", "Connect GitHubDone", "Get the phone app"]);
   });
 
   it("opens a later visit on the first step not done", async () => {
-    progress = { first_run_done: true, steps: [step("github", "done"), step("phone", "skipped")], dot: false };
+    progress = { first_run_done: true, steps: [step("github", "done"), step("phone", "skipped")], dot: false, in_a_project: true };
     renderWizard();
     expect(await screen.findByRole("heading", { name: "Get the phone app" })).toBeInTheDocument();
   });
 
   it("shows what a step done already found, with only Continue", async () => {
-    progress = { first_run_done: true, steps: [step("github", "done")], dot: false };
+    progress = { first_run_done: true, steps: [step("github", "done")], dot: false, in_a_project: true };
     renderWizard("/wizard/welcome?step=github");
     expect(await screen.findByText("Connected as @alice-gh")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
@@ -98,7 +98,7 @@ describe("WelcomeWizardPage", () => {
   });
 
   it("skips a step through its route and moves on", async () => {
-    progress = { first_run_done: true, steps: [step("phone", "left")], dot: true };
+    progress = { first_run_done: true, steps: [step("phone", "left")], dot: true, in_a_project: true };
     mocks.post.mockResolvedValue({ data: { ...progress, steps: [step("phone", "skipped")], dot: false } });
     renderWizard("/wizard/welcome?step=phone");
     await userEvent.click(await screen.findByRole("button", { name: "Skip for now" }));
@@ -108,7 +108,7 @@ describe("WelcomeWizardPage", () => {
   });
 
   it("sets the first run when the person finishes later, then leaves", async () => {
-    progress = { first_run_done: false, steps: [step("phone", "left")], dot: true };
+    progress = { first_run_done: false, steps: [step("phone", "left")], dot: true, in_a_project: true };
     mocks.post.mockResolvedValue({ data: { ...progress, first_run_done: true } });
     renderWizard();
     await userEvent.click(await screen.findByRole("button", { name: "Finish later" }));
@@ -120,12 +120,12 @@ describe("WelcomeWizardPage", () => {
     { key: "phone" as const, waiting: "Waiting for the app to scan the code", settled: "Your phone signed in" },
     { key: "projects" as const, waiting: "Your team hasn't added you to a project yet", settled: "Northwind storefront" },
   ])("settles the $key step live when its progress changes", async ({ key, waiting, settled }) => {
-    progress = { first_run_done: true, steps: [step(key, "left")], dot: true };
+    progress = { first_run_done: true, steps: [step(key, "left")], dot: true, in_a_project: true };
     const client = renderWizard(`/wizard/welcome?step=${key}`);
     expect(await screen.findByText(waiting)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Continue" })?.hasAttribute("disabled") ?? true).toBe(true);
 
-    progress = { first_run_done: true, steps: [step(key, "done")], dot: false };
+    progress = { first_run_done: true, steps: [step(key, "done")], dot: false, in_a_project: true };
     await followFrame(welcomeFollower, "welcome.progress_changed", { user_id: "u-alice" }, client);
     expect(await screen.findByText(settled)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
@@ -136,7 +136,7 @@ describe("WelcomeWizardPage", () => {
     { who: "a member who may not", permissions: [], label: "Go to Northwind", lands: "workspace-home" },
   ])("ends a workspace with no project for $who with $label", async ({ permissions, label, lands }) => {
     useWorkspaceStore.getState().selectWorkspace("w1", "northwind");
-    progress = { first_run_done: true, steps: [step("github", "done")], dot: false };
+    progress = { first_run_done: true, in_a_project: false, steps: [step("github", "done")], dot: false };
     const get = mocks.get.getMockImplementation()!;
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects") return { data: [] };
@@ -149,7 +149,7 @@ describe("WelcomeWizardPage", () => {
   });
 
   it("issues the phone's connect code as the step opens, and only once", async () => {
-    progress = { first_run_done: true, steps: [step("phone", "left")], dot: true };
+    progress = { first_run_done: true, in_a_project: true, steps: [step("phone", "left")], dot: true };
     const code = { code: "7Q4F-K92M-3XYZ", host: "https://nexul.example.com", expires_at: new Date(Date.now() + 90_000).toISOString() };
     mocks.post.mockResolvedValue({ data: code });
     const client = renderWizard("/wizard/welcome?step=phone");
@@ -159,7 +159,7 @@ describe("WelcomeWizardPage", () => {
   });
 
   it("starts the GitHub link to land back on its step, and shows why one failed there", async () => {
-    progress = { first_run_done: true, steps: [step("github", "left")], dot: true };
+    progress = { first_run_done: true, in_a_project: true, steps: [step("github", "left")], dot: true };
     mocks.post.mockReturnValue(new Promise(() => {}));
     renderWizard("/wizard/welcome?step=github&provider=github&error=already+linked");
     const connect = (await screen.findAllByRole("button", { name: "Connect GitHub" })).at(-1)!;

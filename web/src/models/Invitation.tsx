@@ -37,9 +37,27 @@ export interface ActiveInvitation {
   id: string;
   invited_by: string;
   created_at: string;
+  // When the link stopped working, for an ended one.
   expires_at: string;
   grants: InvitationGrant[];
+  redeemed_at?: string;
+  redeemed_by?: string;
 }
+
+// The links the viewer may manage: those open, and those accepted or ended in the last 30 days, newest first.
+export interface InvitationList {
+  invitations: ActiveInvitation[];
+  accepted: ActiveInvitation[];
+  ended: ActiveInvitation[];
+}
+
+// "Acme · Editor, Frontend", how a link names what it gives.
+export const invitationLinkLabel = (invitation: ActiveInvitation): string =>
+  invitation.grants.map((grant) => `${grant.workspace_name} · ${grant.roles.map((role) => role.name).join(", ")}`).join("; ");
+
+// "Junior Developer in Acme", how a person's row names what the link gave them.
+export const invitationGrantsLabel = (invitation: ActiveInvitation): string =>
+  invitation.grants.map((grant) => `${grant.roles.map((role) => role.name).join(", ")} in ${grant.workspace_name}`).join(", ");
 
 export interface CreatedInvitation extends ActiveInvitation {
   url: string;

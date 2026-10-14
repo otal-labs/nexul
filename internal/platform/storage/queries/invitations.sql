@@ -47,14 +47,45 @@ WHERE i.redeemed_at IS NULL
 ORDER BY i.created_at, i.id
 LIMIT ?;
 
+-- name: ListManageableInvitationHistory :many
+-- The links accepted, or expired or ended early, since a time, newest first, among those the actor may manage.
+SELECT i.id, i.token_hash, i.invited_by, i.created_at, i.expires_at, i.redeemed_at, i.redeemed_by
+FROM invitations i
+WHERE (i.redeemed_at > sqlc.arg(since) OR (i.redeemed_at IS NULL AND i.expires_at > sqlc.arg(since) AND i.expires_at <= sqlc.arg(now)))
+  AND EXISTS (SELECT 1 FROM invitation_grants g WHERE g.invitation_id = i.id)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM invitation_grants g
+      WHERE g.invitation_id = i.id
+        AND NOT EXISTS (
+            SELECT 1
+            FROM member_roles mr
+            JOIN roles r ON r.id = mr.role_id
+            WHERE mr.workspace_id = g.workspace_id
+              AND mr.user_id = sqlc.arg(user_id)
+              AND (r.is_owner_role = 1 OR instr(r.permissions, '"members:write"') > 0)
+        )
+  )
+ORDER BY COALESCE(i.redeemed_at, i.expires_at) DESC, i.id
+LIMIT sqlc.arg(limit);
+
+-- name: ListInvitationJoins :many
+-- Each person's first accepted invitation; SQLite takes invited_by from the row MIN picks.
+SELECT redeemed_by, invited_by, MIN(redeemed_at) AS redeemed_at
+FROM invitations
+WHERE redeemed_by IS NOT NULL AND redeemed_at IS NOT NULL
+GROUP BY redeemed_by;
+
 -- name: ListInvitationGrantsByInvitation :many
 SELECT *
 FROM invitation_grants
 WHERE invitation_id = ?
 ORDER BY workspace_id, role_id;
 
--- name: DeleteInvitation :execrows
-DELETE FROM invitations WHERE id = ?;
+-- name: EndInvitation :execrows
+-- Ending a link early moves its expiry to now, so it stays on record as an expired link.
+UPDATE invitations SET expires_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND redeemed_at IS NULL AND expires_at > sqlc.arg(now);
 
 -- name: DeleteExpiredInvitations :exec
 DELETE FROM invitations WHERE expires_at <= ?;

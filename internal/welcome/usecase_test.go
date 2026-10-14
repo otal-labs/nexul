@@ -212,6 +212,16 @@ func TestProgress_EachStepIsDoneSkippedOrLeft(t *testing.T) {
 	}
 }
 
+func TestProgress_SaysWhetherTheyAreInAProjectWhenNoRoleGivesProjects(t *testing.T) {
+	repo, w := newFakeRepo(), newWorld()
+	w.ticked["u-sam"], w.ticked["u-bob"] = []string{"github"}, []string{"github"}
+	w.has["projects"]["u-bob"] = true
+	got, err := newTestService(repo, w).ProgressFor(t.Context(), []string{"u-sam", "u-bob"})
+	require.NoError(t, err)
+	assert.False(t, got["u-sam"].InAProject)
+	assert.True(t, got["u-bob"].InAProject)
+}
+
 func TestProgress_StepsComeInTheWizardsOrderWithWhenTheyWereSkippedOrDone(t *testing.T) {
 	repo, w := newFakeRepo(), newWorld()
 	w.ticked["u-sam"] = []string{"phone", "computer", "github"}

@@ -5,8 +5,10 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { AcceptedInvitationsSection } from "@/components/member/AcceptedInvitationsSection";
 import { CreatedInvitationLink } from "@/components/member/CreatedInvitationLink";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
+import { EndedInvitationsSection } from "@/components/member/EndedInvitationsSection";
 import { InvitationsFeed } from "@/components/member/InvitationsFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TeamFeed } from "@/components/team/TeamFeed";
@@ -68,6 +70,8 @@ export const TeamSection = () => {
         <PageTabsContent value="invitations">
           {created && <CreatedInvitationLink key={created.id} invitation={created} />}
           <InvitationsFeed />
+          <AcceptedInvitationsSection onOpen={open} />
+          <EndedInvitationsSection />
         </PageTabsContent>
       </PageTabs>
       <TeamPersonDialog personId={personId} onClose={() => open(null)} />

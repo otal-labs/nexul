@@ -97,6 +97,35 @@ describe("Team dialog", () => {
     expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: ["nexul-client", "nexul-editor"] });
   });
 
+  it("shows who invited the person, and their Welcome wizard: each step left or skipped as a row, the done ones folded", async () => {
+    const base = teamWith([membership("Nexul")]);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const alice = { ...base.people[0]!, id: "u-alice", login: "alice", name: "Alice" };
+    const sam = {
+      ...base.people[0]!,
+      joined: { invited_by: "u-alice", accepted_at: twoDaysAgo },
+      welcome: {
+        first_run_done: true, dot: true, in_a_project: true,
+        steps: [
+          { key: "github" as const, state: "done" as const, given: false },
+          { key: "computer" as const, state: "left" as const, given: false },
+          { key: "phone" as const, state: "skipped" as const, at: twoDaysAgo, given: false },
+        ],
+      },
+    };
+    const dialog = await renderDialog({ ...base, people: [sam, alice] });
+
+    expect(dialog.getByText("Joined 2d ago, invited by Alice")).toBeInTheDocument();
+    const wizard = within(dialog.getByRole("region", { name: "Welcome wizard" }));
+    expect(wizard.getByText("2 of 4 set up")).toBeInTheDocument();
+    const rows = wizard.getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Your computerNo paired computer with its setup confirmedNot done",
+      "Get the phone appThey chose to skip it; it comes back if a role gives it againSkipped· 2d ago",
+    ]);
+    expect(wizard.getByText("Done: Profile, Connect GitHub")).toBeInTheDocument();
+  });
+
   it("puts what the viewer can't give under Can't give with the reason, keeping the person's tick", async () => {
     const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "lead"])]));
 

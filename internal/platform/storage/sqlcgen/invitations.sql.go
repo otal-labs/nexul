@@ -170,18 +170,6 @@ func (q *Queries) DeleteExpiredInvitations(ctx context.Context, expiresAt int64)
 	return err
 }
 
-const deleteInvitation = `-- name: DeleteInvitation :execrows
-DELETE FROM invitations WHERE id = ?
-`
-
-func (q *Queries) DeleteInvitation(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteInvitation, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const deleteInvitationBeforeRedeem = `-- name: DeleteInvitationBeforeRedeem :execrows
 DELETE FROM invitations
 WHERE id = ? AND token_hash = ? AND expires_at > ?
@@ -195,6 +183,25 @@ type DeleteInvitationBeforeRedeemParams struct {
 
 func (q *Queries) DeleteInvitationBeforeRedeem(ctx context.Context, arg DeleteInvitationBeforeRedeemParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteInvitationBeforeRedeem, arg.ID, arg.TokenHash, arg.ExpiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const endInvitation = `-- name: EndInvitation :execrows
+UPDATE invitations SET expires_at = ?1
+WHERE id = ?2 AND redeemed_at IS NULL AND expires_at > ?1
+`
+
+type EndInvitationParams struct {
+	Now int64
+	ID  string
+}
+
+// Ending a link early moves its expiry to now, so it stays on record as an expired link.
+func (q *Queries) EndInvitation(ctx context.Context, arg EndInvitationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, endInvitation, arg.Now, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -479,6 +486,43 @@ func (q *Queries) ListInvitationGrantsByInvitation(ctx context.Context, invitati
 	return items, nil
 }
 
+const listInvitationJoins = `-- name: ListInvitationJoins :many
+SELECT redeemed_by, invited_by, MIN(redeemed_at) AS redeemed_at
+FROM invitations
+WHERE redeemed_by IS NOT NULL AND redeemed_at IS NOT NULL
+GROUP BY redeemed_by
+`
+
+type ListInvitationJoinsRow struct {
+	RedeemedBy sql.NullString
+	InvitedBy  string
+	RedeemedAt interface{}
+}
+
+// Each person's first accepted invitation; SQLite takes invited_by from the row MIN picks.
+func (q *Queries) ListInvitationJoins(ctx context.Context) ([]ListInvitationJoinsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listInvitationJoins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInvitationJoinsRow
+	for rows.Next() {
+		var i ListInvitationJoinsRow
+		if err := rows.Scan(&i.RedeemedBy, &i.InvitedBy, &i.RedeemedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInvitationsByActor = `-- name: ListInvitationsByActor :many
 SELECT id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed_by
 FROM invitations
@@ -547,6 +591,72 @@ type ListManageableInvitationHeadersParams struct {
 
 func (q *Queries) ListManageableInvitationHeaders(ctx context.Context, arg ListManageableInvitationHeadersParams) ([]Invitation, error) {
 	rows, err := q.db.QueryContext(ctx, listManageableInvitationHeaders, arg.ExpiresAt, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invitation
+	for rows.Next() {
+		var i Invitation
+		if err := rows.Scan(
+			&i.ID,
+			&i.TokenHash,
+			&i.InvitedBy,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.RedeemedAt,
+			&i.RedeemedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listManageableInvitationHistory = `-- name: ListManageableInvitationHistory :many
+SELECT i.id, i.token_hash, i.invited_by, i.created_at, i.expires_at, i.redeemed_at, i.redeemed_by
+FROM invitations i
+WHERE (i.redeemed_at > ?1 OR (i.redeemed_at IS NULL AND i.expires_at > ?1 AND i.expires_at <= ?2))
+  AND EXISTS (SELECT 1 FROM invitation_grants g WHERE g.invitation_id = i.id)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM invitation_grants g
+      WHERE g.invitation_id = i.id
+        AND NOT EXISTS (
+            SELECT 1
+            FROM member_roles mr
+            JOIN roles r ON r.id = mr.role_id
+            WHERE mr.workspace_id = g.workspace_id
+              AND mr.user_id = ?3
+              AND (r.is_owner_role = 1 OR instr(r.permissions, '"members:write"') > 0)
+        )
+  )
+ORDER BY COALESCE(i.redeemed_at, i.expires_at) DESC, i.id
+LIMIT ?4
+`
+
+type ListManageableInvitationHistoryParams struct {
+	Since  sql.NullInt64
+	Now    int64
+	UserID string
+	Limit  int64
+}
+
+// The links accepted, or expired or ended early, since a time, newest first, among those the actor may manage.
+func (q *Queries) ListManageableInvitationHistory(ctx context.Context, arg ListManageableInvitationHistoryParams) ([]Invitation, error) {
+	rows, err := q.db.QueryContext(ctx, listManageableInvitationHistory,
+		arg.Since,
+		arg.Now,
+		arg.UserID,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

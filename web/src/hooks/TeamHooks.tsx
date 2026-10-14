@@ -5,7 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import type { MemberStep } from "@/models/MemberDraft";
 import { getTeamKey, type Team } from "@/models/Team";
-import { followEach, type LiveFollower } from "@/lib/live";
+import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
 // The server scopes it: everything for an accounts:read holder, else only the workspaces the viewer manages.
 export const useFetchTeam = (enabled = true) =>
@@ -65,19 +65,24 @@ export const useRemoveAccount = () =>
   useTeamMutation((id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`), () => `Account removed. ${computersDisconnected}`);
 
 // The Team follows account and membership changes made anywhere; presence frames name nobody, so it refetches whole.
-export const teamFollower: LiveFollower = followEach(
-  [
-    "account.admitted",
-    "account.disabled",
-    "account.reactivated",
-    "account.removed",
-    "account.restored",
-    "account.presence_changed",
-    "account.profile_updated",
-    "workspace.member.added",
-    "workspace.member.removed",
-    "workspace.member.updated",
-    "access.grant.changed",
-  ],
-  (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getTeamKey], exact: true }),
-);
+// A person's Welcome wizard progress refetches the Team only while it holds that person.
+export const teamFollower: LiveFollower = {
+  "welcome.progress_changed": ({ user_id: userID }: { user_id: string }, { client }) =>
+    refetchHolding<Team>(client, [getTeamKey], (team) => team.people.some((person) => person.id === userID)),
+  ...followEach(
+    [
+      "account.admitted",
+      "account.disabled",
+      "account.reactivated",
+      "account.removed",
+      "account.restored",
+      "account.presence_changed",
+      "account.profile_updated",
+      "workspace.member.added",
+      "workspace.member.removed",
+      "workspace.member.updated",
+      "access.grant.changed",
+    ],
+    (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getTeamKey], exact: true }),
+  ),
+};

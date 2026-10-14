@@ -5,13 +5,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
 import { TeamDialogFooter } from "@/components/team/TeamDialogFooter";
+import { TeamWelcomeBlock } from "@/components/team/TeamWelcomeBlock";
 import { TeamWorkspaceTabs } from "@/components/team/TeamWorkspaceTabs";
 import { useApplyMemberStep, useFetchTeam } from "@/hooks/TeamHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { MemberDraftContext } from "@/hooks/useMemberDraft";
+import { usePersonNamer } from "@/hooks/usePersonNamer";
 import { errorMessage } from "@/api/client";
 import { hasAddWithoutRoles, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
 import { personName, presenceText } from "@/utils/TeamUtility";
+import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface TeamPersonDialogProps {
   personId: string | null;
@@ -32,6 +35,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
   const [failure, setFailure] = useState<string>();
   const [applying, setApplying] = useState(false);
   const apply = useApplyMemberStep();
+  const nameOf = usePersonNamer();
   const { open: ask } = useConfirmationDialog();
   const steps = person && team ? memberSteps(person, team.workspaces, draft) : [];
   const blocked = hasAddWithoutRoles(draft);
@@ -79,13 +83,19 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
             <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle dir="auto" className="line-clamp-2 break-words">{personName(person)}</DialogTitle>
               <DialogDescription className="truncate font-mono text-xs">@{person.login}</DialogDescription>
-              <p className="flex items-center gap-3 text-sm text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 {presenceText(person)}
+                {person.joined && (
+                  <span>
+                    Joined {formatRelativeTime(person.joined.accepted_at)}, invited by {nameOf(person.joined.invited_by)}
+                  </span>
+                )}
                 <AccountStatusLabel status={person.status} />
               </p>
             </div>
           </DialogHeader>
         )}
+        {person && <TeamWelcomeBlock person={person} />}
         {person && team && (
           <MemberDraftContext value={{ person, draft, dispatch }}>
             <TeamWorkspaceTabs workspaces={team.workspaces} steps={steps} />

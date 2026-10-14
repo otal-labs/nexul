@@ -869,6 +869,8 @@ A single-use bearer link that admits one person to the instance and gives
 them at least one Role in each of one or more Workspaces, and nothing per
 person; which projects they are In follows from those roles. The
 link expires after one or seven days and is not bound to a provider identity.
+Revoking it, or its roles or its maker's right to give them going away, ends it
+early; an accepted or ended link stays on record.
 _Avoid_: Allowlist entry, invite code, join link
 
 **Account status**:

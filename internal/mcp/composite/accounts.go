@@ -11,7 +11,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/tenancy"
-	"github.com/otal-labs/nexul/internal/welcome"
 )
 
 // AccountStatusSetter is the slice of the auth use-cases account_update calls.
@@ -28,14 +27,9 @@ type Team interface {
 	RemoveMember(ctx context.Context, actorID, workspaceID, userID string) error
 }
 
-// WelcomeProgress reads a page of people's Welcome wizard progress in a fixed number of statements.
-type WelcomeProgress interface {
-	ProgressFor(ctx context.Context, userIDs []string) (map[string]welcome.Progress, error)
-}
-
 // AccountTools are the account tools that carry workspace access, which the tenancy domain owns.
-func AccountTools(a AccountStatusSetter, t Team, w WelcomeProgress) []mcptool.Tool {
-	return []mcptool.Tool{accountListTool(t, w), accountUpdateTool(a, t)}
+func AccountTools(a AccountStatusSetter, t Team) []mcptool.Tool {
+	return []mcptool.Tool{accountListTool(t), accountUpdateTool(a, t)}
 }
 
 // accountResult is one person on the Team: the account with the providers it signs in through but none of their identities, plus its workspace access.
@@ -51,7 +45,8 @@ type accountResult struct {
 	LastSeenAt  *time.Time         `json:"last_seen_at"`
 	Providers   []string           `json:"providers"`
 	Workspaces  []membershipResult `json:"workspaces"`
-	Welcome     *welcome.Progress  `json:"welcome,omitempty"`
+	Welcome     any                `json:"welcome,omitempty"`
+	Joined      *tenancy.Joined    `json:"joined,omitempty"`
 }
 
 type membershipResult struct {
@@ -84,7 +79,7 @@ type accountUpdateResult struct {
 	Account *accountResult `json:"account,omitempty"`
 }
 
-func accountListTool(t Team, w WelcomeProgress) mcptool.Tool {
+func accountListTool(t Team) mcptool.Tool {
 	return mcptool.New("account_list", "List accounts",
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
 			"when they were last seen (to the hour, null once signed out everywhere), providers (the sign-in accounts "+
@@ -93,7 +88,9 @@ func accountListTool(t Team, w WelcomeProgress) mcptool.Tool {
 			"the Owner role), is_owner, whether the Owner role is among them, and can_manage_members, whether you hold "+
 			"members:write there and so may change their roles, and welcome, their Welcome wizard progress: whether "+
 			"its first run happened, each step their roles give them (github, computer, projects, deploy_server, phone) "+
-			"as done, skipped or left, and dot, whether one still waits on them. Which projects someone is in is set on each project, "+
+			"as done, skipped or left, dot, whether one still waits on them, and in_a_project, whether they are in any "+
+			"project; and joined, the first invitation they accepted: invited_by, the account id that made the link, "+
+			"and accepted_at. Which projects someone is in is set on each project, "+
 			"through permission_overwrite_list and permission_overwrite_update. "+
 			"A holder of accounts:read in any workspace sees every account and workspace; anyone else sees only the "+
 			"workspaces where they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
@@ -109,29 +106,8 @@ func accountListTool(t Team, w WelcomeProgress) mcptool.Tool {
 			for _, p := range team.People {
 				out = append(out, toAccountResult(p, manageable(team)))
 			}
-			page := mcptool.Paginate(out, in.PageArgs)
-			if err := withWelcome(ctx, w, page.Items); err != nil {
-				return nil, err
-			}
-			return page, nil
+			return mcptool.Paginate(out, in.PageArgs), nil
 		})
-}
-
-// withWelcome adds each listed person's progress, read once for the whole page.
-func withWelcome(ctx context.Context, w WelcomeProgress, items []accountResult) error {
-	ids := make([]string, 0, len(items))
-	for _, it := range items {
-		ids = append(ids, it.ID)
-	}
-	progress, err := w.ProgressFor(ctx, ids)
-	if err != nil {
-		return fmt.Errorf("read welcome progress: %w", err)
-	}
-	for i := range items {
-		p := progress[items[i].ID]
-		items[i].Welcome = &p
-	}
-	return nil
 }
 
 func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
@@ -230,7 +206,7 @@ func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountRe
 		ID: p.ID, Login: p.Login, Name: p.Name, DisplayName: p.DisplayName, AvatarURL: p.AvatarURL,
 		Status: p.Status, CreatedAt: p.CreatedAt,
 		Online: p.Online, LastSeenAt: p.LastSeenAt, Providers: p.Providers,
-		Workspaces: make([]membershipResult, 0, len(p.Workspaces)),
+		Workspaces: make([]membershipResult, 0, len(p.Workspaces)), Welcome: p.Welcome, Joined: p.Joined,
 	}
 	for _, m := range p.Workspaces {
 		r.Workspaces = append(r.Workspaces, membershipResult{

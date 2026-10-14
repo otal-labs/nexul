@@ -274,7 +274,9 @@ func removeAccountAccess(ctx context.Context, q *sqlcgen.Queries, id string, now
 		}},
 		{"pairing defaults", func() error { return q.DeleteAccountPairingDefaults(ctx, id) }},
 		{"pairing computers", func() error { return q.DeleteAccountPairingComputers(ctx, id) }},
-		{"invitations", func() error { return q.DeleteAccountInvitations(ctx, id) }},
+		{"invitations", func() error {
+			return q.EndAccountInvitations(ctx, sqlcgen.EndAccountInvitationsParams{Now: now, InvitedBy: id})
+		}},
 	}
 	for _, step := range steps {
 		if err := step.run(); err != nil {

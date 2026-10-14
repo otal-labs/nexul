@@ -112,6 +112,17 @@ func TestInvitationListAndDelete(t *testing.T) {
 	assert.Equal(t, []invitationGrantResult{{WorkspaceID: "ws-1", Roles: roles}}, page.Items[0].Grants)
 	assert.Equal(t, 1, page.NextOffset)
 
+	redeemed := time.Date(2026, 9, 19, 8, 0, 0, 0, time.UTC)
+	repo.accepted = []*Invitation{{ID: "inv-taken", RedeemedAt: &redeemed, RedeemedBy: "u-bob"}}
+	got, err = callInvitationTool(t, svc, "invitation_list", `{"state": "accepted"}`)
+	require.NoError(t, err)
+	taken := got.(mcptool.Page[invitationResult]).Items
+	require.Len(t, taken, 1)
+	assert.Equal(t, "u-bob", taken[0].RedeemedBy)
+	assert.Equal(t, &redeemed, taken[0].RedeemedAt)
+	_, err = callInvitationTool(t, svc, "invitation_list", `{"state": "lost"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+
 	got, err = callInvitationTool(t, svc, "invitation_delete", `{"id": "inv-1"}`)
 	require.NoError(t, err)
 	assert.Equal(t, mcptool.Gone("inv-1"), got)

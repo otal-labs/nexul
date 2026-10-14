@@ -31,6 +31,8 @@ type Progress struct {
 	Steps        []Step `json:"steps"`
 	// Dot is whether the account menu shows its dot: a step neither done nor skipped, projects only once given.
 	Dot bool `json:"dot"`
+	// InAProject holds whether or not projects is a step of theirs, since Team names a person in no project.
+	InAProject bool `json:"in_a_project"`
 }
 
 // Record is what the welcome domain stores for one person's step; everything else is read from other domains.

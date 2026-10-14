@@ -57,8 +57,9 @@ DELETE FROM pairing_computers WHERE user_id = ?;
 -- name: DeleteAccountPairingDefaults :exec
 DELETE FROM pairing_user_defaults WHERE user_id = ?;
 
--- name: DeleteAccountInvitations :exec
-DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL;
+-- name: EndAccountInvitations :exec
+UPDATE invitations SET expires_at = sqlc.arg(now)
+WHERE invited_by = sqlc.arg(invited_by) AND redeemed_at IS NULL AND expires_at > sqlc.arg(now);
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = ?;

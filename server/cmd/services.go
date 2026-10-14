@@ -361,6 +361,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 	welcomeSvc := newWelcomeService(store, authSvc)
 	authSvc.SetWelcome(welcomeProgress{svc: welcomeSvc})
+	tenancySvc.SetTeamProgress(teamProgress{welcome: welcomeSvc, invitations: store.Invitations})
 	return &coreServices{
 		welcomeSvc:     welcomeSvc,
 		accessSvc:      accessSvc,
