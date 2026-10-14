@@ -84,11 +84,11 @@ const holder = (roleId: string) => ({
   workspaces: [{ workspace_id: "ws-1", role_id: roleId }],
 });
 
-const mockRoles = (roles: unknown[], myPermissions: string[] = [], people: unknown[] = []) => {
+const mockRoles = (roles: unknown[], myPermissions: string[] = [], people: unknown[] = [], showLockedActions = false) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/team") return Promise.resolve({ data: { people, workspaces: [], can_manage_accounts: false } });
     if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
-    if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Admin", permissions: myPermissions } });
+    if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Admin", permissions: myPermissions, show_locked_actions: showLockedActions } });
     if (url === "/api/workspaces") return Promise.resolve({ data: [] });
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
@@ -349,7 +349,7 @@ describe("RoleSettingsSection", () => {
   });
 
   it("deletes a role nobody holds after confirming", async () => {
-    mockRoles([ownerRole, role()]);
+    mockRoles([ownerRole, role()], ["roles:delete"]);
     mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
@@ -362,7 +362,7 @@ describe("RoleSettingsSection", () => {
   });
 
   it("deletes a role people hold after a confirm that says how many lose it", async () => {
-    mockRoles([ownerRole, role()], [], [holder("role-editor"), { ...holder("role-editor"), id: "u-lena", login: "lena", name: "Lena" }]);
+    mockRoles([ownerRole, role()], ["roles:delete"], [holder("role-editor"), { ...holder("role-editor"), id: "u-lena", login: "lena", name: "Lena" }]);
     mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
@@ -375,6 +375,35 @@ describe("RoleSettingsSection", () => {
     await user.click(screen.getByRole("button", { name: "Delete role" }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
+  });
+
+  it("leaves Delete out of the menu for a viewer whose roles can't delete roles", async () => {
+    mockRoles([ownerRole, role()], ["roles:write"]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await screen.findAllByText("nobody");
+    await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
+
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
+  it("shows Delete locked with its reason to a viewer whose role shows locked actions, and picking it deletes nothing", async () => {
+    mockRoles([ownerRole, role()], ["roles:write"], [], true);
+    const user = userEvent.setup();
+    renderSection();
+
+    await screen.findAllByText("nobody");
+    await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
+    const item = await screen.findByRole("button", { name: "Delete" });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveAccessibleDescription("Your role can't delete roles");
+    await user.click(item);
+
+    expect(screen.queryByRole("dialog", { name: "Delete Editor?" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(mocks.delete).not.toHaveBeenCalled();
   });
 
   it("duplicates a role under a free copy name, its welcome steps and locked-actions switch included", async () => {

@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent } from "@testing-library/react-native";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import { StackScreen } from "@/components/deploys/StackScreen";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
@@ -23,8 +26,12 @@ const stack = { id: "s-1", project_id: "p-1", name: "api", machine: "hetzner-1",
 
 const web = { id: "c-1", stack_id: "s-1", name: "web", declared: { image: "nginx" }, status: "running" };
 
+let me: MyWorkspaceInfo;
+
 const renderWithLatest = (status: string, services: unknown[] = []) => {
   jest.mocked(api.get).mockImplementation((url: string) => {
+    if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1", name: "Acme" }]);
+    if (url === "/api/workspaces/ws-1/me") return Promise.resolve(me);
     if (url === "/api/stacks/s-1") return Promise.resolve(stack);
     if (url === "/api/stacks/s-1/services") return Promise.resolve(services);
     return Promise.resolve([
@@ -43,6 +50,8 @@ const renderWithLatest = (status: string, services: unknown[] = []) => {
 beforeEach(() => {
   mockPush.mockReset();
   mockAccess.current = true;
+  me = { role_name: "Developer", permissions: ["deploys:write"], show_locked_actions: false };
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("StackScreen", () => {
@@ -74,5 +83,22 @@ describe("StackScreen", () => {
     await renderWithLatest("failed");
 
     expect(await screen.findByRole("button", { name: "Redeploy" })).toBeEnabled();
+  });
+
+  test("Redeploy is left out for a viewer whose roles can't deploy", async () => {
+    me = { role_name: "Client", permissions: ["stacks:read"], show_locked_actions: false };
+    await renderWithLatest("failed");
+
+    expect(await screen.findByText("Deploy history")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Redeploy" })).toBeNull();
+  });
+
+  test("Redeploy is locked and starts nothing for a viewer whose role shows locked actions", async () => {
+    me = { role_name: "Junior Developer", permissions: ["stacks:read"], show_locked_actions: true };
+    await renderWithLatest("failed");
+
+    await userEvent.press(await screen.findByRole("button", { name: "Redeploy" }));
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

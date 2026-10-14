@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { MoreHorizontalIcon } from "lucide-react";
 
+import type { PermissionAction } from "@nexul/client-core/permissionActions";
+
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +15,9 @@ export interface RowAction {
   onSelect: () => void;
   disabled?: boolean;
   destructive?: boolean;
+  // Set when the row changes something: it is then hidden or locked for a viewer who lacks it (ADR 0152).
+  permission?: PermissionAction;
+  verb?: string;
 }
 
 interface RowActionsMenuProps {
@@ -60,19 +66,36 @@ interface RowActionItemProps {
   onDone: () => void;
 }
 
-const RowActionItem = ({ action, separated, onDone }: RowActionItemProps) => (
-  <>
-    {separated && <MenuSeparator />}
-    <button
-      type="button"
-      className={cn(menuItemClass, action.destructive && menuItemDestructiveClass)}
-      disabled={action.disabled}
-      onClick={() => {
-        onDone();
-        action.onSelect();
-      }}
-    >
-      {action.label}
-    </button>
-  </>
-);
+const RowActionItem = ({ action, separated, onDone }: RowActionItemProps) => {
+  const select = () => {
+    onDone();
+    action.onSelect();
+  };
+  return (
+    <>
+      {action.permission && (
+        <ActionMenuItem
+          permission={action.permission}
+          verb={action.verb}
+          separated={separated}
+          destructive={action.destructive}
+          disabled={action.disabled}
+          onSelect={select}
+        >
+          {action.label}
+        </ActionMenuItem>
+      )}
+      {!action.permission && separated && <MenuSeparator />}
+      {!action.permission && (
+        <button
+          type="button"
+          className={cn(menuItemClass, action.destructive && menuItemDestructiveClass)}
+          disabled={action.disabled}
+          onClick={select}
+        >
+          {action.label}
+        </button>
+      )}
+    </>
+  );
+};

@@ -12,6 +12,9 @@ export const effectiveAvatar = (user: User): string => user.avatar_override_url 
 
 export interface MeResponse {
   user: User;
+  // What the viewer holds in any workspace, and whether they own the instance; a server from before them sends none.
+  instance_permissions?: string[];
+  instance_owner?: boolean;
 }
 
 export const Provider = {

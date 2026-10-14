@@ -105,6 +105,11 @@ keyed by project rather than by every id. Every page is its own chunk that
 the shell never imports, and rows of a live list are memoised components
 with stable props.
 
+Every control that changes something is drawn by an action component, which
+hides it or shows it locked with the reason from the viewer's permissions. The
+permission is a typed value from `make permission-catalog`, so a misspelt one
+fails typecheck.
+
 ## The phone app
 
 Full text: [`practices/native.md`](https://github.com/otal-labs/nexul/blob/master/practices/native.md).

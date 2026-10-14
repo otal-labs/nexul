@@ -124,6 +124,7 @@ skipped and lint errors do not.
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
 | Every pushed topic has an audience rule, and the topics the server pushes match the ones the web followers follow | `make live-topics`, `TestLiveRules_MatchWhatIsPushed`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
+| The clients' typed permission list matches the server's catalog | `make permission-catalog` and `TestPermissionActionsFile_MatchesTheCatalog` in `internal/platform/permissions` |
 | Event schemas match the payload types and the published contract only grows | `make event-schemas`, `TestSchemas_MatchThePublishedContract` in `internal/eventcatalog/contract_test.go` |
 | HTTP bodies through `jsonx` match the encoder it replaced | `server/cmd/json_parity_test.go` |
 | An event payload's empty list is `[]`, never `null` | the contract test above, and `TestInsertOutboxRow_WritesAnEmptyListAsAnArray` |

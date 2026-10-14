@@ -563,6 +563,42 @@ Rules:
 - The caller handles navigation / invalidation (invalidation usually already
   happens in the hook's `onSuccess`).
 
+### Actions that change something
+
+Every write control goes through the action components in
+`components/action/`; nobody writes a permission check by hand beside a
+button, menu row, inline edit or drag handle (ADR 0152).
+
+| Control | Component | Takes |
+|---|---|---|
+| Button | `ActionButton` | the `Button` props, an optional `icon`, and the gate below |
+| Row of a popover menu | `ActionMenuItem` | `onSelect`, `icon`, `destructive`, `separated`, and the gate; a `RowAction` with a `permission` renders through it |
+| A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state |
+| The grip that starts a drag | `ActionDragHandle` | `label`, the sortable's ref, attributes and listeners as props, and the gate |
+
+The gate is `permission` (a `PermissionAction`, the typed union
+`make permission-catalog` writes to `client-core/permissionActions.ts`, never a
+string), plus `projectId`, `answer` (an item's own answer from `GET
+/api/permissions/explain`) and `verb` (the words after "Your role can't", where
+the catalog's label reads clumsily) when the page has them. `actionState` in
+`@nexul/client-core/actionState` turns the gate and the viewer's `/me` into
+live, locked or hidden: the Owner and any holder are live (an instance-domain
+action reads the auth `/me`'s `instance_permissions`, and only the instance Owner
+is live for all of them); anyone else sees it
+locked, with "Your role can't <verb>" or the rule's sentence, when a role of
+theirs has Show locked actions on, and not at all otherwise.
+
+- A locked control is a real element with `aria-disabled`, never `disabled`, so
+  it stays in the tab order; it points `aria-describedby` at the reason and
+  shows it in a tooltip on hover and focus (a menu row shows it as its second
+  line); Enter and Space do nothing; a locked destructive control loses its red.
+  It is not a loading button: a pending request still takes `loading`.
+- A page that gates a control by hand (`useHasPermission` beside a button, an
+  `&&` on a permission) is the defect; move it onto a component. A request
+  that writes and no component for its control is a missing component.
+- Reach for `useActionState` only to gate something the four components don't
+  draw, such as whether a whole section renders.
+
 ### Form fragment
 
 Complex forms split into fragments that read `useFormContext`:
@@ -1203,8 +1239,9 @@ export const AppRouter = () => {
   entry renders only when the viewer holds its read permission (an Owner's
   `/me` is the whole grid), a route declares its area as `handle` and
   `AreaGate` renders the not-found screen when it can't be opened, and a
-  detail page's 403 or 404 lands on the same screen. Create actions follow
-  the domain's write permission and are hidden, not disabled, without it.
+  detail page's 403 or 404 lands on the same screen. A control that changes
+  something follows its permission through the action components
+  ([Actions that change something](#actions-that-change-something)).
 
 ---
 

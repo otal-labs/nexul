@@ -97,6 +97,17 @@ as written. In particular:
   everything else that moves is in the design language's
   [Phone motion](design-language.md#phone-motion), with its reduced-motion
   variant.
+- Every write control goes through the action components in
+  `src/components/action/` (ADR 0152): `ActionButton` for a button and
+  `ActionRow` for a row of an action sheet, each taking `permission` (a
+  `PermissionAction` from `@nexul/client-core/permissionActions`, never a
+  string) and, when the screen knows them, `projectId`, `answer` and `verb`.
+  `actionState` in `@nexul/client-core/actionState` decides live, locked or
+  hidden, the same as on the web. A locked button keeps its 44pt target, shows a
+  lock in muted ink, carries the reason as its accessibility hint, and a tap
+  opens a small popover ("Redeploy is locked" over the reason); a locked row
+  shows the reason as its second line. A check written by hand beside a write
+  control is the defect.
 - A gesture always has a second way to do the same thing: the board's
   hold-and-drag is also each card's "Move to" accessibility actions and the
   ticket's status sheet, and the Inbox's swipe is the row's "Mark read"
