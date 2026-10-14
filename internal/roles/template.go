@@ -164,7 +164,7 @@ func ShippedTemplates() []ShippedTemplate {
 				"stacks:read", "stacks:write", "stacks:logs", "deploys:read", "deploys:write",
 				"projects:read", "projects:write", "projects:create",
 				"plays:read", "plays:write", "plays:delete", "plays:run", "autoplays:read", "autoplays:write",
-				"dns:read", "topology:read"),
+				"topology:read"),
 			WelcomeSteps: []string{welcomestep.GitHub, welcomestep.Computer}, ShowLockedActions: true,
 		}},
 		{"devops", TemplateBody{
@@ -176,11 +176,10 @@ func ShippedTemplates() []ShippedTemplate {
 	}
 }
 
-// deployInfrastructure is deploying to, managing and deleting machines, every action on DNS and gateways, and the
-// topology registry; seeing a machine takes its rules and adding one stays with the instance Owner (ADR 0151).
+// deployInfrastructure is deploying to, managing and deleting machines and the workspace's topology canvas; seeing a
+// machine takes its rules, and adding one and the instance's DNS stay with the instance Owner (ADR 0151).
 var deployInfrastructure = []permissions.Action{
-	"machines:deploy", "machines:write", "machines:delete",
-	"dns:read", "dns:write", "dns:delete", "topology:read", "topology:write", "topology:delete",
+	"machines:deploy", "machines:write", "machines:delete", "topology:read", "topology:write", "topology:delete",
 }
 
 // ownerOnly stays with Owner even though its area is the workspace: making or removing a workspace is as strong as Owner.

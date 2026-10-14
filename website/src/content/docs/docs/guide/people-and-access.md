@@ -71,9 +71,9 @@ Five roles ship with Nexul as templates. Every new workspace, a fresh install's 
 |---|---|---|
 | Client | Read and write tickets, docs (with their threads) and attachments; read memories | Your projects |
 | Junior Developer | The same, plus read pull requests, code reviews, repositories, stacks and deploys with their logs, and see and run plays | Your computer, Your projects |
-| Senior Developer | Delete in most project areas, write repositories, stacks and deploys, create projects, edit plays and auto plays, edit the Interview template, and read DNS and the topology | Connect GitHub, Your computer |
-| DevOps | Write tickets, docs, repositories, stacks and deploys, delete stacks, and deploy to, manage and delete machines, DNS and gateways, and the topology registry | Add a deploy server |
-| Administrator | Every project and workspace permission plus the deploy infrastructure, except making or removing a workspace and the instance's own administration, which stay with the Owner | Connect GitHub |
+| Senior Developer | Delete in most project areas, write repositories, stacks and deploys, create projects, edit plays and auto plays, edit the Interview template, and read the topology | Connect GitHub, Your computer |
+| DevOps | Write tickets, docs, repositories, stacks and deploys, delete stacks, and deploy to, manage and delete machines, and edit the topology | Add a deploy server |
+| Administrator | Every project and workspace permission plus deploying to, managing and deleting machines and editing the topology, except making or removing a workspace and the instance's own administration, which stay with the Owner | Connect GitHub |
 
 All five can chat and use channels, voice, mentions, and notifications. Show locked actions is on for every template role except Client, so a new workspace's developers see what they can't do and its clients see only what they can.
 
