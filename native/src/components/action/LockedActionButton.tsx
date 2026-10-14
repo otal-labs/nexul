@@ -13,10 +13,11 @@ interface LockedActionButtonProps extends Pick<ButtonProps, "variant" | "size"> 
   children: ReactNode;
   name: string;
   reason: string;
+  label?: string | undefined;
 }
 
 // aria-disabled, never disabled, so a tap still reaches onPress to explain why; the size stays the live button's 44pt.
-export const LockedActionButton = ({ name, reason, variant, size, className, children }: LockedActionButtonProps) => {
+export const LockedActionButton = ({ name, reason, label, variant, size, className, children }: LockedActionButtonProps) => {
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
@@ -32,6 +33,7 @@ export const LockedActionButton = ({ name, reason, variant, size, className, chi
         variant={variant}
         size={size}
         aria-disabled
+        aria-label={label}
         accessibilityHint={reason}
         onPress={explain}
         className={cn(variant !== "outline" && "bg-foreground/[0.06] active:bg-foreground/[0.06]", variant === "outline" && "bg-transparent", className)}

@@ -1981,8 +1981,8 @@ The numbers are the web's [Motion baseline](#motion-baseline) unless named.
   stays. Drag frames measured p50 16ms, p90 27ms on the emulator, whose input
   injection paces the frames. Each card also offers "Move to" accessibility
   actions.
-- Inbox: an unread row swipes left to mark it read (its "Mark read" action
-  is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.
+- Inbox: a row swipes left to flip it between read and unread (its "Mark read"
+  or "Mark unread" action is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.
 - Pull to refresh: the platform's spinner in the ember, since it is progress.
   Rejected: a muted spinner, which read as disabled.
 - Press: the `accent` tint on rows and cards, on touch; a labelled button

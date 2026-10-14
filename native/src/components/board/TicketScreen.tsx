@@ -1,10 +1,11 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import ChevronDown from "lucide-react-native/icons/chevron-down";
 import MessageSquare from "lucide-react-native/icons/message-square";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { TicketPerson } from "@/components/board/TicketPeople";
+import { TicketStatusField } from "@/components/board/TicketStatusField";
 import { ticketTypePill } from "@/components/board/ticketTypeColor";
 import { DocBody } from "@/components/docs/DocBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -22,7 +23,6 @@ import { useFetchTicket, useOpenTicketThread, useSetTicketPerson } from "@/hooks
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
-import { statusStageDot } from "@/models/Status";
 import { ticketKey, TicketRole } from "@/models/Ticket";
 
 // The record's mono id under its title, the web detail header's id chip.
@@ -68,21 +68,7 @@ export const TicketScreen = () => {
           <View className="gap-5 px-4">
             <View className="overflow-hidden rounded-xl border border-border bg-card">
               <FactRow label="Status" first>
-                <Pressable
-                  role="button"
-                  aria-label={`Status, ${status?.name ?? "none"}. Change`}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/board/status-picker",
-                      params: { ticketId: ticket.id, projectId: ticket.project_id, currentStatusId: ticket.status },
-                    })
-                  }
-                  className="-my-1 min-h-11 flex-row items-center gap-2 rounded-md border border-input px-3 active:bg-accent"
-                >
-                  {status && <View className={cn("size-2 rounded-full", statusStageDot(status.kind))} />}
-                  <Text className="text-sm">{status?.name ?? "Status"}</Text>
-                  <ChevronDown size={14} color={String(muted)} />
-                </Pressable>
+                <TicketStatusField ticket={ticket} status={status} />
               </FactRow>
               <FactRow label="Type">
                 {type && <Text className={cn("overflow-hidden rounded-full px-2 py-0.5 text-xs font-medium", ticketTypePill(type.name, type.color))}>{type.name}</Text>}
@@ -100,9 +86,18 @@ export const TicketScreen = () => {
             {openThread.error && <ErrorDisplay error={openThread.error} className="px-0" />}
             <View className="flex-row gap-2">
               {ticket.developer !== me?.user.login && (
-                <Button variant="outline" className="flex-1" onPress={assignToMe} disabled={setPerson.isPending}>
+                <ActionButton
+                  permission="tickets:write"
+                  projectId={ticket.project_id}
+                  verb="assign tickets"
+                  name="Assign to me"
+                  variant="outline"
+                  className="flex-1"
+                  onPress={assignToMe}
+                  disabled={setPerson.isPending}
+                >
                   <Text>Assign to me</Text>
-                </Button>
+                </ActionButton>
               )}
               <Button variant="outline" className="flex-1" onPress={openInChat} disabled={openThread.isPending || !workspaceId}>
                 <MessageSquare size={16} color={String(muted)} />

@@ -16,6 +16,7 @@ import { HandOff, useLoaderShown } from "@/components/HandOff";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectRevokedState } from "@/components/project/ProjectRevokedState";
 import { FieldScreen } from "@/components/FieldScreen";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProjects, useRevokedProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -50,10 +51,12 @@ export const BoardScreen = () => {
   const { mutate: updateStatus, error: updateError } = useUpdateTicketStatus();
   const drag = useBoardDragState(statuses ?? [], (id, status) => updateStatus({ id, status }));
   const holding = useLifted(drag, (held) => !!held);
+  // Without tickets:write a card can't be held or moved, so the drag context is simply absent.
+  const canMove = useActionState({ permission: "tickets:write", projectId: project?.id }).state === "live";
 
   return (
     <FieldScreen>
-      <BoardDragContext value={drag}>
+      <BoardDragContext value={canMove ? drag : null}>
         <ScrollView className="flex-1" contentContainerClassName="pb-6" scrollEnabled={!holding}>
           <BoardHeader project={revoked ? undefined : project} ticketCount={tickets?.length} />
           {isPending && <LoadingDisplay message="Loading the board" />}

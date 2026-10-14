@@ -79,15 +79,19 @@ describe("InboxScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/board/ticket/t-1", { withAnchor: true });
   });
 
-  test("an unread row's Mark read action, the swipe's alternative, marks it read without opening it", async () => {
+  test.each([
+    ["an unread row", /Write migrations/, "Mark read", "markRead", "/api/notifications/n1/read"],
+    ["a read row", /Spec/, "Mark unread", "markUnread", "/api/notifications/n2/unread"],
+  ])("%s offers one flip, the swipe's alternative, and makes it without opening the row", async (_name, title, label, actionName, path) => {
     mockInbox([ticketNotification, docNotification]);
     jest.mocked(api.post).mockResolvedValue(undefined);
     await renderScreen();
-    const row = await screen.findByRole("button", { name: /Write migrations/ });
+    const row = await screen.findByRole("button", { name: title });
 
-    await act(() => fireEvent(row, "accessibilityAction", { nativeEvent: { actionName: "markRead" } }));
+    expect(row.props.accessibilityActions).toEqual([{ name: actionName, label }]);
+    await act(() => fireEvent(row, "accessibilityAction", { nativeEvent: { actionName } }));
 
-    expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
+    expect(api.post).toHaveBeenCalledWith(path);
     expect(mockPush).not.toHaveBeenCalled();
   });
 

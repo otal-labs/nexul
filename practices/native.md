@@ -20,7 +20,7 @@ documentation disagree on an API, the documentation wins.
 | Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store. Read once at launch (section 4) |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights; the display face is `assets/fonts/Fraunces-Display.ttf`, a static cut of Fraunces at the web's axes (opsz 28, wght 560, SOFT 50, WONK 1) made with fontTools' instancer from the Google Fonts variable file, because Android does not apply variable axes reliably |
 | Motion | react-native-reanimated with react-native-worklets | Every animation runs on the UI thread from shared values; the curves and the reduced-motion hook are in `src/lib/motion.ts` |
-| Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read; `GestureHandlerRootView` wraps the app in the root layout |
+| Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read or unread; `GestureHandlerRootView` wraps the app in the root layout |
 | App icon, splash, notification icon | PNGs in `native/assets/`, generated | The master is `native/assets/mark.svg`; after changing it run `bun scripts/generateIcons.ts` in `web/` (headless Chromium through playwright) and commit the PNGs, including the web favicons and touch icons in `web/public/` |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
 | Push | expo-notifications | Registers on sign-in, clears on sign-out; `src/push/` |
@@ -117,7 +117,7 @@ as written. In particular:
   a permission its route doesn't take.
 - A gesture always has a second way to do the same thing: the board's
   hold-and-drag is also each card's "Move to" accessibility actions and the
-  ticket's status sheet, and the Inbox's swipe is the row's "Mark read"
+  ticket's status sheet, and the Inbox's swipe is the row's "Mark read" or "Mark unread"
   action and the tap that opens it. Gestures run in gesture-handler worklets;
   a worklet closes over shared values, never over a view ref or a context
   object, which it would try to copy to the UI thread.
