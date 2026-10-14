@@ -17,7 +17,7 @@ export const CreateInvitationDialog = ({ onCreated }: CreateInvitationDialogProp
   const create = async () => {
     await open<CreateInvitationFormData>({
       title: "Create invitation link",
-      description: "Pick the workspaces and the roles the link gives. It works once.",
+      description: "For someone without an account here. Pick the workspaces and the roles the link gives, then copy it and send it yourself. It works once.",
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={onCreated} />,

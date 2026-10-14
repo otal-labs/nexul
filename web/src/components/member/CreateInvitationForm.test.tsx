@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,9 +19,9 @@ const catalog = [
 ];
 
 const roles = [
-  { id: "r-owner", name: "Owner", permissions: [], is_owner_role: true },
-  { id: "r-client", name: "Client", permissions: ["tickets:read"], is_owner_role: false },
-  { id: "r-dev", name: "Developer", permissions: ["tickets:read", "tickets:write"], is_owner_role: false },
+  { id: "r-owner", name: "Owner", permissions: [], is_owner_role: true, description: "Runs the workspace." },
+  { id: "r-client", name: "Client", permissions: ["tickets:read"], is_owner_role: false, description: "Follows along and reads tickets." },
+  { id: "r-dev", name: "Developer", permissions: ["tickets:read", "tickets:write"], is_owner_role: false, description: "" },
 ];
 
 describe("CreateInvitationForm", () => {
@@ -59,5 +59,29 @@ describe("CreateInvitationForm", () => {
     await vi.waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/invitations", { expires_in_days: 7, grants: [{ workspace_id: "ws-1", role_ids: ["r-client", "r-dev"] }] }),
     );
+  });
+
+  it("explains who the link is for and shows each role's description under its name", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <CreateInvitationDialog onCreated={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Invite" }));
+    expect(await screen.findByText("Roles in Acme")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("For someone without an account here. Pick the workspaces and the roles the link gives, then copy it and send it yourself. It works once."),
+    ).toBeInTheDocument();
+    const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
+    expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();
+    expect(within(labelOf("Owner")).getByText("Runs the workspace.")).toBeInTheDocument();
+    expect(labelOf("Developer").children).toHaveLength(1);
+
+    const dialogText = screen.getByRole("dialog").textContent ?? "";
+    for (const retired of ["Restricted", "Every project", "overrides"]) expect(dialogText).not.toContain(retired);
   });
 });
