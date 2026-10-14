@@ -1,5 +1,4 @@
--- An open code is listed and revoked by this id, so its hash never leaves the server. Codes still open when this runs
--- get a random UUID-shaped one here, so none is left that can't be listed or revoked.
+-- Codes are listed and revoked by id so the hash never leaves the server; open codes get one here.
 ALTER TABLE runner_enrollment_codes ADD COLUMN id TEXT NOT NULL DEFAULT '';
 UPDATE runner_enrollment_codes SET id = lower(
     hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' ||
