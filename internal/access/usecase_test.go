@@ -1035,6 +1035,29 @@ func TestListPlayGrants(t *testing.T) {
 	})
 }
 
+// A rule naming an account the names read can't find carries no name, never its id, so a client can't show an id as a person.
+func TestListPlayGrants_UnresolvedTarget_CarriesNoName(t *testing.T) {
+	const ws = "ws-1"
+	repo := newFakeRepo()
+	for _, id := range []string{"alice", "ghost"} {
+		require.NoError(t, repo.Set(context.Background(), resourceTypePlay, "play-1", id, nil, permissions.SetOf(permissions.PlaysRun)))
+	}
+	roles := newFakeRoles()
+	roles.set(ws, "manager", RoleInfo{Permissions: permissions.SetOf(permissions.PlaysWrite)})
+	s := newService(repo, newFakeUsers(&User{ID: "manager"}))
+	s.SetRoles(roles)
+	s.SetNames(&fakeNames{})
+	s.SetPlayWorkspaces(&fakePlayWorkspace{byPlay: map[string]string{"play-1": ws}})
+
+	grants, err := s.ListPlayGrants(context.Background(), "manager", "play-1")
+	require.NoError(t, err)
+	named := map[string]string{}
+	for _, g := range grants {
+		named[g.UserID] = g.TargetName
+	}
+	assert.Equal(t, map[string]string{"alice": "alice", "ghost": ""}, named)
+}
+
 func TestListUsers(t *testing.T) {
 	users := newFakeUsers(
 		&User{ID: "reader", Login: "reader"},

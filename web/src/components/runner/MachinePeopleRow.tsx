@@ -15,7 +15,7 @@ interface MachinePeopleRowProps {
 export const MachinePeopleRow = ({ machine }: MachinePeopleRowProps) => {
   const owner = useIsInstanceOwner();
   const { data: grants } = useFetchGrants("machine", machine.id);
-  const { targetOf } = usePanelTargets({ workspaceId: "", instance: true });
+  const { targetOf } = usePanelTargets({ workspaceId: "", instance: true, rulesOn: { type: "machine", id: machine.id } });
   const openPanel = usePermissionsDialog();
   const names = grants?.filter((g) => g.allow.length + g.deny.length > 0).map((g) => targetOf(grantKey(g)).name);
   const alone = names?.length === 0;

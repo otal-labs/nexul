@@ -39,13 +39,14 @@ const owner: PermissionSource = {
 const answer = (action: string): PermissionAnswer => ({ action, allowed: true, source: owner, fallback: { allowed: true, source: owner } });
 
 let instanceOwner = true;
+let canListTeam = true;
 let grants: PermissionGrant[] = [];
 
 const mockGet = (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: { user: { id: "u-owner" }, instance_permissions: [], instance_owner: instanceOwner } });
   if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog, instance_areas: [] } });
   if (url === "/api/permissions?resource_type=machine&resource_id=m-1") return Promise.resolve({ data: { grants } });
-  if (url === "/api/team") return Promise.resolve({ data: team });
+  if (url === "/api/team") return canListTeam ? Promise.resolve({ data: team }) : Promise.reject(new Error("forbidden"));
   if (url === "/api/permissions/explain") {
     return Promise.resolve({ data: { resource_type: "machine", resource_id: "m-1", user_id: "", effective: machineActions.map(answer) } });
   }
@@ -73,6 +74,7 @@ afterEach(async () => {
 
 beforeEach(() => {
   instanceOwner = true;
+  canListTeam = true;
   grants = [];
   vi.mocked(api.get).mockReset().mockImplementation(mockGet as typeof api.get);
   vi.mocked(api.put).mockReset().mockResolvedValue({ data: null });
@@ -98,6 +100,24 @@ describe("MachinePeopleRow", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("edge-box")).toBeInTheDocument();
     expect(await within(dialog).findByRole("button", { name: /Ops in Globex/ })).toBeInTheDocument();
+  });
+
+  it("names a rule's targets from the rules list when the viewer can't list Team, never by id", async () => {
+    canListTeam = false;
+    grants = [
+      { resource_type: "machine", resource_id: "m-1", target: "person", user_id: "01a13b1e-owner", target_name: "bob", allow: ["machines:see"], deny: [], created_at: "2026-10-01", updated_at: "" },
+      { resource_type: "machine", resource_id: "m-1", target: "role", user_id: "", role_id: "r-devops", target_name: "DevOps", allow: ["machines:write"], deny: [], created_at: "2026-10-02", updated_at: "" },
+      { resource_type: "machine", resource_id: "m-1", target: "person", user_id: "01a13b1e-gone", allow: ["machines:see"], deny: [], created_at: "2026-10-03", updated_at: "" },
+    ];
+    renderRow();
+    expect(await screen.findByText("bob, DevOps, Someone")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /People on this machine/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByRole("button", { name: /DevOps/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /bob/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /Someone/ })).toBeInTheDocument();
+    expect(within(dialog).queryByText(/01a13b1e/)).not.toBeInTheDocument();
   });
 
   it("gives a role of another workspace See and a person Deploy to, Manage and Delete, one write per target", async () => {

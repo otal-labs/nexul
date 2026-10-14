@@ -17,6 +17,8 @@ type Overwrite struct {
 	Deny         permissions.Set `json:"deny"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
+	// TargetName is the role's name or the person's login, filled when rules are listed; empty when none resolves.
+	TargetName string `json:"target_name,omitempty"`
 }
 
 // ProjectHeld is one project someone is in and the project-area actions they hold there.
