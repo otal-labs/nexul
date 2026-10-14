@@ -96,7 +96,7 @@ func (r *StacksRepo) RuleScope(ctx context.Context, id string) (access.StackScop
 	if err != nil {
 		return access.StackScope{}, fmt.Errorf("scope of stack %s: %w", id, notFoundIfNoRows(err))
 	}
-	return access.StackScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, BaseID: row.DerivedFrom}, nil
+	return access.StackScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, BaseID: row.DerivedFrom, Machine: row.Machine}, nil
 }
 
 // ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.

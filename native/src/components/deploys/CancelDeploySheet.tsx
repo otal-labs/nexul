@@ -7,13 +7,14 @@ import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useCancelDeploy, useFetchDeploy } from "@/hooks/DeployHooks";
-import { useFetchStack } from "@/hooks/StackHooks";
+import { useFetchStack, useStackActions } from "@/hooks/StackHooks";
 
 export const CancelDeploySheet = () => {
   const router = useRouter();
   const { deployId } = useLocalSearchParams<{ deployId: string }>();
   const { data: deploy } = useFetchDeploy(deployId);
   const { data: stack } = useFetchStack(deploy?.stack_id);
+  const answer = useStackActions(stack);
   const cancel = useCancelDeploy();
 
   return (
@@ -26,6 +27,7 @@ export const CancelDeploySheet = () => {
       <ActionButton
         permission="deploys:write"
         projectId={stack?.project_id || undefined}
+        answer={answer("deploys:write")}
         verb="cancel deploys"
         name="Cancel deploy"
         variant="destructive"

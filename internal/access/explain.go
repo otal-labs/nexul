@@ -37,8 +37,10 @@ func catalogActions(keep func(permissions.Info) bool) []permissions.Action {
 // entity is what an explanation is about: where it lives, what opens and manages it, and what its rules may set.
 type entity struct {
 	kind, id, workspaceID, projectID, folderID string
-	open, manage                               permissions.Action
-	actions                                    []permissions.Action
+	// machine is the name of the machine a stack deploys to.
+	machine      string
+	open, manage permissions.Action
+	actions      []permissions.Action
 }
 
 func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string) (entity, error) {
@@ -97,7 +99,7 @@ func (s *Service) stackEntity(ctx context.Context, e entity) (entity, error) {
 	if scope.BaseID != "" {
 		return e, fmt.Errorf("%w: stack %s is a branch deployment; set the rules on its base stack %s", apperrs.ErrInvalid, e.id, scope.BaseID)
 	}
-	e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+	e.workspaceID, e.projectID, e.machine = scope.WorkspaceID, scope.ProjectID, scope.Machine
 	e.open, e.manage, e.actions = permissions.StacksRead, permissions.StacksWrite, stackActions
 	return e, nil
 }
@@ -189,13 +191,41 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	}
 	n := s.namer(ctx)
 	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, UserID: userID, Effective: make([]Answer, 0, len(e.actions))}
+	noDeploy, err := s.stackNoDeployTo(ctx, userID, e)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range e.actions {
 		held, src := s.answer(ctx, userID, e, a, true)
 		inherited, from := s.answer(ctx, userID, e, a, false)
+		if a == permissions.DeploysWrite {
+			held, src = refusedBy(held, src, noDeploy)
+			inherited, from = refusedBy(inherited, from, noDeploy)
+		}
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{held, n.named(src)}, Fallback: Verdict{inherited, n.named(from)}})
 	}
 	requireSee(out.Effective)
 	return out, nil
+}
+
+// refusedBy is an allowed answer turned into by's refusal; any other answer, or none refusing, stands.
+func refusedBy(held bool, src Source, by *Source) (bool, Source) {
+	if by == nil || !held {
+		return held, src
+	}
+	return false, *by
+}
+
+// stackNoDeployTo refuses a stack's deploys:write without Deploy to on its machine, as a deploy start does (ADR 0151).
+func (s *Service) stackNoDeployTo(ctx context.Context, userID string, e entity) (*Source, error) {
+	if e.kind != resourceTypeStack {
+		return nil, nil
+	}
+	src, refused, err := s.noDeployTo(ctx, userID, e.machine)
+	if err != nil || !refused {
+		return nil, err
+	}
+	return &src, nil
 }
 
 // ExplainRole answers each action a doc's, folder's, play's, project's, stack's, or channel's rules may set for a holder of roleID alone, with the
@@ -443,6 +473,8 @@ func sentence(r NamedSource) string {
 		return "Read by every member"
 	case SourceChannelMember:
 		return channelMemberSentence(r, allowed)
+	case SourceNoDeployTo:
+		return "No Deploy to on machine " + r.EntityName
 	case SourceNotOnMachine:
 		return "Not found: no rule lets " + targetName(r) + " see machine " + r.EntityName
 	case SourceNotInProject:

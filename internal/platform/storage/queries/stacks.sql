@@ -34,7 +34,7 @@ WHERE derived_from = ''
 ORDER BY name;
 
 -- name: GetStackRuleScope :one
-SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, COALESCE(p.workspace_id, '') AS workspace_id
+SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, s.machine, COALESCE(p.workspace_id, '') AS workspace_id
 FROM stacks s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?;
 
 -- name: DeleteStackRules :exec

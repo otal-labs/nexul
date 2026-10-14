@@ -17,6 +17,7 @@ jest.mock("expo-router", () => ({
 }));
 
 let me: MyWorkspaceInfo;
+let explained: { action: string; allowed: boolean; source: { kind: string; sentence: string } }[];
 
 const renderScreen = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -29,10 +30,12 @@ const renderScreen = () => {
 
 beforeEach(() => {
   me = { role_name: "Developer", permissions: ["deploys:write"], show_locked_actions: false };
+  explained = [];
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockReset().mockImplementation(async (url: string) => {
     if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme" }];
     if (url === "/api/workspaces/ws-1/me") return me;
+    if (url.startsWith("/api/permissions/explain")) return { effective: explained };
     return { id: "s-1", project_id: "p-1", name: "checkout-api" };
   });
   jest.mocked(api.post).mockReset();
@@ -91,6 +94,18 @@ describe("RedeployScreen", () => {
     const control = screen.queryByRole("button", { name: "Redeploy" });
     expect(control === null).toBe(hint === undefined);
     expect(control?.props.accessibilityHint).toBe(hint);
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test("locks Redeploy with the stack's own reason when its machine refuses a role that grants deploys", async () => {
+    me = { role_name: "DevOps", permissions: ["deploys:write"], show_locked_actions: true };
+    explained = [{ action: "deploys:write", allowed: false, source: { kind: "no_deploy_to", sentence: "No Deploy to on machine edge-box" } }];
+    await renderScreen();
+
+    const control = await screen.findByRole("button", { name: "Redeploy" });
+
+    await waitFor(() => expect(control.props.accessibilityHint).toBe("No Deploy to on machine edge-box"));
+    await userEvent.setup().press(control);
     expect(api.post).not.toHaveBeenCalled();
   });
 });

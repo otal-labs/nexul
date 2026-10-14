@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { Text } from "@/components/ui/text";
-import { useFetchStack } from "@/hooks/StackHooks";
+import { useFetchStack, useStackActions } from "@/hooks/StackHooks";
 import { DeployStatus, type Deploy } from "@/models/Stack";
 
 interface CancelDeployRowProps {
@@ -14,6 +14,7 @@ interface CancelDeployRowProps {
 export const CancelDeployRow = ({ deploy }: CancelDeployRowProps) => {
   const router = useRouter();
   const { data: stack } = useFetchStack(deploy.stack_id);
+  const answer = useStackActions(stack);
   const active = deploy.status === DeployStatus.Pending || deploy.status === DeployStatus.Running;
   if (!active) return null;
   return (
@@ -21,6 +22,7 @@ export const CancelDeployRow = ({ deploy }: CancelDeployRowProps) => {
       <ActionButton
         permission="deploys:write"
         projectId={stack?.project_id || undefined}
+        answer={answer("deploys:write")}
         verb="cancel deploys"
         name="Cancel deploy"
         variant="outline"

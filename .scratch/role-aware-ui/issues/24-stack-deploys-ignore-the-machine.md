@@ -1,7 +1,7 @@
 # 24: A stack's deploy actions ignore Deploy to on its machine
 
 Type: bug
-Status: open
+Status: resolved
 Blocked by: None
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Machine, Locked action, Source), ADR 0151, ADR 0152, `practices/react-guide.md`
@@ -40,3 +40,11 @@ Server is the smaller change for the web and the phone together; it must stay in
 - [ ] The same person gets the reason from explain, so the permissions panel agrees with the buttons.
 - [ ] A person with Deploy to sees them live and the deploy starts.
 - [ ] The phone's Redeploy and Cancel deploy follow the same answer.
+
+## Answer
+
+Server side. A stack's `deploys:write` answer in explain folds in Deploy to on the stack's machine through the same
+check a deploy start uses (`answerNamed` in `internal/access/machine.go`), so a machine the viewer can't see, or holds
+no Deploy to on, refuses it with `No Deploy to on machine <name>`. Cancelling a deploy now takes the same Deploy to as
+starting one, so Cancel deploy locks with the rest. The phone reads the stack's explain answer for Redeploy and Cancel
+deploy, and a machine's rule change rereads every open stack's answers on the web and the phone.

@@ -206,20 +206,26 @@ func (q *Queries) GetStackBySlugAndMachine(ctx context.Context, arg GetStackBySl
 }
 
 const getStackRuleScope = `-- name: GetStackRuleScope :one
-SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, COALESCE(p.workspace_id, '') AS workspace_id
+SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, s.machine, COALESCE(p.workspace_id, '') AS workspace_id
 FROM stacks s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?
 `
 
 type GetStackRuleScopeRow struct {
 	ProjectID   string
 	DerivedFrom string
+	Machine     string
 	WorkspaceID string
 }
 
 func (q *Queries) GetStackRuleScope(ctx context.Context, id string) (GetStackRuleScopeRow, error) {
 	row := q.db.QueryRowContext(ctx, getStackRuleScope, id)
 	var i GetStackRuleScopeRow
-	err := row.Scan(&i.ProjectID, &i.DerivedFrom, &i.WorkspaceID)
+	err := row.Scan(
+		&i.ProjectID,
+		&i.DerivedFrom,
+		&i.Machine,
+		&i.WorkspaceID,
+	)
 	return i, err
 }
 

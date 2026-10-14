@@ -11,7 +11,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Text } from "@/components/ui/text";
-import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
+import { useFetchStack, useFetchStackDeploys, useFetchStackServices, useStackActions } from "@/hooks/StackHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { DeployStatus, DeployStrategy, latestDeploy } from "@/models/Stack";
 
@@ -19,6 +19,7 @@ export const StackScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: stack, error, isPending } = useFetchStack(id);
+  const answer = useStackActions(stack);
   const { data: deploys, error: deploysError, isPending: deploysPending } = useFetchStackDeploys(id);
   const { data: containers, error: containersError, isPending: containersPending } = useFetchStackServices(id);
   const canReadLogs = useAreaAccess(stack?.project_id || undefined)?.("stackLogs") === true;

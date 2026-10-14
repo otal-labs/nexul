@@ -21,4 +21,18 @@ describe("permissionRulesFollower", () => {
     expect(isStale(client, [getGrantsKey, "doc", "doc-2"])).toBe(false);
     expect(isStale(client, [getGrantsKey, "play", "doc-1"])).toBe(false);
   });
+
+  it("rereads every open stack's answers when a machine's rule changed, and no doc's", async () => {
+    const client = seeded([
+      [[getExplanationKey, "stack", "stack-1", ""], {}],
+      [[getExplanationKey, "stack", "stack-2", ""], {}],
+      [[getExplanationKey, "doc", "doc-1", ""], {}],
+    ]);
+
+    await followFrame(permissionRulesFollower, "access.grant.changed", { resource_type: "machine", resource_id: "machine-1", role_id: "role-1" }, client);
+
+    expect(isStale(client, [getExplanationKey, "stack", "stack-1", ""])).toBe(true);
+    expect(isStale(client, [getExplanationKey, "stack", "stack-2", ""])).toBe(true);
+    expect(isStale(client, [getExplanationKey, "doc", "doc-1", ""])).toBe(false);
+  });
 });

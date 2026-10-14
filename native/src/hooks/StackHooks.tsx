@@ -1,5 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { answerFor, type EntityAnswer, type EntityExplanation } from "@nexul/client-core/actionState";
+import type { PermissionAction } from "@nexul/client-core/permissionActions";
 import { requires } from "@nexul/client-core/requires";
 
 import { api } from "@/api/client";
@@ -11,6 +13,7 @@ import { latestDeploy, type Container, type Deploy, type Stack } from "@/models/
 export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
 export const getStackServicesKey = "getStackServices";
+export const getStackExplanationKey = "getStackExplanation";
 export const getStackDeploysKey = "getStackDeploys";
 
 const stacksQuery = defineQuery({
@@ -32,6 +35,19 @@ const stackQuery = defineQuery({
 });
 
 export const useFetchStack = (id: string | undefined) => useQuery({ ...stackQuery.options(id), enabled: !!id });
+
+// The viewer's answer per stack action, which folds in Deploy to on the stack's machine; a rule change anywhere rereads it.
+const stackExplanationQuery = defineQuery({
+  key: getStackExplanationKey,
+  fetch: (stackId: string | undefined) => api.get<EntityExplanation>(`/api/permissions/explain?resource_type=stack&resource_id=${encodeURIComponent(stackId ?? "")}`),
+  refreshes: { "access.grant.changed": "all" },
+});
+
+// An instance stack answers to its instance area and a branch deployment to its base stack, so neither is explained.
+export const useStackActions = (stack: Pick<Stack, "id" | "project_id" | "derived_from"> | undefined): ((permission: PermissionAction) => EntityAnswer | undefined) => {
+  const { data } = useQuery({ ...stackExplanationQuery.options(stack?.id), enabled: !!stack?.project_id && !stack.derived_from });
+  return (permission) => answerFor(data, permission);
+};
 
 const stackServicesQuery = defineQuery({
   key: getStackServicesKey,
