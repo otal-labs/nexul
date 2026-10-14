@@ -12,9 +12,9 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useCreateInstanceRecord, useFetchDnsZones, useProvisionReverseProxy } from "@/hooks/DnsHooks";
-import { useFetchMachines } from "@/hooks/MachineHooks";
+import { useFetchDeployTargets } from "@/hooks/MachineHooks";
 import { instanceRecordName, soleItem, type DnsSetupResult, type Zone } from "@/models/DNS";
-import type { Machine } from "@/models/Machine";
+import type { DeployTarget } from "@/models/Machine";
 
 const ProxyEntryPathSchema = z.object({
   zone_id: z.string().min(1, "Choose a zone"),
@@ -29,7 +29,7 @@ type ProxyEntryPathFormData = z.infer<typeof ProxyEntryPathSchema>;
 
 interface ProxyEntryPathFieldsProps {
   zones: Zone[];
-  machines: Machine[];
+  machines: DeployTarget[];
   onDone: (result: DnsSetupResult) => void;
 }
 
@@ -125,7 +125,7 @@ interface ProxyEntryPathFormProps {
 
 export const ProxyEntryPathForm = ({ onDone }: ProxyEntryPathFormProps) => {
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(true);
-  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
+  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchDeployTargets();
 
   return (
     <>

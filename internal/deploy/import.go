@@ -63,9 +63,43 @@ type GatewayAdoption struct {
 	Error     string   `json:"error,omitempty"`
 }
 
+// MachineRef is a machine as a picker lists it.
+type MachineRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // MachineLookup resolves a machine id to its name, since Stack.Machine is the name, not the id (ADR 0017).
 type MachineLookup interface {
 	MachineName(ctx context.Context, machineID string) (string, error)
+	// Machines lists every machine, past the machine checks DeployTargets applies.
+	Machines(ctx context.Context) ([]MachineRef, error)
+}
+
+// DeployTargets lists the machines the caller may Deploy to, so a picker offers only what a stack can be aimed at.
+func (s *Service) DeployTargets(ctx context.Context) ([]MachineRef, error) {
+	out := []MachineRef{}
+	if s.machines == nil {
+		return out, nil
+	}
+	if s.gate == nil {
+		return out, permissions.Ungated(ctx)
+	}
+	all, err := s.machines.Machines(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list machines: %w", err)
+	}
+	for _, m := range all {
+		err := s.gate.RequireMachine(ctx, m.ID, permissions.MachinesDeploy)
+		if permissions.Refused(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, nil
 }
 
 // MachineDiscoverer fetches fresh observed facts for a machine's containers, the runner-domain seam Import
@@ -107,7 +141,7 @@ func (s *Service) Import(ctx context.Context, machineID string, req ImportReques
 	if strings.TrimSpace(req.ProjectID) == "" {
 		return nil, fmt.Errorf("%w: project is required", apperrs.ErrInvalid)
 	}
-	if err := s.requireImport(ctx, req); err != nil {
+	if err := s.requireImport(ctx, machineID, req); err != nil {
 		return nil, err
 	}
 	machineName, err := s.machines.MachineName(ctx, machineID)
@@ -151,15 +185,25 @@ func (s *Service) Import(ctx context.Context, machineID string, req ImportReques
 	return &ImportResult{Stacks: stacks, Gateways: gateways}, nil
 }
 
-// requireImport takes stacks:write in the target project, and anywhere too when a gateway, an instance stack, comes along.
-func (s *Service) requireImport(ctx context.Context, req ImportRequest) error {
+// requireImport takes Deploy to on the machine, which a machine the caller can't see answers as not found, and
+// stacks:write in the target project, and anywhere too, with dns:write, when a gateway, an instance stack, comes along.
+func (s *Service) requireImport(ctx context.Context, machineID string, req ImportRequest) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	if err := s.gate.RequireMachine(ctx, machineID, permissions.MachinesDeploy); err != nil {
+		return err
+	}
 	if err := s.requireIn(ctx, req.ProjectID, permissions.StacksWrite); err != nil {
 		return err
 	}
 	if len(req.Gateways) == 0 {
 		return nil
 	}
-	return s.requireIn(ctx, "", permissions.StacksWrite)
+	if err := s.requireIn(ctx, "", permissions.StacksWrite); err != nil {
+		return err
+	}
+	return s.gate.RequireAnywhere(ctx, permissions.DNSWrite)
 }
 
 // adoptGateway turns a ticked cloudflared container into a dns gateway with one exposure per routed hostname.

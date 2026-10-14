@@ -54,9 +54,15 @@ A stack follows its project: whoever is in the project gets what their roles all
 
 The panel sets the stacks and deploys permissions (**Read**, **Write**, **Delete** and **Read container logs** on the stack, **Read** and **Write** on its deploys) for a role or a person, each as **Allow**, **Fallback** or **Deny**; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play) for how the three work. A stack's rules sit between its project's and the stack: they beat the project's rules, and between a person's roles Allow wins. They reach the stack's deploys and its branch deployments, which have no rules of their own.
 
-Deny **Read** on a stack for a role and the stack drops out of that role's stack lists, deploy lists, Topology's stack list and live updates, deploys included, and its link answers not found. A refused deploy names the rule that refused it, such as `deploys:write required (Denied on stack production for role Developer)`. Deleting a stack deletes its rules. The instance's own stacks, a gateway's, carry no rules and answer to the instance as before.
+Deny **Read** on a stack for a role and the stack drops out of that role's stack lists, deploy lists, Topology's stack list and live updates, deploys included, and its link answers not found. A refused deploy names the rule that refused it, such as `deploys:write required (Denied on stack production for role Developer)`. Deleting a stack deletes its rules. The instance's own stacks, a gateway's, carry no rules of their own: seeing one takes **See** on its machine and reading DNS, and editing or deploying one takes **Deploy to** on its machine and writing DNS.
 
 Agents set the same rules with `permission_overwrite_update` and `resource_type: stack`, and read them with `permission_overwrite_list`.
+
+## Which machines a stack can use
+
+A machine is a server's Docker, so putting a stack on one takes **Deploy to** on that machine, beside the stack permissions above. It is checked when you create a stack, move one to another machine, import containers from a machine, or set up a gateway, and again on every deploy you start. Machine pickers list only the machines you may deploy to, and a machine you can't see answers not found, even when you type its name into a tool.
+
+Taking someone off a machine stops their next deploy there. Deploys Nexul starts itself, after a push to a branch with a deploy rule or a merge, keep running. A stack on a machine you can't see still shows that machine's name on its page, as plain text with no link.
 
 ## Logs
 

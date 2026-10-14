@@ -81,7 +81,7 @@ func (r *StacksRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([
 func (r *StacksRepo) ListReached(ctx context.Context, projectID, workspaceID string, scope deploy.DeployScope) ([]*deploy.Stack, error) {
 	rows, err := r.hot.ListReachedStacks(ctx, sqlcgen.ListReachedStacksParams{
 		ProjectID: projectID, WorkspaceID: workspaceID, AllStacks: boolToInt(scope.All), Anywhere: boolToInt(scope.Anywhere),
-		ProjectIds: idsJSON(scope.ProjectIDs), Denied: idsJSON(scope.Denied), Allowed: idsJSON(scope.Allowed),
+		ProjectIds: idsJSON(scope.ProjectIDs), Denied: idsJSON(scope.Denied), Allowed: idsJSON(scope.Allowed), Machines: idsJSON(scope.Machines), AllMachines: boolToInt(scope.AllMachines),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list stacks: %w", err)

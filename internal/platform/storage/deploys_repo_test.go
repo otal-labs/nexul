@@ -242,6 +242,13 @@ func TestDeploysRepo_ListLogLines_Empty(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+// shownBy is the per-stack rule a scope applies: a project it reaches, or the instance's, whose stacks also need their
+// machine in the scope, while a deleted stack's deploys follow Anywhere alone.
+func shownBy(scope deploy.DeployScope, project, stackID string) bool {
+	instance := project == "" && scope.Anywhere && (stackID == "s-gone" || scope.AllMachines || slices.Contains(scope.Machines, "mach-1"))
+	return scope.All || slices.Contains(scope.ProjectIDs, project) || instance
+}
+
 // TestDeploysRepo_Page_FiltersAndScopesInSQL: each filter and scope keeps exactly the deploys the per-stack rule keeps,
 // newest first, paged once each, with deploys created in the same second.
 func TestDeploysRepo_Page_FiltersAndScopesInSQL(t *testing.T) {
@@ -265,12 +272,15 @@ func TestDeploysRepo_Page_FiltersAndScopesInSQL(t *testing.T) {
 		all = append(all, d)
 	}
 	require.NoError(t, s.Stacks.Delete(ctx, "s-gone"))
+	require.NoError(t, s.Machines.Create(ctx, newTestMachine("mach-1", "m1")))
 
 	scopes := map[string]deploy.DeployScope{
-		"everything":                   {All: true},
-		"a project and the instance's": {ProjectIDs: []string{"project-general"}, Anywhere: true},
-		"a project only":               {ProjectIDs: []string{"project-general"}},
-		"nothing":                      {ProjectIDs: []string{}},
+		"everything":                      {All: true},
+		"a project and the instance's":    {ProjectIDs: []string{"project-general"}, Anywhere: true, Machines: []string{"mach-1"}},
+		"the instance's on every machine": {ProjectIDs: []string{"project-general"}, Anywhere: true, AllMachines: true},
+		"the instance's on no machine":    {ProjectIDs: []string{"project-general"}, Anywhere: true, Machines: []string{}},
+		"a project only":                  {ProjectIDs: []string{"project-general"}},
+		"nothing":                         {ProjectIDs: []string{}},
 	}
 	filters := []deploy.DeployFilter{{}, {Status: deploy.StatusFailed}, {StackID: "s-gen"}, {StackID: "s-gen", Status: deploy.StatusFailed}}
 	for name, scope := range scopes {
@@ -279,8 +289,7 @@ func TestDeploysRepo_Page_FiltersAndScopesInSQL(t *testing.T) {
 			for i := len(all) - 1; i >= 0; i-- {
 				d := all[i]
 				project := projectOf[d.StackID]
-				shown := scope.All || slices.Contains(scope.ProjectIDs, project) || (project == "" && scope.Anywhere)
-				if shown && (f.StackID == "" || d.StackID == f.StackID) && (f.Status == "" || d.Status == f.Status) {
+				if shownBy(scope, project, d.StackID) && (f.StackID == "" || d.StackID == f.StackID) && (f.Status == "" || d.Status == f.Status) {
 					want = append(want, d.ID)
 				}
 			}

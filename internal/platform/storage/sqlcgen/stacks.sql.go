@@ -229,9 +229,10 @@ WHERE derived_from = ''
   AND (?1 = '' OR project_id = ?1)
   AND (?2 = '' OR project_id IN (SELECT id FROM projects WHERE workspace_id = ?2))
   AND (?3 = 1
-    OR (COALESCE(project_id, '') = '' AND ?4 = 1)
-    OR (project_id IN (SELECT value FROM json_each(?5)) AND id NOT IN (SELECT value FROM json_each(?6)))
-    OR id IN (SELECT value FROM json_each(?7)))
+    OR (COALESCE(project_id, '') = '' AND ?4 = 1
+        AND (?5 = 1 OR machine IN (SELECT name FROM machines WHERE id IN (SELECT value FROM json_each(?6)))))
+    OR (project_id IN (SELECT value FROM json_each(?7)) AND id NOT IN (SELECT value FROM json_each(?8)))
+    OR id IN (SELECT value FROM json_each(?9)))
 ORDER BY name
 `
 
@@ -240,6 +241,8 @@ type ListReachedStacksParams struct {
 	WorkspaceID interface{}
 	AllStacks   interface{}
 	Anywhere    interface{}
+	AllMachines interface{}
+	Machines    interface{}
 	ProjectIds  interface{}
 	Denied      interface{}
 	Allowed     interface{}
@@ -251,6 +254,8 @@ func (q *Queries) ListReachedStacks(ctx context.Context, arg ListReachedStacksPa
 		arg.WorkspaceID,
 		arg.AllStacks,
 		arg.Anywhere,
+		arg.AllMachines,
+		arg.Machines,
 		arg.ProjectIds,
 		arg.Denied,
 		arg.Allowed,

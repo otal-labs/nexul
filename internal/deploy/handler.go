@@ -32,6 +32,7 @@ func (h *Handler) Routes() http.Handler {
 	// build still calls it, and it is dropped once web moves to /api/stacks.
 	h.mountStackRoutes(mux, "/api/services")
 	mux.HandleFunc("POST /api/machines/{id}/import", h.importMachine)
+	mux.HandleFunc("GET /api/machines/deployable", h.deployableMachines)
 	return mux
 }
 
@@ -273,6 +274,15 @@ func (h *Handler) importMachine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) deployableMachines(w http.ResponseWriter, r *http.Request) {
+	machines, err := h.svc.DeployTargets(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, machines)
 }
 
 func (h *Handler) listServices(w http.ResponseWriter, r *http.Request) {

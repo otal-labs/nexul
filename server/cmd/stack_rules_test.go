@@ -50,6 +50,10 @@ func withDeployRoles(t *testing.T, f permFixture) {
 	}
 	require.NoError(t, f.store.WorkspaceMembers.ChangeRoles(ctx, wsDefault, uBoth, []string{"role-front"}, nil))
 	listRolesIn(t, f.db, pGeneral)
+	withMachineM1(t, f)
+	for _, role := range []string{"role-dev", "role-front"} {
+		require.NoError(t, f.store.Access.SetRole(ctx, "machine", machineM1, role, permissions.SetOf(permissions.MachinesSee, permissions.MachinesDeploy), permissions.Set{}))
+	}
 	build := &deploy.BuildSource{RepoOwner: "acme", RepoName: "app", Branch: "main", Dockerfile: "Dockerfile"}
 	require.NoError(t, f.store.Stacks.Create(ctx, &deploy.Stack{ID: stackProd, ProjectID: pGeneral, Name: "production", Slug: "production", Machine: "m1",
 		Strategy: deploy.StrategyRun, BuildSource: build, CreatedAt: now, UpdatedAt: now}))

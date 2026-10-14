@@ -27,7 +27,8 @@ WHERE derived_from = ''
   AND (sqlc.arg(project_id) = '' OR project_id = sqlc.arg(project_id))
   AND (sqlc.arg(workspace_id) = '' OR project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id)))
   AND (sqlc.arg(all_stacks) = 1
-    OR (COALESCE(project_id, '') = '' AND sqlc.arg(anywhere) = 1)
+    OR (COALESCE(project_id, '') = '' AND sqlc.arg(anywhere) = 1
+        AND (sqlc.arg(all_machines) = 1 OR machine IN (SELECT name FROM machines WHERE id IN (SELECT value FROM json_each(sqlc.arg(machines))))))
     OR (project_id IN (SELECT value FROM json_each(sqlc.arg(project_ids))) AND id NOT IN (SELECT value FROM json_each(sqlc.arg(denied))))
     OR id IN (SELECT value FROM json_each(sqlc.arg(allowed))))
 ORDER BY name;

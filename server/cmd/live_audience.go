@@ -560,20 +560,24 @@ func autoPlayFrame(ctx context.Context, a liveAudience, raw json.RawMessage) boo
 	return playID == "" || a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", playID)
 }
 
-// stackFrame reaches who reads the stack: through its rules, a branch deployment's base stack's.
+// stackFrame reaches who reads the stack: through its rules, a branch deployment's base stack's; an instance stack's
+// readers see its machine and read dns (ADR 0151).
 func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		Stack struct {
 			ID          string `json:"id"`
 			ProjectID   string `json:"project_id"`
 			DerivedFrom string `json:"derived_from"`
+			Machine     string `json:"machine"`
 		} `json:"stack"`
 	}
 	if !decode(raw, &p) {
 		return false
 	}
 	if p.Stack.ProjectID == "" {
-		return a.access.RequireAnywhere(ctx, permissions.StacksRead) == nil
+		return a.access.RequireAnywhere(ctx, permissions.StacksRead) == nil &&
+			a.access.RequireAnywhere(ctx, permissions.DNSRead) == nil &&
+			a.access.RequireMachineNamed(ctx, p.Stack.Machine, permissions.MachinesSee) == nil
 	}
 	ruled := p.Stack.ID
 	if p.Stack.DerivedFrom != "" {

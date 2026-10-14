@@ -74,6 +74,13 @@ type Gate interface {
 	// CallerStacks is what a stack or deploy list in workspaceID, or every one when empty, filters by for action; all is
 	// true for every project's stacks.
 	CallerStacks(ctx context.Context, workspaceID string, action permissions.Action) (reach permissions.StackReach, all bool, err error)
+	// RequireMachine and RequireMachineNamed check a machine action by id and by the name a stack carries; a machine
+	// the caller can't see is not found, and a name no machine bears is invalid input (ADR 0151).
+	RequireMachine(ctx context.Context, machineID string, action permissions.Action) error
+	RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error
+	// CallerMachines is the ids of the machines the caller sees, for a list of instance stacks to filter by; all is true
+	// when they see every one without asking.
+	CallerMachines(ctx context.Context) (machineIDs []string, all bool, err error)
 }
 
 // SetGate wires the permission check; unset, only the server's own calls pass.
@@ -95,9 +102,51 @@ func (s *Service) requireIn(ctx context.Context, projectID string, action permis
 // deployment's through its base stack's (ADR 0148).
 func (s *Service) requireStack(ctx context.Context, stack *Stack, action permissions.Action) error {
 	if s.gate == nil || stack.ProjectID == "" {
-		return s.requireIn(ctx, stack.ProjectID, action)
+		if err := s.requireIn(ctx, stack.ProjectID, action); err != nil {
+			return err
+		}
+		return s.requireInstanceStack(ctx, stack, action)
 	}
 	return s.gate.RequireStack(ctx, stack.ProjectID, ruleStackID(stack), action)
+}
+
+// requireInstanceStack adds what a stack outside every project takes beside its area: seeing it is See on its machine
+// and dns:read, and a stack missing either is not found; editing or deploying it is Deploy to and dns:write (ADR 0151).
+func (s *Service) requireInstanceStack(ctx context.Context, stack *Stack, action permissions.Action) error {
+	if s.gate == nil || stack.ProjectID != "" {
+		return nil
+	}
+	if !reads(action) {
+		return s.requireAim(ctx, "", stack.Machine)
+	}
+	if err := s.gate.RequireMachineNamed(ctx, stack.Machine, permissions.MachinesSee); err != nil {
+		return err
+	}
+	err := s.gate.RequireAnywhere(ctx, permissions.DNSRead)
+	if permissions.Refused(err) {
+		return fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stack.ID)
+	}
+	return err
+}
+
+// reads is whether action only looks at a stack or a deploy.
+func reads(action permissions.Action) bool {
+	return action == permissions.StacksRead || action == permissions.StacksLogs || action == permissions.DeploysRead
+}
+
+// requireAim takes Deploy to on the machine something is aimed at, and dns:write too for an instance stack, beside the
+// stack checks the caller already passed.
+func (s *Service) requireAim(ctx context.Context, projectID, machine string) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	if err := s.gate.RequireMachineNamed(ctx, machine, permissions.MachinesDeploy); err != nil {
+		return err
+	}
+	if projectID != "" {
+		return nil
+	}
+	return s.gate.RequireAnywhere(ctx, permissions.DNSWrite)
 }
 
 // ruleStackID is the stack whose rules reach stack: its base for a branch deployment, else itself.
@@ -127,6 +176,12 @@ func (s *Service) loadForUpdate(ctx context.Context, stack Stack) (*Stack, error
 		return nil, err
 	}
 	if err := s.requireIn(ctx, stack.ProjectID, permissions.StacksWrite); err != nil {
+		return nil, err
+	}
+	if existing.Machine == stack.Machine {
+		return existing, nil
+	}
+	if err := s.requireAim(ctx, stack.ProjectID, stack.Machine); err != nil {
 		return nil, err
 	}
 	return existing, nil
@@ -192,6 +247,9 @@ func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) 
 	stack, err := s.loadStack(ctx, req.StackID, permissions.DeploysWrite)
 	if err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", req.StackID, err)
+	}
+	if err := s.requireDeployTo(ctx, stack); err != nil {
+		return nil, fmt.Errorf("deploy %s: %w", stack.Name, err)
 	}
 	if err := s.checkNotTestsRepo(ctx, stack); err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", stack.Name, err)
@@ -260,6 +318,15 @@ func (s *Service) Retry(ctx context.Context, id, triggeredBy string) (*Deploy, e
 	return d, nil
 }
 
+// requireDeployTo takes Deploy to on the stack's machine for a deploy a person starts, so taking them off the machine
+// stops their next one; the server's own deploys pass. An instance stack took it already in requireStack.
+func (s *Service) requireDeployTo(ctx context.Context, stack *Stack) error {
+	if s.gate == nil || stack.ProjectID == "" {
+		return nil
+	}
+	return s.gate.RequireMachineNamed(ctx, stack.Machine, permissions.MachinesDeploy)
+}
+
 // Rollback redeploys the last healthy image as a normal record, so provenance tracks the acting user.
 func (s *Service) Rollback(ctx context.Context, stackID, triggeredBy string) (*Deploy, error) {
 	if strings.TrimSpace(stackID) == "" {
@@ -311,6 +378,9 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 		return nil, err
 	}
 	if err := s.requireCreate(ctx, stack); err != nil {
+		return nil, err
+	}
+	if err := s.requireAim(ctx, stack.ProjectID, stack.Machine); err != nil {
 		return nil, err
 	}
 	if err := s.checkBranchDeployRules(ctx, &stack); err != nil {
@@ -590,6 +660,10 @@ func (s *Service) CreateStackWithOptions(ctx context.Context, in Stack, declared
 		return nil, nil, err
 	}
 	if opts.LinkRepository && in.BuildSource != nil && in.BuildSource.RepoOwner != "" {
+		// Linking changes the project, so the machine is checked before it, not after.
+		if err := s.requireAim(ctx, in.ProjectID, in.Machine); err != nil {
+			return nil, nil, err
+		}
 		if err := s.projects.LinkRepo(ctx, in.ProjectID, in.BuildSource.RepoOwner, in.BuildSource.RepoName); err != nil {
 			return nil, nil, fmt.Errorf("link repository %s/%s: %w", in.BuildSource.RepoOwner, in.BuildSource.RepoName, err)
 		}
@@ -964,6 +1038,21 @@ func (s *Service) listScope(ctx context.Context, workspaceID string, action perm
 		return DeployScope{}, anywhere
 	}
 	scope.Anywhere = anywhere == nil
+	if !scope.Anywhere {
+		return scope, nil
+	}
+	// An instance stack also takes dns:read and its machine's See; a deleted stack's deploys have neither to check.
+	scope.Machines = []string{}
+	dns := s.gate.RequireAnywhere(ctx, permissions.DNSRead)
+	if dns != nil && !permissions.Refused(dns) {
+		return DeployScope{}, dns
+	}
+	if dns != nil {
+		return scope, nil
+	}
+	if scope.Machines, scope.AllMachines, err = s.gate.CallerMachines(ctx); err != nil {
+		return DeployScope{}, err
+	}
 	return scope, nil
 }
 

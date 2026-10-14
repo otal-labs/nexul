@@ -107,14 +107,14 @@ describe("SetupDomainStep", () => {
       expect(await screen.findByRole("button", { name: /^connect$/i })).toBeInTheDocument();
       expect(step(/connect cloudflare/i)).toHaveAttribute("data-state", "active");
       expect(step(/deploy the tunnel/i)).toHaveAttribute("data-state", "upcoming");
-      expect(mocks.get).not.toHaveBeenCalledWith("/api/machines");
+      expect(mocks.get).not.toHaveBeenCalledWith("/api/machines/deployable");
     });
 
     it("deploys on the only machine with no project, routes the hostname and finishes", async () => {
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/connectors") return { data: [cloudflare(true)] };
         if (url === "/api/dns/zones") return { data: [{ id: "z1", name: "example.com", status: "active" }] };
-        if (url === "/api/machines") return { data: [{ id: "m1", name: "instance" }] };
+        if (url === "/api/machines/deployable") return { data: [{ id: "m1", name: "instance" }] };
         if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "healthy" } };
         if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-27" }] };
         return { data: [] };

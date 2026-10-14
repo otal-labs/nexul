@@ -113,7 +113,9 @@ func stackReachClause(scope deploy.DeployScope) (string, []any) {
 		cond = `((` + cond + ` AND ` + ruled + ` NOT IN (SELECT value FROM json_each(?))) OR ` + ruled + ` IN (SELECT value FROM json_each(?)))`
 		args = append(args, idsJSON(scope.Denied), idsJSON(scope.Allowed))
 	}
-	return "(" + cond + " OR (COALESCE(s.project_id, '') = '' AND ?))", append(args, scope.Anywhere)
+	// A deleted stack's deploys have no machine left to filter by, so they follow Anywhere alone.
+	instance := "(COALESCE(s.project_id, '') = '' AND ? AND (s.id IS NULL OR ? OR s.machine IN (SELECT name FROM machines WHERE id IN (SELECT value FROM json_each(?)))))"
+	return "(" + cond + " OR " + instance + ")", append(args, scope.Anywhere, scope.AllMachines, idsJSON(scope.Machines))
 }
 
 func (r *DeploysRepo) ListByService(ctx context.Context, service string) ([]*deploy.Deploy, error) {

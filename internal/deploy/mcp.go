@@ -276,7 +276,7 @@ type candidateIn struct {
 
 type stackCreateIn struct {
 	ProjectID         string            `json:"project_id,omitempty" jsonschema:"The project the stack belongs to, by id from project_list. Required with a build_source; omit only for the instance's own infrastructure, which belongs to no project."`
-	Machine           string            `json:"machine" jsonschema:"The name of the machine the stack runs on, from machine_list, for example prod-1."`
+	Machine           string            `json:"machine" jsonschema:"The name of the machine the stack runs on, from machine_list, for example prod-1. Needs Deploy to on it."`
 	Name              string            `json:"name,omitempty" jsonschema:"The stack's name; its slug is derived from it once. With a candidate it defaults to build_source.repo_name."`
 	Strategy          Strategy          `json:"strategy,omitempty" jsonschema:"compose or run. Required without a candidate; a candidate sets it from its kind."`
 	ComposePath       string            `json:"compose_path,omitempty" jsonschema:"The compose file's path for the compose strategy. Defaults to docker-compose.yml."`
@@ -411,7 +411,7 @@ type stackUpdateIn struct {
 	ID                string              `json:"id" jsonschema:"The stack's id, from stack_list."`
 	ProjectID         *string             `json:"project_id,omitempty" jsonschema:"Move the stack to this project, by id from project_list. An empty string leaves it with no project, which only a stack without a build source may be."`
 	Name              *string             `json:"name,omitempty" jsonschema:"A new display name; the slug never changes."`
-	Machine           *string             `json:"machine,omitempty" jsonschema:"Move the stack to the machine with this name, from machine_list; the next deploy runs there."`
+	Machine           *string             `json:"machine,omitempty" jsonschema:"Move the stack to the machine with this name, from machine_list; the next deploy runs there. Needs Deploy to on it."`
 	Strategy          *Strategy           `json:"strategy,omitempty" jsonschema:"compose or run."`
 	ComposePath       *string             `json:"compose_path,omitempty" jsonschema:"The compose file's path for the compose strategy."`
 	DockerNetwork     *string             `json:"docker_network,omitempty" jsonschema:"The docker network a run stack's container joins."`
@@ -561,7 +561,7 @@ func stackDeployTool(s *Service) mcptool.Tool {
 		"Starts a deploy of a stack on its machine, exactly as the deploy button does: build a ref of its repository, "+
 			"redeploy an image, roll back to the last healthy image, or retry a failed deploy on the commit it built with the "+
 			"stack's current settings, for example after fixing an environment variable. It is rejected while the stack already has a "+
-			"deploy pending or running. Returns the new deploy; poll deploy_get until it is healthy or failed.",
+			"deploy pending or running. It needs Deploy to on the stack's machine. Returns the new deploy; poll deploy_get until it is healthy or failed.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackDeployIn) (any, error) {
 			d, err := startDeploy(ctx, s, in)
@@ -628,7 +628,8 @@ func machineImportTool(s *Service) mcptool.Tool {
 		"Adopts containers already running on a machine as unmanaged stacks, using what machine_discover found: "+
 			"compose projects, standalone containers, and cloudflared gateways with their hostnames. Run "+
 			"machine_discover first and pass the names it returned. Re-importing updates the observed facts by "+
-			"container name and never deletes; a gateway that cannot be adopted carries its reason in the result.",
+			"container name and never deletes; a gateway that cannot be adopted carries its reason in the result. It needs "+
+			"Deploy to on the machine.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in machineImportIn) (any, error) {
 			req := ImportRequest{ProjectID: in.ProjectID, Standalone: in.Standalone, Gateways: in.Gateways}

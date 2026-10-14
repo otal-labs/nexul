@@ -25,6 +25,14 @@ func (f fakeMachineLookup) MachineName(_ context.Context, id string) (string, er
 	return name, nil
 }
 
+func (f fakeMachineLookup) Machines(context.Context) ([]MachineRef, error) {
+	out := make([]MachineRef, 0, len(f.names))
+	for id, name := range f.names {
+		out = append(out, MachineRef{ID: id, Name: name})
+	}
+	return out, nil
+}
+
 // fakeMachineDiscoverer is an in-memory deploy.MachineDiscoverer for import tests.
 type fakeMachineDiscoverer struct {
 	containers []DiscoveredContainer
