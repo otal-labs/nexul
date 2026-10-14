@@ -74,6 +74,14 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 - [How the Welcome wizard, the account menu entry and its dot look](issues/05-the-welcome-wizard-screens.md): Rail frame (step list beside the step), each step's screen, the owner hand-over beat, the Welcome row and red dot in the account menu; the phone step shows its QR code itself; runner-up Row
 - [How an admin sees each person's progress on Team](issues/06-progress-on-team.md): a gap line under each person while a step is left or skipped, details in the person dialog, accepted invitations in the last 30 days; runner-up Progress column
 - [Write the spec](issues/07-write-the-spec.md): `spec.md` written and sliced into build tickets 08 to 15; the phone app shows no dot, the dot and Team update live through one topic, and agents read progress through `account_get` and `account_list`
+- [A role carries its welcome steps](issues/08-welcome-ticks-on-roles.md): built in #631, with ADR 0149
+- [Each person's welcome progress, skip and live updates](issues/09-welcome-progress.md): built in #632
+- [The Welcome wizard](issues/10-the-welcome-wizard.md): built in #635
+- [Welcome in the account menu, and its red dot](issues/11-the-account-menu-dot.md): built in #634
+- [The owner wizard hands over to the Welcome wizard](issues/12-owner-wizard-hand-over.md): built in #642
+- [Template roles](issues/13-template-roles.md): built in #639 and #640
+- [Progress on Team and accepted invitations](issues/14-progress-on-team.md): built in #643
+- [The guide, and a walkthrough on a real install](issues/15-guide-and-walkthrough.md): guide page and roadmap move in the docs PR, then the walkthrough on a fresh install
 
 ## Not yet specified
 

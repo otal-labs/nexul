@@ -1,7 +1,7 @@
 # 13: Template roles
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 08
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role) (Instance template), `practices/go.md`, `practices/mcp.md`, `practices/react-guide.md`, ticket 04's
@@ -24,3 +24,7 @@ answer, the spec (Template roles).
 - [ ] A new workspace has the template roles with their ticks, and editing a template afterwards leaves it alone.
 - [ ] A shipped template can't be deleted; an added one can, and the workspace copies stay.
 - [ ] `templates:write` gates every write. Verified at 768, 1024, 1440.
+
+## Answer
+
+Built in #639 and #640: the `role` template kind with the five shipped keys, every new workspace seeded with them, Settings → Templates → Roles, and Administrator without making or removing a workspace.

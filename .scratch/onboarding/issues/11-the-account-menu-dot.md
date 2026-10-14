@@ -1,7 +1,7 @@
 # 11: Welcome in the account menu, and its red dot
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 09
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/react-guide.md`, `practices/design-language.md`, ticket 05's answer (Account menu).
@@ -17,3 +17,7 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practice
 
 - [ ] Web tests: the dot shows for a left step, not for a skipped one, and not for an ungiven `projects`.
 - [ ] The dot clears live when a step is done in another tab. Verified at 768, 1024, 1440.
+
+## Answer
+
+Built in #634: the red dot on the account menu trigger in the sidebar and the icon rail, and the Welcome row with one row per step not done.

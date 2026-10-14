@@ -1,7 +1,7 @@
 # 15: The guide, and a walkthrough on a real install
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 10, 11, 12, 13, 14
 
 ## What to build
@@ -21,3 +21,7 @@ Blocked by: 10, 11, 12, 13, 14
 ## Acceptance criteria
 
 - [ ] The guide pages build, and the walkthrough's findings are fixed or ticketed.
+
+## Answer
+
+The guide page `welcome-wizard.md`, the pages it touched and the roadmap move ship in the docs PR from `docs/welcome-wizard-guide`. The walkthrough on a fresh install runs after it, and its findings go in that PR's description.

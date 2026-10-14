@@ -1,7 +1,7 @@
 # 10: The Welcome wizard
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 09
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/react-guide.md` (F1 to F7 and the self-review checklist), `practices/design-language.md`,
@@ -24,3 +24,7 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practice
       route, and Finish later sets the first run.
 - [ ] Each step's live check settles from `welcome.progress_changed` without a refresh.
 - [ ] Screenshots at 768, 1024, 1440 match ticket 05.
+
+## Answer
+
+Built in #635: `/wizard/welcome` in the Rail frame with every step screen, Skip for now, Finish later and the end screen, opening on a named step, the first-login page retired, and the `welcome.progress_changed` follower.
