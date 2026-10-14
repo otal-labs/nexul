@@ -343,8 +343,6 @@ func (h *Handler) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, invalidInvitationError())
 		return
 	}
-	var details *InvitationAcceptance
-	var err error
 	if req.Token != "" {
 		rawAuth := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 		user, _, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
@@ -352,11 +350,10 @@ func (h *Handler) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}
-		details, err = h.svc.PrepareAuthenticatedAcceptance(ctx, user.ID, req.Token)
+		httpx.WriteError(w, h.svc.PrepareAuthenticatedAcceptance(ctx, user.ID))
+		return
 	}
-	if req.AcceptanceToken != "" {
-		details, err = h.svc.GetInvitationAcceptance(ctx, req.AcceptanceToken)
-	}
+	details, err := h.svc.GetInvitationAcceptance(ctx, req.AcceptanceToken)
 	if err != nil {
 		httpx.WriteError(w, classifyInvitationError(err))
 		return
@@ -479,12 +476,18 @@ func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, pro
 		return
 	}
 	acceptance, err := h.svc.CompleteInvitationOAuth(r.Context(), provider, state, code)
+	var existing *existingAccountError
+	if errors.As(err, &existing) {
+		http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+existing.fragment(), http.StatusFound)
+		return
+	}
+	if errors.Is(classifyInvitationError(err), apperrs.ErrNotFound) {
+		logging.FromCtx(r.Context()).Warn("invitation sign-in", "provider", provider, "error", err)
+		http.Redirect(w, r, h.spaOrigin(r)+"/invite#refused=gone", http.StatusFound)
+		return
+	}
 	if err != nil {
-		reason := signInErrorCode(err)
-		if errors.Is(classifyInvitationError(err), apperrs.ErrNotFound) {
-			reason = signInInvitationInvalid
-		}
-		h.signInFailed(w, r, provider, reason, err)
+		h.signInFailed(w, r, provider, signInErrorCode(err), err)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil)})

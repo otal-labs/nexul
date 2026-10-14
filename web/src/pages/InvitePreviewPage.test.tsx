@@ -13,6 +13,8 @@ const originalLocation = window.location;
 vi.mock("@/api/client", () => ({ api: { post: mocks.post, get: mocks.get, patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const GONE = "This invitation has been deleted or has expired";
+
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[`/invite${window.location.hash}`]}><Routes><Route path="/invite" element={<InvitePreviewPage />} /><Route path="/" element={<div>home</div>} /></Routes></MemoryRouter></QueryClientProvider>);
 
 describe("InvitePreviewPage", () => {
@@ -37,11 +39,38 @@ describe("InvitePreviewPage", () => {
     expect(screen.getByText("Frontend")).toBeInTheDocument();
   });
 
-  it("shows the same generic invalid state for a rejected preview", async () => {
-    mocks.post.mockRejectedValue(new Error("secret backend reason"));
+  it("says only that the link is gone when the server can't find it", async () => {
+    mocks.post.mockRejectedValue(Object.assign(new Error("secret backend reason"), { response: { status: 404, data: { code: "NOT_FOUND", message: "secret backend reason" } } }));
     renderPage();
-    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
-    expect(screen.queryByText("secret backend reason")).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: GONE })).toBeInTheDocument();
+    expect(screen.queryByText(/secret backend reason/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("says the link is gone when the provider round trip found it gone, without reading the fragment as a link", async () => {
+    window.history.replaceState(null, "", "/invite#refused=gone");
+    renderPage();
+    expect(await screen.findByRole("heading", { name: GONE })).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+  });
+
+  it("turns a signed-in person away, naming them from the server's refusal", async () => {
+    useSessionStore.setState({ token: "session", isLoggedIn: true });
+    mocks.post.mockRejectedValue(Object.assign(new Error("conflict"), { response: { status: 409, data: { code: "existing_account", message: "conflict", details: { provider: "github", login: "lena", name: "Lena Fischer", avatar_url: "" } } } }));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You already have an account here" })).toBeInTheDocument();
+    expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
+    expect(screen.getByText(/@lena · GitHub/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /go to/i })).toHaveAttribute("href", "/");
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns away an account the provider round trip found, without reading the fragment as a link", async () => {
+    window.history.replaceState(null, "", "/invite#login=lena&name=Lena+Fischer&provider=github&refused=existing_account");
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You already have an account here" })).toBeInTheDocument();
+    expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
   it("posts the provider and token when a configured provider is chosen", async () => {
@@ -54,8 +83,7 @@ describe("InvitePreviewPage", () => {
   });
 
   it("shows authenticated grants and redeems only after explicit acceptance", async () => {
-    useSessionStore.setState({ token: "session", isLoggedIn: true });
-    window.history.replaceState(null, "", "/invite#acceptance-token");
+    window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
     mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }] }], expires_at: "later", providers: [], acceptance_token: "acceptance-token" } }).mockResolvedValueOnce({ data: { token: "new-session", workspace_ids: ["ws-1"] } });
     const user = userEvent.setup();
     renderPage();
@@ -84,23 +112,22 @@ describe("InvitePreviewPage", () => {
     expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "raw-token" });
   });
 
-  it("says a link with no token is invalid, with no check still spinning", async () => {
+  it("says a link with no token is gone, with no check still spinning", async () => {
     window.history.replaceState(null, "", "/invite");
     renderPage();
-    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: GONE })).toBeInTheDocument();
     expect(screen.queryByText("Checking invitation…")).not.toBeInTheDocument();
   });
 
-  it("renders the generic invalid state for malformed percent encoding", async () => {
+  it("says the link is gone for malformed percent encoding", async () => {
     window.history.replaceState(null, "", "/invite#%E0%A4%A");
     renderPage();
-    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: GONE })).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
   it("declines without redeeming and returns to the home route", async () => {
-    useSessionStore.setState({ token: "session", isLoggedIn: true });
-    window.history.replaceState(null, "", "/invite#acceptance-token");
+    window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
     mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [], expires_at: "later", providers: [], acceptance_token: "acceptance-token" } });
     const user = userEvent.setup();
     renderPage();

@@ -5,6 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { InvitationAcceptancePanel } from "@/components/invitation/InvitationAcceptancePanel";
 import { InvitationGrantSummary } from "@/components/invitation/InvitationGrantSummary";
 import { InvitationProviderList } from "@/components/invitation/InvitationProviderList";
+import { InvitationExistingAccountScreen, InvitationGoneScreen } from "@/components/invitation/InvitationRefusalScreens";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { displayTitleClass } from "@/components/PageHeader";
@@ -19,10 +20,10 @@ import {
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
+import { goneRefusal, invitationRefusal, parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
 import { cn } from "@/lib/utils";
 
-const INVALID_MESSAGE = "This invitation has expired or isn't valid";
+const UNCHECKED_MESSAGE = "Couldn't check this invitation";
 
 export const InvitePreviewPage = () => {
   const location = useLocation();
@@ -68,7 +69,10 @@ export const InvitePreviewPage = () => {
   const instanceName = details?.instance_name ?? (details?.instance_url ? new URL(details.instance_url).host : "this instance");
   // A preview with no token to read is disabled, and a disabled query stays pending, so only a running fetch counts.
   const checking = (preview.isPending && preview.isFetching) || exchange.isPending;
-  const invalid = fragment.malformed || Boolean((fragment.token === "" && !publicPreview && !exchange.isPending) || preview.error || exchange.error);
+  const noLink = fragment.malformed || fragment.token === "";
+  const refusal = fragment.refusal ?? invitationRefusal(preview.error ?? exchange.error ?? redeem.error) ?? (noLink ? goneRefusal : undefined);
+  const refusedPerson = refusal?.kind === "existing_account" ? refusal.person ?? acceptance?.authenticated_user : undefined;
+  const invalid = !refusal && Boolean(preview.error || exchange.error);
 
   // The link left the address bar on arrival, so a reload would lose it; retry with the token already read.
   const retry = () => {
@@ -97,20 +101,24 @@ export const InvitePreviewPage = () => {
 
   return (
     <ShowcaseSurface>
-      <div className="flex min-h-full items-center justify-center px-6 py-12">
-        <div className="panel w-full max-w-xl space-y-6 p-8 [--panel-opacity:72%]">
-          <header className="space-y-3">
-            <p className={microheaderClass}>Invitation</p>
-            <h1 className={cn(displayTitleClass, "text-[2rem]")}>Join {instanceName}</h1>
-            <p className="text-sm text-muted-foreground">This link works once and expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
-          </header>
-          {checking && <LoadingDisplay label="Checking invitation…" />}
-          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} message="Ask whoever sent it for a new link." />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
-          {!invalid && details && <InvitationGrantSummary invitation={details} />}
-          {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
-          {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
+      {refusal?.kind === "gone" && <InvitationGoneScreen />}
+      {refusal?.kind === "existing_account" && <InvitationExistingAccountScreen person={refusedPerson} />}
+      {!refusal && (
+        <div className="flex min-h-full items-center justify-center px-6 py-12">
+          <div className="panel w-full max-w-xl space-y-6 p-8 [--panel-opacity:72%]">
+            <header className="space-y-3">
+              <p className={microheaderClass}>Invitation</p>
+              <h1 className={cn(displayTitleClass, "text-[2rem]")}>Join {instanceName}</h1>
+              <p className="text-sm text-muted-foreground">This link works once and expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
+            </header>
+            {checking && <LoadingDisplay label="Checking invitation…" />}
+            {invalid && <div className="space-y-3"><ErrorDisplay title={UNCHECKED_MESSAGE} message="Check your connection and try again." /><Button type="button" variant="outline" onClick={retry}>Try again</Button></div>}
+            {!invalid && details && <InvitationGrantSummary invitation={details} />}
+            {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
+            {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
+          </div>
         </div>
-      </div>
+      )}
     </ShowcaseSurface>
   );
 };

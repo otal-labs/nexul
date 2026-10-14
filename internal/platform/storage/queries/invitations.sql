@@ -107,11 +107,6 @@ LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m
 LEFT JOIN roles r ON r.id = mr.role_id
 WHERE m.workspace_id = ? AND m.user_id = ?;
 
--- name: GetInvitationMember :one
-SELECT user_id
-FROM workspace_members
-WHERE workspace_id = ? AND user_id = ?;
-
 -- name: AddInvitationMember :exec
 INSERT INTO workspace_members (user_id, workspace_id, created_at)
 VALUES (?, ?, ?)

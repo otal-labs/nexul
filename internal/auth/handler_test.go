@@ -67,26 +67,29 @@ func TestHandler_StartOAuth(t *testing.T) {
 	assert.Equal(t, stateCookie, cookies[0].Name)
 }
 
-func TestHandler_AuthenticatedAcceptance_ReturnsGrantDetails(t *testing.T) {
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+// TestHandler_AuthenticatedAcceptance_TurnsTheAccountAway: the invite page shows its existing-account screen from the
+// code and names the person from the details, so both are the contract.
+func TestHandler_AuthenticatedAcceptance_TurnsTheAccountAway(t *testing.T) {
+	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "lena")})
 	session, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	userID := mustVerify(t, s, session)
+	handoffs := &fakeOAuthHandoffStore{}
 	s.SetInvitationGate(&fakeInvitationGate{token: "raw-token", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}})
-	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
-	h := NewHandler(s).Routes()
+	s.SetOAuthHandoffStore(handoffs)
 	req := httptest.NewRequest(http.MethodPost, "/api/invitations/acceptance", strings.NewReader(`{"token":"raw-token"}`))
 	req.Header.Set("Authorization", "Bearer "+session)
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
-	var body InvitationAcceptance
+	NewHandler(s).Routes().ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+	var body struct {
+		Code    string                      `json:"code"`
+		Details InvitationAuthenticatedUser `json:"details"`
+	}
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
-	assert.Equal(t, "inv-1", body.InvitationID)
-	assert.NotEmpty(t, body.AcceptanceToken)
-	assert.Equal(t, userID, body.AuthenticatedUser.ID)
-	_, err = users.GetUserByID(context.Background(), userID)
-	require.NoError(t, err)
+	assert.Equal(t, "existing_account", body.Code)
+	assert.Equal(t, InvitationAuthenticatedUser{Provider: ProviderGitHub, Login: "lena", Name: "Name lena", AvatarURL: "https://avatar/lena"}, body.Details)
+	assert.Nil(t, handoffs.handoff, "nothing is started for the link")
 }
 
 func TestHandler_StartOAuth_UsesConfiguredHTTPSForSecureCookie(t *testing.T) {
@@ -183,6 +186,49 @@ func TestHandler_InvitationCallback_ReturnsAnAcceptanceFragment(t *testing.T) {
 
 	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
 	assert.Regexp(t, `/invite#acceptance-token=\S+$`, rec.Header().Get("Location"), "the invite page reads an unlabeled fragment as the invitation link itself")
+}
+
+// TestHandler_InvitationCallback_RefusalsLandOnTheInvitePage: the invite page reads the fragment to show its screen, and
+// an existing account never gets an acceptance to redeem.
+func TestHandler_InvitationCallback_RefusalsLandOnTheInvitePage(t *testing.T) {
+	tests := []struct {
+		name    string
+		arrange func(t *testing.T, s *Service, handoffs *fakeOAuthHandoffStore)
+		want    string
+	}{
+		{"an identity that already has an account", func(t *testing.T, s *Service, _ *fakeOAuthHandoffStore) {
+			_, err := s.Login(t.Context(), "good-code")
+			require.NoError(t, err)
+		}, "/invite#login=lena&name=Name+lena&provider=github&refused=existing_account"},
+		{"a link deleted while the person signed in", func(_ *testing.T, _ *Service, handoffs *fakeOAuthHandoffStore) {
+			handoffs.handoff = nil
+		}, "/invite#refused=gone"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "lena")})
+			settings.st.GitHubOAuthClientID = "client"
+			settings.st.GitHubOAuthClientSecret = "secret"
+			s.cfg.SPAOrigin = "https://deploy.example.com"
+			handoffs := &fakeOAuthHandoffStore{}
+			s.SetInvitationGate(&fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1"}})
+			s.SetOAuthHandoffStore(handoffs)
+			start, err := s.StartInvitationOAuth(t.Context(), ProviderGitHub, "raw-invitation")
+			require.NoError(t, err)
+			tt.arrange(t, s, handoffs)
+
+			req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=good-code&state="+start.State, nil)
+			req.AddCookie(&http.Cookie{Name: invitationStateCookie(hashCredential(start.State)), Value: start.State})
+			rec := httptest.NewRecorder()
+			NewHandler(s).Routes().ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusFound, rec.Code)
+			assert.Equal(t, "https://deploy.example.com"+tt.want, rec.Header().Get("Location"))
+			if handoffs.handoff != nil {
+				assert.Empty(t, handoffs.handoff.AcceptanceHash, "the sign-in handoff is left to expire, never completed")
+			}
+		})
+	}
 }
 
 func TestHandler_CallbackGET_SPAOrigin(t *testing.T) {

@@ -332,42 +332,27 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			invalidatedInvitationID = invitation.ID
 			return nil
 		}
-		userRow, existing, err := invitationUser(ctx, q, identity)
+		existing, err := identityHasAccount(ctx, q, identity)
 		if err != nil {
 			return err
 		}
-		userID := identity.ID
 		if existing {
-			if userRow.AccountStatus != "active" {
-				return invalidInvitation()
-			}
-			userID = userRow.ID
+			return tenancy.ErrExistingAccount
 		}
-		redeemedBy := sql.NullString{String: userID, Valid: existing}
-		changed, err := q.MarkInvitationRedeemed(ctx, sqlcgen.MarkInvitationRedeemedParams{RedeemedAt: sql.NullInt64{Int64: now.Unix(), Valid: true}, RedeemedBy: redeemedBy, ID: invitation.ID, ExpiresAt: now.Unix()})
+		userID := identity.ID
+		changed, err := q.MarkInvitationRedeemed(ctx, sqlcgen.MarkInvitationRedeemedParams{RedeemedAt: sql.NullInt64{Int64: now.Unix(), Valid: true}, ID: invitation.ID, ExpiresAt: now.Unix()})
 		if err != nil {
 			return fmt.Errorf("mark invitation redeemed: %w", err)
 		}
 		if changed != 1 {
 			return invalidInvitation()
 		}
-		if !existing {
-			if err := insertInvitationUser(ctx, q, identity, now); err != nil {
-				return err
-			}
+		if err := insertInvitationUser(ctx, q, identity, now); err != nil {
+			return err
 		}
 		redemptionEvents := append([]eventbus.OutboxEvent{{ID: ids.New(), Topic: tenancy.TopicInvitationRedeemed, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID}}}, events...)
-		if !existing {
-			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicAccountAdmitted, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID}})
-		}
+		redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicAccountAdmitted, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID}})
 		for _, grant := range invitation.Grants {
-			_, err := q.GetInvitationMember(ctx, sqlcgen.GetInvitationMemberParams{WorkspaceID: grant.WorkspaceID, UserID: userID})
-			if err == nil {
-				continue
-			}
-			if !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("check existing membership: %w", err)
-			}
 			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, CreatedAt: now.Unix()}); err != nil {
 				return fmt.Errorf("add invitation membership: %w", classifyWriteErr(err))
 			}
@@ -378,10 +363,8 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			}
 			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicWorkspaceMemberAdded, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID, WorkspaceID: grant.WorkspaceID, RoleIDsAdded: grant.Held()}})
 		}
-		if !existing {
-			if _, err := q.SetInvitationRedeemedBy(ctx, sqlcgen.SetInvitationRedeemedByParams{RedeemedBy: sql.NullString{String: userID, Valid: true}, ID: invitation.ID}); err != nil {
-				return fmt.Errorf("record invitation redeemer: %w", err)
-			}
+		if _, err := q.SetInvitationRedeemedBy(ctx, sqlcgen.SetInvitationRedeemedByParams{RedeemedBy: sql.NullString{String: userID, Valid: true}, ID: invitation.ID}); err != nil {
+			return fmt.Errorf("record invitation redeemer: %w", err)
 		}
 		completed, err := q.CompleteOAuthHandoffRedemption(ctx, sqlcgen.CompleteOAuthHandoffRedemptionParams{AdmittedUserID: sql.NullString{String: userID, Valid: true}, CompletedAt: sql.NullInt64{Int64: now.Unix(), Valid: true}, AcceptanceHash: sql.NullString{String: acceptanceHash, Valid: true}, ExpiresAt: now.Unix()})
 		if err != nil {
@@ -393,7 +376,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 		if err := enqueueInvitationEvents(ctx, tx, redemptionEvents); err != nil {
 			return err
 		}
-		admission = &tenancy.InvitationAdmission{UserID: userID, Created: !existing}
+		admission = &tenancy.InvitationAdmission{UserID: userID, Created: true}
 		return nil
 	})
 	if err != nil {
@@ -405,15 +388,15 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 	return admission, nil
 }
 
-func invitationUser(ctx context.Context, q *sqlcgen.Queries, identity tenancy.InvitationIdentity) (sqlcgen.User, bool, error) {
-	row, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
+func identityHasAccount(ctx context.Context, q *sqlcgen.Queries, identity tenancy.InvitationIdentity) (bool, error) {
+	_, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
 	if err == nil {
-		return row, true, nil
+		return true, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return sqlcgen.User{}, false, fmt.Errorf("get invitation user: %w", err)
+		return false, fmt.Errorf("get invitation user: %w", err)
 	}
-	return sqlcgen.User{}, false, nil
+	return false, nil
 }
 
 func insertInvitationUser(ctx context.Context, q *sqlcgen.Queries, identity tenancy.InvitationIdentity, now time.Time) error {

@@ -250,24 +250,6 @@ func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string
 	return i, err
 }
 
-const getInvitationMember = `-- name: GetInvitationMember :one
-SELECT user_id
-FROM workspace_members
-WHERE workspace_id = ? AND user_id = ?
-`
-
-type GetInvitationMemberParams struct {
-	WorkspaceID string
-	UserID      string
-}
-
-func (q *Queries) GetInvitationMember(ctx context.Context, arg GetInvitationMemberParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getInvitationMember, arg.WorkspaceID, arg.UserID)
-	var user_id string
-	err := row.Scan(&user_id)
-	return user_id, err
-}
-
 const getOAuthHandoffByAcceptanceHash = `-- name: GetOAuthHandoffByAcceptanceHash :one
 SELECT id, invitation_id, oauth_state_hash, acceptance_hash, provider, provider_user_id, login, name, avatar_url, existing_user_id, admitted_user_id, completed_at, created_at, expires_at
 FROM invitation_oauth_handoffs

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getInvitationPreviewKey } from "@/models/Invitation";
+import { getInvitationPreviewKey, invitationRefusal } from "@/models/Invitation";
 import type {
   ActiveInvitation,
   CreateInvitationFormData,
@@ -65,11 +65,17 @@ export const useStartInvitationOAuth = () =>
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+// A refusal is the invite page's own screen, so only other failures toast.
+const toastUnlessRefused = (error: unknown) => {
+  if (invitationRefusal(error)) return;
+  toast.error(errorMessage(error));
+};
+
 export const useCreateInvitationAcceptance = () =>
   useMutation({
     mutationFn: async (input: { token?: string; acceptance_token?: string }) =>
       (await api.post<InvitationAcceptance>("/api/invitations/acceptance", input)).data,
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: toastUnlessRefused,
   });
 
 export const useRedeemInvitation = () => {
@@ -85,6 +91,6 @@ export const useRedeemInvitation = () => {
         client.invalidateQueries({ queryKey: ["getMe"] }),
       ]);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: toastUnlessRefused,
   });
 };
