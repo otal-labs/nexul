@@ -39,9 +39,9 @@ tickets they wait on are resolved.
     the computer's owner and by anyone whose share on that computer allows
     it. One "Read logs" action on a computer's share covers both the runner's
     own logs and the computer's containers' logs. It is off by default.
-  - **Container output stays live and is never stored** (ADR 0091). That
-    covers a crashed container's last lines in a "container stopped" event
-    too: they ride in the event and are never kept as logs.
+  - **Container output stays live and is never stored** (ADR 0091). A
+    "container stopped" event carries no output lines either, because event
+    payloads are stored; the reader fetches them live (ticket 05).
   - **Container-down is an event.** The runner notices a deployed container
     dying after its deploy, and the server publishes an event that auto plays
     and automations can react to.
@@ -70,12 +70,10 @@ tickets they wait on are resolved.
 - [How a server runner's and the automations host's logs reach OpenObserve](issues/02-shipping-runner-and-automations-logs.md): relayed through the server, a `log` frame from machine runners and `self/logs` from the host, with the source stamped by the server and a bounded queue of 1000 across disconnects; personal runners never ship.
 - [The Logs instance area and how an agent reads the instance's logs](issues/03-the-logs-tool-and-area.md): `logs:read` in a new Logs area; `instance_get` takes `logs` (no new tool) and `GET /api/instance/logs`, paged with a pinned `until`; the server filters secret-named attributes and redacts tokens; upgrade re-renders the server env to carry the OpenObserve password.
 - [How a personal runner keeps and serves its own logs, and the share's Read logs](issues/04-personal-runner-logs-and-the-share.md): its own rotated `runner.log` on every OS, tail from the file and follow from the logger, `logs_request` with `target: runner`; `computers:read_logs` on a share covers runner and container logs, masked for sharees.
+- [How a container dying after its deploy becomes an event](issues/05-container-stopped-event.md): machine runners forward Docker's die/oom/start events and a reconnect snapshot; the server matches them to stacks, counts non-zero exits and OOM outside deploys, stores outages, and publishes `service.container_stopped` and `service.container_recovered` (60s steady) with no output lines.
 
 ## Not yet specified
 
-- How a person sees a stopped container without an agent: a badge or state on
-  the stack page, a notification, or nothing beyond the event. This becomes
-  specifiable once the event's shape is settled.
 - The build slices for each decision, and the walkthrough on a real install
   with no shell on the box. They graduate as the decision tickets resolve.
 - Whether `CONTEXT.md` needs its own term for Nexul's own logs. Its
