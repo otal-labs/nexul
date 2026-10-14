@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// Mirrors the Go side's per-domain action set: read, write, delete, plus any verb a domain declares (ADR 0057).
-export type PermissionAction = string;
-
 // Where a domain applies (ADR 0148): inside one project, across the workspace, or instance-wide.
 export const PermissionArea = {
   Project: "project",
@@ -18,7 +15,8 @@ export interface PermissionInfo {
   value: string;
   label: string;
   domain: string;
-  action: PermissionAction;
+  // The verb: read, write, delete, or one a domain declares (ADR 0057).
+  action: string;
   area: PermissionArea;
 }
 

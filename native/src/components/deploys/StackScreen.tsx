@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { ContainerRow } from "@/components/deploys/ContainerRow";
 import { DeployRow } from "@/components/deploys/DeployRow";
 import { StackLiveWell } from "@/components/deploys/StackLiveWell";
@@ -9,7 +10,6 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
@@ -45,12 +45,16 @@ export const StackScreen = () => {
           <StackLiveWell latest={latest} containers={containers} />
 
           {canRedeploy && latest && (
-            <Button
+            <ActionButton
+              permission="deploys:write"
+              projectId={stack.project_id || undefined}
+              verb="deploy"
+              name="Redeploy"
               disabled={deploying}
               onPress={() => router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })}
             >
               <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
-            </Button>
+            </ActionButton>
           )}
           {stack.strategy === DeployStrategy.Compose && (
             <Text className="text-[13px] text-muted-foreground">Redeploy from the web: this stack builds from its compose file.</Text>

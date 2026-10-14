@@ -8,7 +8,7 @@ GO_LDFLAGS := -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/ve
 # Version is pinned in go.mod's tool directive; local and CI both resolve it from there.
 SQLC ?= go tool sqlc
 
-.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics event-schemas clean
+.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics event-schemas permission-catalog clean
 
 build: build-cli build-server build-runner build-web
 
@@ -71,6 +71,10 @@ live-topics:
 event-schemas:
 	go test ./internal/eventcatalog -run TestSchemas_MatchThePublishedContract -update-event-schemas
 	bun run --cwd sdk generate:events
+
+# Rewrites the clients' typed copy of the permission catalog from the server's domain table.
+permission-catalog:
+	go test ./internal/platform/permissions -run TestPermissionActionsFile_MatchesTheCatalog -update-permission-catalog
 
 clean:
 	rm -rf $(BIN_DIR) server/webui/dist

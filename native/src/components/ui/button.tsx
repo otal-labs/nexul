@@ -1,7 +1,7 @@
 import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Platform, Pressable } from 'react-native';
+import { Platform, Pressable, type View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { ease, useReducedMotion } from '@/lib/motion';
@@ -91,7 +91,8 @@ const buttonTextVariants = cva(
   }
 );
 
-type ButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'ref'> & VariantProps<typeof buttonVariants>;
+type ButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'ref'> &
+  VariantProps<typeof buttonVariants> & { ref?: React.Ref<View> };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

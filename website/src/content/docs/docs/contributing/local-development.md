@@ -32,6 +32,7 @@ make sqlc           # regenerate sqlcgen from internal/platform/storage/queries/
 make sqlc-check     # sqlc vet + sqlc diff — fails if generated code is stale
 make live-topics    # rewrite the web's copy of the topics the live socket pushes
 make event-schemas  # regenerate the event contract and the SDK's event types
+make permission-catalog  # rewrite the clients' typed copy of the permission catalog
 ```
 
 The automations host binaries come from Bun, not the Makefile:
