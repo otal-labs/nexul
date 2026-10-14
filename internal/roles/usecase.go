@@ -324,9 +324,13 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string
 	return withOwnerSteps(r), nil
 }
 
-// requireHolds refuses a role carrying an action actorUserID does not hold in workspaceID (ADR 0088).
+// requireHolds refuses a role carrying an action actorUserID does not hold in workspaceID, or an instance area's they do
+// not hold at instance level (ADR 0088, ADR 0151).
 func (s *Service) requireHolds(ctx context.Context, workspaceID, actorUserID string, grant permissions.Set) error {
-	return permissions.RequireHeld(grant, s.held(ctx, workspaceID, actorUserID))
+	if s.perms == nil {
+		return permissions.RequireHeld(grant, nil)
+	}
+	return permissions.RequireHeld(grant, permissions.SetOfStrings(s.perms.GrantablePermissions(ctx, actorUserID, workspaceID)))
 }
 
 // held is everything actorUserID holds in workspaceID, the union of their roles as the access domain answers it.

@@ -277,6 +277,26 @@ func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID 
 	return s.layers(ctx, userID, workspaceID, "").actions(true)
 }
 
+// GrantablePermissions is WorkspacePermissions less the instance-area actions userID does not hold at instance level:
+// an Owner holds every action in their own workspace, but putting an instance area's on a role or giving a role that
+// carries one takes holding it there (ADR 0151).
+func (s *Service) GrantablePermissions(ctx context.Context, userID, workspaceID string) []string {
+	ctx = s.memoized(ctx)
+	all := s.WorkspacePermissions(ctx, userID, workspaceID)
+	out := make([]string, 0, len(all))
+	for _, name := range all {
+		action := permissions.Action(name)
+		if permissions.AreaOf(action) != permissions.AreaInstance {
+			out = append(out, name)
+			continue
+		}
+		if held, err := s.heldOnAnyArea(ctx, userID, action); err == nil && held {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 // ProjectPermissions returns every grid action userID holds inside projectID; opens is false when the project is
 // unknown, outside their workspaces, or they are not in it.
 func (s *Service) ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool) {

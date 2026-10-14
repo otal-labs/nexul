@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/dns"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -211,5 +212,42 @@ func TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, me.InstancePermissions, "dns:read")
 		assert.NotContains(t, me.InstancePermissions, "dns:write")
+	})
+}
+
+// TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea: owning a workspace is not holding its instance areas,
+// so its Owner can't put dns:write on a role, add it to one, or give themselves a role carrying it; the instance Owner can.
+func TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea(t *testing.T) {
+	f := newPermFixture(t)
+	withOtherWorkspaceOwner(t, f)
+	s := f.svc
+	ctx := context.Background()
+	now := time.Now()
+	for _, r := range []*roles.Role{
+		{ID: "role-docs-other", WorkspaceID: "workspace-other", Name: "Docs", Permissions: grant("docs:read")},
+		{ID: "role-ops-other", WorkspaceID: "workspace-other", Name: "Ops", Permissions: grant("dns:write")},
+	} {
+		r.CreatedAt, r.UpdatedAt = now, now
+		require.NoError(t, f.store.Roles.Create(ctx, r))
+	}
+	dnsWrite := grant("dns:write")
+
+	t.Run("another workspace's Owner", func(t *testing.T) {
+		_, err := s.rolesSvc.Create(ctx, "workspace-other", uOtherOwner, "Network", dnsWrite, nil)
+		assert.ErrorIs(t, err, apperrs.ErrForbidden, "create a role carrying it")
+		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs", grant("docs:read", "dns:write"), nil)
+		assert.ErrorIs(t, err, apperrs.ErrForbidden, "add it to a role")
+		err = s.tenancySvc.UpdateMemberRoles(ctx, uOtherOwner, "workspace-other", uOtherOwner, []string{"role-ops-other"}, nil)
+		assert.ErrorIs(t, err, apperrs.ErrForbidden, "give themselves a role carrying it")
+		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs renamed", grant("docs:read"), nil)
+		assert.NoError(t, err, "other roles are theirs to edit")
+	})
+
+	t.Run("the instance Owner", func(t *testing.T) {
+		made, err := s.rolesSvc.Create(ctx, "workspace-default", uOwner, "Network", dnsWrite, nil)
+		require.NoError(t, err)
+		_, err = s.rolesSvc.Update(ctx, "workspace-default", "role-editor", uOwner, "Editor", grant("docs:read", "docs:write", "dns:write"), nil)
+		require.NoError(t, err)
+		require.NoError(t, s.tenancySvc.UpdateMemberRoles(ctx, uOwner, "workspace-default", uPlain, []string{made.ID}, nil))
 	})
 }

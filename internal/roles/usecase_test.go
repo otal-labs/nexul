@@ -159,6 +159,11 @@ type fakeHeld struct {
 	members *fakeMemberGate
 }
 
+// GrantablePermissions is the grid unchanged: these fakes hold no instance areas.
+func (h fakeHeld) GrantablePermissions(ctx context.Context, userID, workspaceID string) []string {
+	return h.WorkspacePermissions(ctx, userID, workspaceID)
+}
+
 func (h fakeHeld) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
 	roleID, err := h.members.MemberRoleID(ctx, workspaceID, userID)
 	if err != nil {
