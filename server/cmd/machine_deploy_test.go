@@ -115,7 +115,7 @@ func TestMachines_StackCreateRefusesAMachineYouCantDeployTo(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden, "m2 is seen but not deployed to")
 	assert.Contains(t, err.Error(), "machines:deploy")
 	_, err = create.Call(as(uShipper), stackOn("m3"))
-	require.ErrorIs(t, err, apperrs.ErrNotFound, "m3 is not seen at all")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "m3 is not seen, so it answers as a name no machine bears")
 	_, err = create.Call(as(uShipper), stackOn("m9"))
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "no machine bears the name")
 	assert.Zero(t, stacksNamed(t, f, "api-m2")+stacksNamed(t, f, "api-m3")+stacksNamed(t, f, "api-m9"))
@@ -131,7 +131,32 @@ func TestMachines_StackCreateRefusesAMachineYouCantDeployTo(t *testing.T) {
 		return rec.Code
 	}
 	assert.Equal(t, http.StatusForbidden, post("m2"))
-	assert.Equal(t, http.StatusNotFound, post("m3"))
+	assert.Equal(t, http.StatusBadRequest, post("m3"))
+}
+
+// TestMachines_AHiddenMachineTypedByNameAnswersAsAnUnknownName: a member who edits stacks can't find out which machine
+// names exist by typing them. A machine they don't see and a name no machine bears answer with the same status and the
+// same body, naming only what they typed, over HTTP and over stack_create.
+func TestMachines_AHiddenMachineTypedByNameAnswersAsAnUnknownName(t *testing.T) {
+	f := machinesFixture(t)
+	create := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_create")
+
+	// asked is what a call answered with the typed name replaced, so only the shape is compared.
+	httpAsked := func(machine string) string {
+		req := httptest.NewRequest(http.MethodPost, "/api/stacks", strings.NewReader(string(stackOn(machine))))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		deploy.NewHandler(f.svc.deploySvc).Routes().ServeHTTP(rec, req.WithContext(as(uShipper)))
+		return fmt.Sprintf("%d %s", rec.Code, strings.ReplaceAll(rec.Body.String(), machine, "<typed>"))
+	}
+	mcpAsked := func(machine string) string {
+		_, err := create.Call(as(uShipper), stackOn(machine))
+		require.Error(t, err)
+		return strings.ReplaceAll(err.Error(), machine, "<typed>")
+	}
+
+	assert.Equal(t, httpAsked("m9"), httpAsked("m3"), "POST /api/stacks")
+	assert.Equal(t, mcpAsked("m9"), mcpAsked("m3"), "stack_create")
 }
 
 // TestMachines_MovingAStackNeedsDeployToOnTheNewMachine: an update that changes a stack's machine takes Deploy to on the
@@ -147,7 +172,7 @@ func TestMachines_MovingAStackNeedsDeployToOnTheNewMachine(t *testing.T) {
 	_, err = update.Call(as(uShipper), json.RawMessage(fmt.Sprintf(`{"id":%q,"machine":"m2"}`, id)))
 	require.ErrorIs(t, err, apperrs.ErrForbidden, "m2 is seen but not deployed to")
 	_, err = update.Call(as(uShipper), json.RawMessage(fmt.Sprintf(`{"id":%q,"machine":"m3"}`, id)))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	_, err = update.Call(as(uShipper), json.RawMessage(fmt.Sprintf(`{"id":%q,"docker_network":"core"}`, id)))
 	require.NoError(t, err)
 
@@ -237,7 +262,7 @@ func TestMachines_AGatewayTakesDeployToAndDNSWrite(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden, "dns:write with only See on m2")
 	assert.Contains(t, err.Error(), "machines:deploy")
 	_, err = f.svc.dnsSvc.CreateGateway(as(uShipper), gateway("edge-3", "m3"))
-	require.ErrorIs(t, err, apperrs.ErrNotFound, "m3 is not seen")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "m3 is not seen, so it answers as a name no machine bears")
 	_, err = f.svc.dnsSvc.ProvisionReverseProxy(as(uShipper), dns.AgentSpec{Target: "m2"})
 	require.ErrorIs(t, err, apperrs.ErrForbidden, "the DNS page's proxy step")
 	var stacks int

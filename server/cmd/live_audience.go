@@ -584,7 +584,7 @@ func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	if p.Stack.ProjectID == "" {
 		return a.access.RequireAnywhere(ctx, permissions.StacksRead) == nil &&
 			a.access.RequireAnywhere(ctx, permissions.DNSRead) == nil &&
-			a.access.RequireMachineNamed(ctx, p.Stack.Machine, permissions.MachinesSee) == nil
+			a.access.RequireMachineOfStack(ctx, p.Stack.Machine, permissions.MachinesSee) == nil
 	}
 	ruled := p.Stack.ID
 	if p.Stack.DerivedFrom != "" {

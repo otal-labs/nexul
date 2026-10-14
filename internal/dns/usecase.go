@@ -138,7 +138,7 @@ func (s *Service) SetRunnerJoin(j RunnerJoiner) { s.runnerJoin = j }
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
 	// RequireMachineNamed checks a machine action on the machine a gateway is placed on, by name; a machine the caller
-	// can't see is not found and a name no machine bears is invalid input (ADR 0151).
+	// can't see answers as a name no machine bears does, invalid input (ADR 0151).
 	RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error
 }
 

@@ -73,7 +73,7 @@ Agents set the same rules with `permission_overwrite_update` and `resource_type:
 
 ## Which machines a stack can use
 
-A machine is a server's Docker, so putting a stack on one takes **Deploy to** on that machine, beside the stack permissions above. It is checked when you create a stack, move one to another machine, import containers from a machine, or set up a gateway, and again on every deploy you start. Machine pickers list only the machines you may deploy to, and a machine you can't see answers not found, even when you type its name into a tool.
+A machine is a server's Docker, so putting a stack on one takes **Deploy to** on that machine, beside the stack permissions above. It is checked when you create a stack, move one to another machine, import containers from a machine, or set up a gateway, and again on every deploy you start. Machine pickers list only the machines you may deploy to, and a machine you can't see is answered like a name no machine bears, even when you type its name into a tool.
 
 Taking someone off a machine stops their next deploy there. Deploys Nexul starts itself, after a push to a branch with a deploy rule or a merge, keep running. A stack on a machine you can't see still shows that machine's name on its page, as plain text with no link.
 
