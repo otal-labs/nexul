@@ -146,6 +146,20 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 	}
 }
 
+func TestHandleFactsReported_ARefusedPairingStillNamesTheComputer(t *testing.T) {
+	t.Parallel()
+	f := newRunnerFixture(t, Computer{ServerURL: runnerAddress("c-laptop")})
+	f.exch.exchangeErr = errBoom
+
+	require.NoError(t, f.svc.HandleFactsReported(t.Context(), factsEvent(t, "answering")))
+
+	stored, err := f.repo.GetComputer(t.Context(), "u-alice", "c-laptop")
+	require.NoError(t, err)
+	assert.Equal(t, "alice-laptop", stored.Name)
+	assert.False(t, stored.Paired())
+	assert.NotEmpty(t, f.svc.pairFailure("c-laptop"))
+}
+
 // recordingHarness lists providers for every computer but the offline one, recording which computers it was asked about.
 type recordingHarness struct {
 	*fakeExchanger
