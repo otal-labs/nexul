@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { AddAutomationHostForm } from "@/components/automationHost/AddAutomationHostForm";
 import { AutomationHostInstallCommands } from "@/components/automationHost/AutomationHostInstallCommands";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +26,9 @@ export const AddAutomationHostDialog = () => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="outline">
-          <Plus className="size-4" aria-hidden />
+        <ActionButton permission="machines:write" verb="add automations hosts" icon={Plus} type="button" size="sm" variant="outline">
           Add automations host
-        </Button>
+        </ActionButton>
       </DialogTrigger>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

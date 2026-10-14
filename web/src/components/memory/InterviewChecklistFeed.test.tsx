@@ -8,6 +8,8 @@ import { buildSections, type InterviewAnswer } from "@/models/InterviewAnswer";
 import type { InterviewDraft, InterviewSource } from "@/models/InterviewSource";
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: (e: Error) => e.message }));
 

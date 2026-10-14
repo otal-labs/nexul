@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { useDismissInterviewDraft } from "@/hooks/InterviewSourceHooks";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
@@ -43,12 +43,21 @@ export const InterviewSuggestionCard = ({ row, draft, projectId, progress, onMov
         </div>
       </div>
       <div className="mt-4 flex items-center justify-end gap-2">
-        <Button variant="ghost" size="sm" loading={dismiss.isPending} disabled={busy} onClick={() => dismiss.mutate(draft.id, { onSuccess: () => onMove(null) })}>
+        <ActionButton
+          permission="memories:write"
+          projectId={projectId}
+          verb="dismiss suggestions"
+          variant="ghost"
+          size="sm"
+          loading={dismiss.isPending}
+          disabled={busy}
+          onClick={() => dismiss.mutate(draft.id, { onSuccess: () => onMove(null) })}
+        >
           Dismiss
-        </Button>
-        <Button size="sm" loading={save.isPending} disabled={busy} onClick={accept}>
+        </ActionButton>
+        <ActionButton permission="memories:write" projectId={projectId} verb="accept suggestions" size="sm" loading={save.isPending} disabled={busy} onClick={accept}>
           Accept
-        </Button>
+        </ActionButton>
       </div>
     </div>
   );

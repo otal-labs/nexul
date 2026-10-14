@@ -84,7 +84,7 @@ const holder = (roleId: string) => ({
   workspaces: [{ workspace_id: "ws-1", role_id: roleId }],
 });
 
-const mockRoles = (roles: unknown[], myPermissions: string[] = [], people: unknown[] = [], showLockedActions = false) => {
+const mockRoles = (roles: unknown[], myPermissions: string[] = ["roles:write"], people: unknown[] = [], showLockedActions = false) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/team") return Promise.resolve({ data: { people, workspaces: [], can_manage_accounts: false } });
     if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
@@ -278,7 +278,7 @@ describe("RoleSettingsSection", () => {
   });
 
   it("renames a role and changes its levels, then saves them in one update", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write"] })], [], [holder("role-editor")]);
+    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write"] })], ["roles:write"], [holder("role-editor")]);
     mocks.patch.mockResolvedValue({ data: role({ name: "Reviewer" }) });
     const user = userEvent.setup();
     renderSection();

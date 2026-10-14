@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
 import { ConnectorAppConfigSection } from "@/components/settings/ConnectorAppConfigSection";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   put: vi.fn(),

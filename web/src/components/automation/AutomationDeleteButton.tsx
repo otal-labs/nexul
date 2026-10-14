@@ -1,4 +1,5 @@
-import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
+import { ActionButton } from "@/components/action/ActionButton";
+import { DangerAction, dangerButtonClass, DangerZone } from "@/components/settings/DangerZone";
 import { useDeleteAutomation } from "@/hooks/AutomationHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 
@@ -29,9 +30,16 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
         title="Delete automation"
         consequence="Removes its config, token, runs, and versions for good. Its token stops working at once."
         action={
-          <DangerButton onClick={() => void onClick()} loading={deleteAutomation.isPending}>
+          <ActionButton
+            permission="automations:delete"
+            variant="outline"
+            size="sm"
+            liveClassName={dangerButtonClass}
+            onClick={() => void onClick()}
+            loading={deleteAutomation.isPending}
+          >
             Delete automation
-          </DangerButton>
+          </ActionButton>
         }
       />
     </DangerZone>

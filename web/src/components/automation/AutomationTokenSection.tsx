@@ -5,7 +5,7 @@ import { AutomationTokenReveal } from "@/components/automation/AutomationTokenRe
 import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useMintAutomationToken, useRevokeAutomationToken } from "@/hooks/AutomationHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -62,13 +62,13 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
           <p className="text-xs text-muted-foreground">A new token shows once.</p>
           <div className="ml-auto flex items-center gap-1">
             {!revoked && (
-              <Button type="button" variant="ghost" size="sm" className="hover:text-destructive" onClick={() => void onRevoke()} loading={revoke.isPending}>
+              <ActionButton permission="automations:write" verb="revoke automation tokens" type="button" variant="ghost" size="sm" liveClassName="hover:text-destructive" onClick={() => void onRevoke()} loading={revoke.isPending}>
                 Revoke
-              </Button>
+              </ActionButton>
             )}
-            <Button type="button" variant="outline" size="sm" onClick={() => void onRotate()} loading={mint.isPending}>
+            <ActionButton permission="automations:write" verb="rotate automation tokens" type="button" variant="outline" size="sm" onClick={() => void onRotate()} loading={mint.isPending}>
               Rotate
-            </Button>
+            </ActionButton>
           </div>
         </>
       }

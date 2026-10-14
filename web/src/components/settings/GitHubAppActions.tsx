@@ -1,6 +1,6 @@
 import { ConnectorAppEditDialog } from "@/components/settings/ConnectorAppEditDialog";
 import { GitHubAppKeyDialog } from "@/components/settings/GitHubAppKeyDialog";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRemovePrivateKey } from "@/hooks/ConnectorsHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { AppConfigStatus } from "@/models/Connectors";
@@ -28,15 +28,18 @@ export const GitHubAppActions = ({ app }: GitHubAppActionsProps) => {
   return (
     <div className="ml-auto flex flex-wrap items-center gap-2">
       {app.private_key_set && (
-        <Button
+        <ActionButton
+          permission="connectors:write"
+          verb="change the GitHub App's key"
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-destructive"
+          className="text-muted-foreground"
+          liveClassName="hover:text-destructive"
           loading={removeKey.isPending}
           onClick={() => void remove()}
         >
           Remove key
-        </Button>
+        </ActionButton>
       )}
       <GitHubAppKeyDialog replacing={!!app.private_key_set} />
       <ConnectorAppEditDialog connectorId="github" current={app} />

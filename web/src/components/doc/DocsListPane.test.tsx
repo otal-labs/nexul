@@ -15,7 +15,8 @@ const main: DocFolder = { id: "f-main", project_id: "project-1", name: "Main", i
 
 vi.mock("@/hooks/useWorkspacePath", () => ({ useWorkspacePath: () => (path: string) => path }));
 vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));
-vi.mock("@/hooks/useCreateDocDialog", () => ({ useCreateDocDialog: () => undefined }));
+vi.mock("@/hooks/useCreateDocDialog", () => ({ useOpenCreateDoc: () => vi.fn() }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/components/doc/NewDocFolderButton", () => ({ NewDocFolderButton: () => null }));
 vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: [main], error: null, isPending: false }) }));
 vi.mock("@/components/doc/DocFolderSection", () => ({

@@ -6,6 +6,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import {
   useInstanceUpgrade,
@@ -124,9 +125,9 @@ const UpgradeButton = ({ latest, retry }: { latest: InstanceUpgrade["latest"]; r
   };
 
   return (
-    <Button size="sm" onClick={() => void onUpgradeClick()} loading={requestUpgrade.isPending}>
+    <ActionButton permission="instance:write" verb="upgrade the instance" size="sm" onClick={() => void onUpgradeClick()} loading={requestUpgrade.isPending}>
       {upgradeLabel(latest, retry)}
-    </Button>
+    </ActionButton>
   );
 };
 

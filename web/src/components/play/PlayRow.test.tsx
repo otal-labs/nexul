@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { PlayRow } from "@/components/play/PlayRow";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { settle } from "@/test/viewer";
 import type { Play } from "@/models/Play";
 
 vi.mock("@/api/client", () => ({
@@ -34,7 +35,9 @@ const play: Play = {
   updated_at: "",
 };
 
-const mockGet = (grants: unknown[] = []) => (url: string) => {
+const WRITER = ["plays:write", "plays:delete"];
+
+const mockGet = (grants: unknown[] = [], me: unknown = { role_name: "Member", permissions: WRITER }) => (url: string) => {
   if (url === "/api/permissions?resource_type=play&resource_id=play-1") {
     return Promise.resolve({ data: { grants } });
   }
@@ -45,26 +48,26 @@ const mockGet = (grants: unknown[] = []) => (url: string) => {
   }
   if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people: [{ user_id: "u1", login: "bob", display_name: "", avatar_url: "https://example.com/b.png" }] } });
   if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
-  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["plays:write", "plays:delete"] } });
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: me });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
 
-const renderRow = (props: Partial<{ canWrite: boolean; canDelete: boolean }> = {}) => {
+// The row's menu opens once the viewer's permissions have landed.
+const renderRow = async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
         <PlayRow
           play={play}
           workspaceId="ws-1"
-          canWrite={props.canWrite ?? true}
-          canDelete={props.canDelete ?? true}
           onEdit={() => {}}
         />
       </ul>
     </QueryClientProvider>,
   );
+  await settle();
 };
 
 beforeEach(() => {
@@ -74,16 +77,30 @@ beforeEach(() => {
 
 describe("PlayRow", () => {
   it("offers no menu without plays:write or plays:delete", async () => {
-    vi.mocked(api.get).mockImplementation(mockGet());
-    renderRow({ canWrite: false, canDelete: false });
+    vi.mocked(api.get).mockImplementation(mockGet([], { role_name: "Reader", permissions: ["plays:read"] }));
+    await renderRow();
     await userEvent.setup().pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("locks Edit and Delete with the reason for a role that shows locked actions", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockImplementation(mockGet([], { role_name: "Reader", permissions: ["plays:read"], show_locked_actions: true }));
+    await renderRow();
+
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    const edit = await screen.findByRole("menuitem", { name: /Edit/ });
+    expect(edit).toHaveAttribute("aria-disabled", "true");
+    expect(edit).toHaveAccessibleDescription("Your role can't edit plays");
+    expect(screen.getByRole("menuitem", { name: /Delete/ })).toHaveAccessibleDescription("Your role can't delete plays");
+    await user.click(edit);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
   });
 
   it("opens its items at the pointer on a right-click, Permissions… between Edit and Delete", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(mockGet());
-    renderRow();
+    await renderRow();
 
     await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
@@ -94,7 +111,7 @@ describe("PlayRow", () => {
     vi.mocked(api.get).mockImplementation(
       mockGet([{ resource_type: "play", resource_id: "play-1", user_id: "u1", allow: [], deny: ["plays:run"] }]),
     );
-    renderRow();
+    await renderRow();
     expect(await screen.findByText("1 excluded")).toBeInTheDocument();
   });
 
@@ -105,7 +122,7 @@ describe("PlayRow", () => {
         { resource_type: "play", resource_id: "play-1", user_id: "u1", allow: ["plays:read"], deny: [] },
       ]),
     );
-    renderRow();
+    await renderRow();
     expect(await screen.findByText("hidden from 1")).toBeInTheDocument();
   });
 
@@ -114,7 +131,7 @@ describe("PlayRow", () => {
     vi.mocked(api.get).mockImplementation(
       mockGet([{ resource_type: "play", resource_id: "play-1", user_id: "u1", allow: [], deny: ["plays:run"], created_at: "", updated_at: "" }]),
     );
-    renderRow();
+    await renderRow();
 
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
     await user.click(await screen.findByRole("menuitem", { name: "Permissions…" }));

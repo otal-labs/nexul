@@ -26,6 +26,8 @@ const connectorFixture: ConnectorStatus[] = [
   },
 ];
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 vi.mock("@/hooks/ConnectorsHooks", () => ({
   useFetchConnectors: mocks.useFetchConnectors,
   useStartConnectorOAuth: () => ({ mutate: vi.fn(), isPending: false }),

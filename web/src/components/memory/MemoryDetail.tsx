@@ -11,8 +11,10 @@ import { MemoryRail } from "@/components/memory/MemoryRail";
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useActionState } from "@/hooks/useActionState";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isDecisionsLogMemory, isInterviewMemory, type Memory } from "@/models/Memory";
@@ -20,20 +22,18 @@ import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
 interface MemoryDetailProps {
   memory: Memory;
-  canWrite: boolean;
-  canDelete: boolean;
-  canClone: boolean;
   onSave: (input: { title: string; when_to_use: string; body: string }) => void;
   onDelete: () => void;
   saving: boolean;
 }
 
 // No live collaboration, unlike DocDetail: a memory is edited by one person at a time, saved explicitly.
-export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, onDelete, saving }: MemoryDetailProps) => {
+export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailProps) => {
   const [title, setTitle] = useState(memory.title);
   const [whenToUse, setWhenToUse] = useState(memory.when_to_use);
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
+  const canWrite = useActionState({ permission: "memories:write", projectId: memory.project_id }).state === "live";
   const wsPath = useWorkspacePath();
   const crumbs = useEmbeddedCrumbs([{ label: "Memories", to: wsPath("/memories") }]);
   const interview = isInterviewMemory(memory);
@@ -50,22 +50,18 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
         meta={<span className="font-mono text-xs tabular-nums">updated {formatUpdatedAgo(memory.updated_at)}</span>}
         actions={
           <>
-            {canClone && (
-              <Button variant="outline" size="sm" onClick={() => setCloneOpen(true)}>
-                Clone to…
-              </Button>
-            )}
-            {canDelete && (
-              <Button variant="ghost" size="sm" onClick={onDelete}>
-                Delete
-              </Button>
-            )}
+            <ActionButton permission="memories:clone" projectId={memory.project_id} variant="outline" size="sm" onClick={() => setCloneOpen(true)}>
+              Clone to…
+            </ActionButton>
+            <ActionButton permission="memories:delete" projectId={memory.project_id} variant="ghost" size="sm" onClick={onDelete}>
+              Delete
+            </ActionButton>
           </>
         }
       />
-      {canClone && <CloneMemoryDialog memoryId={memory.id} open={cloneOpen} onClose={() => setCloneOpen(false)} />}
+      {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
       <div className="mt-6 @4xl:flex @4xl:gap-8">
-        <MemoryRail memoryId={memory.id} currentVersion={memory.version} canRevert={canWrite} />
+        <MemoryRail memoryId={memory.id} currentVersion={memory.version} />
 
         <div className="min-w-0 flex-1">
           <article className="rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11">
@@ -126,7 +122,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
                 <AttachmentsSection owner={{ memory_id: memory.id }} />
               </PageTabsContent>
               <PageTabsContent value="versions">
-                <MemoryVersionsFeed memoryId={memory.id} currentVersion={memory.version} canRevert={canWrite} />
+                <MemoryVersionsFeed memoryId={memory.id} currentVersion={memory.version} />
               </PageTabsContent>
             </PageTabs>
           </div>

@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import * as Context from "@/components/ui/context-menu";
 import * as Dropdown from "@/components/ui/dropdown-menu";
-import type { ActionGate } from "@nexul/client-core/actionState";
+import type { ActionGate, ActionState } from "@nexul/client-core/actionState";
 
 import type { PanelEntity } from "@/models/PermissionPanel";
 
@@ -44,8 +44,12 @@ export const contextParts: MenuParts = {
   RadioItem: Context.ContextMenuRadioItem,
 };
 
+export type GatedRowAction = "onNewDoc" | "lock" | "archive" | "moveTo" | "onEdit" | "onRename" | "onClone";
+
 /** Each action is hidden when it is omitted (the viewer lacks the permission). */
 export interface RowMenu {
+  /** Draws these through the action state: locked in place with the reason when the viewer's role shows it. The row leaves an action out when its gate hides it. */
+  gates?: Partial<Record<GatedRowAction, ActionGate>> | undefined;
   onSettings?: (() => void) | undefined;
   /** "Settings" unless the row names whose settings they are ("Project settings"). */
   settingsLabel?: string | undefined;
@@ -79,3 +83,6 @@ export const hasOwnActions = (m: RowMenu) =>
 // Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
 export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>
   !!m && (hasOwnActions(m) || !!m.onDelete || (manages && !!m.permissions));
+
+// Whether the viewer is offered the action at all, live or locked.
+export const isOffered = (state: ActionState): boolean => state.state !== "hidden";

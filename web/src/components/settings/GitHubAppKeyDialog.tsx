@@ -6,6 +6,7 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { TickerRow } from "@/components/TickerRow";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,9 +62,9 @@ export const GitHubAppKeyDialog = ({ replacing }: GitHubAppKeyDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <ActionButton permission="connectors:write" verb="change the GitHub App's key" size="sm" variant="outline">
           {replacing ? "Replace private key" : "Add private key"}
-        </Button>
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

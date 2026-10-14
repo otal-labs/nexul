@@ -13,7 +13,7 @@ import { ListPaneEmpty, ListPaneNoMatch } from "@/components/listpane/ListPaneEm
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
-import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
+import { useOpenCreateDoc } from "@/hooks/useCreateDocDialog";
 import { useDocPins } from "@/hooks/useDocPins";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useDocArchiveStore } from "@/stores/docArchiveStore";
@@ -44,7 +44,7 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
   const sortBy = useDocSortStore((s) => s.sortBy);
   const showArchived = useDocArchiveStore((s) => s.showArchived);
   const { pinnedIds } = useDocPins();
-  const createDoc = useCreateDocDialog(project.id);
+  const createDoc = useOpenCreateDoc(project.id);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { data: folders, error, isPending } = useFetchDocFolders(project.id);
@@ -53,12 +53,10 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
   const searching = query !== "";
   const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: folderFilter(query, showArchived) });
   const token = projectToken(project);
-  const openCreateDoc =
-    createDoc &&
-    (async () => {
-      const id = await createDoc();
-      if (id) void navigate(wsPath(docPath(token, id)));
-    });
+  const openCreateDoc = async () => {
+    const id = await createDoc();
+    if (id) void navigate(wsPath(docPath(token, id)));
+  };
   const expandFolder = useDocFolderStore((s) => s.expand);
   const selectedFolderId = docs.find((doc) => doc.id === selectedId)?.folder_id;
 
@@ -73,7 +71,10 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
         title="Docs"
         count={openable.length}
         newLabel="New doc"
-        onNew={openCreateDoc}
+        newPermission="docs:write"
+        newVerb="create docs"
+        projectId={project.id}
+        onNew={() => void openCreateDoc()}
         search={search}
         onSearch={setSearch}
         controls={

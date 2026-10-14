@@ -16,10 +16,16 @@ import {
   Settings2Icon,
   ShieldIcon,
   Trash2Icon,
+  type LucideIcon,
 } from "lucide-react";
+
+import type { ReactNode } from "react";
+
+import type { ActionGate } from "@nexul/client-core/actionState";
 
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { hasOwnActions, type MenuParts, type RowMenu } from "@/components/listpane/rowMenu";
+import { useActionState } from "@/hooks/useActionState";
 import { useCanManageAccess } from "@/hooks/useCanManageAccess";
 
 interface RowActionItemsProps extends RowMenu {
@@ -44,10 +50,9 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
         </ui.Item>
       )}
       {m.onNewDoc && (
-        <ui.Item onSelect={m.onNewDoc}>
-          <FilePlusIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.onNewDoc} icon={FilePlusIcon} onSelect={m.onNewDoc}>
           New doc
-        </ui.Item>
+        </Entry>
       )}
       {m.pin && (
         <ui.Item onSelect={m.pin.onToggle}>
@@ -69,46 +74,26 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
         </ui.Item>
       )}
       {m.lock && !m.lock.locked && (
-        <ui.Item onSelect={m.lock.onToggle}>
-          <LockIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.lock} icon={LockIcon} onSelect={m.lock.onToggle}>
           Lock
-        </ui.Item>
+        </Entry>
       )}
       {m.lock?.locked && (
-        <ui.Item onSelect={m.lock.onToggle}>
-          <LockOpenIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.lock} icon={LockOpenIcon} onSelect={m.lock.onToggle}>
           Unlock
-        </ui.Item>
+        </Entry>
       )}
       {m.archive && !m.archive.archived && (
-        <ui.Item onSelect={m.archive.onToggle}>
-          <ArchiveIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.archive} icon={ArchiveIcon} onSelect={m.archive.onToggle}>
           Archive
-        </ui.Item>
+        </Entry>
       )}
       {m.archive?.archived && (
-        <ui.Item onSelect={m.archive.onToggle}>
-          <ArchiveRestoreIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.archive} icon={ArchiveRestoreIcon} onSelect={m.archive.onToggle}>
           Restore
-        </ui.Item>
+        </Entry>
       )}
-      {m.moveTo && (
-        <ui.Sub>
-          <ui.SubTrigger>
-            <FolderInputIcon aria-hidden />
-            {m.moveTo.label}
-          </ui.SubTrigger>
-          <ui.SubContent className="min-w-36">
-            <ui.RadioGroup value={m.moveTo.currentId} onValueChange={m.moveTo.onMove}>
-              {m.moveTo.options.map((option) => (
-                <ui.RadioItem key={option.id} value={option.id}>
-                  {option.name}
-                </ui.RadioItem>
-              ))}
-            </ui.RadioGroup>
-          </ui.SubContent>
-        </ui.Sub>
-      )}
+      {m.moveTo && <MoveToItem ui={ui} gate={m.gates?.moveTo} moveTo={m.moveTo} />}
       {m.onMarkUnread && (
         <ui.Item onSelect={m.onMarkUnread}>
           <MailIcon aria-hidden />
@@ -116,22 +101,19 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
         </ui.Item>
       )}
       {m.onEdit && (
-        <ui.Item onSelect={m.onEdit}>
-          <PencilIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.onEdit} icon={PencilIcon} onSelect={m.onEdit}>
           Edit
-        </ui.Item>
+        </Entry>
       )}
       {m.onRename && (
-        <ui.Item onSelect={m.onRename}>
-          <PencilIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.onRename} icon={PencilIcon} onSelect={m.onRename}>
           Rename
-        </ui.Item>
+        </Entry>
       )}
       {m.onClone && (
-        <ui.Item onSelect={m.onClone}>
-          <CopyIcon aria-hidden />
+        <Entry ui={ui} gate={m.gates?.onClone} icon={CopyIcon} onSelect={m.onClone}>
           Clone
-        </ui.Item>
+        </Entry>
       )}
       {m.permissions && <PermissionsItem ui={ui} permissions={m.permissions} afterOwn={own} beforeDelete={!!m.onDelete} />}
       {!m.permissions && m.onDelete && own && <ui.Separator />}
@@ -149,6 +131,77 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
     </>
   );
 };
+
+interface EntryProps {
+  ui: MenuParts;
+  gate: ActionGate | undefined;
+  icon: LucideIcon;
+  onSelect: () => void;
+  children: ReactNode;
+}
+
+// An item that changes something draws through the action state when its row brings a gate, else as a plain item.
+const Entry = ({ ui, gate, icon: Icon, onSelect, children }: EntryProps) => (
+  <>
+    {gate && (
+      <ActionMenuItem {...gate} ui={ui} icon={Icon} onSelect={onSelect}>
+        {children}
+      </ActionMenuItem>
+    )}
+    {!gate && (
+      <ui.Item onSelect={onSelect}>
+        <Icon aria-hidden />
+        {children}
+      </ui.Item>
+    )}
+  </>
+);
+
+interface MoveToItemProps {
+  ui: MenuParts;
+  gate: ActionGate | undefined;
+  moveTo: NonNullable<RowMenu["moveTo"]>;
+}
+
+const MoveToItem = ({ ui, gate, moveTo }: MoveToItemProps) => (
+  <>
+    {gate && <GatedMoveTo ui={ui} gate={gate} moveTo={moveTo} />}
+    {!gate && <MoveToSub ui={ui} moveTo={moveTo} />}
+  </>
+);
+
+// Locked, the submenu is a single locked item; otherwise the places to move to.
+const GatedMoveTo = ({ ui, gate, moveTo }: MoveToItemProps & { gate: ActionGate }) => {
+  const action = useActionState(gate);
+  return (
+    <>
+      {action.state === "locked" && (
+        <ActionMenuItem {...gate} ui={ui} icon={FolderInputIcon} onSelect={() => undefined}>
+          {moveTo.label}
+        </ActionMenuItem>
+      )}
+      {action.state !== "locked" && <MoveToSub ui={ui} moveTo={moveTo} />}
+    </>
+  );
+};
+
+const MoveToSub = ({ ui, moveTo }: Omit<MoveToItemProps, "gate">) => (
+  <ui.Sub>
+    <ui.SubTrigger>
+      <FolderInputIcon aria-hidden />
+      {moveTo.label}
+    </ui.SubTrigger>
+    <ui.SubContent className="min-w-36">
+      <ui.RadioGroup value={moveTo.currentId} onValueChange={moveTo.onMove}>
+        {moveTo.options.map((option) => (
+          <ui.RadioItem key={option.id} value={option.id}>
+            {option.name}
+          </ui.RadioItem>
+        ))}
+      </ui.RadioGroup>
+    </ui.SubContent>
+  </ui.Sub>
+);
 
 interface PermissionsItemProps {
   ui: MenuParts;

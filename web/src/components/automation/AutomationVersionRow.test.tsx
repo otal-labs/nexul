@@ -10,6 +10,7 @@ import type { AutomationVersion } from "@/models/AutomationVersion";
 
 const mocks = vi.hoisted(() => ({ post: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { post: mocks.post },
   errorMessage: () => "error",
@@ -29,13 +30,13 @@ const version = (overrides: Partial<AutomationVersion> = {}): AutomationVersion 
   ...overrides,
 });
 
-const renderRow = (v: AutomationVersion, canUpdate: boolean) => {
+const renderRow = (v: AutomationVersion) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
-        <AutomationVersionRow automationId="a1" version={v} canUpdate={canUpdate} />
+        <AutomationVersionRow automationId="a1" version={v} />
       </ul>
     </QueryClientProvider>,
   );
@@ -47,26 +48,21 @@ describe("AutomationVersionRow", () => {
   });
 
   it("shows the sequence, status, message, and labels the seed pusher as Nexul", () => {
-    renderRow(version(), true);
+    renderRow(version());
     expect(screen.getByText("#3")).toBeInTheDocument();
     expect(screen.getByText("Upgrade default code")).toBeInTheDocument();
     expect(screen.getByText(/Nexul/)).toBeInTheDocument();
   });
 
   it("hides rollback for the active version", () => {
-    renderRow(version({ status: AutomationVersionStatus.Active }), true);
-    expect(screen.queryByRole("button", { name: /Rollback/ })).not.toBeInTheDocument();
-  });
-
-  it("hides rollback when the caller lacks automations:write", () => {
-    renderRow(version(), false);
+    renderRow(version({ status: AutomationVersionStatus.Active }));
     expect(screen.queryByRole("button", { name: /Rollback/ })).not.toBeInTheDocument();
   });
 
   it("rolls back after confirming", async () => {
     mocks.post.mockResolvedValue({ data: version({ status: AutomationVersionStatus.Active }) });
     const user = userEvent.setup();
-    renderRow(version(), true);
+    renderRow(version());
 
     await user.click(screen.getByRole("button", { name: /Rollback/ }));
     await user.click(await screen.findByRole("button", { name: "Confirm" }));

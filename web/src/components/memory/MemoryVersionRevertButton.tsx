@@ -1,8 +1,8 @@
 import { RotateCcw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { useRevertMemory } from "@/hooks/MemoryHooks";
+import { useFetchMemory, useRevertMemory } from "@/hooks/MemoryHooks";
 import type { MemoryVersion } from "@/models/MemoryVersion";
 
 interface MemoryVersionRevertButtonProps {
@@ -14,6 +14,7 @@ interface MemoryVersionRevertButtonProps {
 
 export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }: MemoryVersionRevertButtonProps) => {
   const revert = useRevertMemory();
+  const projectId = useFetchMemory(memoryId).data?.project_id;
   const { open: confirm } = useConfirmationDialog();
 
   const onRevert = async () => {
@@ -28,7 +29,11 @@ export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }
   return (
     <>
       {compact && (
-        <Button
+        <ActionButton
+          permission="memories:write"
+          projectId={projectId}
+          verb="revert memories"
+          icon={RotateCcw}
           type="button"
           variant="ghost"
           size="icon"
@@ -37,15 +42,12 @@ export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }
           title={`Revert to v${version.version}`}
           onClick={onRevert}
           loading={revert.isPending}
-        >
-          <RotateCcw className="size-3.5" aria-hidden />
-        </Button>
+        />
       )}
       {!compact && (
-        <Button type="button" variant="outline" size="sm" onClick={onRevert} loading={revert.isPending}>
-          <RotateCcw className="size-4" />
+        <ActionButton permission="memories:write" projectId={projectId} verb="revert memories" icon={RotateCcw} type="button" variant="outline" size="sm" onClick={onRevert} loading={revert.isPending}>
           Revert
-        </Button>
+        </ActionButton>
       )}
     </>
   );

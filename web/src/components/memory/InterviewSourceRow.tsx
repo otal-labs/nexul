@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { InterviewSourceKindIcon } from "@/components/memory/InterviewSourceKindIcon";
 import { InterviewSourceStance } from "@/components/memory/InterviewSourceStance";
 import { useRemoveInterviewSource, useSetInterviewSourceStance } from "@/hooks/InterviewSourceHooks";
@@ -42,22 +42,33 @@ export const InterviewSourceRow = ({ source, change, readOnly }: InterviewSource
           onChange={(stance) => stance !== source.stance && setStance.mutate({ id: source.id, stance, was: source.stance })}
         />
       )}
-      {!readOnly && source.gone && (
-        <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" loading={remove.isPending} onClick={() => remove.mutate(source.id)}>
+      {source.gone && (
+        <ActionButton
+          permission="memories:write"
+          projectId={source.project_id}
+          verb="remove sources"
+          variant="ghost"
+          size="sm"
+          className="h-7 shrink-0 px-2 text-xs"
+          loading={remove.isPending}
+          onClick={() => remove.mutate(source.id)}
+        >
           Remove
-        </Button>
+        </ActionButton>
       )}
-      {!readOnly && !source.gone && (
-        <Button
+      {!source.gone && (
+        <ActionButton
+          permission="memories:write"
+          projectId={source.project_id}
+          verb="remove sources"
+          icon={X}
           variant="ghost"
           size="icon"
           className="size-7 shrink-0 text-muted-foreground"
           aria-label={`Remove ${name}`}
           disabled={remove.isPending}
           onClick={() => remove.mutate(source.id)}
-        >
-          <X className="size-3.5" />
-        </Button>
+        />
       )}
     </li>
   );

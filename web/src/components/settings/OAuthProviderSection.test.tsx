@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OAuthProviderSection } from "@/components/settings/OAuthProviderSection";
 import type { OptionalProvider } from "@/models/User";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({
   put: vi.fn(),
   errorMessage: vi.fn(),

@@ -9,13 +9,12 @@ import { cn } from "@/lib/utils";
 interface MemoryVersionsFeedProps {
   memoryId: string;
   currentVersion: number;
-  canRevert: boolean;
   /** Passed to each row; "stacked" suits a narrow column. */
   rowLayout?: "inline" | "stacked";
 }
 
 // Newest first, matching GET /api/memories/{id}/versions; the current version has no revert action.
-export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLayout = "inline" }: MemoryVersionsFeedProps) => {
+export const MemoryVersionsFeed = ({ memoryId, currentVersion, rowLayout = "inline" }: MemoryVersionsFeedProps) => {
   const { data, error, isPending } = useFetchMemoryVersions(memoryId);
   const stacked = rowLayout === "stacked";
 
@@ -34,7 +33,6 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLay
               memoryId={memoryId}
               version={version}
               isCurrent={version.version === currentVersion}
-              canRevert={canRevert}
               layout={rowLayout}
             />
           ))}

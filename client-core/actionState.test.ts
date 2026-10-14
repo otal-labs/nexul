@@ -64,6 +64,8 @@ const rows: Row[] = [
     expected: { state: "locked", reason: "Your role can't delete DNS and gateways" },
   },
   { name: "nothing shows while permissions load", me: undefined, permission: "chat:write", expected: { state: "hidden" } },
+  { name: "an instance action held is live before any workspace's permissions arrive", me: undefined, permission: "dns:write", instance: instanceHolder, expected: { state: "live" } },
+  { name: "an instance action not held stays hidden while permissions load", me: undefined, permission: "dns:delete", instance: instanceHolder, expected: { state: "hidden" } },
   { name: "the Owner is live with nothing listed", me: owner, permission: "stacks:delete", expected: { state: "live" } },
   { name: "a project action held in this project is live", me: developer(), permission: "deploys:write", projectId: "p-web", expected: { state: "live" } },
   {

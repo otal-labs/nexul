@@ -7,6 +7,7 @@ import { FormTextarea } from "@/components/ticket/FormTextarea";
 import { Button } from "@/components/ui/button";
 import { useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useContinueTrail } from "@/hooks/TrailHooks";
+import { useCanActOnTrail } from "@/hooks/useCanActOnTrail";
 import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { ContinueTrailFormSchema, type ContinueTrailFormData, type Trail } from "@/models/Trail";
 
@@ -17,6 +18,7 @@ interface TrailContinueFormProps {
 // Carries an ended run on in its own harness thread with only what is typed here; the run dialog asks where if that needs one.
 export const TrailContinueForm = ({ trail }: TrailContinueFormProps) => {
   const { mutate, isPending } = useContinueTrail();
+  const canContinue = useCanActOnTrail(trail);
   const form = useForm<ContinueTrailFormData>({ defaultValues: { message: "" }, resolver: zodResolver(ContinueTrailFormSchema) });
   // The instructions the play starts again with once the person picks where; null while nothing asks.
   const [again, setAgain] = useState<string | null>(null);
@@ -34,6 +36,8 @@ export const TrailContinueForm = ({ trail }: TrailContinueFormProps) => {
         },
       },
     );
+
+  if (!canContinue) return null;
 
   return (
     <>

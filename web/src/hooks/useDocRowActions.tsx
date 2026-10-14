@@ -9,21 +9,25 @@ import { useDocPins } from "@/hooks/useDocPins";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useRowGates } from "@/hooks/useRowGates";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
-// A doc row's menu: each action is left out when the viewer lacks it, and the server still checks the doc itself.
+// A doc row's menu: an action the viewer lacks is locked or left out (ADR 0152), and the server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { pinnedIds, toggle } = useDocPins();
-  const canWrite = useHasPermission("docs:write");
-  const canClone = useHasPermission("docs:clone");
-  const canLock = useHasPermission("docs:lock");
-  const canDelete = useHasPermission("docs:delete");
+  const projectId = doc.project_id;
+  const { offered, gates, deleteGate } = useRowGates({
+    lock: { permission: "docs:lock", projectId },
+    archive: { permission: "docs:write", projectId, verb: doc.archived ? "restore docs" : "archive docs" },
+    moveTo: { permission: "docs:write", projectId, verb: "move docs" },
+    onClone: { permission: "docs:clone", projectId },
+    onDelete: { permission: "docs:delete", projectId },
+  });
   const { open: openForm } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const deleteDoc = useDeleteDoc();
@@ -62,14 +66,16 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu =
 
   return {
     pin: { pinned: pinnedIds.includes(doc.id), onToggle: () => toggle(doc.id) },
-    lock: canLock ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
-    archive: canWrite ? { archived: doc.archived, onToggle: () => (doc.archived ? restoreDoc : archiveDoc).mutate(doc.id) } : undefined,
+    gates,
+    deleteGate,
+    lock: offered("lock") ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
+    archive: offered("archive") ? { archived: doc.archived, onToggle: () => (doc.archived ? restoreDoc : archiveDoc).mutate(doc.id) } : undefined,
     moveTo:
-      canWrite && folders && folders.length > 1
+      offered("moveTo") && folders && folders.length > 1
         ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }
         : undefined,
-    onClone: canClone ? () => void clone() : undefined,
+    onClone: offered("onClone") ? () => void clone() : undefined,
     permissions: { entity, onOpen: () => void openPermissions(entity) },
-    onDelete: canDelete ? () => void remove() : undefined,
+    onDelete: offered("onDelete") ? () => void remove() : undefined,
   };
 };

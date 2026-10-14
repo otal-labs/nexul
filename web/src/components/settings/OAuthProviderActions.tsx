@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { OAuthProviderForm } from "@/components/settings/OAuthProviderForm";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import {
   Dialog,
   DialogContent,
@@ -38,12 +38,23 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} onClick={() => void disable()}>
+      <ActionButton
+        permission="instance:write"
+        verb="change sign-in providers"
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground"
+        liveClassName="hover:text-destructive"
+        loading={update.isPending}
+        onClick={() => void disable()}
+      >
         Disable
-      </Button>
+      </ActionButton>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button size="sm" variant="outline">Edit</Button>
+          <ActionButton permission="instance:write" verb="change sign-in providers" size="sm" variant="outline">
+            Edit
+          </ActionButton>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

@@ -1,6 +1,6 @@
 import { RotateCw, TriangleAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { useMissedDecisionsCheck, useRunDecisionsCheck } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
@@ -26,10 +26,9 @@ export const DecisionsCheckNotice = ({ ticketId }: DecisionsCheckNoticeProps) =>
         {missed.last_error && <p className="text-xs break-words text-muted-foreground">{missed.last_error}</p>}
       </div>
       {missed.failure_reason === SETUP_REQUIRED_REASON && <SetupRefusalLink computerId={missed.computer_id} />}
-      <Button variant="outline" size="sm" loading={run.isPending} onClick={() => run.mutate(ticketId)}>
-        <RotateCw aria-hidden />
+      <ActionButton permission="plays:run" verb="run plays" icon={RotateCw} variant="outline" size="sm" loading={run.isPending} onClick={() => run.mutate(ticketId)}>
         Run check
-      </Button>
+      </ActionButton>
     </section>
   );
 };

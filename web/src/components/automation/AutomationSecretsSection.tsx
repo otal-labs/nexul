@@ -7,7 +7,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { AutomationSecretForm } from "@/components/automation/AutomationSecretForm";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchAutomationSecrets } from "@/hooks/AutomationSecretHooks";
 
@@ -24,10 +24,9 @@ export const AutomationSecretsSection = () => {
       description="Every automation reads these as ctx.secrets.NAME. A saved value can't be read back, only replaced or deleted."
       footer={
         !editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing({})}>
-            <PlusIcon className="size-4" />
+          <ActionButton permission="automations:write" verb="add automation secrets" icon={PlusIcon} variant="outline" size="sm" onClick={() => setEditing({})}>
             Add secret
-          </Button>
+          </ActionButton>
         )
       }
     >

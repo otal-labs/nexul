@@ -11,7 +11,7 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useCancelQueuedRun } from "@/hooks/PlayQueueHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useActionState } from "@/hooks/useActionState";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
 import { pickingComputer, waitingLink, waitingSentence } from "@/utils/PlayQueueUtility";
@@ -27,7 +27,7 @@ interface QueuedRunRowProps {
 export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const person = personLabel(usePerson(item.person_id));
   const { data: me } = useFetchMe();
-  const canWrite = useHasPermission("autoplays:write");
+  const canWrite = useActionState({ permission: "autoplays:write" }).state === "live";
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
   const mine = me?.user.id === item.person_id;

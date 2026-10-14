@@ -63,14 +63,16 @@ export const actionState = ({ permission, answer, ...rest }: ActionGate & Viewer
 };
 
 const stateOf = ({ permission, projectId, answer, verb, me, instance }: Omit<ActionGate, "permission"> & Viewer & { permission: PermissionAction }): ActionState => {
-  if (!me) return HIDDEN;
+  const holdsInstance = !!instance && (instance.instance_owner || hasPermission(instance.instance_permissions, permission));
+  // An instance action needs no workspace, so one held is live before any workspace's permissions arrive.
+  if (!me) return !answer && INSTANCE_PERMISSION_ACTIONS.includes(permission) && holdsInstance ? LIVE : HIDDEN;
   if (answer) {
     if (answer.allowed) return LIVE;
     return lockedOrHidden(me, answer.source.sentence || cannotReason(permission, verb));
   }
   if (INSTANCE_PERMISSION_ACTIONS.includes(permission)) {
     if (!instance) return HIDDEN;
-    if (instance.instance_owner || hasPermission(instance.instance_permissions, permission)) return LIVE;
+    if (holdsInstance) return LIVE;
     return lockedOrHidden(me, cannotReason(permission, verb));
   }
   if (me.roles?.some((role) => role.is_owner)) return LIVE;

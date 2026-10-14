@@ -6,7 +6,7 @@ import { signalActionClass, signalRowClass } from "@/components/play/signalRowCl
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useResumeAutoPlays } from "@/hooks/PlayQueueHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useActionState } from "@/hooks/useActionState";
 import type { PlayType } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ interface AutoPlaysPausedRowProps {
 
 export const AutoPlaysPausedRow = ({ targetType, targetId, autoRuns, developer, onLeave }: AutoPlaysPausedRowProps) => {
   const { data: me } = useFetchMe();
-  const canWrite = useHasPermission("autoplays:write");
+  const canWrite = useActionState({ permission: "autoplays:write" }).state === "live";
   const resume = useResumeAutoPlays();
   const [leaving, setLeaving] = useState(false);
   const canResume = canWrite || (developer !== "" && me?.user.login === developer);

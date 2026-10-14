@@ -8,6 +8,8 @@ import { api, errorMessage } from "@/api/client";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: vi.fn(),

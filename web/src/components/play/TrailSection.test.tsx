@@ -54,6 +54,8 @@ const trail = (overrides: Partial<Trail>): Trail => ({
 });
 
 const running = trail({ id: "tr-run", state: "running", ended_at: null, activity: [testStep], started_at: new Date().toISOString() });
+vi.mock("@/hooks/useCanActOnTrail", () => ({ useCanActOnTrail: () => true }));
+
 const failed = trail({ id: "tr-fail", state: "failed", last_error: "Harness offline", starter_id: "u-2", activity: [] });
 
 const mockApi = (trails: Trail[]) =>

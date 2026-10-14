@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ArchivedWorkspacesSection } from "@/components/settings/ArchivedWorkspacesSection";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "refused" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));

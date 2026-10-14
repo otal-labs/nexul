@@ -4,6 +4,8 @@ import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
+import { useActionState } from "@/hooks/useActionState";
+import { useRowGates } from "@/hooks/useRowGates";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useFetchGrants } from "@/hooks/PermissionHooks";
@@ -17,13 +19,16 @@ interface PlayRowProps {
   onLeave?: () => void;
   play: Play;
   workspaceId: string;
-  canWrite: boolean;
-  canDelete: boolean;
   onEdit: (play: Play) => void;
 }
 
-// canWrite gates Permissions too: a play's rules are written with the same plays:write bit as the play itself.
-export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
+// Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
+export const PlayRow = ({ onLeave, play, workspaceId, onEdit }: PlayRowProps) => {
+  const { offered, gates, deleteGate } = useRowGates({
+    onEdit: { permission: "plays:write", verb: "edit plays" },
+    onDelete: { permission: "plays:delete" },
+  });
+  const canWrite = useActionState({ permission: "plays:write" }).state === "live";
   const deletePlay = useDeletePlay(workspaceId);
   const [leaving, setLeaving] = useState(false);
   const openPermissions = usePermissionsDialog();
@@ -49,10 +54,12 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
   const entity = { type: "play" as const, id: play.id, name: play.label, workspaceId: play.workspace_id, projectId: "", folderId: "" };
   const menu: RowMenu = {
-    onEdit: canWrite ? () => onEdit(play) : undefined,
+    gates,
+    deleteGate,
+    onEdit: offered("onEdit") ? () => onEdit(play) : undefined,
     onClone: play.builtin_key ? () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) : undefined,
     permissions: canWrite ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
-    onDelete: canDelete ? () => void remove() : undefined,
+    onDelete: offered("onDelete") ? () => void remove() : undefined,
   };
 
   return (
@@ -93,7 +100,7 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
             )}
           </p>
           {play.description && <p className="line-clamp-2 text-xs text-muted-foreground">{play.description}</p>}
-          {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
+          {play.builtin_key && <PlayTemplateLine play={play} />}
         </div>
       </li>
     </RowContextMenu>

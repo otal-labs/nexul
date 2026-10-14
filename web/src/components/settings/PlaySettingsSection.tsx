@@ -8,7 +8,7 @@ import { PlayDialogHeader } from "@/components/play/PlayDialogHeader";
 import { PlayForm } from "@/components/play/PlayForm";
 import { PlayRow } from "@/components/play/PlayRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -16,11 +16,6 @@ import { useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { SavePlayFormSchema, type Play, type SavePlayFormData } from "@/models/Play";
 import { usePlayDialogStore } from "@/stores/playDialogStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-
-interface PlaySettingsSectionProps {
-  canWrite: boolean;
-  canDelete: boolean;
-}
 
 const emptyDefaults = (): SavePlayFormData => ({
   label: "",
@@ -42,8 +37,8 @@ const defaultsFrom = (play: Play): SavePlayFormData => ({
   excluded_project_ids: play.excluded_project_ids,
 });
 
-// Gated on plays:read/write/delete by the settings page, same gate-in-parent pattern as RoleSettingsSection.
-export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSectionProps) => {
+// The settings page opens it on plays:read; each control gates itself on its own permission.
+export const PlaySettingsSection = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays, isPending, error } = useFetchWorkspacePlays(workspaceId);
   const { open } = useFormDialog();
@@ -81,12 +76,9 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
       title="Plays"
       description="Agent turns members start with one button on a ticket, a doc, or an Interview page. Every workspace starts with a set you can edit or delete."
       footer={
-        canWrite && (
-          <Button type="button" onClick={() => void openCreate()}>
-            <PlusIcon className="size-4" />
-            New play
-          </Button>
-        )
+        <ActionButton permission="plays:write" verb="create plays" icon={PlusIcon} type="button" onClick={() => void openCreate()}>
+          New play
+        </ActionButton>
       }
     >
       {isPending && <LoadingDisplay />}
@@ -100,8 +92,6 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
                 key={play.id}
                 play={play}
                 workspaceId={workspaceId}
-                canWrite={canWrite}
-                canDelete={canDelete}
                 onEdit={() => void openEdit(play)}
                 onLeave={prepareGlide}
               />

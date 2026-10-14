@@ -9,8 +9,8 @@ import { DeletedBotsFold } from "@/components/botwebhook/DeletedBotsFold";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { ActionButton } from "@/components/action/ActionButton";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchBotwebhooks } from "@/hooks/BotwebhookHooks";
 import { BOT_CAP, capNote } from "@/models/Botwebhook";
 import { cn } from "@/lib/utils";
@@ -22,8 +22,7 @@ interface BotsSectionProps {
 
 // The list, or one bot's detail view in its place; only an editor opens a bot, creates one, or sees the deleted ones.
 export const BotsSection = ({ conversation, className }: BotsSectionProps) => {
-  const can = useAreaAccess();
-  const editor = can?.("editBots") ?? false;
+  const editor = useActionState({ permission: "botwebhook:write" }).state === "live";
   const { data: bots, error, isPending } = useFetchBotwebhooks(conversation.id);
   const [view, setView] = useState<BotView | null>(null);
   const creating = editor && view?.id === "new";
@@ -54,13 +53,22 @@ export const BotsSection = ({ conversation, className }: BotsSectionProps) => {
           {error && <ErrorDisplay error={error} title="Couldn't load bots." className="p-4" />}
           {bots && bots.length === 0 && <EmptyRow>No bots yet. Create one to post here from another tool.</EmptyRow>}
           {bots && bots.length > 0 && <BotsFeed bots={bots} onOpen={editor ? (bot) => setView({ id: bot.id }) : undefined} />}
-          {editor && bots && (
+          {bots && (
             <div className="space-y-1.5">
-              <Button type="button" variant="outline" size="sm" className="w-full" disabled={full} onClick={() => setView({ id: "new" })}>
-                <Plus className="size-4" aria-hidden />
+              <ActionButton
+                permission="botwebhook:write"
+                verb="create bots"
+                icon={Plus}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={full}
+                onClick={() => setView({ id: "new" })}
+              >
                 New bot
-              </Button>
-              {full && <p className="text-xs text-muted-foreground">{capNote(conversation.kind)}</p>}
+              </ActionButton>
+              {editor && full && <p className="text-xs text-muted-foreground">{capNote(conversation.kind)}</p>}
             </div>
           )}
           {editor && (

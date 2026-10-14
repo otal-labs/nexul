@@ -20,6 +20,8 @@ const question: TrailQuestion = {
   asked_at: "2026-09-18T10:00:04Z",
 };
 
+vi.mock("@/hooks/useCanActOnTrail", () => ({ useCanActOnTrail: () => true }));
+
 const at = (s: number) => `2026-09-18T10:00:${String(s).padStart(2, "0")}Z`;
 
 const thinking: ActivityEntry = { kind: "text", summary: "Reading the handler first.", detail: "Reading the handler first.", at: at(1) };

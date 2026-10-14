@@ -7,8 +7,7 @@ import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
-import { Button } from "@/components/ui/button";
-import { useHasInstancePermission } from "@/hooks/AccessHooks";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -31,7 +30,6 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   const Icon = iconById[connector.icon] ?? Blocks;
   const startOAuth = useStartConnectorOAuth();
   const disconnect = useDisconnectConnector();
-  const canSetUpApp = useHasInstancePermission("connectors:write");
   const isManual = !!connector.manual?.length;
   const unconfigured = available && !status.configured;
   // OAuth connect needs the app registration first (CN3a); storing it takes connectors:write.
@@ -80,21 +78,25 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
         <p className="line-clamp-2 text-sm text-pretty text-muted-foreground">{connector.description}</p>
       </div>
       {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
-      {needsApp && canSetUpApp && <ConnectorAppConfigDialog connector={connector} />}
-      {needsApp && !canSetUpApp && (
-        <Button size="sm" disabled title={`Someone who manages connectors has to set up the ${connector.name} app first`}>
-          Connect
-        </Button>
-      )}
+      {needsApp && <ConnectorAppConfigDialog connector={connector} />}
       {unconfigured && !isManual && app_configured && (
-        <Button size="sm" onClick={onConnect} loading={startOAuth.isPending}>
+        <ActionButton permission="connectors:write" verb="connect connectors" size="sm" onClick={onConnect} loading={startOAuth.isPending}>
           Connect
-        </Button>
+        </ActionButton>
       )}
       {available && status.configured && (
-        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => void onDisconnect()} loading={disconnect.isPending}>
+        <ActionButton
+          permission="connectors:write"
+          verb="disconnect connectors"
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground"
+          liveClassName="hover:text-destructive"
+          onClick={() => void onDisconnect()}
+          loading={disconnect.isPending}
+        >
           Disconnect
-        </Button>
+        </ActionButton>
       )}
     </li>
   );

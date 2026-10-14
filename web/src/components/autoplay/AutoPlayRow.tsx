@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 
 import { AutoPlaySentence } from "@/components/autoplay/AutoPlaySentence";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
-import { Switch } from "@/components/ui/switch";
+import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useCreateAutoPlay, useDeleteAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
@@ -13,13 +13,12 @@ interface AutoPlayRowProps {
   autoPlay: AutoPlay;
   subject: AutoPlaySubject;
   canWrite: boolean;
-  canDelete: boolean;
   onOpen: (autoPlay: AutoPlay) => void;
   // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
   onLeave: () => void;
 }
 
-export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, canDelete, onOpen, onLeave }: AutoPlayRowProps) => {
+export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave }: AutoPlayRowProps) => {
   const update = useUpdateAutoPlay(autoPlay.workspace_id, autoPlay.play_id);
   const create = useCreateAutoPlay(autoPlay.workspace_id, autoPlay.play_id);
   const remove = useDeleteAutoPlay(autoPlay.workspace_id, autoPlay.play_id);
@@ -43,8 +42,8 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, canDelete, onOpe
 
   const actions: RowAction[] = [
     { label: canWrite ? "Edit" : "View", onSelect: () => onOpen(autoPlay) },
-    ...(canWrite ? [{ label: "Duplicate", onSelect: () => create.mutate({ ...toRequest(autoPlay), enabled: false }) }] : []),
-    ...(canDelete ? [{ label: "Delete", destructive: true, onSelect: () => void destroy() }] : []),
+    { label: "Duplicate", permission: "autoplays:write", verb: "duplicate auto plays", onSelect: () => create.mutate({ ...toRequest(autoPlay), enabled: false }) },
+    { label: "Delete", destructive: true, permission: "autoplays:delete", onSelect: () => void destroy() },
   ];
 
   return (
@@ -56,10 +55,11 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, canDelete, onOpe
       >
         <AutoPlaySentence autoPlay={autoPlay} subject={subject} />
       </button>
-      <Switch
+      <ActionSwitch
+        permission="autoplays:write"
+        verb="switch auto plays on or off"
         checked={autoPlay.enabled}
         onCheckedChange={toggle}
-        disabled={!canWrite}
         aria-label={`Switch ${name} on or off`}
         className="mt-0.5"
       />

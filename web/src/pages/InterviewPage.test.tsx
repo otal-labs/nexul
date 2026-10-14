@@ -24,6 +24,10 @@ vi.mock("@/hooks/WorkspaceHooks", () => ({
   useHasPermission: (value: string) => !perms.denied.includes(value),
   useSelectedWorkspace: () => undefined,
 }));
+vi.mock("@/hooks/useActionState", () => {
+  const state = ({ permission }: { permission: string }) => ({ state: perms.denied.includes(permission) ? "hidden" : "live" });
+  return { useActionState: state, useActionStates: (gates: { permission: string }[]) => gates.map(state) };
+});
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 vi.mock("@/components/doc/DocBodyView", () => ({ DocBodyView: ({ body }: { body: string }) => <div>{body}</div> }));

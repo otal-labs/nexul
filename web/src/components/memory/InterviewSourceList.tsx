@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { EmptyRow } from "@/components/EmptyRow";
 import { InterviewSourceAddForm } from "@/components/memory/InterviewSourceAddForm";
 import { InterviewSourceRow } from "@/components/memory/InterviewSourceRow";
@@ -37,11 +37,19 @@ export const InterviewSourceList = ({ projectId, sources, readOnly }: InterviewS
         </ul>
       )}
       {adding && <InterviewSourceAddForm projectId={projectId} onClose={() => setAdding(false)} />}
-      {!readOnly && !adding && (
-        <Button variant="ghost" size="sm" onClick={() => setAdding(true)} className="text-muted-foreground">
-          <Plus className="size-3.5" />
+      {!adding && (
+        <ActionButton
+          permission="memories:write"
+          projectId={projectId}
+          verb="add sources"
+          icon={Plus}
+          variant="ghost"
+          size="sm"
+          onClick={() => setAdding(true)}
+          className="text-muted-foreground"
+        >
           Add source
-        </Button>
+        </ActionButton>
       )}
     </div>
   );

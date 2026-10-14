@@ -1,8 +1,8 @@
 import { RotateCcw } from "lucide-react";
 
 import type { BotView } from "@/components/botwebhook/BotForm";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useBotActions } from "@/hooks/useBotActions";
 import type { Botwebhook } from "@/models/Botwebhook";
 
@@ -16,7 +16,6 @@ interface BotDetailFooterProps {
 }
 
 export const BotDetailFooter = ({ bot, submitLabel, showSubmit, submitting, onNavigate }: BotDetailFooterProps) => {
-  const can = useAreaAccess();
   const actions = useBotActions();
 
   const regenerate = async (target: Botwebhook) => {
@@ -35,10 +34,10 @@ export const BotDetailFooter = ({ bot, submitLabel, showSubmit, submitting, onNa
             Regenerate URL
           </Button>
         )}
-        {bot && can?.("deleteBots") && (
-          <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => void remove(bot)}>
+        {bot && (
+          <ActionButton permission="botwebhook:delete" type="button" variant="ghost" size="sm" liveClassName="text-destructive hover:text-destructive" onClick={() => void remove(bot)}>
             Delete bot
-          </Button>
+          </ActionButton>
         )}
       </span>
       {showSubmit && (

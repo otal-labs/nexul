@@ -8,6 +8,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { post: mocks.post, get: mocks.get },
   errorMessage: () => "error",

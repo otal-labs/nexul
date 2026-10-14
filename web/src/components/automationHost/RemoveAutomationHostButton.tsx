@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRemoveAutomationHost } from "@/hooks/AutomationHostHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { AutomationHost } from "@/models/AutomationHost";
@@ -26,17 +26,19 @@ export const RemoveAutomationHostButton = ({ host }: RemoveAutomationHostButtonP
   };
 
   return (
-    <Button
+    <ActionButton
+      permission="machines:write"
+      verb="remove automations hosts"
+      icon={Trash2}
       type="button"
       variant="ghost"
       size="sm"
       aria-label={`Remove ${host.name}`}
       title={`Remove ${host.name}`}
-      className="shrink-0 hover:text-destructive"
+      className="shrink-0"
+      liveClassName="hover:text-destructive"
       loading={remove.isPending}
       onClick={() => void onRemove()}
-    >
-      <Trash2 className="size-4" />
-    </Button>
+    />
   );
 };

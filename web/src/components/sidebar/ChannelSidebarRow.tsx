@@ -11,7 +11,7 @@ interface ChannelSidebarRowProps {
 }
 
 export const ChannelSidebarRow = ({ conversation, unreadCount }: ChannelSidebarRowProps) => {
-  const { onSettings, onRename, permissions, onDelete, settingsDialog } = useChannelRowActions(conversation);
+  const { gates, deleteGate, onSettings, onRename, permissions, onDelete, settingsDialog } = useChannelRowActions(conversation);
   return (
     <>
       <ChatSidebarRow
@@ -20,7 +20,7 @@ export const ChannelSidebarRow = ({ conversation, unreadCount }: ChannelSidebarR
         icon={Hash}
         isPrivate={conversation.private}
         unreadCount={unreadCount}
-        menu={{ onSettings, onRename, permissions, onDelete }}
+        menu={{ gates, deleteGate, onSettings, onRename, permissions, onDelete }}
       />
       {settingsDialog}
     </>

@@ -8,14 +8,15 @@ import { DocThreadSidebarRow } from "@/components/sidebar/DocThreadSidebarRow";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
 import { VoiceChannelSidebarRow } from "@/components/sidebar/VoiceChannelSidebarRow";
 import { sectionLabelClass } from "@/components/SidebarNav";
-import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { useActionStates } from "@/hooks/useActionState";
 import { useHiddenThreads } from "@/hooks/useHiddenThreads";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { isOffered } from "@/components/listpane/rowMenu";
 import { groupConversations } from "@/models/Chat";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -35,9 +36,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const occupancy = useVoiceOccupancy(!collapsed);
   const { hiddenIds } = useHiddenThreads();
   const openId = useMatch("/:workspace/chat/:conversationId")?.params.conversationId;
-  const can = useAreaAccess();
-  const canCreateChannel = can?.("editChannels") ?? false;
-  const canCreateDM = can?.("newConversation") ?? false;
+  const [channelState, dmState] = useActionStates([{ permission: "channels:write" }, { permission: "chat:write" }]);
+  const canCreateChannel = !!channelState && isOffered(channelState);
+  const canCreateDM = !!dmState && isOffered(dmState);
   // A new text channel or DM opens straight away; a new voice channel waits in the list to be joined.
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (conversation) => {
     if (conversation.kind === "voice_channel") return;
@@ -59,7 +60,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
           <SidebarSectionHeader
             label="Channels"
             actionLabel="New channel"
-            onAction={canCreateChannel ? () => void openNewChannel(false) : undefined}
+            permission="channels:write"
+            verb="create channels"
+            onAction={() => void openNewChannel(false)}
           />
           {channels.map((conversation) => (
             <ChannelSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
@@ -71,7 +74,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
           <SidebarSectionHeader
             label="Voice channels"
             actionLabel="New voice channel"
-            onAction={canCreateChannel ? () => void openNewChannel(true) : undefined}
+            permission="channels:write"
+            verb="create channels"
+            onAction={() => void openNewChannel(true)}
           />
           {voiceChannels.map((conversation) => (
             <VoiceChannelSidebarRow
@@ -88,7 +93,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
           <SidebarSectionHeader
             label="Direct messages"
             actionLabel="New direct message"
-            onAction={canCreateDM ? () => void openNewDM() : undefined}
+            permission="chat:write"
+            verb="start direct messages"
+            onAction={() => void openNewDM()}
           />
           {dms.map((conversation) => (
             <DMSidebarRow

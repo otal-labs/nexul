@@ -5,11 +5,10 @@ import { findTemplate } from "@/models/Template";
 
 interface PlayTemplateLineProps {
   play: Play;
-  canWrite: boolean;
 }
 
 // A built-in play's instructions were copied from the instance template when the workspace was made.
-export const PlayTemplateLine = ({ play, canWrite }: PlayTemplateLineProps) => {
+export const PlayTemplateLine = ({ play }: PlayTemplateLineProps) => {
   const { data: templates } = useFetchTemplates();
   const instance = findTemplate(templates, "play_instructions", play.builtin_key);
   if (!instance) return null;
@@ -19,7 +18,6 @@ export const PlayTemplateLine = ({ play, canWrite }: PlayTemplateLineProps) => {
       templateKey={play.builtin_key}
       at={{ scope: "workspace", workspace_id: play.workspace_id }}
       state={play.instructions === instance.body ? "matches" : "differs"}
-      canReset={canWrite}
     />
   );
 };

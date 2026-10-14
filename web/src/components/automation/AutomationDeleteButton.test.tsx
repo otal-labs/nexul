@@ -8,6 +8,7 @@ import { AutomationDeleteButton } from "@/components/automation/AutomationDelete
 
 const mocks = vi.hoisted(() => ({ del: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { delete: mocks.del },
   errorMessage: () => "error",
