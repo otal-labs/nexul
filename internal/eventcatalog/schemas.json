@@ -5648,6 +5648,10 @@
       "actor_id": {
         "type": "string"
       },
+      "description": {
+        "type": "string",
+        "description": "The role's one-line description as it now stands, at most 140 characters; empty when it has none."
+      },
       "welcome_steps_added": {
         "type": "array",
         "items": {
@@ -5664,6 +5668,7 @@
     "required": [
       "role_id",
       "workspace_id",
+      "description",
       "welcome_steps_added",
       "show_locked_actions"
     ]

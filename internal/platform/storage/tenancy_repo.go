@@ -128,7 +128,7 @@ func (r *WorkspacesRepo) ListWithRoles(ctx context.Context) ([]*tenancy.TeamWork
 	}
 	for _, role := range roleRows {
 		if w, ok := byID[role.WorkspaceID]; ok {
-			w.Roles = append(w.Roles, &tenancy.TeamRole{ID: role.ID, Name: role.Name, IsOwner: role.IsOwnerRole != 0})
+			w.Roles = append(w.Roles, &tenancy.TeamRole{ID: role.ID, Name: role.Name, Description: role.Description, IsOwner: role.IsOwnerRole != 0})
 		}
 	}
 	return out, nil
@@ -345,7 +345,7 @@ func (r *WorkspaceMembersRepo) ListAllMemberships(ctx context.Context) ([]*tenan
 		if !row.RoleID.Valid {
 			continue
 		}
-		role := &tenancy.TeamRole{ID: row.RoleID.String, Name: row.RoleName.String, IsOwner: row.IsOwnerRole.Int64 != 0}
+		role := &tenancy.TeamRole{ID: row.RoleID.String, Name: row.RoleName.String, Description: row.RoleDescription.String, IsOwner: row.IsOwnerRole.Int64 != 0}
 		if len(m.Roles) == 0 {
 			m.RoleID = role.ID
 		}

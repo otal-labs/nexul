@@ -25,7 +25,7 @@ type RolesRepo struct {
 func (r *RolesRepo) Create(ctx context.Context, role *roles.Role) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateRole(ctx, sqlcgen.CreateRoleParams{
-			ID: role.ID, WorkspaceID: role.WorkspaceID, Name: role.Name,
+			ID: role.ID, WorkspaceID: role.WorkspaceID, Name: role.Name, Description: role.Description,
 			Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps), ShowLockedActions: int64(boolInt(role.ShowLockedActions)), IsOwnerRole: int64(boolInt(role.IsOwnerRole)),
 			CreatedAt: role.CreatedAt.Unix(), UpdatedAt: role.UpdatedAt.Unix(),
 		})
@@ -63,7 +63,7 @@ func (r *RolesRepo) List(ctx context.Context, workspaceID string) ([]*roles.Role
 func (r *RolesRepo) Update(ctx context.Context, role *roles.Role, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRole(ctx, sqlcgen.UpdateRoleParams{
-			Name: role.Name, Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps),
+			Name: role.Name, Description: role.Description, Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps),
 			ShowLockedActions: int64(boolInt(role.ShowLockedActions)), UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
 		})
 		if err != nil {
@@ -102,6 +102,7 @@ func toRole(row sqlcgen.Role) (*roles.Role, error) {
 		ID:                row.ID,
 		WorkspaceID:       row.WorkspaceID,
 		Name:              row.Name,
+		Description:       row.Description,
 		Permissions:       perms,
 		WelcomeSteps:      steps,
 		ShowLockedActions: row.ShowLockedActions != 0,

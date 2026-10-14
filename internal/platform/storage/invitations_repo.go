@@ -535,7 +535,7 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 			}
 			return nil, fmt.Errorf("read invitation role: %w", err)
 		}
-		held := &tenancy.TeamRole{ID: role.ID, Name: role.Name, IsOwner: role.IsOwnerRole != 0}
+		held := &tenancy.TeamRole{ID: role.ID, Name: role.Name, Description: role.Description, IsOwner: role.IsOwnerRole != 0}
 		if grant != nil && grant.WorkspaceID == grantRow.WorkspaceID {
 			grant.RoleIDs = append(grant.RoleIDs, grantRow.RoleID)
 			grant.Roles = append(grant.Roles, held)

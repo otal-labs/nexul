@@ -121,7 +121,7 @@ SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id;
 
 -- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.description AS role_description, r.is_owner_role
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
@@ -132,4 +132,4 @@ ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.
 SELECT id, name FROM workspaces WHERE archived_at IS NULL ORDER BY created_at, id;
 
 -- name: ListTeamRoles :many
-SELECT id, workspace_id, name, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id;
+SELECT id, workspace_id, name, description, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id;

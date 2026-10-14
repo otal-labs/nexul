@@ -4,6 +4,8 @@ export interface Role {
   id: string;
   workspace_id: string;
   name: string;
+  // One line on what holders do; empty for roles made before descriptions, which show their name alone.
+  description: string;
   permissions: string[];
   // The Welcome wizard steps the role gives its holders; the Owner role's are fixed by the server.
   welcome_steps: WelcomeStep[];
@@ -13,6 +15,9 @@ export interface Role {
   created_at: string;
   updated_at: string;
 }
+
+// Mirrors roles.DescriptionMax on the server, which refuses a longer description.
+export const ROLE_DESCRIPTION_MAX = 140;
 
 // A duplicate's name: "Admin (copy)", then "Admin (copy 2)" and on while those are taken.
 export const copyName = (name: string, taken: readonly string[]): string => {

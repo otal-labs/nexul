@@ -38,6 +38,7 @@ export const useRoleChoices = (workspaceId: string): { choices: RoleChoice[] | u
 
 interface RoleInput {
   name: string;
+  description: string;
   actions: string[];
   welcome_steps: WelcomeStep[];
   show_locked_actions: boolean;

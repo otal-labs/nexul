@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { WelcomeStep } from "@nexul/client-core/welcome";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RoleDescriptionField } from "@/components/settings/RoleDescriptionField";
 import { RoleDialogFooter } from "@/components/settings/RoleDialogFooter";
 import { RoleHolderLine } from "@/components/settings/RoleHolderLine";
 import { RoleNameFields } from "@/components/settings/RoleNameFields";
@@ -36,6 +37,7 @@ interface RoleEditorDialogProps {
 
 interface RoleEdits {
   name?: string;
+  description?: string;
   actions?: string[];
   steps?: WelcomeStep[];
   showLocked?: boolean;
@@ -56,13 +58,20 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
   const loadedName = role?.name ?? "";
   const loaded = role?.permissions ?? NO_ACTIONS;
   const name = edits.name ?? loadedName;
+  const loadedDescription = role?.description ?? "";
+  const description = edits.description ?? loadedDescription;
   const actions = edits.actions ?? loaded;
   const loadedSteps = role?.welcome_steps ?? NO_STEPS;
   const steps = edits.steps ?? loadedSteps;
   const loadedShowLocked = role?.show_locked_actions ?? false;
   const showLocked = edits.showLocked ?? loadedShowLocked;
   const named = name.trim().length > 0;
-  const dirty = name !== loadedName || !sameActions(actions, loaded) || !sameActions(steps, loadedSteps) || showLocked !== loadedShowLocked;
+  const dirty =
+    name !== loadedName ||
+    description !== loadedDescription ||
+    !sameActions(actions, loaded) ||
+    !sameActions(steps, loadedSteps) ||
+    showLocked !== loadedShowLocked;
   const title = creating ? `New ${template ? "template " : ""}role` : `Edit ${role.name}`;
 
   const finish = () => {
@@ -85,9 +94,10 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
   };
 
   const save = () => {
-    const input = { name: name.trim(), actions, welcome_steps: steps, show_locked_actions: showLocked };
+    const input = { name: name.trim(), description: description.trim(), actions, welcome_steps: steps, show_locked_actions: showLocked };
     if (template) {
-      saveTemplate.mutate({ kind: ROLE_TEMPLATE, key: template.key ?? "", body: templateRoleBody(input.name, actions, steps, showLocked) }, { onSuccess: finish });
+      const body = templateRoleBody(input.name, input.description, actions, steps, showLocked);
+      saveTemplate.mutate({ kind: ROLE_TEMPLATE, key: template.key ?? "", body }, { onSuccess: finish });
       return;
     }
     if (!role) {
@@ -129,7 +139,7 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
           {!template && creating && <DialogDescription>Nobody holds a new role until you give it to someone in Team.</DialogDescription>}
           {!template && !creating && <RoleHolderLine holders={holders ?? []} />}
         </DialogHeader>
-        <div className="border-t border-border px-6 pt-5 pb-4">
+        <div className="space-y-4 border-t border-border px-6 pt-5 pb-4">
           <RoleNameFields
             creating={creating}
             name={name}
@@ -145,6 +155,10 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
                 showLocked: from?.show_locked_actions ?? false,
               }))
             }
+          />
+          <RoleDescriptionField
+            description={description}
+            onDescription={(next) => setEdits((current) => ({ ...current, description: next }))}
           />
         </div>
         <RoleDraftContext value={draft}>

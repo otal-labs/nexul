@@ -59,6 +59,7 @@ const role = (overrides: Record<string, unknown> = {}) => ({
   id: "role-editor",
   workspace_id: "ws-1",
   name: "Editor",
+  description: "Edits the docs.",
   permissions: [],
   welcome_steps: [],
   show_locked_actions: false,
@@ -163,6 +164,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Support",
+      description: "",
       actions: ["plays:read", "members:read", "roles:read", "projects:read", "projects:write"],
       welcome_steps: [],
       show_locked_actions: false,
@@ -220,6 +222,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
+      description: "Edits the docs.",
       actions: ["projects:create", "memories:template", "projects:access", "memories:read"],
       welcome_steps: [],
       show_locked_actions: false,
@@ -258,6 +261,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Auditor",
+      description: "",
       actions: ["members:read"],
       welcome_steps: ["computer"],
       show_locked_actions: false,
@@ -300,11 +304,41 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Reviewer",
+      description: "Edits the docs.",
       actions: ["members:read", "members:write", "roles:read", "roles:write"],
       welcome_steps: [],
       show_locked_actions: false,
     });
     expect(toast.success).toHaveBeenCalledWith("Reviewer saved");
+  });
+
+  it("edits the description under the name, counted against its 140 characters, and saves it trimmed", async () => {
+    mockRoles([ownerRole, role()]);
+    mocks.patch.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    const description = screen.getByRole("textbox", { name: "Description" });
+    expect(description).toHaveValue("Edits the docs.");
+    expect(description).toHaveAccessibleDescription("Shown on invitations and wherever someone picks roles.");
+    expect(screen.getByText("15 / 140")).toBeInTheDocument();
+    await user.clear(description);
+    await user.paste("x".repeat(150));
+    expect(description).toHaveValue("x".repeat(140));
+    expect(screen.getByText("140 / 140")).toBeInTheDocument();
+    await user.clear(description);
+    await user.type(description, " Reviews the docs. ");
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
+      name: "Editor",
+      description: "Reviews the docs.",
+      actions: [],
+      welcome_steps: [],
+      show_locked_actions: false,
+    });
   });
 
   it("asks before discarding changes, and closes at once with none", async () => {
@@ -402,6 +436,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Editor (copy 2)",
+      description: "Edits the docs.",
       actions: ["roles:read"],
       welcome_steps: ["github"],
       show_locked_actions: true,
@@ -423,6 +458,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
+      description: "Edits the docs.",
       actions: ["members:read"],
       welcome_steps: [],
       show_locked_actions: true,
@@ -457,6 +493,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
+      description: "Edits the docs.",
       actions: ["members:read"],
       welcome_steps: ["github", "phone"],
       show_locked_actions: false,
@@ -516,6 +553,7 @@ describe("RoleSettingsSection", () => {
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
+      description: "Edits the docs.",
       actions: ["roles:read", "roles:clone"],
       welcome_steps: [],
       show_locked_actions: false,

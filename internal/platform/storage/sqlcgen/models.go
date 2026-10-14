@@ -952,6 +952,7 @@ type Role struct {
 	Permissions       string
 	WelcomeSteps      string
 	ShowLockedActions int64
+	Description       string
 }
 
 type Runner struct {

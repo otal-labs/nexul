@@ -246,9 +246,11 @@ type Joined struct {
 
 // TeamRole is a role a Team member can be given, or the Owner role they may already hold.
 type TeamRole struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	IsOwner bool   `json:"is_owner"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Description is the role's one line, left out where only the name was read, as on a member's own roles.
+	Description string `json:"description,omitempty"`
+	IsOwner     bool   `json:"is_owner"`
 }
 
 // TeamWorkspace is one workspace on the instance, its roles, and whether the viewer holds members:write there.

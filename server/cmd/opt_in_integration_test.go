@@ -414,13 +414,13 @@ func TestIntegration_MeShowsLockedActionsWhileARoleOfTheirsHasTheSwitchOn(t *tes
 	assert.False(t, show(uClient), "a role starts with the switch off")
 
 	on, off := true, false
-	role, err := f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", grant("tickets:read", "chat:write"), nil, &on)
+	role, err := f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", nil, grant("tickets:read", "chat:write"), nil, &on)
 	require.NoError(t, err)
 	assert.True(t, role.ShowLockedActions)
 	assert.True(t, show(uClient))
 	assert.False(t, show(uOwner), "Owner can do everything, so it has nothing locked")
 
-	_, err = f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", grant("tickets:read", "chat:write"), nil, &off)
+	_, err = f.svc.rolesSvc.Update(as(uOwner), wsDefault, "role-client", uOwner, "Client", nil, grant("tickets:read", "chat:write"), nil, &off)
 	require.NoError(t, err)
 	assert.False(t, show(uClient))
 }

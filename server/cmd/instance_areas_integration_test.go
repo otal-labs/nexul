@@ -233,20 +233,20 @@ func TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea(t *testing.T) {
 	dnsWrite := grant("dns:write")
 
 	t.Run("another workspace's Owner", func(t *testing.T) {
-		_, err := s.rolesSvc.Create(ctx, "workspace-other", uOtherOwner, "Network", dnsWrite, nil, false)
+		_, err := s.rolesSvc.Create(ctx, "workspace-other", uOtherOwner, "Network", "", dnsWrite, nil, false)
 		assert.ErrorIs(t, err, apperrs.ErrForbidden, "create a role carrying it")
-		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs", grant("docs:read", "dns:write"), nil, nil)
+		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs", nil, grant("docs:read", "dns:write"), nil, nil)
 		assert.ErrorIs(t, err, apperrs.ErrForbidden, "add it to a role")
 		err = s.tenancySvc.UpdateMemberRoles(ctx, uOtherOwner, "workspace-other", uOtherOwner, []string{"role-ops-other"}, nil)
 		assert.ErrorIs(t, err, apperrs.ErrForbidden, "give themselves a role carrying it")
-		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs renamed", grant("docs:read"), nil, nil)
+		_, err = s.rolesSvc.Update(ctx, "workspace-other", "role-docs-other", uOtherOwner, "Docs renamed", nil, grant("docs:read"), nil, nil)
 		assert.NoError(t, err, "other roles are theirs to edit")
 	})
 
 	t.Run("the instance Owner", func(t *testing.T) {
-		made, err := s.rolesSvc.Create(ctx, "workspace-default", uOwner, "Network", dnsWrite, nil, false)
+		made, err := s.rolesSvc.Create(ctx, "workspace-default", uOwner, "Network", "", dnsWrite, nil, false)
 		require.NoError(t, err)
-		_, err = s.rolesSvc.Update(ctx, "workspace-default", "role-editor", uOwner, "Editor", grant("docs:read", "docs:write", "dns:write"), nil, nil)
+		_, err = s.rolesSvc.Update(ctx, "workspace-default", "role-editor", uOwner, "Editor", nil, grant("docs:read", "docs:write", "dns:write"), nil, nil)
 		require.NoError(t, err)
 		require.NoError(t, s.tenancySvc.UpdateMemberRoles(ctx, uOwner, "workspace-default", uPlain, []string{made.ID}, nil))
 	})

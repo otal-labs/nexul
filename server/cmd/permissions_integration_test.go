@@ -587,11 +587,11 @@ func TestIntegration_GrantsNeverExceedTheGiver(t *testing.T) {
 		call func(ctx context.Context) error
 	}{
 		{"a role carrying instance:write", func(ctx context.Context) error {
-			_, err := s.rolesSvc.Create(ctx, "workspace-default", actorID(ctx), "Admins "+actorID(ctx), instanceWrite, nil, false)
+			_, err := s.rolesSvc.Create(ctx, "workspace-default", actorID(ctx), "Admins "+actorID(ctx), "", instanceWrite, nil, false)
 			return err
 		}},
 		{"instance:write added to an existing role", func(ctx context.Context) error {
-			_, err := s.rolesSvc.Update(ctx, "workspace-default", "role-plain", actorID(ctx), "Member", instanceWrite, nil, nil)
+			_, err := s.rolesSvc.Update(ctx, "workspace-default", "role-plain", actorID(ctx), "Member", nil, instanceWrite, nil, nil)
 			return err
 		}},
 		{"a member given a role carrying instance:write", func(ctx context.Context) error {

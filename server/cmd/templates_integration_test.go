@@ -357,7 +357,7 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 	f := newTemplateFixture(t)
 	existingNames, existing := workspaceRoles(t, f.svc, wsDefault)
 
-	f.setInstance(t, roles.TemplateKind, "client", `{"name":"Customer","permissions":["tickets:read"],"welcome_steps":["projects","phone"]}`)
+	f.setInstance(t, roles.TemplateKind, "client", `{"name":"Customer","description":"Reads the tickets of their projects.","permissions":["tickets:read"],"welcome_steps":["projects","phone"]}`)
 	added, err := f.tpl.Update(as(uTemplater), roles.TemplateKind, "", templates.Instance, `{"name":"Support","permissions":["tickets:read","chat:write"],"welcome_steps":["github"],"show_locked_actions":true}`)
 	require.NoError(t, err)
 	assert.True(t, added.Added)
@@ -370,6 +370,12 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 		"Owner": {"github", "computer"}, "Customer": {"projects", "phone"}, "Junior Developer": {"computer", "projects"},
 		"Senior Developer": {"github", "computer"}, "DevOps": {"deploy_server"}, "Administrator": {"github"}, "Support": {"github"},
 	}, ticksOf(copies))
+	assert.Equal(t, "Reads the tickets of their projects.", copies["Customer"].Description)
+	assert.Empty(t, copies["Support"].Description, "a body written before descriptions still seeds")
+	for _, shipped := range roles.ShippedTemplates()[1:] {
+		assert.NotEmpty(t, shipped.Body.Description, shipped.Key)
+		assert.Equal(t, shipped.Body.Description, copies[shipped.Body.Name].Description, shipped.Key)
+	}
 	assert.Equal(t, grant("tickets:read", "chat:write"), copies["Support"].Permissions)
 	assert.Equal(t, map[string]bool{"Customer": false, "Junior Developer": true, "Support": true}, map[string]bool{
 		"Customer": copies["Customer"].ShowLockedActions, "Junior Developer": copies["Junior Developer"].ShowLockedActions, "Support": copies["Support"].ShowLockedActions,

@@ -36,7 +36,7 @@ const roleTemplate = (key: string, body: object, over: Partial<Template> = {}): 
 });
 
 const templates: Template[] = [
-  roleTemplate("client", { name: "Client", permissions: ["tickets:read"], welcome_steps: ["projects"] }),
+  roleTemplate("client", { name: "Client", description: "Reads the tickets.", permissions: ["tickets:read"], welcome_steps: ["projects"] }),
   roleTemplate("0199-support", { name: "Support", permissions: [], welcome_steps: [] }, { added: true, edited: true, default_body: "" }),
 ];
 
@@ -82,6 +82,7 @@ describe("TemplateRolesSection", () => {
 
     await user.click(await screen.findByRole("button", { name: "New template role" }));
     await user.type(screen.getByRole("textbox", { name: "Name" }), "Contractor");
+    await user.type(screen.getByRole("textbox", { name: "Description" }), "Works the tickets they're given.");
     await user.click(screen.getByRole("tab", { name: /^Workspace/ }));
     await user.click(screen.getByRole("switch", { name: /^Show locked actions/ }));
     await user.click(screen.getByRole("tab", { name: /^Welcome/ }));
@@ -89,7 +90,13 @@ describe("TemplateRolesSection", () => {
     await user.click(screen.getByRole("button", { name: "Create role" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/templates/role", { key: "", body: expect.any(String) });
-    expect(JSON.parse(mocks.put.mock.calls[0]![1].body)).toEqual({ name: "Contractor", permissions: [], welcome_steps: ["computer"], show_locked_actions: true });
+    expect(JSON.parse(mocks.put.mock.calls[0]![1].body)).toEqual({
+      name: "Contractor",
+      description: "Works the tickets they're given.",
+      permissions: [],
+      welcome_steps: ["computer"],
+      show_locked_actions: true,
+    });
   });
 
   it("edits a template role under its key", async () => {
@@ -104,7 +111,13 @@ describe("TemplateRolesSection", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/templates/role", { key: "client", body: expect.any(String) });
-    expect(JSON.parse(mocks.put.mock.calls[0]![1].body)).toEqual({ name: "Client", permissions: ["tickets:read"], welcome_steps: ["github", "projects"], show_locked_actions: false });
+    expect(JSON.parse(mocks.put.mock.calls[0]![1].body)).toEqual({
+      name: "Client",
+      description: "Reads the tickets.",
+      permissions: ["tickets:read"],
+      welcome_steps: ["github", "projects"],
+      show_locked_actions: false,
+    });
   });
 
   it("deletes an added template role only after a confirm", async () => {

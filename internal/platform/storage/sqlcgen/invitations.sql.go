@@ -307,7 +307,7 @@ func (q *Queries) GetOAuthHandoffByState(ctx context.Context, oauthStateHash sql
 }
 
 const getRoleForInvitationGrant = `-- name: GetRoleForInvitationGrant :one
-SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions
+SELECT id, workspace_id, name, description, is_owner_role, created_at, updated_at, permissions
 FROM roles
 WHERE id = ? AND workspace_id = ?
 `
@@ -321,6 +321,7 @@ type GetRoleForInvitationGrantRow struct {
 	ID          string
 	WorkspaceID string
 	Name        string
+	Description string
 	IsOwnerRole int64
 	CreatedAt   int64
 	UpdatedAt   int64
@@ -334,6 +335,7 @@ func (q *Queries) GetRoleForInvitationGrant(ctx context.Context, arg GetRoleForI
 		&i.ID,
 		&i.WorkspaceID,
 		&i.Name,
+		&i.Description,
 		&i.IsOwnerRole,
 		&i.CreatedAt,
 		&i.UpdatedAt,

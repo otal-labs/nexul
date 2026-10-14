@@ -3,6 +3,7 @@ package roles
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,13 +21,14 @@ func TestParseTemplate_RefusesWhatNoRoleCouldHold(t *testing.T) {
 		"an action off the catalog":     `{"name":"Support","permissions":["tickets:fly"]}`,
 		"an action only a rule can set": `{"name":"Support","permissions":["projects:open"]}`,
 		"a step the wizard lacks":       `{"name":"Support","welcome_steps":["profile"]}`,
+		"a description past the cap":    `{"name":"Support","description":"` + strings.Repeat("a", 141) + `"}`,
 	} {
 		assert.ErrorIs(t, CheckTemplate(body), apperrs.ErrInvalid, name)
 	}
 
-	got, err := ParseTemplate(`{"name":" Support ","permissions":["tickets:write","tickets:read","tickets:read"],"welcome_steps":["projects","github"],"show_locked_actions":true}`)
+	got, err := ParseTemplate(`{"name":" Support ","description":" Answers questions. ","permissions":["tickets:write","tickets:read","tickets:read"],"welcome_steps":["projects","github"],"show_locked_actions":true}`)
 	require.NoError(t, err)
-	assert.Equal(t, TemplateBody{Name: "Support", Permissions: permissions.SetOf("tickets:read", "tickets:write"), WelcomeSteps: []string{"github", "projects"}, ShowLockedActions: true}, got)
+	assert.Equal(t, TemplateBody{Name: "Support", Description: "Answers questions.", Permissions: permissions.SetOf("tickets:read", "tickets:write"), WelcomeSteps: []string{"github", "projects"}, ShowLockedActions: true}, got)
 }
 
 type fakeTemplateRoles struct {

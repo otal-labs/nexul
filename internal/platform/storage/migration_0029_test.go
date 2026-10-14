@@ -58,6 +58,15 @@ func withArchivedAt(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
+// withRoleDescription adds roles.description to a database a test stopped short of, for repo reads that select it.
+func withRoleDescription(t *testing.T, db *sql.DB) {
+	t.Helper()
+	script, err := migrationFS.ReadFile("migrations/0116_role_descriptions.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(string(script))
+	require.NoError(t, err)
+}
+
 // storedRole reads a role's permissions and welcome steps straight from its row, for a test that stops before later
 // migrations that add columns the Roles repo already selects.
 func storedRole(t *testing.T, db *sql.DB, id string) (permissions.Set, []string) {

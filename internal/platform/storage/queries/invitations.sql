@@ -96,7 +96,7 @@ FROM workspaces w
 WHERE w.id = ?;
 
 -- name: GetRoleForInvitationGrant :one
-SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions
+SELECT id, workspace_id, name, description, is_owner_role, created_at, updated_at, permissions
 FROM roles
 WHERE id = ? AND workspace_id = ?;
 

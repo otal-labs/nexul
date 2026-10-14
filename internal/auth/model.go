@@ -91,8 +91,9 @@ type InvitationGrant struct {
 
 // InvitationRole is one role an invitation grant gives.
 type InvitationRole struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // InvitationAuthenticatedUser is provider identity or an admitted user shown on acceptance.

@@ -67,7 +67,7 @@ func mapInvitationAcceptance(svc *tenancy.InvitationService, ctx context.Context
 	for _, grant := range invitation.Grants {
 		roles := make([]auth.InvitationRole, 0, len(grant.Roles))
 		for _, role := range grant.Roles {
-			roles = append(roles, auth.InvitationRole{ID: role.ID, Name: role.Name})
+			roles = append(roles, auth.InvitationRole{ID: role.ID, Name: role.Name, Description: role.Description})
 		}
 		details.Grants = append(details.Grants, auth.InvitationGrant{
 			WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName,
