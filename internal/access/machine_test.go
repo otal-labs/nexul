@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,14 @@ import (
 type fakeMachines []string
 
 func (f fakeMachines) MachineIDs(context.Context) ([]string, error) { return f, nil }
+
+// MachineIDByName treats each machine's id as its name.
+func (f fakeMachines) MachineIDByName(_ context.Context, name string) (string, error) {
+	if !slices.Contains(f, name) {
+		return "", apperrs.ErrNotFound
+	}
+	return name, nil
+}
 
 // machineRoles resolves the fixture's roles to their workspace and what they hold.
 type machineRoles struct {

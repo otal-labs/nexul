@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -20,6 +21,8 @@ const SourceNotOnMachine = "not_on_machine"
 type MachineScopes interface {
 	// MachineIDs lists every machine.
 	MachineIDs(ctx context.Context) ([]string, error)
+	// MachineIDByName is the id of the machine called name, or ErrNotFound.
+	MachineIDByName(ctx context.Context, name string) (string, error)
 }
 
 // SetMachines wires the machine lookup a machine check resolves ids through.
@@ -221,6 +224,25 @@ func (s *Service) RequireMachine(ctx context.Context, machineID string, action p
 		return s.refusal(ctx, action, answer.src)
 	}
 	return nil
+}
+
+// RequireMachineNamed is RequireMachine for a machine a stack or gateway carries by name; a name no machine bears is
+// invalid input, never a free string (ADR 0151). The server's own calls pass.
+func (s *Service) RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error {
+	if _, checked := caller(ctx); !checked {
+		return nil
+	}
+	if s.machines == nil {
+		return fmt.Errorf("%w: no machine lookup wired", apperrs.ErrForbidden)
+	}
+	id, err := s.machines.MachineIDByName(ctx, name)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w: machine %q does not exist; machine_list lists machines", apperrs.ErrInvalid, name)
+	}
+	if err != nil {
+		return fmt.Errorf("resolve machine %q: %w", name, err)
+	}
+	return s.RequireMachine(ctx, id, action)
 }
 
 // MachinesSeen is the ids of the machines userID sees, from one read of the rules reaching them however many machines

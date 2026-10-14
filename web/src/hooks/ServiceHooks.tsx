@@ -112,7 +112,7 @@ export const serviceFollower: LiveFollower = {
   ...followEach(["service.created", "service.updated"], ({ stack }: { stack: { project_id: string } }, { client }) => refetchLists(client, stack.project_id)),
   "service.deleted": ({ project_id }: { project_id?: string }, { client }) => refetchLists(client, project_id ?? ""),
   "deploy.updated": (frame: DeployFrame, { client }) => refetchDeployHistory(client, getServiceDeploysKey, frame),
-  // The frame names no project, so a stack's rule refetches every services list.
+  // The frame names no project, so a stack's rule, or a machine's for the instance's stacks on it, refetches every services list.
   "access.grant.changed": ({ resource_type }: { resource_type: string }, { client }) =>
-    resource_type === "stack" && client.invalidateQueries({ queryKey: [getServicesKey] }),
+    (resource_type === "stack" || resource_type === "machine") && client.invalidateQueries({ queryKey: [getServicesKey] }),
 };

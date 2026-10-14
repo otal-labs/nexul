@@ -242,6 +242,7 @@ func listParityFixture(t *testing.T) permFixture {
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
 	f := withListParityRows(t, seedPermFixture(t, db, svc, store))
+	withMachineM1(t, f, "role-reader")
 	withRoleRulesOnDocs(t, db)
 	withFolderRules(t, f)
 	withStackRules(t, f)

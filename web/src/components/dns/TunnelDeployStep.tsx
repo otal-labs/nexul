@@ -12,9 +12,9 @@ import { MachinePicker } from "@/components/MachinePicker";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useCreateTunnel, useFetchDnsZones, useProvisionTunnelAgent } from "@/hooks/DnsHooks";
-import { useFetchMachines } from "@/hooks/MachineHooks";
+import { useFetchDeployTargets } from "@/hooks/MachineHooks";
 import { soleItem, zoneAccounts, type CloudflareAccount, type TunnelDeployment } from "@/models/DNS";
-import type { Machine } from "@/models/Machine";
+import type { DeployTarget } from "@/models/Machine";
 
 // The account only has to be chosen when the token reaches more than one; with one it is preselected.
 const tunnelDeploySchema = (chooseAccount: boolean) =>
@@ -28,7 +28,7 @@ const tunnelDeploySchema = (chooseAccount: boolean) =>
 type TunnelDeployFormData = z.infer<ReturnType<typeof tunnelDeploySchema>>;
 
 interface TunnelDeployFieldsProps {
-  machines: Machine[];
+  machines: DeployTarget[];
   accounts: CloudflareAccount[];
   onConnected: (deployment: TunnelDeployment) => void;
 }
@@ -112,7 +112,7 @@ interface TunnelDeployStepProps {
 }
 
 export const TunnelDeployStep = ({ onConnected }: TunnelDeployStepProps) => {
-  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
+  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchDeployTargets();
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(true);
 
   return (

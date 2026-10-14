@@ -23,6 +23,9 @@ func (s *Service) CreateGateway(ctx context.Context, in CreateGatewayInput) (*Ga
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
+	if err := s.requireDeployTo(ctx, in.Target); err != nil {
+		return nil, err
+	}
 	_, err := s.repo.GetGatewayByNetwork(ctx, in.DockerNetwork)
 	if err == nil {
 		return nil, fmt.Errorf("%w: network %q already has a gateway", apperrs.ErrConflict, in.DockerNetwork)
@@ -221,7 +224,7 @@ func (s *Service) deployProxyGateway(ctx context.Context, in InstanceProxyInput)
 	if in.Domain != "" && s.origin == "" {
 		return nil, apperrs.Fatal(fmt.Errorf("%w: the server's address for containers is not configured", apperrs.ErrInvalid))
 	}
-	machine, err := s.placementMachine(ctx, in.Target)
+	machine, err := s.placedOn(ctx, in.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -278,6 +281,15 @@ func (s *Service) proxyGatewayFor(ctx context.Context, machine, network string) 
 		ID: ids.New(), Kind: GatewayProxy, DockerNetwork: network, Networks: []string{network},
 		Machine: machine, ServiceName: instanceProxyStack, CreatedAt: now,
 	}, nil
+}
+
+// placedOn is the machine a gateway's backing stack goes to, which the caller must hold Deploy to.
+func (s *Service) placedOn(ctx context.Context, target string) (string, error) {
+	machine, err := s.placementMachine(ctx, target)
+	if err != nil {
+		return "", err
+	}
+	return machine, s.requireDeployTo(ctx, machine)
 }
 
 func (s *Service) placementMachine(ctx context.Context, target string) (string, error) {

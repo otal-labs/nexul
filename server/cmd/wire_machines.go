@@ -7,6 +7,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
+	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -49,7 +50,8 @@ func (a runnerTunnelDescriberAdapter) DescribeTunnel(ctx context.Context, tunnel
 
 // deployMachineLookupAdapter adapts runner's machines to deploy's MachineLookup seam (ADR 0017: deploy never imports runner).
 type deployMachineLookupAdapter struct {
-	runner *runner.Service
+	runner   *runner.Service
+	machines *storage.MachinesRepo
 }
 
 func (a deployMachineLookupAdapter) MachineName(ctx context.Context, machineID string) (string, error) {
@@ -58,6 +60,19 @@ func (a deployMachineLookupAdapter) MachineName(ctx context.Context, machineID s
 		return "", err
 	}
 	return m.Name, nil
+}
+
+// Machines lists every machine from storage, past the runner domain's own checks; DeployTargets filters them.
+func (a deployMachineLookupAdapter) Machines(ctx context.Context) ([]deploy.MachineRef, error) {
+	ms, err := a.machines.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]deploy.MachineRef, len(ms))
+	for i, m := range ms {
+		out[i] = deploy.MachineRef{ID: m.ID, Name: m.Name}
+	}
+	return out, nil
 }
 
 // deployMachineDiscovererAdapter adapts runner's discovery to deploy's MachineDiscoverer seam (ADR 0017); Import

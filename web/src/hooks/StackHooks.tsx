@@ -181,12 +181,17 @@ export const useCreateStack = () => {
 
 export const stackFollower: LiveFollower = {
   "deploy.updated": (frame: DeployFrame, { client }) => refetchDeployHistory(client, getStackDeploysKey, frame),
-  // A stack's rule can hide it or its deploys from whom it names, so its lists and its own reads refetch.
-  "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>
-    resource_type === "stack" &&
-    Promise.all([
-      client.invalidateQueries({ queryKey: [getStacksKey] }),
-      client.invalidateQueries({ queryKey: [getStackKey, resource_id] }),
-      client.invalidateQueries({ queryKey: [getStackDeploysKey, resource_id] }),
-    ]),
+  // A stack's rule can hide it or its deploys from whom it names, so its lists and its own reads refetch; a machine's
+  // rule does the same to the instance's stacks on it.
+  "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) => {
+    if (resource_type === "machine") return client.invalidateQueries({ queryKey: [getStacksKey] });
+    return (
+      resource_type === "stack" &&
+      Promise.all([
+        client.invalidateQueries({ queryKey: [getStacksKey] }),
+        client.invalidateQueries({ queryKey: [getStackKey, resource_id] }),
+        client.invalidateQueries({ queryKey: [getStackDeploysKey, resource_id] }),
+      ])
+    );
+  },
 };

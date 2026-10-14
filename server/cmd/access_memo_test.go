@@ -693,8 +693,9 @@ UNION ALL SELECT 'stack', s.id, 'person', NULL, ?, '["stacks:read","deploys:read
 	}
 	none := cost(12, false)
 	// Each list costs one read past what it cost before stack rules, the reader's stack rules: the topology's no
-	// membership read and no instance check, which its workspace's stacks never need.
-	assert.Equal(t, map[string]int64{"stack_list": 7, "deploy_list": 9, "the topology canvas's stacks": 6, "a stack's read": 6,
+	// membership read and no instance check, which its workspace's stacks never need. The two lists that reach the
+	// instance's stacks add the machines the reader sees, one read of rules and of roles however many machines exist.
+	assert.Equal(t, map[string]int64{"stack_list": 9, "deploy_list": 11, "the topology canvas's stacks": 6, "a stack's read": 6,
 		"a deploy's read": 7, "a stack's frame": 5}, none, "with no stack rules")
 	assert.Equal(t, none, cost(2, true), "a few stacks, each with rules")
 	assert.Equal(t, none, cost(12, true), "many stacks, each with rules")

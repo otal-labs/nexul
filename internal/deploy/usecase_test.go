@@ -72,6 +72,12 @@ func (allowGate) CallerStacks(context.Context, string, permissions.Action) (perm
 	return permissions.StackReach{}, true, nil
 }
 
+func (allowGate) RequireMachine(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) RequireMachineNamed(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerMachines(context.Context) ([]string, bool, error) { return nil, false, nil }
+
 func requireStack(t *testing.T, stacks *fakeStackRepo, stack Stack) {
 	t.Helper()
 	if stack.ID == "" {

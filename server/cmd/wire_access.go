@@ -154,6 +154,14 @@ func (a accessMachines) MachineIDs(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
+func (a accessMachines) MachineIDByName(ctx context.Context, name string) (string, error) {
+	m, err := a.machines.GetByName(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return m.ID, nil
+}
+
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).
 type accessUsers struct {
 	users *storage.UsersRepo

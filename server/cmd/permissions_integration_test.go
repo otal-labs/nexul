@@ -268,6 +268,7 @@ ON CONFLICT DO NOTHING`, projectID, wsDefault)
 // wired use-cases the HTTP gateway and MCP tools both call.
 func TestIntegration_PermissionTable(t *testing.T) {
 	f := newPermFixture(t)
+	withMachineM1(t, f, "role-reader", "role-steward")
 	s := f.svc
 	machines := runner.NewService(f.store.Runners, nil).WithMachines(f.store.Machines).WithGate(s.accessSvc)
 	upgrades := runner.NewService(noopRunnerRepo{}, fakeUpgradeDispatch{}).

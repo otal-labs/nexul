@@ -94,7 +94,7 @@ describe("GatewaysSection", () => {
       if (url === "/api/dns/gateways") return { data: [] };
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/dns/tunnels") return { data: tunnels };
-      if (url === "/api/machines") return { data: machines };
+      if (url === "/api/machines/deployable") return { data: machines };
       return { data: [] };
     });
     mocks.post.mockResolvedValue({ data: gateway });
@@ -124,7 +124,7 @@ describe("GatewaysSection", () => {
       if (url === "/api/dns/gateways") return { data: [] };
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/dns/tunnels") return { data: tunnels };
-      if (url === "/api/machines") return { data: machines };
+      if (url === "/api/machines/deployable") return { data: machines };
       return { data: [] };
     });
     renderSection();

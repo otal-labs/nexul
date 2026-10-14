@@ -11,6 +11,12 @@ export interface Machine {
   last_seen: string;
 }
 
+// A machine a stack may be aimed at, from GET /api/machines/deployable.
+export interface DeployTarget {
+  id: string;
+  name: string;
+}
+
 export interface ContainerNetworkInfo {
   name: string;
   address?: string;

@@ -137,6 +137,9 @@ func (s *Service) SetRunnerJoin(j RunnerJoiner) { s.runnerJoin = j }
 // caller needs the action in any workspace they belong to (ADR 0087).
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	// RequireMachineNamed checks a machine action on the machine a gateway is placed on, by name; a machine the caller
+	// can't see is not found and a name no machine bears is invalid input (ADR 0151).
+	RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error
 }
 
 // SetGate wires the permission check; unset, only the server's own calls pass. The seams other domains call
@@ -148,6 +151,14 @@ func (s *Service) require(ctx context.Context, action permissions.Action) error 
 		return permissions.Ungated(ctx)
 	}
 	return s.gate.RequireAnywhere(ctx, action)
+}
+
+// requireDeployTo takes Deploy to on the machine a gateway or its backing service is placed on, beside dns:write.
+func (s *Service) requireDeployTo(ctx context.Context, machine string) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireMachineNamed(ctx, machine, permissions.MachinesDeploy)
 }
 
 // VerifyCredentials checks the current credentials against the provider,

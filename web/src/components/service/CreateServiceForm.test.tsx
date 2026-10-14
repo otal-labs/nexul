@@ -61,7 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.post).mockResolvedValue({ data: {} });
   vi.mocked(api.get).mockImplementation((url: string) => {
-    if (url === "/api/machines") return Promise.resolve({ data: machines });
+    if (url === "/api/machines/deployable") return Promise.resolve({ data: machines });
     return Promise.resolve({ data: [] });
   });
 });

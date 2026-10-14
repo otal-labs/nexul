@@ -36,16 +36,14 @@ describe("MachinePicker", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
   });
 
-  it("offers machines by name, never runners", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: [{ id: "m1", name: "prod-1", stack_root: "/data/nexul", first_seen: "", last_seen: "" }],
-    });
+  it("offers the machines the viewer may deploy to by name, never runners", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [{ id: "m1", name: "prod-1" }] });
     const user = userEvent.setup();
     renderPicker();
 
     await user.click(await screen.findByRole("combobox", { name: "Machine" }));
     expect(await screen.findByRole("option", { name: "prod-1" })).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith("/api/machines");
+    expect(api.get).toHaveBeenCalledWith("/api/machines/deployable");
   });
 
   const mockEmptyMachines = (permissions: string[]) =>
@@ -65,7 +63,7 @@ describe("MachinePicker", () => {
     mockEmptyMachines([]);
     renderPicker();
 
-    expect(await screen.findByText(/Ask an admin to add a runner/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ask an admin for access to a machine/)).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

@@ -30,7 +30,7 @@ const machines = [
 const mockLists = () =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/dns/zones") return { data: zones };
-    if (url === "/api/machines") return { data: machines };
+    if (url === "/api/machines/deployable") return { data: machines };
     return { data: [] };
   });
 
@@ -94,7 +94,7 @@ describe("DnsSetupStepper", () => {
     let tunnelStatus = "inactive";
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
-      if (url === "/api/machines") return { data: machines };
+      if (url === "/api/machines/deployable") return { data: machines };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: tunnelStatus } };
       if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-07T10:00:00Z" }] };
       return { data: [] };
@@ -150,7 +150,7 @@ describe("DnsSetupStepper", () => {
   it("shows the failed deploy with a retry instead of unlocking the hostname rung", async () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
-      if (url === "/api/machines") return { data: machines };
+      if (url === "/api/machines/deployable") return { data: machines };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "inactive" } };
       if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "failed", created_at: "2026-09-07T10:00:00Z" }] };
       if (url === "/api/deploys/d1/log") return { data: [{ seq: 1, ts: 1, phase: "deploy", text: "pull access denied" }] };

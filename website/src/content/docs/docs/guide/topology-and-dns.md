@@ -15,7 +15,7 @@ The canvas follows what is deployed, so you can't edit services, networks or rou
 
 A gateway is a Cloudflare tunnel or a reverse proxy that Nexul deploys to give one Docker network a way in from the internet. On the canvas it is a hub: hostnames wire in on the left, one row per route shows where traffic lands (`service:port`, plus the container's address once known), and wires go out to the services on the right.
 
-You rarely create one yourself: exposing a container or running **Set up DNS** creates the gateway it needs. To see or delete gateways, open **Settings → DNS**; each lists the hostnames it routes. A gateway belongs to the instance rather than a project, and shows on the topology of every workspace it routes a hostname into.
+You rarely create one yourself: exposing a container or running **Set up DNS** creates the gateway it needs. To see or delete gateways, open **Settings → DNS**; each lists the hostnames it routes. A gateway belongs to the instance rather than a project, and shows on the topology of every workspace it routes a hostname into. Creating one, or running **Set up DNS**, takes DNS write and **Deploy to** on the machine it deploys to; a gateway's stack is found only by someone who sees that machine and can read DNS.
 
 ## Exposures
 
@@ -35,7 +35,7 @@ The instance gets its domain in the [setup wizard](/docs/guide/setup-wizard/). T
    - **Bare public address**: an A or AAAA record pointing straight at the server.
    - **Cloudflare tunnel**: no open ports. cloudflared runs on a machine of yours and Cloudflare issues the certificate.
    - **Reverse proxy**: Traefik on ports 80 and 443 of a machine, with Let's Encrypt certificates. Both ports must be open to the internet.
-2. **Deploy the tunnel** (tunnel only): name it and pick the machine and Docker network. If your token reaches several Cloudflare accounts, pick the one that owns the domain; a tunnel only serves its own account's zones.
+2. **Deploy the tunnel** (tunnel only): name it and pick the machine and Docker network. The picker lists only machines you may deploy to. If your token reaches several Cloudflare accounts, pick the one that owns the domain; a tunnel only serves its own account's zones.
 3. **Point your hostname**: pick the zone and subdomain (or, for a bare address, the record type and target). For a tunnel, leave the local service empty to send the hostname to this instance. Three checks then confirm the route, the proxied DNS record, and that the hostname answers over HTTPS. A new record can take a minute.
 4. **Go live** confirms the instance answers at its new address.
 

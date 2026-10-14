@@ -316,7 +316,7 @@ describe("ProjectWizardPage", () => {
         return { data: { ...project, setup: { finished, stack_id: "stack-old", env_keys: ["PORT"], steps: { project: "done", repository: "done", service: "done" } } } };
       if (url === "/api/stacks/stack-old") return { data: { ...stack, id: "stack-old", name: "old" } };
       if (url === "/api/stacks/stack-1") return { data: stack };
-      if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+      if (url === "/api/machines/deployable") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });
     mocks.post.mockResolvedValueOnce({ data: stack });
@@ -352,7 +352,7 @@ describe("ProjectWizardPage", () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: inSetup({ project: "done" }) };
       if (url === "/api/stacks/stack-1") return { data: stack };
-      if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+      if (url === "/api/machines/deployable") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });
     mocks.post.mockResolvedValueOnce({ data: stack });
@@ -444,7 +444,7 @@ describe("ProjectWizardPage", () => {
       if (url === "/api/projects") return { data: [project] };
       if (url === "/api/stacks/stack-1") return { data: stack };
       if (url === "/api/memories") return { data: [{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }] };
-      if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+      if (url === "/api/machines/deployable") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });
     mocks.post.mockResolvedValue({ data: stack });
