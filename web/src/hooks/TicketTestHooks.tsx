@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { ticketChanged } from "@/hooks/TicketCache";
 import type { Ticket } from "@/models/Ticket";
@@ -18,7 +20,7 @@ export const useFetchTestTarget = (ticketId: string | undefined) =>
 export const useTestPass = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post<Ticket>(`/api/tickets/${id}/test/pass`)).data,
+    mutationFn: requires("tickets:write", async (id: string) => (await api.post<Ticket>(`/api/tickets/${id}/test/pass`)).data),
     onSuccess: async (ticket) => {
       await ticketChanged(client, ticket);
       toast.success("Passed and moved to done");
@@ -30,7 +32,7 @@ export const useTestPass = () => {
 export const useTestFail = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, report }: { id: string; report: TestFailFormData }) =>
+    mutationFn: requires("tickets:write", async ({ id, report }: { id: string; report: TestFailFormData }) =>
       (
         await api.post<Ticket>(`/api/tickets/${id}/test/fail`, {
           steps: report.steps,
@@ -38,7 +40,7 @@ export const useTestFail = () => {
           actual: report.actual,
           screenshots: report.screenshots.map((s) => s.id),
         })
-      ).data,
+      ).data),
     onSuccess: async (ticket) => {
       await ticketChanged(client, ticket);
       toast.success("Failed and sent back to progress");

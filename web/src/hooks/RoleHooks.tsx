@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { WelcomeStep } from "@nexul/client-core/welcome";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
@@ -46,7 +47,7 @@ interface RoleInput {
 export const useCreateWorkspaceRole = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: RoleInput) => (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, input)).data,
+    mutationFn: requires("roles:write", async (input: RoleInput) => (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, input)).data),
     onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
       toast.success(`${role.name} created`);
@@ -58,8 +59,8 @@ export const useCreateWorkspaceRole = (workspaceId: string) => {
 export const useUpdateWorkspaceRole = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ roleId, ...input }: RoleInput & { roleId: string }) =>
-      (await api.patch<Role>(`/api/workspaces/${workspaceId}/roles/${roleId}`, input)).data,
+    mutationFn: requires("roles:write", async ({ roleId, ...input }: RoleInput & { roleId: string }) =>
+      (await api.patch<Role>(`/api/workspaces/${workspaceId}/roles/${roleId}`, input)).data),
     onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
       toast.success(`${role.name} saved`);
@@ -71,8 +72,8 @@ export const useUpdateWorkspaceRole = (workspaceId: string) => {
 export const useDeleteWorkspaceRole = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (roleId: string) =>
-      api.delete(`/api/workspaces/${workspaceId}/roles/${roleId}`),
+    mutationFn: requires("roles:write", async (roleId: string) =>
+      api.delete(`/api/workspaces/${workspaceId}/roles/${roleId}`)),
     onSuccess: async () => {
       // Its holders lose it, and the delete's frame is role.updated, which the Team doesn't follow.
       await Promise.all([
@@ -94,9 +95,9 @@ interface CloneWorkspaceRoleInput {
 export const useCloneWorkspaceRole = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ role, target }: CloneWorkspaceRoleInput) =>
+    mutationFn: requires("roles:clone", async ({ role, target }: CloneWorkspaceRoleInput) =>
       (await api.post<Role>(`/api/workspaces/${role.workspace_id}/roles/${role.id}/clone`, { workspace_id: target.id }))
-        .data,
+        .data),
     onSuccess: async (clone, { role, target }) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, target.id] });
       const renamed = clone.name !== role.name ? ` as ${clone.name}` : "";

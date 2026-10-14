@@ -7,11 +7,13 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // routePermissions.test.ts in client-core reads the apps' sources with the compiler, which only this app installs.
+      typescript: path.resolve(__dirname, "./node_modules/typescript"),
       "@nexul/client-core": path.resolve(__dirname, "../client-core"),
     },
   },
-  // The modules shared with the phone app live beside web/, and their tests run here, once.
-  server: { fs: { allow: [".", "../client-core"] } },
+  // The modules shared with the phone app live beside web/ and their tests run here; the route guard also reads native/src.
+  server: { fs: { allow: [".", "../client-core", "../native/src"] } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

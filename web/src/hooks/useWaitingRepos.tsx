@@ -7,13 +7,14 @@ import { useScanRepository } from "@/hooks/RepositoryHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useWizardGoTo } from "@/hooks/useWizardNavigation";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { canRunWizard } from "@/models/Access";
 import type { RepoRef } from "@/models/Project";
 import { RepoRole } from "@/enums/Project";
 
 // A project's app repositories no service builds from; undefined without stacks read, where every one would look waiting.
 export const useWaitingRepos = (projectId: string | undefined): RepoRef[] | undefined => {
   const can = useAreaAccess(projectId);
-  const allowed = !!projectId && !!can && can("stacks") && can("newProject");
+  const allowed = !!projectId && !!can && can("stacks") && canRunWizard(can, false);
   const { data: repos } = useFetchProjectRepos(allowed ? projectId : undefined);
   const { data: services } = useFetchServices(projectId, allowed);
   if (!allowed || !repos || !services) return undefined;

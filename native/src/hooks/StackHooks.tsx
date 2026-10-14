@@ -1,5 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
@@ -80,7 +82,7 @@ export const useFetchStacksWithLatestDeploy = () => {
 export const useDeployStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ stackId, image }: { stackId: string; image: string }) => {
+    mutationFn: requires("deploys:write", async ({ stackId, image }: { stackId: string; image: string }) => {
       try {
         return await api.post<Deploy>("/api/deploys", { stack_id: stackId, image });
       } catch (error) {
@@ -89,7 +91,7 @@ export const useDeployStack = () => {
         }
         throw error;
       }
-    },
+    }),
     onSuccess: async (_data, vars) => {
       await client.invalidateQueries({ queryKey: [getStackDeploysKey, vars.stackId] });
     },

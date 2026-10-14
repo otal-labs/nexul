@@ -1,6 +1,8 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
@@ -41,7 +43,7 @@ export const useFetchProjectDeleteImpact = (id: string | undefined) =>
 export const useCreateProject = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, prefix, icon }: { name: string; prefix: string; icon?: string }) =>
+    mutationFn: requires("projects:create", async ({ name, prefix, icon }: { name: string; prefix: string; icon?: string }) =>
       (
         await api.post<Project>("/api/projects", {
           name,
@@ -50,7 +52,7 @@ export const useCreateProject = () => {
           workspace_id: useWorkspaceStore.getState().selectedWorkspaceId,
           setup_finished: false,
         })
-      ).data,
+      ).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectsKey] });
       toast.success("Project created");
@@ -94,8 +96,8 @@ export interface SetupChangeInput {
 export const useChangeProjectSetup = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...change }: SetupChangeInput) =>
-      (await api.put<Project>(`/api/projects/${projectId}/setup`, change)).data,
+    mutationFn: requires("projects:write", async ({ projectId, ...change }: SetupChangeInput) =>
+      (await api.put<Project>(`/api/projects/${projectId}/setup`, change)).data),
     onSuccess: (project) =>
       writeSetup(client, { project_id: project.id, workspace_id: project.workspace_id, setup: project.setup }, () => project.setup),
     onError: (error) => toast.error(errorMessage(error)),
@@ -106,8 +108,8 @@ export const useRenameProject = () => {
   const client = useQueryClient();
   return useMutation({
     // icon omitted keeps the current one ("no change" server-side); "" explicitly clears it.
-    mutationFn: async ({ id, name, icon }: { id: string; name: string; icon?: string }) =>
-      (await api.patch<Project>(`/api/projects/${id}`, icon === undefined ? { name } : { name, icon })).data,
+    mutationFn: requires("projects:write", async ({ id, name, icon }: { id: string; name: string; icon?: string }) =>
+      (await api.patch<Project>(`/api/projects/${id}`, icon === undefined ? { name } : { name, icon })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectsKey] });
       toast.success("Project renamed");
@@ -119,7 +121,7 @@ export const useRenameProject = () => {
 export const useDeleteProject = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/projects/${id}`),
+    mutationFn: requires("projects:delete", async (id: string) => api.delete(`/api/projects/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectsKey] });
       toast.success("Project removed");
@@ -138,7 +140,7 @@ export const useFetchProjectRepos = (projectId: string | undefined) =>
 export const useAddProjectRepo = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: requires("projects:write", async ({
       projectId,
       owner,
       name,
@@ -148,7 +150,7 @@ export const useAddProjectRepo = () => {
       owner: string;
       name: string;
       connectorId: string;
-    }) => api.post(`/api/projects/${projectId}/repos`, { owner, name, connector_id: connectorId }),
+    }) => api.post(`/api/projects/${projectId}/repos`, { owner, name, connector_id: connectorId })),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey] });
       toast.success("Repository added");
@@ -168,7 +170,7 @@ interface SaveTestsAnswerInput {
 export const useSaveTestsAnswer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, testsLocation, testsRepo, attached }: SaveTestsAnswerInput) => {
+    mutationFn: requires("projects:write", async ({ projectId, testsLocation, testsRepo, attached }: SaveTestsAnswerInput) => {
       const attach =
         testsLocation === TestsLocation.Separate &&
         testsRepo &&
@@ -183,7 +185,7 @@ export const useSaveTestsAnswer = () => {
         return;
       }
       await api.put(`/api/projects/${projectId}/tests-location`, { tests_location: testsLocation });
-    },
+    }),
     onSuccess: async (_, { projectId }) => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey, projectId] });
       await client.invalidateQueries({ queryKey: [getProjectKey, projectId] });
@@ -195,8 +197,8 @@ export const useSaveTestsAnswer = () => {
 export const useRemoveProjectRepo = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ owner, name }: { owner: string; name: string }) =>
-      api.delete(`/api/projects/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`),
+    mutationFn: requires("projects:write", async ({ owner, name }: { owner: string; name: string }) =>
+      api.delete(`/api/projects/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey] });
       toast.success("Repository removed");

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import type { Conversation } from "@nexul/client-core/chat";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
@@ -72,8 +73,8 @@ export const useFetchActiveDocTrails = (projectId: string) => useFetchActiveTarg
 export const useRunPlay = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ playId, input }: { playId: string; input: RunPlayInput }) =>
-      (await api.post<Trail>(`/api/plays/${playId}/run`, input)).data,
+    mutationFn: requires("plays:run", async ({ playId, input }: { playId: string; input: RunPlayInput }) =>
+      (await api.post<Trail>(`/api/plays/${playId}/run`, input)).data),
     onSettled: async (_trail, _error, { input }) => {
       if (input.harness_project_id) await invalidateProjectLinks(client);
     },
@@ -93,7 +94,7 @@ export const useRunPlay = () => {
 export const useRunDecisionsCheck = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (ticketId: string) => (await api.post<Trail>("/api/plays/decisions-check", { ticket_id: ticketId })).data,
+    mutationFn: requires("plays:run", async (ticketId: string) => (await api.post<Trail>("/api/plays/decisions-check", { ticket_id: ticketId })).data),
     onSuccess: async (trail) => {
       client.setQueryData<Trail[]>([getTrailsKey, trail.target_type, trail.target_id], (old) => [
         trail,
@@ -122,7 +123,7 @@ export const useMissedDecisionsCheck = (ticketId: string): Trail | undefined => 
 export const useStopTrail = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (trailId: string) => (await api.post<Trail>(`/api/plays/runs/${trailId}/stop`)).data,
+    mutationFn: requires("plays:write", async (trailId: string) => (await api.post<Trail>(`/api/plays/runs/${trailId}/stop`)).data),
     onSuccess: async (trail) => {
       client.setQueryData<Trail[]>([getTrailsKey, trail.target_type, trail.target_id], (old) =>
         (old ?? []).map((t) => (t.id === trail.id ? trail : t)),
@@ -140,8 +141,8 @@ export const useStopTrail = () => {
 export const useAnswerTrail = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ trailId, answers }: { trailId: string; answers: QuestionAnswers }) =>
-      (await api.post<Trail>(`/api/plays/runs/${trailId}/answer`, { answers })).data,
+    mutationFn: requires("plays:write", async ({ trailId, answers }: { trailId: string; answers: QuestionAnswers }) =>
+      (await api.post<Trail>(`/api/plays/runs/${trailId}/answer`, { answers })).data),
     onSuccess: async (trail) => {
       client.setQueryData<Trail>([getTrailKey, trail.id], trail);
       await client.invalidateQueries({ queryKey: [getTrailsKey, trail.target_type, trail.target_id] });
@@ -156,8 +157,8 @@ export const useAnswerTrail = () => {
 export const useContinueTrail = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ trailId, message }: { trailId: string; message: string }) =>
-      (await api.post<Trail>(`/api/plays/runs/${trailId}/continue`, { message })).data,
+    mutationFn: requires("plays:write", async ({ trailId, message }: { trailId: string; message: string }) =>
+      (await api.post<Trail>(`/api/plays/runs/${trailId}/continue`, { message })).data),
     onSuccess: async (trail, { trailId }) => {
       client.setQueryData<Trail>([getTrailKey, trail.id], trail);
       await client.invalidateQueries({ queryKey: [getTrailsKey, trail.target_type, trail.target_id] });

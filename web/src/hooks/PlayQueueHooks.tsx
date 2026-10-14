@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import type { Conversation } from "@nexul/client-core/chat";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
@@ -55,7 +56,7 @@ const refreshQueues = (client: ReturnType<typeof useQueryClient>, item: PlayQueu
 export const useCancelQueuedRun = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (itemId: string) => (await api.post<PlayQueueItem>(`/api/plays/queue/${itemId}/cancel`)).data,
+    mutationFn: requires("autoplays:write", async (itemId: string) => (await api.post<PlayQueueItem>(`/api/plays/queue/${itemId}/cancel`)).data),
     onSuccess: async (item) => {
       await refreshQueues(client, item);
       toast.success(`${item.play_label} cancelled`);
@@ -74,13 +75,13 @@ interface PickComputerInput {
 export const usePickQueuedComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ itemId, computerId, harnessProjectId }: PickComputerInput) =>
+    mutationFn: requires("none", async ({ itemId, computerId, harnessProjectId }: PickComputerInput) =>
       (
         await api.post<PlayQueueItem>(`/api/plays/queue/${itemId}/computer`, {
           computer_id: computerId,
           harness_project_id: harnessProjectId,
         })
-      ).data,
+      ).data),
     onSuccess: async (item) => {
       await Promise.all([refreshQueues(client, item), invalidateProjectLinks(client)]);
       toast.success(`${item.play_label} starts on the picked computer, now linked for this project`);
@@ -92,8 +93,8 @@ export const usePickQueuedComputer = () => {
 export const useResumeAutoPlays = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ targetType, targetId }: { targetType: PlayType; targetId: string }) =>
-      (await api.post<PlayQueue>("/api/plays/queue/resume", { target_type: targetType, target_id: targetId })).data,
+    mutationFn: requires("autoplays:write", async ({ targetType, targetId }: { targetType: PlayType; targetId: string }) =>
+      (await api.post<PlayQueue>("/api/plays/queue/resume", { target_type: targetType, target_id: targetId })).data),
     onSuccess: (queue, { targetType, targetId }) => {
       client.setQueryData([getPlayQueueKey, targetType, targetId], queue);
       toast.success("Auto plays resumed");

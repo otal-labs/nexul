@@ -3,6 +3,7 @@ import { useLocation, useNavigate, type Location, type NavigateFunction } from "
 import { toast } from "sonner";
 
 import { upsertMessage, type Conversation, type UnreadCounts } from "@nexul/client-core/chat";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
@@ -71,14 +72,14 @@ export const useFetchTicketThreadStatus = (ticketId: string | undefined) =>
 export const useCreateChannel = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ voice, name, private: isPrivate, member_ids }: CreateChannelFormData & { voice: boolean }) =>
+    mutationFn: requires("channels:write", async ({ voice, name, private: isPrivate, member_ids }: CreateChannelFormData & { voice: boolean }) =>
       (
         await api.post<Conversation>(voice ? "/api/chat/voice-channels" : "/api/chat/channels", {
           workspace_id: workspaceId,
           name,
           ...(isPrivate && { private: true, member_ids }),
         })
-      ).data,
+      ).data),
     onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
       toast.success(`${channelMention(created)} created`);
@@ -89,8 +90,8 @@ export const useCreateChannel = (workspaceId: string) => {
 export const useRenameChannel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) =>
-      (await api.patch<Conversation>(`/api/chat/conversations/${id}`, { name })).data,
+    mutationFn: requires("channels:write", async ({ id, name }: { id: string; name: string }) =>
+      (await api.patch<Conversation>(`/api/chat/conversations/${id}`, { name })).data),
     onSuccess: async (renamed) => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, renamed.workspace_id] });
       toast.success(`Renamed to ${channelMention(renamed)}`);
@@ -125,7 +126,7 @@ export const useDeleteChannel = () => {
   const navigate = useNavigate();
   const location = useLocation();
   return useMutation({
-    mutationFn: async (conversation: Conversation) => api.delete(`/api/chat/conversations/${conversation.id}`),
+    mutationFn: requires("channels:delete", async (conversation: Conversation) => api.delete(`/api/chat/conversations/${conversation.id}`)),
     onSuccess: async (_result, conversation) => {
       toast.success(`${channelMention(conversation)} deleted`, { id: deletedToastId(conversation.id) });
       followConversationDeleted(navigate, location, { conversation_id: conversation.id, kind: conversation.kind, name: conversation.name ?? "" });
@@ -138,9 +139,9 @@ export const useDeleteChannel = () => {
 export const useCreateDM = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (participantIds: string[]) =>
+    mutationFn: requires("chat:write", async (participantIds: string[]) =>
       (await api.post<Conversation>("/api/chat/dms", { workspace_id: workspaceId, participant_ids: participantIds }))
-        .data,
+        .data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
       toast.success("Direct message started");
@@ -153,8 +154,8 @@ export const useCreateDM = (workspaceId: string) => {
 export const useFetchOrCreateTicketThread = (workspaceId: string, ticketId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ["getOrCreateTicketThread", workspaceId, ticketId],
-    queryFn: async () =>
-      (await api.post<Conversation>(`/api/chat/tickets/${ticketId}/thread`, { workspace_id: workspaceId })).data,
+    queryFn: requires("tickets:read", async () =>
+      (await api.post<Conversation>(`/api/chat/tickets/${ticketId}/thread`, { workspace_id: workspaceId })).data),
     enabled: enabled && !!ticketId,
   });
 
@@ -163,8 +164,8 @@ export const useFetchOrCreateTicketThread = (workspaceId: string, ticketId: stri
 export const useGetOrCreateDocThread = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (docId: string) =>
-      (await api.post<Conversation>(`/api/chat/docs/${docId}/thread`, { workspace_id: workspaceId })).data,
+    mutationFn: requires("docs:thread", async (docId: string) =>
+      (await api.post<Conversation>(`/api/chat/docs/${docId}/thread`, { workspace_id: workspaceId })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
     },
@@ -189,8 +190,8 @@ export const markCachedMessageDeleted = (client: QueryClient, conversationId: st
 export const usePostMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (body: string) =>
-      (await api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body })).data,
+    mutationFn: requires("channels:post", async (body: string) =>
+      (await api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body })).data),
     onMutate: async (body) => {
       await client.cancelQueries({ queryKey: [getChatMessagesKey, conversationId] });
       const now = new Date().toISOString();
@@ -219,8 +220,8 @@ export const usePostMessage = (conversationId: string) => {
 export const useEditMessage = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ messageId, body }: { messageId: string; body: string }) =>
-      (await api.patch<Message>(`/api/chat/messages/${messageId}`, { body })).data,
+    mutationFn: requires("none", async ({ messageId, body }: { messageId: string; body: string }) =>
+      (await api.patch<Message>(`/api/chat/messages/${messageId}`, { body })).data),
     onSuccess: (message) => upsertCachedMessage(client, message),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -229,7 +230,7 @@ export const useEditMessage = () => {
 export const useDeleteMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (messageId: string) => api.delete(`/api/chat/messages/${messageId}`),
+    mutationFn: requires("none", async (messageId: string) => api.delete(`/api/chat/messages/${messageId}`)),
     onSuccess: (_result, messageId) => markCachedMessageDeleted(client, conversationId, messageId, new Date().toISOString()),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -238,7 +239,7 @@ export const useDeleteMessage = (conversationId: string) => {
 export const useMarkChatRead = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (conversationId: string) => api.post(`/api/chat/conversations/${conversationId}/read`),
+    mutationFn: requires("none", async (conversationId: string) => api.post(`/api/chat/conversations/${conversationId}/read`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getChatUnreadKey, workspaceId] });
     },
@@ -248,14 +249,14 @@ export const useMarkChatRead = (workspaceId: string) => {
 // The stream bubble clears when the real chat.message.created frame arrives, not on this call's success.
 export const useInterruptAgentTurn = (conversationId: string) =>
   useMutation({
-    mutationFn: async () => api.post(`/api/agent/conversations/${conversationId}/interrupt`),
+    mutationFn: requires("none", async () => api.post(`/api/agent/conversations/${conversationId}/interrupt`)),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
 // The answer is posted as the caller's message by the server and hands the turn its reply; the thread updates live.
 export const useAnswerAgentQuestion = (conversationId: string) =>
   useMutation({
-    mutationFn: async ({ requestId, answers }: { requestId: string; answers: QuestionAnswers }) =>
-      api.post(`/api/agent/conversations/${conversationId}/answer`, { request_id: requestId, answers }),
+    mutationFn: requires("none", async ({ requestId, answers }: { requestId: string; answers: QuestionAnswers }) =>
+      api.post(`/api/agent/conversations/${conversationId}/answer`, { request_id: requestId, answers })),
     onError: (error) => toast.error(errorMessage(error)),
   });

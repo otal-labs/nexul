@@ -61,8 +61,8 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   const actions: RowAction[] = [
     { label: "Edit", onSelect: () => setEditing(true) },
     { label: "Duplicate", onSelect: duplicate },
-    ...(canClone ? [{ label: "Clone to workspace…", onSelect: () => setCloning(true) }] : []),
-    { label: "Delete", destructive: true, permission: "roles:delete", onSelect: () => void remove() },
+    { label: "Clone to workspace…", permission: "roles:clone", onSelect: () => setCloning(true) },
+    { label: "Delete", destructive: true, permission: "roles:write", onSelect: () => void remove() },
   ];
 
   return (

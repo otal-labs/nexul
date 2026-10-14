@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import { api, errorMessage } from "@/api/client";
 import type { AppConfigStatus, ConnectorStatus, CredentialStatus } from "@/models/Connectors";
@@ -38,7 +40,7 @@ export const useStartConnectorOAuth = () =>
 export const useSetConnectorAppConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
+    mutationFn: requires("connectors:write", async (payload: {
       id: string;
       client_id: string;
       client_secret: string;
@@ -52,7 +54,7 @@ export const useSetConnectorAppConfig = () => {
           base_url: payload.base_url,
           app_slug: payload.app_slug,
         })
-      ).data,
+      ).data),
     onSuccess: (_, payload) => {
       toast.success("Connector app saved");
       void queryClient.invalidateQueries({ queryKey: [getConnectorsKey] });
@@ -66,8 +68,8 @@ export const useSetConnectorAppConfig = () => {
 export const useSetPrivateKey = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { id: string; private_key: string }) =>
-      (await api.put<AppConfigStatus>(`/api/connectors/${payload.id}/private-key`, { private_key: payload.private_key })).data,
+    mutationFn: requires("connectors:write", async (payload: { id: string; private_key: string }) =>
+      (await api.put<AppConfigStatus>(`/api/connectors/${payload.id}/private-key`, { private_key: payload.private_key })).data),
     onSuccess: (status, payload) => {
       toast.success("Private key saved");
       queryClient.setQueryData([getConnectorAppConfigKey, payload.id], status);
@@ -80,7 +82,7 @@ export const useSetPrivateKey = () => {
 export const useRemovePrivateKey = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.delete<AppConfigStatus>(`/api/connectors/${id}/private-key`)).data,
+    mutationFn: requires("connectors:write", async (id: string) => (await api.delete<AppConfigStatus>(`/api/connectors/${id}/private-key`)).data),
     onSuccess: (status, id) => {
       toast.success("Private key removed");
       queryClient.setQueryData([getConnectorAppConfigKey, id], status);
@@ -95,16 +97,16 @@ export const useRemovePrivateKey = () => {
 // Live provider check only; the dialog turns the result into a green light, so no toast here.
 export const useVerifyManualCredentials = () =>
   useMutation({
-    mutationFn: async (payload: { id: string; fields: Record<string, string> }) => {
+    mutationFn: requires("connectors:write", async (payload: { id: string; fields: Record<string, string> }) => {
       await api.post(`/api/connectors/${payload.id}/manual/verify`, payload.fields);
-    },
+    }),
   });
 
 export const useSaveManualCredentials = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { id: string; fields: Record<string, string> }) =>
-      (await api.post<CredentialStatus>(`/api/connectors/${payload.id}/manual`, payload.fields)).data,
+    mutationFn: requires("connectors:write", async (payload: { id: string; fields: Record<string, string> }) =>
+      (await api.post<CredentialStatus>(`/api/connectors/${payload.id}/manual`, payload.fields)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getConnectorsKey] });
       toast.success("Connector connected");
@@ -115,7 +117,7 @@ export const useSaveManualCredentials = () => {
 export const useDisconnectConnector = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => (await api.post(`/api/connectors/${id}/disconnect`)).data,
+    mutationFn: requires("connectors:write", async (id: string) => (await api.post(`/api/connectors/${id}/disconnect`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getConnectorsKey] });
       toast.success("Connector disconnected");

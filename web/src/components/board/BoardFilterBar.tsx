@@ -72,7 +72,9 @@ export const BoardFilterBar = ({
   const { data: labels } = useFetchAllLabels();
   const { data: ticketTypes } = useFetchProjectTicketTypes(projectId);
   const { data: statuses } = useFetchProjectStatuses(projectId);
-  const canCreate = useHasPermission("tickets:write");
+  const writesTickets = useHasPermission("tickets:write");
+  const writesProjects = useHasPermission("projects:write");
+  const canCreate = writesTickets || writesProjects;
 
   const activeCount = countActiveFilters(filters, hideProjectFilter);
   const projectChips = buildProjectChips(projects, filters, onToggleProject);

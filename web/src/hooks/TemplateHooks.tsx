@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQueries, useQuery, useQueryClient, type Q
 import { toast } from "sonner";
 
 import { hasPermission } from "@nexul/client-core/permissions";
+import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getInterviewTemplateKey } from "@/hooks/MemoryHooks";
@@ -47,8 +48,8 @@ export const templateQuery = (kind: TemplateKind, key: string, at: TemplateLocat
 export const useSaveInstanceTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ kind, key, body }: { kind: TemplateKind; key: string; body: string }) =>
-      (await api.put<Template>(`/api/templates/${kind}`, { key, body })).data,
+    mutationFn: requires("templates:write", async ({ kind, key, body }: { kind: TemplateKind; key: string; body: string }) =>
+      (await api.put<Template>(`/api/templates/${kind}`, { key, body })).data),
     onSuccess: async () => {
       await refreshTemplates(client);
       toast.success("Template saved");
@@ -60,8 +61,8 @@ export const useSaveInstanceTemplate = () => {
 export const useResetInstanceTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ kind, key }: { kind: TemplateKind; key: string }) =>
-      (await api.delete<Template>(`/api/templates/${kind}`, { params: { key } })).data,
+    mutationFn: requires("templates:write", async ({ kind, key }: { kind: TemplateKind; key: string }) =>
+      (await api.delete<Template>(`/api/templates/${kind}`, { params: { key } })).data),
     onSuccess: async () => {
       await refreshTemplates(client);
       toast.success("Template reset to the default");
@@ -74,7 +75,7 @@ export const useResetInstanceTemplate = () => {
 export const useDeleteInstanceTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ kind, key }: { kind: TemplateKind; key: string }) => api.post("/api/templates/delete", { kind, key }),
+    mutationFn: requires("templates:write", async ({ kind, key }: { kind: TemplateKind; key: string }) => api.post("/api/templates/delete", { kind, key })),
     onSuccess: async () => {
       await refreshTemplates(client);
       toast.success("Template deleted");
@@ -87,8 +88,8 @@ export const useDeleteInstanceTemplate = () => {
 export const useResetTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ kind, key, at }: { kind: TemplateKind; key: string; at: TemplateLocation }) =>
-      (await api.post<Template>("/api/templates/reset", { kind, key, at })).data,
+    mutationFn: requires("templates:write", async ({ kind, key, at }: { kind: TemplateKind; key: string; at: TemplateLocation }) =>
+      (await api.post<Template>("/api/templates/reset", { kind, key, at })).data),
     onSuccess: async () => {
       await refreshTemplates(client);
       toast.success("Reset to the instance template");
@@ -101,8 +102,8 @@ export const useResetTemplate = () => {
 export const useCloneTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { kind: TemplateKind; key: string; from: TemplateLocation; to: TemplateLocation }) =>
-      (await api.post<Template>("/api/templates/clone", input)).data,
+    mutationFn: requires("templates:write", async (input: { kind: TemplateKind; key: string; from: TemplateLocation; to: TemplateLocation }) =>
+      (await api.post<Template>("/api/templates/clone", input)).data),
     onSuccess: async () => {
       await refreshTemplates(client);
       toast.success("Template cloned");

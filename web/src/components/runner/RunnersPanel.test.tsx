@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RunnersPanel } from "@/components/runner/RunnersPanel";
 
-const access = vi.hoisted(() => ({ areas: ["newProject"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+const access = vi.hoisted(() => ({ areas: ["editStacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area), useIsInstanceOwner: () => false }));
 
 beforeEach(() => {
-  access.areas = ["newProject"];
+  access.areas = ["editStacks"];
 });
 
 const mocks = vi.hoisted(() => ({
@@ -57,6 +57,7 @@ const machine = {
   reported_hostname: "prod-host",
   first_seen: "2026-08-01T00:00:00Z",
   last_seen: "2026-08-12T12:00:00Z",
+  actions: ["machines:write"],
 };
 
 describe("RunnersPanel", () => {
@@ -133,11 +134,14 @@ describe("RunnersPanel", () => {
     expect(screen.getByText("boom")).toBeInTheDocument();
   });
 
-  it("hides Import from this machine without projects:write", async () => {
-    access.areas = [];
+  it.each([
+    ["can't write stacks", [], ["machines:write"]],
+    ["doesn't manage the machine", ["editStacks"], ["machines:delete"]],
+  ])("hides Import from this machine from someone who %s, the two things the import writes", async (_, areas, actions) => {
+    access.areas = areas;
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/runners") return Promise.resolve({ data: [onlineRunner] });
-      if (url === "/api/machines") return Promise.resolve({ data: [machine] });
+      if (url === "/api/machines") return Promise.resolve({ data: [{ ...machine, actions }] });
       return Promise.resolve({ data: [] });
     });
     renderPanel();

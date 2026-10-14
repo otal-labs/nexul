@@ -13,6 +13,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { canRunWizard } from "@/models/Access";
 import type { Deploy, Stack } from "@/models/Stack";
 
 interface StackHeaderSectionProps {
@@ -65,7 +66,7 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
         }
         actions={
           <div className="flex items-center gap-2">
-            {!stack.managed && !!stack.project_id && can?.("newProject") && (
+            {!stack.managed && !!stack.project_id && !!can && canRunWizard(can, false) && (
               <Button variant="outline" size="sm" asChild>
                 <Link to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}>
                   <GitBranchIcon className="size-4" /> Attach repository

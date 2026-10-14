@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { REPOSITORY_SEARCH_MIN_LENGTH, type Installation, type Repo, type ScanResult } from "@/models/Repository";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -47,9 +49,9 @@ const installationWorkspacePath = (account: string, workspaceId: string) =>
 export const useDetachInstallation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ account, workspaceId }: { account: string; workspaceId: string }) => {
+    mutationFn: requires("projects:create", async ({ account, workspaceId }: { account: string; workspaceId: string }) => {
       await api.delete(installationWorkspacePath(account, workspaceId));
-    },
+    }),
     onSuccess: async (_, { account }) => {
       await queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
       toast.success(`${account} detached`);
@@ -70,7 +72,7 @@ export const repositoryFollower: LiveFollower = followEach(
 export const useScanRepository = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   return useMutation({
-    mutationFn: async (input: { owner: string; name: string; ref?: string }) =>
-      (await api.post<ScanResult>("/api/repositories/scan", { ...input, workspace_id: workspaceId })).data,
+    mutationFn: requires("projects:create", async (input: { owner: string; name: string; ref?: string }) =>
+      (await api.post<ScanResult>("/api/repositories/scan", { ...input, workspace_id: workspaceId })).data),
   });
 };

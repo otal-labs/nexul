@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getInvitationPreviewKey, invitationRefusal } from "@/models/Invitation";
 import type {
@@ -28,8 +30,8 @@ export const useFetchInvitations = () =>
 export const useCreateInvitation = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateInvitationFormData) =>
-      (await api.post<CreatedInvitation>("/api/invitations", input)).data,
+    mutationFn: requires("members:write", async (input: CreateInvitationFormData) =>
+      (await api.post<CreatedInvitation>("/api/invitations", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInvitationsKey] });
       toast.success("Invitation created. Copy the link now.");
@@ -41,7 +43,7 @@ export const useCreateInvitation = () => {
 export const useRevokeInvitation = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/invitations/${encodeURIComponent(id)}`),
+    mutationFn: requires("members:write", async (id: string) => api.delete(`/api/invitations/${encodeURIComponent(id)}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInvitationsKey] });
       toast.success("Invitation revoked");
@@ -53,15 +55,15 @@ export const useRevokeInvitation = () => {
 export const useFetchInvitationPreview = (token: string) =>
   useQuery({
     queryKey: [getInvitationPreviewKey, token],
-    queryFn: async () => (await api.post<InvitationPreview>("/api/invitations/preview", { token })).data,
+    queryFn: requires("none", async () => (await api.post<InvitationPreview>("/api/invitations/preview", { token })).data),
     enabled: token !== "",
     retry: false,
   });
 
 export const useStartInvitationOAuth = () =>
   useMutation({
-    mutationFn: async ({ provider, token }: { provider: InvitationProvider; token: string }) =>
-      (await api.post<{ url: string }>("/api/invitations/oauth", { provider, token })).data,
+    mutationFn: requires("none", async ({ provider, token }: { provider: InvitationProvider; token: string }) =>
+      (await api.post<{ url: string }>("/api/invitations/oauth", { provider, token })).data),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
@@ -73,16 +75,16 @@ const toastUnlessRefused = (error: unknown) => {
 
 export const useCreateInvitationAcceptance = () =>
   useMutation({
-    mutationFn: async (input: { token?: string; acceptance_token?: string }) =>
-      (await api.post<InvitationAcceptance>("/api/invitations/acceptance", input)).data,
+    mutationFn: requires("none", async (input: { token?: string; acceptance_token?: string }) =>
+      (await api.post<InvitationAcceptance>("/api/invitations/acceptance", input)).data),
     onError: toastUnlessRefused,
   });
 
 export const useRedeemInvitation = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (acceptance_token: string) =>
-      (await api.post<RedeemedInvitation>("/api/invitations/redeem", { acceptance_token })).data,
+    mutationFn: requires("none", async (acceptance_token: string) =>
+      (await api.post<RedeemedInvitation>("/api/invitations/redeem", { acceptance_token })).data),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getInvitationsKey] }),

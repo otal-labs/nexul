@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
@@ -31,8 +33,8 @@ export const useFetchInterviewDrafts = (projectId: string) =>
 export const useAddInterviewSource = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: AddInterviewSourceInput) =>
-      (await api.post<InterviewSource>("/api/memories/interview-sources", input)).data,
+    mutationFn: requires("memories:write", async (input: AddInterviewSourceInput) =>
+      (await api.post<InterviewSource>("/api/memories/interview-sources", input)).data),
     onSuccess: async (source) => {
       await client.invalidateQueries({ queryKey: [getInterviewSourcesKey, source.project_id] });
       toast.success("Source added");
@@ -48,8 +50,8 @@ export const useSetInterviewSourceStance = (projectId: string) => {
   const patch = (id: string, stance: SourceStance) =>
     client.setQueryData<InterviewSource[]>(key, (list) => list?.map((s) => (s.id === id ? { ...s, stance } : s)));
   return useMutation({
-    mutationFn: async ({ id, stance }: { id: string; stance: SourceStance; was: SourceStance }) =>
-      (await api.patch<InterviewSource>(`/api/memories/interview-sources/${id}`, { stance })).data,
+    mutationFn: requires("memories:write", async ({ id, stance }: { id: string; stance: SourceStance; was: SourceStance }) =>
+      (await api.patch<InterviewSource>(`/api/memories/interview-sources/${id}`, { stance })).data),
     onMutate: async ({ id, stance }) => {
       await client.cancelQueries({ queryKey: key });
       patch(id, stance);
@@ -67,9 +69,9 @@ export const useSetInterviewSourceStance = (projectId: string) => {
 export const useRemoveInterviewSource = (projectId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("memories:write", async (id: string) => {
       await api.delete(`/api/memories/interview-sources/${id}`);
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInterviewSourcesKey, projectId] });
       toast.success("Source removed");
@@ -81,9 +83,9 @@ export const useRemoveInterviewSource = (projectId: string) => {
 export const useDismissInterviewDraft = (projectId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("memories:write", async (id: string) => {
       await api.delete(`/api/memories/interview-drafts/${id}`);
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInterviewDraftsKey, projectId] });
       toast.success("Suggestion dismissed");

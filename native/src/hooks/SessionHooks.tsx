@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
 import type { Session } from "@/models/User";
@@ -19,7 +21,7 @@ export const useListSessions = () => useQuery(sessionsQuery.options());
 export const useSignOutSession = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/api/auth/sessions/${id}`),
+    mutationFn: requires("none", (id: string) => api.delete(`/api/auth/sessions/${id}`)),
     onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
   });
 };
@@ -27,7 +29,7 @@ export const useSignOutSession = () => {
 export const useSignOutOtherSessions = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api.delete("/api/auth/sessions/others"),
+    mutationFn: requires("none", () => api.delete("/api/auth/sessions/others")),
     onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
   });
 };
@@ -35,11 +37,11 @@ export const useSignOutOtherSessions = () => {
 // Clears the push token while the session can still authenticate, then deletes the session; the local sign-out always follows.
 export const useSignOut = () =>
   useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("none", async () => {
       const { host } = useSessionStore.getState();
       const token = readSessionToken();
       if (host && token) await clearPushToken(host, token);
       return api.delete("/api/auth/sessions/current");
-    },
+    }),
     onSettled: () => useSessionStore.getState().signOut(),
   });

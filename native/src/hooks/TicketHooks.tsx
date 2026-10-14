@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
 import { recordQueries } from "@/lib/queryClient";
@@ -47,8 +49,8 @@ export const useFetchTicket = (id: string | undefined, workspace = "") =>
 export const useUpdateTicketStatus = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch<Ticket>(`/api/tickets/${id}/status`, { status }),
+    mutationFn: requires("tickets:write", ({ id, status }: { id: string; status: string }) =>
+      api.patch<Ticket>(`/api/tickets/${id}/status`, { status })),
     // The board moves the card at once, so a drop lands where it was let go; a refusal puts it back with the refetch.
     onMutate: async ({ id, status }) => {
       await client.cancelQueries({ queryKey: [getTicketsByProjectKey] });
@@ -67,8 +69,8 @@ export const useUpdateTicketStatus = () => {
 export const useSetTicketPerson = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
-      api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login }),
+    mutationFn: requires("tickets:write", ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
+      api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
       await client.invalidateQueries(recordQueries(getTicketKey, vars.id));
@@ -80,6 +82,6 @@ export const useSetTicketPerson = () => {
 // conversation-list concern — Chat only needs to render whatever conversation id this hands it.
 export const useOpenTicketThread = () =>
   useMutation({
-    mutationFn: ({ id, workspaceId }: { id: string; workspaceId: string }) =>
-      api.post<{ id: string }>(`/api/chat/tickets/${id}/thread`, { workspace_id: workspaceId }),
+    mutationFn: requires("tickets:read", ({ id, workspaceId }: { id: string; workspaceId: string }) =>
+      api.post<{ id: string }>(`/api/chat/tickets/${id}/thread`, { workspace_id: workspaceId })),
   });

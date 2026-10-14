@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getRunnerEnrollmentsKey, refetchRunnersAndQueue } from "@/hooks/RunnerHooks";
 import { dropRow, type LiveFollower } from "@/lib/live";
@@ -44,7 +46,7 @@ export const machineFollower: LiveFollower = {
 export const useDeleteMachine = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (machineId: string) => (await api.delete(`/api/machines/${machineId}`)).data,
+    mutationFn: requires("machines:delete", async (machineId: string) => (await api.delete(`/api/machines/${machineId}`)).data),
     onSuccess: async (_data, machineId) => {
       await machineGone(client, machineId);
       toast.success("Machine deleted");
@@ -55,15 +57,15 @@ export const useDeleteMachine = () => {
 
 export const useDiscoverMachine = () =>
   useMutation({
-    mutationFn: async (machineId: string) =>
-      (await api.post<GroupedDiscovery>(`/api/machines/${machineId}/discover`)).data,
+    mutationFn: requires("machines:write", async (machineId: string) =>
+      (await api.post<GroupedDiscovery>(`/api/machines/${machineId}/discover`)).data),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
 export const useImportMachine = () =>
   useMutation({
-    mutationFn: async ({ machineId, input }: { machineId: string; input: ImportRequest }) =>
-      (await api.post<ImportResult>(`/api/machines/${machineId}/import`, input)).data,
+    mutationFn: requires("stacks:write", async ({ machineId, input }: { machineId: string; input: ImportRequest }) =>
+      (await api.post<ImportResult>(`/api/machines/${machineId}/import`, input)).data),
     onSuccess: () => toast.success("Stacks imported"),
     onError: (error) => toast.error(errorMessage(error)),
   });

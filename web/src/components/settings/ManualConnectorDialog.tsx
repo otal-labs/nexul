@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
 import { TickerRow } from "@/components/TickerRow";
@@ -49,12 +51,13 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
   const { fresh, verified, verifying, verify, reset, outcomeFor } = useTicker(
     checks,
     useWatch({ control: form.control }),
-    (key, data) =>
+    requires("connectors:write", (key, data) =>
       key === ""
         ? verifyAll.mutateAsync({ id: connector.id, fields: data })
         : api
             .post<CheckResult>(`/api/connectors/${connector.id}/manual/verify`, data, { params: { check: key } })
             .then((r) => r.data?.detail),
+    ),
   );
 
   const onConfirm = async (data: FormData) => {

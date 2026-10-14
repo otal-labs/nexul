@@ -42,13 +42,14 @@ const factClass = "relative min-w-0 pl-4 wrap-anywhere before:absolute before:le
 
 // A machine with nothing connected loses its lift and draws a dashed edge, like an unplugged card; its text keeps full contrast.
 export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
-  const canImport = useAreaAccess()?.("newProject") ?? false;
+  const canEditStacks = useAreaAccess()?.("editStacks") ?? false;
   const wsPath = useWorkspacePath();
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
   const canDelete = hasPermission(machine.actions, "machines:delete");
   const deleteMachine = useDeleteMachine();
   const { open: confirmDelete } = useConfirmationDialog();
+  const canImport = manages && canEditStacks;
   const entity = machineEntity(machine);
   const onDelete = async () => {
     const ok = await confirmDelete({

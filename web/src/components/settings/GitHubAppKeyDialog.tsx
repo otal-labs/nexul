@@ -2,6 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { TickerRow } from "@/components/TickerRow";
 import { Button } from "@/components/ui/button";
@@ -36,8 +38,8 @@ export const GitHubAppKeyDialog = ({ replacing }: GitHubAppKeyDialogProps) => {
   const [open, setOpen] = useState(false);
   const setPrivateKey = useSetPrivateKey();
   const form = useForm<PrivateKeyFormData>({ defaultValues: { private_key: "" }, resolver: zodResolver(privateKeyFormSchema) });
-  const { verified, verifying, verify, reset, outcomeFor } = useTicker(KEY_CHECKS, useWatch({ control: form.control }), (_, data) =>
-    api.post("/api/connectors/github/private-key/verify", data),
+  const { verified, verifying, verify, reset, outcomeFor } = useTicker(KEY_CHECKS, useWatch({ control: form.control }), requires("connectors:write", (_, data) =>
+    api.post("/api/connectors/github/private-key/verify", data)),
   );
 
   const close = (next: boolean) => {

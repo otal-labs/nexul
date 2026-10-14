@@ -4,7 +4,7 @@ import { isInstanceSection, type SettingsSection, visibleSettingsSections } from
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } from "@/models/Access";
+import { canOpenWizard, INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } from "@/models/Access";
 import type { WorkspaceAccess } from "@/models/Workspace";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
@@ -78,6 +78,7 @@ export const workspaceAccess = (anywhere: string[] | undefined, permissions: str
     canOpen: (area) => {
       if (area === "configuration") return opensConfiguration(configurationSections);
       if (area === "access") return hasPermission(permissions, MANAGES_ACCESS);
+      if (area === "wizard") return canOpenWizard((held) => hasPermission(permissions, AREA_PERMISSION[held]));
       return hasPermission(permissions, AREA_PERMISSION[area]);
     },
   };
@@ -119,6 +120,7 @@ export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
     if (area === "access") return anywhere;
+    if (area === "wizard") return can && canOpenWizard(can);
     return can && can(area);
   };
 };

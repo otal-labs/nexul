@@ -8,6 +8,7 @@ import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ExposureTicker } from "@/components/wizard/ExposureTicker";
 import { FormSelect } from "@/components/ticket/FormSelect";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
@@ -163,9 +164,9 @@ const ReachForm = ({
           </Button>
         )}
         {!exposed && (
-          <Button type="submit" loading={createExposure.isPending}>
+          <ActionButton permission="dns:write" type="submit" loading={createExposure.isPending}>
             Expose service
-          </Button>
+          </ActionButton>
         )}
       </WizardFooter>
     </form>

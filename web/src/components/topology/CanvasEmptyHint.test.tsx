@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CanvasEmptyHint } from "@/components/topology/CanvasEmptyHint";
 
-const access = vi.hoisted(() => ({ areas: ["newProject"] as string[] }));
+const access = vi.hoisted(() => ({ areas: ["editProjects", "editStacks", "editDeploys"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
-  access.areas = ["newProject"];
+  access.areas = ["editProjects", "editStacks", "editDeploys"];
 });
 
 const renderHint = (onAddNode: () => void) =>

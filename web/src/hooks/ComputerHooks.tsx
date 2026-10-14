@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
 import { getRunnerEnrollmentsKey } from "@/hooks/RunnerHooks";
@@ -14,8 +16,8 @@ export const useListSharedComputers = () => useQuery({ ...computersQuery, select
 export const useEnrollComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (computerId: string | undefined) =>
-      (await api.post<ComputerEnrollment>("/api/pairing/computers/enrollments", computerId ? { id: computerId } : {})).data,
+    mutationFn: requires("none", async (computerId: string | undefined) =>
+      (await api.post<ComputerEnrollment>("/api/pairing/computers/enrollments", computerId ? { id: computerId } : {})).data),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getComputersKey] }),
@@ -29,7 +31,7 @@ export const useEnrollComputer = () => {
 export const usePairNow = (computer: Computer) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await api.post<Computer>(`/api/pairing/computers/${computer.id}/pair`)).data,
+    mutationFn: requires("none", async () => (await api.post<Computer>(`/api/pairing/computers/${computer.id}/pair`)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success(`${computer.name} re-paired`);
@@ -45,7 +47,7 @@ export const usePairNow = (computer: Computer) => {
 export const useRenameComputer = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: RenameComputerFormData) => (await api.patch<Computer>(`/api/pairing/computers/${computerId}`, input)).data,
+    mutationFn: requires("none", async (input: RenameComputerFormData) => (await api.patch<Computer>(`/api/pairing/computers/${computerId}`, input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
     },

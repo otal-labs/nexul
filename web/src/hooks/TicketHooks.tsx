@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import {
   getTicketKey,
@@ -61,7 +63,7 @@ export const useFetchTicketsByProject = (projectId: string | undefined) =>
 export const useCreateTicket = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SaveTicketFormData) => (await api.post<Ticket>("/api/tickets", input)).data,
+    mutationFn: requires("tickets:write", async (input: SaveTicketFormData) => (await api.post<Ticket>("/api/tickets", input)).data),
     onSuccess: async (created, vars) => {
       await ticketCreated(client, created);
       if (vars.origin_id) await client.invalidateQueries({ queryKey: [getTicketLinkSetKey, vars.origin_id] });
@@ -75,8 +77,8 @@ export const useUpdateTicket = () => {
   const client = useQueryClient();
   return useMutation({
     // silent: the second half of a create (attaching its pasted files), which already said "Ticket created".
-    mutationFn: async ({ id, title, body }: { id: string; title: string; body: string; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}`, { title, body })).data,
+    mutationFn: requires("tickets:write", async ({ id, title, body }: { id: string; title: string; body: string; silent?: boolean }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}`, { title, body })).data),
     onSuccess: async (updated, vars) => {
       await ticketChanged(client, updated);
       if (!vars.silent) toast.success("Ticket updated");
@@ -88,9 +90,9 @@ export const useUpdateTicket = () => {
 export const useDeleteTicket = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("tickets:delete", async (id: string) => {
       await api.delete(`/api/tickets/${id}`);
-    },
+    }),
     // Not awaited: the page leaves first, so its refetch of the deleted ticket never shows a not-found screen.
     onSuccess: (_, id) => {
       void ticketRemoved(client, id);
@@ -104,8 +106,8 @@ export const useUpdateTicketStatus = () => {
   const client = useQueryClient();
   return useMutation({
     // silent: part of a board drop, which refetches once at the end (useBoardActions) instead of per step.
-    mutationFn: async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data,
+    mutationFn: requires("tickets:write", async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data),
     onSuccess: async (moved, vars) => {
       if (vars.silent) return;
       await ticketChanged(client, moved);
@@ -118,8 +120,8 @@ export const useUpdateTicketStatus = () => {
 export const useSetTicketPerson = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data,
+    mutationFn: requires("tickets:write", async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data),
     onSuccess: async (ticket, vars) => {
       await ticketChanged(client, ticket);
       toast.success(vars.role === TicketRole.Tester ? "Tester updated" : "Developer updated");
@@ -131,8 +133,8 @@ export const useSetTicketPerson = () => {
 export const useSetTicketSource = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, docId }: { id: string; docId: string }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/source`, { doc_id: docId })).data,
+    mutationFn: requires("tickets:write", async ({ id, docId }: { id: string; docId: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/source`, { doc_id: docId })).data),
     onSuccess: async (ticket, vars) => {
       await ticketChanged(client, ticket);
       toast.success(vars.docId ? "Source updated" : "Source removed");
@@ -144,8 +146,8 @@ export const useSetTicketSource = () => {
 export const useSetTicketType = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, typeId }: { id: string; typeId: string }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/type`, { type_id: typeId })).data,
+    mutationFn: requires("tickets:write", async ({ id, typeId }: { id: string; typeId: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/type`, { type_id: typeId })).data),
     onSuccess: async (ticket) => {
       await ticketChanged(client, ticket);
       toast.success("Type updated");
@@ -157,8 +159,8 @@ export const useSetTicketType = () => {
 export const useAddLabel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, label }: { id: string; label: string }) =>
-      (await api.post<Ticket>(`/api/tickets/${id}/labels`, { label })).data,
+    mutationFn: requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
+      (await api.post<Ticket>(`/api/tickets/${id}/labels`, { label })).data),
     onSuccess: async (ticket) => {
       await ticketChanged(client, ticket);
       await client.invalidateQueries({ queryKey: [getAllLabelsKey] });
@@ -171,8 +173,8 @@ export const useAddLabel = () => {
 export const useRemoveLabel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, label }: { id: string; label: string }) =>
-      (await api.delete<Ticket>(`/api/tickets/${id}/labels/${encodeURIComponent(label)}`)).data,
+    mutationFn: requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
+      (await api.delete<Ticket>(`/api/tickets/${id}/labels/${encodeURIComponent(label)}`)).data),
     onSuccess: async (ticket) => {
       await ticketChanged(client, ticket);
       toast.success("Label removed");
@@ -185,8 +187,8 @@ export const useRemoveLabel = () => {
 export const useUpdateTicketPosition = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, position }: { id: string; position: number; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/position`, { position })).data,
+    mutationFn: requires("tickets:write", async ({ id, position }: { id: string; position: number; silent?: boolean }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/position`, { position })).data),
     onSuccess: async (ticket, vars) => {
       if (vars.silent) return;
       await ticketChanged(client, ticket);
@@ -205,8 +207,8 @@ export const useFetchTicketLinks = (id: string | undefined) =>
 export const useLinkBranch = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: LinkBranchFormData }) =>
-      (await api.post<TicketLinks>(`/api/tickets/${id}/branches`, input)).data,
+    mutationFn: requires("tickets:write", async ({ id, input }: { id: string; input: LinkBranchFormData }) =>
+      (await api.post<TicketLinks>(`/api/tickets/${id}/branches`, input)).data),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketLinksKey, vars.id] });
       toast.success("Branch linked");
@@ -218,8 +220,8 @@ export const useLinkBranch = () => {
 export const useLinkPR = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: LinkPRFormData }) =>
-      (await api.post<TicketLinks>(`/api/tickets/${id}/prs`, input)).data,
+    mutationFn: requires("tickets:write", async ({ id, input }: { id: string; input: LinkPRFormData }) =>
+      (await api.post<TicketLinks>(`/api/tickets/${id}/prs`, input)).data),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketLinksKey, vars.id] });
       toast.success("Pull request linked");
@@ -243,15 +245,15 @@ const useUnlinkMutation = <TInput extends { id: string }>(request: (input: TInpu
 
 export const useUnlinkBranch = () =>
   useUnlinkMutation(
-    async ({ id, branch }: { id: string; branch: BranchLink }) =>
-      (await api.delete<TicketLinks>(`/api/tickets/${id}/branches`, { params: { owner: branch.owner, repo: branch.repo, branch: branch.branch } })).data,
+    requires("tickets:write", async ({ id, branch }: { id: string; branch: BranchLink }) =>
+      (await api.delete<TicketLinks>(`/api/tickets/${id}/branches`, { params: { owner: branch.owner, repo: branch.repo, branch: branch.branch } })).data),
     "Branch unlinked",
   );
 
 export const useUnlinkPR = () =>
   useUnlinkMutation(
-    async ({ id, pr }: { id: string; pr: PRLink }) =>
-      (await api.delete<TicketLinks>(`/api/tickets/${id}/prs`, { params: { owner: pr.owner, repo: pr.repo, number: pr.number } })).data,
+    requires("tickets:write", async ({ id, pr }: { id: string; pr: PRLink }) =>
+      (await api.delete<TicketLinks>(`/api/tickets/${id}/prs`, { params: { owner: pr.owner, repo: pr.repo, number: pr.number } })).data),
     "Pull request unlinked",
   );
 
@@ -266,8 +268,8 @@ export const useFetchLabelColors = (projectId: string | undefined) => {
   const { data: labels } = useFetchAllLabels();
   return useQuery({
     queryKey: [getLabelColorsKey, projectId, labels],
-    queryFn: async () =>
-      (await api.post<Record<string, string>>("/api/tickets/labels/colors", { project_id: projectId, labels })).data,
+    queryFn: requires("tickets:read", async () =>
+      (await api.post<Record<string, string>>("/api/tickets/labels/colors", { project_id: projectId, labels })).data),
     enabled: !!projectId && !!labels && labels.length > 0,
   });
 };
@@ -275,13 +277,13 @@ export const useFetchLabelColors = (projectId: string | undefined) => {
 export const useSetLabelColor = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ label, color, project_id }: { label: string; color: string; project_id: string }) =>
+    mutationFn: requires("tickets:write", async ({ label, color, project_id }: { label: string; color: string; project_id: string }) =>
       (
         await api.put<{ label: string; color: string }>(`/api/tickets/labels/${encodeURIComponent(label)}/color`, {
           project_id,
           color,
         })
-      ).data,
+      ).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getLabelColorsKey] });
       toast.success("Label color updated");

@@ -14,7 +14,7 @@ import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
 import { SettingsShell } from "@/components/settings/SettingsShell";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useAreaAccess, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
@@ -39,7 +39,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
   const { data: services } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending, error: deploysError } = useFetchStackDeploys(stackId);
   const can = useAreaAccess(stack?.project_id || undefined);
-  const showExposures = can?.("dns") ?? false;
+  const showExposures = useHasInstancePermission("dns:read");
   const showLogs = can?.("stackLogs") ?? false;
   const wsPath = useWorkspacePath();
   const { data: exposures } = useFetchExposures(showExposures);

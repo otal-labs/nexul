@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getExplanationKey, getGrantsKey } from "@/hooks/PermissionHooks";
 import { getMyRoleKey, useFetchMyRole } from "@/hooks/WorkspaceHooks";
@@ -21,7 +23,7 @@ export const useFetchAccessGrid = (workspaceId: string) =>
 export const useSaveAccessGrid = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: AccessGridSave) => api.put(`/api/workspaces/${workspaceId}/access`, body),
+    mutationFn: requires("projects:access", (body: AccessGridSave) => api.put(`/api/workspaces/${workspaceId}/access`, body)),
     onSuccess: () =>
       Promise.all([
         client.invalidateQueries({ queryKey: [getAccessGridKey, workspaceId], exact: true }),

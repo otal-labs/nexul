@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { CanvasFrameSchema, type Canvas, type TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
@@ -49,8 +51,8 @@ export const useAddTopologyNode = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const apply = useApplyCanvas();
   return useMutation({
-    mutationFn: async (node: TopologyNode) =>
-      (await api.post<Canvas>("/api/topology/nodes", node, { params: { workspace: workspaceId } })).data,
+    mutationFn: requires("topology:write", async (node: TopologyNode) =>
+      (await api.post<Canvas>("/api/topology/nodes", node, { params: { workspace: workspaceId } })).data),
     onSuccess: (canvas) => void apply(canvas, workspaceId),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -60,8 +62,8 @@ export const useRemoveTopologyNode = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const apply = useApplyCanvas();
   return useMutation({
-    mutationFn: async (nodeId: string) =>
-      (await api.delete<Canvas>(`/api/topology/nodes/${nodeId}`, { params: { workspace: workspaceId } })).data,
+    mutationFn: requires("topology:delete", async (nodeId: string) =>
+      (await api.delete<Canvas>(`/api/topology/nodes/${nodeId}`, { params: { workspace: workspaceId } })).data),
     onSuccess: (canvas) => void apply(canvas, workspaceId),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -73,11 +75,11 @@ export const useSaveTopology = () => {
   const apply = useApplyCanvas();
   const toCanvas = useFlowStore((s) => s.toCanvas);
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("topology:write", async () => {
       const workspaceId = useFlowStore.getState().workspaceId;
       const canvas = (await api.put<Canvas>("/api/topology", toCanvas(), { params: { workspace: workspaceId } })).data;
       return { canvas, workspaceId };
-    },
+    }),
     onSuccess: ({ canvas, workspaceId }) => void apply(canvas, workspaceId),
     onError: (error) => toast.error(errorMessage(error)),
   });

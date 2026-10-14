@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getServerVersionKey } from "@/hooks/VersionHooks";
 import { isUpgradeInProgress, type InstanceUpgrade, type InstanceUpgradeRecord } from "@/models/InstanceUpgrade";
@@ -20,14 +22,14 @@ export const useInstanceUpgrade = () =>
 export const useRequestInstanceUpgrade = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("instance:write", async () => {
       try {
         return (await api.post<InstanceUpgradeRecord>("/api/instance/upgrade")).data;
       } catch (err) {
         const reason = (err as AxiosError<{ reason: string }>).response?.data?.reason;
         throw new Error(reason || (err as Error).message, { cause: err });
       }
-    },
+    }),
     onSuccess: () => toast.success("Upgrade started"),
     onError: (error) => toast.error(errorMessage(error)),
     onSettled: async () => {

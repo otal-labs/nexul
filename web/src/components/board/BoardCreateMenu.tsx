@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { menuItemClass } from "@/components/MenuItem";
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { useReportBugDialog } from "@/hooks/useReportBugDialog";
 
 interface BoardCreateMenuProps {
@@ -26,39 +26,36 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
       </PopoverTrigger>
       <PopoverContent align="end" className="w-48 p-1">
         <div className="flex flex-col">
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={() => {
+          <ActionMenuItem
+            permission="tickets:write"
+            icon={TicketIcon}
+            onSelect={() => {
               setOpen(false);
               onNewTicket();
             }}
           >
-            <TicketIcon aria-hidden />
             New ticket
-          </button>
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={() => {
+          </ActionMenuItem>
+          <ActionMenuItem
+            permission="tickets:write"
+            icon={Bug}
+            onSelect={() => {
               setOpen(false);
               void reportBug();
             }}
           >
-            <Bug aria-hidden />
             Report a bug
-          </button>
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={() => {
+          </ActionMenuItem>
+          <ActionMenuItem
+            permission="projects:write"
+            icon={TagIcon}
+            onSelect={() => {
               setOpen(false);
               onNewCategory();
             }}
           >
-            <TagIcon aria-hidden />
             New category
-          </button>
+          </ActionMenuItem>
         </div>
       </PopoverContent>
     </Popover>

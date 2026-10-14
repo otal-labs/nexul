@@ -2,6 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { AxiosError } from "axios";
 import { useForm, useWatch } from "react-hook-form";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage, joinAPIURL } from "@/api/client";
 import { GitHubManifestSetup } from "@/components/setup/GitHubManifestSetup";
 import { FormInput } from "@/components/FormInput";
@@ -45,8 +47,8 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
   });
 
   // Ticker (the Frontend Commandments): Verify lights the rows, then the button turns into Set up instance.
-  const { verified, verifying, verify, outcomeFor } = useTicker(APP_CHECKS, useWatch({ control: form.control }), (key, data) =>
-    api.post("/api/auth/bootstrap/verify", data, { params: { check: key } }),
+  const { verified, verifying, verify, outcomeFor } = useTicker(APP_CHECKS, useWatch({ control: form.control }), requires("none", (key, data) =>
+    api.post("/api/auth/bootstrap/verify", data, { params: { check: key } })),
   );
 
   const onVerify = ({ instance_url, client_id, client_secret, app_slug }: InstanceBootstrapFormData) =>

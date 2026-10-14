@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { toast } from "sonner";
 import type { Room } from "livekit-client";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { isVoiceNotConfiguredError, type VoiceJoinToken } from "@/models/Voice";
 
@@ -43,7 +45,7 @@ const stopAloneTimer = () => {
 // Best-effort teardown: tell the server immediately instead of ghosting until the next presence poll.
 const disconnectRoom = (room: Room | null, conversationId: string | null) => {
   room?.disconnect();
-  if (conversationId) void api.post(`/api/voice/${conversationId}/leave`).catch(() => undefined);
+  if (conversationId) void requires("none", api.post(`/api/voice/${conversationId}/leave`)).catch(() => undefined);
 };
 
 export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
@@ -67,7 +69,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
     set({ activeConversationId: conversationId, activeChannelName: channelName, leftAlone: null, status: "connecting", room: null, error: undefined });
     try {
       const [{ data }, livekit] = await Promise.all([
-        api.post<VoiceJoinToken>(`/api/voice/${conversationId}/token`),
+        requires("none", api.post<VoiceJoinToken>(`/api/voice/${conversationId}/token`)),
         import("livekit-client"),
       ]);
       // livekit-client logs connection/track chatter at info by default — noise in the app console.

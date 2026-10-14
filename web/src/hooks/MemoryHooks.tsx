@@ -1,6 +1,8 @@
 import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import type { InterviewAnswer, SaveInterviewAnswerInput } from "@/models/InterviewAnswer";
@@ -45,7 +47,7 @@ export const useFetchMemory = (id: string | undefined) =>
 export const useCreateMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateMemoryFormData) => (await api.post<Memory>("/api/memories", input)).data,
+    mutationFn: requires("memories:write", async (input: CreateMemoryFormData) => (await api.post<Memory>("/api/memories", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       toast.success("Memory created");
@@ -65,8 +67,8 @@ interface UpdateMemoryInput {
 export const useUpdateMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...input }: UpdateMemoryInput) =>
-      (await api.put<Memory>(`/api/memories/${id}`, input)).data,
+    mutationFn: requires("memories:write", async ({ id, ...input }: UpdateMemoryInput) =>
+      (await api.put<Memory>(`/api/memories/${id}`, input)).data),
     onSuccess: async (_, { id }) => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       await client.invalidateQueries({ queryKey: [getMemoryKey, id] });
@@ -86,7 +88,7 @@ export const useSetMemoryFlag = (flag: "always_included" | "footer") => {
     client.setQueryData<Memory>([getMemoryKey, id], (m) => m && { ...m, [flag]: value });
   };
   return useMutation({
-    mutationFn: async ({ memory, value }: { memory: Memory; value: boolean }) =>
+    mutationFn: requires("memories:write", async ({ memory, value }: { memory: Memory; value: boolean }) =>
       (
         await api.put<Memory>(`/api/memories/${memory.id}`, {
           title: memory.title,
@@ -95,7 +97,7 @@ export const useSetMemoryFlag = (flag: "always_included" | "footer") => {
           always_included: memory.always_included,
           [flag]: value,
         })
-      ).data,
+      ).data),
     onMutate: async ({ memory, value }) => {
       await client.cancelQueries({ queryKey: [getMemoriesKey] });
       await client.cancelQueries({ queryKey: [getMemoryKey, memory.id] });
@@ -115,9 +117,9 @@ export const useSetMemoryFlag = (flag: "always_included" | "footer") => {
 export const useDeleteMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("memories:delete", async (id: string) => {
       await api.delete(`/api/memories/${id}`);
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       toast.success("Memory deleted");
@@ -136,8 +138,8 @@ export const useFetchMemoryVersions = (id: string | undefined) =>
 export const useRevertMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, version }: { id: string; version: number }) =>
-      (await api.post<Memory>(`/api/memories/${id}/revert`, { version })).data,
+    mutationFn: requires("memories:write", async ({ id, version }: { id: string; version: number }) =>
+      (await api.post<Memory>(`/api/memories/${id}/revert`, { version })).data),
     onSuccess: async (_, { id }) => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       await client.invalidateQueries({ queryKey: [getMemoryKey, id] });
@@ -151,8 +153,8 @@ export const useRevertMemory = () => {
 export const useCloneMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, projectId }: { id: string; projectId: string }) =>
-      (await api.post<Memory>(`/api/memories/${id}/clone`, { project_id: projectId })).data,
+    mutationFn: requires("memories:clone", async ({ id, projectId }: { id: string; projectId: string }) =>
+      (await api.post<Memory>(`/api/memories/${id}/clone`, { project_id: projectId })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       toast.success("Memory cloned");
@@ -181,8 +183,8 @@ export const useFetchProjectInterviewTemplate = (projectId: string) =>
 export const useSaveInterviewTemplate = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ workspaceId, body }: { workspaceId: string; body: string }) =>
-      (await api.put<InterviewTemplate>("/api/memories/interview-template", { workspace_id: workspaceId, body })).data,
+    mutationFn: requires("memories:template", async ({ workspaceId, body }: { workspaceId: string; body: string }) =>
+      (await api.put<InterviewTemplate>("/api/memories/interview-template", { workspace_id: workspaceId, body })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInterviewTemplateKey] });
     },
@@ -202,10 +204,10 @@ export const useFetchInterviewAnswers = (projectId: string) =>
 export const useSaveInterviewAnswer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ skip, ...input }: SaveInterviewAnswerInput) => {
+    mutationFn: requires("memories:write", async ({ skip, ...input }: SaveInterviewAnswerInput) => {
       if (skip) return (await api.post<InterviewAnswer>("/api/memories/interview-answers/skip", input)).data;
       return (await api.put<InterviewAnswer>("/api/memories/interview-answers", input)).data;
-    },
+    }),
     onSuccess: async (saved) => {
       client.setQueryData<InterviewAnswer[]>([getInterviewAnswersKey, saved.project_id], (list) => {
         if (!list) return list;

@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, joinAPIURL } from "@/api/client";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -26,8 +28,8 @@ export const LoginPage = () => {
   const clientsEnabled = googleEnabled || discordEnabled;
 
   const exchange = useMutation({
-    mutationFn: async (code: string) =>
-      (await api.post<{ token: string }>("/auth/callback", { code })).data,
+    mutationFn: requires("none", async (code: string) =>
+      (await api.post<{ token: string }>("/auth/callback", { code })).data),
     onSuccess: (data) => {
       login(data.token);
       navigate("/", { replace: true });

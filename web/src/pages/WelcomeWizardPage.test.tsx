@@ -132,7 +132,7 @@ describe("WelcomeWizardPage", () => {
   });
 
   it.each([
-    { who: "someone who may create projects", permissions: ["projects:create"], label: "Create your first project", lands: "project-wizard" },
+    { who: "someone who may create projects", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write"], label: "Create your first project", lands: "project-wizard" },
     { who: "a member who may not", permissions: [], label: "Go to Northwind", lands: "workspace-home" },
   ])("ends a workspace with no project for $who with $label", async ({ permissions, label, lands }) => {
     useWorkspaceStore.getState().selectWorkspace("w1", "northwind");

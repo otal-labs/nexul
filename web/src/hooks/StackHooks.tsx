@@ -2,6 +2,8 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { useMemo } from "react";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
 import { useFetchGateways } from "@/hooks/DnsHooks";
@@ -54,7 +56,7 @@ export const useFetchStackDeploys = (stackId: string | undefined, pollMs?: numbe
 export const useUpdateStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data,
+    mutationFn: requires("stacks:write", async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data),
     onSuccess: async (_data, stack) => {
       await client.invalidateQueries({ queryKey: [getStackKey, stack.id] });
       await client.invalidateQueries({ queryKey: [getStacksKey] });
@@ -67,7 +69,7 @@ export const useUpdateStack = () => {
 export const useDeleteStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/stacks/${id}`),
+    mutationFn: requires("stacks:delete", async (id: string) => api.delete(`/api/stacks/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStacksKey] });
       toast.success("Stack removed");
@@ -79,8 +81,8 @@ export const useDeleteStack = () => {
 export const useDeployStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ stackId, image, ref }: { stackId: string; image?: string; ref?: string }) =>
-      (await api.post<Deploy>("/api/deploys", { stack_id: stackId, image, ref })).data,
+    mutationFn: requires("deploys:write", async ({ stackId, image, ref }: { stackId: string; image?: string; ref?: string }) =>
+      (await api.post<Deploy>("/api/deploys", { stack_id: stackId, image, ref })).data),
     onSuccess: async (_data, vars) => {
       await client.invalidateQueries({ queryKey: [getStackDeploysKey, vars.stackId] });
       toast.success("Deploy triggered");
@@ -92,7 +94,7 @@ export const useDeployStack = () => {
 export const useRetryDeploy = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (deploy: Pick<Deploy, "id" | "stack_id">) => (await api.post<Deploy>(`/api/deploys/${deploy.id}/retry`)).data,
+    mutationFn: requires("deploys:write", async (deploy: Pick<Deploy, "id" | "stack_id">) => (await api.post<Deploy>(`/api/deploys/${deploy.id}/retry`)).data),
     onSuccess: async (_data, deploy) => {
       await client.invalidateQueries({ queryKey: [getStackDeploysKey, deploy.stack_id] });
       toast.success("Retry started");
@@ -104,7 +106,7 @@ export const useRetryDeploy = () => {
 export const useRollbackStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (stackId: string) => (await api.post<Deploy>(`/api/stacks/${stackId}/rollback`)).data,
+    mutationFn: requires("deploys:write", async (stackId: string) => (await api.post<Deploy>(`/api/stacks/${stackId}/rollback`)).data),
     onSuccess: async (_data, stackId) => {
       await client.invalidateQueries({ queryKey: [getStackDeploysKey, stackId] });
       toast.success("Rollback triggered");
@@ -154,7 +156,7 @@ export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => 
 export const useUpdateStackEnv = ({ quiet = false }: { quiet?: boolean } = {}) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data,
+    mutationFn: requires("stacks:write", async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getStackKey] });
       if (!quiet) toast.success("Environment saved");
@@ -169,7 +171,7 @@ export const useUpdateStackEnv = ({ quiet = false }: { quiet?: boolean } = {}) =
 export const useCreateStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateStackInput) => (await api.post<CreateStackResponse>("/api/stacks", input)).data,
+    mutationFn: requires("stacks:write", async (input: CreateStackInput) => (await api.post<CreateStackResponse>("/api/stacks", input)).data),
     onSuccess: async () => {
       // /api/services stays the wire alias for one release (internal/deploy/handler.go); the old list key
       // still backs ProjectServices until that page moves to stacks.

@@ -72,9 +72,10 @@ event-schemas:
 	go test ./internal/eventcatalog -run TestSchemas_MatchThePublishedContract -update-event-schemas
 	bun run --cwd sdk generate:events
 
-# Rewrites the clients' typed copy of the permission catalog from the server's domain table.
+# Rewrites the clients' typed copy of the permission catalog and the route permissions they check their writes against.
 permission-catalog:
 	go test ./internal/platform/permissions -run TestPermissionActionsFile_MatchesTheCatalog -update-permission-catalog
+	go test ./server/cmd -run TestRoutePermissionsFile_MatchesTheRoutes -update-permission-catalog
 
 clean:
 	rm -rf $(BIN_DIR) server/webui/dist

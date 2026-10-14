@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getAutomationsKey } from "@/hooks/AutomationHooks";
 import type { AutomationVersion, AutomationVersionDiff } from "@/models/AutomationVersion";
@@ -34,8 +36,8 @@ const invalidateVersions = async (client: ReturnType<typeof useQueryClient>, aut
 export const useMergeAutomationVersion = (automationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (versionId: string) =>
-      (await api.post<AutomationVersion>(`/api/automations/${automationId}/versions/${versionId}/merge`)).data,
+    mutationFn: requires("automations:write", async (versionId: string) =>
+      (await api.post<AutomationVersion>(`/api/automations/${automationId}/versions/${versionId}/merge`)).data),
     onSuccess: async () => {
       await invalidateVersions(client, automationId);
       toast.success("Version merged");
@@ -47,8 +49,8 @@ export const useMergeAutomationVersion = (automationId: string) => {
 export const useRollbackAutomationVersion = (automationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (versionId: string) =>
-      (await api.post<AutomationVersion>(`/api/automations/${automationId}/versions/${versionId}/rollback`)).data,
+    mutationFn: requires("automations:write", async (versionId: string) =>
+      (await api.post<AutomationVersion>(`/api/automations/${automationId}/versions/${versionId}/rollback`)).data),
     onSuccess: async () => {
       await invalidateVersions(client, automationId);
       toast.success("Rolled back");

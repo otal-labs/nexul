@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
 import { findModel } from "@/models/ModelPick";
@@ -40,8 +42,8 @@ export const invalidateProjectLinks = (client: QueryClient) =>
 export const useSetProjectLink = (projectId: string, projectName: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: ProjectLinkFormData) =>
-      (await api.put<ProjectLink>(`/api/pairing/projects/${projectId}`, input)).data,
+    mutationFn: requires("none", async (input: ProjectLinkFormData) =>
+      (await api.put<ProjectLink>(`/api/pairing/projects/${projectId}`, input)).data),
     onSuccess: async () => {
       await invalidateProjectLinks(client);
       toast.success(`${projectName} linked`);
@@ -53,9 +55,9 @@ export const useSetProjectLink = (projectId: string, projectName: string) => {
 export const useClearProjectLink = (projectId: string, projectName: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("none", async () => {
       await api.delete(`/api/pairing/projects/${projectId}`);
-    },
+    }),
     onSuccess: async () => {
       await invalidateProjectLinks(client);
       toast.success(`${projectName} uses your defaults`);

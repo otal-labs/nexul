@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { attachmentPath, type Attachment, type AttachmentOwner } from "@/models/Attachment";
 
@@ -14,13 +16,13 @@ export const useFetchAttachments = (owner: AttachmentOwner) =>
   });
 
 // The raw call the editor's paste/drop path uses outside React; the hook below wraps it for buttons.
-export const uploadAttachment = async (owner: AttachmentOwner, file: File, name?: string): Promise<Attachment> => {
+export const uploadAttachment = requires("docs:write", async (owner: AttachmentOwner, file: File, name?: string): Promise<Attachment> => {
   const form = new FormData();
   form.append("file", file);
   for (const [key, value] of Object.entries(owner)) form.append(key, value);
   if (name) form.append("name", name);
   return (await api.post<Attachment>("/api/attachments", form)).data;
-};
+});
 
 export const useUploadAttachment = () => {
   const client = useQueryClient();
@@ -36,9 +38,9 @@ export const useUploadAttachment = () => {
 export const useDeleteAttachment = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: requires("docs:write", async (id: string) => {
       await api.delete(attachmentPath(id));
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAttachmentsKey] });
       toast.success("Attachment deleted");

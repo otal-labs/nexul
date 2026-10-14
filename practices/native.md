@@ -108,6 +108,13 @@ as written. In particular:
   opens a small popover ("Redeploy is locked" over the reason); a locked row
   shows the reason as its second line. A check written by hand beside a write
   control is the defect.
+- Every request that writes declares its permission the way the web's does
+  (`practices/react-guide.md`, Actions that change something): wrap the function
+  that sends it in `requires(permission, ...)` from
+  `@nexul/client-core/requires`, with a `PermissionAction` or `"none"`.
+  `client-core/routePermissions.test.ts` reads this app's sources against the
+  server's route table and fails on a write that declares nothing or declares
+  a permission its route doesn't take.
 - A gesture always has a second way to do the same thing: the board's
   hold-and-drag is also each card's "Move to" accessibility actions and the
   ticket's status sheet, and the Inbox's swipe is the row's "Mark read"

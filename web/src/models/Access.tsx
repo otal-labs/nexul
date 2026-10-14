@@ -16,7 +16,7 @@ export type InstanceSection = keyof typeof INSTANCE_SECTION_PERMISSION;
 
 // Configuration has no bit of its own: it opens when one of its workspace sections does. Access opens for whoever
 // manages access on some project.
-export type RouteArea = Area | "configuration" | "access";
+export type RouteArea = Area | "configuration" | "access" | "wizard";
 
 // A route declares the area it belongs to as its handle; routes without one are open to every member.
 export interface RouteAccess {
@@ -24,6 +24,15 @@ export interface RouteAccess {
   // A page that shows a project, which waits while the one-time access setup is open (ADR 0148).
   needsProject?: boolean;
 }
+
+// A door into the project wizard needs what its first steps write: a new project, creating it and its setup; adding a service, the repository, stack and deploy.
+export const canRunWizard = (can: (area: Area) => boolean, creates: boolean): boolean => {
+  if (creates) return can("newProject") && can("editProjects");
+  return can("editProjects") && can("editStacks") && can("editDeploys");
+};
+
+// The wizard's route serves both doors, so it opens for either.
+export const canOpenWizard = (can: (area: Area) => boolean): boolean => canRunWizard(can, true) || canRunWizard(can, false);
 
 // The areas an instance Settings entry hands out; one with no entry of its own (machines, the audit log) sits under Instance.
 const ENTRY_AREAS: Record<string, (key: string) => boolean> = {

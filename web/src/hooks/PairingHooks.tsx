@@ -2,6 +2,8 @@ import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient }
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { getPATsKey } from "@/hooks/AuthHooks";
 import {
@@ -71,10 +73,10 @@ interface PairComputerInput {
 export const usePairComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ computerId, form }: PairComputerInput) => {
+    mutationFn: requires("none", async ({ computerId, form }: PairComputerInput) => {
       const token = pairingToken(form.token);
       return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token })).data;
-    },
+    }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success("Computer paired");
@@ -113,8 +115,8 @@ const sessionNoteToast = (note?: string) => (note ? { description: note, duratio
 export const useRepairComputer = (computer: Computer) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: PairComputerFormData) =>
-      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, { ...input, token: pairingToken(input.token) })).data,
+    mutationFn: requires("none", async (input: PairComputerFormData) =>
+      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, { ...input, token: pairingToken(input.token) })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success("Computer re-paired", sessionNoteToast(leftoverSessionNote(computer, true)));
@@ -126,9 +128,9 @@ export const useRepairComputer = (computer: Computer) => {
 export const useDeleteComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (computer: Computer) => {
+    mutationFn: requires("none", async (computer: Computer) => {
       await api.delete(`/api/pairing/computers/${computer.id}`);
-    },
+    }),
     onSuccess: async (_, computer) => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       await client.invalidateQueries({ queryKey: [getPATsKey] });
@@ -154,8 +156,8 @@ const invalidateMCPToken = async (client: QueryClient, computerId: string) => {
 export const useMintMCPToken = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
-      (await api.post<MintedMCPToken>(`/api/pairing/computers/${computerId}/mcp-token`)).data,
+    mutationFn: requires("none", async () =>
+      (await api.post<MintedMCPToken>(`/api/pairing/computers/${computerId}/mcp-token`)).data),
     onSuccess: async () => {
       await invalidateMCPToken(client, computerId);
       toast.success("MCP token created. Copy it now. It won't be shown again.");
@@ -167,9 +169,9 @@ export const useMintMCPToken = (computerId: string) => {
 export const useRevokeMCPToken = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: requires("none", async () => {
       await api.delete(`/api/pairing/computers/${computerId}/mcp-token`);
-    },
+    }),
     onSuccess: async () => {
       await invalidateMCPToken(client, computerId);
       toast.success("MCP token revoked");
@@ -249,8 +251,8 @@ export const useFetchPairingDefaults = () =>
 export const useUpdatePairingDefaults = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: PairingDefaultsFormData) =>
-      (await api.put<PairingDefaults>("/api/pairing/defaults", input)).data,
+    mutationFn: requires("none", async (input: PairingDefaultsFormData) =>
+      (await api.put<PairingDefaults>("/api/pairing/defaults", input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPairingDefaultsKey] });
     },

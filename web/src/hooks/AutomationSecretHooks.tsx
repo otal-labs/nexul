@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { AutomationSecretMeta } from "@/models/AutomationSecret";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -23,8 +25,8 @@ export const useSetAutomationSecret = () => {
   const client = useQueryClient();
   const params = useSecretsParams();
   return useMutation({
-    mutationFn: async ({ name, value }: { name: string; value: string }) =>
-      (await api.put(`/api/automation-secrets/${name}`, { value }, { params })).data,
+    mutationFn: requires("automations:write", async ({ name, value }: { name: string; value: string }) =>
+      (await api.put(`/api/automation-secrets/${name}`, { value }, { params })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationSecretsKey] });
       toast.success("Secret saved");
@@ -37,7 +39,7 @@ export const useDeleteAutomationSecret = () => {
   const client = useQueryClient();
   const params = useSecretsParams();
   return useMutation({
-    mutationFn: async (name: string) => (await api.delete(`/api/automation-secrets/${name}`, { params })).data,
+    mutationFn: requires("automations:write", async (name: string) => (await api.delete(`/api/automation-secrets/${name}`, { params })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationSecretsKey] });
       toast.success("Secret deleted");

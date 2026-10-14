@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import type { BlockersByTicket, LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
@@ -38,27 +40,27 @@ const useLinkMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, 
 
 export const useAddBlocker = () =>
   useLinkMutation(
-    ({ id, blockerId }: { id: string; blockerId: string }) =>
-      api.post(`/api/tickets/${id}/blocked-by`, { blocker_id: blockerId }),
+    requires("tickets:write", ({ id, blockerId }: { id: string; blockerId: string }) =>
+      api.post(`/api/tickets/${id}/blocked-by`, { blocker_id: blockerId })),
     "Blocker added",
   );
 
 export const useRemoveBlocker = () =>
   useLinkMutation(
-    ({ id, blockerId }: { id: string; blockerId: string }) =>
-      api.delete(`/api/tickets/${id}/blocked-by/${encodeURIComponent(blockerId)}`),
+    requires("tickets:write", ({ id, blockerId }: { id: string; blockerId: string }) =>
+      api.delete(`/api/tickets/${id}/blocked-by/${encodeURIComponent(blockerId)}`)),
     "Blocker removed",
   );
 
 export const useSetFoundIn = () =>
   useLinkMutation(
-    ({ id, originId }: { id: string; originId: string }) =>
-      api.put(`/api/tickets/${id}/found-in`, { origin_id: originId }),
+    requires("tickets:write", ({ id, originId }: { id: string; originId: string }) =>
+      api.put(`/api/tickets/${id}/found-in`, { origin_id: originId })),
     "Found in linked",
   );
 
 export const useRemoveFoundIn = () =>
-  useLinkMutation(({ id }: { id: string }) => api.delete(`/api/tickets/${id}/found-in`), "Found in unlinked");
+  useLinkMutation(requires("tickets:write", ({ id }: { id: string }) => api.delete(`/api/tickets/${id}/found-in`)), "Found in unlinked");
 
 export const linkedTickets = (set: TicketLinkSet): LinkedTicket[] =>
   [set.found_in, ...set.bugs_found, ...set.blocked_by, ...set.blocks].filter((t): t is LinkedTicket => !!t);

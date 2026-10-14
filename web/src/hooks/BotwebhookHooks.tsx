@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Botwebhook } from "@/models/Botwebhook";
@@ -30,8 +32,8 @@ const useInvalidateBots = () => {
 export const useCreateBotwebhook = (conversationId: string) => {
   const invalidate = useInvalidateBots();
   return useMutation({
-    mutationFn: async (input: { name: string; avatar: string }) =>
-      (await api.post<Botwebhook>(`/api/conversations/${conversationId}/botwebhooks`, input)).data,
+    mutationFn: requires("botwebhook:write", async (input: { name: string; avatar: string }) =>
+      (await api.post<Botwebhook>(`/api/conversations/${conversationId}/botwebhooks`, input)).data),
     onSuccess: async () => {
       await invalidate(conversationId);
       toast.success("Bot created");
@@ -52,8 +54,8 @@ const changeToast = (change: BotwebhookChange): string => {
 export const useUpdateBotwebhook = () => {
   const invalidate = useInvalidateBots();
   return useMutation({
-    mutationFn: async ({ bot, change }: { bot: Botwebhook; change: BotwebhookChange }) =>
-      (await api.patch<Botwebhook>(`/api/botwebhooks/${bot.id}`, change)).data,
+    mutationFn: requires("botwebhook:write", async ({ bot, change }: { bot: Botwebhook; change: BotwebhookChange }) =>
+      (await api.patch<Botwebhook>(`/api/botwebhooks/${bot.id}`, change)).data),
     onSuccess: async (_, { bot, change }) => {
       await invalidate(bot.conversation_id);
       toast.success(changeToast(change));
@@ -65,7 +67,7 @@ export const useUpdateBotwebhook = () => {
 export const useDeleteBotwebhook = () => {
   const invalidate = useInvalidateBots();
   return useMutation({
-    mutationFn: async (bot: Botwebhook) => api.delete(`/api/botwebhooks/${bot.id}`),
+    mutationFn: requires("botwebhook:delete", async (bot: Botwebhook) => api.delete(`/api/botwebhooks/${bot.id}`)),
     onSuccess: async (_, bot) => {
       await invalidate(bot.conversation_id);
       toast.success("Bot deleted");

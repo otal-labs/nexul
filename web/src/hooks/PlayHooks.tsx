@@ -2,6 +2,8 @@ import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient }
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
+import { requires } from "@nexul/client-core/requires";
+
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
@@ -38,7 +40,7 @@ const autoPlaysPath = (workspaceId: string, playId: string) => `/api/workspaces/
 export const useCreateAutoPlay = (workspaceId: string, playId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SaveAutoPlayRequest) => (await api.post<AutoPlay>(autoPlaysPath(workspaceId, playId), input)).data,
+    mutationFn: requires("autoplays:write", async (input: SaveAutoPlayRequest) => (await api.post<AutoPlay>(autoPlaysPath(workspaceId, playId), input)).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
       toast.success("Auto play added, switched off until you turn it on");
@@ -51,8 +53,8 @@ export const useUpdateAutoPlay = (workspaceId: string, playId: string) => {
   const client = useQueryClient();
   const key = [getAutoPlaysKey, workspaceId, playId];
   return useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: SaveAutoPlayRequest }) =>
-      (await api.patch<AutoPlay>(`${autoPlaysPath(workspaceId, playId)}/${id}`, input)).data,
+    mutationFn: requires("autoplays:write", async ({ id, input }: { id: string; input: SaveAutoPlayRequest }) =>
+      (await api.patch<AutoPlay>(`${autoPlaysPath(workspaceId, playId)}/${id}`, input)).data),
     // The switch answers at once; a refused save puts the list back as it was.
     onMutate: async ({ id, input }) => {
       await client.cancelQueries({ queryKey: key, exact: true });
@@ -79,7 +81,7 @@ export const useUpdateAutoPlay = (workspaceId: string, playId: string) => {
 export const useDeleteAutoPlay = (workspaceId: string, playId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.delete(`${autoPlaysPath(workspaceId, playId)}/${id}`),
+    mutationFn: requires("autoplays:delete", async (id: string) => api.delete(`${autoPlaysPath(workspaceId, playId)}/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
       toast.success("Auto play deleted");
@@ -101,8 +103,8 @@ export const useFetchAutoPlayLimits = (workspaceId: string) =>
 export const useSetAutoPlayDailyCap = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (cap: number) =>
-      (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), { daily_cap_per_ticket: cap })).data,
+    mutationFn: requires("autoplays:write", async (cap: number) =>
+      (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), { daily_cap_per_ticket: cap })).data),
     onSuccess: (limits) => {
       client.setQueryData([getAutoPlayLimitsKey, workspaceId], limits);
       toast.success(`Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`);
@@ -155,8 +157,8 @@ const toastUnlessLabelError = (error: unknown) => {
 export const useCreatePlay = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SavePlayFormData) =>
-      (await api.post<Play>(`/api/workspaces/${workspaceId}/plays`, toSavePlayRequest(input))).data,
+    mutationFn: requires("plays:write", async (input: SavePlayFormData) =>
+      (await api.post<Play>(`/api/workspaces/${workspaceId}/plays`, toSavePlayRequest(input))).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play created");
@@ -168,8 +170,8 @@ export const useCreatePlay = (workspaceId: string) => {
 export const useUpdatePlay = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ playId, input }: { playId: string; input: SavePlayFormData }) =>
-      (await api.patch<Play>(`/api/workspaces/${workspaceId}/plays/${playId}`, toSavePlayRequest(input))).data,
+    mutationFn: requires("plays:write", async ({ playId, input }: { playId: string; input: SavePlayFormData }) =>
+      (await api.patch<Play>(`/api/workspaces/${workspaceId}/plays/${playId}`, toSavePlayRequest(input))).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play updated");
@@ -190,7 +192,7 @@ export const playRenameImpactQuery = (workspaceId: string, playId: string, label
 export const useDeletePlay = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (playId: string) => api.delete(`/api/workspaces/${workspaceId}/plays/${playId}`),
+    mutationFn: requires("plays:delete", async (playId: string) => api.delete(`/api/workspaces/${workspaceId}/plays/${playId}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play deleted");

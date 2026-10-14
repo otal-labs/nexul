@@ -8,11 +8,11 @@ import { ProjectServices } from "@/components/project/ProjectServices";
 import { api } from "@/api/client";
 import type { ServiceDef } from "@/models/Service";
 
-const access = vi.hoisted(() => ({ areas: ["newProject", "stacks"] as string[] }));
+const access = vi.hoisted(() => ({ areas: ["stacks", "editProjects", "editStacks", "editDeploys"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
-  access.areas = ["newProject", "stacks"];
+  access.areas = ["stacks", "editProjects", "editStacks", "editDeploys"];
 });
 
 vi.mock("@/api/client", () => ({
@@ -98,7 +98,7 @@ describe("ProjectServices", () => {
   });
 
   it("shows no repository as waiting to someone who can't read stacks, whose service list is always empty", async () => {
-    access.areas = ["newProject"];
+    access.areas = ["editProjects", "editStacks", "editDeploys"];
     renderServices([], [repo("acme/portal")]);
     expect(await screen.findByText(/No services yet/)).toBeInTheDocument();
     expect(screen.queryByText("Attached, not deployed yet")).not.toBeInTheDocument();
