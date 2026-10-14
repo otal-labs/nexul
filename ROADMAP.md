@@ -278,6 +278,21 @@ upgrade every machine starts with only the instance Owner on it. The Runners
 page has a People on this machine row for the instance Owner and Manage
 holders. ADR 0151.
 
+### Screens that know your role
+
+A button a person can't use is hidden. A role with Show locked actions on
+sees it locked instead, dimmed with the reason, "Your role can't deploy" or
+the sentence of the rule that refused it on that one item; Junior Developer,
+Senior Developer, DevOps and Administrator ship with it on and Client off. The
+web and the phone draw every write the same way, and a test fails when a write
+declares a permission its route doesn't take. The things you could make but not
+undo have a way back: delete a machine or a tunnel once nothing uses it, with
+a refusal that names what does; edit a stack's environment after launch with
+values masked for readers; retry a failed deploy on the commit it built;
+unlink a ticket's branch or pull request; delete a ticket; archive and restore
+docs and workspaces; revoke an unused runner code; mark a notification unread.
+ADRs 0152 and 0153.
+
 ---
 
 ## Now — improving what's built
@@ -323,15 +338,6 @@ each role means in one line, and after signing in, which projects it opens.
 A link that expired or was deleted says so plainly, and someone who already has
 an account is turned away without using up the link meant for someone else.
 Spec in `.scratch/invitations/`.
-
-Planned: **screens that know your role**. Every button that changes something
-is hidden from people whose roles can't use it, or, for roles that should know
-it exists, shown locked with the reason ("Your role can't deploy"), instead of
-refusing after the click. A test keeps every new button honest. And the things
-you could make but never undo get their way back: delete a machine or a tunnel
-once nothing uses it, edit a stack's environment after launch with secrets
-masked, retry a failed deploy, unlink a ticket's branch, archive a workspace.
-Spec in `.scratch/role-aware-ui/`.
 
 ---
 
