@@ -69,6 +69,7 @@ tickets they wait on are resolved.
 - [How the server reads the logs OpenObserve holds](issues/01-reading-openobserve-from-the-server.md): one `_search` call with root credentials (no read-only user exists), server-built escaped SQL over a fixed column list, Nexul's own limits on range and rows.
 - [How a server runner's and the automations host's logs reach OpenObserve](issues/02-shipping-runner-and-automations-logs.md): relayed through the server, a `log` frame from machine runners and `self/logs` from the host, with the source stamped by the server and a bounded queue of 1000 across disconnects; personal runners never ship.
 - [The Logs instance area and how an agent reads the instance's logs](issues/03-the-logs-tool-and-area.md): `logs:read` in a new Logs area; `instance_get` takes `logs` (no new tool) and `GET /api/instance/logs`, paged with a pinned `until`; the server filters secret-named attributes and redacts tokens; upgrade re-renders the server env to carry the OpenObserve password.
+- [How a personal runner keeps and serves its own logs, and the share's Read logs](issues/04-personal-runner-logs-and-the-share.md): its own rotated `runner.log` on every OS, tail from the file and follow from the logger, `logs_request` with `target: runner`; `computers:read_logs` on a share covers runner and container logs, masked for sharees.
 
 ## Not yet specified
 
