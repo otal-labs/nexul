@@ -1,10 +1,5 @@
-import type { ChecklistRow } from "@/models/QuestionChecklist";
-import type { TrailState } from "@/models/Trail";
-
-export interface QuestionOption {
-  label: string;
-  description?: string;
-}
+import type { QuestionOption } from "@nexul/client-core/question";
+import type { ChecklistRow } from "@nexul/client-core/questionChecklist";
 
 // Mirrors docs.ClarificationQuestion: no picks, no text, and not skipped is pending.
 export interface ClarificationQuestion {
@@ -113,7 +108,7 @@ export const clarificationPhase = (c: Clarification): ClarificationPhase => {
 const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 export interface ClarificationStatus {
-  icon: TrailState | null;
+  icon: "running" | "waiting" | "done" | null;
   label: string;
   detail: string;
 }
@@ -137,3 +132,14 @@ export const clarificationStatus = (c: Clarification, dev: boolean, locked: bool
   if (phase === "none") return { icon: null, label: "No questions yet", detail: "" };
   return { icon: "done", label: "All answered", detail: "Nothing is waiting on you." };
 };
+
+// The newest round takes its "Anything else?" until the next round runs or one finds no gaps; a closed one takes none.
+export const takesAnythingElse = (c: Clarification, r: ClarificationRound): boolean => {
+  const phase = clarificationPhase(c);
+  return r === askedRounds(c).at(-1) && (phase === "waiting" || phase === "answered");
+};
+
+// Whether a round shows folded before its reader chooses: closed ones all do, and an earlier round does unless it
+// holds the open row.
+export const startsFolded = (c: Clarification, r: ClarificationRound, openKey: string | null): boolean =>
+  c.closed || (r !== askedRounds(c).at(-1) && !r.questions.some((q) => q.id === openKey));

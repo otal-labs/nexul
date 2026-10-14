@@ -3,8 +3,8 @@ import { AnythingElseReply } from "@/components/doc/clarification/AnythingElseRe
 import { ClarificationQuestionForm } from "@/components/doc/clarification/ClarificationQuestionForm";
 import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
 import { QuestionSection } from "@/components/questions/QuestionSection";
-import { questionRow, type ClarificationRound } from "@/models/Clarification";
-import { countLine } from "@/models/QuestionChecklist";
+import { questionRow, type ClarificationRound } from "@nexul/client-core/clarification";
+import { countLine } from "@nexul/client-core/questionChecklist";
 
 interface ClarificationRoundSectionProps {
   round: ClarificationRound;

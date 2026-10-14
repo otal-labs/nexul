@@ -1,7 +1,7 @@
 import { QuestionForm } from "@/components/questions/QuestionForm";
 import { useAnswerDocQuestion, useClearDocAnswer } from "@/hooks/DocHooks";
-import { questionRow, type ClarificationQuestion } from "@/models/Clarification";
-import type { AnswerValue } from "@/models/Question";
+import { questionRow, type ClarificationQuestion } from "@nexul/client-core/clarification";
+import type { AnswerValue } from "@nexul/client-core/question";
 
 interface ClarificationQuestionFormProps {
   question: ClarificationQuestion;

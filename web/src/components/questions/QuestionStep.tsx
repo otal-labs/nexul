@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
 import { DraftedTag, QuestionOptionRow } from "@/components/questions/QuestionOptionRow";
-import { optionValue, type AnswerValue, type QuestionItem, type QuestionOption } from "@/models/Question";
+import { optionValue, toggleOption, type AnswerValue, type QuestionItem, type QuestionOption } from "@nexul/client-core/question";
 import { cn } from "@/lib/utils";
 
 interface QuestionStepProps {
@@ -22,13 +22,6 @@ interface QuestionStepProps {
   // A question without options takes a growing text box, where Enter is a new line, instead of a one-line field.
   multiline?: boolean;
 }
-
-// toggle picks one value for a single choice and flips it in the set for a multi-select; either clears typed text.
-export const toggleOption = (item: QuestionItem, draft: AnswerValue | undefined, value: string): AnswerValue => {
-  if (!item.multi_select) return { selected: [value] };
-  const current = draft?.selected ?? [];
-  return { selected: current.includes(value) ? current.filter((v) => v !== value) : [...current, value] };
-};
 
 const listClass = "mt-2 divide-y divide-border overflow-hidden rounded-md border border-border";
 

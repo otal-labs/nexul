@@ -2,7 +2,7 @@ import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { QuestionForm } from "@/components/questions/QuestionForm";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
 import { recommendedDraft, SKIPPED_ANSWER, type InterviewRow } from "@/models/InterviewAnswer";
-import type { AnswerValue } from "@/models/Question";
+import type { AnswerValue } from "@nexul/client-core/question";
 
 interface InterviewQuestionFormProps {
   row: InterviewRow;

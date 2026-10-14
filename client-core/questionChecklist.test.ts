@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { answerLine } from "@/models/QuestionChecklist";
+import { answerLine } from "@nexul/client-core/questionChecklist";
 
 describe("answerLine", () => {
   it("reads a picked suggested option without its (Suggested) mark, keeping the rest of the answer", () => {

@@ -3,7 +3,7 @@ import { PlayButton } from "@/components/play/PlayButton";
 import { Button } from "@/components/ui/button";
 import { useCloseClarification, useFetchDoc } from "@/hooks/DocHooks";
 import { useDocBuiltinPlays } from "@/hooks/PlayHooks";
-import { answersChangedSinceWritten, clarificationPhase, type Clarification } from "@/models/Clarification";
+import { answersChangedSinceWritten, clarificationPhase, type Clarification } from "@nexul/client-core/clarification";
 
 interface ClarificationActionsProps {
   clarification: Clarification;

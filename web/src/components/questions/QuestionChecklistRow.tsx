@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Check, Minus } from "lucide-react";
 
-import { answerLine, rowStatus, type ChecklistRow, type ChecklistRowStatus } from "@/models/QuestionChecklist";
+import { answerLine, rowStatus, type ChecklistRow, type ChecklistRowStatus } from "@nexul/client-core/questionChecklist";
 import { cn } from "@/lib/utils";
 
 interface QuestionChecklistRowProps {

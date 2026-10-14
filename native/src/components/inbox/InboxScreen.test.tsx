@@ -102,6 +102,16 @@ describe("InboxScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1", { withAnchor: true });
   });
 
+  test.each(["doc.questions_asked", "doc.questions_answered"])("tapping a %s notice opens the doc on its questions", async (kind) => {
+    mockInbox([{ ...docNotification, kind }]);
+    await renderScreen();
+    await screen.findByText("Spec");
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /Spec/ }));
+
+    expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1?view=questions", { withAnchor: true });
+  });
+
   test("tapping a ticket notification marks it read but stays in the inbox without tickets:read", async () => {
     mockInbox([ticketNotification], []);
     jest.mocked(api.post).mockResolvedValue(undefined);

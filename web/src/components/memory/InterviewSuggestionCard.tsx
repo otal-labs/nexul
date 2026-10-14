@@ -3,7 +3,7 @@ import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { useDismissInterviewDraft } from "@/hooks/InterviewSourceHooks";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
 import type { InterviewRow, RowDraft } from "@/models/InterviewAnswer";
-import { answerLine, valueLine } from "@/models/QuestionChecklist";
+import { answerLine, valueLine } from "@nexul/client-core/questionChecklist";
 
 interface InterviewSuggestionCardProps {
   row: InterviewRow;

@@ -10,13 +10,18 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FieldScreen } from "@/components/FieldScreen";
 import { useFetchNotifications, useMarkNotificationRead } from "@/hooks/NotificationHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
-import { SubjectType, type Notification } from "@/models/Notification";
+import { NotificationKind, SubjectType, type Notification } from "@/models/Notification";
+
+// A notice about a doc's questions opens the doc on them.
+const isQuestionsNotice = (notification: Notification) =>
+  notification.kind === NotificationKind.DocQuestionsAsked || notification.kind === NotificationKind.DocQuestionsAnswered;
 
 // A memory has no phone screen yet (ticket 11's scope); its notifications mark read with nothing to open.
 // Exported so a tapped push notification can land on the same screen, without duplicating the mapping.
 // A ticket opens on the Board tab, which a viewer without tickets:read doesn't have.
 export const subjectRoute = (notification: Notification, canReadTickets: boolean): Href | null => {
   if (notification.subject_type === SubjectType.Ticket) return canReadTickets ? `/board/ticket/${notification.subject_id}` : null;
+  if (notification.subject_type === SubjectType.Doc && isQuestionsNotice(notification)) return `/more/docs/${notification.subject_id}?view=questions`;
   if (notification.subject_type === SubjectType.Doc) return `/more/docs/${notification.subject_id}`;
   return null;
 };

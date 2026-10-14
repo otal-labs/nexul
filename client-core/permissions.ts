@@ -25,6 +25,7 @@ export const AREA_PERMISSION = {
   newProject: "projects:create",
   editProjects: "projects:write",
   newDoc: "docs:write",
+  editDocs: "docs:write",
   editNotes: "tickets:write",
   editTickets: "tickets:write",
 } as const;

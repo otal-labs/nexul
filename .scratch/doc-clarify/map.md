@@ -75,6 +75,7 @@ too.
 - [Where clarifications live](issues/03-where-clarifications-live.md): two docs-domain tables (rounds, questions), closed kept on the newest round; see with `docs:read`, answer with `docs:write`, close with `plays:run`; events never carry answers; `doc_get`/`doc_update` carry the rounds.
 - [How a round runs](issues/04-the-run-lifecycle.md): built-in `clarify` doc play; the runner opens and closes each round, locking the doc only while it runs (ADR 0121); the agent posts the round or a no-gaps rewrite through `doc_update` and ends; empty failed rounds vanish; two new notification kinds.
 - [The Questions panel on the doc page](issues/02-the-questions-panel.md): a "Doc | Questions N" tab on the doc page, the Questions view holding the interview's checklist per round, rounds added below; the tab count is the only marker.
+- [Questions on the phone](issues/06-questions-on-the-phone.md): variant A, a "Doc | Questions N" switch under the doc title mirroring the web tab; answered rows wrap in full, and a notice about questions opens the doc on Questions, every other way in on Doc.
 - [What Clarify via AI asks](issues/05-the-plays-instructions.md): functional and non-functional needs in the authors' terms, never how to build; 3–6 per round; "(Suggested)" listed first, never pre-picked; "Why we're asking:"; no gaps when ticketable, twice-skipped go to "Open points"; full instructions in the ticket.
 
 ## Build

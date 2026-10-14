@@ -9,7 +9,7 @@ import { AppState, type AppStateStatus } from "react-native";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
-import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
+import { getDocClarificationKey, getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
@@ -127,6 +127,7 @@ describe("dispatch", () => {
     ["ticket.updated", { ticket: { id: "rec-1" } }, [getTicketKey]],
     ["ticket.deleted", { id: "rec-1", title: "Gone" }, [getTicketKey]],
     ["doc.updated", { doc: { id: "rec-1", title: "Spec", version: 2 } }, [getDocKey]],
+    ["doc.clarification.answer_saved", { doc: { id: "rec-1", project_id: "p-1", title: "Spec" }, round: 1, question_id: "q-1" }, [getDocClarificationKey]],
     ["deploy.updated", { id: "rec-1", status: "running" }, [getDeployKey, getDeployLogKey]],
   ])("%s refetches only the record it names", (topic, payload, keys) => {
     const client = new QueryClient();

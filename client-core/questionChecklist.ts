@@ -1,4 +1,4 @@
-import type { AnswerValue, QuestionItem } from "@/models/Question";
+import type { AnswerValue, QuestionItem } from "@nexul/client-core/question";
 
 // What a checklist row needs of a stored answer: no picks, no text, and not skipped is pending.
 export interface ChecklistAnswer {
@@ -67,3 +67,9 @@ const withoutSuggested = (label: string): string => label.replace(/\s*\(Suggeste
 
 export const answerLine = (answer: ChecklistAnswer | undefined): string =>
   answer ? valueLine({ selected: answer.selected.map(withoutSuggested), text: answer.text }) : "";
+
+// The rows either side of the one at key, for Back and Next: Next skips to the next row still pending.
+export const keysAround = (rows: ChecklistRow[], key: string): { prevKey: string | null; nextKey: string | null } => {
+  const at = rows.findIndex((r) => r.key === key);
+  return { prevKey: rows[at - 1]?.key ?? null, nextKey: nextPendingKey(rows, key) };
+};

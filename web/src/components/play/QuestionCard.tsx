@@ -3,8 +3,9 @@ import { useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 
 import { QuestionAnsweredList } from "@/components/play/QuestionAnsweredList";
-import { QuestionStep, toggleOption } from "@/components/questions/QuestionStep";
-import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswer, type QuestionAnswers } from "@/models/Question";
+import { QuestionStep } from "@/components/questions/QuestionStep";
+import { hasAnswer, optionValue, toggleOption, type AnswerValue } from "@nexul/client-core/question";
+import type { HarnessQuestion, QuestionAnswer, QuestionAnswers } from "@/models/Question";
 import { cn } from "@/lib/utils";
 
 interface QuestionCardProps {
@@ -15,9 +16,6 @@ interface QuestionCardProps {
   pending?: boolean;
   className?: string;
 }
-
-const hasAnswer = (draft: AnswerValue | undefined): boolean =>
-  (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
 
 // A stepped questionnaire: one question at a time, number keys pick, Enter confirms, the last step sends.
 export const QuestionCard = ({ question, answer, onSubmit, pending = false, className }: QuestionCardProps) => {

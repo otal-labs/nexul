@@ -16,6 +16,7 @@ export interface Doc {
   body: string;
   version: number;
   archived: boolean;
+  locked: boolean;
   created_at: string;
   updated_at: string;
 }
