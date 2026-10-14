@@ -86,3 +86,18 @@ func TestShippedTemplates_NameOnlyActionsTheCatalogHas(t *testing.T) {
 		assert.NoError(t, err, shipped.Key)
 	}
 }
+
+// TestShippedTemplates_HoldNoInstanceArea: every workspace gets a copy, so an instance area on one would reach whoever
+// any workspace gives it; topology's role bits reach only the workspace's own canvas.
+func TestShippedTemplates_HoldNoInstanceArea(t *testing.T) {
+	for _, area := range permissions.InstanceAreas() {
+		if area.Key == "topology" {
+			continue
+		}
+		for _, shipped := range ShippedTemplates() {
+			for _, action := range area.Actions {
+				assert.NotContains(t, shipped.Body.Permissions, action, "%s holds %s", shipped.Key, area.Key)
+			}
+		}
+	}
+}
