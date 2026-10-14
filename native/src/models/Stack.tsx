@@ -50,6 +50,7 @@ export const containerStatusDot = (status: ContainerStatus): string => CONTAINER
 export interface Stack {
   id: string;
   project_id: string;
+  derived_from?: string;
   name: string;
   machine: string;
   strategy: DeployStrategy;

@@ -6,7 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { useDeployStack, useFetchStack } from "@/hooks/StackHooks";
+import { useDeployStack, useFetchStack, useStackActions } from "@/hooks/StackHooks";
 
 type RedeployParams = { stackId: string; image: string };
 
@@ -14,6 +14,7 @@ export const RedeployScreen = () => {
   const router = useRouter();
   const { stackId, image } = useLocalSearchParams<RedeployParams>();
   const { data: stack } = useFetchStack(stackId);
+  const answer = useStackActions(stack);
   const deploy = useDeployStack();
 
   return (
@@ -27,6 +28,7 @@ export const RedeployScreen = () => {
       <ActionButton
         permission="deploys:write"
         projectId={stack?.project_id || undefined}
+        answer={answer("deploys:write")}
         verb="deploy"
         name="Redeploy"
         disabled={deploy.isPending}

@@ -17,6 +17,9 @@ const resourceTypeMachine = "machine"
 // SourceNotOnMachine is a machine no rule lets the person see: it is not found, and so is every action on it.
 const SourceNotOnMachine = "not_on_machine"
 
+// SourceNoDeployTo is the machine a stack deploys to when its viewer can't see it or holds no Deploy to there.
+const SourceNoDeployTo = "no_deploy_to"
+
 // MachineScopes reads which machines exist straight from storage, past every gate.
 type MachineScopes interface {
 	// MachineIDs lists every machine.
@@ -245,24 +248,55 @@ func errNoMachineNamed(name string) error {
 
 // requireNamed resolves name and checks action on it; unseen is what a machine the caller can't See answers.
 func (s *Service) requireNamed(ctx context.Context, name string, action permissions.Action, unseen error) error {
-	if _, checked := caller(ctx); !checked {
+	userID, checked := caller(ctx)
+	if !checked {
 		return nil
 	}
 	if s.machines == nil {
 		return fmt.Errorf("%w: no machine lookup wired", apperrs.ErrForbidden)
 	}
-	id, err := s.machines.MachineIDByName(ctx, name)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return errNoMachineNamed(name)
-	}
+	_, answer, err := s.answerNamed(ctx, userID, name, action)
 	if err != nil {
-		return fmt.Errorf("resolve machine %q: %w", name, err)
+		return err
 	}
-	err = s.RequireMachine(ctx, id, action)
-	if errors.Is(err, apperrs.ErrNotFound) {
+	if !answer.seen {
 		return unseen
 	}
-	return err
+	if !answer.held {
+		return s.refusal(ctx, action, answer.src)
+	}
+	return nil
+}
+
+// answerNamed is userID's answer for action on the machine called name; an unknown name is errNoMachineNamed.
+func (s *Service) answerNamed(ctx context.Context, userID, name string, action permissions.Action) (string, machineAnswer, error) {
+	id, err := s.machines.MachineIDByName(ctx, name)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", machineAnswer{}, errNoMachineNamed(name)
+	}
+	if err != nil {
+		return "", machineAnswer{}, fmt.Errorf("resolve machine %q: %w", name, err)
+	}
+	view, err := s.machineView(ctx, userID, id)
+	if err != nil {
+		return "", machineAnswer{}, err
+	}
+	return id, view(action, false), nil
+}
+
+// noDeployTo must answer as requireNamed does for a deploy start, so explain never disagrees with the click.
+func (s *Service) noDeployTo(ctx context.Context, userID, name string) (Source, bool, error) {
+	if s.machines == nil {
+		return Source{}, false, nil
+	}
+	id, answer, err := s.answerNamed(ctx, userID, name, permissions.MachinesDeploy)
+	if errors.Is(err, apperrs.ErrInvalid) {
+		return sourceOf(SourceNoDeployTo, resourceTypeMachine, name, TargetPerson, userID, false), true, nil
+	}
+	if err != nil || (answer.seen && answer.held) {
+		return Source{}, false, err
+	}
+	return sourceOf(SourceNoDeployTo, resourceTypeMachine, id, TargetPerson, userID, false), true, nil
 }
 
 // MachineViewers addresses a deleted machine's live frame, because its rules go with it.

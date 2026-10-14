@@ -84,8 +84,8 @@ const ruleBody = (resourceType: string, resourceId: string, { target, state, act
   return { resource_type: resourceType, resource_ids: [resourceId], ...to, actions, state };
 };
 
-// A folder's or project's rule reaches the docs and stacks under it, and its frame names none of them, so every open one rereads.
-const reaching: Record<string, string[]> = { folder: ["doc"], project: ["doc", "stack"] };
+// A folder, project or machine rule frame names none of the docs or stacks it reaches, so every open one rereads.
+const reaching: Record<string, string[]> = { folder: ["doc"], project: ["doc", "stack"], machine: ["stack"] };
 
 const refreshRules = (client: QueryClient, resourceType: string, resourceId: string) =>
   Promise.all([

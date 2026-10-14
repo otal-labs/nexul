@@ -22,8 +22,9 @@ right.
 - **Per machine, not per runner.** Every runner on a machine shares its Docker, so runners follow their machine and
   `runners:*` goes. Adding a machine is the instance-area permission Add machines (`machines:create`); whoever adds
   one gets a rule naming them with every action and no other standing.
-- **Deploy to is checked twice:** when anything is aimed at a machine, and on every deploy a person starts, so taking
-  someone off a machine stops their next deploy. Deploys the server starts pass as the server.
+- **Deploy to is checked twice:** when anything is aimed at a machine, and on every deploy a person starts or cancels, so
+  taking someone off a machine stops their next deploy. Deploys the server starts pass as the server. A stack's
+  `deploys:write` answer in explain folds it in, so a stack's deploy actions agree with the click.
 - **Writers.** The instance Owner and the machine's Manage holders, under ADR 0088's hold-what-you-give.
 - **Only the instance Owner.** The Owner of the default workspace holds every instance area and every machine and is
   never denied, except on a personal computer (ADR 0146). An Owner of another workspace is full Owner inside it and

@@ -1021,7 +1021,7 @@ VALUES ('%[1]s', '%[2]s', 'role', 'role-reader', NULL, '%[3]s', '[]', 1, 1), ('%
 	})
 	t.Logf("statements: one rule %v, rules on every action %v", one, all)
 	assert.Equal(t, one, all, "rules on every action")
-	assert.Equal(t, map[string]int64{"doc": 8, "play": 6, "project": 7, "stack": 8}, one, "the statements one explanation costs")
+	assert.Equal(t, map[string]int64{"doc": 8, "play": 6, "project": 7, "stack": 10}, one, "the statements one explanation costs")
 }
 
 // TestStatements_MachineListCostsTheSameAtAnyLength: the machine list, the runner list, the queue and machine_list cost

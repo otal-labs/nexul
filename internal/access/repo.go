@@ -86,11 +86,12 @@ type Scopes interface {
 }
 
 // StackScope is where a stack lives: its project and that project's workspace, both empty for an instance stack, and the
-// base stack a branch deployment follows.
+// base stack a branch deployment follows, and the name of the machine it deploys to.
 type StackScope struct {
 	WorkspaceID string
 	ProjectID   string
 	BaseID      string
+	Machine     string
 }
 
 // StackScopeResolver resolves where a stack lives straight from storage, so its rules are written and explained there.

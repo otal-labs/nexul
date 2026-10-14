@@ -329,6 +329,18 @@ func (s *Service) requireDeployTo(ctx context.Context, stack *Stack) error {
 	return s.gate.RequireMachineOfStack(ctx, stack.Machine, permissions.MachinesDeploy)
 }
 
+// requireDeployToOf is requireDeployTo for the stack a deploy ran on; a deleted stack's history has no machine to ask.
+func (s *Service) requireDeployToOf(ctx context.Context, stackID string) error {
+	stack, err := s.stacks.GetByID(ctx, stackID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("stack %s: %w", stackID, err)
+	}
+	return s.requireDeployTo(ctx, stack)
+}
+
 // Rollback redeploys the last healthy image as a normal record, so provenance tracks the acting user.
 func (s *Service) Rollback(ctx context.Context, stackID, triggeredBy string) (*Deploy, error) {
 	if strings.TrimSpace(stackID) == "" {
@@ -913,6 +925,9 @@ func (s *Service) Cancel(ctx context.Context, id string) error {
 		return fmt.Errorf("cancel deploy %s: %w", id, err)
 	}
 	if err := s.requireDeploy(ctx, d.StackID, permissions.DeploysWrite); err != nil {
+		return fmt.Errorf("cancel deploy %s: %w", id, err)
+	}
+	if err := s.requireDeployToOf(ctx, d.StackID); err != nil {
 		return fmt.Errorf("cancel deploy %s: %w", id, err)
 	}
 	switch d.Status {
