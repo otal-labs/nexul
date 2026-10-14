@@ -22,6 +22,10 @@ func TestTunnelTools_Errors(t *testing.T) {
 		{name: "updating an unknown tunnel is not found", tool: "dns_tunnel_update", args: `{"id":"ghost","rotate_credentials":true}`, want: apperrs.ErrNotFound},
 		{name: "a route without a hostname is invalid", tool: "dns_tunnel_update", args: `{"id":"t1","origin_url":"http://web:80"}`, want: apperrs.ErrInvalid},
 		{name: "deleting an unknown tunnel is not found", tool: "dns_tunnel_delete", args: `{"id":"ghost"}`, want: apperrs.ErrNotFound},
+		{name: "deleting a tunnel a gateway still uses is a conflict", tool: "dns_tunnel_delete", args: `{"id":"t1"}`, want: apperrs.ErrConflict,
+			setup: func(f *toolFakes) {
+				require.NoError(t, f.repo.SaveGateway(t.Context(), Gateway{ID: "g1", Kind: GatewayTunnel, DockerNetwork: "web", TunnelID: "t1"}))
+			}},
 		{name: "a tunnel the token may not create is forbidden", tool: "dns_tunnel_create", args: `{"name":"edge"}`, want: apperrs.ErrForbidden,
 			setup: func(f *toolFakes) { f.tunnels.createErr = apperrs.ErrForbidden }},
 		{name: "a tunnel delete the token may not make is forbidden", tool: "dns_tunnel_delete", args: `{"id":"t1"}`,

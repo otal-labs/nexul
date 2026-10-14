@@ -1,4 +1,5 @@
 import { GatewaysSection } from "@/components/dns/GatewaysSection";
+import { TunnelsSection } from "@/components/dns/TunnelsSection";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
@@ -60,6 +61,7 @@ export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProp
     {section === "sign-in" && <SignInPanel />}
     {section === "connectors" && <ConnectorsSettingsPanel />}
     {section === "dns" && <GatewaysSection />}
+    {section === "dns" && <TunnelsSection />}
     {section === "team" && <TeamSection />}
     {section === "templates" && <InstanceTemplatesSection />}
     {section === "templates" && <TemplateRolesSection />}

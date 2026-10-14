@@ -273,6 +273,113 @@ func TestService_DeleteTunnel(t *testing.T) {
 	})
 }
 
+// newTunnelServiceOver is newTunnelService with the DNS provider the test also reads back.
+func newTunnelServiceOver(repo *fakeRepo, dnsp *fakeProvider) *Service {
+	return newTunnelServiceWith(repo, dnsp, nil, "https://deploy.example.com")
+}
+
+// newTunnelServiceWith also sets the instance URL and the lookup that resolves a tunnel's cloudflared stack.
+func newTunnelServiceWith(repo *fakeRepo, dnsp *fakeProvider, containers ContainerLookup, instanceURL string) *Service {
+	return NewService(Config{
+		Repo:           repo,
+		Provider:       dnsp,
+		TunnelProvider: newFakeTunnelProvider(),
+		Containers:     containers,
+		EncryptionKey:  []byte("0123456789abcdef0123456789abcdef"),
+		Settings:       &fakeSettings{instanceURL: instanceURL},
+		Tokens:         &fakeTokenProvider{token: "at"},
+		Resolver:       fakeResolver{},
+		Now:            func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
+	})
+}
+
+func TestService_DeleteTunnel_RefusedWhileInUse(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", AgentServiceID: "s-agent"}))
+	require.NoError(t, repo.SaveGateway(ctx, Gateway{ID: "g1", Kind: GatewayTunnel, DockerNetwork: "web", TunnelID: "t1"}))
+	require.NoError(t, repo.SaveGateway(ctx, Gateway{ID: "g2", Kind: GatewayTunnel, DockerNetwork: "other", TunnelID: "t2"}))
+	require.NoError(t, repo.SaveExposure(ctx, Exposure{ID: "e1", GatewayID: "g1", Hostname: "app.example.com"}))
+	require.NoError(t, repo.SaveExposure(ctx, Exposure{ID: "e2", GatewayID: "g1", Hostname: "api.example.com"}))
+	require.NoError(t, repo.SaveExposure(ctx, Exposure{ID: "e3", GatewayID: "g2", Hostname: "elsewhere.example.com"}))
+	tunnels := newFakeTunnelProvider()
+	tunnels.tunnels["t1"] = &Tunnel{ID: "t1"}
+	containers := newFakeContainerLookup()
+	containers.add("cloudflared-edge", ExposureTarget{ContainerID: "c-agent", Name: "cloudflared-edge", StackID: "s-agent"})
+	s := newTunnelServiceWith(repo, newFakeProvider(), containers, "https://deploy.example.com")
+
+	err := s.DeleteTunnel(ctx, "t1")
+
+	var inUse *apperrs.InUseError
+	require.ErrorAs(t, err, &inUse)
+	assert.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.ElementsMatch(t, []string{"app.example.com", "api.example.com", "gateway on network web", "cloudflared stack cloudflared-edge"}, inUse.Users)
+	assert.Contains(t, err.Error(), "edit or remove them first")
+	_, getErr := repo.GetTunnel(ctx, "t1")
+	require.NoError(t, getErr, "the refused tunnel stays")
+	assert.Contains(t, tunnels.tunnels, "t1", "and so does its provider side")
+}
+
+func TestService_DeleteTunnel_RefusedWhileItServesTheInstanceAddress(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", Hostname: "nexul.example.com", ZoneID: "z1", RecordID: "r1"}))
+	s := newTunnelServiceWith(repo, newFakeProvider(), nil, "https://Nexul.example.com:8443")
+
+	err := s.DeleteTunnel(ctx, "t1")
+
+	var inUse *apperrs.InUseError
+	require.ErrorAs(t, err, &inUse)
+	assert.Equal(t, []string{"this instance's address nexul.example.com"}, inUse.Users)
+	_, getErr := repo.GetTunnel(ctx, "t1")
+	require.NoError(t, getErr, "the refused tunnel stays")
+}
+
+func TestService_DeleteTunnel_RemovedCloudflaredStackNoLongerBlocks(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", AgentServiceID: "s-gone"}))
+	s := newTunnelServiceWith(repo, newFakeProvider(), newFakeContainerLookup(), "https://deploy.example.com")
+
+	require.NoError(t, s.DeleteTunnel(ctx, "t1"))
+}
+
+func TestService_DeleteTunnel_RemovesItsCNAME(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	dnsp := newFakeProvider()
+	dnsp.records["z1"] = []Record{
+		{ID: "r1", ZoneID: "z1", Type: RecordCNAME, Name: "nexul.example.com", Content: "t1.cfargotunnel.com"},
+		{ID: "r2", ZoneID: "z1", Type: RecordA, Name: "api.example.com", Content: "203.0.113.10"},
+	}
+	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", Hostname: "nexul.example.com", ZoneID: "z1", Zone: "example.com", RecordID: "r1"}))
+	s := newTunnelServiceOver(repo, dnsp)
+
+	require.NoError(t, s.DeleteTunnel(ctx, "t1"))
+
+	assert.Equal(t, []Record{{ID: "r2", ZoneID: "z1", Type: RecordA, Name: "api.example.com", Content: "203.0.113.10"}}, dnsp.records["z1"])
+	assert.Contains(t, repo.topics(), TopicRecordChanged)
+	assert.Contains(t, repo.topics(), TopicTunnelChanged)
+}
+
+func TestService_DeleteTunnel_FailedCNAMERemovalKeepsTheRowForARetry(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	dnsp := newFakeProvider()
+	dnsp.records["z1"] = []Record{{ID: "r1", ZoneID: "z1", Type: RecordCNAME, Name: "nexul.example.com", Content: "t1.cfargotunnel.com"}}
+	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", ZoneID: "z1", RecordID: "r1"}))
+	s := newTunnelServiceOver(repo, dnsp)
+	dnsp.deleteErr = apperrs.Retryable(errBoom)
+
+	require.ErrorIs(t, s.DeleteTunnel(ctx, "t1"), apperrs.ErrRetryable)
+	_, err := repo.GetTunnel(ctx, "t1")
+	require.NoError(t, err)
+
+	dnsp.deleteErr = nil
+	require.NoError(t, s.DeleteTunnel(ctx, "t1"))
+	assert.Empty(t, dnsp.records["z1"])
+}
+
 func TestService_CreateTunnel_TokenEncryptionErrors(t *testing.T) {
 	t.Run("missing encryption key is invalid", func(t *testing.T) {
 		cfg := Config{

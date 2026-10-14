@@ -88,6 +88,20 @@ export const useRouteTunnelHostname = () => {
   });
 };
 
+// The server refuses while a gateway or hostname uses the tunnel and names them; the toast shows that message.
+export const useDeleteTunnel = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (tunnelId: string) =>
+      (await api.delete(`/api/dns/tunnels/${encodeURIComponent(tunnelId)}`)).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
+      toast.success("Tunnel deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useProvisionTunnelAgent = () => {
   const client = useQueryClient();
   return useMutation({

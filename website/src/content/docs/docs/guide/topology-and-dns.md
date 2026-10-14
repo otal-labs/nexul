@@ -17,6 +17,12 @@ A gateway is a Cloudflare tunnel or a reverse proxy that Nexul deploys to give o
 
 You rarely create one yourself: exposing a container or running **Set up DNS** creates the gateway it needs. To see or delete gateways, open **Settings → DNS**; each lists the hostnames it routes. A gateway belongs to the instance rather than a project, and shows on the topology of every workspace it routes a hostname into. Creating one, or running **Set up DNS**, takes DNS write and **Deploy to** on the machine it deploys to; a gateway's stack is found only by someone who sees that machine and can read DNS.
 
+## Tunnels
+
+**Settings → DNS** also lists the Cloudflare tunnels Nexul manages, each with the hostname routed into it. To delete one, click its bin icon. The confirm names what goes: the tunnel at Cloudflare, and its hostname route with the DNS record pointing at the tunnel.
+
+A tunnel can't be deleted while anything uses it. The delete is refused, and the message names what is in the way: a gateway running through the tunnel, a hostname exposed on it, the instance's own address when the tunnel serves it, or the cloudflared stack that runs it. For example `tunnel "edge" is still used by app.example.com, gateway on network web, cloudflared stack cloudflared-edge`. Remove the gateways, exposures and stack first (a stack from its own page), and move the instance to another address if the tunnel carries it, then delete the tunnel. Other DNS records you pointed at the tunnel by hand stay where they are. Deleting needs the Delete DNS permission, and the bin icon is hidden without it. The `dns_tunnel_delete` tool gives the same refusal.
+
 ## Exposures
 
 An exposure routes one hostname to one container.

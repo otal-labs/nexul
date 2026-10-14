@@ -143,9 +143,12 @@ func tunnelTools(s *Service) []mcptool.Tool {
 				return tunnelUpdateResult{Tunnel: toTunnelResult(t), Applied: applied}, nil
 			}),
 		mcptool.New("dns_tunnel_delete", "Delete tunnel",
-			"Deletes a Cloudflare tunnel and Nexul's record of it, returning its id with deleted set. Gateways and "+
-				"exposures that route through the tunnel stop working, so delete them first; gateway_list shows each "+
-				"gateway's tunnel_id. DNS records pointing at the tunnel stay; dns_record_delete removes them.",
+			"Deletes a Cloudflare tunnel, the proxied CNAME its own hostname route created, and Nexul's record of it, "+
+				"returning its id with deleted set. It is refused while a gateway routes through the tunnel, a hostname is "+
+				"exposed on one, the tunnel serves this instance's own address, or its cloudflared stack still exists, "+
+				"and the error names each; remove gateways and exposures with gateway_delete and exposure_delete, and "+
+				"the stack with stack_delete. "+
+				"Other DNS records pointing at the tunnel stay; dns_record_delete removes them.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in tunnelDeleteIn) (any, error) {
 				if err := s.DeleteTunnel(ctx, in.ID); err != nil {

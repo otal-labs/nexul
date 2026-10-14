@@ -2,6 +2,7 @@ package dns
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -246,8 +247,7 @@ func (s *Service) RotateTunnelCredentials(ctx context.Context, tunnelID string) 
 	return t, nil
 }
 
-// DeleteTunnel removes the tunnel at the provider (idempotent) and drops the
-// local row, publishing dns.tunnel_changed (deleted).
+// DeleteTunnel refuses naming what uses the tunnel, else removes it at the provider, its CNAME, and the local row.
 func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err := s.require(ctx, permissions.DNSDelete); err != nil {
 		return err
@@ -259,6 +259,13 @@ func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err != nil {
 		return fmt.Errorf("get tunnel %s: %w", tunnelID, err)
 	}
+	users, err := s.tunnelUsers(ctx, t)
+	if err != nil {
+		return err
+	}
+	if len(users) > 0 {
+		return &apperrs.InUseError{Thing: fmt.Sprintf("tunnel %q", t.Name), Users: users, Fix: "edit or remove them first"}
+	}
 	p, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return err
@@ -266,10 +273,118 @@ func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err := p.DeleteTunnel(ctx, tunnelID); err != nil {
 		return s.classify(err)
 	}
+	if err := s.deleteTunnelRecord(ctx, t); err != nil {
+		return err
+	}
 	evt := s.tunnelEvent(TunnelChangedEvent{TunnelID: t.ID, Name: t.Name, Action: "deleted"})
 	if err := s.repo.DeleteTunnel(ctx, tunnelID, evt); err != nil {
 		return fmt.Errorf("delete tunnel %s: %w", tunnelID, err)
 	}
+	return nil
+}
+
+// tunnelUsers names what depends on the tunnel: the instance address, exposed hostnames, gateways, the cloudflared stack.
+func (s *Service) tunnelUsers(ctx context.Context, t *Tunnel) ([]string, error) {
+	users := []string{}
+	host, err := s.instanceHost(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if host != "" && strings.EqualFold(t.Hostname, host) {
+		users = append(users, "this instance's address "+host)
+	}
+	hostnames, gateways, err := s.exposedOnTunnel(ctx, t.ID)
+	if err != nil {
+		return nil, err
+	}
+	users = append(users, hostnames...)
+	users = append(users, gateways...)
+	stack, err := s.tunnelAgentStack(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	if stack != "" {
+		users = append(users, stack)
+	}
+	return users, nil
+}
+
+// instanceHost is the host of the stored instance URL, empty while none is set.
+func (s *Service) instanceHost(ctx context.Context) (string, error) {
+	u, err := s.instanceURL(ctx)
+	if errors.Is(err, apperrs.ErrInvalid) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	host, err := hostFromURL(u)
+	if err != nil {
+		return "", nil
+	}
+	return strings.ToLower(host), nil
+}
+
+// exposedOnTunnel lists the hostnames exposed on the tunnel's gateways and then the gateways themselves.
+func (s *Service) exposedOnTunnel(ctx context.Context, tunnelID string) (hostnames, gateways []string, err error) {
+	all, err := s.repo.ListGateways(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list gateways: %w", err)
+	}
+	exposures, err := s.repo.ListExposures(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list exposures: %w", err)
+	}
+	onTunnel := map[string]bool{}
+	for _, g := range all {
+		if g.TunnelID != tunnelID {
+			continue
+		}
+		onTunnel[g.ID] = true
+		gateways = append(gateways, "gateway on network "+g.DockerNetwork)
+	}
+	for _, e := range exposures {
+		if onTunnel[e.GatewayID] {
+			hostnames = append(hostnames, e.Hostname)
+		}
+	}
+	return hostnames, gateways, nil
+}
+
+// tunnelAgentStack names the cloudflared stack while it still exists, empty once it is gone or cannot be looked up.
+func (s *Service) tunnelAgentStack(ctx context.Context, t *Tunnel) (string, error) {
+	if t.AgentServiceID == "" || s.containers == nil {
+		return "", nil
+	}
+	agent, err := s.containers.ContainerByStackID(ctx, t.AgentServiceID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", nil
+	}
+	if err == nil {
+		return "cloudflared stack " + agent.Name, nil
+	}
+	if errors.Is(err, apperrs.ErrInvalid) {
+		return "cloudflared stack " + t.AgentServiceID, nil
+	}
+	return "", fmt.Errorf("resolve tunnel agent %s: %w", t.AgentServiceID, err)
+}
+
+// deleteTunnelRecord removes the CNAME the tunnel's own hostname route created; already-absent counts as removed.
+func (s *Service) deleteTunnelRecord(ctx context.Context, t *Tunnel) error {
+	if t.RecordID == "" {
+		return nil
+	}
+	dnsp, err := s.providerFor(ctx)
+	if err != nil {
+		return err
+	}
+	if err := dnsp.DeleteRecord(ctx, t.ZoneID, t.RecordID); err != nil {
+		return s.classify(err)
+	}
+	s.recordChanged(ctx, RecordChangedEvent{
+		ZoneID: t.ZoneID, Zone: t.Zone, RecordID: t.RecordID, Action: "deleted",
+		Type: RecordCNAME, Name: t.Hostname, Service: "tunnel:" + t.ID,
+	})
 	return nil
 }
 
