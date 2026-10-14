@@ -12,7 +12,7 @@ const PREVIEW_VALUES: Record<(typeof TEMPLATE_TOKENS)[number], string> = {
   Due: "Aug 30",
 };
 
-// Mirrors MentionChip.tsx's {ticket.Field} substitution (spec.md §6).
+// The same {ticket.Field} substitution as mentionChipText in client-core, over fake values (spec.md §6).
 const renderPreview = (template: string) =>
   template.replace(/\{ticket\.(\w+)\}/g, (match, key: string) => PREVIEW_VALUES[key as keyof typeof PREVIEW_VALUES] ?? match);
 

@@ -1,4 +1,4 @@
-// Regenerates every app icon PNG from native/assets/mark.svg (and the favicon fallbacks from web/public/favicon.svg).
+// Regenerates every app icon PNG from native/assets/mark.svg (and the favicon fallbacks from web/public/favicon.svg), and the phone's lock glyphs.
 // Run from web/: `bun scripts/generateIcons.ts`. Rasterises in headless Chromium through the playwright dev dependency.
 // Only the tokens below carry color; they are the Mono Console background and foreground from native/src/global.css.
 import { readFileSync } from "node:fs";
@@ -41,6 +41,16 @@ const icons: Icon[] = [
   { path: `${webPublic}/icon-512.png`, size: 512, coverage: 0.6, foreground: dark.foreground, background: dark.background },
 ];
 
+// The phone's markdown renderer takes only images inline, so a locked mention's lock is lucide's lock in each theme's muted-foreground.
+const tokens = readFileSync(resolve(root, "native/src/global.css"), "utf8");
+const [darkMuted, lightMuted] = [...tokens.matchAll(/--color-muted-foreground: ([^;]+);/g)].map((m) => m[1]);
+const lockGlyph = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+const locks = [
+  { path: `${phone}/lock-dark.png`, color: darkMuted },
+  { path: `${phone}/lock-light.png`, color: lightMuted },
+];
+const lockSize = 48;
+
 const favicons = [
   { path: `${webPublic}/favicon-32.png`, size: 32 },
   { path: `${webPublic}/favicon-16.png`, size: 16 },
@@ -53,6 +63,9 @@ const glyphPage = ({ size, coverage, foreground, background }: Icon) => {
       <div style="width:${box}px;height:${box}px">${mark.replace("<svg ", '<svg width="100%" height="100%" ')}</div>
     </div></body>`;
 };
+
+const lockPage = (color: string | undefined) =>
+  `<body style="margin:0;background:transparent;color:${color}"><svg xmlns="http://www.w3.org/2000/svg" width="${lockSize}" height="${lockSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${lockGlyph}</svg></body>`;
 
 const faviconPage = (size: number) =>
   `<body style="margin:0;background:transparent">${favicon.replace(/width="24" height="24"/, `width="${size}" height="${size}"`)}</body>`;
@@ -70,5 +83,6 @@ const render = async (path: string, size: number, html: string, opaque: boolean)
 
 for (const icon of icons) await render(icon.path, icon.size, glyphPage(icon), icon.background !== undefined);
 for (const { path, size } of favicons) await render(path, size, faviconPage(size), false);
+for (const { path, color } of locks) await render(path, lockSize, lockPage(color), false);
 
 await browser.close();

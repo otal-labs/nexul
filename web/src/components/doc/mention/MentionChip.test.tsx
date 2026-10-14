@@ -4,8 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { MentionChipData } from "@nexul/client-core/mention";
+
 import { MentionChip } from "@/components/doc/mention/MentionChip";
-import type { MentionChipData } from "@/models/Mention";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));

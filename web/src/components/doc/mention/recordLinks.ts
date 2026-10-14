@@ -3,7 +3,8 @@ import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { ySyncPluginKey } from "@tiptap/y-tiptap";
 
-import type { MentionRef } from "@/models/Mention";
+import type { MentionRef } from "@nexul/client-core/mention";
+
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // A link to a ticket or doc page in this workspace names a reference; boards, settings, and anything with a query or anchor stay links.

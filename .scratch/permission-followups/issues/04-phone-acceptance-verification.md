@@ -1,6 +1,6 @@
 # 04: Preserve the skipped phone acceptance verification
 
-**Status:** needs-triage
+**Status:** wontfix
 
 **Blocked by:** None. Scheduling verification needs the owner's decision.
 
@@ -30,3 +30,9 @@ case. No code change is demanded by this ticket.
 - Keep the case explicitly unverified until it is observed on the phone.
 - Record either the owner's continued deferral or the verification result.
 - If verification finds a defect, triage a separately scoped implementation ticket.
+
+## Comments
+
+wontfix, deferred by the owner: on 2026-10-13 the owner skipped the on-phone check again ("skip it, not too fussed").
+The case remains unverified on a phone; the evidence above stands as recorded. If the check is ever run, record the
+result here, and triage any defect it finds as its own ticket.

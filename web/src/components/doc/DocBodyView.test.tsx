@@ -3,10 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { MentionChipData } from "@nexul/client-core/mention";
+
 import { api } from "@/api/client";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { publishChips } from "@/components/doc/mention/mentionChipsStore";
-import type { MentionChipData } from "@/models/Mention";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({

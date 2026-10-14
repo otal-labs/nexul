@@ -1,4 +1,4 @@
-import type { MentionChipData } from "@/models/Mention";
+import type { MentionChipData } from "@nexul/client-core/mention";
 
 type Listener = () => void;
 

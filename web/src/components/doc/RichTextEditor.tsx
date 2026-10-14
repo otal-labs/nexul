@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 
+import type { MentionChipData } from "@nexul/client-core/mention";
+
 import { FormatBubbleMenu } from "@/components/doc/FormatBubbleMenu";
 import { TableBubbleMenu } from "@/components/doc/TableBubbleMenu";
 import { extractHeadingsFromJSON, type DocHeading } from "@/components/doc/docHeadings";
@@ -19,7 +21,6 @@ import { publishChips } from "@/components/doc/mention/mentionChipsStore";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
 import { useResolveMentions } from "@/hooks/MentionHooks";
 import type { AttachmentOwner } from "@/models/Attachment";
-import type { MentionChipData } from "@/models/Mention";
 import { cn } from "@/lib/utils";
 import { isStructuredBody, parseBodyToJSON } from "@/utils/RichtextUtility";
 import type { RelayCollabProvider } from "@/lib/collab/provider";

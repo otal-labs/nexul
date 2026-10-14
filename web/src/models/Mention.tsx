@@ -1,27 +1,6 @@
-// What a chip resolves through /api/mentions/resolve; people resolve from the workspace's People instead.
-export type MentionType = "ticket" | "doc";
+import type { MentionType } from "@nexul/client-core/mention";
 
 export type MentionSearchType = MentionType | "person";
-
-export interface MentionRef {
-  type: MentionType;
-  id: string;
-}
-
-export interface MentionChipData {
-  type: MentionType;
-  id: string;
-  title: string;
-  status?: string;
-  status_label?: string;
-  can_open: boolean;
-  // Back the mention-chip layout template's tokens; ticket-only, doc chips leave them undefined.
-  project_prefix?: string;
-  project_number?: number;
-  type_label?: string;
-  developer_label?: string;
-  due_label?: string;
-}
 
 export interface MentionSearchResult {
   type: MentionSearchType;

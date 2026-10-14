@@ -16,9 +16,6 @@ export interface Workspace {
   updated_at: string;
 }
 
-// Matches the column default on workspaces so a chip looks the same before the workspace list resolves.
-export const DEFAULT_MENTION_CHIP_TEMPLATE = "{ticket.Ticket} {ticket.Status}";
-
 export const SaveWorkspaceFormSchema = z.object({
   name: z.string().trim().min(1, "Workspace name is required"),
 });
