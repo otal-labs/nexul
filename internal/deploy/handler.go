@@ -26,6 +26,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/deploys/{id}", h.get)
 	mux.HandleFunc("GET /api/deploys/{id}/log", h.log)
 	mux.HandleFunc("POST /api/deploys/{id}/cancel", h.cancel)
+	mux.HandleFunc("POST /api/deploys/{id}/retry", h.retry)
 	h.mountStackRoutes(mux, "/api/stacks")
 	// /api/services stays mounted through the same handlers for one release (2026-09-10): the pre-rename web
 	// build still calls it, and it is dropped once web moves to /api/stacks.
@@ -142,6 +143,15 @@ func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusAccepted, map[string]string{"id": r.PathValue("id"), "status": "cancelling"})
+}
+
+func (h *Handler) retry(w http.ResponseWriter, r *http.Request) {
+	d, err := h.svc.Retry(r.Context(), r.PathValue("id"), triggeredBy(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, d)
 }
 
 // createStackRequest is the stack-creation wire shape: a Stack plus the candidate's declared services.

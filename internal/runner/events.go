@@ -287,6 +287,8 @@ type DeployStatusChangedEvent struct {
 	Status  string `json:"status" enum:"pending,running,healthy,failed"`
 	Error   string `json:"error,omitempty"`
 	Address string `json:"address,omitempty"`
+	// Commit is the commit the runner checked out; empty when the deploy failed before the checkout finished.
+	Commit string `json:"commit,omitempty"`
 	// Services is the observation report (spec §4 step 3), one entry per container the stack started.
 	Services []ObservedService `json:"services,omitempty"`
 }

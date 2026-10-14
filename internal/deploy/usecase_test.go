@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -270,6 +273,7 @@ func TestDeploy_RefBuildKind(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, StatusPending, got.Status)
 	assert.Equal(t, KindBuild, got.Kind, "a ref trigger records a build-kind deploy")
+	assert.Equal(t, "main", got.Ref, "the deploy records the ref it was asked to build")
 
 	payload := deployRequestedPayload(t, repo.of(TopicDeployRequested))
 	assert.Equal(t, "build", payload.Kind)
@@ -337,6 +341,136 @@ func TestRollback(t *testing.T) {
 		_, err := s.Rollback(context.Background(), " ", "user-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+}
+
+// refusingGate refuses the listed actions on every stack and lets the rest through.
+type refusingGate struct {
+	allowGate
+	refused []permissions.Action
+}
+
+func (g refusingGate) RequireStack(_ context.Context, _, _ string, action permissions.Action) error {
+	if slices.Contains(g.refused, action) {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	}
+	return nil
+}
+
+// asUser is a signed-in caller; a context with no actor is the server's own work, which the deploy checks let through.
+func asUser(t *testing.T) context.Context {
+	t.Helper()
+	return identity.WithActor(t.Context(), identity.Actor{ID: "user-1"})
+}
+
+func TestRetry(t *testing.T) {
+	// retryFixture is a build-source stack with one failed deploy per row the test seeds.
+	retryFixture := func(t *testing.T, failed ...*Deploy) (*Service, *fakeStackRepo, *fakeRepo) {
+		t.Helper()
+		repo := newFakeRepo()
+		stacks := newFakeStackRepo()
+		stack := validStack()
+		stack.BuildSource = &BuildSource{RepoOwner: "org", RepoName: "app", Branch: "main", Dockerfile: "Dockerfile"}
+		requireStack(t, stacks, stack)
+		for _, d := range failed {
+			seedDeploy(t, repo, d)
+		}
+		return newTestServiceWith(repo, stacks, newFakeContainerRepo(), newFakeProjects(), newFakeBus()), stacks, repo
+	}
+	failedBuild := func(commit string) *Deploy {
+		return &Deploy{ID: "d1", StackID: "svc-1", Service: "api", Kind: KindBuild, Status: StatusFailed, Ref: "main", Commit: commit, CreatedAt: at(1), UpdatedAt: at(1)}
+	}
+
+	t.Run("rebuilds the commit the failed deploy built with the stack's current settings", func(t *testing.T) {
+		s, stacks, repo := retryFixture(t, failedBuild("9f2c1ab"))
+		stacks.stored["svc-1"].Env["DATABASE_URL"] = "postgres://db"
+
+		got, err := s.Retry(t.Context(), "d1", "user-1")
+		require.NoError(t, err)
+		assert.Equal(t, "user-1", got.TriggeredBy)
+		assert.Equal(t, KindBuild, got.Kind)
+		assert.Equal(t, "9f2c1ab", got.Ref, "a retry of a retry keeps the commit")
+
+		payload := deployRequestedPayload(t, repo.of(TopicDeployRequested))
+		assert.Equal(t, "9f2c1ab", payload.Ref, "the commit, not the branch it came from")
+		assert.Equal(t, map[string]string{"PORT": "", "DATABASE_URL": ""}, payload.Env, "the stack as it is now")
+
+		retried, err := json.Marshal(repo.of(TopicDeployRetried).Payload)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"id":"`+got.ID+`","retry_of":"d1","stack_id":"svc-1","ref":"9f2c1ab"}`, string(retried))
+	})
+
+	t.Run("asks for the ref when the failed deploy never reported a commit", func(t *testing.T) {
+		s, _, repo := retryFixture(t, failedBuild(""))
+
+		got, err := s.Retry(t.Context(), "d1", "user-1")
+		require.NoError(t, err)
+		assert.Equal(t, "main", got.Ref)
+		assert.Equal(t, "main", deployRequestedPayload(t, repo.of(TopicDeployRequested)).Ref)
+	})
+
+	t.Run("redeploys the image of a failed image deploy", func(t *testing.T) {
+		s, _, repo := retryFixture(t, &Deploy{ID: "d1", StackID: "svc-1", Kind: KindDeploy, Status: StatusFailed, Image: "img:v2", CreatedAt: at(1), UpdatedAt: at(1)})
+
+		got, err := s.Retry(t.Context(), "d1", "user-1")
+		require.NoError(t, err)
+		assert.Equal(t, KindDeploy, got.Kind)
+		assert.Equal(t, "img:v2", deployRequestedPayload(t, repo.of(TopicDeployRequested)).Image)
+	})
+
+	t.Run("only a failed deploy can be retried", func(t *testing.T) {
+		for _, status := range []Status{StatusPending, StatusRunning, StatusHealthy} {
+			failed := failedBuild("9f2c1ab")
+			failed.Status = status
+			s, _, repo := retryFixture(t, failed)
+
+			_, err := s.Retry(t.Context(), "d1", "user-1")
+			require.ErrorIs(t, err, apperrs.ErrConflict, string(status))
+			assert.Empty(t, repo.of(TopicDeployRetried).Topic, string(status))
+		}
+	})
+
+	t.Run("a deploy that recorded nothing to rebuild is a conflict", func(t *testing.T) {
+		s, _, repo := retryFixture(t, &Deploy{ID: "d1", StackID: "svc-1", Kind: KindBuild, Status: StatusFailed, CreatedAt: at(1), UpdatedAt: at(1)})
+
+		_, err := s.Retry(t.Context(), "d1", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		assert.Contains(t, err.Error(), "did not record")
+		assert.Empty(t, repo.of(TopicDeployRequested).Topic)
+	})
+
+	t.Run("a deploy of a deleted stack is a conflict", func(t *testing.T) {
+		s, _, _ := retryFixture(t, &Deploy{ID: "d1", Kind: KindBuild, Status: StatusFailed, Ref: "main", CreatedAt: at(1), UpdatedAt: at(1)})
+
+		_, err := s.Retry(t.Context(), "d1", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+	})
+
+	t.Run("a caller who cannot deploy is refused", func(t *testing.T) {
+		s, _, repo := retryFixture(t, failedBuild("9f2c1ab"))
+		s.SetGate(refusingGate{refused: []permissions.Action{permissions.DeploysWrite}})
+
+		_, err := s.Retry(asUser(t), "d1", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		assert.Empty(t, repo.of(TopicDeployRequested).Topic)
+	})
+
+	t.Run("a caller who cannot read the deploy learns nothing of its state", func(t *testing.T) {
+		healthy := failedBuild("9f2c1ab")
+		healthy.Status = StatusHealthy
+		s, _, _ := retryFixture(t, healthy)
+		s.SetGate(refusingGate{refused: []permissions.Action{permissions.DeploysRead, permissions.DeploysWrite}})
+
+		_, err := s.Retry(asUser(t), "d1", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrForbidden, "not the conflict that would tell them it is healthy")
+	})
+
+	t.Run("a missing or blank id", func(t *testing.T) {
+		s, _, _ := retryFixture(t)
+		_, err := s.Retry(t.Context(), "nope", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		_, err = s.Retry(t.Context(), " ", "user-1")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 }
 
@@ -709,6 +843,17 @@ func TestHandleStatusChanged(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StatusHealthy, got.Status)
 		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "healthy", StackID: "s1"}}, repo.updatedEvents())
+	})
+	t.Run("a reported commit lands on the deploy, failed or healthy", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", StackID: "s1", Status: StatusPending}))
+		require.NoError(t, s.HandleStatusChanged(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployStatusChangedEvent{ID: "d1", Status: string(StatusFailed), Error: "build failed", Commit: "9f2c1ab"})}))
+
+		got, err := repo.GetByID(context.Background(), "d1")
+		require.NoError(t, err)
+		assert.Equal(t, "9f2c1ab", got.Commit)
+		assert.Equal(t, StatusFailed, got.Status)
 	})
 	t.Run("failed appends the error as a phase-less log line", func(t *testing.T) {
 		repo := newFakeRepo()

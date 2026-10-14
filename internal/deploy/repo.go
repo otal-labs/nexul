@@ -23,6 +23,7 @@ type Repo interface {
 	UpdateStatus(ctx context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error
 	// SetAddress records the container's address on its docker network, reported by the runner at start.
 	SetAddress(ctx context.Context, id, address string) error
+	SetCommit(ctx context.Context, id, commit string) error
 	// AppendLogLines stores the lines in order under one deploy and writes evts in the same transaction;
 	// Seq is assigned by the store.
 	AppendLogLines(ctx context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error

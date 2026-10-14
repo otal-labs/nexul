@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
 import { FormInput } from "@/components/FormInput";
-import { formatRelativeTime } from "@/components/service/DeployTime";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
@@ -14,15 +13,12 @@ import { DeployRefFormSchema, deployPath, type Deploy, type DeployRefFormData, t
 interface StackDeployActionsProps {
   stack: Stack;
   lastHealthy: Deploy | undefined;
-  canRollback: boolean;
   // The image this stack currently runs: the latest deploy's, else what the runner observed.
   image: string | undefined;
 }
 
 type DeployMutation = ReturnType<typeof useDeployStack>;
 
-// A compose deploy records no single image, so it is named by when it ran instead.
-const rollbackTarget = (d: Deploy): string => d.image || `the deploy from ${formatRelativeTime(d.created_at)}`;
 type RollbackMutation = ReturnType<typeof useRollbackStack>;
 
 interface BuildRefFormProps {
@@ -94,13 +90,12 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
 
 interface RollbackButtonProps {
   stack: Stack;
-  lastHealthy: Deploy | undefined;
-  canRollback: boolean;
+  image: string;
   deployPending: boolean;
   rollback: RollbackMutation;
 }
 
-const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollback }: RollbackButtonProps) => {
+const RollbackButton = ({ stack, image, deployPending, rollback }: RollbackButtonProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   return (
@@ -110,8 +105,8 @@ const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollba
       size="sm"
       onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       loading={rollback.isPending}
-      disabled={!canRollback || deployPending}
-      title={lastHealthy ? `Roll back to ${rollbackTarget(lastHealthy)}` : "No healthy deploy to roll back to"}
+      disabled={deployPending}
+      title={`Roll back to ${image}`}
     >
       <RefreshCwIcon className="size-4" aria-hidden />
       {rollback.isPending ? "Rolling back…" : "Rollback"}
@@ -121,11 +116,13 @@ const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollba
 
 // One way to get the next version per stack shape: build from a ref (repo attached), redeploy the running image
 // (run stack, no repo), or nothing until a repository is attached (compose always deploys from its repo).
-export const StackDeployActions = ({ stack, lastHealthy, canRollback, image }: StackDeployActionsProps) => {
+export const StackDeployActions = ({ stack, lastHealthy, image }: StackDeployActionsProps) => {
   const deploy = useDeployStack();
   const rollback = useRollbackStack();
   const canBuild = stack.build_source != null;
   const canRedeploy = !canBuild && stack.strategy === "run" && !!image;
+  // A build leaves no image and the server refuses a rollback without one.
+  const rollbackImage = lastHealthy?.image;
 
   return (
     <SettingsCard
@@ -133,20 +130,14 @@ export const StackDeployActions = ({ stack, lastHealthy, canRollback, image }: S
       title="Deploy"
       description="How this stack gets its next version."
       footer={
-        <>
-          <p className="min-w-0 flex-1 text-xs break-words text-muted-foreground">
-            {lastHealthy?.image && `Rollback re-deploys ${lastHealthy.image}, the last healthy image.`}
-            {lastHealthy && !lastHealthy.image && `Rollback re-deploys ${rollbackTarget(lastHealthy)}, the last healthy one.`}
-            {!canRollback && "Rollback needs a healthy deploy in this stack's history."}
-          </p>
-          <RollbackButton
-            stack={stack}
-            lastHealthy={lastHealthy}
-            canRollback={canRollback}
-            deployPending={deploy.isPending}
-            rollback={rollback}
-          />
-        </>
+        rollbackImage && (
+          <>
+            <p className="min-w-0 flex-1 text-xs break-words text-muted-foreground">
+              Rollback re-deploys {rollbackImage}, the last healthy image.
+            </p>
+            <RollbackButton stack={stack} image={rollbackImage} deployPending={deploy.isPending} rollback={rollback} />
+          </>
+        )
       }
     >
       {canBuild && <BuildRefForm stack={stack} deploy={deploy} />}

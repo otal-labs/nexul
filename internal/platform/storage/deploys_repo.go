@@ -45,6 +45,7 @@ func (r *DeploysRepo) Create(ctx context.Context, d *deploy.Deploy, evts ...even
 			CreatedAt:   d.CreatedAt.Unix(),
 			UpdatedAt:   d.UpdatedAt.Unix(),
 			Address:     d.Address,
+			Ref:         d.Ref,
 		})
 		if err != nil {
 			return fmt.Errorf("insert deploy %s: %w", d.ID, classifyWriteErr(err))
@@ -189,6 +190,21 @@ func (r *DeploysRepo) SetAddress(ctx context.Context, id, address string) error 
 	})
 }
 
+func (r *DeploysRepo) SetCommit(ctx context.Context, id, commit string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetDeployCommit(ctx, sqlcgen.SetDeployCommitParams{
+			CommitSha: commit, UpdatedAt: time.Now().Unix(), ID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("set deploy %s commit: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set deploy %s commit: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 // AppendLogLines inserts one row per line inside one transaction; the deploy FK maps a missing deploy onto
 // ErrNotFound, since the only constraint the insert can violate is that one.
 func (r *DeploysRepo) AppendLogLines(ctx context.Context, id string, lines []deploy.LogLine, evts ...eventbus.OutboxEvent) error {
@@ -244,6 +260,8 @@ func toDeploy(row sqlcgen.Deploy) *deploy.Deploy {
 		Status:      deploy.Status(row.Status),
 		Strategy:    deploy.Strategy(row.Strategy),
 		Address:     row.Address,
+		Ref:         row.Ref,
+		Commit:      row.CommitSha,
 		TriggeredBy: row.TriggeredBy,
 		RuleID:      row.RuleID,
 		RuleName:    row.RuleName,

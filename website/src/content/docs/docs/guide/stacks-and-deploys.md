@@ -36,9 +36,17 @@ The **Deploy** card shows one way to ship, depending on the stack:
 - **A single container with no repository**: **Redeploy** pulls the same image again and restarts the container.
 - **A compose stack with no repository**: attach a repository first.
 
-**Rollback** deploys the image of the last deploy that came up healthy. It stays disabled until there is one.
+**Rollback** deploys the image of the last deploy that came up healthy. It shows only when that deploy has an image to go back to. A build leaves none, so a stack that builds from a repository has no Rollback; to go back, **Build & deploy** the earlier ref.
 
 A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
+
+## Retrying a failed deploy
+
+A failed deploy's page has **Retry**. It starts a new deploy of the same commit the failed one built, with the stack's settings as they are now. Change what made it fail, such as a missing environment variable on the stack, click **Retry**, and the build runs again on the same code with the new value.
+
+- A deploy records the commit its runner checked out, shown beside its id. A deploy that failed before the checkout finished has no commit yet, so **Retry** builds the ref it was asked for. A single-container redeploy retries the same image.
+- The failed deploy stays in **Deploy history**, and the new one is a separate entry. **Retry** takes the `deploys:write` permission on the stack, the same as a deploy, and a stack runs one deploy at a time, so it is refused while another is pending or running.
+- Agents retry with `stack_deploy` and `retry` set to the failed deploy's id, and read each deploy's `ref` and `commit` with `deploy_get`.
 
 ## Who can see and deploy a stack
 

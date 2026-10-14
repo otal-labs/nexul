@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -179,6 +180,11 @@ func (s *Service) SetGatewayJoin(g GatewayJoin) { s.gatewayJoin = g }
 
 // Deploy triggers a deploy, rejecting a second active one; the runner reports state via status_changed.
 func (s *Service) Deploy(ctx context.Context, req DeployRequest) (*Deploy, error) {
+	return s.start(ctx, req, "")
+}
+
+// start creates the deploy and its deploy.requested row; a retry of retryOf also writes deploy.retried beside it.
+func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) (*Deploy, error) {
 	req.normalize()
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", req.StackID, err)
@@ -207,15 +213,49 @@ func (s *Service) Deploy(ctx context.Context, req DeployRequest) (*Deploy, error
 	now := s.now().UTC()
 	d := &Deploy{
 		ID: ids.New(), StackID: stack.ID, ServiceID: stack.ID, Service: stack.Name, Target: stack.Machine,
-		Image: req.Image, Kind: kind, Status: StatusPending, Strategy: stack.Strategy,
+		Image: req.Image, Ref: req.Ref, Kind: kind, Status: StatusPending, Strategy: stack.Strategy,
 		TriggeredBy: req.TriggeredBy, RuleID: req.RuleID, RuleName: req.RuleName,
 		TicketID: req.TicketID, PRNumber: req.PRNumber,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	gatewayContainer, joinNetworks := s.resolveGatewayJoin(ctx, stack)
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeployRequested, Payload: req.toEvent(d.ID, stack, gatewayContainer, joinNetworks)}
-	if err := s.repo.Create(ctx, d, evt); err != nil {
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicDeployRequested, Payload: req.toEvent(d.ID, stack, gatewayContainer, joinNetworks)}}
+	if retryOf != "" {
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeployRetried, Payload: DeployRetriedEvent{
+			ID: d.ID, RetryOf: retryOf, StackID: stack.ID, Ref: req.Ref, Image: req.Image,
+		}})
+	}
+	if err := s.repo.Create(ctx, d, evts...); err != nil {
 		return nil, fmt.Errorf("create deploy: %w", err)
+	}
+	return d, nil
+}
+
+// Retry starts a failed deploy again on the commit it built, else its ref or image, with the stack's current settings.
+func (s *Service) Retry(ctx context.Context, id, triggeredBy string) (*Deploy, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	failed, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("retry deploy %s: %w", id, err)
+	}
+	if err := s.requireDeploy(ctx, failed.StackID, permissions.DeploysWrite); err != nil {
+		return nil, fmt.Errorf("retry deploy %s: %w", id, err)
+	}
+	if failed.Status != StatusFailed {
+		return nil, fmt.Errorf("%w: deploy %s is %s, only a failed deploy can be retried", apperrs.ErrConflict, id, failed.Status)
+	}
+	if failed.StackID == "" {
+		return nil, fmt.Errorf("%w: the stack of deploy %s was deleted", apperrs.ErrConflict, id)
+	}
+	req := DeployRequest{StackID: failed.StackID, Image: failed.Image, Ref: cmp.Or(failed.Commit, failed.Ref), TriggeredBy: triggeredBy}
+	if req.Image == "" && req.Ref == "" {
+		return nil, fmt.Errorf("%w: deploy %s did not record what it built; build and deploy a ref of the stack instead", apperrs.ErrConflict, id)
+	}
+	d, err := s.start(ctx, req, id)
+	if err != nil {
+		return nil, fmt.Errorf("retry deploy %s: %w", id, err)
 	}
 	return d, nil
 }
@@ -640,6 +680,11 @@ func (s *Service) HandleStatusChanged(ctx context.Context, ev eventbus.Event) er
 		line := LogLine{TS: s.now().UnixMilli(), Text: "deploy failed: " + p.Error}
 		if err := s.repo.AppendLogLines(ctx, p.ID, []LogLine{line}); err != nil {
 			return fmt.Errorf("append deploy %s log: %w", p.ID, err)
+		}
+	}
+	if p.Commit != "" {
+		if err := s.repo.SetCommit(ctx, p.ID, p.Commit); err != nil {
+			return fmt.Errorf("set deploy %s commit: %w", p.ID, err)
 		}
 	}
 	if err := s.transition(ctx, p.ID, status); err != nil {

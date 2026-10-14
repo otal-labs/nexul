@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -331,4 +332,53 @@ func TestIntegration_ListStacks_WorkspaceFilter(t *testing.T) {
 		}
 		assert.ElementsMatch(t, tt.want, ids, tt.query)
 	}
+}
+
+// A build that fails after the checkout is retried on the same commit with the stack as it is by then.
+func TestIntegration_RetryRebuildsTheSameCommit(t *testing.T) {
+	ctx := t.Context()
+	store := openStore(t)
+	svc := newService(t, store)
+	stack := seedStack(t, store)
+	stack.BuildSource = &deploy.BuildSource{RepoOwner: "acme", RepoName: "api", Branch: "main", Dockerfile: "Dockerfile"}
+	require.NoError(t, store.Stacks.Update(ctx, stack))
+	h := deploy.NewHandler(svc).Routes()
+
+	first, err := svc.Deploy(ctx, deploy.DeployRequest{StackID: "svc-1", Ref: "main"})
+	require.NoError(t, err)
+	require.NoError(t, svc.HandleStatusChanged(ctx, eventbus.Event{
+		Payload: json.RawMessage(`{"id":"` + first.ID + `","status":"failed","error":"DATABASE_URL is not set","commit":"9f2c1ab"}`),
+	}))
+	stack.Env = map[string]string{"DATABASE_URL": "postgres://db"}
+	require.NoError(t, store.Stacks.Update(ctx, stack))
+
+	retry := func(id string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/deploys/"+id+"/retry", nil))
+		return rec
+	}
+	rec := retry(first.ID)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var retried deploy.Deploy
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &retried))
+	assert.Equal(t, "9f2c1ab", retried.Ref)
+	assert.Equal(t, deploy.StatusPending, retried.Status)
+
+	pending, err := store.Outbox.Unpublished(ctx, 100)
+	require.NoError(t, err)
+	var requested deploy.DeployRequestedEvent
+	var announced deploy.DeployRetriedEvent
+	for _, e := range pending {
+		if e.Topic == deploy.TopicDeployRequested && strings.Contains(string(e.Payload), retried.ID) {
+			require.NoError(t, json.Unmarshal(e.Payload, &requested))
+		}
+		if e.Topic == deploy.TopicDeployRetried {
+			require.NoError(t, json.Unmarshal(e.Payload, &announced))
+		}
+	}
+	assert.Equal(t, "9f2c1ab", requested.Ref)
+	assert.Contains(t, requested.Env, "DATABASE_URL", "the retry carries the setting fixed since the failure")
+	assert.Equal(t, deploy.DeployRetriedEvent{ID: retried.ID, RetryOf: first.ID, StackID: "svc-1", Ref: "9f2c1ab"}, announced)
+
+	assert.Equal(t, http.StatusConflict, retry(retried.ID).Code, "the retry is still running, so it is not a failed deploy")
 }

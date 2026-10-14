@@ -97,6 +97,7 @@ var scopeRules = map[string]scopeRule{
 
 	"service.created": stackScope, "service.updated": stackScope, "service.deleted": stackScope,
 	"deploy.requested": deployScope, "deploy.status_changed": deployScope, "deploy.cancel_requested": deployScope,
+	"deploy.retried": deployScope,
 	"deploy.updated": deployScope, "deploy.build_started": deployScope, "deploy.build_progress": deployScope,
 	"deploy.build_completed": deployScope, "deploy.deploy_progress": deployScope, "deploy.log": deployScope,
 

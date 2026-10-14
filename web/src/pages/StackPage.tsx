@@ -50,7 +50,6 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
 
   const latest = latestDeploy(deploys);
   const lastHealthy = deploys?.find((d) => d.status === "healthy");
-  const canRollback = lastHealthy != null;
   const containerIds = new Set((services ?? []).map((c) => c.id));
   const hostnames = (exposures ?? [])
     .filter((e) => !!e.service_id && containerIds.has(e.service_id))
@@ -74,7 +73,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
           <SettingsShell className="mt-6" section={section} nav={<StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />}>
             {section === "overview" && (
               <>
-                <StackDeployActions stack={stack} lastHealthy={lastHealthy} canRollback={canRollback} image={image} />
+                <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
                 <ServicesSection stackId={stack.id} />
               </>
             )}

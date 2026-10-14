@@ -553,12 +553,14 @@ type stackDeployIn struct {
 	Ref      string `json:"ref,omitempty" jsonschema:"Build and deploy this branch, tag, or commit of the stack's repository, for example main."`
 	Image    string `json:"image,omitempty" jsonschema:"Redeploy this already-built image instead of building, for example ghcr.io/acme/api:1.4.0."`
 	Rollback bool   `json:"rollback,omitzero" jsonschema:"Redeploy the stack's last healthy image; send it without ref or image."`
+	Retry    string `json:"retry,omitempty" jsonschema:"The id of one of this stack's failed deploys, from deploy_list. Starts it again on the commit it built with the stack's current settings; send it without ref, image or rollback."`
 }
 
 func stackDeployTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_deploy", "Deploy stack",
 		"Starts a deploy of a stack on its machine, exactly as the deploy button does: build a ref of its repository, "+
-			"redeploy an image, or roll back to the last healthy image. It is rejected while the stack already has a "+
+			"redeploy an image, roll back to the last healthy image, or retry a failed deploy on the commit it built with the "+
+			"stack's current settings, for example after fixing an environment variable. It is rejected while the stack already has a "+
 			"deploy pending or running. Returns the new deploy; poll deploy_get until it is healthy or failed.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackDeployIn) (any, error) {
@@ -574,15 +576,33 @@ func startDeploy(ctx context.Context, s *Service, in stackDeployIn) (*Deploy, er
 	if in.Rollback && (in.Ref != "" || in.Image != "") {
 		return nil, fmt.Errorf("%w: rollback takes neither ref nor image", apperrs.ErrInvalid)
 	}
+	if in.Retry != "" {
+		return retryDeploy(ctx, s, in)
+	}
 	if in.Rollback {
 		d, err := s.Rollback(ctx, in.ID, mcpTriggeredBy(ctx))
 		return d, withHint(err, "a rollback needs a healthy deploy of an existing stack; deploy_list with stack_id shows its deploys")
 	}
 	if in.Ref == "" && in.Image == "" {
-		return nil, fmt.Errorf("%w: send ref to build, image to redeploy, or rollback: true", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: send ref to build, image to redeploy, rollback: true, or retry with a failed deploy's id", apperrs.ErrInvalid)
 	}
 	d, err := s.Deploy(ctx, DeployRequest{StackID: in.ID, Ref: in.Ref, Image: in.Image, TriggeredBy: mcpTriggeredBy(ctx)})
 	return d, withHint(err, "stack_list lists stacks")
+}
+
+// retryDeploy retries in.Retry, which must be a deploy of the stack in.ID.
+func retryDeploy(ctx context.Context, s *Service, in stackDeployIn) (*Deploy, error) {
+	if in.Rollback || in.Ref != "" || in.Image != "" {
+		return nil, fmt.Errorf("%w: retry takes none of ref, image or rollback", apperrs.ErrInvalid)
+	}
+	failed, err := s.Get(ctx, in.Retry)
+	if err != nil {
+		return nil, withHint(err, "deploy_list with stack_id lists a stack's deploys")
+	}
+	if failed.StackID != in.ID {
+		return nil, fmt.Errorf("%w: deploy %s is not a deploy of stack %s", apperrs.ErrInvalid, in.Retry, in.ID)
+	}
+	return s.Retry(ctx, in.Retry, mcpTriggeredBy(ctx))
 }
 
 type importStackIn struct {
@@ -649,6 +669,8 @@ type deployResult struct {
 	Stack       string    `json:"stack"`
 	Machine     string    `json:"machine"`
 	Image       string    `json:"image,omitempty"`
+	Ref         string    `json:"ref,omitempty"`
+	Commit      string    `json:"commit,omitempty"`
 	Address     string    `json:"address,omitempty"`
 	TriggeredBy string    `json:"triggered_by,omitempty"`
 	RuleName    string    `json:"rule_name,omitempty"`
@@ -661,7 +683,7 @@ type deployResult struct {
 func toDeployResult(d *Deploy) deployResult {
 	return deployResult{
 		ID: d.ID, Kind: d.Kind, Status: d.Status, StackID: d.StackID, Stack: d.Service, Machine: d.Target,
-		Image: d.Image, Address: d.Address, TriggeredBy: d.TriggeredBy, RuleName: d.RuleName,
+		Image: d.Image, Ref: d.Ref, Commit: d.Commit, Address: d.Address, TriggeredBy: d.TriggeredBy, RuleName: d.RuleName,
 		TicketID: d.TicketID, PRNumber: d.PRNumber, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
 	}
 }

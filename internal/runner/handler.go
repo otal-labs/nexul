@@ -574,7 +574,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		c.clearJob(f.ID)
 		h.dispatchPending(ctx, c)
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
-			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Services: f.Services,
+			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Commit: f.Commit, Services: f.Services,
 		})
 	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken:
 		h.deliverReply(c, f)

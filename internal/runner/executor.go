@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -119,6 +120,8 @@ func (e *ShellExecutor) Build(ctx context.Context, req DeployRequestedEvent, sen
 
 // repoBuildAndDeploy: a cancelled build reports only build_result; the cancel frame owns the terminal deploy state.
 func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployRequestedEvent, send func(Frame)) {
+	var commit string
+	send = stampCommit(send, &commit)
 	checkout, err := e.checkoutPath(req)
 	if err != nil {
 		e.failBuild(ctx, req, send, err)
@@ -159,10 +162,32 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 			return
 		}
 		send(Frame{Type: FrameBuildProgress, ID: req.ID, Step: i + 1, Total: len(steps), Log: log})
+		if st.phase == LogPhaseCheckout {
+			commit = e.headCommit(ctx, checkout)
+		}
 	}
 	send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusSuccess, Artifacts: []string{tag}})
 
 	e.deployBuilt(ctx, req, tag, checkout, send, logs)
+}
+
+// stampCommit puts the checkout's commit on every deploy_result so a retry rebuilds it, not the branch's newer tip.
+func stampCommit(send func(Frame), commit *string) func(Frame) {
+	return func(f Frame) {
+		if f.Type == FrameDeployResult {
+			f.Commit = *commit
+		}
+		send(f)
+	}
+}
+
+// headCommit is the checkout's HEAD; empty when git cannot say, which leaves the deploy without a recorded commit.
+func (e *ShellExecutor) headCommit(ctx context.Context, checkout string) string {
+	var out strings.Builder
+	if err := e.cmd(ctx, checkout, func(s string) { out.WriteString(s) }, "git", "rev-parse", "HEAD"); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.String())
 }
 
 // checkoutPath resolves the persistent checkout dir for a repo-driven request: "<stack_root>/stacks/<slug>/repo",
@@ -249,10 +274,28 @@ func (e *ShellExecutor) cloneStep(req DeployRequestedEvent, checkout string) bui
 		label: "clone " + req.Repo + "@" + req.Ref,
 		run: func(ctx context.Context, logf func(string)) error {
 			url := "https://github.com/" + req.Repo + ".git"
+			if commitID.MatchString(req.Ref) {
+				return e.cloneCommit(ctx, req, url, checkout, logf)
+			}
 			args := e.authArgs(req, []string{"clone", "--depth", "1", "--branch", req.Ref, url, checkout})
 			return e.cmd(ctx, "", logf, "git", args...)
 		},
 	}
+}
+
+// commitID matches a full commit id, which `git clone --branch` cannot take.
+var commitID = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+func (e *ShellExecutor) cloneCommit(ctx context.Context, req DeployRequestedEvent, url, checkout string, logf func(string)) error {
+	clone := e.authArgs(req, []string{"clone", "--depth", "1", "--no-checkout", url, checkout})
+	if err := e.cmd(ctx, "", logf, "git", clone...); err != nil {
+		return err
+	}
+	fetch := e.authArgs(req, []string{"fetch", "--depth", "1", "origin", req.Ref})
+	if err := e.cmd(ctx, checkout, logf, "git", fetch...); err != nil {
+		return err
+	}
+	return e.cmd(ctx, checkout, logf, "git", "checkout", "--detach", req.Ref)
 }
 
 // fetchStep refreshes an existing persistent checkout in place: fetch the ref, then force-checkout it (spec §4).
