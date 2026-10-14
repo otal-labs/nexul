@@ -60,7 +60,7 @@ var people = []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, u
 
 // instanceBits is every permission that used to take the instance administrator flag (ADR 0088).
 var instanceBits = []string{"instance:read", "instance:write", "accounts:read", "accounts:write", "accounts:delete",
-	"workspaces:create", "runners:write", "runners:delete", "automations:write", "automations:delete",
+	"workspaces:create", "machines:create", "automations:write", "automations:delete",
 	"connectors:write", "integrations:read", "integrations:write", "integrations:delete", "audit:read"}
 
 // outcomes a case can have: allowed, refused as forbidden, refused as not found, or left out of a list.
@@ -203,7 +203,7 @@ func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage
 		require.NoError(t, err)
 	}
 	reads := []string{"tickets:read", "stacks:read", "deploys:read", "topology:read", "docs:read", "memories:read", "dns:read",
-		"machines:read", "connectors:read", "reviews:read", "repos:read"}
+		"connectors:read", "reviews:read", "repos:read"}
 	now := time.Now()
 	for _, r := range []*roles.Role{
 		{ID: "role-owner", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true},
@@ -414,7 +414,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"machines: list", func(ctx context.Context) error {
 			_, err := machines.ListMachines(ctx)
 			return err
-		}, map[string]string{uOwner: ok, uReader: ok, uPlain: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: ok, uOutsider: ok}},
 		{"automations hosts: list", func(ctx context.Context) error {
 			_, err := s.automationHostsSvc.List(ctx)
 			return err
@@ -530,7 +530,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		}, map[string]string{uOwner: conflict, uSteward: conflict, uPlain: forbidden, uManager: forbidden, uOutsider: forbidden}},
 		{"runners: remove one", func(ctx context.Context) error {
 			return machines.RemoveRunner(ctx, "runner-ghost")
-		}, map[string]string{uOwner: notFound, uSteward: notFound, uPlain: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: notFound, uSteward: notFound, uPlain: notFound, uOutsider: notFound}},
 		{"automations hosts: enroll one", func(ctx context.Context) error {
 			_, err := s.automationHostsSvc.CreateEnrollment(ctx, "jobs-"+actorID(ctx), "")
 			return err

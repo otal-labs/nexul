@@ -398,6 +398,44 @@ func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([
 	return items, nil
 }
 
+const listRunnersOn = `-- name: ListRunnersOn :many
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = '' AND machine_id IN (SELECT value FROM json_each(?1)) ORDER BY created_at
+`
+
+func (q *Queries) ListRunnersOn(ctx context.Context, machineIds interface{}) ([]Runner, error) {
+	rows, err := q.db.QueryContext(ctx, listRunnersOn, machineIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Runner
+	for rows.Next() {
+		var i Runner
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.LastSeen,
+			&i.Connected,
+			&i.CreatedAt,
+			&i.Version,
+			&i.MachineID,
+			&i.OwnerUserID,
+			&i.ComputerID,
+			&i.EnrolledBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnresolvedInstanceUpgrades = `-- name: ListUnresolvedInstanceUpgrades :many
 SELECT id, from_version, to_version, status, error, requested_by, runner_id, created_at, updated_at FROM instance_upgrades WHERE status IN ('pending', 'started') ORDER BY created_at
 `

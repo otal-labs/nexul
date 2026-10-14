@@ -47,7 +47,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("docs", "Docs", FileTextIcon, "/docs", !!current && !!can?.("docs")),
     ...page("memories", "Memories", BrainIcon, "/memories", !!current && !!can?.("memories")),
     ...page("project-settings", "Project settings", SettingsIcon, projectSettingsPath(token), !!current && !!can?.("projects")),
-    ...page("runners", "Runners", CpuIcon, "/runners", canOpen("runners") === true),
+    ...page("runners", "Runners", CpuIcon, "/runners"),
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),

@@ -27,7 +27,7 @@ beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: [] } };
-    return { data: { role_name: "Owner", permissions: ["automations:read", "runners:read", "topology:read", "roles:write"] } };
+    return { data: { role_name: "Owner", permissions: ["automations:read", "topology:read", "roles:write"] } };
   });
 });
 
@@ -57,7 +57,7 @@ describe("DeploySidebarNav", () => {
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read", "connectors:read", "accounts:read"] } };
-      return { data: { role_name: "Member", permissions: ["runners:read"] } };
+      return { data: { role_name: "Member", permissions: [] } };
     });
     render(
       <QueryClientProvider client={new QueryClient()}>

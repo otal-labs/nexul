@@ -161,7 +161,7 @@ func ShippedTemplates() []ShippedTemplate {
 				"stacks:read", "stacks:write", "stacks:logs", "deploys:read", "deploys:write",
 				"projects:read", "projects:write", "projects:create",
 				"plays:read", "plays:write", "plays:delete", "plays:run", "autoplays:read", "autoplays:write",
-				"runners:read", "machines:read", "dns:read", "topology:read"),
+				"dns:read", "topology:read"),
 			WelcomeSteps: []string{welcomestep.GitHub, welcomestep.Computer},
 		}},
 		{"devops", TemplateBody{
@@ -173,9 +173,10 @@ func ShippedTemplates() []ShippedTemplate {
 	}
 }
 
-// deployInfrastructure is every action on runners, machines, DNS and gateways, and the topology registry.
+// deployInfrastructure is deploying to, managing and deleting machines, every action on DNS and gateways, and the
+// topology registry; seeing a machine takes its rules and adding one stays with the instance Owner (ADR 0151).
 var deployInfrastructure = []permissions.Action{
-	"runners:read", "runners:write", "runners:delete", "machines:read", "machines:write",
+	"machines:deploy", "machines:write", "machines:delete",
 	"dns:read", "dns:write", "dns:delete", "topology:read", "topology:write", "topology:delete",
 }
 

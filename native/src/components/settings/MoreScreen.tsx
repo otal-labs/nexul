@@ -10,7 +10,7 @@ import { SettingsCard } from "@/components/SettingsCard";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { FieldScreen } from "@/components/FieldScreen";
 import { Text } from "@/components/ui/text";
-import { useAreaAccess, useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 
 // Docs and Runners land under this same tab as siblings build their own route folders; this screen only links by path.
@@ -18,7 +18,6 @@ export const MoreScreen = () => {
   const router = useRouter();
   const host = useSessionStore((s) => s.host);
   const workspace = useSelectedWorkspace();
-  const canReadRunners = useAreaAccess()?.("runners") ?? false;
 
   return (
     <FieldScreen>
@@ -27,7 +26,7 @@ export const MoreScreen = () => {
         <View className="gap-6 px-4">
           <SettingsCard>
             <SettingsRow first icon={FileText} label="Docs" onPress={() => router.push("/more/docs")} />
-            {canReadRunners && <SettingsRow icon={Server} label="Runners" onPress={() => router.push("/more/runners")} />}
+            <SettingsRow icon={Server} label="Runners" onPress={() => router.push("/more/runners")} />
           </SettingsCard>
           <SettingsCard>
             <SettingsRow first icon={Settings} label="Your settings" onPress={() => router.push("/more/settings")} />

@@ -11,7 +11,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 99)
+	require.Len(t, catalog, 95)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
@@ -26,7 +26,7 @@ func TestCatalog_GridShape(t *testing.T) {
 		domains[info.Domain] = true
 		assert.Equal(t, Action(info.Domain+":"+info.Action), info.Value)
 	}
-	assert.Len(t, domains, 34)
+	assert.Len(t, domains, 33)
 	assert.Equal(t, AllActions(), func() []Action {
 		out := make([]Action, 0, len(catalog))
 		for _, info := range catalog {
@@ -273,7 +273,7 @@ func TestInstanceAreas_EveryInstanceActionHasAnEntity(t *testing.T) {
 func TestInstanceAreaOf(t *testing.T) {
 	assert.Equal(t, "instance", InstanceAreaOf(InstanceWrite), "the instance's own, sign-in providers naming theirs")
 	assert.Equal(t, "dns", InstanceAreaOf(DNSDelete))
-	assert.Equal(t, "runners", InstanceAreaOf(MachinesRead))
+	assert.Equal(t, "machines", InstanceAreaOf(MachinesCreate))
 	assert.Empty(t, InstanceAreaOf(ConnectorsRead), "each connector's check names its own")
 	assert.Empty(t, InstanceAreaOf(StacksRead))
 	assert.Equal(t, "connector:github", ConnectorArea("github", "GitHub").Key)

@@ -21,7 +21,8 @@ import (
 
 // fakeUpgradeGate stands in for access's instance-level check: allow answers every action.
 type fakeUpgradeGate struct {
-	allow bool
+	runner.Gate // the upgrade paths ask only the instance-level check
+	allow       bool
 }
 
 func (f fakeUpgradeGate) RequireAnywhere(context.Context, permissions.Action) error {

@@ -41,10 +41,6 @@ const (
 	TopologyRead       Action = "topology:read"
 	TopologyWrite      Action = "topology:write"
 	TopologyDelete     Action = "topology:delete"
-	RunnersRead        Action = "runners:read"
-	RunnersWrite       Action = "runners:write"
-	RunnersDelete      Action = "runners:delete"
-	MachinesRead       Action = "machines:read"
 	MachinesWrite      Action = "machines:write"
 	MachinesDeploy     Action = "machines:deploy"
 	MachinesDelete     Action = "machines:delete"
@@ -194,8 +190,7 @@ var domainTable = []domainInfo{
 	{"workspaces", "workspaces", []string{read, write, delete, create}, AreaWorkspace},
 	{"members", "members and invites", []string{read, write, delete}, AreaWorkspace},
 	{"roles", "roles", []string{read, write, delete, clone}, AreaWorkspace},
-	{"runners", "runners", []string{read, write, delete}, AreaInstance},
-	{"machines", "machines", []string{read, write, deploy, delete, create}, AreaInstance},
+	{"machines", "machines", []string{write, deploy, delete, create}, AreaInstance},
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
@@ -233,7 +228,7 @@ var instanceAreas = []InstanceArea{
 	{"dns", "DNS and gateways", []Action{DNSRead, DNSWrite, DNSDelete}},
 	{"templates", "instance templates", []Action{TemplatesRead, TemplatesWrite}},
 	{"accounts", "accounts", []Action{AccountsRead, AccountsWrite, AccountsDelete}},
-	{"runners", "runners and machines", []Action{RunnersRead, RunnersWrite, RunnersDelete, MachinesRead, MachinesWrite, MachinesCreate}},
+	{"machines", "adding machines", []Action{MachinesCreate}},
 	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
 	{"automations", "automation hosts", []Action{AutomationsRead, AutomationsWrite, AutomationsDelete}},
 	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},

@@ -13,7 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-var fixtureRoleSet = permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite, permissions.DocsRead, permissions.RunnersRead, permissions.ChatWrite)
+var fixtureRoleSet = permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite, permissions.DocsRead, permissions.TopologyRead, permissions.ChatWrite)
 
 // projectsFixture is one workspace with two projects: "client" is listed in p-open by name and "team" through its
 // role, "nobody" holds no role, "owner" is the Owner, and nobody else is in p-hidden.
@@ -69,7 +69,7 @@ func TestOptIn_Resolver(t *testing.T) {
 			return s.Require(as("client"), "ws", permissions.ChatWrite)
 		}, nil},
 		{"an instance action answers from the role anywhere", func() error {
-			return s.RequireAnywhere(as("client"), permissions.RunnersRead)
+			return s.RequireAnywhere(as("client"), permissions.TopologyRead)
 		}, nil},
 		{"the Owner is in every project", func() error {
 			return s.RequireProject(as("owner"), "p-hidden", permissions.ProjectsDelete)

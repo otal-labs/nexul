@@ -7,6 +7,9 @@ SELECT * FROM runners WHERE id = ?;
 -- name: ListRunners :many
 SELECT * FROM runners WHERE owner_user_id = '' ORDER BY created_at;
 
+-- name: ListRunnersOn :many
+SELECT * FROM runners WHERE owner_user_id = '' AND machine_id IN (SELECT value FROM json_each(sqlc.arg(machine_ids))) ORDER BY created_at;
+
 -- name: SetRunnerVersion :execrows
 UPDATE runners SET version = ? WHERE id = ?;
 

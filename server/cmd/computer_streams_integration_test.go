@@ -50,7 +50,7 @@ func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{CodeHash: codeHash, Name: "computer-ab12cd34", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
 	credential, credentialHash, err := hostcred.MintCredential("nxr_")
 	require.NoError(t, err)
-	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "r-laptop", Name: "computer-ab12cd34", LastSeen: now, CreatedAt: now}, credentialHash, now))
+	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "r-laptop", Name: "computer-ab12cd34", LastSeen: now, CreatedAt: now}, credentialHash, now, nil))
 	_, err = db.Exec(`UPDATE runners SET owner_user_id = 'u-alice', computer_id = 'c-laptop' WHERE id = 'r-laptop'`)
 	require.NoError(t, err)
 

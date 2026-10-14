@@ -10,6 +10,9 @@ SELECT * FROM machines WHERE name = ?;
 -- name: ListMachines :many
 SELECT * FROM machines ORDER BY name;
 
+-- name: ListMachinesIn :many
+SELECT * FROM machines WHERE id IN (SELECT value FROM json_each(sqlc.arg(ids))) ORDER BY name;
+
 -- name: RenameMachine :execrows
 UPDATE machines SET name = ? WHERE id = ?;
 

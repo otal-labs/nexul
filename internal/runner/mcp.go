@@ -72,11 +72,12 @@ type machineList struct {
 
 func machineListTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_list", "List machines",
-		"Lists the machines runners connect from, each with its stack root, its runners' connection state, "+
-			"version, and running job, and its automations hosts, plus the deploys queued for a runner; a build or "+
-			"deploy job's id is its "+
-			"deploy's id for deploy_get. Use a machine's name as stack_create's machine and its id for "+
-			"machine_discover and machine_import. Returns at most 100 machines per page.",
+		"Lists the machines you can see, each with its stack root, its runners' connection state, "+
+			"version, and running job, and its automations hosts, plus the deploys queued for a runner on them; a "+
+			"build or deploy job's id is its "+
+			"deploy's id for deploy_get. A machine you are not on is left out, as it is everywhere else. Use a machine's "+
+			"name as stack_create's machine and its id for machine_discover and machine_import. Returns at most 100 "+
+			"machines per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in machineListIn) (any, error) {
 			machines, err := s.ListMachines(ctx)
@@ -91,7 +92,11 @@ func machineListTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			hosts, err := s.listAutomationsHosts(ctx)
+			r, err := s.reach(ctx)
+			if err != nil {
+				return nil, err
+			}
+			hosts, err := s.listAutomationsHosts(ctx, r, machines)
 			if err != nil {
 				return nil, err
 			}
@@ -171,8 +176,8 @@ func machineDiscoverTool(s *Service) mcptool.Tool {
 		"Asks an idle runner on the machine to list what is running there and returns the containers no stack "+
 			"tracks yet, grouped by compose project, standalone containers, and recognised cloudflared gateways with "+
 			"the hostnames their tunnels already route, plus the machine's docker networks. Use it before "+
-			"machine_import and pass the names it returns. It changes nothing and fails if no runner on the machine "+
-			"is connected and idle.",
+			"machine_import and pass the names it returns. It needs Manage on the machine and answers not found for "+
+			"one you can't see. It changes nothing and fails if no runner on the machine is connected and idle.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in machineDiscoverIn) (any, error) {
 			grouped, err := s.DiscoverForImport(ctx, in.ID)

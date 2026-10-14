@@ -87,10 +87,9 @@ beforeEach(() => {
 
 describe("route permissions", () => {
   it.each([
-    { path: "/acme/runners", anywhere: [], permissions: [], page: null },
-    { path: "/acme/runners", anywhere: [], permissions: ["runners:read"], page: "Runners" },
-    { path: "/acme/topology", anywhere: [], permissions: ["runners:read"], page: null },
-    { path: "/acme/automations", anywhere: [], permissions: ["runners:read"], page: null },
+    { path: "/acme/runners", anywhere: [], permissions: [], page: "Runners" },
+    { path: "/acme/topology", anywhere: [], permissions: ["chat:read"], page: null },
+    { path: "/acme/automations", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/board", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/configuration", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
@@ -119,7 +118,7 @@ describe("route permissions", () => {
 });
 
 describe("workspace URLs", () => {
-  const everything = ["tickets:read", "docs:read", "memories:read", "runners:read", "topology:read", "roles:write"];
+  const everything = ["tickets:read", "docs:read", "memories:read", "topology:read", "roles:write"];
 
   it("opens the selected workspace's home from /", async () => {
     mockApi([], everything);

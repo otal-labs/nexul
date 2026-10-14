@@ -25,7 +25,7 @@ export interface RouteAccess {
   needsProject?: boolean;
 }
 
-// The areas an instance Settings entry hands out; one with no entry of its own (runners, the audit log) sits under Instance.
+// The areas an instance Settings entry hands out; one with no entry of its own (machines, the audit log) sits under Instance.
 const ENTRY_AREAS: Record<string, (key: string) => boolean> = {
   "sign-in": (key) => key === "sign_in_providers",
   connectors: (key) => key.startsWith("connector:"),

@@ -138,7 +138,7 @@ func TestIntegration_NotInAProject(t *testing.T) {
 		held, err := s.accessSvc.PermissionsAnywhere(context.Background(), uClient)
 		require.NoError(t, err)
 		assert.Subset(t, held, instanceBits, "instance_permissions on /api/auth/me reads this")
-		runs, err := s.accessSvc.HoldsAnywhere(context.Background(), uClient, permissions.RunnersWrite)
+		runs, err := s.accessSvc.HoldsAnywhere(context.Background(), uClient, permissions.MachinesCreate)
 		require.NoError(t, err)
 		assert.True(t, runs)
 	})

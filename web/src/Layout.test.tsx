@@ -45,7 +45,6 @@ const ownerGrid = [
   "projects:read",
   "projects:write",
   "roles:write",
-  "runners:read",
   "tickets:read",
   "topology:read",
 ];
@@ -221,11 +220,11 @@ describe("Layout", () => {
       create: ["New channel", "New voice channel", "New direct message"],
     },
     {
-      name: "a member who reads chat and tickets sees the board and nothing of the workspace",
+      name: "a member who reads chat and tickets sees the board and only Runners of the workspace",
       user: member,
       permissions: ["chat:read", "tickets:read"],
       main: ["/acme/inbox", "/acme/board/BE"],
-      workspace: [],
+      workspace: ["/acme/runners"],
       create: [],
     },
     {
@@ -233,13 +232,13 @@ describe("Layout", () => {
       user: member,
       permissions: ["docs:read"],
       main: ["/acme/inbox", "/acme/docs"],
-      workspace: [],
+      workspace: ["/acme/runners"],
       create: [],
     },
     {
-      name: "a member who reads runners and topology sees only those two",
+      name: "a member who reads topology sees Runners beside it",
       user: member,
-      permissions: ["runners:read", "topology:read"],
+      permissions: ["topology:read"],
       main: ["/acme/inbox"],
       workspace: ["/acme/runners", "/acme/topology"],
       create: [],
@@ -249,7 +248,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["roles:write"],
       main: ["/acme/inbox"],
-      workspace: ["/acme/configuration"],
+      workspace: ["/acme/runners", "/acme/configuration"],
       create: [],
     },
     {
@@ -257,7 +256,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["chat:write"],
       main: ["/acme/inbox"],
-      workspace: [],
+      workspace: ["/acme/runners"],
       create: ["New direct message"],
     },
   ])("sidebar by permission: $name", async ({ user, permissions, main, workspace, create }) => {

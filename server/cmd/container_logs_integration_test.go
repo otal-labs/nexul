@@ -47,7 +47,7 @@ func connectFakeRunner(t *testing.T, store *storage.Store, handler *runner.Handl
 	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{CodeHash: codeHash, Name: "logs", Machine: "m1", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
 	credential, credentialHash, err := hostcred.MintCredential("nxr_")
 	require.NoError(t, err)
-	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "runner-logs", Name: "logs", MachineID: "machine-1", LastSeen: now, CreatedAt: now}, credentialHash, now))
+	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "runner-logs", Name: "logs", MachineID: "machine-1", LastSeen: now, CreatedAt: now}, credentialHash, now, nil))
 
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

@@ -61,6 +61,18 @@ func (r *MachinesRepo) List(ctx context.Context) ([]*runner.Machine, error) {
 	return out, nil
 }
 
+func (r *MachinesRepo) ListIn(ctx context.Context, ids []string) ([]*runner.Machine, error) {
+	rows, err := r.q.ListMachinesIn(ctx, idsJSON(ids))
+	if err != nil {
+		return nil, fmt.Errorf("list machines in a set: %w", err)
+	}
+	out := make([]*runner.Machine, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toMachine(row))
+	}
+	return out, nil
+}
+
 func (r *MachinesRepo) Rename(ctx context.Context, id, name string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).RenameMachine(ctx, sqlcgen.RenameMachineParams{Name: name, ID: id})

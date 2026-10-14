@@ -58,7 +58,7 @@ const tabs = () => ["Inbox", "Chat", "Board", "Deploys", "More"].filter((name) =
 
 describe("tabs by permission", () => {
   test.each([
-    { name: "the Owner's whole grid shows every tab", granted: ["tickets:read", "stacks:read", "runners:read"], shown: ["Inbox", "Chat", "Board", "Deploys", "More"] },
+    { name: "the Owner's whole grid shows every tab", granted: ["tickets:read", "stacks:read"], shown: ["Inbox", "Chat", "Board", "Deploys", "More"] },
     { name: "tickets alone adds Board", granted: ["tickets:read"], shown: ["Inbox", "Chat", "Board", "More"] },
     { name: "stacks alone adds Deploys", granted: ["stacks:read"], shown: ["Inbox", "Chat", "Deploys", "More"] },
   ])("$name", async ({ granted, shown }) => {
@@ -70,20 +70,20 @@ describe("tabs by permission", () => {
   });
 
   test("a member who reads neither keeps only Inbox, Chat and More", async () => {
-    permissions = ["runners:read"];
+    permissions = [];
     await renderApp("/more");
 
     expect(await screen.findByText("Runners")).toBeTruthy();
     expect(tabs()).toEqual(["Inbox", "Chat", "More"]);
   });
 
-  test("More lists Runners only for a runners:read holder", async () => {
+  test("More lists Runners for every member, the server deciding which machines it shows", async () => {
     permissions = ["tickets:read"];
     await renderApp("/more");
 
     expect(await screen.findByRole("button", { name: tab("Board") })).toBeTruthy();
     expect(screen.getByText("Docs")).toBeTruthy();
-    expect(screen.queryByText("Runners")).toBeNull();
+    expect(screen.getByText("Runners")).toBeTruthy();
   });
 
   test("what a member holds in a project they are in opens its tab", async () => {

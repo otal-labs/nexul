@@ -77,3 +77,12 @@ func TestSeedTemplateRoles(t *testing.T) {
 	s.SetTemplateRoles(fakeTemplateRoles{bodies: []string{`{"name":""}`}})
 	assert.ErrorIs(t, s.SeedTemplateRoles(context.Background(), "ws-1"), apperrs.ErrInvalid, "a stored body that no longer parses")
 }
+
+// TestShippedTemplates_NameOnlyActionsTheCatalogHas: a template naming an action the catalog dropped would fail every
+// new workspace's seed, so each shipped template must parse back through the catalog.
+func TestShippedTemplates_NameOnlyActionsTheCatalogHas(t *testing.T) {
+	for _, shipped := range ShippedTemplates() {
+		_, err := ParseTemplate(shipped.Body.JSON())
+		assert.NoError(t, err, shipped.Key)
+	}
+}

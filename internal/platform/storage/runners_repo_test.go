@@ -186,7 +186,7 @@ func TestRunnersRepo_Enroll_ConsumesCodeOnce(t *testing.T) {
 	s := newTestStore(t)
 	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Hour))
 
-	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow))
+	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow, nil))
 
 	got, err := s.Runners.GetByName(context.Background(), "box-r-1")
 	require.NoError(t, err)
@@ -195,7 +195,7 @@ func TestRunnersRepo_Enroll_ConsumesCodeOnce(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, runner.Credential{RunnerID: "r-1", RunnerName: "box-r-1", CreatedAt: enrollNow}, *cred)
 
-	err = s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-2"), "cred-hash-2", enrollNow)
+	err = s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-2"), "cred-hash-2", enrollNow, nil)
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a used code is gone")
 }
 
@@ -203,7 +203,7 @@ func TestRunnersRepo_Enroll_ExpiredCode_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Minute))
-	err := s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow.Add(time.Hour))
+	err := s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow.Add(time.Hour), nil)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -215,7 +215,7 @@ func TestRunnersRepo_Enroll_NameTaken_ConflictAndCodeKept(t *testing.T) {
 
 	again := newTestRunner("r-1b")
 	again.Name = "box-r-1"
-	err := s.Runners.Enroll(context.Background(), "h-1", again, "cred-hash", enrollNow)
+	err := s.Runners.Enroll(context.Background(), "h-1", again, "cred-hash", enrollNow, nil)
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 	_, err = s.Runners.GetEnrollment(context.Background(), "h-1", enrollNow)
 	require.NoError(t, err, "the failed enrollment rolls back, leaving the code usable")
@@ -223,11 +223,42 @@ func TestRunnersRepo_Enroll_NameTaken_ConflictAndCodeKept(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+// TestRunnersRepo_Enroll_NewMachineAndItsRuleLandWithTheRunnerOrNotAtAll: the machine an enrollment creates and the rule
+// giving its adder every action are written with the runner, so a refused enrollment leaves no machine nobody can see.
+func TestRunnersRepo_Enroll_NewMachineAndItsRuleLandWithTheRunnerOrNotAtAll(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	_, err := s.db.Exec(`INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-adder', 'adder', 1, 1)`)
+	require.NoError(t, err)
+	newMachine := func(id string) *runner.CreatedMachine {
+		return &runner.CreatedMachine{Machine: &runner.Machine{ID: id, Name: "box-" + id, StackRoot: "/data/nexul", FirstSeen: enrollNow, LastSeen: enrollNow}, Owner: "u-adder"}
+	}
+
+	require.NoError(t, s.Runners.Create(ctx, newTestRunner("r-taken")))
+	mustCreateEnrollment(t, s, "h-refused", "box-r-taken", enrollNow.Add(time.Hour))
+	again := newTestRunner("r-again")
+	again.Name = "box-r-taken"
+	err = s.Runners.Enroll(ctx, "h-refused", again, "cred-refused", enrollNow, newMachine("m-refused"))
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	_, err = s.Machines.Get(ctx, "m-refused")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "the machine rolled back with the runner")
+
+	mustCreateEnrollment(t, s, "h-ok", "box-r-ok", enrollNow.Add(time.Hour))
+	require.NoError(t, s.Runners.Enroll(ctx, "h-ok", newTestRunner("r-ok"), "cred-ok", enrollNow, newMachine("m-ok")))
+	got, err := s.Machines.Get(ctx, "m-ok")
+	require.NoError(t, err)
+	assert.Equal(t, "box-m-ok", got.Name)
+	var allow string
+	require.NoError(t, s.db.QueryRow(`SELECT allow FROM permission_overwrites WHERE resource_type = 'machine' AND resource_id = 'm-ok' AND user_id = 'u-adder'`).Scan(&allow))
+	assert.JSONEq(t, `["machines:delete","machines:deploy","machines:see","machines:write"]`, allow)
+}
+
 func TestRunnersRepo_Remove_RevokesCredentialAndDeletesRunner(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Hour))
-	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow))
+	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow, nil))
 
 	require.NoError(t, s.Runners.Remove(context.Background(), "r-1", enrollNow))
 

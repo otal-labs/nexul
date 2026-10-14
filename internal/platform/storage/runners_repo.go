@@ -3,10 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -80,6 +82,18 @@ func (r *RunnersRepo) List(ctx context.Context) ([]*runner.Runner, error) {
 	rows, err := r.q.ListRunners(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list runners: %w", err)
+	}
+	var out []*runner.Runner
+	for _, row := range rows {
+		out = append(out, toRunner(row))
+	}
+	return out, nil
+}
+
+func (r *RunnersRepo) ListOn(ctx context.Context, machineIDs []string) ([]*runner.Runner, error) {
+	rows, err := r.q.ListRunnersOn(ctx, idsJSON(machineIDs))
+	if err != nil {
+		return nil, fmt.Errorf("list runners on machines: %w", err)
 	}
 	var out []*runner.Runner
 	for _, row := range rows {
@@ -171,7 +185,7 @@ func (r *RunnersRepo) GetEnrollment(ctx context.Context, codeHash string, now ti
 	}, nil
 }
 
-func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Runner, credentialHash string, now time.Time) error {
+func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Runner, credentialHash string, now time.Time, created *runner.CreatedMachine) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.ConsumeRunnerEnrollmentCode(ctx, sqlcgen.ConsumeRunnerEnrollmentCodeParams{CodeHash: codeHash, ExpiresAt: now.Unix()})
@@ -180,6 +194,11 @@ func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Ru
 		}
 		if n == 0 {
 			return fmt.Errorf("consume runner enrollment code: %w", apperrs.ErrNotFound)
+		}
+		if created != nil {
+			if err := createMachineWithOwner(ctx, q, created, now); err != nil {
+				return err
+			}
 		}
 		err = q.CreateRunner(ctx, sqlcgen.CreateRunnerParams{
 			ID: rn.ID, Name: rn.Name, Version: rn.Version, LastSeen: rn.LastSeen.Unix(),
@@ -197,6 +216,33 @@ func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Ru
 		}
 		return nil
 	})
+}
+
+// createMachineWithOwner writes a machine and the rule giving its first person every machine action, inside the
+// enrollment's transaction so a machine never exists without the rule that lets its adder see it.
+func createMachineWithOwner(ctx context.Context, q *sqlcgen.Queries, created *runner.CreatedMachine, now time.Time) error {
+	m := created.Machine
+	err := q.CreateMachine(ctx, sqlcgen.CreateMachineParams{
+		ID: m.ID, Name: m.Name, StackRoot: m.StackRoot, ReportedHostname: m.ReportedHostname,
+		FirstSeen: m.FirstSeen.Unix(), LastSeen: m.LastSeen.Unix(),
+	})
+	if err != nil {
+		return fmt.Errorf("insert machine %s: %w", m.Name, classifyWriteErr(err))
+	}
+	if created.Owner == "" {
+		return nil
+	}
+	allow, err := json.Marshal(permissions.SetOf(permissions.MachineActions...))
+	if err != nil {
+		return fmt.Errorf("encode the rule of machine %s: %w", m.Name, err)
+	}
+	_, err = q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
+		ResourceType: "machine", ResourceID: m.ID, UserID: nullString(created.Owner), Allow: string(allow), Deny: "[]", Now: now.Unix(),
+	})
+	if err != nil {
+		return fmt.Errorf("insert the rule of machine %s: %w", m.Name, classifyWriteErr(err))
+	}
+	return nil
 }
 
 func (r *RunnersRepo) GetCredential(ctx context.Context, hash string) (*runner.Credential, error) {

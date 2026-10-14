@@ -122,8 +122,8 @@ export interface EventPayloads {
   "repository.installation.unassigned": { "account_id": number; "account_login": string; "workspace_id": string; "actor_id"?: string; "uninstalled"?: boolean; };
   "review.status_changed": { "id": string; "repo": string; "pr_number": number; "status": string; "reviewer"?: string; };
   "role.updated": { "role_id": string; "workspace_id": string; "actor_id"?: string; "welcome_steps_added": string[]; };
-  "runner.connected": { "runner_id": string; "name"?: string; "enrolled_by"?: string; };
-  "runner.disconnected": { "runner_id": string; "reason"?: string; "enrolled_by"?: string; };
+  "runner.connected": { "runner_id": string; "name"?: string; "enrolled_by"?: string; "machine_id"?: string; };
+  "runner.disconnected": { "runner_id": string; "reason"?: string; "enrolled_by"?: string; "machine_id"?: string; };
   "runner.facts_reported": { "runner_id": string; "computer_id": string; "user_id": string; "facts": { "hostname"?: string; "os"?: string; "arch"?: string; "runner_version"?: string; "t3": { "state": "answering" | "not_running" | "missing" | "not_loopback"; "install"?: "service" | "command_line" | "desktop_app"; "port"?: number; "version"?: string; "restarted_at"?: string; "restart_error"?: string; }; "cloudflared"?: string; "git_name"?: string; "git_email"?: string; "free_disk_bytes"?: number; "docker"?: { "available": boolean; "version"?: string; }; }; "members_only": boolean; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
   "runner.personal_changed": { "runner_id": string; "computer_id": string; "user_id": string; "state": "enrolled" | "connected" | "disconnected" | "removed"; "hostname"?: string; "members_only": boolean; };
@@ -442,8 +442,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "repository.installation.unassigned": {"account_id":1,"account_login":"fixture-account_login","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","uninstalled":false},
   "review.status_changed": {"id":"fixture-id","repo":"fixture-repo","pr_number":1,"status":"fixture-status","reviewer":"fixture-reviewer"},
   "role.updated": {"role_id":"fixture-role_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","welcome_steps_added":["fixture-welcome_steps_added"]},
-  "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name","enrolled_by":"fixture-enrolled_by"},
-  "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason","enrolled_by":"fixture-enrolled_by"},
+  "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name","enrolled_by":"fixture-enrolled_by","machine_id":"fixture-machine_id"},
+  "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason","enrolled_by":"fixture-enrolled_by","machine_id":"fixture-machine_id"},
   "runner.facts_reported": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","facts":{"hostname":"fixture-hostname","os":"fixture-os","arch":"fixture-arch","runner_version":"fixture-runner_version","t3":{"state":"answering","install":"service","port":1,"version":"fixture-version","restarted_at":"2026-01-01T00:00:00Z","restart_error":"fixture-restart_error"},"cloudflared":"fixture-cloudflared","git_name":"fixture-git_name","git_email":"fixture-git_email","free_disk_bytes":1,"docker":{"available":false,"version":"fixture-version"}},"members_only":false},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},
   "runner.personal_changed": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","state":"enrolled","hostname":"fixture-hostname","members_only":false},

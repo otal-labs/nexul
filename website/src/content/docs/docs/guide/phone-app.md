@@ -39,7 +39,7 @@ The phone stays signed in for 90 days after you last used it. It shows under **D
 - **Chat**: your channels, direct messages, and threads. Read and reply, with code blocks shown as scrolling code, open an agent's notes, and read a bot's posts with their embeds.
 - **Board**: a project's tickets by status. Show only tickets where you're developer or tester, **Assign to me**, or **Open thread**. To move a ticket to another status, hold its card until it lifts and drop it on a status along the bottom, or open the ticket and pick one under **Status**.
 - **Deploys**: your stacks and their deploys, with the deploy log and each service's live logs. A stack that runs an image can be redeployed from here; one built from a compose file redeploys from the web.
-- **More**: docs to read, runners (if you can see them), and your settings: appearance, devices, and which workspace the app shows. A ticket or doc mentioned in a doc or ticket opens when you tap it; one you can't open shows its title with a lock and doesn't open.
+- **More**: docs to read, runners (the machines you are on), and your settings: appearance, devices, and which workspace the app shows. A ticket or doc mentioned in a doc or ticket opens when you tap it; one you can't open shows its title with a lock and doesn't open.
 
 The Board, Deploys and docs show the projects you're in. Until a project lists you or one of your roles, the app has no Board or Deploys tab, and chat and the inbox work as usual.
 

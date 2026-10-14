@@ -8,7 +8,8 @@ export interface SidebarNavEntry {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  area: RouteArea;
+  // Absent for a page every member opens.
+  area?: RouteArea;
   end?: boolean;
   wip?: boolean;
 }

@@ -1,6 +1,7 @@
 // The permission each gated area needs: the web's sidebar and route guard and the phone's tabs and screens read it.
 export const AREA_PERMISSION = {
-  runners: "runners:read",
+  // Add machines: what offers adding a runner. The Runners page itself opens to every member and shows the machines the server returns.
+  runners: "machines:create",
   topology: "topology:read",
   automations: "automations:read",
   projects: "projects:read",

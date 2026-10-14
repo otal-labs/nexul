@@ -65,6 +65,7 @@ var pathAliases = map[string]string{
 	"agent":              "chat",
 	"automation-secrets": "automations",
 	"botwebhooks":        "botwebhook",
+	"runners":            "machines",
 }
 
 // exactDenylist blocks a path regardless of scopes: a runner enrollment code joins a machine to the fleet and an
@@ -74,7 +75,7 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
-// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, or a conversation's bots (ADR 0057, 0094, 0101, 0107, 0150).
+// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, a conversation's bots, or a machine's reads, which have no read scope since seeing one is a rule (ADR 0057, 0094, 0101, 0107, 0150, 0151).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
 	"GET /api/services/{id}/services/{name}/logs":                Scope(permissions.StacksLogs),
@@ -94,6 +95,11 @@ var verbRouteScope = map[string]Scope{
 	"DELETE /api/memories/interview-drafts/{id}":                 Scope(permissions.MemoriesWrite),
 	"POST /api/plays/{id}/run":                                   Scope(permissions.PlaysRun),
 	"POST /api/plays/queue":                                      Scope(permissions.PlaysRun),
+	"GET /api/machines":                                          Scope(permissions.MachinesDeploy),
+	"GET /api/runners":                                           Scope(permissions.MachinesDeploy),
+	"GET /api/runners/queue":                                     Scope(permissions.MachinesDeploy),
+	"GET /api/runners/latest-version":                            Scope(permissions.MachinesDeploy),
+	"DELETE /api/runners/{id}":                                   Scope(permissions.MachinesWrite),
 }
 
 // verbRoutes matches a request to its verbRouteScope pattern the way the serving mux would.

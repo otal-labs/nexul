@@ -14,7 +14,7 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
-const permissions = ["tickets:read", "docs:read", "memories:read", "projects:read", "runners:read", "chat:write"];
+const permissions = ["tickets:read", "docs:read", "memories:read", "projects:read", "chat:write"];
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 

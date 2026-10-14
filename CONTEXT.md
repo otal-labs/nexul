@@ -620,7 +620,13 @@ holds all four on every machine and is never denied; an Owner of another
 workspace holds nothing here by right. The instance Owner and anyone holding
 Manage on the machine write its rules, and nobody allows, or lifts a Deny on,
 what they don't hold there. **Add machines** is not one of them: it is an
-instance-area permission that lets a person bring in a new machine.
+instance-area permission that lets a person bring in a new machine. A machine's
+runners follow it: the machine list, the runner list, the queue and the live
+frames of its runners leave out a machine someone can't See, and adding a runner
+to a machine that exists, discovering what runs on it or removing a runner takes
+Manage on it. A runner enrolled under a machine name nobody has makes the
+machine, and its adder gets a rule with all four permissions in the same write;
+the maker of an enrollment code is checked again when the code is used.
 _Avoid_: Machine access
 
 **Wizard**:
@@ -932,7 +938,7 @@ _Avoid_: Whole instance, admin settings
 One part of the instance a Permission overwrite may sit on, outside every
 workspace: the instance itself (its URL, upgrades, failed events), Sign-in
 providers, each Connector, DNS and gateways, Instance templates, accounts,
-runners and machines, the topology registry, automation hosts, integrations,
+adding machines, the topology registry, automation hosts, integrations,
 and the audit log. Each names the permissions its rules may set. A person holds
 one of them through a role in any workspace they are in, then the area's rules
 for their roles, of which Allow wins, then a rule naming them. An Owner of any
