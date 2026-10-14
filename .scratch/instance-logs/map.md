@@ -67,6 +67,7 @@ tickets they wait on are resolved.
 ## Decisions so far
 
 - [How the server reads the logs OpenObserve holds](issues/01-reading-openobserve-from-the-server.md): one `_search` call with root credentials (no read-only user exists), server-built escaped SQL over a fixed column list, Nexul's own limits on range and rows.
+- [How a server runner's and the automations host's logs reach OpenObserve](issues/02-shipping-runner-and-automations-logs.md): relayed through the server, a `log` frame from machine runners and `self/logs` from the host, with the source stamped by the server and a bounded queue of 1000 across disconnects; personal runners never ship.
 
 ## Not yet specified
 
