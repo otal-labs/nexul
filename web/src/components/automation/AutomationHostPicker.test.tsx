@@ -9,6 +9,9 @@ import type { Automation } from "@/models/Automation";
 import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
+const card = (name: string, actions: string[]) => ({
+  id: `m-${name}`, name, stack_root: "/data/nexul", first_seen: "2026-08-01T00:00:00Z", last_seen: "2026-08-12T12:00:00Z", actions,
+});
 
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, patch: mocks.patch }, errorMessage: () => "error" }));
@@ -18,7 +21,10 @@ const hostFields = { machine: "prod", os: "linux", arch: "amd64", version: "v1",
 const hosts = [
   { id: "h-instance", name: "instance", ...hostFields },
   { id: "h-jobs", name: "jobs-1", ...hostFields },
+  { id: "h-seen", name: "seen-1", ...hostFields, machine: "seen-only" },
+  { id: "h-new", name: "fresh-1", ...hostFields, machine: "not-in-nexul" },
 ];
+const machines = [card("prod", ["machines:see", "machines:deploy"]), card("seen-only", ["machines:see"])];
 
 const automation = (hostId: string | null): Automation => ({
   id: "a1",
@@ -46,18 +52,27 @@ const renderPicker = (hostId: string | null) =>
 describe("AutomationHostPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.get.mockResolvedValue({ data: hosts });
+    mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/machines" ? machines : hosts }));
     mocks.patch.mockResolvedValue({ data: automation("h-jobs") });
   });
 
-  it("shows an unplaced automation on the built-in host, listing the instance host once", async () => {
+  it("lists the instance host and the hosts on machines the viewer may deploy to, or that Nexul doesn't know", async () => {
     const user = userEvent.setup();
     renderPicker(null);
 
     const picker = screen.getByRole("combobox", { name: "Runs on" });
     expect(picker).toHaveTextContent("instance (built in)");
     await user.click(picker);
-    expect(await screen.findAllByRole("option")).toHaveLength(2);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["instance (built in)", "jobs-1", "fresh-1"]);
+  });
+
+  it("keeps the host an automation already runs on named but not pickable when Deploy to there is gone", async () => {
+    const user = userEvent.setup();
+    renderPicker("h-seen");
+
+    await user.click(screen.getByRole("combobox", { name: "Runs on" }));
+
+    expect(await screen.findByRole("option", { name: "seen-1" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("moves the automation to another host", async () => {

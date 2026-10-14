@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RemoveAutomationHostButton } from "@/components/automationHost/RemoveAutomationHostButton";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ delete: vi.fn(), confirm: vi.fn() }));
 
-vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({ api: { delete: mocks.delete }, errorMessage: () => "Something went wrong" }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 vi.mock("@/hooks/useConfirmationDialog", () => ({ useConfirmationDialog: () => ({ open: mocks.confirm }) }));
 
 const host = {
@@ -22,16 +23,17 @@ const host = {
   last_seen: "2026-08-12T12:00:00Z",
 };
 
-const renderButton = (connected: boolean) =>
+const renderButton = (connected: boolean, actions: string[] = ["machines:see", "machines:write"]) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RemoveAutomationHostButton host={{ ...host, connected }} />
+      <RemoveAutomationHostButton host={{ ...host, connected }} machine={{ actions }} />
     </QueryClientProvider>,
   );
 
 describe("RemoveAutomationHostButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetViewer();
     mocks.delete.mockResolvedValue({});
   });
 
@@ -68,5 +70,33 @@ describe("RemoveAutomationHostButton", () => {
     await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
 
     await waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/automation-hosts/h-1"));
+  });
+
+  it("is hidden from someone who only sees or deploys to the machine", () => {
+    renderButton(true, ["machines:see", "machines:deploy"]);
+
+    expect(screen.queryByRole("button", { name: "Remove jobs-1" })).not.toBeInTheDocument();
+  });
+
+  it("is locked, with the reason, for a role that shows locked actions", async () => {
+    viewer.showLocked = true;
+    const user = userEvent.setup();
+    renderButton(true, ["machines:see"]);
+
+    await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
+
+    expect(screen.getByRole("button", { name: "Remove jobs-1" })).toHaveAttribute("aria-disabled", "true");
+    expect(mocks.confirm).not.toHaveBeenCalled();
+  });
+
+  it("answers to the instance Owner for a host on a machine Nexul doesn't know", () => {
+    viewer.instanceOwner = true;
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RemoveAutomationHostButton host={host} />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Remove jobs-1" })).not.toHaveAttribute("aria-disabled");
   });
 });

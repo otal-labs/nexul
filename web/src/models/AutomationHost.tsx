@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import { hasPermission } from "@nexul/client-core/permissions";
+
+import type { Machine } from "@/models/Runner";
+
 // The bundled host every unplaced automation runs on.
 export const InstanceHostName = "instance";
 
@@ -16,6 +20,16 @@ export const AutomationHostSchema = z.object({
 });
 
 export type AutomationHost = z.infer<typeof AutomationHostSchema>;
+
+// The machine card a host answers to, or undefined for a host on a machine Nexul doesn't know, which only the instance Owner sees.
+export const machineOfHost = (host: AutomationHost, machines: readonly Machine[] | undefined): Machine | undefined =>
+  machines?.find((machine) => machine.name === host.machine);
+
+// Whether the viewer may place an automation on host: Deploy to on its machine, or a machine Nexul doesn't know, which only the Owner is shown.
+export const canPlaceOn = (host: AutomationHost, machines: readonly Machine[]): boolean => {
+  const machine = machineOfHost(host, machines);
+  return !machine || hasPermission(machine.actions, "machines:deploy");
+};
 
 // Names become service names on the machine, so they share the installer's pattern.
 export const AutomationHostEnrollmentFormSchema = z.object({
