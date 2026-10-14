@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // defaultStackRoot is a machine's stack root until the owner changes it (spec §2).
@@ -16,6 +18,12 @@ type Machine struct {
 	ReportedHostname string    `json:"reported_hostname,omitempty"`
 	FirstSeen        time.Time `json:"first_seen"`
 	LastSeen         time.Time `json:"last_seen"`
+}
+
+// MachineView is a machine with the actions its caller holds on it, so a client shows the controls they may use.
+type MachineView struct {
+	*Machine
+	Actions permissions.Set `json:"actions"`
 }
 
 // CreatedMachine is a machine an enrollment brings into being, with the person who gets every action on it in the same

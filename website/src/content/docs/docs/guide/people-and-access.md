@@ -111,6 +111,10 @@ PUT /api/permissions
 GET /api/permissions?resource_type=instance_area&resource_id=dns
 ```
 
+### Machines
+
+A machine carries rules of its own, like a project: a role of any workspace or a person, with **See**, **Deploy to**, **Manage** and **Delete** each at Allow, Fallback or Deny. See is held only through those rules, so a machine nobody has a rule on is seen by the instance Owner alone. The instance Owner and anyone holding Manage on a machine write its rules, from the **People on this machine** row on the [Runners page](/docs/guide/runners/#people-on-this-machine). **Add machines** stays an instance permission, handed out on the `machines` area above.
+
 ## Who's in each project
 
 **Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project. It shows to anyone who can manage a project's access (`projects:access`); the Owner sees every project, anyone else only the projects they're in and manage.

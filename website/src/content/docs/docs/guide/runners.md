@@ -19,6 +19,14 @@ What you can do on a machine you are on comes from three permissions: **Deploy t
 
 After an upgrade from a release that listed every machine to everyone who could read machines, only the instance Owner is on each machine, and the old `runners` and `machines:read` permissions are gone. Add people back with a rule on each machine.
 
+## People on this machine
+
+Each machine's group on the **Runners** page has a **People on this machine** row for the instance Owner and anyone holding **Manage** on it. A machine nobody has a rule on says **Only you** with **Add people**; once it has rules the row names who they reach. Click the row, the **⋯** button or right-click the group and pick **Permissions…** to open the permissions panel.
+
+The panel sets four permissions: **See**, **Deploy to**, **Manage** and **Delete**, each Allow, Fallback or Deny, for a role of any workspace (named with its workspace, such as "Member in Northwind") or for a person. Allowing See is what puts someone on the machine: the list, the pickers and the live updates start showing it to them. **Check access** shows a person's answer for each permission and the rule or role it came from. You can't allow what you don't hold on the machine, nor lift a Deny on it, but you can always add a Deny. A change shows at once to the person it names and to everyone who manages the machine.
+
+With the API or MCP, a machine's rules are `resource_type: "machine"` on `PUT /api/permissions` and `permission_overwrite_update`, with the actions `machines:see`, `machines:deploy`, `machines:write` and `machines:delete`. `GET /api/machines` and `machine_list` list the actions you hold on each machine.
+
 ## Machines
 
 Every runner belongs to a machine, and a stack deploys to a machine rather than to a runner. Any connected, idle runner on that machine picks up the job, so you scale a machine by adding runners to it. Jobs wait in the queue while no runner on the machine is connected.

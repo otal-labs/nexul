@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getDocsKey } from "@/hooks/DocHooks";
 import { getProjectPeopleKey } from "@/hooks/PeopleHooks";
+import { getMachinesKey, refetchRunnersAndQueue } from "@/hooks/RunnerHooks";
 import { getStacksKey } from "@/hooks/StackHooks";
 import {
   type InstanceArea,
@@ -99,6 +100,9 @@ export const useSaveRules = () => {
       if (resourceType === "doc" || resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocsKey] });
       if (resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocFoldersKey] });
       if (resourceType === "stack") await client.invalidateQueries({ queryKey: [getStacksKey] });
+      if (resourceType === "machine") {
+        await Promise.all([client.invalidateQueries({ queryKey: [getMachinesKey] }), refetchRunnersAndQueue(client)]);
+      }
       if (changes.length > 0) toast.success(done ?? "Permissions saved");
     },
     onError: (error) => toast.error(errorMessage(error)),

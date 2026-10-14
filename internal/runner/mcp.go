@@ -9,6 +9,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // MCPTools returns the machine and instance tools: machines with their runners and queue, discovery, and upgrades.
@@ -26,12 +27,14 @@ type machineListIn struct {
 }
 
 type machineResult struct {
-	ID               string         `json:"id"`
-	Name             string         `json:"name"`
-	StackRoot        string         `json:"stack_root"`
-	ReportedHostname string         `json:"reported_hostname,omitempty"`
-	LastSeen         time.Time      `json:"last_seen"`
-	Runners          []runnerResult `json:"runners"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	StackRoot        string    `json:"stack_root"`
+	ReportedHostname string    `json:"reported_hostname,omitempty"`
+	LastSeen         time.Time `json:"last_seen"`
+	// Actions are what you hold on this machine: machines:see, machines:deploy, machines:write (Manage), machines:delete.
+	Actions permissions.Set `json:"actions"`
+	Runners []runnerResult  `json:"runners"`
 	// AutomationsHosts are the automations hosts filed under this machine; their ids are host_delete's.
 	AutomationsHosts []automationsHostResult `json:"automations_hosts"`
 }
@@ -80,7 +83,7 @@ func machineListTool(s *Service) mcptool.Tool {
 			"machines per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in machineListIn) (any, error) {
-			machines, err := s.ListMachines(ctx)
+			machines, err := s.ListMachineViews(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -114,7 +117,7 @@ func machineListTool(s *Service) mcptool.Tool {
 }
 
 // groupRunners files each runner under its machine by name; a runner whose machine is unresolved is returned apart.
-func groupRunners(machines []*Machine, runners []RunnerView) ([]machineResult, []runnerResult) {
+func groupRunners(machines []MachineView, runners []RunnerView) ([]machineResult, []runnerResult) {
 	byName := make(map[string][]runnerResult, len(machines))
 	var unassigned []runnerResult
 	known := make(map[string]bool, len(machines))
@@ -133,7 +136,7 @@ func groupRunners(machines []*Machine, runners []RunnerView) ([]machineResult, [
 		rs := byName[m.Name]
 		out = append(out, machineResult{
 			ID: m.ID, Name: m.Name, StackRoot: m.StackRoot, ReportedHostname: m.ReportedHostname,
-			LastSeen: m.LastSeen, Runners: rs,
+			LastSeen: m.LastSeen, Actions: m.Actions, Runners: rs,
 		})
 	}
 	return out, unassigned

@@ -36,6 +36,8 @@ export const MachineSchema = z.object({
   reported_hostname: z.string().optional(),
   first_seen: z.string(),
   last_seen: z.string(),
+  // What the viewer holds on it: machines:see, machines:deploy, machines:write (Manage) and machines:delete.
+  actions: z.array(z.string()),
 });
 
 export type Machine = z.infer<typeof MachineSchema>;
