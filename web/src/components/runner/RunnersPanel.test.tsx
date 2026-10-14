@@ -112,7 +112,7 @@ describe("RunnersPanel", () => {
     mocks.get.mockResolvedValue({ data: [] });
     renderPanel();
 
-    expect(await screen.findByText("No runners yet. Add one to start building and deploying.")).toBeInTheDocument();
+    expect(await screen.findByText("No runners on the machines you can see yet.")).toBeInTheDocument();
     expect(screen.getByText("Nothing queued.")).toBeInTheDocument();
   });
 
