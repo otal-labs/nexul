@@ -15,7 +15,7 @@ The code proves you installed the server, so a stranger who finds the port canno
 
 ## 2. Give Nexul a domain
 
-Pick how traffic reaches Nexul. There is no skip, because GitHub sign-in needs the domain. The three ways are equals: Cloudflare is one way in, not a requirement, and computers for your agents pair without it (see the Welcome wizard after the owner wizard).
+Pick how traffic reaches Nexul. There is no skip, because GitHub sign-in needs the domain. The three ways are equals: Cloudflare is one way in, not a requirement, and computers for your agents pair without it (see the [Welcome wizard](/docs/guide/welcome-wizard/) after the owner wizard).
 
 - **Cloudflare tunnel**: no open ports. Paste a Cloudflare API token (see [the permissions it needs](/docs/guide/topology-and-dns/#cloudflare-api-token-permissions)), pick the account that owns your domain, deploy the tunnel, then choose the subdomain and zone. Cloudflare issues the certificate.
 - **Reverse proxy**: type the domain. The page shows the A (and AAAA) record to create at your DNS provider and waits until the domain resolves to this server. Nexul then runs Traefik on ports 80 and 443 with a Let's Encrypt certificate. Both ports must be reachable from the internet.
@@ -47,13 +47,14 @@ The first person to sign in becomes the workspace owner and walks through three 
 1. **Introduce yourself**: the name and avatar others see. The GitHub ones are the default.
 2. **Set up your workspace**: name it. A new workspace has no projects yet.
 3. **Connect your tools**: the same list as **Settings → Connectors**. Cloudflare is optional here: connect it only if you want Nexul to manage your domain, exposures and DNS records. It already shows as connected if you used the tunnel.
+
 **Workspace ready** confirms the workspace, and the Welcome wizard takes over with what's yours to set up: **Connect GitHub** and **Your computer**. It opens on the first of them not done yet. Either can wait: **Skip for now** moves on, and **Finish later** leaves the wizard. Whatever is left stays under **Welcome** in your account menu, with a red dot until it's done.
 
 **Your computer** is where agents run: run its one command on that computer, the same as **Settings → Computers**. It needs no Cloudflare and no domain. The three checks, **Computer connected**, **T3 Code found** and **Paired**, turn green, then **Set up** sets up the computer. See [paired computers](/docs/guide/paired-computers/).
 
 A new workspace has no projects, so the Welcome wizard ends with **Create your first project**, which opens the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project).
 
-Everyone who signs in after you gets the Welcome wizard too: their name and avatar first, then the steps their roles give them.
+Everyone who signs in after you gets the [Welcome wizard](/docs/guide/welcome-wizard/) too: their name and avatar first, then the steps their roles give them.
 
 ## If something goes wrong
 

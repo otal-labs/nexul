@@ -11,7 +11,7 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS with an account that can use `sudo`, or Windows, and a way out to the internet. On a Mac, T3 Code answers only while you are logged in at it, and on Windows the Nexul app itself runs only while you are logged on (see [What the command does on the computer](#what-the-command-does-on-the-computer)).
 
-1. Open your settings, **Computers**, and press **Add a computer**.
+1. Open your settings, **Computers**, and press **Add a computer**. The [Welcome wizard](/docs/guide/welcome-wizard/)'s **Your computer** step runs the same steps.
 2. Copy the command under **macOS / Linux** and run it in a terminal on that computer, from your own account (not as root):
 
    ```sh
