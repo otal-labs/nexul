@@ -1,6 +1,6 @@
 ---
 title: Stacks and deploys
-description: Ship a repository as a stack, roll it back, read its logs, and deploy its branches as their own copies.
+description: Ship a repository as a stack, set its environment, roll it back, read its logs, and deploy its branches as their own copies.
 sidebar:
   order: 6
 ---
@@ -20,6 +20,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | Section | What you do there |
 | --- | --- |
 | **Overview** | Deploy, roll back, and see each container's image, status, networks and ports |
+| **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
 | **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
 | **Branch deploys** | Deploy other branches as their own copies |
@@ -39,6 +40,18 @@ The **Deploy** card shows one way to ship, depending on the stack:
 **Rollback** deploys the image of the last deploy that came up healthy. It shows only when that deploy has an image to go back to. A build leaves none, so a stack that builds from a repository has no Rollback; to go back, **Build & deploy** the earlier ref.
 
 A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
+
+## Environment
+
+**Environment** lists the stack's variables, a name and a value each. Values show as dots until you click **Reveal values**. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.
+
+Saving doesn't redeploy: the running containers keep their old values, and the next deploy starts with the new ones. **Deploy now**, beside **Save**, ships it at once. It builds the stack's branch when a repository is attached, and redeploys the running image of a single container without one. It waits until your changes are saved and takes `deploys:write`.
+
+- Changing the environment takes `stacks:write` on the stack. Someone who can read the stack but not change it sees the names and never the values: the server withholds them from every read, so no part of a page or an API answer carries them. The same goes for the overrides on a branch deploy rule.
+- A copy deployed from a branch has no environment of its own. Its page lists the names, and its values come from the stack and the rule's overrides.
+- Two people editing at once: the page shows the other person's save when it arrives, and saving replaces the whole environment with what your page holds.
+- A change to a stack, its environment included, reaches live updates, webhooks and automations as the names only.
+- Agents list a stack's variables by name with `stack_get` and change them with `stack_update`, which sets and unsets single variables so values they never saw are kept. A value never leaves the server over MCP, whatever the caller may do.
 
 ## Retrying a failed deploy
 

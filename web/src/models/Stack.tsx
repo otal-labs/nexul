@@ -78,6 +78,8 @@ export interface Stack {
   strategy: DeployStrategy;
   compose_path?: string;
   env?: Record<string, string>;
+  // The server emptied every env and override value for this reader; only the keys are real.
+  env_masked?: boolean;
   docker_network?: string;
   ports?: string[];
   mounts?: string[];
@@ -128,6 +130,15 @@ export const deployCommit = (deploy: Pick<Deploy, "commit" | "ref">): string =>
 
 export const isRetryable = (deploy: Pick<Deploy, "status" | "commit" | "ref" | "image">): boolean =>
   deploy.status === DeployStatus.Failed && !!(deploy.commit || deploy.ref || deploy.image);
+
+// What "Deploy now" asks for: a build of the branch when a repository is attached, else the running image of a run stack.
+export const deployNowInput = (
+  stack: Pick<Stack, "build_source" | "strategy">,
+  image: string | undefined,
+): { ref: string } | { image: string } | undefined => {
+  if (stack.build_source) return stack.build_source.branch ? { ref: stack.build_source.branch } : undefined;
+  return stack.strategy === DeployStrategy.Run && image ? { image } : undefined;
+};
 
 // Newest deploy by creation time; the API's order is not part of its contract.
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>

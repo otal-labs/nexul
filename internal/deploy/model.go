@@ -289,7 +289,9 @@ type Stack struct {
 	Strategy Strategy `json:"strategy"`
 	// ComposePath is the compose file's path relative to the repo (compose strategy only); defaults to docker-compose.yml.
 	ComposePath string            `json:"compose_path,omitempty"`
-	Env         map[string]string `json:"env,omitempty"`
+	Env         map[string]string `json:"env,omitempty" jsonschema:"Environment variables. Only someone who can write the stack is sent the values; an event and a reader's read carry the keys with empty values."`
+	// EnvMasked is set when the env and rule override values were emptied for this read; never stored.
+	EnvMasked bool `json:"env_masked,omitempty" jsonschema:"True when the values of env and of the branch deploy rules' overrides were withheld, so every value is empty and only the keys are real."`
 	// DockerNetwork is the network the container joins (run strategy only; compose reads its own).
 	DockerNetwork string `json:"docker_network,omitempty"`
 	// Ports are host→container mappings for the run strategy, used by entry-path services like a reverse proxy.
