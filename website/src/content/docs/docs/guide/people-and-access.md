@@ -77,7 +77,7 @@ All five can chat and use channels, voice, mentions, and notifications.
 
 ### Instance permissions
 
-Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, adding machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: whoever owns a workspace holds all of them, which is why `workspaces:create` is as strong as Owner.
+Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, adding machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: the instance Owner, the Owner of the default workspace, holds all of them. The Owner of another workspace is a full Owner inside it, and can still create workspaces, but holds the instance areas below only through a role or an area's rule, like anyone else.
 
 To hand out one part of the instance without a custom role, such as letting bob manage DNS but not connectors, the instance Owner (the Owner of the default workspace) sets a rule on that **instance area** for a role or a person, the same Allow, Fallback and Deny as on a project. A role rule names a role of any workspace and reaches its holders. The areas and what each rule may set:
 
@@ -95,7 +95,7 @@ To hand out one part of the instance without a custom role, such as letting bob 
 | Integrations | `integrations` | `integrations:read`, `integrations:write`, `integrations:delete` |
 | The audit log | `audit` | `audit:read` |
 
-A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. An Owner of any workspace is never denied, so nobody can lock the instance away from its Owners. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it.
+A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. The instance Owner is never denied, so nobody can lock the instance away from them; the Owner of another workspace has no such protection here, and an area's rules apply to them as to anyone. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it.
 
 Only the instance Owner sees or changes these rules. In **Settings**, each instance entry ends with an **Access** card listing its areas: Instance, Team (accounts), Sign-in providers, DNS and Templates each show their own, Connectors has one row per connector on its **Access** tab, and the areas without an entry of their own (adding machines, the topology registry, automation hosts, integrations, the audit log) sit under Instance. Each row says whose rules it carries, and opens the permissions panel on that area: the roles of every workspace, each named with its workspace ("Member in Northwind"), and every account, with **Check access** showing a person's answer for each permission and the rule or role it came from. A Deny on a read that a person or role holds today asks first, since a rule beats every role they hold and it may be their last way in.
 

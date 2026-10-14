@@ -21,7 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
-// uOtherOwner owns a second workspace: an Owner, so never denied, but not the instance Owner.
+// uOtherOwner owns a second workspace: an Owner there, but not the instance Owner.
 const uOtherOwner = "u-other-owner"
 
 func withOtherWorkspaceOwner(t *testing.T, f permFixture) {
@@ -147,29 +147,69 @@ func TestInstanceAreas_OnlyTheInstanceOwnerWrites(t *testing.T) {
 	assert.True(t, held)
 }
 
-// TestInstanceAreas_AnOwnerIsNeverDenied: rules denying every area to the Owner role and to each Owner by name take
-// nothing from the instance Owner or an Owner of another workspace.
-func TestInstanceAreas_AnOwnerIsNeverDenied(t *testing.T) {
+// TestInstanceAreas_TheInstanceOwnerIsNeverDenied: rules denying every area to the Owner role and to the instance Owner
+// by name take nothing from them.
+func TestInstanceAreas_TheInstanceOwnerIsNeverDenied(t *testing.T) {
 	f := newPermFixture(t)
-	withOtherWorkspaceOwner(t, f)
 	s := f.svc
 	for _, area := range s.accessSvc.InstanceAreas() {
-		for _, to := range []access.Targets{{UserIDs: []string{uOwner, uOtherOwner}}, {RoleIDs: []string{"role-owner", "role-owner-other"}}} {
+		for _, to := range []access.Targets{{UserIDs: []string{uOwner}}, {RoleIDs: []string{"role-owner"}}} {
 			require.NoError(t, s.accessSvc.SetRules(context.Background(), uOwner, "instance_area", []string{area.Key}, to, area.Actions, access.StateDeny))
 		}
 	}
-	for _, owner := range []string{uOwner, uOtherOwner} {
-		for _, area := range s.accessSvc.InstanceAreas() {
-			for _, action := range area.Actions {
-				held, err := s.accessSvc.HoldsArea(context.Background(), owner, area.Key, action)
-				require.NoError(t, err)
-				assert.True(t, held, "%s holds %s on %s", owner, action, area.Key)
-			}
+	for _, area := range s.accessSvc.InstanceAreas() {
+		for _, action := range area.Actions {
+			held, err := s.accessSvc.HoldsArea(context.Background(), uOwner, area.Key, action)
+			require.NoError(t, err)
+			assert.True(t, held, "the instance Owner holds %s on %s", action, area.Key)
 		}
-		me, err := s.authSvc.Me(as(owner), owner)
-		require.NoError(t, err)
-		assert.Len(t, me.InstancePermissions, len(permissions.AllActions()), owner)
 	}
+	me, err := s.authSvc.Me(as(uOwner), uOwner)
+	require.NoError(t, err)
+	assert.Len(t, me.InstancePermissions, len(permissions.AllActions()))
 	require.NoError(t, s.accessSvc.SetRules(context.Background(), uOwner, "instance_area", []string{"dns"}, access.Targets{UserIDs: []string{uOwner}}, []permissions.Action{permissions.DNSWrite}, access.StateFallback),
 		"the instance Owner can always take back a rule")
+}
+
+// TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea: owning a second workspace hands over no instance area, over HTTP,
+// MCP and /api/auth/me, while its workspace actions stay; a rule naming one area gives that area's actions and no other.
+func TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea(t *testing.T) {
+	f := newPermFixture(t)
+	withOtherWorkspaceOwner(t, f)
+	s := f.svc
+	dnsRoutes := s.dnsHandler.Routes()
+	connectorRoutes := connectors.NewHandler(s.connectorsSvc).Routes()
+	gateways := tool(t, dns.MCPTools(s.dnsSvc), "gateway_list")
+
+	t.Run("without a rule", func(t *testing.T) {
+		assert.Equal(t, http.StatusForbidden, status(t, dnsRoutes, uOtherOwner, http.MethodGet, "/api/dns/gateways", ""))
+		assert.Equal(t, http.StatusForbidden, status(t, connectorRoutes, uOtherOwner, http.MethodPost, "/api/connectors/github/disconnect", ""))
+		_, err := gateways.Call(as(uOtherOwner), json.RawMessage(`{}`))
+		assert.Equal(t, forbidden, outcome(err))
+		_, err = gateways.Call(as(uOwner), json.RawMessage(`{}`))
+		require.NoError(t, err, "the instance Owner still lists them")
+
+		me, err := s.authSvc.Me(as(uOtherOwner), uOtherOwner)
+		require.NoError(t, err)
+		assert.NotContains(t, me.InstancePermissions, "dns:read")
+		assert.NotContains(t, me.InstancePermissions, "instance:write")
+		assert.Contains(t, me.InstancePermissions, "projects:create", "the workspace actions of their own workspace stay")
+	})
+
+	t.Run("a rule for one area gives that area alone", func(t *testing.T) {
+		permissionRoutes := access.NewHandler(s.accessSvc).Routes()
+		require.Equal(t, http.StatusNoContent, status(t, permissionRoutes, uOwner, http.MethodPut, "/api/permissions",
+			`{"resource_type":"instance_area","resource_ids":["dns"],"user_ids":["`+uOtherOwner+`"],"actions":["dns:read"],"state":"allow"}`))
+
+		assert.Equal(t, http.StatusOK, status(t, dnsRoutes, uOtherOwner, http.MethodGet, "/api/dns/gateways", ""))
+		_, err := gateways.Call(as(uOtherOwner), json.RawMessage(`{}`))
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, status(t, dnsRoutes, uOtherOwner, http.MethodDelete, "/api/dns/gateways/g-1", ""), "only the action the rule sets")
+		assert.Equal(t, http.StatusForbidden, status(t, connectorRoutes, uOtherOwner, http.MethodPost, "/api/connectors/github/disconnect", ""), "and only the area it sits on")
+
+		me, err := s.authSvc.Me(as(uOtherOwner), uOtherOwner)
+		require.NoError(t, err)
+		assert.Contains(t, me.InstancePermissions, "dns:read")
+		assert.NotContains(t, me.InstancePermissions, "dns:write")
+	})
 }

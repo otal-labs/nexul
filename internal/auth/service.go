@@ -555,7 +555,7 @@ func (s *Service) requireAnywhere(ctx context.Context, userID string, action per
 }
 
 // requireArea refuses userID unless they hold action on area, by a role in a workspace they belong to (ADR 0087) or by
-// the area's rules, which an Owner always does (ADR 0088, ADR 0148).
+// the area's rules, which the instance Owner always does (ADR 0088, ADR 0151).
 func (s *Service) requireArea(ctx context.Context, userID, area string, action permissions.Action) error {
 	if s.cfg.Permissions == nil {
 		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)

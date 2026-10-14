@@ -828,7 +828,7 @@ the workspace the entity belongs to (a workspace's topology canvas in that works
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
 workspace the caller is in, and then the rules on the Instance area it acts on. A member holds a set of roles, or none, and holds what any of them allows. The Owner of
-any workspace therefore holds every instance-level permission, and nobody grants a permission they don't hold. What
+any workspace therefore holds every permission outside the instance areas, and only the instance Owner holds those by right; nobody grants a permission they don't hold. What
 every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
 is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
 person is In, and Create projects (`projects:create`) and Edit the workspace Interview template (`memories:template`)
@@ -941,9 +941,10 @@ providers, each Connector, DNS and gateways, Instance templates, accounts,
 adding machines, the topology registry, automation hosts, integrations,
 and the audit log. Each names the permissions its rules may set. A person holds
 one of them through a role in any workspace they are in, then the area's rules
-for their roles, of which Allow wins, then a rule naming them. An Owner of any
-workspace is never denied one. Only the instance Owner, the Owner of the
-default workspace, writes these rules, so one area is handed out without a
+for their roles, of which Allow wins, then a rule naming them. Only the instance
+Owner, the Owner of the default workspace, holds every area and is never denied
+one; an Owner of another workspace holds one only like anyone else. Only the
+instance Owner writes these rules, so one area is handed out without a
 custom role: "bob manages DNS but not connectors". They set them from the Access
 card on each instance Settings entry.
 _Avoid_: Admin area, instance permission (that is the bit, not the place)

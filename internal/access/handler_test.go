@@ -41,6 +41,7 @@ func newAccessHarness() (*Service, *fakeRepo, *fakeUsers) {
 	roles.set("ws-1", "alice", RoleInfo{})
 	s.SetRoles(roles)
 	s.SetScopes(fakeScopes{workspaces: map[string][]string{"owner": {"ws-1"}, "alice": {"ws-1"}}})
+	s.SetInstanceAreas("ws-1", nil)
 	return s, repo, users
 }
 

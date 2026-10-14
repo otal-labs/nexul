@@ -92,16 +92,63 @@ func TestDecide_InstanceAreaOrder(t *testing.T) {
 	}
 }
 
-func TestInstanceAreas_TheOwnerOfAnyWorkspaceIsAllowedWhateverTheRules(t *testing.T) {
+func TestInstanceAreas_TheInstanceOwnerIsNeverDenied(t *testing.T) {
 	s, repo := newAreaService(nil)
 	ctx := context.Background()
-	require.NoError(t, repo.Set(ctx, resourceTypeInstanceArea, "dns", "olga", nil, permissions.SetOf(permissions.DNSWrite)))
-	require.NoError(t, repo.SetRole(ctx, resourceTypeInstanceArea, "dns", "role-owner-b", nil, permissions.SetOf(permissions.DNSWrite)))
-	held, src, err := s.decideArea(ctx, "olga", "dns", permissions.DNSWrite, true)
+	require.NoError(t, repo.Set(ctx, resourceTypeInstanceArea, "dns", "alice", nil, permissions.SetOf(permissions.DNSWrite)))
+	require.NoError(t, repo.SetRole(ctx, resourceTypeInstanceArea, "dns", "role-owner", nil, permissions.SetOf(permissions.DNSWrite)))
+	held, src, err := s.decideArea(ctx, "alice", "dns", permissions.DNSWrite, true)
 	require.NoError(t, err)
 	assert.True(t, held)
 	assert.Equal(t, SourceOwner, src.Kind)
-	assert.Equal(t, "Owner of ws-b", s.namer(ctx).named(src).Sentence)
+	assert.Equal(t, "Owner of ws-default", s.namer(ctx).named(src).Sentence)
+}
+
+// TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea: olga owns ws-b, which gives her no instance area; only a rule
+// does, and a rule denying her takes it back like anyone's.
+func TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea(t *testing.T) {
+	s, repo := newAreaService(nil)
+	ctx := context.Background()
+	held, src, err := s.decideArea(ctx, "olga", "dns", permissions.DNSWrite, true)
+	require.NoError(t, err)
+	assert.False(t, held)
+	assert.Equal(t, "Only the instance Owner holds this unless a rule gives it", s.namer(ctx).named(src).Sentence)
+	require.ErrorIs(t, s.RequireArea(identity.WithActor(ctx, identity.Actor{ID: "olga"}), "dns", permissions.DNSWrite), apperrs.ErrForbidden)
+
+	require.NoError(t, repo.SetRole(ctx, resourceTypeInstanceArea, "dns", "role-owner-b", permissions.SetOf(permissions.DNSRead), nil))
+	held, err = s.HoldsArea(ctx, "olga", "dns", permissions.DNSRead)
+	require.NoError(t, err)
+	assert.True(t, held, "a rule for the Owner role gives the area")
+	held, err = s.HoldsArea(ctx, "olga", "dns", permissions.DNSWrite)
+	require.NoError(t, err)
+	assert.False(t, held, "only the action it sets")
+	held, err = s.HoldsArea(ctx, "olga", permissions.ConnectorAreaKey("github"), permissions.ConnectorsRead)
+	require.NoError(t, err)
+	assert.False(t, held, "and only the area it sits on")
+
+	require.NoError(t, repo.Set(ctx, resourceTypeInstanceArea, "dns", "olga", nil, permissions.SetOf(permissions.DNSRead)))
+	held, err = s.HoldsArea(ctx, "olga", "dns", permissions.DNSRead)
+	require.NoError(t, err)
+	assert.False(t, held, "a rule naming her beats the role's")
+}
+
+// TestExplainRoleArea_AnotherWorkspacesOwnerRoleIsNotTheInstanceOwners: the Owner role of a workspace other than the
+// default one is explained as holding nothing by right, and as the instance Owner's alone.
+func TestExplainRoleArea_AnotherWorkspacesOwnerRoleIsNotTheInstanceOwners(t *testing.T) {
+	s, _ := newAreaService(nil)
+	ctx := context.Background()
+	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-owner": "ws-default", "role-owner-b": "ws-b"})
+	other, err := s.ExplainRole(ctx, "alice", resourceTypeInstanceArea, "dns", "role-owner-b")
+	require.NoError(t, err)
+	for _, a := range other.Effective {
+		assert.False(t, a.Allowed, a.Action)
+		assert.Equal(t, "Only the instance Owner holds this unless a rule gives it", a.Source.Sentence)
+	}
+	instance, err := s.ExplainRole(ctx, "alice", resourceTypeInstanceArea, "dns", "role-owner")
+	require.NoError(t, err)
+	for _, a := range instance.Effective {
+		assert.True(t, a.Allowed, a.Action)
+	}
 }
 
 func TestSetRules_OnAnInstanceArea(t *testing.T) {

@@ -68,6 +68,7 @@ func upgradeTo0037(t *testing.T, db *sql.DB) (*Store, *access.Service) {
 	require.NoError(t, checkNotNewer(db, t.TempDir(), "test"))
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, nil)
+	accessSvc.SetInstanceAreas("workspace-default", nil)
 	accessSvc.SetRoles(storeRoles{s: s})
 	accessSvc.SetScopes(storeScopes{s: s})
 	return s, accessSvc
