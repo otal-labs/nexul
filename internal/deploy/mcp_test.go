@@ -100,6 +100,10 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"stack_delete of a missing stack", "stack_delete", `{"id":"nope"}`, apperrs.ErrNotFound, "stack_list"},
 		{"stack_deploy needs ref, image, or rollback", "stack_deploy", `{"id":"` + stack.ID + `"}`, apperrs.ErrInvalid, "rollback"},
 		{"stack_deploy rollback takes no ref", "stack_deploy", `{"id":"` + stack.ID + `","rollback":true,"ref":"main"}`, apperrs.ErrInvalid, ""},
+		{"stack_deploy retry takes no ref", "stack_deploy", `{"id":"` + stack.ID + `","retry":"done","ref":"main"}`, apperrs.ErrInvalid, "retry takes none"},
+		{"stack_deploy retry of a missing deploy", "stack_deploy", `{"id":"` + stack.ID + `","retry":"nope"}`, apperrs.ErrNotFound, "deploy_list"},
+		{"stack_deploy retry of another stack's deploy", "stack_deploy", `{"id":"other","retry":"done"}`, apperrs.ErrInvalid, "not a deploy of stack"},
+		{"stack_deploy retry of a deploy that did not fail", "stack_deploy", `{"id":"` + stack.ID + `","retry":"done"}`, apperrs.ErrConflict, "only a failed deploy"},
 		{"stack_deploy of a missing stack", "stack_deploy", `{"id":"nope","image":"img:1"}`, apperrs.ErrNotFound, "stack_list"},
 		{"stack_deploy rollback with no healthy deploy", "stack_deploy", `{"id":"nope","rollback":true}`, apperrs.ErrNotFound, "deploy_list"},
 		{"stack_deploy rollback with no healthy image", "stack_deploy", `{"id":"` + stack.ID + `","rollback":true}`, apperrs.ErrConflict, "roll back"},
@@ -414,6 +418,17 @@ func TestStackDeploy(t *testing.T) {
 			assert.Equal(t, "user-1:mcp", d.TriggeredBy)
 		})
 	}
+	t.Run("a retry rebuilds the commit the failed deploy built", func(t *testing.T) {
+		s, stack, repo := stackFixture(t)
+		seedDeploy(t, repo, &Deploy{ID: "bad", StackID: stack.ID, Kind: KindBuild, Status: StatusFailed, Ref: "main", Commit: "9f2c1ab", CreatedAt: at(1)})
+		ctx := identity.WithActor(t.Context(), identity.Actor{ID: "user-1"})
+		got, err := callAs(t, ctx, s, "stack_deploy", `{"id":"`+stack.ID+`","retry":"bad"}`)
+		require.NoError(t, err)
+		d := got.(deployResult)
+		assert.Equal(t, KindBuild, d.Kind)
+		assert.Equal(t, "9f2c1ab", d.Ref)
+		assert.Equal(t, "user-1:mcp", d.TriggeredBy)
+	})
 	t.Run("a second deploy while one is active is a conflict", func(t *testing.T) {
 		s, stack, _ := stackFixture(t)
 		_, err := call(t, s, "stack_deploy", `{"id":"`+stack.ID+`","ref":"main"}`)

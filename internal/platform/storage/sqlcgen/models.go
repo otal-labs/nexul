@@ -272,6 +272,8 @@ type Deploy struct {
 	PrNumber    int64
 	Kind        string
 	Address     string
+	Ref         string
+	CommitSha   string
 }
 
 type DeployLogLine struct {

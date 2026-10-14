@@ -12,6 +12,7 @@ const (
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
 	TopicDeployStatusChanged   = "deploy.status_changed"
+	TopicDeployRetried         = "deploy.retried"
 	// TopicDeployUpdated fires from the same transaction as the write it announces, so a reader who refetches
 	// on it never sees the record from before the change.
 	TopicDeployUpdated = "deploy.updated"
@@ -27,6 +28,7 @@ func Topics() []eventbus.Topic {
 	return []eventbus.Topic{
 		{Name: TopicDeployRequested, Payload: DeployRequestedEvent{}},
 		{Name: TopicDeployCancelRequested, Payload: DeployCancelRequestedEvent{}},
+		{Name: TopicDeployRetried, Payload: DeployRetriedEvent{}},
 		{Name: TopicDeployUpdated, Payload: DeployUpdatedEvent{}},
 		{Name: TopicStackCreated, Payload: StackEvent{}},
 		{Name: TopicStackUpdated, Payload: StackEvent{}},
@@ -39,6 +41,15 @@ type DeployUpdatedEvent struct {
 	ID      string `json:"id"`
 	Status  string `json:"status" enum:"pending,running,healthy,failed"`
 	StackID string `json:"stack_id" jsonschema:"The deploying stack's id."`
+}
+
+// DeployRetriedEvent is the deploy.retried payload: a failed deploy was started again as a new one.
+type DeployRetriedEvent struct {
+	ID      string `json:"id" jsonschema:"The new deploy's id."`
+	RetryOf string `json:"retry_of" jsonschema:"The failed deploy that was retried."`
+	StackID string `json:"stack_id" jsonschema:"The deploying stack's id."`
+	Ref     string `json:"ref,omitempty" jsonschema:"The commit the new deploy builds, else the ref it was asked for; empty for an image redeploy."`
+	Image   string `json:"image,omitempty" jsonschema:"The image the new deploy redeploys; empty for a build."`
 }
 
 // DeployCancelRequestedEvent asks the runner to stop a queued or running job.
@@ -84,6 +95,8 @@ type DeployStatusChangedEvent struct {
 	Status  string `json:"status"`
 	Error   string `json:"error,omitempty"`
 	Address string `json:"address,omitempty"`
+	// Commit is the commit the runner checked out; empty when the deploy failed before the checkout finished.
+	Commit string `json:"commit,omitempty"`
 	// Services is the observation report: one entry per container
 	// the stack started, reconciled into the services table by HandleStatusChanged.
 	Services []ObservedService `json:"services,omitempty"`

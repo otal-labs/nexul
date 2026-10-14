@@ -330,6 +330,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/deploys/{id}", "Get a deploy", "deploys")
 	spec.Register("GET", "/api/deploys/{id}/log", "Get a deploy's timestamped output lines", "deploys")
 	spec.Register("POST", "/api/deploys/{id}/cancel", "Cancel a pending/running deploy", "deploys")
+	spec.Register("POST", "/api/deploys/{id}/retry", "Start a failed deploy again on the commit it built, with the stack's current settings", "deploys")
 	spec.Register("GET", "/api/topology", "Get a workspace's topology canvas; ?workspace= names it, the first workspace when absent", "topology")
 	spec.Register("PUT", "/api/topology", "Replace a workspace's topology canvas; ?workspace= names it, the first workspace when absent", "topology")
 	spec.Register("GET", "/api/reviews", "List code reviews", "reviews")

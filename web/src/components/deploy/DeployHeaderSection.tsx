@@ -1,14 +1,15 @@
-import { GitBranchIcon } from "lucide-react";
+import { GitBranchIcon, GitCommitHorizontalIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import type { Crumb } from "@/components/PageBreadcrumb";
+import { DeployRetryButton } from "@/components/deploy/DeployRetryButton";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { formatRelativeTime } from "@/components/service/DeployTime";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useFetchStack } from "@/hooks/StackHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { Deploy } from "@/models/Stack";
+import { deployCommit, type Deploy } from "@/models/Stack";
 import { deployTitle } from "@/utils/DeployLogUtility";
 
 interface DeployHeaderSectionProps {
@@ -21,7 +22,8 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
   const workspaceCrumb = useWorkspaceCrumb();
   const projectCrumb = useProjectCrumb(stack?.project_id || undefined);
   const canOpenStack = useAreaAccess(stack?.project_id || undefined)?.("stacks") ?? false;
-  const branch = stack?.build_source?.branch;
+  const commit = deployCommit(deploy);
+  const branch = deploy.ref ? (deploy.ref === commit ? undefined : deploy.ref) : stack?.build_source?.branch;
   const stackPath = wsPath(`/stacks/${deploy.stack_id}`);
   const crumbs: Crumb[] = [
     workspaceCrumb,
@@ -38,6 +40,7 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
     <PageHeader
       crumbs={crumbs}
       title={deployTitle(deploy)}
+      actions={<DeployRetryButton deploy={deploy} />}
       meta={
         <>
           <DeployStatusBadge status={deploy.status} />
@@ -47,6 +50,12 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
             <span className="inline-flex items-center gap-1 font-mono text-xs wrap-anywhere">
               <GitBranchIcon className="size-3 shrink-0" aria-hidden />
               {branch}
+            </span>
+          )}
+          {commit && (
+            <span className="inline-flex items-center gap-1 font-mono text-xs" title={commit}>
+              <GitCommitHorizontalIcon className="size-3 shrink-0" aria-hidden />
+              {commit.slice(0, 7)}
             </span>
           )}
           <time dateTime={deploy.created_at}>{formatRelativeTime(deploy.created_at)}</time>

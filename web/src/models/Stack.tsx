@@ -116,9 +116,18 @@ export interface Deploy {
   rule_name?: string;
   ticket_id?: string;
   pr_number?: number;
+  ref?: string;
+  commit?: string;
   created_at: string;
   updated_at: string;
 }
+
+// The commit a deploy built: the one the runner reported, else the ref when it was already a full commit id.
+export const deployCommit = (deploy: Pick<Deploy, "commit" | "ref">): string =>
+  deploy.commit || (deploy.ref && /^[0-9a-f]{40}$/.test(deploy.ref) ? deploy.ref : "");
+
+export const isRetryable = (deploy: Pick<Deploy, "status" | "commit" | "ref" | "image">): boolean =>
+  deploy.status === DeployStatus.Failed && !!(deploy.commit || deploy.ref || deploy.image);
 
 // Newest deploy by creation time; the API's order is not part of its contract.
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>

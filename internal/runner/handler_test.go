@@ -120,10 +120,10 @@ func TestHandler_dispatchFrame_Payloads(t *testing.T) {
 		assert.JSONEq(t, `{"id":"d1","phase":"checkout","log":"clone org/app@main\nCloning into '/data/repo'...\n","ts":1695379028112}`, string(evs[0].Payload))
 	})
 
-	t.Run("deploy_result carries status and address", func(t *testing.T) {
+	t.Run("deploy_result carries status, address and commit", func(t *testing.T) {
 		bus := newFakeBus()
 		h := newTestHandler(bus, newFakeRunnerRepo())
-		f := Frame{Type: FrameDeployResult, ID: "d1", Status: DeployStatusHealthy, Address: "172.18.0.4"}
+		f := Frame{Type: FrameDeployResult, ID: "d1", Status: DeployStatusHealthy, Address: "172.18.0.4", Commit: "9f2c1ab"}
 
 		require.NoError(t, h.dispatchFrame(context.Background(), newTestConn(), f))
 		evs := bus.topicEvents(TopicDeployStatusChanged)
@@ -131,6 +131,7 @@ func TestHandler_dispatchFrame_Payloads(t *testing.T) {
 		got := decodeEvent[DeployStatusChangedEvent](t, evs[0])
 		assert.Equal(t, DeployStatusHealthy, got.Status)
 		assert.Equal(t, "172.18.0.4", got.Address)
+		assert.Equal(t, "9f2c1ab", got.Commit)
 	})
 }
 

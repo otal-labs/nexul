@@ -253,8 +253,7 @@ describe("StackPage", () => {
     expect(screen.queryByText("Image")).not.toBeInTheDocument();
   });
 
-  it("names a compose rollback target by when it ran, since it has no single image", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-08-12T12:00:00Z").getTime());
+  describe("rollback", () => {
     const healthy = {
       id: "d-1",
       stack_id: "stack-1",
@@ -266,14 +265,28 @@ describe("StackPage", () => {
       created_at: "2026-08-12T09:00:00Z",
       updated_at: "2026-08-12T09:00:00Z",
     };
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
-      if (url === "/api/stacks/stack-1/deploys") return Promise.resolve({ data: [healthy] });
-      return Promise.resolve({ data: [] });
-    });
-    renderPage();
+    const serve = (deploys: unknown[]) =>
+      mocks.get.mockImplementation((url: string) => {
+        if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+        if (url === "/api/stacks/stack-1/deploys") return Promise.resolve({ data: deploys });
+        return Promise.resolve({ data: [] });
+      });
 
-    expect(await screen.findByText("Rollback re-deploys the deploy from 3h ago, the last healthy one.")).toBeInTheDocument();
+    it("rolls back to the image of the last healthy deploy", async () => {
+      serve([{ ...healthy, image: "ghcr.io/onik/api:v1" }]);
+      renderPage();
+
+      expect(await screen.findByRole("button", { name: "Rollback" })).toBeEnabled();
+      expect(screen.getByText("Rollback re-deploys ghcr.io/onik/api:v1, the last healthy image.")).toBeInTheDocument();
+    });
+
+    it("offers no Rollback when the last healthy deploy left no image, which the server refuses", async () => {
+      serve([healthy]);
+      renderPage();
+
+      await screen.findByRole("heading", { name: "api" });
+      expect(screen.queryByRole("button", { name: "Rollback" })).not.toBeInTheDocument();
+    });
   });
 
   it("shows an error display when the stack fails to load", async () => {

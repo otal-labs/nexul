@@ -24,8 +24,8 @@ func (q *Queries) CountActiveDeploys(ctx context.Context, stackID sql.NullString
 
 const createDeploy = `-- name: CreateDeploy :exec
 INSERT INTO deploys (id, kind, stack_id, service_id, service, target, image, status, strategy,
-    triggered_by, rule_id, rule_name, ticket_id, pr_number, created_at, updated_at, address)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    triggered_by, rule_id, rule_name, ticket_id, pr_number, created_at, updated_at, address, ref)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeployParams struct {
@@ -46,6 +46,7 @@ type CreateDeployParams struct {
 	CreatedAt   int64
 	UpdatedAt   int64
 	Address     string
+	Ref         string
 }
 
 func (q *Queries) CreateDeploy(ctx context.Context, arg CreateDeployParams) error {
@@ -67,12 +68,13 @@ func (q *Queries) CreateDeploy(ctx context.Context, arg CreateDeployParams) erro
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Address,
+		arg.Ref,
 	)
 	return err
 }
 
 const getDeploy = `-- name: GetDeploy :one
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE id = ?
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE id = ?
 `
 
 func (q *Queries) GetDeploy(ctx context.Context, id string) (Deploy, error) {
@@ -96,12 +98,14 @@ func (q *Queries) GetDeploy(ctx context.Context, id string) (Deploy, error) {
 		&i.PrNumber,
 		&i.Kind,
 		&i.Address,
+		&i.Ref,
+		&i.CommitSha,
 	)
 	return i, err
 }
 
 const lastHealthyDeploy = `-- name: LastHealthyDeploy :one
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? AND status = 'healthy' ORDER BY created_at DESC LIMIT 1
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE stack_id = ? AND status = 'healthy' ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) LastHealthyDeploy(ctx context.Context, stackID sql.NullString) (Deploy, error) {
@@ -125,12 +129,14 @@ func (q *Queries) LastHealthyDeploy(ctx context.Context, stackID sql.NullString)
 		&i.PrNumber,
 		&i.Kind,
 		&i.Address,
+		&i.Ref,
+		&i.CommitSha,
 	)
 	return i, err
 }
 
 const listDeploys = `-- name: ListDeploys :many
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys ORDER BY created_at
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys ORDER BY created_at
 `
 
 func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
@@ -160,6 +166,8 @@ func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
 			&i.PrNumber,
 			&i.Kind,
 			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
 		); err != nil {
 			return nil, err
 		}
@@ -175,7 +183,7 @@ func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
 }
 
 const listDeploysByIDs = `-- name: ListDeploysByIDs :many
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE id IN (/*SLICE:ids*/?)
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE id IN (/*SLICE:ids*/?)
 `
 
 func (q *Queries) ListDeploysByIDs(ctx context.Context, ids []string) ([]Deploy, error) {
@@ -215,6 +223,8 @@ func (q *Queries) ListDeploysByIDs(ctx context.Context, ids []string) ([]Deploy,
 			&i.PrNumber,
 			&i.Kind,
 			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
 		); err != nil {
 			return nil, err
 		}
@@ -230,7 +240,7 @@ func (q *Queries) ListDeploysByIDs(ctx context.Context, ids []string) ([]Deploy,
 }
 
 const listDeploysByService = `-- name: ListDeploysByService :many
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE service = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE service = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]Deploy, error) {
@@ -260,6 +270,8 @@ func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]D
 			&i.PrNumber,
 			&i.Kind,
 			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
 		); err != nil {
 			return nil, err
 		}
@@ -275,7 +287,7 @@ func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]D
 }
 
 const listDeploysByStackID = `-- name: ListDeploysByStackID :many
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE stack_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullString) ([]Deploy, error) {
@@ -305,6 +317,8 @@ func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullStri
 			&i.PrNumber,
 			&i.Kind,
 			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
 		); err != nil {
 			return nil, err
 		}
@@ -320,7 +334,7 @@ func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullStri
 }
 
 const listDeploysByStatus = `-- name: ListDeploysByStatus :many
-SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE status = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE status = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByStatus(ctx context.Context, status string) ([]Deploy, error) {
@@ -350,6 +364,8 @@ func (q *Queries) ListDeploysByStatus(ctx context.Context, status string) ([]Dep
 			&i.PrNumber,
 			&i.Kind,
 			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
 		); err != nil {
 			return nil, err
 		}
@@ -376,6 +392,24 @@ type SetDeployAddressParams struct {
 
 func (q *Queries) SetDeployAddress(ctx context.Context, arg SetDeployAddressParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setDeployAddress, arg.Address, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setDeployCommit = `-- name: SetDeployCommit :execrows
+UPDATE deploys SET commit_sha = ?, updated_at = ? WHERE id = ?
+`
+
+type SetDeployCommitParams struct {
+	CommitSha string
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) SetDeployCommit(ctx context.Context, arg SetDeployCommitParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setDeployCommit, arg.CommitSha, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

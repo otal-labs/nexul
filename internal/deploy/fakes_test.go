@@ -213,6 +213,17 @@ func (f *fakeRepo) SetAddress(_ context.Context, id, address string) error {
 	return nil
 }
 
+func (f *fakeRepo) SetCommit(_ context.Context, id, commit string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.stored[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	d.Commit = commit
+	return nil
+}
+
 func (f *fakeRepo) AppendLogLines(_ context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

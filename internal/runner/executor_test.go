@@ -36,6 +36,7 @@ type fakeCmd struct {
 	inspectByName map[string]string
 	inspectOut    string
 	inspectErr    error
+	headOut       string
 	// runOut/runErr canned-answer `docker run ...` (the upgrade helper's stdout is its container id).
 	runOut string
 	runErr error
@@ -77,6 +78,9 @@ func (f *fakeCmd) run(ctx context.Context, dir string, logf func(string), name s
 
 // cannedAnswer picks the scripted stdout and error for docker inspect, compose ps, and run. Must run under f.mu.
 func (f *fakeCmd) cannedAnswer(name string, args []string) (bool, string, error) {
+	if name == "git" && len(args) > 0 && args[0] == "rev-parse" {
+		return true, f.headOut, nil
+	}
 	if name != "docker" || len(args) == 0 {
 		return false, "", nil
 	}
@@ -198,6 +202,20 @@ func TestShellExecutor_Clone_PrefersJobToken(t *testing.T) {
 	assert.Equal(t, "http.extraheader=Authorization: Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:job-token")), args[1])
 }
 
+func TestShellExecutor_Clone_OfACommitFetchesItAndChecksItOutDetached(t *testing.T) {
+	cmd := &fakeCmd{}
+	e := newTokenExecutor(cmd.run, "")
+	sha := "9f2c1ab4e7d03b5c6a1f0e2d4c8b7a6998877665"
+	step := e.cloneStep(DeployRequestedEvent{Repo: "org/app", Ref: sha}, "/tmp/checkout")
+	require.NoError(t, step.run(context.Background(), func(string) {}))
+
+	git := cmd.argsFor("git")
+	require.Len(t, git, 3)
+	assert.NotContains(t, git[0], "--branch", "clone --branch refuses a commit id")
+	assert.Equal(t, []string{"fetch", "--depth", "1", "origin", sha}, git[1])
+	assert.Equal(t, []string{"checkout", "--detach", sha}, git[2])
+}
+
 func TestCmdString_RedactsCloneCredentials(t *testing.T) {
 	got := cmdString("git", []string{"-c", "http.extraheader=Authorization: Basic eC1hY2Nlc3M6c2VjcmV0", "clone", "https://github.com/org/app.git"})
 	assert.NotContains(t, got, "eC1hY2Nlc3M6c2VjcmV0")
@@ -224,7 +242,7 @@ func buildRequest(t *testing.T, id string) DeployRequestedEvent {
 func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	cmd := &fakeCmd{inspectByName: map[string]string{
 		"api": `{"Config":{"Image":"api:b1"},"State":{"Status":"running"},"NetworkSettings":{"Networks":{"app-net":{"IPAddress":"172.18.0.4"}},"Ports":{"80/tcp":[{"HostPort":"8080"}]}}}`,
-	}, stdout: "output line\n"}
+	}, stdout: "output line\n", headOut: "9f2c1ab\n"}
 	e := newTestExecutor(cmd.run)
 	rec := &frameRecorder{}
 	e.Build(context.Background(), buildRequest(t, "b1"), rec.send)
@@ -247,6 +265,7 @@ func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	assert.Equal(t, FrameDeployResult, frames[7].Type)
 	assert.Equal(t, DeployStatusHealthy, frames[7].Status)
 	assert.Equal(t, "172.18.0.4", frames[7].Address, "the primary address is derived from the observation report")
+	assert.Equal(t, "9f2c1ab", frames[7].Commit, "the result names the commit the checkout landed on")
 	require.Len(t, frames[7].Services, 1)
 	assert.Equal(t, ObservedService{
 		Name: "api", ContainerName: "api", Image: "api:b1", Status: "running",
@@ -254,6 +273,7 @@ func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 		Ports:    []string{"8080:80/tcp"},
 	}, frames[7].Services[0])
 
+	assert.Equal(t, []string{"rev-parse", "HEAD"}, cmd.argsFor("git")[1], "the commit is read right after the checkout")
 	gitArgs := cmd.argsFor("git")[0]
 	assert.Equal(t, "clone", gitArgs[0])
 	assert.Equal(t, []string{"--depth", "1", "--branch", "main", "https://github.com/org/app.git"}, gitArgs[1:6])
@@ -307,7 +327,7 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 	// One clone step, then compose builds as a named project from the checkout (the compose file is the source
 	// of truth) as its own build step, `up` starts it in the deploy phase, then the report lists it by
 	// `docker compose ps` and inspects each container.
-	assert.Len(t, cmd.argsFor("git"), 1)
+	assert.Len(t, cmd.argsFor("git"), 2, "one clone step, then the commit it landed on")
 	assert.Equal(t, []string{"compose", "-p", "api", "-f", "compose/docker-compose.yml", "build"}, cmd.argsFor("docker")[0])
 	assert.Equal(t, []string{"compose", "-p", "api", "-f", "compose/docker-compose.yml", "up", "-d", "--remove-orphans"}, cmd.argsFor("docker")[1])
 	assert.Equal(t, []string{"compose", "-p", "api", "ps", "-a", "--format", "json"}, cmd.argsFor("docker")[2])
@@ -449,6 +469,7 @@ func TestShellExecutor_Build_RepoDriven_ErrorPaths(t *testing.T) {
 		assert.Equal(t, DeployStatusFailed, rec.last().Status)
 		assert.NotEmpty(t, rec.last().Error)
 		assert.Equal(t, 1, len(cmd.names()), "no build step runs after a failed clone")
+		assert.Empty(t, rec.last().Commit, "a checkout that failed landed on no commit")
 	})
 
 	t.Run("docker build failure stops before deploy", func(t *testing.T) {
@@ -456,10 +477,13 @@ func TestShellExecutor_Build_RepoDriven_ErrorPaths(t *testing.T) {
 		// run step must never execute.
 		var calls []string
 		var mu sync.Mutex
-		cmdFn := func(_ context.Context, _ string, _ func(string), name string, _ ...string) error {
+		cmdFn := func(_ context.Context, _ string, logf func(string), name string, args ...string) error {
 			mu.Lock()
 			calls = append(calls, name)
 			mu.Unlock()
+			if name == "git" && args[0] == "rev-parse" {
+				logf("9f2c1ab\n")
+			}
 			if name == "docker" {
 				return assert.AnError
 			}
@@ -475,7 +499,8 @@ func TestShellExecutor_Build_RepoDriven_ErrorPaths(t *testing.T) {
 		assert.Equal(t, FrameDeployResult, rec.last().Type)
 		assert.Equal(t, DeployStatusFailed, rec.last().Status)
 		mu.Lock()
-		assert.Equal(t, []string{"git", "docker"}, calls, "docker run must not start after a failed build")
+		assert.Equal(t, []string{"git", "git", "docker"}, calls, "docker run must not start after a failed build")
+		assert.Equal(t, "9f2c1ab", rec.last().Commit, "a build that fails after the checkout still reports the commit it built, so a retry can rebuild it")
 		mu.Unlock()
 	})
 

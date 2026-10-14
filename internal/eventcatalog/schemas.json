@@ -2456,6 +2456,37 @@
       "kind"
     ]
   },
+  "deploy.retried": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "The new deploy's id."
+      },
+      "retry_of": {
+        "type": "string",
+        "description": "The failed deploy that was retried."
+      },
+      "stack_id": {
+        "type": "string",
+        "description": "The deploying stack's id."
+      },
+      "ref": {
+        "type": "string",
+        "description": "The commit the new deploy builds, else the ref it was asked for; empty for an image redeploy."
+      },
+      "image": {
+        "type": "string",
+        "description": "The image the new deploy redeploys; empty for a build."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "retry_of",
+      "stack_id"
+    ]
+  },
   "deploy.status_changed": {
     "type": "object",
     "properties": {
@@ -2475,6 +2506,9 @@
         "type": "string"
       },
       "address": {
+        "type": "string"
+      },
+      "commit": {
         "type": "string"
       },
       "services": {

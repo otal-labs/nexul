@@ -539,6 +539,16 @@ on the container's networks only). The only source of a service's observed facts
 the compose file remains the only source of its declared ones.
 _Avoid_: Status report, inspect result
 
+**Retry**:
+Starting a failed deploy again as a new deploy of the same commit it built,
+with the stack's settings as they are now, so fixing a missing environment
+variable ships on the same code even when the branch has moved on. A deploy
+records its ref (what it was asked to build) and its commit (what the runner
+checked out, reported with the terminal result); a deploy that failed before
+the checkout retries its ref, and one that recorded neither cannot be retried.
+The failed deploy stays in the history and `deploy.retried` names the new one.
+_Avoid_: Redeploy (that pulls an image again), re-run
+
 **Tests repository**:
 A second repository a project may attach to hold its tests. Never deployed:
 no stack builds from it, so a project still has one repository that ships.

@@ -71,6 +71,9 @@ type Deploy struct {
 	Strategy  Strategy `json:"strategy"`
 	// Address is the container's address on its docker network, reported by the runner at start.
 	Address string `json:"address,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+	// Commit is empty until the runner reports it, and for an image deploy.
+	Commit string `json:"commit,omitempty"`
 	// TriggeredBy/RuleID/RuleName/TicketID/PRNumber record who/what triggered the deploy.
 	TriggeredBy string    `json:"triggered_by,omitempty"`
 	RuleID      string    `json:"rule_id,omitempty"`

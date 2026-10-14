@@ -10,6 +10,7 @@ export const AREA_PERMISSION = {
   stacks: "stacks:read",
   stackLogs: "stacks:logs",
   deploys: "deploys:read",
+  editDeploys: "deploys:write",
   dns: "dns:read",
   newConversation: "chat:write",
   editChannels: "channels:write",

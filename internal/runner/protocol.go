@@ -119,6 +119,7 @@ type Frame struct {
 	Address string `json:"address,omitempty"`
 	// Services is the deploy_result observation report: one entry per container the stack started.
 	Services []ObservedService `json:"services,omitempty"`
+	Commit   string            `json:"commit,omitempty"`
 	// Containers and Networks carry a discover_result's report for the import wizard.
 	Containers []DiscoveredContainer `json:"containers,omitempty"`
 	Networks   []NetworkInfo         `json:"networks,omitempty"`

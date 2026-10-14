@@ -89,6 +89,18 @@ export const useDeployStack = () => {
   });
 };
 
+export const useRetryDeploy = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (deploy: Pick<Deploy, "id" | "stack_id">) => (await api.post<Deploy>(`/api/deploys/${deploy.id}/retry`)).data,
+    onSuccess: async (_data, deploy) => {
+      await client.invalidateQueries({ queryKey: [getStackDeploysKey, deploy.stack_id] });
+      toast.success("Retry started");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useRollbackStack = () => {
   const client = useQueryClient();
   return useMutation({
