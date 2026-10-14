@@ -3,7 +3,7 @@
 **Status:** needs-triage
 
 Runners and machines have left this spec: each machine carries its own rules instead of belonging to a
-workspace (ADR 0151, `.scratch/machine-permissions/`). What follows about runners is superseded.
+workspace (ADR 0151). What follows about runners is superseded.
 
 Automations shipped (#259, ADR 0095): they belong to a workspace and receive only its events. What follows about
 automations is done. Integrations are still instance-wide and need the decision below.
