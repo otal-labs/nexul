@@ -290,7 +290,7 @@ func (s *Service) tunnelUsers(ctx context.Context, t *Tunnel) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	if host != "" && t.Hostname == host {
+	if host != "" && strings.EqualFold(t.Hostname, host) {
 		users = append(users, "this instance's address "+host)
 	}
 	hostnames, gateways, err := s.exposedOnTunnel(ctx, t.ID)
