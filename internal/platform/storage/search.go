@@ -39,7 +39,7 @@ func (r *TicketsRepo) Search(ctx context.Context, query string, limit int) ([]ti
 	// hand-written: sqlc cannot express an FTS5 table as the operand of MATCH or bm25
 	// MATERIALIZED stops SQLite flattening bm25 into the GROUP BY, where FTS5 refuses to run it.
 	noteHits, err := scanFTS(ctx, r.db, `WITH n AS MATERIALIZED (SELECT ticket_id, bm25(ticket_notes_fts) AS rank FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)
-		SELECT t.id, t.title, MIN(n.rank) AS best FROM n JOIN tickets t ON t.id = n.ticket_id GROUP BY t.id ORDER BY best LIMIT ?`,
+		SELECT t.id, t.title, MIN(n.rank) AS best FROM n JOIN tickets t ON t.id = n.ticket_id WHERE `+inLiveWorkspace("t")+` GROUP BY t.id ORDER BY best LIMIT ?`,
 		ftsQuery(query), limit)
 	if err != nil {
 		return nil, fmt.Errorf("search ticket notes: %w", err)
@@ -77,11 +77,16 @@ const ticketHits = `(WITH body AS MATERIALIZED (SELECT j.id, bm25(tickets_fts) A
 const ticketMatches = `(SELECT * FROM tickets WHERE rowid IN (SELECT rowid FROM tickets_fts WHERE tickets_fts MATCH ?)
 	OR id IN (SELECT ticket_id FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)) t`
 
+// inLiveWorkspace holds the doc or ticket aliased alias to a project outside any archived workspace, so no hit from one takes a place in the limit.
+func inLiveWorkspace(alias string) string {
+	return `NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = ` + alias + `.project_id AND w.archived_at IS NOT NULL)`
+}
+
 // excludeArchived adds `AND j.archived = 0` so archived docs never appear in search; tickets have no archived flag.
 func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
-	archived := ""
+	archived := " AND " + inLiveWorkspace("j")
 	if excludeArchived {
-		archived = " AND j.archived = 0"
+		archived += " AND j.archived = 0"
 	}
 	// hand-written: sqlc cannot express table and column names chosen at runtime
 	stmt := fmt.Sprintf(

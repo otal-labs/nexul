@@ -2,6 +2,7 @@ import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { TunnelsSection } from "@/components/dns/TunnelsSection";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ArchivedWorkspacesSection } from "@/components/settings/ArchivedWorkspacesSection";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
 import { InstanceAccessSection } from "@/components/settings/InstanceAccessSection";
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
@@ -58,6 +59,7 @@ interface InstanceSettingsContentProps {
 export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProps) => (
   <>
     {section === "instance" && <InstancePanel />}
+    {section === "instance" && <ArchivedWorkspacesSection />}
     {section === "sign-in" && <SignInPanel />}
     {section === "connectors" && <ConnectorsSettingsPanel />}
     {section === "dns" && <GatewaysSection />}

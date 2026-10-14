@@ -1182,6 +1182,7 @@ type Workspace struct {
 	AccessSetupFinished   int64
 	AccessSetupBy         string
 	AccessSetupAt         int64
+	ArchivedAt            sql.NullInt64
 }
 
 type WorkspaceInvite struct {

@@ -31,6 +31,8 @@ type Workspace struct {
 	AccessSetupFinished bool      `json:"access_setup_finished"`
 	CreatedAt           time.Time `json:"created_at"`
 	UpdatedAt           time.Time `json:"updated_at"`
+	// ArchivedAt is when the workspace was archived; nil while it is live.
+	ArchivedAt *time.Time `json:"archived_at,omitempty"`
 }
 
 // Member is one person's place in a workspace.

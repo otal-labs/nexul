@@ -46,6 +46,24 @@ func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMember
 	return err
 }
 
+const archiveWorkspace = `-- name: ArchiveWorkspace :execrows
+UPDATE workspaces SET archived_at = ?, updated_at = ? WHERE id = ? AND archived_at IS NULL
+`
+
+type ArchiveWorkspaceParams struct {
+	ArchivedAt sql.NullInt64
+	UpdatedAt  int64
+	ID         string
+}
+
+func (q *Queries) ArchiveWorkspace(ctx context.Context, arg ArchiveWorkspaceParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, archiveWorkspace, arg.ArchivedAt, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const createWorkspace = `-- name: CreateWorkspace :exec
 INSERT INTO workspaces (id, name, slug, mention_chip_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
 `
@@ -117,7 +135,7 @@ func (q *Queries) DeleteWorkspaceInvite(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE id = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE id = ?
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error) {
@@ -135,12 +153,13 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 		&i.AccessSetupFinished,
 		&i.AccessSetupBy,
 		&i.AccessSetupAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE slug = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE slug = ?
 `
 
 func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
@@ -158,12 +177,15 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.AccessSetupFinished,
 		&i.AccessSetupBy,
 		&i.AccessSetupAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getWorkspaceMember = `-- name: GetWorkspaceMember :one
-SELECT user_id, workspace_id, created_at FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+SELECT m.user_id, m.workspace_id, m.created_at FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
+WHERE m.workspace_id = ? AND m.user_id = ?
 `
 
 type GetWorkspaceMemberParams struct {
@@ -178,9 +200,51 @@ func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMember
 	return i, err
 }
 
+const listArchivedWorkspaces = `-- name: ListArchivedWorkspaces :many
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at
+FROM workspaces WHERE archived_at IS NOT NULL ORDER BY archived_at DESC, id
+`
+
+func (q *Queries) ListArchivedWorkspaces(ctx context.Context) ([]Workspace, error) {
+	rows, err := q.db.QueryContext(ctx, listArchivedWorkspaces)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Workspace
+	for rows.Next() {
+		var i Workspace
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MentionChipTemplate,
+			&i.Slug,
+			&i.DecisionsCheckEnabled,
+			&i.AutoPlayDailyCap,
+			&i.AccessSetupFinished,
+			&i.AccessSetupBy,
+			&i.AccessSetupAt,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMemberRoleGrants = `-- name: ListMemberRoleGrants :many
 SELECT m.user_id, r.id AS role_id, r.is_owner_role, r.permissions
 FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
 WHERE m.workspace_id = ? AND m.user_id = ?
@@ -340,7 +404,7 @@ func (q *Queries) ListProjectRoleIDs(ctx context.Context, projectID string) ([]s
 const listTeamMemberships = `-- name: ListTeamMemberships :many
 SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
 FROM workspace_members m
-JOIN workspaces w ON w.id = m.workspace_id
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
 ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id
@@ -425,7 +489,7 @@ func (q *Queries) ListTeamRoles(ctx context.Context) ([]ListTeamRolesRow, error)
 }
 
 const listTeamWorkspaces = `-- name: ListTeamWorkspaces :many
-SELECT id, name FROM workspaces ORDER BY created_at, id
+SELECT id, name FROM workspaces WHERE archived_at IS NULL ORDER BY created_at, id
 `
 
 type ListTeamWorkspacesRow struct {
@@ -457,7 +521,9 @@ func (q *Queries) ListTeamWorkspaces(ctx context.Context) ([]ListTeamWorkspacesR
 }
 
 const listWorkspaceIDsForUser = `-- name: ListWorkspaceIDsForUser :many
-SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at, workspace_id
+SELECT m.workspace_id FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
+WHERE m.user_id = ? ORDER BY m.created_at, m.workspace_id
 `
 
 func (q *Queries) ListWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
@@ -614,13 +680,14 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at, w.archived_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
-WHERE m.user_id = ?
+WHERE m.user_id = ? AND w.archived_at IS NULL
 ORDER BY w.created_at, w.id
 `
 
+// An archived workspace is not one its members belong to until it is restored.
 func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]Workspace, error) {
 	rows, err := q.db.QueryContext(ctx, listWorkspacesForUser, userID)
 	if err != nil {
@@ -642,6 +709,7 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]W
 			&i.AccessSetupFinished,
 			&i.AccessSetupBy,
 			&i.AccessSetupAt,
+			&i.ArchivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -667,6 +735,23 @@ type RemoveWorkspaceMemberParams struct {
 
 func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const restoreWorkspace = `-- name: RestoreWorkspace :execrows
+UPDATE workspaces SET archived_at = NULL, updated_at = ? WHERE id = ? AND archived_at IS NOT NULL
+`
+
+type RestoreWorkspaceParams struct {
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) RestoreWorkspace(ctx context.Context, arg RestoreWorkspaceParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, restoreWorkspace, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

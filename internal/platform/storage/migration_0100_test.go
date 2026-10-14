@@ -104,6 +104,7 @@ FROM permission_overwrites ORDER BY 1`), "each creator's own row, a share or den
 	assert.Equal(t, []string{"workspace-default|1", "ws-acme|0", "ws-quiet|1"},
 		lines(t, db, `SELECT id || '|' || access_setup_finished FROM workspaces ORDER BY 1`), "a workspace with projects waits for its setup")
 
+	withArchivedAt(t, db)
 	s := New(db, testEncKey)
 	ctx := t.Context()
 	owner, err := s.WorkspaceMembers.MemberRole(ctx, "ws-acme", "alice")

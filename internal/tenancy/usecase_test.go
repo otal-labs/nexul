@@ -111,6 +111,30 @@ func (f *fakeRepo) ListForUser(_ context.Context, userID string) ([]*Workspace, 
 	return out, nil
 }
 
+func (f *fakeRepo) ListArchived(context.Context) ([]*Workspace, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*Workspace
+	for _, w := range f.workspaces {
+		if w.ArchivedAt != nil {
+			out = append(out, w)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) SetArchived(_ context.Context, id string, at *time.Time, _ time.Time, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	w, ok := f.workspaces[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	w.ArchivedAt = at
+	f.events = append(f.events, events...)
+	return nil
+}
+
 func (f *fakeRepo) ListWithRoles(context.Context) ([]*TeamWorkspace, error) {
 	return f.teamWorkspaces, nil
 }

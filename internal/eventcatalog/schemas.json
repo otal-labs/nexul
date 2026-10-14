@@ -8346,6 +8346,37 @@
       "user_id"
     ]
   },
+  "workspace.archived": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The people who were members of the workspace when it was archived or restored."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "name",
+      "slug",
+      "user_ids"
+    ]
+  },
   "workspace.member.added": {
     "type": "object",
     "properties": {
@@ -8445,6 +8476,37 @@
     "required": [
       "user_id",
       "workspace_id"
+    ]
+  },
+  "workspace.restored": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The people who were members of the workspace when it was archived or restored."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "name",
+      "slug",
+      "user_ids"
     ]
   },
   "workspace.updated": {

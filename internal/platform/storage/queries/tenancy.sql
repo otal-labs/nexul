@@ -5,17 +5,28 @@ INSERT INTO workspaces (id, name, slug, mention_chip_template, created_at, updat
 UPDATE workspaces SET name = ?, slug = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?;
 
 -- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE id = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE id = ?;
 
 -- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE slug = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE slug = ?;
 
 -- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at
+-- An archived workspace is not one its members belong to until it is restored.
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at, w.archived_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
-WHERE m.user_id = ?
+WHERE m.user_id = ? AND w.archived_at IS NULL
 ORDER BY w.created_at, w.id;
+
+-- name: ListArchivedWorkspaces :many
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at
+FROM workspaces WHERE archived_at IS NOT NULL ORDER BY archived_at DESC, id;
+
+-- name: ArchiveWorkspace :execrows
+UPDATE workspaces SET archived_at = ?, updated_at = ? WHERE id = ? AND archived_at IS NULL;
+
+-- name: RestoreWorkspace :execrows
+UPDATE workspaces SET archived_at = NULL, updated_at = ? WHERE id = ? AND archived_at IS NOT NULL;
 
 -- name: AddWorkspaceMember :exec
 INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, ?);
@@ -41,6 +52,7 @@ ORDER BY mr.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
 -- name: ListMemberRoleGrants :many
 SELECT m.user_id, r.id AS role_id, r.is_owner_role, r.permissions
 FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
 WHERE m.workspace_id = ? AND m.user_id = ?
@@ -50,10 +62,14 @@ ORDER BY mr.created_at, r.is_owner_role DESC, mr.role_id;
 SELECT * FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id;
 
 -- name: GetWorkspaceMember :one
-SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
+SELECT m.* FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
+WHERE m.workspace_id = ? AND m.user_id = ?;
 
 -- name: ListWorkspaceIDsForUser :many
-SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at, workspace_id;
+SELECT m.workspace_id FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
+WHERE m.user_id = ? ORDER BY m.created_at, m.workspace_id;
 
 -- name: DeleteMemberProjectAccess :exec
 DELETE FROM permission_overwrites
@@ -107,13 +123,13 @@ FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id;
 -- name: ListTeamMemberships :many
 SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
 FROM workspace_members m
-JOIN workspaces w ON w.id = m.workspace_id
+JOIN workspaces w ON w.id = m.workspace_id AND w.archived_at IS NULL
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
 ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
 
 -- name: ListTeamWorkspaces :many
-SELECT id, name FROM workspaces ORDER BY created_at, id;
+SELECT id, name FROM workspaces WHERE archived_at IS NULL ORDER BY created_at, id;
 
 -- name: ListTeamRoles :many
 SELECT id, workspace_id, name, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id;

@@ -17,6 +17,10 @@ type Repo interface {
 	GetBySlug(ctx context.Context, slug string) (*Workspace, error)
 	// ListForUser returns the workspaces the given user is a member of, via workspace_members.
 	ListForUser(ctx context.Context, userID string) ([]*Workspace, error)
+	// ListArchived returns the archived workspaces, newest archive first, with ArchivedAt set.
+	ListArchived(ctx context.Context) ([]*Workspace, error)
+	// SetArchived archives id at the given time or restores it when at is nil; apperrs.ErrNotFound when it is already in that state.
+	SetArchived(ctx context.Context, id string, at *time.Time, now time.Time, events ...eventbus.OutboxEvent) error
 	// ListWithRoles returns every workspace on the instance with its roles, Owner first; Roles are filled, CanManageMembers is not.
 	ListWithRoles(ctx context.Context) ([]*TeamWorkspace, error)
 }

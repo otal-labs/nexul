@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 import { api, errorMessage } from "@/api/client";
-import { replaceWorkspaceSlug, type Workspace, type WorkspaceUpdate } from "@/models/Workspace";
+import { replaceWorkspaceSlug, type Workspace, type WorkspaceArchiveFrame, type WorkspaceUpdate } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { LiveFollower } from "@/lib/live";
+import type { Live, LiveFollower } from "@/lib/live";
 
 export const getWorkspacesKey = "getWorkspaces";
 
@@ -137,6 +137,67 @@ export const useCreateWorkspace = () => {
   });
 };
 
+export const getArchivedWorkspacesKey = "getArchivedWorkspaces";
+
+// The workspaces the instance Owner can restore; the server refuses anyone else, so callers ask only when they hold it.
+export const useFetchArchivedWorkspaces = (enabled: boolean) =>
+  useQuery({
+    queryKey: [getArchivedWorkspacesKey],
+    queryFn: async () => (await api.get<Workspace[]>("/api/workspaces/archived")).data,
+    enabled,
+  });
+
+// One toast per workspace, whichever of the mutation and the live frame lands first.
+const archiveToast = (id: string) => `workspace-archived-${id}`;
+
+const refreshWorkspaceLists = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: [getWorkspacesKey] }),
+    client.invalidateQueries({ queryKey: [getArchivedWorkspacesKey] }),
+  ]);
+
+// The list drops the archived workspace and the page moves on in one step, before its slug can render the not-found screen.
+const leaveWorkspace = (client: QueryClient, navigate: NavigateFunction, id: string) => {
+  client.setQueryData<Workspace[]>([getWorkspacesKey], (list) => list?.filter((w) => w.id !== id));
+  void navigate("/", { replace: true });
+};
+
+export const useArchiveWorkspace = () => {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/archive`)).data,
+    onSuccess: async (archived) => {
+      leaveWorkspace(client, navigate, archived.id);
+      toast.success(`${archived.name} archived`, { id: archiveToast(archived.id) });
+      await refreshWorkspaceLists(client);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRestoreWorkspace = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post<Workspace>(`/api/workspaces/${id}/restore`)).data,
+    onSuccess: async (restored) => {
+      await refreshWorkspaceLists(client);
+      toast.success(`${restored.name} restored`);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+const followWorkspaceArchived = ({ workspace_id, name }: WorkspaceArchiveFrame, { client, navigate }: Live) => {
+  if (useWorkspaceStore.getState().selectedWorkspaceId === workspace_id) {
+    leaveWorkspace(client, navigate, workspace_id);
+    toast(`${name} was archived`, { id: archiveToast(workspace_id), description: "The instance Owner can restore it." });
+  }
+  void refreshWorkspaceLists(client);
+};
+
 export const workspaceFollower: LiveFollower = {
   "workspace.updated": (update: WorkspaceUpdate, { client, navigate, location }) => followWorkspaceUpdate(client, navigate, location, update),
+  "workspace.archived": followWorkspaceArchived,
+  "workspace.restored": (_frame: WorkspaceArchiveFrame, { client }) => refreshWorkspaceLists(client),
 };
