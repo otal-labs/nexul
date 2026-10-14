@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
-import type { Play } from "@/models/Play";
+import type { ListedPlay } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -18,9 +18,9 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog" } as Ticket;
 
-const play = { id: "play-1", label: "Fix with AI", type: "ticket", description: "Fix it", show_when_stage: "backlog" } as Play;
+const play = { id: "play-1", label: "Fix with AI", type: "ticket", description: "Fix it", show_when_stage: "backlog", can_run: true } as ListedPlay;
 
-const mockApi = (plays: Play[], permissions = ["plays:run"], resolve: object = {}) =>
+const mockApi = (plays: ListedPlay[], permissions = ["plays:run"], resolve: object = {}) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/pairing/resolve") return { data: resolve };
@@ -65,13 +65,16 @@ describe("PlaysRailSection", () => {
     expect(screen.queryByText("No plays for this stage.")).not.toBeInTheDocument();
   });
 
-  it("stays hidden for a member who cannot run plays", async () => {
+  it("lists a play its own rule lets the member run, without plays:run in the workspace", async () => {
     mockApi([play], []);
     renderSection();
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", expect.anything());
-      expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me");
-    });
+    expect(await screen.findByRole("button", { name: /Fix with AI/ })).toBeInTheDocument();
+  });
+
+  it("stays hidden for a play the member cannot run", async () => {
+    mockApi([{ ...play, can_run: false }]);
+    renderSection();
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", expect.anything()));
     expect(screen.queryByRole("heading", { name: "Plays" })).not.toBeInTheDocument();
   });
 

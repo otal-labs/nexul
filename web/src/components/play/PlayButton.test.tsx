@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlayButton } from "@/components/play/PlayButton";
-import type { Play } from "@/models/Play";
+import type { ListedPlay } from "@/models/Play";
 import type { Trail } from "@/models/Trail";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -17,7 +17,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const play: Play = {
+const play: ListedPlay = {
   id: "play-1",
   workspace_id: "ws-1",
   label: "Fix with AI",
@@ -31,6 +31,7 @@ const play: Play = {
   created_by: "u-1",
   created_at: "",
   updated_at: "",
+  can_run: true,
 };
 
 const runningTrail = (starterId: string): Trail => ({
@@ -82,11 +83,11 @@ const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_i
     return { data: [] };
   });
 
-const renderButton = () => {
+const renderButton = (shown: ListedPlay = play) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PlayButton play={play} projectId="p-1" targetType="ticket" targetId="t-1" />
+      <PlayButton play={shown} projectId="p-1" targetType="ticket" targetId="t-1" />
     </QueryClientProvider>,
   );
 };
@@ -116,9 +117,15 @@ describe("PlayButton", () => {
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
   });
 
-  it("is hidden without plays:run", async () => {
+  it("shows for a play whose own rule allows Run, without plays:run in the workspace", async () => {
     mockApi({ permissions: ["plays:read"] });
     renderButton();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toBeEnabled());
+  });
+
+  it("is hidden for a play the viewer can't run, whatever the workspace holds", async () => {
+    mockApi({ permissions: ["plays:run"] });
+    renderButton({ ...play, can_run: false });
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

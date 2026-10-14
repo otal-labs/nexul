@@ -5,7 +5,6 @@ import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { PlayButton } from "@/components/play/PlayButton";
 import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
 import { useFetchPlayQueue } from "@/hooks/PlayQueueHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Ticket } from "@/models/Ticket";
 import { cn } from "@/lib/utils";
 import { hasAutoPlaySignals } from "@/utils/PlayQueueUtility";
@@ -16,11 +15,11 @@ interface PlaysRailSectionProps {
 
 // Plays are stage-bound, so the section appears when a play applies, the load failed, or an auto play waits or is paused.
 export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
-  const canRun = useHasPermission("plays:run");
-  const { data: plays = [], error } = useApplicableTicketPlays(ticket);
+  const { data: applicable = [], error } = useApplicableTicketPlays(ticket);
   const { data: queue } = useFetchPlayQueue("ticket", ticket.id);
-  const hasPlays = canRun && plays.length > 0;
-  const failed = canRun && Boolean(error);
+  const plays = applicable.filter((p) => p.can_run);
+  const hasPlays = plays.length > 0;
+  const failed = Boolean(error);
   const signals = hasAutoPlaySignals(queue);
 
   return (

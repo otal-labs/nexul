@@ -1,6 +1,6 @@
 # 01: A play's own Run allow reaches its button
 
-**Status:** needs-triage
+**Status:** done
 
 **Blocked by:** None. Can be triaged independently.
 
@@ -24,3 +24,19 @@ this allow-only regression. Do not duplicate the general action sweep.
   Run rule allowed. The offered play must have a usable Run control.
 - Preserve denied Run behavior and the constant-request list contract.
 - Agree ownership with the role-aware UI effort before implementation.
+
+## Answer
+
+Decided 2026-10-14.
+
+- **The server sends the answer.** The plays list and the applicable plays list
+  carry `can_run` per play, decided by the same batched rule read that decides
+  See (`PlaysWith`), with no explain per row and no extra statement. The
+  applicable list still holds only plays the caller can see and run, and
+  `play_list` gains `can_run` on each play. The field is additive.
+- **The controls follow it.** `PlayButton`, `PlaysRailSection`, `PlaysMenu` and
+  the queued run's Run it use `can_run` instead of workspace `plays:run`. The
+  readiness note follows the plays it sits beside. A play you can see but not
+  run stays hidden from the controls, as before.
+- **Ownership.** Per-play Run on the play controls is done here; role-aware UI
+  ticket 13 does not redo it.

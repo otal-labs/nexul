@@ -21,6 +21,8 @@ type playResult struct {
 	Enabled            bool     `json:"enabled"`
 	ShowWhenStage      *Stage   `json:"show_when_stage,omitempty"`
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
+	// CanRun is set on a listed play only: whether the caller may run it, from its own rules and their roles.
+	CanRun *bool `json:"can_run,omitempty"`
 	// AutoPlays is left out for a caller without autoplays:read, and on a list filtered by type.
 	AutoPlays []autoPlayResult `json:"auto_plays,omitzero"`
 	// Warnings carries what an update applied but may have broken, such as automations calling an old label.
@@ -81,7 +83,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("play_list", "List plays",
 			"Lists the plays of a workspace the caller can see, sorted by label, each with its type, instructions, "+
-				"enabled switch, stage, and excluded projects; a play hidden from the caller (plays:read denied on it) is "+
+				"enabled switch, stage, excluded projects, and whether the caller may run it; a play hidden from the caller (plays:read denied on it) is "+
 				"left out, and plays:read is what lets them see the rest. Without type it lists every definition, and a caller with "+
 				"autoplays:read also gets each play's auto_plays: the moment that starts it by itself, its conditions "+
 				"(all or any groups of rules, each a field, an op of is, is_not, set, or unset, and values), priority, "+
@@ -97,7 +99,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				}
 				out := make([]playResult, 0, len(list))
 				for _, p := range list {
-					out = append(out, toPlayResult(p))
+					res := toPlayResult(&p.Play)
+					res.CanRun = &p.CanRun
+					out = append(out, res)
 				}
 				page := mcptool.Paginate(out, in.PageArgs)
 				if in.Type != "" {
@@ -157,7 +161,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 	}
 }
 
-func listPlays(ctx context.Context, s *Service, in playListIn) ([]*Play, error) {
+func listPlays(ctx context.Context, s *Service, in playListIn) ([]Listed, error) {
 	if in.Type == "" && (in.ProjectID != "" || in.Stage != "") {
 		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, or interview)", apperrs.ErrInvalid)
 	}

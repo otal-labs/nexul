@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlaysMenu } from "@/components/play/PlaysMenu";
-import type { Play } from "@/models/Play";
+import type { ListedPlay } from "@/models/Play";
 import type { Trail } from "@/models/Trail";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -18,7 +18,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const docPlay: Play = {
+const docPlay: ListedPlay = {
   id: "play-doc",
   workspace_id: "ws-1",
   label: "To tickets via AI",
@@ -32,6 +32,7 @@ const docPlay: Play = {
   created_by: "u-1",
   created_at: "",
   updated_at: "",
+  can_run: true,
 };
 
 const runningTrail = (starterId: string): Trail => ({
@@ -62,7 +63,7 @@ const runningTrail = (starterId: string): Trail => ({
 
 interface Scenario {
   permissions?: string[];
-  plays?: Play[];
+  plays?: ListedPlay[];
   resolve?: unknown;
   presence?: Record<string, string>;
   trails?: Trail[];
@@ -128,8 +129,14 @@ describe("PlaysMenu", () => {
     expect(screen.getByRole("button", { name: "Run To tickets via AI" })).toBeDisabled();
   });
 
-  it("is hidden without plays:run", async () => {
+  it("offers a play its own rule lets the viewer run, without plays:run in the workspace", async () => {
     mockApi({ permissions: ["docs:thread"] });
+    renderMenu();
+    expect(await screen.findByRole("button", { name: /Plays/ })).toBeInTheDocument();
+  });
+
+  it("is hidden when the viewer can run no applicable play", async () => {
+    mockApi({ plays: [{ ...docPlay, can_run: false }] });
     renderMenu();
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
     expect(screen.queryByRole("button", { name: /Plays/ })).not.toBeInTheDocument();

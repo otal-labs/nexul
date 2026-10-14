@@ -24,14 +24,14 @@ interface PlaysMenuProps {
   docId: string;
 }
 
-// Hidden without plays:run, without docs:thread, or with no doc play applicable; the starter or a
+// Hidden without docs:thread or with no doc play the viewer can run; the starter or a
 // plays:write holder gets a Stop row for the active trail instead of the disabled play list.
 export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => {
-  const canRun = useHasPermission("plays:run");
   const canThread = useHasPermission("docs:thread");
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
-  const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
+  const { data: applicable } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
+  const plays = applicable?.filter((p) => p.can_run);
   const block = useRunBlock(projectId);
   const blocked = block?.message;
   const activeTrail = useActiveTrail("doc", docId);
@@ -39,7 +39,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
   const [menuOpen, setMenuOpen] = useState(false);
   const [chosenPlay, setChosenPlay] = useState<Play | null>(null);
 
-  if (!canRun || !canThread) return null;
+  if (!canThread) return null;
   if (!plays || plays.length === 0) return null;
 
   const running = activeTrail !== undefined;

@@ -47,7 +47,7 @@ const play = { id: "play-1", workspace_id: "ws-1", label: "Fix with AI", type: "
 const mockApi = (permissions: string[]) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
-    if (url === "/api/workspaces/ws-1/plays") return { data: [play] };
+    if (url === "/api/workspaces/ws-1/plays") return { data: [{ ...play, can_run: permissions.includes("plays:run") }] };
     // The run dialog's own choices stay loading: opening it is what this file checks.
     if (url === "/api/plays/latest-choices") return new Promise(() => {});
     return { data: [] };
@@ -136,7 +136,7 @@ describe("MessageList auto play lines", () => {
   it("hides Run it from a viewer who may not run plays", async () => {
     mockApi([]);
     renderThread([didnt], [message("m1", "First", "2026-10-10T09:00:00Z")]);
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays"));
     expect(screen.getByText(/didn't run/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Run Fix with AI" })).not.toBeInTheDocument();
   });
