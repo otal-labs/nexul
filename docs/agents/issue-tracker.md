@@ -67,10 +67,6 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/role-aware-ui/` — hide or lock actions a role can't take on every
-  web and phone screen, and close the one-way doors. Map complete 2026-10-13
-  with `spec.md`; build tickets 08–23. The five persona walks are in
-  `research/persona-gaps.md`.
 - `.scratch/instance-logs/` — debugging an instance without its box: a Logs instance area and
   a Nexul tool over OpenObserve, runner and automations host logs shipped, personal runner logs
   read live behind the computer's share, a container-stopped event, and a triage playbook.
