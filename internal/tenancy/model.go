@@ -59,6 +59,8 @@ type MyAccess struct {
 	Projects    []MeProject
 	// AccessSetupFinished is the workspace's, so a member waiting on the one-time setup sees why (ADR 0148).
 	AccessSetupFinished bool
+	// ShowLockedActions is true when any role they hold shows them the actions they can't take (ADR 0152).
+	ShowLockedActions bool
 }
 
 // RoleNames is roles' names joined, the one role_name a client from before members held several reads.

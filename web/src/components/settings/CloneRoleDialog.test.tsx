@@ -23,6 +23,7 @@ const role = {
   name: "Editor",
   permissions: ["docs:read"],
   welcome_steps: [],
+  show_locked_actions: false,
   is_owner_role: false,
   created_at: "",
   updated_at: "",

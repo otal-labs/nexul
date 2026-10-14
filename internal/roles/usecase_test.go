@@ -239,19 +239,19 @@ func TestCreateOwnerRole(t *testing.T) {
 func TestCreate(t *testing.T) {
 	t.Run("empty workspace id is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeMemberGate())
-		_, err := s.Create(context.Background(), "  ", "u-1", "Editors", nil, nil)
+		_, err := s.Create(context.Background(), "  ", "u-1", "Editors", nil, nil, false)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("empty name is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeMemberGate())
-		_, err := s.Create(context.Background(), "ws-1", "u-1", "  ", nil, nil)
+		_, err := s.Create(context.Background(), "ws-1", "u-1", "  ", nil, nil, false)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("actor with no role in the workspace is rejected", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeMemberGate())
-		_, err := s.Create(context.Background(), "ws-1", "u-stranger", "Editors", nil, nil)
+		_, err := s.Create(context.Background(), "ws-1", "u-stranger", "Editors", nil, nil, false)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
@@ -259,7 +259,7 @@ func TestCreate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.ProjectsWrite))
 		s := newTestService(repo, members)
-		_, err := s.Create(context.Background(), "ws-1", "u-1", "Editors", nil, nil)
+		_, err := s.Create(context.Background(), "ws-1", "u-1", "Editors", nil, nil, false)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
@@ -267,7 +267,7 @@ func TestCreate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite, permissions.ProjectsWrite))
 		s := newTestService(repo, members)
-		r, err := s.Create(context.Background(), "ws-1", "u-1", "Editors", permissions.SetOf(permissions.ProjectsWrite), nil)
+		r, err := s.Create(context.Background(), "ws-1", "u-1", "Editors", permissions.SetOf(permissions.ProjectsWrite), nil, false)
 		require.NoError(t, err)
 		assert.Equal(t, "Editors", r.Name)
 		assert.False(t, r.IsOwnerRole)
@@ -278,7 +278,7 @@ func TestCreate(t *testing.T) {
 		perms := permissions.SetOf(permissions.PlaysRun, permissions.MemoriesClone, permissions.DocsThread)
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", perms.With(permissions.RolesWrite))
 		s := newTestService(repo, members)
-		r, err := s.Create(context.Background(), "ws-1", "u-1", "Runners", perms, nil)
+		r, err := s.Create(context.Background(), "ws-1", "u-1", "Runners", perms, nil, false)
 		require.NoError(t, err)
 		assert.True(t, r.Permissions.Has(permissions.PlaysRun))
 		assert.True(t, r.Permissions.Has(permissions.MemoriesClone))
@@ -288,14 +288,14 @@ func TestCreate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite))
 		s := newTestService(repo, members)
-		_, err := s.Create(context.Background(), "ws-1", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite), nil)
+		_, err := s.Create(context.Background(), "ws-1", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite), nil, false)
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 	})
 	t.Run("the Owner gives a role any permission", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		s := newTestService(repo, members)
-		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Admins", permissions.SetOf(permissions.InstanceWrite), nil)
+		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Admins", permissions.SetOf(permissions.InstanceWrite), nil, false)
 		require.NoError(t, err)
 		assert.True(t, r.Permissions.Has(permissions.InstanceWrite))
 	})
@@ -303,7 +303,7 @@ func TestCreate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		s := newTestService(repo, members)
-		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil)
+		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil, false)
 		require.NoError(t, err)
 		assert.Equal(t, "Editors", r.Name)
 	})
@@ -312,7 +312,7 @@ func TestCreate(t *testing.T) {
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		repo.createErr = errors.New("db down")
 		s := newTestService(repo, members)
-		_, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil)
+		_, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil, false)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.createErr)
 	})
@@ -368,7 +368,7 @@ func TestUpdate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		s := newTestService(repo, members)
-		_, err := s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "  ", nil, nil)
+		_, err := s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "  ", nil, nil, nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -376,10 +376,10 @@ func TestUpdate(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		s := newTestService(repo, members)
-		_, err := s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "Not Owner", nil, nil)
+		_, err := s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "Not Owner", nil, nil, nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-		_, err = s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "Owner", nil, []string{"phone"})
+		_, err = s.Update(context.Background(), "ws-1", "role-owner", "u-owner", "Owner", nil, []string{"phone"}, nil)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 
 		got, err := s.Get(context.Background(), "ws-1", "role-owner")
@@ -395,13 +395,13 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-dev", WorkspaceID: "ws-1", Name: "Dev", WelcomeSteps: []string{"github", "phone"}}))
 		s := newTestService(repo, members)
 
-		r, err := s.Update(context.Background(), "ws-1", "role-dev", "u-owner", "Dev", nil, []string{"projects", "github", "computer"})
+		r, err := s.Update(context.Background(), "ws-1", "role-dev", "u-owner", "Dev", nil, []string{"projects", "github", "computer"}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"github", "computer", "projects"}, r.WelcomeSteps)
 		require.Len(t, repo.events, 1)
 		assert.Equal(t, []string{"computer", "projects"}, repo.events[0].Payload.(RoleEvent).WelcomeStepsAdded)
 
-		_, err = s.Update(context.Background(), "ws-1", "role-dev", "u-owner", "Dev", nil, []string{"github", "profile"})
+		_, err = s.Update(context.Background(), "ws-1", "role-dev", "u-owner", "Dev", nil, []string{"github", "profile"}, nil)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 		stored, err := repo.Get(context.Background(), "role-dev")
 		require.NoError(t, err)
@@ -414,7 +414,7 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, repo.Create(context.Background(), editors))
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", nil)
 		s := newTestService(repo, members)
-		_, err := s.Update(context.Background(), "ws-1", "role-editors", "u-1", "Reviewers", nil, nil)
+		_, err := s.Update(context.Background(), "ws-1", "role-editors", "u-1", "Reviewers", nil, nil, nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
@@ -424,7 +424,7 @@ func TestUpdate(t *testing.T) {
 		editors := &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", CreatedAt: fixedNow, UpdatedAt: fixedNow}
 		require.NoError(t, repo.Create(context.Background(), editors))
 		s := newTestService(repo, members)
-		r, err := s.Update(context.Background(), "ws-1", "role-editors", "u-owner", "Reviewers", permissions.SetOf(permissions.ProjectsWrite), nil)
+		r, err := s.Update(context.Background(), "ws-1", "role-editors", "u-owner", "Reviewers", permissions.SetOf(permissions.ProjectsWrite), nil, nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Reviewers", r.Name)
 		assert.True(t, r.Permissions.Has(permissions.ProjectsWrite))
@@ -439,9 +439,9 @@ func TestUpdate(t *testing.T) {
 		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite, permissions.DocsRead))
 		s := newTestService(repo, members)
 
-		_, err := s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.DocsRead), nil)
+		_, err := s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.DocsRead), nil, nil)
 		require.NoError(t, err)
-		_, err = s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.AccountsWrite), nil)
+		_, err = s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.AccountsWrite), nil, nil)
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 	})
 }
@@ -515,7 +515,7 @@ func TestSetMemberGate(t *testing.T) {
 		s.SetPermissionGate(fakeHeld{repo: repo, members: members})
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 
-		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil)
+		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil, nil, false)
 		require.NoError(t, err)
 		assert.Equal(t, "Editors", r.Name)
 	})
@@ -695,5 +695,56 @@ func TestReadsForMembers(t *testing.T) {
 		_, err := s.ListForMember(t.Context(), "ws-1", "member")
 		require.Error(t, err)
 		assert.NotErrorIs(t, err, apperrs.ErrNotFound)
+	})
+}
+
+func TestShowLockedActions_IsCarriedByCreateUpdateAndClone(t *testing.T) {
+	ctx := context.Background()
+	newOwnerService := func(t *testing.T) (*Service, *fakeRepo) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		return newTestService(repo, members), repo
+	}
+
+	t.Run("create sets it, off unless asked", func(t *testing.T) {
+		s, _ := newOwnerService(t)
+		on, err := s.Create(ctx, "ws-1", "u-owner", "Developers", nil, nil, true)
+		require.NoError(t, err)
+		off, err := s.Create(ctx, "ws-1", "u-owner", "Clients", nil, nil, false)
+		require.NoError(t, err)
+		assert.True(t, on.ShowLockedActions)
+		assert.False(t, off.ShowLockedActions)
+	})
+
+	t.Run("update keeps it when the switch is left out, and sets it with the saved value on role.updated", func(t *testing.T) {
+		s, repo := newOwnerService(t)
+		r, err := s.Create(ctx, "ws-1", "u-owner", "Developers", nil, nil, true)
+		require.NoError(t, err)
+
+		kept, err := s.Update(ctx, "ws-1", r.ID, "u-owner", "Developers", nil, nil, nil)
+		require.NoError(t, err)
+		assert.True(t, kept.ShowLockedActions, "a client that never sends the switch never clears it")
+
+		off := false
+		cleared, err := s.Update(ctx, "ws-1", r.ID, "u-owner", "Developers", nil, nil, &off)
+		require.NoError(t, err)
+		assert.False(t, cleared.ShowLockedActions)
+		stored, err := repo.Get(ctx, r.ID)
+		require.NoError(t, err)
+		assert.False(t, stored.ShowLockedActions)
+		assert.False(t, repo.events[len(repo.events)-1].Payload.(RoleEvent).ShowLockedActions)
+
+		on := true
+		_, err = s.Update(ctx, "ws-1", r.ID, "u-owner", "Developers", nil, nil, &on)
+		require.NoError(t, err)
+		assert.True(t, repo.events[len(repo.events)-1].Payload.(RoleEvent).ShowLockedActions)
+	})
+
+	t.Run("clone copies it", func(t *testing.T) {
+		s, repo := newCloneFixture(t, "u-1", cloneMember{workspaceID: "ws-src", owner: true}, cloneMember{workspaceID: "ws-dst", owner: true})
+		repo.byID["role-editors"].ShowLockedActions = true
+		got, err := s.Clone(ctx, "ws-src", "role-editors", "ws-dst", "u-1")
+		require.NoError(t, err)
+		assert.True(t, got.ShowLockedActions)
 	})
 }

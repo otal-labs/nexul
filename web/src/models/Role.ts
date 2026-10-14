@@ -7,6 +7,8 @@ export interface Role {
   permissions: string[];
   // The Welcome wizard steps the role gives its holders; the Owner role's are fixed by the server.
   welcome_steps: WelcomeStep[];
+  // Whether its holders see an action they can't take dimmed with the reason, instead of not at all.
+  show_locked_actions: boolean;
   is_owner_role: boolean;
   created_at: string;
   updated_at: string;

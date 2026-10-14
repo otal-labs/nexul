@@ -80,6 +80,8 @@ type RoleNameGate interface {
 	RoleName(ctx context.Context, workspaceID, roleID string) (string, error)
 	// IsOwnerRole reports whether roleID is workspaceID's protected singleton Owner role.
 	IsOwnerRole(ctx context.Context, workspaceID, roleID string) (bool, error)
+	// ShowLockedActions reports whether roleID shows its holders the actions they can't take, dimmed with the reason.
+	ShowLockedActions(ctx context.Context, workspaceID, roleID string) (bool, error)
 	// RolePermissions returns the actions roleID grants in workspaceID.
 	RolePermissions(ctx context.Context, workspaceID, roleID string) (permissions.Set, error)
 }

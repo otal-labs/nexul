@@ -337,7 +337,7 @@ func TestIntegration_HasPermission_RoleThenResource(t *testing.T) {
 	assert.True(t, accessSvc.HasPermission(ctx, "owner", ws.ID, permissions.MembersWrite, "", ""))
 
 	// A custom role's permission set is the base layer.
-	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.MembersWrite), nil)
+	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.MembersWrite), nil, false)
 	require.NoError(t, err)
 	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{
 		UserID: "alice", WorkspaceID: ws.ID, RoleID: editorRole.ID, CreatedAt: time.Now(),
@@ -359,4 +359,12 @@ func TestIntegration_HasPermission_RoleThenResource(t *testing.T) {
 
 	// A user with no role and no overwrite in the workspace is denied.
 	assert.False(t, accessSvc.HasPermission(ctx, "stranger", ws.ID, permissions.MembersWrite, "", ""))
+}
+
+func (g testRoleNameGate) ShowLockedActions(ctx context.Context, workspaceID, roleID string) (bool, error) {
+	r, err := g.svc.Get(ctx, workspaceID, roleID)
+	if err != nil {
+		return false, err
+	}
+	return r.ShowLockedActions, nil
 }

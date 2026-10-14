@@ -2,11 +2,14 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // migrateBefore applies every embedded migration older than version, leaving the database as a binary from
@@ -44,6 +47,19 @@ func migrateUpTo(t *testing.T, db *sql.DB, version string) {
 		require.NoError(t, err)
 		require.NoError(t, applyMigration(db, v, string(script)))
 	}
+}
+
+// storedRole reads a role's permissions and welcome steps straight from its row, for a test that stops before later
+// migrations that add columns the Roles repo already selects.
+func storedRole(t *testing.T, db *sql.DB, id string) (permissions.Set, []string) {
+	t.Helper()
+	var rawPerms, rawSteps string
+	require.NoError(t, db.QueryRow(`SELECT permissions, welcome_steps FROM roles WHERE id = ?`, id).Scan(&rawPerms, &rawSteps))
+	perms, err := parseSet(rawPerms)
+	require.NoError(t, err)
+	var steps []string
+	require.NoError(t, json.Unmarshal([]byte(rawSteps), &steps))
+	return perms, steps
 }
 
 func apply0029(t *testing.T, db *sql.DB) {

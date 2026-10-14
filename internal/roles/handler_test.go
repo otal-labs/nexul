@@ -121,6 +121,25 @@ func TestHandler_Update(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
 		assert.Equal(t, "Reviewers", r.Name)
 	})
+	t.Run("show_locked_actions is read from the request, and left out it keeps the role's", func(t *testing.T) {
+		h, repo, members := newTestHandler(t)
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+
+		var created, saved, kept Role
+		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"Dev","actions":[],"show_locked_actions":true}`, "u-owner")
+		require.Equal(t, http.StatusCreated, rec.Code)
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+		assert.True(t, created.ShowLockedActions)
+
+		path := "/api/workspaces/ws-1/roles/" + created.ID
+		rec = do(t, h.Routes(), http.MethodPatch, path, `{"name":"Dev","actions":[]}`, "u-owner")
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &kept))
+		assert.True(t, kept.ShowLockedActions)
+
+		rec = do(t, h.Routes(), http.MethodPatch, path, `{"name":"Dev","actions":[],"show_locked_actions":false}`, "u-owner")
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &saved))
+		assert.False(t, saved.ShowLockedActions)
+	})
 	t.Run("a request without welcome_steps keeps the role's, and one with them replaces them", func(t *testing.T) {
 		h, repo, members := newTestHandler(t)
 		seedOwner(t, repo, members, "ws-1", "u-owner")

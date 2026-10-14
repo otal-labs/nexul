@@ -365,6 +365,13 @@ func (s *Service) MyAccess(ctx context.Context, workspaceID, userID string) (*My
 		return nil, fmt.Errorf("get workspace %s: %w", workspaceID, err)
 	}
 	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}, AccessSetupFinished: ws.AccessSetupFinished}
+	for _, r := range roles {
+		show, err := s.roleNames.ShowLockedActions(ctx, workspaceID, r.ID)
+		if err != nil {
+			return nil, fmt.Errorf("read the switch of role %s: %w", r.ID, err)
+		}
+		me.ShowLockedActions = me.ShowLockedActions || show
+	}
 	if s.projects == nil {
 		return me, nil
 	}

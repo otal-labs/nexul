@@ -26,7 +26,7 @@ func (r *RolesRepo) Create(ctx context.Context, role *roles.Role) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateRole(ctx, sqlcgen.CreateRoleParams{
 			ID: role.ID, WorkspaceID: role.WorkspaceID, Name: role.Name,
-			Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps), IsOwnerRole: int64(boolInt(role.IsOwnerRole)),
+			Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps), ShowLockedActions: int64(boolInt(role.ShowLockedActions)), IsOwnerRole: int64(boolInt(role.IsOwnerRole)),
 			CreatedAt: role.CreatedAt.Unix(), UpdatedAt: role.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -64,7 +64,7 @@ func (r *RolesRepo) Update(ctx context.Context, role *roles.Role, events ...even
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRole(ctx, sqlcgen.UpdateRoleParams{
 			Name: role.Name, Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps),
-			UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
+			ShowLockedActions: int64(boolInt(role.ShowLockedActions)), UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update role %s: %w", role.ID, classifyWriteErr(err))
@@ -99,14 +99,15 @@ func toRole(row sqlcgen.Role) (*roles.Role, error) {
 		return nil, fmt.Errorf("decode welcome steps for role %s: %w", row.ID, err)
 	}
 	return &roles.Role{
-		ID:           row.ID,
-		WorkspaceID:  row.WorkspaceID,
-		Name:         row.Name,
-		Permissions:  perms,
-		WelcomeSteps: steps,
-		IsOwnerRole:  row.IsOwnerRole != 0,
-		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:                row.ID,
+		WorkspaceID:       row.WorkspaceID,
+		Name:              row.Name,
+		Permissions:       perms,
+		WelcomeSteps:      steps,
+		ShowLockedActions: row.ShowLockedActions != 0,
+		IsOwnerRole:       row.IsOwnerRole != 0,
+		CreatedAt:         time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:         time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
 

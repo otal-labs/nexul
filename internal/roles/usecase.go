@@ -69,8 +69,8 @@ func withOwnerSteps(r *Role) *Role {
 }
 
 // Create makes a new custom role in workspaceID; actorUserID must hold roles:write or the Owner bypass. A welcome step
-// gives no power, so steps need nothing more.
-func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name string, perms permissions.Set, steps []string) (*Role, error) {
+// and the show locked actions switch give no power, so they need nothing more.
+func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name string, perms permissions.Set, steps []string, showLockedActions bool) (*Role, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	name = strings.TrimSpace(name)
 	if workspaceID == "" {
@@ -91,13 +91,14 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 	}
 	now := s.now().UTC()
 	r := &Role{
-		ID:           ids.New(),
-		WorkspaceID:  workspaceID,
-		Name:         name,
-		Permissions:  perms,
-		WelcomeSteps: steps,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:                ids.New(),
+		WorkspaceID:       workspaceID,
+		Name:              name,
+		Permissions:       perms,
+		WelcomeSteps:      steps,
+		ShowLockedActions: showLockedActions,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("create role in workspace %s: %w", workspaceID, err)
@@ -160,9 +161,10 @@ func (s *Service) requireMember(ctx context.Context, workspaceID, actorUserID st
 	return nil
 }
 
-// Update renames a custom role and replaces its permissions and welcome steps, nil steps keeping the ones it has; the
-// Owner role can't be renamed or edited. The steps the save adds are named on role.updated, which gives them again.
-func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set, steps []string) (*Role, error) {
+// Update renames a custom role and replaces its permissions and welcome steps, nil steps keeping the ones it has, and
+// sets the show locked actions switch unless it is nil; the Owner role can't be renamed or edited. The steps the save
+// adds are named on role.updated, which gives them again.
+func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set, steps []string, showLockedActions *bool) (*Role, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
@@ -190,11 +192,14 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 		added = welcomestep.Added(r.WelcomeSteps, steps)
 		r.WelcomeSteps = steps
 	}
+	if showLockedActions != nil {
+		r.ShowLockedActions = *showLockedActions
+	}
 	r.Name = name
 	r.Permissions = perms
 	r.UpdatedAt = s.now().UTC()
 	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{
-		RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, WelcomeStepsAdded: added,
+		RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, WelcomeStepsAdded: added, ShowLockedActions: r.ShowLockedActions,
 	}}
 	if err := s.repo.Update(ctx, r, event); err != nil {
 		return nil, fmt.Errorf("update role %s: %w", roleID, err)
@@ -260,13 +265,14 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 	}
 	now := s.now().UTC()
 	r := &Role{
-		ID:           ids.New(),
-		WorkspaceID:  targetWorkspaceID,
-		Name:         freeName(source.Name, taken),
-		Permissions:  permissions.SetOf(source.Permissions...),
-		WelcomeSteps: slices.Clone(source.WelcomeSteps),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:                ids.New(),
+		WorkspaceID:       targetWorkspaceID,
+		Name:              freeName(source.Name, taken),
+		Permissions:       permissions.SetOf(source.Permissions...),
+		WelcomeSteps:      slices.Clone(source.WelcomeSteps),
+		ShowLockedActions: source.ShowLockedActions,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("clone role %s into workspace %s: %w", roleID, targetWorkspaceID, err)

@@ -141,13 +141,13 @@ func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	assert.JSONEq(t, `{"role_name":"role-name-role-editor, role-name-role-viewer",
 		"roles":[{"id":"role-editor","name":"role-name-role-editor","is_owner":false},{"id":"role-viewer","name":"role-name-role-viewer","is_owner":false}],
 		"permissions":["chat:write"],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read"]}],
-		"access_setup_finished":true}`, rec.Body.String())
+		"access_setup_finished":true,"show_locked_actions":false}`, rec.Body.String())
 
 	f.wsPerms.perms["olga"] = []string{"chat:write", "tickets:read"}
 	rec = do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "olga")
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"role_name":"role-name-owner-role","roles":[{"id":"owner-role","name":"role-name-owner-role","is_owner":true}],
-		"permissions":["chat:write","tickets:read"],"restricted":false,"projects":[],"access_setup_finished":true}`, rec.Body.String())
+		"permissions":["chat:write","tickets:read"],"restricted":false,"projects":[],"access_setup_finished":true,"show_locked_actions":false}`, rec.Body.String())
 
 	f.repo.workspaces["ws-1"].AccessSetupFinished = false
 	me, err := f.svc.MyAccess(t.Context(), "ws-1", "bob")
@@ -156,6 +156,23 @@ func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	f.repo.getErr = errors.New("database is locked")
 	_, err = f.svc.MyAccess(t.Context(), "ws-1", "bob")
 	require.ErrorIs(t, err, f.repo.getErr)
+}
+
+// TestMyAccess_ShowLockedActionsIsOnWhenAnyHeldRoleHasIt: a person holding several roles sees locked actions as soon as
+// one of them shows them, and not before.
+func TestMyAccess_ShowLockedActionsIsOnWhenAnyHeldRoleHasIt(t *testing.T) {
+	f := newAccessFixture(t)
+	f.repo.roleIDs["ws-1"]["bob"] = []string{"role-editor", "role-viewer"}
+	me, err := f.svc.MyAccess(t.Context(), "ws-1", "bob")
+	require.NoError(t, err)
+	assert.False(t, me.ShowLockedActions)
+
+	for _, on := range []string{"role-editor", "role-viewer"} {
+		f.nameGate.showLocked = map[string]bool{on: true}
+		me, err = f.svc.MyAccess(t.Context(), "ws-1", "bob")
+		require.NoError(t, err)
+		assert.True(t, me.ShowLockedActions, "%s alone is enough, whichever it is of the two held", on)
+	}
 }
 
 // fakeTeamProgress answers every person with the same progress and bob's join, or fails where told to.

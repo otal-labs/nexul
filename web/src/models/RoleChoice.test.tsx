@@ -17,7 +17,7 @@ const domains = domainsOf([
   entry("docs", "read", "Read docs"),
 ]);
 
-const role = (id: string, permissions: string[], owner = false): Role => ({ id, workspace_id: "ws-1", name: id, permissions, welcome_steps: [], is_owner_role: owner, created_at: "", updated_at: "" });
+const role = (id: string, permissions: string[], owner = false): Role => ({ id, workspace_id: "ws-1", name: id, permissions, welcome_steps: [], show_locked_actions: false, is_owner_role: owner, created_at: "", updated_at: "" });
 
 const owner = role("Owner", [], true);
 const dev = role("Developer", ["deploys:read", "plays:read"]);
