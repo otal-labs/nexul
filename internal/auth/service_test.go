@@ -262,25 +262,6 @@ func TestInvitationOAuthCallback_DoesNotCreateUser(t *testing.T) {
 	assert.Empty(t, registered)
 }
 
-func TestAuthenticatedAcceptance_DoesNotNeedOAuth(t *testing.T) {
-	ctx := t.Context()
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	owner, err := s.Login(ctx, "good-code")
-	require.NoError(t, err)
-	ownerID := mustVerify(t, s, owner)
-	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}}
-	s.SetInvitationGate(gate)
-	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
-	details, err := s.PrepareAuthenticatedAcceptance(ctx, ownerID, "raw-invitation")
-	require.NoError(t, err)
-	assert.Equal(t, "inv-1", details.InvitationID)
-	assert.Equal(t, ownerID, details.AuthenticatedUser.ID)
-	assert.NotEmpty(t, details.AcceptanceToken)
-	registered, err := users.ListUsers(ctx)
-	require.NoError(t, err)
-	assert.Len(t, registered, 1)
-}
-
 func TestConfigured(t *testing.T) {
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
 	settings.st.GitHubOAuthClientID = "client"

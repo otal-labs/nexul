@@ -215,28 +215,35 @@ func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 	assert.Equal(t, 1, outboxCount)
 }
 
-func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRole(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := t.Context()
-	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
-	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
-	_, _, err := s.Users.UpsertUser(ctx, newTestUser("user-existing", "provider-existing", "existing"))
-	require.NoError(t, err)
-	role := &roles.Role{ID: "role-existing", WorkspaceID: "ws-1", Name: "Existing", Permissions: permissions.SetOf(permissions.ProjectsWrite), CreatedAt: now, UpdatedAt: now}
-	require.NoError(t, s.Roles.Create(ctx, role))
-	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "user-existing", WorkspaceID: "ws-1", RoleID: role.ID, CreatedAt: now}))
-	_, tokenHash := invitationToken(t, "13")
-	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 24*time.Hour)
-	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
+// TestInvitationsRepo_Redeem_RefusesAnExistingAccount is the backstop behind sign-in's refusal: a handoff that names an
+// identity with an account, active or not, never redeems, and the link stays unused for the person it was meant for.
+func TestInvitationsRepo_Redeem_RefusesAnExistingAccount(t *testing.T) {
+	for _, status := range []auth.AccountStatus{auth.AccountActive, auth.AccountDisabled} {
+		t.Run(string(status), func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			ctx := t.Context()
+			now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+			seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
+			seedInvitationWorkspace(t, s, "ws-2", "Globex", "role-globex", false, "actor")
+			_, _, err := s.Users.UpsertUser(ctx, newTestUser("user-existing", "provider-existing", "existing"))
+			require.NoError(t, err)
+			require.NoError(t, s.Users.SetAccountStatus(ctx, "user-existing", status))
+			_, tokenHash := invitationToken(t, "13")
+			invitation := newInvitation("inv-1", "actor", "ws-2", "role-globex", now, 24*time.Hour)
+			require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
+			identity := tenancy.InvitationIdentity{ID: "user-fresh", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}
+			acceptanceHash := createAcceptanceHandoff(t, s, invitation.ID, now, identity, "19")
 
-	acceptanceHash := createAcceptanceHandoff(t, s, invitation.ID, now, tenancy.InvitationIdentity{ID: "ignored", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}, "19")
-	admission, err := s.Invitations.Redeem(ctx, acceptanceHash, tenancy.InvitationIdentity{ID: "ignored", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}, now)
-	require.NoError(t, err)
-	assert.False(t, admission.Created)
-	member, err := s.WorkspaceMembers.Member(ctx, "ws-1", "user-existing")
-	require.NoError(t, err)
-	assert.Equal(t, []string{"role-existing"}, member.RoleIDs, "redeeming never changes an existing membership")
+			_, err = s.Invitations.Redeem(ctx, acceptanceHash, identity, now)
+			require.ErrorIs(t, err, tenancy.ErrExistingAccount)
+			var redeemedAt sql.NullInt64
+			require.NoError(t, s.db.QueryRowContext(ctx, `SELECT redeemed_at FROM invitations WHERE id = ?`, invitation.ID).Scan(&redeemedAt))
+			assert.False(t, redeemedAt.Valid, "the link stays unused")
+			_, err = s.WorkspaceMembers.RoleIDFor(ctx, "ws-2", "user-existing")
+			assert.ErrorIs(t, err, apperrs.ErrNotFound, "the account gains no workspace")
+		})
+	}
 }
 
 func TestInvitationsRepo_Redeem_InvalidGrantRollsBackNewUser(t *testing.T) {
@@ -432,28 +439,6 @@ func TestOAuthHandoffs_StateBoundAcceptance_IsolatedAndHashed(t *testing.T) {
 	assert.Equal(t, firstAcceptance, storedAcceptance.String)
 }
 
-func TestInvitationsRepo_Redeem_DisabledAfterOAuthIsRejected(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := t.Context()
-	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
-	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
-	_, _, err := s.Users.UpsertUser(ctx, newTestUser("user-existing", "provider-existing", "existing"))
-	require.NoError(t, err)
-	_, tokenHash := invitationToken(t, "25")
-	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 7*24*time.Hour)
-	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
-	identity := tenancy.InvitationIdentity{ID: "ignored", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}
-	acceptanceHash := createAcceptanceHandoff(t, s, invitation.ID, now, identity, "26")
-	require.NoError(t, s.Users.SetAccountStatus(ctx, "user-existing", auth.AccountDisabled))
-
-	_, err = s.Invitations.Redeem(ctx, acceptanceHash, identity, now)
-	assert.ErrorIs(t, err, apperrs.ErrNotFound)
-	var redeemedAt sql.NullInt64
-	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT redeemed_at FROM invitations WHERE id = ?`, invitation.ID).Scan(&redeemedAt))
-	assert.False(t, redeemedAt.Valid)
-}
-
 func TestInvitationsRepo_Redeem_ConsumeBeforeWriteRollsBackOnOutboxFailure(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -550,7 +535,8 @@ func seedInvitationHistory(t *testing.T) (*Store, time.Time) {
 	bob := tenancy.InvitationIdentity{ID: "user-bob", Provider: "github", ProviderUserID: "provider-bob", Login: "bob"}
 	_, err := s.Invitations.Redeem(ctx, createAcceptanceHandoff(t, s, "inv-taken", now, bob, "46"), bob, now.Add(-2*day))
 	require.NoError(t, err)
-	_, err = s.Invitations.Redeem(ctx, createAcceptanceHandoff(t, s, "inv-lena", now, bob, "47"), bob, now.Add(-day))
+	// A second link taken by an existing account, as one could be before existing accounts were turned away.
+	_, err = s.db.ExecContext(ctx, `UPDATE invitations SET redeemed_at = ?, redeemed_by = ? WHERE id = ?`, now.Add(-day).Unix(), bob.ID, "inv-lena")
 	require.NoError(t, err)
 	require.NoError(t, s.Invitations.Revoke(ctx, "alice", "inv-revoked", now.Add(-12*time.Hour)))
 	return s, now

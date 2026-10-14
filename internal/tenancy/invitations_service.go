@@ -277,6 +277,9 @@ func validCredentialHash(value string) bool {
 	return err == nil
 }
 
+// ErrExistingAccount refuses an identity that already has an account: an invitation is only for someone new.
+var ErrExistingAccount = apperrs.WithCode("existing_account", fmt.Errorf("%w: you already have an account here; this invitation is for someone new", apperrs.ErrConflict))
+
 func invalidInvitation() error {
 	return fmt.Errorf("%w: invitation is invalid or expired", apperrs.ErrNotFound)
 }
