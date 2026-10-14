@@ -596,7 +596,7 @@ func (s *Service) channelRead(ctx context.Context, userID, workspaceID, channelI
 }
 
 // ChannelPost is nil when userID may post in channelID of workspaceID, else forbidden naming the source: channels:post
-// from their roles, then the channel's rules (ADR 0149). It asks nothing about reading the channel, which comes first.
+// from their roles, then the channel's rules (ADR 0150). It asks nothing about reading the channel, which comes first.
 func (s *Service) ChannelPost(ctx context.Context, userID, workspaceID, channelID string) error {
 	held, src := s.check(ctx, userID, workspaceID, "", permissions.ChannelsPost, resourceTypeChannel, channelID)
 	if held {
@@ -1041,7 +1041,7 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's or a
 // folder's manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
 // that gates editing the play's own definition; a stack's is stacks:write, as editing it is; a project's is Manage this
-// project's access; a channel's is channels:write (ADR 0149); an instance area's the instance Owner's alone; a
+// project's access; a channel's is channels:write (ADR 0150); an instance area's the instance Owner's alone; a
 // computer's its owner's, and to anyone else it is not found.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
 	if resourceType == resourceTypeInstanceArea {

@@ -108,7 +108,7 @@ func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID
 }
 
 // BotPost is one post through a bot's URL as chat stores it; the URL that reached the bot is the credential, and the bot
-// posts with what its creator may (ADR 0149).
+// posts with what its creator may (ADR 0150).
 type BotPost struct {
 	ConversationID, BotID, CreatorID string
 	// Name and AvatarURL are what the message shows, kept through the bot's rename or delete.
@@ -161,7 +161,7 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 }
 
 // ErrBotStopped refuses a bot's post because its creator may not post where it posts, whether they left, were denied,
-// or hold no role (ADR 0149); never not found, so the URL still reads as the bot's.
+// or hold no role (ADR 0150); never not found, so the URL still reads as the bot's.
 var ErrBotStopped = fmt.Errorf("%w: the bot's creator may not post here", apperrs.ErrForbidden)
 
 // BotStopped reports whether a bot that creatorID made may not post in conversationID, and the conversation's name.
