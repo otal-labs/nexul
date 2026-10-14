@@ -65,7 +65,7 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
         target: data.target,
         docker_network: data.docker_network,
       });
-      await createInstanceRecord.mutateAsync({
+      const record = await createInstanceRecord.mutateAsync({
         zone_id: data.zone_id,
         zone: data.zone,
         type: data.record_type,
@@ -74,6 +74,7 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
       onDone({
         headline: `Traefik runs on ${data.target} and the instance record under ${data.zone} points at it.`,
         detail: `${data.record_type} → ${data.server_address}`,
+        record,
       });
     } catch {
       // Errors surface through the hooks' toasts; every call is retry-safe.

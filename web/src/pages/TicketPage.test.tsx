@@ -1,10 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { TicketPage } from "@/pages/TicketPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -15,15 +18,19 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const renderPage = (entry = "/tickets/t-1", embeddedTicketId?: string) => {
+const renderPage = (entry = "/tickets/t-1", embeddedTicketId?: string, inInbox = false) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[entry]}>
-        <Routes>
-          <Route path="/tickets/:ticketId" element={<TicketPage {...(embeddedTicketId ? { ticketId: embeddedTicketId } : {})} />} />
-        </Routes>
-      </MemoryRouter>
+      <ContextAwareConfirmation.ConfirmationRoot />
+      <EmbeddedCrumbsContext.Provider value={inInbox ? [] : undefined}>
+        <MemoryRouter initialEntries={[entry]}>
+          <Routes>
+            <Route path="/tickets/:ticketId" element={<TicketPage {...(embeddedTicketId ? { ticketId: embeddedTicketId } : {})} />} />
+            <Route path="/acme/board/:token" element={<p>Board page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </EmbeddedCrumbsContext.Provider>
     </QueryClientProvider>,
   );
 };
@@ -81,7 +88,7 @@ const mockTicket = (overrides: Record<string, unknown> = {}) => vi.mocked(api.ge
 });
 
 beforeEach(() => {
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.post).mockReset();
@@ -202,5 +209,66 @@ describe("TicketPage sections", () => {
     const rail = await headings();
     const properties = rail.indexOf("Properties");
     expect(rail.slice(properties, properties + 3)).toEqual(["Properties", "Plays", "Development"]);
+  });
+});
+
+describe("TicketPage delete", () => {
+  const canDelete = { "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:delete"] } };
+
+  beforeEach(() => {
+    vi.mocked(api.delete).mockReset().mockResolvedValue({ data: null });
+  });
+
+  it("is not offered to someone without tickets:delete", async () => {
+    mockTicket({ "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:write"] } });
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for BE-7" })).not.toBeInTheDocument();
+  });
+
+  it("names the ticket and what goes with it, and deletes nothing when cancelled", async () => {
+    const user = userEvent.setup();
+    mockTicket(canDelete);
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Delete BE-7?");
+    expect(dialog).toHaveTextContent("Write migrations");
+    expect(dialog).toHaveTextContent("labels, links, attachments and thread");
+    expect(dialog).toHaveTextContent("can't be undone");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(api.delete).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
+  });
+
+  it("deletes the ticket and returns to its project's board", async () => {
+    const user = userEvent.setup();
+    mockTicket(canDelete);
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete ticket" }));
+
+    expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-1");
+    expect(await screen.findByText("Board page")).toBeInTheDocument();
+  });
+
+  it("keeps a ticket shown inside another page where it is", async () => {
+    const user = userEvent.setup();
+    mockTicket(canDelete);
+    renderPage("/tickets/t-1", "t-1", true);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for BE-7" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete ticket" }));
+
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Ticket deleted"));
+    expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-1");
+    expect(screen.queryByText("Board page")).not.toBeInTheDocument();
   });
 });

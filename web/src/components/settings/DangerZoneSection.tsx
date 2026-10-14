@@ -14,7 +14,7 @@ export const DangerZoneSection = () => {
       {archivable && <WorkspaceArchiveAction workspace={workspace} />}
       {!archivable && (
         <li className="py-3">
-          <EmptyRow flush>Nothing here can't be undone yet. To remove a project, open its settings.</EmptyRow>
+          <EmptyRow flush>Nothing in this workspace can be deleted from here. To remove a project, open its settings.</EmptyRow>
         </li>
       )}
     </DangerZone>

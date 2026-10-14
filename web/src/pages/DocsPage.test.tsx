@@ -149,7 +149,7 @@ describe("DocsPage", () => {
 
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Rollback plan") });
     const items = await screen.findAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Move to folder", "Clone", "Delete"]);
+    expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Archive", "Move to folder", "Clone", "Delete"]);
     await user.click(screen.getByRole("menuitem", { name: "Lock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-2/lock"));
 

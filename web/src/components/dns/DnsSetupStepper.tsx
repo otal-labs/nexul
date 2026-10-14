@@ -57,7 +57,7 @@ export const DnsSetupStepper = () => {
         {path === EntryPaths.Proxy && <ProxyEntryPathForm onDone={setResult} />}
       </DnsStep>
       <DnsStep title="Go live" state={stepState(result !== null, false)} last>
-        {result && <DnsSetupDone result={result} />}
+        {result && <DnsSetupDone result={result} onRecordDeleted={() => setResult(null)} />}
       </DnsStep>
     </ol>
   );

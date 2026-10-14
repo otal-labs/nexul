@@ -7,6 +7,7 @@ import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEdit
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
+import { RowActions } from "@/components/listpane/RowActions";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
@@ -15,6 +16,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketCache";
+import { useTicketActions } from "@/hooks/useTicketActions";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import type { Project } from "@/models/Project";
@@ -49,6 +51,9 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
   const reporterPerson = usePerson(ticket.reporter.login ?? "");
   const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
 
+  const ticketLabel = project ? `${project.prefix}-${ticket.number}` : ticket.id;
+  const menu = useTicketActions(ticket, ticketLabel, project);
+
   const workspaceCrumb = useWorkspaceCrumb();
   const projectCrumb = useProjectCrumb(ticket.project_id);
   const crumbs = useEmbeddedCrumbs(projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb]);
@@ -80,10 +85,11 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
             )}
           </ClampedTitle>
         }
+        actions={menu.onDelete && <RowActions itemLabel={ticketLabel} {...menu} />}
         meta={
           <>
             <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-foreground">
-              {project ? `${project.prefix}-${ticket.number}` : ticket.id}
+              {ticketLabel}
             </span>
             <TicketStatusBadge ticket={ticket} />
             <span className="font-mono text-xs">

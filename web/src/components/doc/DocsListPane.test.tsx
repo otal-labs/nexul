@@ -8,6 +8,7 @@ import type { DocListItem } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
 import type { Project } from "@/models/Project";
 import { useDocFolderStore } from "@/stores/docFolderStore";
+import { useDocArchiveStore } from "@/stores/docArchiveStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 
 const main: DocFolder = { id: "f-main", project_id: "project-1", name: "Main", is_default: true, created_at: "", updated_at: "" };
@@ -27,13 +28,13 @@ vi.mock("@/components/doc/DocFolderSection", () => ({
   ),
 }));
 
-const doc = (id: string, created: string, updated: string): DocListItem => ({
+const doc = (id: string, created: string, updated: string, archived = false): DocListItem => ({
   id,
   project_id: "project-1",
   folder_id: "f-main",
   title: id,
   version: 1,
-  archived: false,
+  archived,
   locked: false,
   can_open: true,
   created_at: created,
@@ -52,6 +53,7 @@ const listed = () => screen.getAllByRole("listitem").map((li) => li.textContent)
 describe("DocsListPane", () => {
   beforeEach(() => {
     useDocSortStore.setState({ sortBy: "created_at" });
+    useDocArchiveStore.setState({ showArchived: false });
   });
 
   it("lists by creation by default and by last edit once toggled", async () => {
@@ -83,5 +85,26 @@ describe("DocsListPane", () => {
     useDocFolderStore.getState().toggleCollapsed("project-1", "f-main");
     rerender(<DocsListPane docs={docs} project={{ id: "project-1" } as Project} selectedId="EP06" />);
     expect(useDocFolderStore.getState().collapsed["project-1"]).toEqual(["f-main"]);
+  });
+
+  it("hides archived docs until the Archived filter is on, then lists only them", async () => {
+    const withArchived = [...docs, doc("EP02", "2026-01-02T09:00:00Z", "2026-01-02T09:00:00Z", true)];
+    render(<DocsListPane docs={withArchived} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+    expect(listed()).toEqual(["EP07", "EP06", "EP01"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Show archived docs" }));
+    expect(listed()).toEqual(["EP02"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Show archived docs" }));
+    expect(listed()).toEqual(["EP07", "EP06", "EP01"]);
+  });
+
+  it("says when nothing is archived instead of listing empty folders", async () => {
+    render(<DocsListPane docs={docs} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Show archived docs" }));
+
+    expect(screen.getByText("No archived docs")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Main" })).not.toBeInTheDocument();
   });
 });

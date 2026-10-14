@@ -41,7 +41,7 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
         </Button>
       )}
       {canChange && person.status === "disabled" && (
-        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again")}>
+        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again. The computers disconnected when the account was disabled stay disconnected")}>
           <UserRoundCheck className="size-4" />Reactivate
         </Button>
       )}

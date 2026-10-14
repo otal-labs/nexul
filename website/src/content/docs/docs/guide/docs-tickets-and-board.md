@@ -21,12 +21,13 @@ Write in the editor with formatting, tables, and code blocks; type `/` for the b
 
 Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a right-click on a folder starts a doc in it, renames it, deletes it, or opens its **Permissions…**, whose rules reach every doc in it (see [People and access](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play)). Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu.
 
-### Lock, clone, and delete
+### Lock, clone, archive, and delete
 
-The row menu, on a right-click, also has **Lock**, **Clone**, **Permissions…** for whoever can change the doc's [rules](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play), and **Delete**.
+The row menu, on a right-click, also has **Lock**, **Archive**, **Clone**, **Permissions…** for whoever can change the doc's [rules](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play), and **Delete**.
 
 - **Lock** makes the doc read-only for everyone, people and agents alike, until someone presses **Unlock**. Locking needs `docs:lock`, granted apart from editing. Starting a doc play locks the doc too.
 - **Clone** copies the doc and its files into any project where you can write docs.
+- **Archive** takes the doc out of the list without deleting it. The archive button in the list header (**Show archived docs**) swaps the list to the archived docs, each with **Restore** in its row menu; press it again to go back. Archive and Restore need `docs:write`, and the doc page's menu has them too.
 - **Delete** is permanent. It's refused while a ticket names the doc as its source; clear that ticket's source first.
 
 ### Clarify a doc
@@ -52,6 +53,10 @@ The ticket page has everything else:
 - **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket. Point at a linked branch or pull request and press its **×** to unlink it, if you linked the wrong one; that needs permission to change the ticket, and the branch or PR itself is untouched. A pull request that still names the ticket in its description or branch name links itself again the next time GitHub reports it. Agents unlink with `unlink_pr` and `unlink_branch` on `ticket_update`.
 - **Testing.** In a Testing column it shows where to test and the acceptance criteria, with **Pass** and **Fail**. Fail asks for steps to reproduce, the expected and actual results, and a screenshot. It never points at production.
 - **Thread.** The ticket's conversation, where plays post their runs and agents leave notes.
+
+### Delete a ticket
+
+The **⋯** in the ticket page's header has **Delete**, for whoever holds `tickets:delete`. The confirm names the ticket. Deleting is permanent: the ticket goes with its labels, links, attachments and thread, and any ticket it blocked is no longer blocked. A ticket page returns to the project's board afterwards; one opened inside the Inbox stays there.
 
 ### Bugs
 

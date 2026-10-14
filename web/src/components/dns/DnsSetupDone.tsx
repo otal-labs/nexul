@@ -1,14 +1,34 @@
+import { Trash2Icon } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import type { DnsSetupResult } from "@/models/DNS";
+import { useDeleteDnsRecord } from "@/hooks/DnsHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import type { DnsRecord, DnsSetupResult } from "@/models/DNS";
 
 interface DnsSetupDoneProps {
   result: DnsSetupResult;
+  // The record is gone, so the hostname rung asks again.
+  onRecordDeleted: () => void;
 }
 
-export const DnsSetupDone = ({ result }: DnsSetupDoneProps) => {
+export const DnsSetupDone = ({ result, onRecordDeleted }: DnsSetupDoneProps) => {
+  const { record } = result;
   const navigate = useNavigate();
+  const canDelete = useHasPermission("dns:delete");
+  const deleteRecord = useDeleteDnsRecord();
+  const { open: confirm } = useConfirmationDialog();
+
+  const onDelete = async (record: DnsRecord) => {
+    const ok = await confirm({
+      title: `Delete the ${record.type} record for ${record.name}?`,
+      message: `${record.name} stops pointing at ${record.content}. Only the DNS record is deleted. This can't be undone: set the hostname up again to create a new one.`,
+      confirmLabel: "Delete record",
+    });
+    if (!ok) return;
+    deleteRecord.mutate({ zoneId: record.zone_id, recordId: record.id }, { onSuccess: onRecordDeleted });
+  };
 
   return (
     <div className="space-y-5">
@@ -16,9 +36,22 @@ export const DnsSetupDone = ({ result }: DnsSetupDoneProps) => {
         <p className="text-sm">{result.headline}</p>
         <p className="mt-1 font-mono text-xs text-muted-foreground">{result.detail}</p>
       </div>
-      <Button className="w-full sm:w-auto" onClick={() => navigate("/")}>
-        Continue to Nexul
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button className="w-full sm:w-auto" onClick={() => navigate("/")}>
+          Continue to Nexul
+        </Button>
+        {record && canDelete && (
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
+            loading={deleteRecord.isPending}
+            onClick={() => void onDelete(record)}
+          >
+            <Trash2Icon className="size-4" aria-hidden />
+            Delete this record
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

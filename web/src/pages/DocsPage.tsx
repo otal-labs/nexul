@@ -22,6 +22,8 @@ export const DocsPage = () => {
   const { projects, current } = useSidebarProject();
   const wsPath = useWorkspacePath();
   const { data: docs, error, isPending } = useFetchDocsByProject(current?.id ?? "");
+  // The list shows live docs unless the Archived filter is on, so the placeholder counts those.
+  const live = docs?.filter((doc) => !doc.archived) ?? [];
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
@@ -41,9 +43,9 @@ export const DocsPage = () => {
           placeholder={
             <ListDetailPlaceholder
               icon={FileTextIcon}
-              title={docs.length === 0 ? "Nothing to open yet" : "Select a doc"}
-              summary={docs.length === 0 ? `${current.name} has no docs.` : `${docs.length} ${docs.length === 1 ? "doc" : "docs"} in ${current.name}`}
-              searchable={docs.length > 0}
+              title={live.length === 0 ? "Nothing to open yet" : "Select a doc"}
+              summary={live.length === 0 ? `${current.name} has no docs.` : `${live.length} ${live.length === 1 ? "doc" : "docs"} in ${current.name}`}
+              searchable={live.length > 0}
             />
           }
           detail={

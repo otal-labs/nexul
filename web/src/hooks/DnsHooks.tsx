@@ -37,6 +37,15 @@ export const useCreateInstanceRecord = () =>
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+export const useDeleteDnsRecord = () =>
+  useMutation({
+    mutationFn: async ({ zoneId, recordId }: { zoneId: string; recordId: string }) => {
+      await api.delete(`/api/dns/zones/${encodeURIComponent(zoneId)}/records/${encodeURIComponent(recordId)}`);
+    },
+    onSuccess: () => toast.success("DNS record deleted"),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
 export const getDnsTunnelsKey = "dnsTunnels";
 
 export const useFetchTunnels = (enabled = true) =>

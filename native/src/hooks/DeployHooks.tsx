@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
@@ -23,3 +23,12 @@ const deployLogQuery = defineQuery({
 });
 
 export const useFetchDeployLog = (id: string | undefined) => useQuery({ ...deployLogQuery.options(id), enabled: !!id });
+
+// The runner stops the deploy and the live deploy.updated frame carries the new status; this only asks.
+export const useCancelDeploy = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<null>(`/api/deploys/${id}/cancel`),
+    onSuccess: (_result, id) => client.invalidateQueries({ queryKey: [getDeployKey, id] }),
+  });
+};

@@ -42,10 +42,11 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
 
   const onSubmit = async (data: InstanceRecordFormData) => {
     try {
-      await createRecord.mutateAsync(data);
+      const record = await createRecord.mutateAsync(data);
       onDone({
         headline: `The instance record under ${data.zone} now points at ${data.target}.`,
         detail: `${data.type} → ${data.target}`,
+        record,
       });
     } catch {
       // A record/instance-URL mismatch is surfaced by the hook's toast; the API rejects it instead of guessing.

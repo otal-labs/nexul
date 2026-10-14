@@ -1,4 +1,6 @@
 import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
   BotIcon,
   CopyIcon,
   EyeIcon,
@@ -75,6 +77,18 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
         <ui.Item onSelect={m.lock.onToggle}>
           <LockOpenIcon aria-hidden />
           Unlock
+        </ui.Item>
+      )}
+      {m.archive && !m.archive.archived && (
+        <ui.Item onSelect={m.archive.onToggle}>
+          <ArchiveIcon aria-hidden />
+          Archive
+        </ui.Item>
+      )}
+      {m.archive?.archived && (
+        <ui.Item onSelect={m.archive.onToggle}>
+          <ArchiveRestoreIcon aria-hidden />
+          Restore
         </ui.Item>
       )}
       {m.moveTo && (
