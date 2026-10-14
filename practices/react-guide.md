@@ -623,6 +623,9 @@ theirs has Show locked actions on, and not at all otherwise.
   `answer={machineAnswer(machine, "machines:write")}` (`@nexul/client-core/actionState`). A row menu's Delete takes
   `deleteGate` beside `onDelete`, so it draws locked inside the Radix menu; the row leaves `onDelete` out when the gate
   is hidden.
+- A control that starts a deploy on a stack's machine gates `["machines:deploy", ...]` with `answer={useDeployToAnswer(machineName)}`
+  (`hooks/RunnerHooks.tsx`), which reads the machine list's own actions and renders nothing until the list arrives. Adding
+  a machine is an instance action: read it through `useCanAddMachines`, never from a workspace's `/me`.
 - Reach for `useActionState` only to gate something the components above don't
   draw, such as whether a whole section renders.
 

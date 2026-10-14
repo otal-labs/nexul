@@ -62,7 +62,7 @@ export const TicketPageBody = ({
                 <PlaysRailSection ticket={ticket} />
                 <DevelopmentSection ticketId={ticket.id} />
                 <ReviewPanel ticketId={ticket.id} />
-                <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
+                <AttachmentsSection owner={{ ticket_id: ticket.id }} projectId={ticket.project_id} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
                 <TicketLinksSection ticket={ticket} />
                 <DecisionsCheckNotice ticketId={ticket.id} />
                 <TicketTestSection ticket={ticket} />

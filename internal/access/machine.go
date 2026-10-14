@@ -255,7 +255,7 @@ func (s *Service) requireNamed(ctx context.Context, name string, action permissi
 	if s.machines == nil {
 		return fmt.Errorf("%w: no machine lookup wired", apperrs.ErrForbidden)
 	}
-	_, answer, err := s.answerNamed(ctx, userID, name, action)
+	_, answer, err := s.answerNamed(ctx, s.viewerOf(userID), name, action)
 	if err != nil {
 		return err
 	}
@@ -268,8 +268,17 @@ func (s *Service) requireNamed(ctx context.Context, name string, action permissi
 	return nil
 }
 
-// answerNamed is userID's answer for action on the machine called name; an unknown name is errNoMachineNamed.
-func (s *Service) answerNamed(ctx context.Context, userID, name string, action permissions.Action) (string, machineAnswer, error) {
+// machineViewer reads one holder's view of a machine, a person's or a role's.
+type machineViewer func(ctx context.Context, machineID string) (machineView, error)
+
+func (s *Service) viewerOf(userID string) machineViewer {
+	return func(ctx context.Context, machineID string) (machineView, error) {
+		return s.machineView(ctx, userID, machineID)
+	}
+}
+
+// answerNamed is the holder's answer for action on the machine called name; an unknown name is errNoMachineNamed.
+func (s *Service) answerNamed(ctx context.Context, viewer machineViewer, name string, action permissions.Action) (string, machineAnswer, error) {
 	id, err := s.machines.MachineIDByName(ctx, name)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return "", machineAnswer{}, errNoMachineNamed(name)
@@ -277,7 +286,7 @@ func (s *Service) answerNamed(ctx context.Context, userID, name string, action p
 	if err != nil {
 		return "", machineAnswer{}, fmt.Errorf("resolve machine %q: %w", name, err)
 	}
-	view, err := s.machineView(ctx, userID, id)
+	view, err := viewer(ctx, id)
 	if err != nil {
 		return "", machineAnswer{}, err
 	}
@@ -285,18 +294,18 @@ func (s *Service) answerNamed(ctx context.Context, userID, name string, action p
 }
 
 // noDeployTo must answer as requireNamed does for a deploy start, so explain never disagrees with the click.
-func (s *Service) noDeployTo(ctx context.Context, userID, name string) (Source, bool, error) {
+func (s *Service) noDeployTo(ctx context.Context, viewer machineViewer, targetType, targetID, name string) (Source, bool, error) {
 	if s.machines == nil {
 		return Source{}, false, nil
 	}
-	id, answer, err := s.answerNamed(ctx, userID, name, permissions.MachinesDeploy)
+	id, answer, err := s.answerNamed(ctx, viewer, name, permissions.MachinesDeploy)
 	if errors.Is(err, apperrs.ErrInvalid) {
-		return sourceOf(SourceNoDeployTo, resourceTypeMachine, name, TargetPerson, userID, false), true, nil
+		return sourceOf(SourceNoDeployTo, resourceTypeMachine, name, targetType, targetID, false), true, nil
 	}
 	if err != nil || (answer.seen && answer.held) {
 		return Source{}, false, err
 	}
-	return sourceOf(SourceNoDeployTo, resourceTypeMachine, id, TargetPerson, userID, false), true, nil
+	return sourceOf(SourceNoDeployTo, resourceTypeMachine, id, targetType, targetID, false), true, nil
 }
 
 // MachineViewers addresses a deleted machine's live frame, because its rules go with it.
@@ -434,6 +443,15 @@ func (s *Service) explainRoleMachine(ctx context.Context, actorID, machineID, ro
 	if err := s.requireRolesOf(ctx, resourceTypeMachine, machineID, []string{roleID}); err != nil {
 		return nil, err
 	}
+	who, err := s.roleMachineView(ctx, machineID, roleID)
+	if err != nil {
+		return nil, err
+	}
+	return s.machineExplanation(ctx, machineID, who, &Explanation{RoleID: roleID}), nil
+}
+
+// roleMachineView reads only the role's bits and rules; a rule naming a person never reaches a role.
+func (s *Service) roleMachineView(ctx context.Context, machineID, roleID string) (machineView, error) {
 	workspaceID, err := s.roleWorkspace.WorkspaceIDForRole(ctx, roleID)
 	if err != nil {
 		return nil, fmt.Errorf("resolve role %s: %w", roleID, err)
@@ -453,10 +471,9 @@ func (s *Service) explainRoleMachine(ctx context.Context, actorID, machineID, ro
 		src := sourceOf(SourceOwner, resourceTypeWorkspace, workspaceID, TargetRole, roleID, true)
 		h.owner = &src
 	}
-	who := func(action permissions.Action, fallback bool) machineAnswer {
+	return func(action permissions.Action, fallback bool) machineAnswer {
 		return h.answer(machineID, action, fallback)
-	}
-	return s.machineExplanation(ctx, machineID, who, &Explanation{RoleID: roleID}), nil
+	}, nil
 }
 
 func (s *Service) machineExplanation(ctx context.Context, machineID string, who machineView, out *Explanation) *Explanation {

@@ -10,6 +10,7 @@ import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
 import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
+import { useDeployToAnswer } from "@/hooks/RunnerHooks";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import type { Stack } from "@/models/Stack";
@@ -46,6 +47,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
   const setEnvValues = useProjectWizardStore((s) => s.setEnvValues);
   const updateEnv = useUpdateStackEnv();
   const deployStack = useDeployStack();
+  const deployTo = useDeployToAnswer(stack.machine);
   // Every key needs a default (even "") — an RHF field left out of defaultValues renders uncontrolled, then
   // flips to controlled the moment it's typed into, which React (rightly) warns about.
   const form = useForm<Record<string, string>>({
@@ -93,9 +95,11 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission={["stacks:write", "deploys:write"]} projectId={stack.project_id} verb="save the environment and deploy" type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
-          Save & deploy
-        </ActionButton>
+        {deployTo && (
+          <ActionButton permission={["machines:deploy", "stacks:write", "deploys:write"]} answer={deployTo} projectId={stack.project_id} verb="save the environment and deploy" type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
+            Save & deploy
+          </ActionButton>
+        )}
       </WizardFooter>
     </form>
   );

@@ -288,3 +288,30 @@ describe("TicketPage delete", () => {
     expect(screen.queryByText("Board page")).not.toBeInTheDocument();
   });
 });
+
+describe("TicketPage attachments", () => {
+  // Writes tickets in p-1 and only reads in p-2; the sidebar's project is where the viewer happens to be looking.
+  const me = {
+    role_name: "Member",
+    permissions: ["tickets:read"],
+    show_locked_actions: true,
+    projects: [
+      { project_id: "p-1", actions: ["tickets:write"] },
+      { project_id: "p-2", actions: [] },
+    ],
+  };
+
+  it.each([
+    { name: "the ticket's own project lets them write, though another is selected", selected: "p-2", ticketProject: "p-1", offered: true, inInbox: false },
+    { name: "the selected project lets them write, but the ticket is in another", selected: "p-1", ticketProject: "p-2", offered: false, inInbox: false },
+    { name: "a ticket opened from the Inbox follows its own project", selected: "p-2", ticketProject: "p-1", offered: true, inInbox: true },
+  ])("$name", async ({ selected, ticketProject, offered, inInbox }) => {
+    useWorkspaceStore.setState({ selectedProjectId: selected });
+    mockTicket({ "/api/workspaces/ws-1/me": me, "/api/tickets/t-1": { ...ticketData, project_id: ticketProject } });
+    renderPage("/tickets/t-1", inInbox ? "t-1" : undefined, inInbox);
+
+    const add = await screen.findByRole("button", { name: "Add attachment" });
+    if (offered) expect(add).not.toHaveAttribute("aria-disabled");
+    if (!offered) expect(add).toHaveAttribute("aria-disabled", "true");
+  });
+});

@@ -11,6 +11,7 @@ interface AttachmentRowProps {
   attachment: Attachment;
   // What deleting a file takes: write on the thing it hangs off.
   permission: PermissionAction;
+  projectId?: string | undefined;
 }
 
 // Hidden until the pill is hovered or focused, so a resting pill is only thumb, name, and size; the actions then fade in
@@ -20,7 +21,7 @@ const actionsClass =
 const iconButtonClass =
   "flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/60 hover:text-foreground";
 
-export const AttachmentRow = ({ attachment, permission }: AttachmentRowProps) => {
+export const AttachmentRow = ({ attachment, permission, projectId }: AttachmentRowProps) => {
   const inline = isInlineImage(attachment.content_type);
   const { data: thumb } = useAttachmentBlob(inline ? attachmentPath(attachment.id) : null);
   const deleteAttachment = useDeleteAttachment();
@@ -52,6 +53,7 @@ export const AttachmentRow = ({ attachment, permission }: AttachmentRowProps) =>
         </button>
         <ActionButton
           permission={permission}
+          projectId={projectId}
           verb="delete files"
           variant="ghost"
           size="icon"

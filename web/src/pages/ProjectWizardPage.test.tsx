@@ -12,6 +12,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({
   useAreaAccess: () => (area: string) => access.areas.includes(area),
+  useCanAddMachines: () => false,
   useCanOpenSection: () => false,
   useVisibleSettingsSections: () => [],
 }));
@@ -74,6 +75,9 @@ const stack = {
   created_at: "",
   updated_at: "",
 };
+
+// The machine stack runs on, where the viewer holds Deploy to.
+const stackMachines = [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "", actions: ["machines:see", "machines:deploy"] }];
 
 const renderPage = (path: string | string[]) => {
   const entries = Array.isArray(path) ? path : [path];
@@ -388,6 +392,7 @@ describe("ProjectWizardPage", () => {
         setup: { finished: false, steps: { project: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] },
       } };
       if (url === "/api/stacks") return { data: [stack] };
+      if (url === "/api/machines") return { data: stackMachines };
       if (url === "/api/stacks/stack-1") return { data: { ...stack, env: { PORT: "8000", EXTRA: "1" }, build_source: { branch: "release" } } };
       return { data: [] };
     });
@@ -402,7 +407,7 @@ describe("ProjectWizardPage", () => {
     await user.clear(port);
     await user.type(port, "8080");
     expect(rung("Environment")).toHaveAttribute("data-state", "current");
-    await user.click(screen.getByRole("button", { name: "Save & deploy" }));
+    await user.click(await screen.findByRole("button", { name: "Save & deploy" }));
 
     expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
     expect(mocks.patch).toHaveBeenCalledWith("/api/stacks/stack-1", expect.objectContaining({ env: { PORT: "8080", EXTRA: "1" } }));
@@ -413,6 +418,7 @@ describe("ProjectWizardPage", () => {
     const setup = { finished: false, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done", service: "done" } };
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: { ...project, setup } };
+      if (url === "/api/machines") return { data: stackMachines };
       if (url === "/api/stacks/stack-1") return { data: { ...stack, env: { PORT: "8000" }, build_source: { branch: "release" } } };
       if (url === "/api/repositories") return { data: { repositories: [{ id: 2, owner: "acme", name: "other", full_name: "acme/other", provider: "github", default_branch: "develop" }] } };
       return { data: [] };
@@ -433,7 +439,7 @@ describe("ProjectWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Continue to Environment" }));
     expect(await screen.findByLabelText("PORT")).toHaveValue("8000");
     expect(screen.queryByLabelText("OTHER_KEY")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Save & deploy" }));
+    await user.click(await screen.findByRole("button", { name: "Save & deploy" }));
     await screen.findByRole("heading", { name: "Reach" });
     expect(mocks.post).toHaveBeenLastCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "release" }));
     for (const [, body] of mocks.put.mock.calls) expect(body.env_keys ?? ["PORT"]).toEqual(["PORT"]);

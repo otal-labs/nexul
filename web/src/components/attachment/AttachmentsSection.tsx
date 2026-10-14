@@ -14,6 +14,8 @@ import type { AttachmentOwner } from "@/models/Attachment";
 
 interface AttachmentsSectionProps {
   owner: SectionOwner;
+  // The project the owner belongs to, when it isn't the one in view (a ticket opened from the Inbox).
+  projectId?: string | undefined;
   className?: string;
   actionPlacement?: "beside-label" | "end";
 }
@@ -28,11 +30,11 @@ const writePermission = (owner: SectionOwner): "docs:write" | "tickets:write" | 
 };
 
 // Everything pasted into the body shows up here too; files render as hover-revealing pills.
-export const AttachmentsSection = ({ owner, className, actionPlacement = "beside-label" }: AttachmentsSectionProps) => {
+export const AttachmentsSection = ({ owner, projectId, className, actionPlacement = "beside-label" }: AttachmentsSectionProps) => {
   const { data, error, isPending } = useFetchAttachments(owner);
   const upload = useUploadAttachment();
   const permission = writePermission(owner);
-  const canWrite = useActionState({ permission }).state === "live";
+  const canWrite = useActionState({ permission, projectId }).state === "live";
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   return (
@@ -44,6 +46,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
         </h2>
         <ActionButton
           permission={permission}
+          projectId={projectId}
           verb="attach files"
           variant="ghost"
           size="icon"
@@ -73,7 +76,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (
-            <AttachmentRow key={attachment.id} attachment={attachment} permission={permission} />
+            <AttachmentRow key={attachment.id} attachment={attachment} permission={permission} projectId={projectId} />
           ))}
         </ul>
       )}

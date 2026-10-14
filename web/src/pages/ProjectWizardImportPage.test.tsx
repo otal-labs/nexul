@@ -8,11 +8,15 @@ import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
 import { pickOption } from "@/test/pickOption";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const access = vi.hoisted(() => ({ areas: ["topology"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+const access = vi.hoisted(() => ({ areas: ["topology"] as string[], addMachines: false }));
+vi.mock("@/hooks/AccessHooks", () => ({
+  useAreaAccess: () => (area: string) => access.areas.includes(area),
+  useCanAddMachines: () => access.addMachines,
+}));
 
 beforeEach(() => {
   access.areas = ["topology"];
+  access.addMachines = false;
 });
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), errorMessage: vi.fn(() => "") }));
@@ -180,6 +184,17 @@ describe("ProjectWizardImportPage", () => {
     expect(screen.getByRole("list", { name: /via cloudflared-local/i })).toHaveTextContent("api.example.com");
     expect(screen.getByText(/not linked.*web\.example\.com/i)).toBeInTheDocument();
     expect(screen.getByText(/not adopted as a gateway: no tunnel token/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    { who: "someone who can add machines", addMachines: true },
+    { who: "someone who can't", addMachines: false },
+  ])("offers the Runners crumb only to $who", async ({ addMachines }) => {
+    access.addMachines = addMachines;
+    renderPage();
+
+    await screen.findByRole("combobox", { name: "Machine" });
+    expect(screen.queryByRole("link", { name: "Runners" }) !== null).toBe(addMachines);
   });
 
   it("preselects the machine from ?machine=", async () => {
