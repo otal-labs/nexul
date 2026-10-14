@@ -2,6 +2,7 @@ package permissions
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 96)
+	require.Len(t, catalog, 99)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
@@ -137,6 +138,10 @@ func TestParseAction(t *testing.T) {
 		{"a verb channels didn't declare", "channels:clone", "", false},
 		{"a verb another domain didn't declare", "plays:clone", "", false},
 		{"In this project, which only a rule holds", "projects:open", "", false},
+		{"See on a machine, which only a rule holds", "machines:see", "", false},
+		{"Manage a machine", "machines:write", MachinesWrite, true},
+		{"Deploy to a machine", "machines:deploy", MachinesDeploy, true},
+		{"Add machines", "machines:create", MachinesCreate, true},
 		{"a verb tickets didn't declare", "tickets:run", "", false},
 	}
 	for _, tt := range tests {
@@ -148,6 +153,18 @@ func TestParseAction(t *testing.T) {
 	}
 }
 
+func TestCatalog_MachineActionsAreLabelledForTheirOnScreenNames(t *testing.T) {
+	labels := map[Action]string{}
+	for _, info := range Catalog() {
+		labels[info.Value] = info.Label
+	}
+	assert.Equal(t, "Deploy to machines", labels[MachinesDeploy])
+	assert.Equal(t, "Manage machines", labels[MachinesWrite])
+	assert.Equal(t, "Delete machines", labels[MachinesDelete])
+	assert.Equal(t, "Add machines", labels[MachinesCreate])
+	assert.NotContains(t, labels, MachinesSee, "See is held only through a machine's rules")
+}
+
 func TestParseRuleAction_AlsoTakesWhatOnlyARuleHolds(t *testing.T) {
 	got, ok := ParseRuleAction(" projects:open ")
 	assert.True(t, ok)
@@ -155,6 +172,9 @@ func TestParseRuleAction_AlsoTakesWhatOnlyARuleHolds(t *testing.T) {
 	got, ok = ParseRuleAction("docs:read")
 	assert.True(t, ok)
 	assert.Equal(t, DocsRead, got)
+	got, ok = ParseRuleAction("machines:see")
+	assert.True(t, ok)
+	assert.Equal(t, MachinesSee, got)
 	_, ok = ParseRuleAction("projects:run")
 	assert.False(t, ok)
 }
@@ -233,7 +253,7 @@ func TestSet_JSON(t *testing.T) {
 }
 
 // TestInstanceAreas_EveryInstanceActionHasAnEntity: an instance-area action no area lists could never carry a rule, so
-// adding one to the catalog fails here until an area names it.
+// adding one to the catalog fails here until an area names it, except the actions a machine's own rules carry.
 func TestInstanceAreas_EveryInstanceActionHasAnEntity(t *testing.T) {
 	listed := map[Action]bool{}
 	for _, a := range append(InstanceAreas(), ConnectorArea("github", "GitHub")) {
@@ -243,7 +263,8 @@ func TestInstanceAreas_EveryInstanceActionHasAnEntity(t *testing.T) {
 		}
 	}
 	for _, info := range Catalog() {
-		if info.Area == AreaInstance {
+		// A machine's rules carry its own actions, so no area lists them.
+		if info.Area == AreaInstance && !slices.Contains(MachineActions, info.Value) {
 			assert.True(t, listed[info.Value], "%s belongs to no instance area", info.Value)
 		}
 	}

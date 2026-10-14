@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -89,6 +90,8 @@ func (a accessNames) Name(ctx context.Context, entityType, id string) (string, e
 		return named(ctx, id, a.store.Docs.GetByID, func(d *docs.Doc) string { return d.Title })
 	case "folder":
 		return named(ctx, id, a.store.Docs.GetFolder, func(f *docs.Folder) string { return f.Name })
+	case "machine":
+		return named(ctx, id, a.store.Machines.Get, func(m *runner.Machine) string { return m.Name })
 	case "stack":
 		return named(ctx, id, a.store.Stacks.GetByID, func(st *deploy.Stack) string { return st.Name })
 	case "play":
@@ -132,6 +135,23 @@ type accessStackScopes struct {
 
 func (a accessStackScopes) StackScope(ctx context.Context, stackID string) (access.StackScope, error) {
 	return a.stacks.RuleScope(ctx, stackID)
+}
+
+// accessMachines lists the machines from storage, past the runner domain's own checks.
+type accessMachines struct {
+	machines *storage.MachinesRepo
+}
+
+func (a accessMachines) MachineIDs(ctx context.Context) ([]string, error) {
+	ms, err := a.machines.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(ms))
+	for i, m := range ms {
+		ids[i] = m.ID
+	}
+	return ids, nil
 }
 
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).

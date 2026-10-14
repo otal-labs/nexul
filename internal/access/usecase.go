@@ -53,6 +53,7 @@ type Service struct {
 	ownerWorkspace string
 	connectorAreas []permissions.InstanceArea
 	computers      Computers
+	machines       MachineScopes
 	commits        *wake.Broadcast
 	now            func() time.Time
 }
@@ -765,11 +766,11 @@ func (t Targets) each() [][2]string {
 }
 
 // ruleTypes are the entities rules sit on.
-var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeStack, resourceTypeInstanceArea, resourceTypeComputer}
+var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeStack, resourceTypeInstanceArea, resourceTypeComputer, resourceTypeMachine}
 
 // errNotARuleType refuses a resource_type no rule sits on.
 func errNotARuleType(resourceType string) error {
-	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, stack, computer, or instance_area", apperrs.ErrInvalid, resourceType)
+	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, stack, computer, machine, or instance_area", apperrs.ErrInvalid, resourceType)
 }
 
 // onlyActions are the actions each entity's rules may set, and how a refusal says so.
@@ -782,6 +783,7 @@ var onlyActions = map[string]struct {
 	resourceTypeFolder:  {docActions, "the docs actions and permissions:write"},
 	resourceTypeStack:   {stackActions, "the stacks and deploys actions"},
 	resourceTypeChannel: {channelActions, "channels:read and channels:post"},
+	resourceTypeMachine: {permissions.MachineActions, "machines:see, machines:deploy, machines:write and machines:delete"},
 }
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set See, Run, Edit and Delete, a project's In this
@@ -798,6 +800,9 @@ func checkRuleActions(resourceType string, actions []permissions.Action) error {
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
 			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)
 		}
+		if a == permissions.MachinesSee && resourceType != resourceTypeMachine {
+			return fmt.Errorf("%w: machines:see is set only on a machine", apperrs.ErrInvalid)
+		}
 		if only, ok := onlyActions[resourceType]; ok && !slices.Contains(only.actions, a) {
 			return fmt.Errorf("%w: %s is not set on a %s; its rules set %s", apperrs.ErrInvalid, a, resourceType, only.says)
 		}
@@ -810,7 +815,10 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 	if len(roleIDs) == 0 {
 		return nil
 	}
-	workspaceID := s.workspaceOf(ctx, resourceType, resourceID)
+	workspaceID := ""
+	if !anyWorkspace(resourceType) {
+		workspaceID = s.workspaceOf(ctx, resourceType, resourceID)
+	}
 	for _, roleID := range roleIDs {
 		if s.roleWorkspace == nil {
 			return fmt.Errorf("%w: no role lookup wired", apperrs.ErrForbidden)
@@ -819,17 +827,25 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			return fmt.Errorf("resolve role %s: %w", roleID, err)
 		}
-		// An instance area belongs to no workspace, so a role of any workspace reaches its holders there.
-		if err != nil || (got != workspaceID && resourceType != resourceTypeInstanceArea) {
+		if err != nil || (got != workspaceID && !anyWorkspace(resourceType)) {
 			return fmt.Errorf("%w: role %s is not a role of this %s's workspace", apperrs.ErrNotFound, roleID, resourceType)
 		}
 	}
 	return nil
 }
 
-// requireOpens answers a project, or a folder of one, the actor is not in, a play or stack they can't see, or a channel
-// they don't read, as not found.
+// anyWorkspace is whether a rule on resourceType may name a role of any workspace: an instance area and a machine belong
+// to no workspace, so a role of any workspace reaches its holders there.
+func anyWorkspace(resourceType string) bool {
+	return resourceType == resourceTypeInstanceArea || resourceType == resourceTypeMachine
+}
+
+// requireOpens answers a project, or a folder of one, the actor is not in, a play or stack they can't see, a channel
+// they don't read, or a machine they can't see, as not found.
 func (s *Service) requireOpens(ctx context.Context, actorID, resourceType, resourceID string) error {
+	if resourceType == resourceTypeMachine {
+		return s.requireMachineSeen(ctx, actorID, resourceID)
+	}
 	if !slices.Contains([]string{resourceTypeProject, resourceTypeFolder, resourceTypePlay, resourceTypeStack, resourceTypeChannel}, resourceType) {
 		return nil
 	}
@@ -913,7 +929,7 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc, folder, play, project, stack, instance area, or computer, its own rules included.
+// holds is whether actorID holds action on the doc, folder, play, project, stack, instance area, computer, or machine, its own rules included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
 	if resourceType == resourceTypeInstanceArea {
 		held, _ := s.HoldsArea(ctx, actorID, resourceID, action)
@@ -922,6 +938,9 @@ func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID s
 	if resourceType == resourceTypeComputer {
 		_, held, err := s.ComputerPermissions(ctx, actorID, resourceID)
 		return err == nil && held.Has(action)
+	}
+	if resourceType == resourceTypeMachine {
+		return s.holdsOnMachine(ctx, actorID, resourceID, action)
 	}
 	if resourceType != resourceTypeDoc {
 		return s.HasPermission(ctx, actorID, s.workspaceOf(ctx, resourceType, resourceID), action, resourceType, resourceID)
@@ -1042,7 +1061,7 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 // folder's manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
 // that gates editing the play's own definition; a stack's is stacks:write, as editing it is; a project's is Manage this
 // project's access; a channel's is channels:write (ADR 0150); an instance area's the instance Owner's alone; a
-// computer's its owner's, and to anyone else it is not found.
+// computer's its owner's, and to anyone else it is not found; a machine's is Manage on it (ADR 0151).
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
 	if resourceType == resourceTypeInstanceArea {
 		return s.IsInstanceOwner(ctx, actorID)
@@ -1052,6 +1071,9 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 			return false, err
 		}
 		return true, nil
+	}
+	if resourceType == resourceTypeMachine {
+		return s.holds(ctx, actorID, resourceType, resourceID, permissions.MachinesWrite), nil
 	}
 	if resourceType == resourceTypeChannel {
 		if err := s.requireOpens(ctx, actorID, resourceType, resourceID); err != nil {

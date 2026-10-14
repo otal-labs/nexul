@@ -118,6 +118,37 @@ func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
 	assert.True(t, audience.allows(as(uOwner), access.TopicGrantChanged, json.RawMessage(frame)))
 }
 
+// TestIntegration_MachineRuleFrames: a machine's rule written by the instance Owner reaches the Owner, the person it
+// names and the holders of the role it names, and nobody else, and is stored and sent as one rule per target.
+func TestIntegration_MachineRuleFrames(t *testing.T) {
+	f := newPermFixture(t)
+	s := f.svc
+	_, err := f.db.Exec(`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) VALUES ('mach-1', 'atlas', '/data/nexul', '', 1, 1)`)
+	require.NoError(t, err)
+	see := []permissions.Action{permissions.MachinesSee}
+	require.ErrorIs(t, s.accessSvc.SetRules(as(uReader), uReader, "machine", []string{"mach-1"}, access.Targets{UserIDs: []string{uReader}}, see, access.StateAllow), apperrs.ErrNotFound,
+		"a member who doesn't see the machine is told it isn't found")
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "machine", []string{"mach-1"}, access.Targets{RoleIDs: []string{"role-reader"}, UserIDs: []string{uPlain}}, see, access.StateAllow))
+
+	audience := liveAudience{access: s.accessSvc, tickets: s.ticketsSvc, chat: s.chatSvc, deploy: s.deploySvc}
+	roleFrame, err := json.Marshal(access.GrantEvent{ResourceType: "machine", ResourceID: "mach-1", Target: access.TargetRole, RoleID: "role-reader"})
+	require.NoError(t, err)
+	personFrame, err := json.Marshal(access.GrantEvent{ResourceType: "machine", ResourceID: "mach-1", Target: access.TargetPerson, UserID: uPlain})
+	require.NoError(t, err)
+	for user, want := range map[string]bool{uOwner: true, uReader: true, uWriter: false, uPlain: false} {
+		assert.Equal(t, want, audience.allows(as(user), access.TopicGrantChanged, json.RawMessage(roleFrame)), "role frame, "+user)
+	}
+	for user, want := range map[string]bool{uOwner: true, uPlain: true, uReader: false, uWriter: false} {
+		assert.Equal(t, want, audience.allows(as(user), access.TopicGrantChanged, json.RawMessage(personFrame)), "person frame, "+user)
+	}
+	var sent int
+	require.NoError(t, f.db.QueryRow(`SELECT COUNT(*) FROM outbox WHERE topic = ? AND CAST(payload AS TEXT) LIKE '%"resource_type":"machine"%'`, access.TopicGrantChanged).Scan(&sent))
+	assert.Equal(t, 2, sent)
+	seen, err := s.accessSvc.MachinesSeen(as(uReader), uReader)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"mach-1"}, seen)
+}
+
 var readChannels = []permissions.Action{permissions.ChannelsRead}
 
 func projectIDsOf(ps []tenancy.MeProject) []string {
