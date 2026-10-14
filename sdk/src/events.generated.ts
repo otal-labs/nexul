@@ -155,9 +155,11 @@ export interface EventPayloads {
   "topology.updated": { "environment": string; "workspace_id"?: string; "canvas": { "schema_version": number; "nodes": { "id": string; "type": string; "position": { "x": number; "y": number; }; "data": { "service_id"?: string; "name"?: string; "runtime"?: string; "url"?: string; "status"?: string; "replicas"?: number; "volume"?: string; "address"?: string; "label"?: string; }; }[]; "edges": { "id": string; "source": string; "target": string; "type": string; "data": { "kind": string; }; }[]; "viewport"?: { "x": number; "y": number; "zoom": number; }; }; };
   "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; "members_only"?: boolean; };
   "welcome.progress_changed": { "user_id": string; };
+  "workspace.archived": { "workspace_id": string; "name": string; "slug": string; "actor_id"?: string; "user_ids": string[]; };
   "workspace.member.added": { "invitation_id"?: string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; "project_ids"?: string[]; };
   "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; "role_ids_added"?: string[]; };
   "workspace.member.updated": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; "role_ids_added"?: string[]; };
+  "workspace.restored": { "workspace_id": string; "name": string; "slug": string; "actor_id"?: string; "user_ids": string[]; };
   "workspace.updated": { "workspace_id": string; "name": string; "slug": string; "actor_id"?: string; };
 }
 
@@ -316,9 +318,11 @@ export const TOPICS: Topic[] = [
   "topology.updated",
   "voice.occupancy.changed",
   "welcome.progress_changed",
+  "workspace.archived",
   "workspace.member.added",
   "workspace.member.removed",
   "workspace.member.updated",
+  "workspace.restored",
   "workspace.updated",
 ];
 
@@ -475,8 +479,10 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "topology.updated": {"environment":"fixture-environment","workspace_id":"fixture-workspace_id","canvas":{"schema_version":1,"nodes":[{"id":"fixture-id","type":"fixture-type","position":{"x":1,"y":1},"data":{"service_id":"fixture-service_id","name":"fixture-name","runtime":"fixture-runtime","url":"fixture-url","status":"fixture-status","replicas":1,"volume":"fixture-volume","address":"fixture-address","label":"fixture-label"}}],"edges":[{"id":"fixture-id","source":"fixture-source","target":"fixture-target","type":"fixture-type","data":{"kind":"fixture-kind"}}],"viewport":{"x":1,"y":1,"zoom":1}}},
   "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}],"members_only":false},
   "welcome.progress_changed": {"user_id":"fixture-user_id"},
+  "workspace.archived": {"workspace_id":"fixture-workspace_id","name":"fixture-name","slug":"fixture-slug","actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"]},
   "workspace.member.added": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"],"project_ids":["fixture-project_ids"]},
   "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"],"role_ids_added":["fixture-role_ids_added"]},
   "workspace.member.updated": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"],"role_ids_added":["fixture-role_ids_added"]},
+  "workspace.restored": {"workspace_id":"fixture-workspace_id","name":"fixture-name","slug":"fixture-slug","actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"]},
   "workspace.updated": {"workspace_id":"fixture-workspace_id","name":"fixture-name","slug":"fixture-slug","actor_id":"fixture-actor_id"},
 };

@@ -12,6 +12,8 @@ const (
 	TopicWorkspaceMemberRemoved = "workspace.member.removed"
 	TopicWorkspaceMemberUpdated = "workspace.member.updated"
 	TopicWorkspaceUpdated       = "workspace.updated"
+	TopicWorkspaceArchived      = "workspace.archived"
+	TopicWorkspaceRestored      = "workspace.restored"
 )
 
 // Topics declares each topic with its payload; workspace.member.added carries an InvitationEvent when an
@@ -28,6 +30,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicWorkspaceMemberRemoved, Payload: MemberEvent{}},
 		{Name: TopicWorkspaceMemberUpdated, Payload: MemberEvent{}},
 		{Name: TopicWorkspaceUpdated, Payload: WorkspaceEvent{}},
+		{Name: TopicWorkspaceArchived, Payload: WorkspaceArchiveEvent{}},
+		{Name: TopicWorkspaceRestored, Payload: WorkspaceArchiveEvent{}},
 	}
 }
 
@@ -55,4 +59,13 @@ type WorkspaceEvent struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
 	ActorID     string `json:"actor_id,omitempty"`
+}
+
+// WorkspaceArchiveEvent is an archive or a restore, naming the members the frame reaches since an archived workspace resolves none.
+type WorkspaceArchiveEvent struct {
+	WorkspaceID string   `json:"workspace_id"`
+	Name        string   `json:"name"`
+	Slug        string   `json:"slug"`
+	ActorID     string   `json:"actor_id,omitempty"`
+	UserIDs     []string `json:"user_ids" jsonschema:"The people who were members of the workspace when it was archived or restored."`
 }

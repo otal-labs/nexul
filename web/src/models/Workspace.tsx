@@ -14,7 +14,12 @@ export interface Workspace {
   mention_chip_template_edited: boolean;
   created_at: string;
   updated_at: string;
+  // Set only on the archived workspaces the instance Owner lists.
+  archived_at?: string;
 }
+
+// The one workspace every install seeds (tenancy.DefaultWorkspaceID), whose Owner is the instance Owner and which can't be archived.
+export const INSTANCE_WORKSPACE_ID = "workspace-default";
 
 export const SaveWorkspaceFormSchema = z.object({
   name: z.string().trim().min(1, "Workspace name is required"),
@@ -64,6 +69,11 @@ export interface WorkspaceUpdate {
   workspace_id: string;
   name: string;
   slug: string;
+}
+
+// The workspace.archived and workspace.restored frames: who was in it, since an archived workspace resolves no one.
+export interface WorkspaceArchiveFrame extends WorkspaceUpdate {
+  user_ids: string[];
 }
 
 // The same page under a workspace's new slug, or undefined when the path isn't inside that workspace.

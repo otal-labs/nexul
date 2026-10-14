@@ -31,6 +31,13 @@ Configuration → General or by `workspace_update`; old links then stop working
 and are not redirected. The URL decides which workspace is on screen.
 _Avoid_: Workspace key, handle, subdomain
 
+**Archived workspace**:
+A workspace taken out of use without deleting anything. It leaves every list, search, inbox and live frame for the
+people in it, and its address no longer resolves; its projects, tickets, docs, people and roles stay stored. An Owner
+archives it (`workspaces:delete`); the instance Owner restores it (`instance:write`), which brings back all of it. The
+instance's own workspace can't be archived. A permanent delete does not exist yet.
+_Avoid_: Deleted workspace, disabled workspace
+
 **Project**:
 The grouping inside a workspace that tickets, docs, project memories,
 repositories, and stacks belong to. Only the project wizard makes one

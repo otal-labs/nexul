@@ -78,6 +78,38 @@ func (r *WorkspacesRepo) ListForUser(ctx context.Context, userID string) ([]*ten
 	return out, nil
 }
 
+func (r *WorkspacesRepo) ListArchived(ctx context.Context) ([]*tenancy.Workspace, error) {
+	rows, err := r.q.ListArchivedWorkspaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list archived workspaces: %w", err)
+	}
+	out := make([]*tenancy.Workspace, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toWorkspace(row))
+	}
+	return out, nil
+}
+
+func (r *WorkspacesRepo) SetArchived(ctx context.Context, id string, at *time.Time, now time.Time, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		var n int64
+		var err error
+		if at == nil {
+			n, err = q.RestoreWorkspace(ctx, sqlcgen.RestoreWorkspaceParams{UpdatedAt: now.Unix(), ID: id})
+		} else {
+			n, err = q.ArchiveWorkspace(ctx, sqlcgen.ArchiveWorkspaceParams{ArchivedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, UpdatedAt: now.Unix(), ID: id})
+		}
+		if err != nil {
+			return fmt.Errorf("set archived on workspace %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set archived on workspace %s: %w", id, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
+}
+
 func (r *WorkspacesRepo) ListWithRoles(ctx context.Context) ([]*tenancy.TeamWorkspace, error) {
 	rows, err := r.q.ListTeamWorkspaces(ctx)
 	if err != nil {
@@ -112,6 +144,7 @@ func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 		AccessSetupFinished:       row.AccessSetupFinished != 0,
 		CreatedAt:                 time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:                 time.Unix(row.UpdatedAt, 0).UTC(),
+		ArchivedAt:                unixPtrFromNull(row.ArchivedAt),
 	}
 }
 

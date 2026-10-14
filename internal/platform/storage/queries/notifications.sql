@@ -63,6 +63,7 @@ LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
 LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
 WHERE n.user_id = sqlc.arg(user_id) AND n.read = 0 AND (sqlc.arg(workspace_id) = '' OR n.workspace_id = sqlc.arg(workspace_id))
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = n.workspace_id AND w.archived_at IS NOT NULL)
 GROUP BY n.workspace_id, 2;
 
 -- name: MarkNotificationRead :execrows

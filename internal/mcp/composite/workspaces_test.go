@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,10 @@ type fakeWorkspaces struct {
 	// renameErr is what Rename returns; renamed records the last call.
 	renameErr error
 	renamed   *renameCall
+	// archiving records Archive and Restore calls in order; the errors are what they return and archived what ListArchived lists.
+	archiving                           []string
+	archiveErr, restoreErr, archivedErr error
+	archived                            []*tenancy.Workspace
 }
 
 func (f *fakeWorkspaces) ListForUser(_ context.Context, userID string) ([]*tenancy.Workspace, error) {
@@ -43,6 +48,20 @@ func (f *fakeWorkspaces) ListPeople(_ context.Context, _, workspaceID string) ([
 func (f *fakeWorkspaces) Rename(_ context.Context, userID, id string, name, slug *string) (*tenancy.Workspace, error) {
 	f.renamed = &renameCall{userID: userID, id: id, name: name, slug: slug}
 	return &tenancy.Workspace{ID: id, Name: "Acme Labs", Slug: "acme-labs"}, f.renameErr
+}
+
+func (f *fakeWorkspaces) Archive(_ context.Context, userID, id string) (*tenancy.Workspace, error) {
+	f.archiving = append(f.archiving, "archive "+id+" by "+userID)
+	return &tenancy.Workspace{ID: id, Name: "Acme Labs", Slug: "acme-labs"}, f.archiveErr
+}
+
+func (f *fakeWorkspaces) Restore(_ context.Context, userID, id string) (*tenancy.Workspace, error) {
+	f.archiving = append(f.archiving, "restore "+id+" by "+userID)
+	return &tenancy.Workspace{ID: id, Name: "Acme Labs", Slug: "acme-labs"}, f.restoreErr
+}
+
+func (f *fakeWorkspaces) ListArchived(context.Context, string) ([]*tenancy.Workspace, error) {
+	return f.archived, f.archivedErr
 }
 
 type renameCall struct {
@@ -323,4 +342,66 @@ func TestWorkspaceUpdate_FinishAccessSetup(t *testing.T) {
 		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-9","finish_access_setup":true}`))
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
+}
+
+func TestWorkspaceUpdate_Archived(t *testing.T) {
+	tool := func(ws *fakeWorkspaces) func(context.Context, json.RawMessage) (any, error) {
+		return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{}, &fakeAccounts{}, nil)[1].Call
+	}
+	yes, no := true, false
+	t.Run("archived true applies after the rename, which needs a workspace the caller still reaches", func(t *testing.T) {
+		ws := &fakeWorkspaces{}
+		out, err := tool(ws)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","archived":true}`))
+		require.NoError(t, err)
+		require.NotNil(t, ws.renamed)
+		assert.Equal(t, []string{"archive ws-1 by u-1"}, ws.archiving)
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme Labs", Slug: "acme-labs", Archived: &yes}, out)
+	})
+	t.Run("archived false applies before the rename, since the instance Owner is not yet in it", func(t *testing.T) {
+		ws := &fakeWorkspaces{}
+		out, err := tool(ws)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","archived":false}`))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"restore ws-1 by u-1"}, ws.archiving)
+		require.NotNil(t, ws.renamed)
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme Labs", Slug: "acme-labs", Archived: &no}, out)
+	})
+	t.Run("a refused archive after a rename says the rename took effect", func(t *testing.T) {
+		_, err := tool(&fakeWorkspaces{archiveErr: apperrs.ErrForbidden})(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","archived":true}`))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		var partial *mcptool.PartialError
+		require.ErrorAs(t, err, &partial)
+		assert.Equal(t, []string{"every other field"}, partial.Applied)
+	})
+	t.Run("a refused rename after a restore says the restore took effect", func(t *testing.T) {
+		_, err := tool(&fakeWorkspaces{renameErr: apperrs.ErrForbidden})(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","archived":false}`))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		var partial *mcptool.PartialError
+		require.ErrorAs(t, err, &partial)
+		assert.Equal(t, []string{"archived"}, partial.Applied)
+	})
+	t.Run("a refusal on its own is just the refusal", func(t *testing.T) {
+		for args, ws := range map[string]*fakeWorkspaces{
+			`{"id":"ws-1","archived":true}`:  {archiveErr: apperrs.ErrForbidden},
+			`{"id":"ws-1","archived":false}`: {restoreErr: apperrs.ErrForbidden},
+		} {
+			_, err := tool(ws)(actorCtx("u-1"), json.RawMessage(args))
+			require.ErrorIs(t, err, apperrs.ErrForbidden, args)
+			var partial *mcptool.PartialError
+			assert.False(t, errors.As(err, &partial), args)
+		}
+	})
+}
+
+func TestWorkspaceList_ArchivedListsWhatTheInstanceOwnerRestores(t *testing.T) {
+	at := time.Date(2026, 10, 14, 9, 0, 0, 0, time.UTC)
+	ws := &fakeWorkspaces{archived: []*tenancy.Workspace{{ID: "ws-9", Name: "Globex", Slug: "globex", ArchivedAt: &at}}}
+	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{}, &fakeAccounts{}, nil)[0].Call
+
+	out, err := call(actorCtx("u-1"), json.RawMessage(`{"archived":true}`))
+	require.NoError(t, err)
+	assert.Equal(t, []workspaceResult{{ID: "ws-9", Name: "Globex", Slug: "globex", ArchivedAt: &at}}, out.(mcptool.Page[workspaceResult]).Items)
+
+	ws.archivedErr = apperrs.ErrForbidden
+	_, err = call(actorCtx("u-1"), json.RawMessage(`{"archived":true}`))
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }

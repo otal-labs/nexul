@@ -36,6 +36,36 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+// listArchived answers the instance Owner, who restores them from instance settings.
+func (h *Handler) listArchived(w http.ResponseWriter, r *http.Request) {
+	workspaces, err := h.svc.ListArchived(r.Context(), UserIDFromCtx(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, workspaces)
+}
+
+// archive needs workspaces:delete in the workspace; the caller's own list and /me stop finding it at once.
+func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
+	ws, err := h.svc.Archive(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ws)
+}
+
+// restore needs instance:write, the instance Owner's, since the workspace's own members no longer reach it.
+func (h *Handler) restore(w http.ResponseWriter, r *http.Request) {
+	ws, err := h.svc.Restore(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ws)
+}
+
 type createWorkspaceRequest struct {
 	Name string `json:"name"`
 }
@@ -53,6 +83,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/workspaces", h.create)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}", h.rename)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/mention-chip-template", h.setMentionChipTemplate)
+	mux.HandleFunc("GET /api/workspaces/archived", h.listArchived)
+	mux.HandleFunc("POST /api/workspaces/{workspaceID}/archive", h.archive)
+	mux.HandleFunc("POST /api/workspaces/{workspaceID}/restore", h.restore)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/me", h.me)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/members", h.listMembers)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/people", h.listPeople)

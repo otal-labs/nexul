@@ -160,6 +160,8 @@ describe("dispatch", () => {
     [getMeKey, "account.profile_updated", { account_id: "u2" }],
     [getWorkspacePeopleKey, "account.profile_updated", { account_id: "u2" }],
     [getWorkspacesKey, "workspace.updated", { workspace_id: "ws-1", name: "Acme", slug: "acme" }],
+    [getWorkspacesKey, "workspace.archived", { workspace_id: "ws-1", name: "Acme", slug: "acme", user_ids: ["u1"] }],
+    [getWorkspacesKey, "workspace.restored", { workspace_id: "ws-1", name: "Acme", slug: "acme", user_ids: ["u1"] }],
     [getMyRoleKey, "role.updated", { role_id: "r1", workspace_id: "ws-1" }],
   ];
 

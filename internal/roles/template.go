@@ -184,7 +184,7 @@ var deployInfrastructure = []permissions.Action{
 }
 
 // ownerOnly stays with Owner even though its area is the workspace: making or removing a workspace is as strong as Owner.
-var ownerOnly = []permissions.Action{permissions.WorkspacesCreate, "workspaces:delete"}
+var ownerOnly = []permissions.Action{permissions.WorkspacesCreate, permissions.WorkspacesDelete}
 
 // administrator holds every project and workspace action and the deploy infrastructure, none of the instance's own
 // administration, which stays with Owner.

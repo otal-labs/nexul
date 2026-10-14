@@ -61,6 +61,7 @@ const (
 	BotwebhookWrite    Action = "botwebhook:write"
 	BotwebhookDelete   Action = "botwebhook:delete"
 	WorkspacesWrite    Action = "workspaces:write"
+	WorkspacesDelete   Action = "workspaces:delete"
 	WorkspacesCreate   Action = "workspaces:create"
 	MembersWrite       Action = "members:write"
 	RolesWrite         Action = "roles:write"

@@ -322,6 +322,8 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceMemberRemoved,
 	tenancy.TopicWorkspaceMemberUpdated,
 	tenancy.TopicWorkspaceUpdated,
+	tenancy.TopicWorkspaceArchived,
+	tenancy.TopicWorkspaceRestored,
 	roles.TopicUpdated,
 	welcome.TopicProgressChanged,
 	access.TopicGrantChanged,

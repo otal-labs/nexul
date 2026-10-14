@@ -83,6 +83,8 @@ var liveRules = map[string]liveRule{
 	tenancy.TopicWorkspaceMemberRemoved: memberFrame,
 	tenancy.TopicWorkspaceMemberUpdated: memberFrame,
 	tenancy.TopicWorkspaceUpdated:       workspaceFrame,
+	tenancy.TopicWorkspaceArchived:      archiveFrame,
+	tenancy.TopicWorkspaceRestored:      archiveFrame,
 	roles.TopicUpdated:                  workspaceFrame,
 	welcome.TopicProgressChanged:        welcomeFrame,
 
@@ -314,6 +316,11 @@ func workspaceFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bo
 		WorkspaceID string `json:"workspace_id"`
 	}
 	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+}
+
+// archiveFrame reaches the members it names, whom an archived workspace no longer resolves, and whoever holds the restore.
+func archiveFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	return recipientFrame(ctx, a, raw) || anywhere(permissions.InstanceWrite)(ctx, a, raw)
 }
 
 // runnerFrame reaches whoever sees the machine the runner belongs to; a frame naming none reaches nobody.

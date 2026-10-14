@@ -13,7 +13,7 @@ export const getWorkspacesKey = "getWorkspaces";
 const workspacesQuery = defineQuery({
   key: getWorkspacesKey,
   fetch: () => api.get<Workspace[]>("/api/workspaces"),
-  refreshes: { "workspace.updated": "all" },
+  refreshes: { "workspace.updated": "all", "workspace.archived": "all", "workspace.restored": "all" },
   untilPushed: true,
 });
 

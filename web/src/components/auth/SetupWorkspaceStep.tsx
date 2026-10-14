@@ -7,10 +7,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import type { Workspace } from "@/models/Workspace";
-import { SaveWorkspaceFormSchema, type SaveWorkspaceFormData } from "@/models/Workspace";
-
-// Every install seeds exactly one workspace at this fixed id (tenancy.DefaultWorkspaceID).
-const DEFAULT_WORKSPACE_ID = "workspace-default";
+import { INSTANCE_WORKSPACE_ID, SaveWorkspaceFormSchema, type SaveWorkspaceFormData } from "@/models/Workspace";
 
 // Hands back the id alongside the name because the rename can't run in this step.
 export interface WorkspaceSetupData {
@@ -24,7 +21,7 @@ interface SetupWorkspaceStepProps {
 
 // GET /api/workspaces comes back empty before the wizard makes the owner a member, so the seeded name is the fallback.
 const defaultWorkspaceName = (workspaces: Workspace[]) =>
-  workspaces.find((w) => w.id === DEFAULT_WORKSPACE_ID)?.name ?? "Default";
+  workspaces.find((w) => w.id === INSTANCE_WORKSPACE_ID)?.name ?? "Default";
 
 // Names the workspace only: projects come from the project wizard, which the owner lands in next.
 export const SetupWorkspaceStep = ({ onContinue }: SetupWorkspaceStepProps) => {
@@ -53,7 +50,7 @@ const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormPro
 
   // Renaming needs workspaces:write, which the owner holds only once the wizard shell makes them owner, so it renames.
   const onSubmit = (data: SaveWorkspaceFormData) =>
-    onContinue({ workspaceId: DEFAULT_WORKSPACE_ID, workspaceName: data.name });
+    onContinue({ workspaceId: INSTANCE_WORKSPACE_ID, workspaceName: data.name });
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

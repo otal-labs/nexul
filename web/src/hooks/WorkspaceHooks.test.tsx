@@ -1,10 +1,12 @@
 import type { Location } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { workspaceFollower } from "@/hooks/WorkspaceHooks";
+import { getArchivedWorkspacesKey, workspaceFollower } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Workspace } from "@/models/Workspace";
-import { followFrame, seeded } from "@/test/followFrame";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
+
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
 const workspace = (id: string, slug: string, name: string): Workspace => ({
   id,
@@ -42,5 +44,41 @@ describe("the workspace follower", () => {
     const { navigate } = await followFrame(workspaceFollower, "workspace.updated", { workspace_id: "ws-2", name: "Other Co", slug: "other-co" }, client, at("/acme/board"));
     expect(navigate).not.toHaveBeenCalled();
     expect(client.getQueryData<Workspace[]>(["getWorkspaces"])?.[1]?.slug).toBe("other-co");
+  });
+});
+
+describe("the workspace follower on archive and restore", () => {
+  beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
+  });
+
+  const frame = (id: string) => ({ workspace_id: id, name: "Acme", slug: "acme", user_ids: ["u-1"] });
+  const lists = () =>
+    seeded([
+      [["getWorkspaces"], [workspace("ws-1", "acme", "Acme"), workspace("ws-2", "other", "Other")]],
+      [[getArchivedWorkspacesKey], []],
+    ]);
+
+  it("takes the open workspace off the list and moves the page on before its address can render not found", async () => {
+    const client = lists();
+    const { navigate } = await followFrame(workspaceFollower, "workspace.archived", frame("ws-1"), client, at("/acme/board"));
+    expect(client.getQueryData<Workspace[]>(["getWorkspaces"])?.map((w) => w.id)).toEqual(["ws-2"]);
+    expect(navigate).toHaveBeenCalledWith("/", { replace: true });
+    expect(isStale(client, [getArchivedWorkspacesKey])).toBe(true);
+  });
+
+  it("only refreshes the lists when the archived workspace is not the one on screen", async () => {
+    const client = lists();
+    const { navigate } = await followFrame(workspaceFollower, "workspace.archived", frame("ws-2"), client, at("/acme/board"));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(client.getQueryData<Workspace[]>(["getWorkspaces"])).toHaveLength(2);
+    expect(isStale(client, ["getWorkspaces"])).toBe(true);
+  });
+
+  it("brings a restored workspace back by refreshing both lists", async () => {
+    const client = lists();
+    await followFrame(workspaceFollower, "workspace.restored", frame("ws-2"), client);
+    expect(isStale(client, ["getWorkspaces"])).toBe(true);
+    expect(isStale(client, [getArchivedWorkspacesKey])).toBe(true);
   });
 });

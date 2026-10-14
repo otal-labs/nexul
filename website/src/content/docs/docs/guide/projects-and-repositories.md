@@ -53,6 +53,14 @@ A workspace has a name and a URL slug, as in `/acme/board`. Change both in **Con
 
 A new name changes nothing else. A new slug moves every link: old links stop working and aren't redirected, and the page warns you before you save. A slug is lower-case letters and digits joined by dashes, up to 48 characters, and not already taken. Everyone with the workspace open moves to the new address without a reload.
 
+## Archive a workspace
+
+An Owner can archive a workspace in **Configuration → Danger zone**, with `workspaces:delete`, which Owner holds and the Administrator template role does not. The confirmation says how many people lose the workspace and how many projects go with it. Nothing is deleted: the workspace leaves every list, search, inbox and live update for everyone in it, its address stops resolving, and anyone with it open moves to the next workspace they can open.
+
+The instance Owner brings it back from **Settings → Instance → Archived workspaces** with **Restore**, which takes `instance:write`. Its projects, tickets, docs, people and roles return exactly as they were. There is no permanent delete yet. The instance's own workspace, the one whose Owner is the instance Owner, can't be archived.
+
+Agents archive with `workspace_update` and `archived` set to `true`, restore with `archived` set to `false`, and list what is archived with `workspace_list` and `archived` set to `true`; a member's `workspace_list` never shows an archived workspace.
+
 ## Who can see a project
 
 Projects are opt-in. Someone sees a project only once it lists them, or a role they hold; everything in a project they aren't in, its name included, is hidden from them. Inside a project they're in, their roles decide what they can do there. Workspace Owners see every project.

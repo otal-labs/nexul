@@ -53,6 +53,7 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 	assert.Equal(t, memberships, rows(`SELECT user_id || '|' || workspace_id || '|' || created_at || '|' || restricted FROM workspace_members ORDER BY 1`))
 	assert.Empty(t, rows(`SELECT name FROM pragma_table_info('workspace_members') WHERE name = 'role_id'`))
 
+	withArchivedAt(t, db)
 	s := New(db, testEncKey)
 	ctx := t.Context()
 	owner, err := s.WorkspaceMembers.MemberRole(ctx, "workspace-default", "alice")
