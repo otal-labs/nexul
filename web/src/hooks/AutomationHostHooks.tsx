@@ -16,7 +16,7 @@ export const useFetchAutomationHosts = () =>
 
 export const useCreateAutomationHostEnrollment = () =>
   useMutation({
-    mutationFn: requires("automations:write", async ({ name, machine }: AutomationHostEnrollmentFormData) =>
+    mutationFn: requires("machines:write", async ({ name, machine }: AutomationHostEnrollmentFormData) =>
       (await api.post<AutomationHostEnrollment>("/api/automation-hosts/enrollments", { name, machine: machine || undefined })).data),
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -24,7 +24,7 @@ export const useCreateAutomationHostEnrollment = () =>
 export const useRemoveAutomationHost = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("automations:delete", async (id: string) => api.delete(`/api/automation-hosts/${id}`)),
+    mutationFn: requires("machines:write", async (id: string) => api.delete(`/api/automation-hosts/${id}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationHostsKey] });
       toast.success("Automations host removed");

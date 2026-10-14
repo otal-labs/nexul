@@ -12,6 +12,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -32,7 +33,14 @@ var (
 	errInvalidHostCode = apperrs.WithCode("invalid_code", fmt.Errorf("%w: the enrollment code is unknown, used or expired", apperrs.ErrUnauthorized))
 	errHostRemoved     = apperrs.WithCode("automations_host_removed", fmt.Errorf("%w: this automations host was removed", apperrs.ErrUnauthorized))
 	errInvalidToken    = fmt.Errorf("%w: invalid automation token", apperrs.ErrUnauthorized)
+	errHostCantAdd     = apperrs.WithCode("code_cant_add", fmt.Errorf("%w: the person who made this code is no longer the instance Owner, who alone adds a host on a machine Nexul doesn't know; make a new code", apperrs.ErrForbidden))
+	errHostOwnerOnly   = fmt.Errorf("%w: only the instance Owner adds an automations host on a machine Nexul doesn't know yet", apperrs.ErrForbidden)
 )
+
+// errHostMachineTaken refuses a code whose maker no longer manages its machine.
+func errHostMachineTaken(name string) error {
+	return apperrs.WithCode("machine_taken", fmt.Errorf("%w: the machine %s is not one the person who made this code manages; make a new code for it", apperrs.ErrConflict, name))
+}
 
 // HostsService enrolls, lists and removes automations hosts and tells each one which automations to run.
 type HostsService struct {
@@ -52,10 +60,16 @@ func NewHostsService(repo HostRepo, automations Repo, key []byte) *HostsService 
 	return &HostsService{repo: repo, automations: automations, key: key, now: time.Now}
 }
 
-// Gate is the permission check listing, enrolling, and removing hosts passes; hosts belong to the instance, so a caller needs the action in
-// any workspace they belong to (ADR 0087).
+// Gate is the check hosts pass: a host follows its machine, as a runner does (ADR 0154).
 type Gate interface {
-	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	// CallerMachines lists the machines the caller sees; all is true for the server and the instance Owner, who see
+	// every machine and any name, known or not.
+	CallerMachines(ctx context.Context) (machineIDs []string, all bool, err error)
+	// RequireMachineNamed checks the caller holds action on the machine called name; one they can't see answers as a
+	// name no machine bears, invalid input.
+	RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error
+	// IsInstanceOwner is whether userID holds the Owner role of the default workspace.
+	IsInstanceOwner(ctx context.Context, userID string) (bool, error)
 }
 
 // WithGate wires the permission check; unset, only the server's own calls pass.
@@ -82,9 +96,11 @@ func (h *HostsService) SetConnectionRegistry(r ConnectionRegistry) {
 }
 
 // CreateEnrollment mints a one-hour code for a host named name, optionally filed under machine, and renders the
-// install one-liners that carry it. It needs automations:write.
+// install one-liners that carry it. A host on an existing machine takes Manage on it; one on a machine Nexul doesn't
+// know, or none named, is the instance Owner's.
 func (h *HostsService) CreateEnrollment(ctx context.Context, name, machine string) (HostEnrollment, error) {
-	if err := h.require(ctx, permissions.AutomationsWrite); err != nil {
+	machine = strings.TrimSpace(machine)
+	if err := h.requireEnrollable(ctx, machine); err != nil {
 		return HostEnrollment{}, err
 	}
 	instanceURL := ""
@@ -97,7 +113,8 @@ func (h *HostsService) CreateEnrollment(ctx context.Context, name, machine strin
 	if instanceURL == "" {
 		return HostEnrollment{}, fmt.Errorf("%w: set the instance URL in settings before adding an automations host", apperrs.ErrConflict)
 	}
-	code, expiresAt, err := h.mintEnrollment(ctx, name, machine, hostEnrollmentTTL)
+	actor, _ := identity.ActorFromCtx(ctx)
+	code, expiresAt, err := h.mintEnrollment(ctx, name, machine, actor.ID, hostEnrollmentTTL)
 	if err != nil {
 		return HostEnrollment{}, err
 	}
@@ -105,7 +122,7 @@ func (h *HostsService) CreateEnrollment(ctx context.Context, name, machine strin
 	return HostEnrollment{Code: code, ExpiresAt: expiresAt, Commands: HostInstallCommands{Unix: unix, Windows: windows}}, nil
 }
 
-func (h *HostsService) mintEnrollment(ctx context.Context, name, machine string, ttl time.Duration) (string, time.Time, error) {
+func (h *HostsService) mintEnrollment(ctx context.Context, name, machine, enrolledBy string, ttl time.Duration) (string, time.Time, error) {
 	name = strings.TrimSpace(name)
 	if !hostcred.NamePattern.MatchString(name) {
 		return "", time.Time{}, fmt.Errorf("%w: an automations host name is 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit", apperrs.ErrInvalid)
@@ -122,7 +139,7 @@ func (h *HostsService) mintEnrollment(ctx context.Context, name, machine string,
 		return "", time.Time{}, err
 	}
 	now := h.now().UTC()
-	code := &HostEnrollmentCode{CodeHash: hash, Name: name, Machine: strings.TrimSpace(machine), CreatedAt: now, ExpiresAt: now.Add(ttl)}
+	code := &HostEnrollmentCode{CodeHash: hash, Name: name, Machine: strings.TrimSpace(machine), EnrolledBy: enrolledBy, CreatedAt: now, ExpiresAt: now.Add(ttl)}
 	if err := h.repo.CreateHostEnrollment(ctx, code); err != nil {
 		return "", time.Time{}, fmt.Errorf("create enrollment for automations host %s: %w", name, err)
 	}
@@ -143,6 +160,9 @@ func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostE
 	}
 	if strings.TrimSpace(req.Name) != code.Name {
 		return HostEnrolled{}, apperrs.WithCode("name_mismatch", fmt.Errorf("%w: this code enrolls an automations host named %s", apperrs.ErrConflict, code.Name))
+	}
+	if err := h.makerMayEnroll(ctx, code); err != nil {
+		return HostEnrolled{}, err
 	}
 	machine := strings.TrimSpace(code.Machine)
 	if machine == "" {
@@ -169,12 +189,9 @@ func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostE
 	return HostEnrolled{ID: host.ID, Name: host.Name, Machine: machine, Credential: credential}, nil
 }
 
-// List returns every automations host with whether it polled recently.
+// List returns the automations hosts on the machines the caller sees, with whether each polled recently.
 func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
-	if err := h.require(ctx, permissions.AutomationsRead); err != nil {
-		return nil, err
-	}
-	hosts, err := h.repo.ListHosts(ctx)
+	hosts, err := h.visibleHosts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list automations hosts: %w", err)
 	}
@@ -189,20 +206,104 @@ func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
 	return out, nil
 }
 
-func (h *HostsService) require(ctx context.Context, action permissions.Action) error {
+func (h *HostsService) visibleHosts(ctx context.Context) ([]Host, error) {
+	if h.gate == nil {
+		if err := permissions.Ungated(ctx); err != nil {
+			return nil, err
+		}
+		return h.repo.ListHosts(ctx)
+	}
+	machineIDs, all, err := h.gate.CallerMachines(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list the machines the caller sees: %w", err)
+	}
+	if all {
+		return h.repo.ListHosts(ctx)
+	}
+	return h.repo.ListHostsOn(ctx, machineIDs)
+}
+
+// requireEnrollable is Manage on machine, or the instance Owner for none named: a host is no way to add a machine.
+func (h *HostsService) requireEnrollable(ctx context.Context, machine string) error {
+	if machine != "" {
+		return h.requireMachine(ctx, machine, permissions.MachinesWrite)
+	}
 	if h.gate == nil {
 		return permissions.Ungated(ctx)
 	}
-	return h.gate.RequireAnywhere(ctx, action)
+	_, all, err := h.gate.CallerMachines(ctx)
+	if err != nil {
+		return fmt.Errorf("read whether the caller is the instance Owner: %w", err)
+	}
+	if !all {
+		return errHostOwnerOnly
+	}
+	return nil
+}
+
+// requireMachine passes the server and the instance Owner for any name, and anyone else by the machine's rules.
+func (h *HostsService) requireMachine(ctx context.Context, name string, action permissions.Action) error {
+	if h.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	_, all, err := h.gate.CallerMachines(ctx)
+	if err != nil {
+		return fmt.Errorf("read what the caller sees: %w", err)
+	}
+	if all {
+		return nil
+	}
+	return h.gate.RequireMachineNamed(ctx, name, action)
+}
+
+// requireOnHost is requireMachine on host's machine; a host on a machine the caller can't see is not found.
+func (h *HostsService) requireOnHost(ctx context.Context, host *Host, action permissions.Action) error {
+	err := h.requireMachine(ctx, host.Machine, action)
+	if errors.Is(err, apperrs.ErrInvalid) || errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w: no automations host has id %s", apperrs.ErrNotFound, host.ID)
+	}
+	return err
+}
+
+// makerMayEnroll reads the code maker's rights again: the instance Owner lands a host anywhere, anyone else needs Manage
+// on the code's machine. A code with no maker is the server's own.
+func (h *HostsService) makerMayEnroll(ctx context.Context, code *HostEnrollmentCode) error {
+	if code.EnrolledBy == "" || h.gate == nil {
+		return nil
+	}
+	owner, err := h.gate.IsInstanceOwner(ctx, code.EnrolledBy)
+	if err != nil {
+		return fmt.Errorf("read whether %s is the instance Owner: %w", code.EnrolledBy, err)
+	}
+	if owner {
+		return nil
+	}
+	if code.Machine == "" {
+		return errHostCantAdd
+	}
+	asMaker := identity.WithActor(ctx, identity.Actor{ID: code.EnrolledBy})
+	err = h.gate.RequireMachineNamed(asMaker, code.Machine, permissions.MachinesWrite)
+	if permissions.Refused(err) || errors.Is(err, apperrs.ErrInvalid) {
+		return errHostMachineTaken(code.Machine)
+	}
+	if err != nil {
+		return fmt.Errorf("read what %s holds on machine %s: %w", code.EnrolledBy, code.Machine, err)
+	}
+	return nil
 }
 
 // Remove revokes a host's credential and deletes it; its automations fall back to the instance host and their live
-// connections drop. The host learns it was removed on its next poll. It needs automations:delete.
+// connections drop. The host learns it was removed on its next poll. It takes Manage on the host's machine, and a host
+// on a machine the caller can't see is not found.
 func (h *HostsService) Remove(ctx context.Context, id string) error {
-	if err := h.require(ctx, permissions.AutomationsDelete); err != nil {
+	host, err := h.repo.GetHost(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get automations host %s: %w", id, err)
+	}
+	if err := h.requireOnHost(ctx, host, permissions.MachinesWrite); err != nil {
 		return err
 	}
-	return h.remove(ctx, id)
+	return h.remove(ctx, host)
 }
 
 // RemoveSelf is removal asked for by the host itself, authenticated by its own credential; a host that was already
@@ -215,20 +316,20 @@ func (h *HostsService) RemoveSelf(ctx context.Context, credential string) error 
 	if cred.Revoked {
 		return nil
 	}
-	return h.remove(ctx, cred.HostID)
+	host, err := h.repo.GetHost(ctx, cred.HostID)
+	if err != nil {
+		return fmt.Errorf("get automations host %s: %w", cred.HostID, err)
+	}
+	return h.remove(ctx, host)
 }
 
-func (h *HostsService) remove(ctx context.Context, id string) error {
-	host, err := h.repo.GetHost(ctx, id)
-	if err != nil {
-		return fmt.Errorf("get automations host %s: %w", id, err)
-	}
+func (h *HostsService) remove(ctx context.Context, host *Host) error {
 	placed, err := h.placedOn(ctx, host)
 	if err != nil {
 		return err
 	}
-	if err := h.repo.RemoveHost(ctx, id, h.now().UTC()); err != nil {
-		return fmt.Errorf("remove automations host %s: %w", id, err)
+	if err := h.repo.RemoveHost(ctx, host.ID, h.now().UTC()); err != nil {
+		return fmt.Errorf("remove automations host %s: %w", host.ID, err)
 	}
 	for _, a := range placed {
 		h.disconnect(a.ID, "automations host removed")
@@ -370,7 +471,7 @@ func (h *HostsService) WriteInstanceEnrollment(ctx context.Context) error {
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}
-	code, _, err := h.mintEnrollment(ctx, InstanceHostName, "", instanceHostEnrollmentTTL)
+	code, _, err := h.mintEnrollment(ctx, InstanceHostName, "", "", instanceHostEnrollmentTTL)
 	if err != nil {
 		return err
 	}

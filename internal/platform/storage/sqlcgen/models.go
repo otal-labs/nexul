@@ -99,11 +99,12 @@ type AutomationHostCredential struct {
 }
 
 type AutomationHostEnrollmentCode struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt int64
-	ExpiresAt int64
+	CodeHash   string
+	Name       string
+	Machine    string
+	CreatedAt  int64
+	ExpiresAt  int64
+	EnrolledBy string
 }
 
 type AutomationRun struct {

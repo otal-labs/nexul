@@ -78,15 +78,16 @@ func (q *Queries) CreateAutomationHostCredential(ctx context.Context, arg Create
 }
 
 const createAutomationHostEnrollmentCode = `-- name: CreateAutomationHostEnrollmentCode :exec
-INSERT INTO automation_host_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+INSERT INTO automation_host_enrollment_codes (code_hash, name, machine, created_at, expires_at, enrolled_by) VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateAutomationHostEnrollmentCodeParams struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt int64
-	ExpiresAt int64
+	CodeHash   string
+	Name       string
+	Machine    string
+	CreatedAt  int64
+	ExpiresAt  int64
+	EnrolledBy string
 }
 
 func (q *Queries) CreateAutomationHostEnrollmentCode(ctx context.Context, arg CreateAutomationHostEnrollmentCodeParams) error {
@@ -96,6 +97,7 @@ func (q *Queries) CreateAutomationHostEnrollmentCode(ctx context.Context, arg Cr
 		arg.Machine,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.EnrolledBy,
 	)
 	return err
 }
@@ -170,7 +172,7 @@ func (q *Queries) GetAutomationHostCredential(ctx context.Context, credentialHas
 }
 
 const getAutomationHostEnrollmentCode = `-- name: GetAutomationHostEnrollmentCode :one
-SELECT code_hash, name, machine, created_at, expires_at FROM automation_host_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+SELECT code_hash, name, machine, created_at, expires_at, enrolled_by FROM automation_host_enrollment_codes WHERE code_hash = ? AND expires_at > ?
 `
 
 type GetAutomationHostEnrollmentCodeParams struct {
@@ -187,6 +189,7 @@ func (q *Queries) GetAutomationHostEnrollmentCode(ctx context.Context, arg GetAu
 		&i.Machine,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.EnrolledBy,
 	)
 	return i, err
 }
@@ -214,6 +217,45 @@ SELECT id, name, machine, os, arch, version, last_seen, created_at FROM automati
 
 func (q *Queries) ListAutomationHosts(ctx context.Context) ([]AutomationHost, error) {
 	rows, err := q.db.QueryContext(ctx, listAutomationHosts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutomationHost
+	for rows.Next() {
+		var i AutomationHost
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Machine,
+			&i.Os,
+			&i.Arch,
+			&i.Version,
+			&i.LastSeen,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAutomationHostsOn = `-- name: ListAutomationHostsOn :many
+SELECT h.id, h.name, h.machine, h.os, h.arch, h.version, h.last_seen, h.created_at FROM automation_hosts h
+JOIN machines m ON m.name = h.machine
+WHERE m.id IN (SELECT value FROM json_each(?1))
+ORDER BY h.created_at, h.id
+`
+
+func (q *Queries) ListAutomationHostsOn(ctx context.Context, machineIds interface{}) ([]AutomationHost, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationHostsOn, machineIds)
 	if err != nil {
 		return nil, err
 	}

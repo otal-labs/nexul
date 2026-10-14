@@ -65,7 +65,7 @@ type automationUpdateIn struct {
 	ID           string         `json:"id" jsonschema:"The automation's id, from automation_list; the change applies in the one workspace it belongs to."`
 	ConfigValues map[string]any `json:"config_values,omitempty" jsonschema:"The owner-set config as a JSON object, replacing the current values whole and checked by the automation against its config_schema; omit to keep them."`
 	Enabled      *bool          `json:"enabled,omitempty" jsonschema:"true delivers its workspace's events to the automation and runs its worker, false stops both and refuses its token until it is switched on again; other workspaces' copies keep their own switch. Omit to keep it."`
-	HostID       *string        `json:"host_id,omitempty" jsonschema:"The automations host to run it on, by id from machine_list; an empty string moves it back to the bundled instance host; omit to keep it."`
+	HostID       *string        `json:"host_id,omitempty" jsonschema:"The automations host to run it on, by id from machine_list, which needs Deploy to on its machine; an empty string moves it back to the bundled instance host; omit to keep it."`
 	RevokeToken  bool           `json:"revoke_token,omitempty" jsonschema:"true revokes the automation's token at once and drops its live connection; automation_token_create mints a new one to restore access."`
 }
 
@@ -124,7 +124,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"the order config_values, enabled, host_id, revoke_token; it stops at the first failure and the error says "+
 				"which fields already took effect. Returns the updated automation. The decisions check is switched on its "+
 				"play's auto play with play_update. To rotate the token use automation_token_create, and to remove "+
-				"the automation automation_delete. Needs automations:write in the automation's workspace.",
+				"the automation automation_delete. Needs automations:write in the automation's workspace; moving it to an "+
+				"automations host also needs Deploy to on the host's machine, and a host on a machine you can't see is not found.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationUpdateIn) (any, error) {
 				a, err := updateAutomation(ctx, s, in)

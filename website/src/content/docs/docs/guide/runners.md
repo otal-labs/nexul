@@ -41,6 +41,10 @@ A machine can't be deleted while anything uses it. The delete is refused and the
 
 Deleting a machine takes **Delete** on it, not **Manage**, and a machine you can't see is not found. Everyone who saw the machine sees its group leave the page at once. To bring one back, add a runner on a machine of that name: you get every action on the new machine, and the old rules don't return. Agents delete a machine with `host_delete` and `kind: "machine"`, the machine's `id` from `machine_list`, and get the same refusal.
 
+## Automations hosts
+
+An [automations host](/docs/guide/automations/#where-automations-run) follows its machine, as a runner does. The Automations page lists the hosts on the machines you can see, and none on a machine you can't; `machine_list` files each under its machine. Adding a host on a machine that exists and removing one take **Manage** on it, placing an automation on one takes **Deploy to**, and a host on a machine Nexul doesn't know yet is the instance Owner's, since a host doesn't add a machine. A host code is checked again when it is used: if the person who made it no longer manages the machine, the code is refused and a new one is needed.
+
 ## Adding a runner
 
 1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add a runner to this machine** on that machine instead. A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.

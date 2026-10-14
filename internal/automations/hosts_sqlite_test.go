@@ -68,10 +68,16 @@ func adminCtx() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "admin"})
 }
 
-// allowAnywhere passes every instance-level check, standing in for an Owner.
+// allowAnywhere passes every machine check, standing in for the instance Owner.
 type allowAnywhere struct{}
 
-func (allowAnywhere) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+func (allowAnywhere) CallerMachines(context.Context) ([]string, bool, error) { return nil, true, nil }
+
+func (allowAnywhere) RequireMachineNamed(context.Context, string, permissions.Action) error {
+	return nil
+}
+
+func (allowAnywhere) IsInstanceOwner(context.Context, string) (bool, error) { return true, nil }
 
 // newHostsFixture serves the automations host endpoints, the placement endpoint, a token-gated self-read and the
 // dial-in socket over a real, migrated SQLite database, the way the composition root mounts them.

@@ -47,6 +47,18 @@ func (r *AutomationHostsRepo) ListHosts(ctx context.Context) ([]automations.Host
 	return out, nil
 }
 
+func (r *AutomationHostsRepo) ListHostsOn(ctx context.Context, machineIDs []string) ([]automations.Host, error) {
+	rows, err := r.q.ListAutomationHostsOn(ctx, idsJSON(machineIDs))
+	if err != nil {
+		return nil, fmt.Errorf("list automations hosts on machines: %w", err)
+	}
+	out := make([]automations.Host, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *toHost(row))
+	}
+	return out, nil
+}
+
 func (r *AutomationHostsRepo) TouchHost(ctx context.Context, id string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).TouchAutomationHost(ctx, sqlcgen.TouchAutomationHostParams{LastSeen: at.Unix(), ID: id})
@@ -67,7 +79,7 @@ func (r *AutomationHostsRepo) CreateHostEnrollment(ctx context.Context, e *autom
 			return fmt.Errorf("prune automations host enrollment codes: %w", err)
 		}
 		err := q.CreateAutomationHostEnrollmentCode(ctx, sqlcgen.CreateAutomationHostEnrollmentCodeParams{
-			CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(),
+			CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(), EnrolledBy: e.EnrolledBy,
 		})
 		if err != nil {
 			return fmt.Errorf("insert automations host enrollment code: %w", classifyWriteErr(err))
@@ -82,7 +94,7 @@ func (r *AutomationHostsRepo) GetHostEnrollment(ctx context.Context, codeHash st
 		return nil, fmt.Errorf("get automations host enrollment code: %w", notFoundIfNoRows(err))
 	}
 	return &automations.HostEnrollmentCode{
-		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine,
+		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine, EnrolledBy: row.EnrolledBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC(),
 	}, nil
 }

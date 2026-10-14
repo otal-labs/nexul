@@ -333,7 +333,8 @@ func (s *Service) ListMachineViews(ctx context.Context) ([]MachineView, error) {
 	return out, nil
 }
 
-// listAutomationsHosts is the hosts machine_list files under each machine of r; a caller who may not read them gets none.
+// listAutomationsHosts is the hosts machine_list files under each machine of r; the hosts service already leaves out the
+// ones on machines the caller can't see.
 func (s *Service) listAutomationsHosts(ctx context.Context, r reach, machines []MachineView) ([]AutomationsHost, error) {
 	if s.automationsHosts == nil {
 		return nil, nil
