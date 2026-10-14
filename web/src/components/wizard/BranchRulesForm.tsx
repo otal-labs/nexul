@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
@@ -93,9 +94,9 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         Add branch
       </Button>
       <WizardFooter skip={<WizardSkipLink onClick={onSkip} />}>
-        <Button type="submit" loading={updateStack.isPending}>
+        <ActionButton permission="stacks:write" projectId={stack.project_id} type="submit" loading={updateStack.isPending}>
           Save branches
-        </Button>
+        </ActionButton>
       </WizardFooter>
     </form>
   );

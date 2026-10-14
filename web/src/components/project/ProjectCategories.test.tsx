@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectCategories } from "@/components/project/ProjectCategories";
 import { api } from "@/api/client";
 import type { Category } from "@/models/Category";
+import { withOwner } from "@/test/viewer";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -73,11 +75,11 @@ const tickets = [
 
 const renderCategories = (list: Category[] = categories) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
+  vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
     if (url === "/api/categories") return { data: list };
     if (url === "/api/tickets") return { data: tickets };
     return { data: [] };
-  });
+  }));
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
@@ -87,6 +89,7 @@ const renderCategories = (list: Category[] = categories) => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();

@@ -5,7 +5,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { Microheader } from "@/components/Microheader";
 import { NewStatusForm } from "@/components/settings/NewStatusForm";
 import { StatusRow } from "@/components/settings/StatusRow";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import type { BoardStatus, StatusKind } from "@/models/Status";
 
 interface StatusStageGroupProps {
@@ -24,16 +24,14 @@ export const StatusStageGroup = ({ projectId, kind, label, rows, total, adding, 
   <div>
     <div className="flex items-center justify-between gap-2 border-b border-border pb-1.5">
       <Microheader>{label}</Microheader>
-      <Button variant="ghost" size="icon" className="size-6" aria-label={`Add ${kind} status`} onClick={onToggleAdding}>
-        <PlusIcon className="size-3.5" />
-      </Button>
+      <ActionButton permission="projects:write" projectId={projectId} variant="ghost" size="icon" icon={PlusIcon} className="size-6 [&_svg]:size-3.5" aria-label={`Add ${kind} status`} onClick={onToggleAdding} />
     </div>
     {rows.length === 0 && <EmptyRow className="px-0 py-2">No {kind} statuses, so the board skips this stage.</EmptyRow>}
     {rows.length > 0 && (
       // Named for assistive tech since the header states kind once and rows don't repeat it.
       <EnterList aria-label={`${label} statuses`} className="divide-y divide-border">
         {rows.map(({ status, index }) => (
-          <StatusRow key={status.id} status={status} index={index} total={total} onMove={(direction) => onMove(index, direction)} />
+          <StatusRow key={status.id} projectId={projectId} status={status} index={index} total={total} onMove={(direction) => onMove(index, direction)} />
         ))}
       </EnterList>
     )}

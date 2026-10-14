@@ -48,7 +48,7 @@ export const SettingsCard = ({ id, title, description, danger = false, icon: Ico
       <header className="px-6 pt-5">{heading}</header>
       <div className="@container p-6 pt-5">{children}</div>
       {footer && (
-        <footer className="flex flex-wrap items-center justify-between gap-3 rounded-b-lg border-t border-border bg-muted/30 px-6 py-3">
+        <footer className="flex flex-wrap items-center justify-between gap-3 rounded-b-lg border-t border-border bg-muted/30 px-6 py-3 empty:hidden">
           {footer}
         </footer>
       )}

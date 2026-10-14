@@ -58,7 +58,7 @@ describe("StackHeaderSection Attach repository", () => {
     await user.click(attach);
 
     expect(attach).toHaveAttribute("aria-disabled", "true");
-    expect(attach).toHaveAccessibleDescription("Your role can't create and update projects and board settings");
+    expect(attach).toHaveAccessibleDescription("Your role can't attach repositories");
     expect(screen.queryByRole("link", { name: "Attach repository" })).not.toBeInTheDocument();
   });
 });

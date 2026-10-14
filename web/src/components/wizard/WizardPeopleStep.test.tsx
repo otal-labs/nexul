@@ -5,9 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WizardPeopleStep } from "@/components/wizard/WizardPeopleStep";
 import type { Project } from "@/models/Project";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
-vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "refused" }));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), put: mocks.put }, errorMessage: () => "refused" };
+});
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const project = { id: "p-1", name: "Storefront", workspace_id: "ws-1" } as Project;
@@ -21,6 +25,7 @@ const grants = [
 describe("WizardPeopleStep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.put.mockResolvedValue({ data: null });
     mocks.get.mockImplementation((url: string) => {
       if (url.startsWith("/api/permissions?")) return Promise.resolve({ data: { grants } });

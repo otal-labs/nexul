@@ -16,9 +16,10 @@ vi.mock("@/api/client", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const held = vi.hoisted(() => ({ permissions: [] as string[] }));
-vi.mock("@/hooks/useActionState", () => ({
-  useActionState: ({ permission }: { permission: string }) => (held.permissions.includes(permission) ? { state: "live" } : { state: "hidden" }),
-}));
+vi.mock("@/hooks/useActionState", () => {
+  const stateOf = ({ permission }: { permission: string }) => (held.permissions.includes(permission) ? { state: "live" } : { state: "hidden" });
+  return { useActionState: stateOf, useActionStates: (gates: { permission: string }[]) => gates.map(stateOf) };
+});
 
 const mockReferenceData = () =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -77,6 +78,13 @@ describe("BoardCreateMenu", () => {
     expect(await screen.findByRole("button", { name: "New ticket" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Report a bug" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New category" })).not.toBeInTheDocument();
+  });
+
+  it("offers no Create button to a viewer who can neither write tickets nor edit the project", () => {
+    held.permissions = [];
+    render(<BoardCreateMenu onNewTicket={() => {}} onNewCategory={() => {}} />);
+
+    expect(screen.queryByRole("button", { name: "Create" })).not.toBeInTheDocument();
   });
 
   it("fires onNewCategory from the menu", async () => {

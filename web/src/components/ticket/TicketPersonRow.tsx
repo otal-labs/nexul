@@ -6,7 +6,8 @@ import { personLabel } from "@nexul/client-core/person";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
-import { editableRowClass, rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
+import { rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useSetTicketPerson } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
@@ -29,15 +30,15 @@ export const TicketPersonRow = ({ ticket, role }: TicketPersonRowProps) => {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={editableRowClass} aria-label={`${label}: ${name || "no one"}`}>
-        <span className={rowIconClass}>
-          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4" />}
-          {!login && <UserIcon className="size-3.5" aria-hidden />}
-        </span>
-        <span className={rowLabelClass}>{label}</span>
-        <span className={cn(rowValueClass, !login && "text-muted-foreground")}>
-          {name || "No one"}
-        </span>
+      <PopoverTrigger asChild>
+        <PropertyRowTrigger projectId={ticket.project_id} label={`${label}: ${name || "no one"}`}>
+          <span className={rowIconClass}>
+            {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4" />}
+            {!login && <UserIcon className="size-3.5" aria-hidden />}
+          </span>
+          <span className={rowLabelClass}>{label}</span>
+          <span className={cn(rowValueClass, !login && "text-muted-foreground")}>{name || "No one"}</span>
+        </PropertyRowTrigger>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1.5">
         <PersonPickerList

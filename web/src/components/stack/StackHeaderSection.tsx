@@ -67,10 +67,9 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
           <div className="flex items-center gap-2">
             {!stack.managed && !!stack.project_id && (
               <ActionButton
-                permission="stacks:write"
+                permission={["stacks:write", "projects:write"]}
                 projectId={stack.project_id}
                 answer={answer("stacks:write")}
-                alsoNeeds={{ permission: "projects:write", projectId: stack.project_id }}
                 verb="attach repositories"
                 variant="outline"
                 size="sm"

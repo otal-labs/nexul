@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectRepos } from "@/components/project/ProjectRepos";
 import { api } from "@/api/client";
 import type { RepoRef } from "@/models/Project";
+import { withOwner } from "@/test/viewer";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -22,7 +24,7 @@ const repos: RepoRef[] = [
 
 const renderRepos = (list: RepoRef[] = repos) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.mocked(api.get).mockResolvedValue({ data: list });
+  vi.mocked(api.get).mockImplementation(withOwner(async () => ({ data: list })));
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
@@ -32,6 +34,7 @@ const renderRepos = (list: RepoRef[] = repos) => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
@@ -78,7 +81,7 @@ describe("ProjectRepos", () => {
     const user = userEvent.setup();
     renderRepos();
 
-    await user.click(screen.getByRole("button", { name: "Add repo" }));
+    await user.click(await screen.findByRole("button", { name: "Add repo" }));
     await user.click(screen.getByRole("button", { name: "Add repository" }));
     expect(await screen.findByText("Owner is required")).toBeInTheDocument();
     expect(screen.getByText("Repo name is required")).toBeInTheDocument();

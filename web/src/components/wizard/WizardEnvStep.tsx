@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
 import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
@@ -93,9 +93,9 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <Button type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
+        <ActionButton permission={["stacks:write", "deploys:write"]} projectId={stack.project_id} type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
           Save & deploy
-        </Button>
+        </ActionButton>
       </WizardFooter>
     </form>
   );

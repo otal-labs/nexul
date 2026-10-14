@@ -23,8 +23,10 @@ export const machineAnswer = (machine: { actions: readonly string[] }, permissio
 });
 
 export interface ActionGate {
-  permission: PermissionAction;
+  // Several mean the action writes through each, so the first one the viewer lacks decides.
+  permission: PermissionAction | readonly PermissionAction[];
   projectId?: string | undefined;
+  // The item's own answer belongs to the first permission; any others are read role-wide.
   answer?: EntityAnswer | undefined;
   // Reads "Your role can't <verb>" in place of the catalog's label when that label is clumsy, such as "deploy".
   verb?: string | undefined;
@@ -48,15 +50,19 @@ export const cannotReason = (permission: PermissionAction, verb?: string | undef
   return `Your role can't ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
 };
 
+type Viewer = { me: MyWorkspaceInfo | undefined; instance?: InstanceAccess | undefined };
+
 // Locked needs a role with Show locked actions on (ADR 0152); otherwise an action the viewer can't take is hidden.
-export const actionState = ({
-  permission,
-  projectId,
-  answer,
-  verb,
-  me,
-  instance,
-}: ActionGate & { me: MyWorkspaceInfo | undefined; instance?: InstanceAccess | undefined }): ActionState => {
+export const actionState = ({ permission, answer, ...rest }: ActionGate & Viewer): ActionState => {
+  const needs = typeof permission === "string" ? [permission] : permission;
+  for (const [index, one] of needs.entries()) {
+    const state = stateOf({ ...rest, permission: one, answer: index === 0 ? answer : undefined });
+    if (state.state !== "live") return state;
+  }
+  return LIVE;
+};
+
+const stateOf = ({ permission, projectId, answer, verb, me, instance }: Omit<ActionGate, "permission"> & Viewer & { permission: PermissionAction }): ActionState => {
   if (!me) return HIDDEN;
   if (answer) {
     if (answer.allowed) return LIVE;

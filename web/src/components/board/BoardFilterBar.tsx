@@ -22,7 +22,6 @@ import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchAllLabels } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 
 export type { BoardFilters } from "@/components/board/boardFilterChipBuilders";
 
@@ -72,9 +71,6 @@ export const BoardFilterBar = ({
   const { data: labels } = useFetchAllLabels();
   const { data: ticketTypes } = useFetchProjectTicketTypes(projectId);
   const { data: statuses } = useFetchProjectStatuses(projectId);
-  const writesTickets = useHasPermission("tickets:write");
-  const writesProjects = useHasPermission("projects:write");
-  const canCreate = writesTickets || writesProjects;
 
   const activeCount = countActiveFilters(filters, hideProjectFilter);
   const projectChips = buildProjectChips(projects, filters, onToggleProject);
@@ -136,7 +132,7 @@ export const BoardFilterBar = ({
               className="h-9 pl-8 text-sm"
             />
           </div>
-          {canCreate && <BoardCreateMenu onNewTicket={onNewTicket} onNewCategory={onNewCategory} />}
+          <BoardCreateMenu projectId={projectId} onNewTicket={onNewTicket} onNewCategory={onNewCategory} />
         </div>
       </div>
     </div>

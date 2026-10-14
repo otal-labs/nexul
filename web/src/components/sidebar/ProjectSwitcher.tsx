@@ -10,7 +10,6 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useWorkspacePath, useWorkspacePathname } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { canRunWizard } from "@/models/Access";
 import { projectEntity } from "@/models/PermissionPanel";
 import { NEW_PROJECT_PATH, projectSettingsPath, projectTile, projectToken, switchProjectPath, type Project } from "@/models/Project";
 
@@ -26,7 +25,6 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
   const wsPath = useWorkspacePath();
   const pathname = useWorkspacePathname();
   const selectProject = useWorkspaceStore((s) => s.selectProject);
-  const can = useAreaAccess();
   const canOpenCurrent = useAreaAccess(current.id);
   const openPermissions = usePermissionsDialog();
   const currentEntity = projectEntity(current);
@@ -78,7 +76,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
         onSelect={handleSelect}
         onSettings={handleSettings}
         onPermissions={handlePermissions}
-        onCreate={can && canRunWizard(can, true) ? handleCreate : undefined}
+        onCreate={handleCreate}
       />
     </Popover>
   );

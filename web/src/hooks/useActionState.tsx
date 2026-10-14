@@ -5,10 +5,12 @@ import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // Hidden until the viewer's permissions arrive, so a control never flashes live and then locks.
-export const useActionState = ({ permission, projectId, answer, verb }: ActionGate): ActionState => {
+export const useActionStates = (gates: ActionGate[]): ActionState[] => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
   const { data } = useFetchMyRole(selectedWorkspaceId);
   const { data: account } = useFetchMe();
-  return actionState({ me: data, instance: account, permission, projectId: projectId ?? selectedProjectId, answer, verb });
+  return gates.map((gate) => actionState({ me: data, instance: account, ...gate, projectId: gate.projectId ?? selectedProjectId }));
 };
+
+export const useActionState = (gate: ActionGate): ActionState => useActionStates([gate])[0] ?? { state: "hidden" };

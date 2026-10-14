@@ -3,6 +3,7 @@ import { GitBranchIcon, GitPullRequestIcon, LinkIcon, PlusIcon } from "lucide-re
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { FormInput } from "@/components/FormInput";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -11,7 +12,7 @@ import { RepoLinksRow } from "@/components/ticket/RepoLinksRow";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useFetchTicketLinks, useLinkBranch, useLinkPR } from "@/hooks/TicketHooks";
+import { useFetchTicket, useFetchTicketLinks, useLinkBranch, useLinkPR } from "@/hooks/TicketHooks";
 import {
   LinkBranchFormSchema,
   LinkPRFormSchema,
@@ -33,6 +34,7 @@ const ticketLinksOf = (data: TicketLinks | undefined) => ({
 // One "+" menu replaces two buttons; linked items render as compact rows, not a bordered list.
 export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
   const { data, error, isPending } = useFetchTicketLinks(ticketId);
+  const { data: ticket } = useFetchTicket(ticketId);
   const linkBranch = useLinkBranch();
   const linkPR = useLinkPR();
   const [showBranchForm, setShowBranchForm] = useState(false);
@@ -57,13 +59,16 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
         <h2 className={microheaderClass}>Development</h2>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>
-            <button
-              type="button"
+            <ActionButton
+              permission="tickets:write"
+              projectId={ticket?.project_id}
+              verb="link development items"
+              variant="ghost"
+              size="icon"
+              icon={PlusIcon}
               aria-label="Link development item"
-              className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
-            >
-              <PlusIcon className="size-3.5" aria-hidden />
-            </button>
+              className="size-5 text-muted-foreground [&_svg]:size-3.5"
+            />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-40 p-1">
             <div className="flex flex-col gap-0.5">

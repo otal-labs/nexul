@@ -1,4 +1,4 @@
-import { AlertCircle, ExternalLink } from "lucide-react";
+import { AlertCircle, ExternalLink, LockIcon } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -14,6 +14,7 @@ import { WizardNoRepositoryLine } from "@/components/wizard/WizardNoRepositoryLi
 import { WizardOpenRepositoryRow } from "@/components/wizard/WizardOpenRepositoryRow";
 import { useAddProjectRepo, useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import type { SetupMark } from "@/models/Project";
 import { manualCandidate, parseInstallUrl, preferredCandidate, type Repo } from "@/models/Repository";
@@ -30,6 +31,7 @@ interface WizardRepositoryStepProps {
 // found (advance, or open the row while setting up), nothing found (a manual Dockerfile), or the App isn't installed.
 export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRepositoryStepProps) => {
   const scanRepository = useScanRepository();
+  const canScan = useActionState({ permission: "projects:create", verb: "scan repositories" });
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
@@ -109,6 +111,8 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     await advance().catch(() => undefined);
   };
 
+  const noRepositoryLine = onLeaveEarly && <WizardNoRepositoryLine onClick={() => void leaveWithoutRepository().catch(() => undefined)} />;
+
   const notInstalled =
     scanRepository.isError &&
     (scanRepository.error as { response?: { status?: number } })?.response?.status === 404;
@@ -119,13 +123,22 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     <div className="space-y-4">
       {asksTests && <TestsLocationChoice />}
       {asksTests && <p className="text-sm font-medium">Repository</p>}
-      <RepositorySearch
-        onSelect={(repo) => void scan(repo)}
-        excludeId={separateTestsRepo?.id}
-        busyId={scanRepository.isPending ? picked?.id : undefined}
-        openRow={openRow || undefined}
-        after={onLeaveEarly && <WizardNoRepositoryLine onClick={() => void leaveWithoutRepository().catch(() => undefined)} />}
-      />
+      {canScan.state === "live" && (
+        <RepositorySearch
+          onSelect={(repo) => void scan(repo)}
+          excludeId={separateTestsRepo?.id}
+          busyId={scanRepository.isPending ? picked?.id : undefined}
+          openRow={openRow || undefined}
+          after={noRepositoryLine}
+        />
+      )}
+      {canScan.state === "locked" && (
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <LockIcon className="size-3.5 shrink-0" aria-hidden />
+          {canScan.reason}
+        </p>
+      )}
+      {canScan.state !== "live" && noRepositoryLine}
       {notInstalled && (
         <EmptyState
           icon={AlertCircle}

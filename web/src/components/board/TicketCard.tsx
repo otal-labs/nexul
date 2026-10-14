@@ -13,6 +13,7 @@ import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { getProjectKey, useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -120,8 +121,11 @@ const TicketCardImpl = ({ ticket }: TicketCardProps) => {
   // Read at click time, not subscribed: cards re-render on every drag move and only the handlers need the prefix.
   const open = () =>
     navigate(wsPath(ticketPath(ticket, queryClient.getQueryData<Project>([getProjectKey, ticket.project_id])?.prefix)));
+  // A card moves by dragging it, so a viewer who can't write the ticket gets a card that only opens.
+  const draggable = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
+    disabled: !draggable,
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
     transition: { duration: 200, easing: "ease" },
   });
@@ -143,7 +147,7 @@ const TicketCardImpl = ({ ticket }: TicketCardProps) => {
       ref={setNodeRef}
       style={{ transform: dragCssTransform, transition: dragTransition }}
       data-no-enter={mountedWhileDragging || undefined}
-      {...listeners}
+      {...(draggable ? listeners : {})}
       {...attributes}
       onClick={open}
       onKeyDown={(event) => {
@@ -152,7 +156,8 @@ const TicketCardImpl = ({ ticket }: TicketCardProps) => {
       }}
       className={cn(
         "group relative flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        "cursor-grab active:cursor-grabbing",
+        draggable && "cursor-grab active:cursor-grabbing",
+        !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
         "before:absolute before:inset-x-0 before:-bottom-px before:h-px motion-safe:hover:-translate-y-px",
         "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:shadow-elevated after:transition-opacity after:duration-150 after:ease-standard hover:after:opacity-50",

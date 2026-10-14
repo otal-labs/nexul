@@ -2,13 +2,8 @@ import { CheckIcon, Rows3 } from "lucide-react";
 import { useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  editableRowClass,
-  menuItemClass,
-  rowIconClass,
-  rowLabelClass,
-  rowValueClass,
-} from "@/components/ticket/ticketPropertyRowStyle";
+import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
+import { menuItemClass, rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useClearTicketCategory, useFetchProjectCategories, useMoveTicketToCategory } from "@/hooks/CategoryHooks";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/models/Ticket";
@@ -37,12 +32,14 @@ export const TicketCategoryRow = ({ ticket }: TicketCategoryRowProps) => {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={editableRowClass} aria-label={`Category: ${name}`}>
-        <span className={rowIconClass}>
-          <Rows3 className="size-3.5" aria-hidden />
-        </span>
-        <span className={rowLabelClass}>Category</span>
-        <span className={cn(rowValueClass, !current && "text-muted-foreground")}>{name}</span>
+      <PopoverTrigger asChild>
+        <PropertyRowTrigger projectId={ticket.project_id} label={`Category: ${name}`}>
+          <span className={rowIconClass}>
+            <Rows3 className="size-3.5" aria-hidden />
+          </span>
+          <span className={rowLabelClass}>Category</span>
+          <span className={cn(rowValueClass, !current && "text-muted-foreground")}>{name}</span>
+        </PropertyRowTrigger>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-48 p-1">
         <div className="flex flex-col gap-0.5">

@@ -5,14 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WizardBranchesStep } from "@/components/wizard/WizardBranchesStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), errorMessage: vi.fn(() => "") }));
 
-vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, patch: mocks.patch },
-  errorMessage: mocks.errorMessage,
-}));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), patch: mocks.patch }, errorMessage: mocks.errorMessage };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -44,6 +45,7 @@ const renderStep = () => {
 const productionWarning = /uses production's services/i;
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   mocks.get.mockReset();
   mocks.patch.mockReset();
   mocks.patch.mockImplementation(async (_url: string, body: unknown) => ({ data: body }));

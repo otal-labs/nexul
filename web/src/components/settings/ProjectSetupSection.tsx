@@ -1,6 +1,4 @@
-import { Link } from "react-router";
-
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { inSetup, type Project } from "@/models/Project";
@@ -19,9 +17,9 @@ export const ProjectSetupSection = ({ project }: ProjectSetupSectionProps) => {
 
   return (
     <SettingsCard id="setup" title="Setup" description={description}>
-      <Button asChild size="sm" variant="outline">
-        <Link to={wsPath(`${setupResumePath(project)}&revisit=1`)}>Open the wizard</Link>
-      </Button>
+      <ActionButton permission="projects:write" projectId={project.id} verb="change a project's setup" size="sm" variant="outline" to={wsPath(`${setupResumePath(project)}&revisit=1`)}>
+        Open the wizard
+      </ActionButton>
     </SettingsCard>
   );
 };

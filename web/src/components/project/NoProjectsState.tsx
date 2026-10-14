@@ -1,11 +1,9 @@
 import { FolderPlusIcon } from "lucide-react";
-import { Link } from "react-router";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { EmptyState } from "@/components/EmptyState";
-import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { canRunWizard } from "@/models/Access";
+import { wizardDoorPermissions } from "@/models/Access";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface NoProjectsStateProps {
@@ -14,8 +12,6 @@ interface NoProjectsStateProps {
 
 // A workspace starts with no project; every page that needs one points at the project wizard instead of erroring.
 export const NoProjectsState = ({ message }: NoProjectsStateProps) => {
-  const can = useAreaAccess();
-  const canCreate = !!can && canRunWizard(can, true);
   const wsPath = useWorkspacePath();
   return (
     <EmptyState
@@ -23,11 +19,9 @@ export const NoProjectsState = ({ message }: NoProjectsStateProps) => {
       title="No projects yet"
       message={message}
       action={
-        canCreate && (
-          <Button asChild size="sm">
-            <Link to={wsPath(NEW_PROJECT_PATH)}>New project</Link>
-          </Button>
-        )
+        <ActionButton permission={wizardDoorPermissions(true)} verb="create projects" size="sm" to={wsPath(NEW_PROJECT_PATH)}>
+          New project
+        </ActionButton>
       }
     />
   );

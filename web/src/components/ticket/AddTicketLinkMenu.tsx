@@ -1,6 +1,7 @@
 import { Ban, Bug, FileText, OctagonX, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { DocPickerList } from "@/components/doc/DocPickerList";
 import { TicketPickerList } from "@/components/ticket/TicketPickerList";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
@@ -41,13 +42,16 @@ export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
   return (
     <Popover open={open} onOpenChange={close}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <ActionButton
+          permission="tickets:write"
+          projectId={ticket.project_id}
+          verb="link tickets"
+          variant="ghost"
+          size="icon"
+          icon={PlusIcon}
           aria-label="Add a link"
-          className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
-        >
-          <PlusIcon className="size-3.5" aria-hidden />
-        </button>
+          className="size-5 text-muted-foreground [&_svg]:size-3.5"
+        />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] p-1.5">
         {kind === null && (

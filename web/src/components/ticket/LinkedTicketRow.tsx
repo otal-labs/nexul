@@ -1,8 +1,9 @@
-import { Ban, CheckCircle2, Circle, X } from "lucide-react";
+import { Ban, CheckCircle2, Circle } from "lucide-react";
 import { Link } from "react-router";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { LinkedTicketPreview } from "@/components/ticket/LinkedTicketPreview";
+import { RemoveLinkButton } from "@/components/ticket/RemoveLinkButton";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { linkedTicketKey, type LinkedTicket } from "@/models/TicketLink";
@@ -12,6 +13,8 @@ interface LinkedTicketRowProps {
   /** A blocker the ticket still waits on shows the blocked icon instead of a neutral circle. */
   waiting?: boolean;
   onRemove?: () => void;
+  /** The project of the ticket this row hangs off, whose links the remove writes. */
+  hostProjectId?: string;
 }
 
 const stateOf = (ticket: LinkedTicket, waiting: boolean) => {
@@ -20,7 +23,7 @@ const stateOf = (ticket: LinkedTicket, waiting: boolean) => {
   return { Icon: Circle, color: "text-muted-foreground", label: "Not done" };
 };
 
-export const LinkedTicketRow = ({ ticket, waiting = false, onRemove }: LinkedTicketRowProps) => {
+export const LinkedTicketRow = ({ ticket, waiting = false, onRemove, hostProjectId }: LinkedTicketRowProps) => {
   const { Icon, color, label } = stateOf(ticket, waiting);
   const key = linkedTicketKey(ticket);
   const wsPath = useWorkspacePath();
@@ -43,14 +46,7 @@ export const LinkedTicketRow = ({ ticket, waiting = false, onRemove }: LinkedTic
         </HoverCardContent>
       </HoverCard>
       {onRemove && (
-        <button
-          type="button"
-          aria-label={`Remove link to ${key}`}
-          onClick={onRemove}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,background-color,opacity] duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-muted/50 hover:text-foreground"
-        >
-          <X className="size-3.5" aria-hidden />
-        </button>
+        <RemoveLinkButton projectId={hostProjectId} label={`Remove link to ${key}`} onRemove={onRemove} />
       )}
     </li>
   );

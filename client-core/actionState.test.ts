@@ -33,7 +33,7 @@ const answer = (allowed: boolean, sentence: string): EntityAnswer => ({ allowed,
 interface Row {
   name: string;
   me: MyWorkspaceInfo | undefined;
-  permission: PermissionAction;
+  permission: PermissionAction | readonly PermissionAction[];
   projectId?: string;
   entity?: EntityAnswer;
   verb?: string;
@@ -160,6 +160,35 @@ const rows: Row[] = [
     entity: machineAnswer({ actions: ["machines:see"] }, "machines:delete"),
     instance: { instance_permissions: ["machines:delete"], instance_owner: false },
     expected: { state: "locked", reason: "Your role can't delete machines" },
+  },
+  {
+    name: "several permissions are live when the viewer holds each",
+    me: developer(),
+    permission: ["tickets:write", "deploys:write"],
+    projectId: "p-web",
+    expected: { state: "live" },
+  },
+  {
+    name: "several permissions lock on the first one the viewer lacks",
+    me: developer(),
+    permission: ["tickets:write", "stacks:write", "deploys:write"],
+    projectId: "p-web",
+    expected: { state: "locked", reason: "Your role can't create and update stacks" },
+  },
+  {
+    name: "an allowed answer on the first of several does not make a missing second one live",
+    me: developer(),
+    permission: ["tickets:write", "stacks:write"],
+    projectId: "p-web",
+    entity: answer(true, "Allowed on machine prod for bob"),
+    expected: { state: "locked", reason: "Your role can't create and update stacks" },
+  },
+  {
+    name: "several permissions hide when the viewer lacks one and no role shows locked actions",
+    me: developer({ show_locked_actions: false }),
+    permission: ["tickets:write", "stacks:write"],
+    projectId: "p-web",
+    expected: { state: "hidden" },
   },
   { name: "an instance action waits for the instance permissions to load", me: developer(), permission: "dns:write", expected: { state: "hidden" } },
 ];

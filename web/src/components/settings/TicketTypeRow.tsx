@@ -78,21 +78,25 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
         </div>
       )}
       <ColorSwatchButton
+        permission="projects:write"
+        projectId={projectId}
         label={`Color for ${type.name}`}
         value={type.color}
         onChange={(color) => void renameTicketType.mutateAsync({ id: type.id, name: type.name, color })}
       />
       <RowActionsMenu
         subject={type.name}
+        projectId={projectId}
         actions={[
-          { label: "Rename", onSelect: () => setEditing(true) },
-          { label: "Edit template", onSelect: () => void editTemplate() },
+          { label: "Rename", permission: "projects:write", onSelect: () => setEditing(true) },
+          { label: "Edit template", permission: "projects:write", onSelect: () => void editTemplate() },
           {
             label: "Clone template to…",
+            permission: "templates:write",
             onSelect: () =>
               void openClone({ kind: "ticket_body", key: type.name, name: type.name, from: { scope: "project", project_id: projectId } }),
           },
-          { label: "Delete", destructive: true, onSelect: () => void remove() },
+          { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => void remove() },
         ]}
       />
     </li>

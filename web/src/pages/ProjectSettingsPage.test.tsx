@@ -16,7 +16,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
+const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
 
 const categories = [{ id: "c-1", project_id: "p-1", name: "Sprint 1", position: 0, created_at: "", updated_at: "" }];
 

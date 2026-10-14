@@ -6,13 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TicketTypeRow } from "@/components/settings/TicketTypeRow";
 import type { TicketType } from "@/models/TicketType";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ put: vi.fn(), errorMessage: vi.fn() }));
 
-vi.mock("@/api/client", () => ({
-  api: { get: vi.fn(), put: mocks.put, post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-  errorMessage: mocks.errorMessage,
-}));
+vi.mock("@/api/client", async () => {
+  const { asOwner } = await import("@/test/viewer");
+  return { api: { get: vi.fn(asOwner()), put: mocks.put, post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: mocks.errorMessage };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -38,6 +39,7 @@ const renderRow = () =>
 
 describe("TicketTypeRow template", () => {
   beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.put.mockReset();
     mocks.errorMessage.mockReset();
   });
@@ -47,7 +49,7 @@ describe("TicketTypeRow template", () => {
     const user = userEvent.setup();
     renderRow();
 
-    await user.click(screen.getByRole("button", { name: "Actions for bug" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for bug" }));
     await user.click(screen.getByRole("button", { name: "Edit template" }));
     const textarea = await screen.findByLabelText("Template (markdown)");
     expect(textarea).toHaveValue("## Steps to reproduce\n\n");
@@ -67,7 +69,7 @@ describe("TicketTypeRow template", () => {
     const user = userEvent.setup();
     renderRow();
 
-    await user.click(screen.getByRole("button", { name: "Actions for bug" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for bug" }));
     await user.click(screen.getByRole("button", { name: "Edit template" }));
     await screen.findByLabelText("Template (markdown)");
     await user.click(screen.getByRole("button", { name: "Save template" }));

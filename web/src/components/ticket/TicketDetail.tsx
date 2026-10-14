@@ -7,12 +7,12 @@ import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEdit
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
-import { RowActions } from "@/components/listpane/RowActions";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
+import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketCache";
@@ -39,7 +39,7 @@ interface TicketDetailProps {
 export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
-  const canEdit = useAreaAccess(ticket.project_id)?.("editTickets") ?? false;
+  const canEdit = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
   const avatar = me?.user ? effectiveAvatar(me.user) : "";
   // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
   const session = useCollabSession(canEdit && me ? `tickets/${ticket.id}` : undefined, "edit", me?.user?.name ?? "", token, {
@@ -85,7 +85,7 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
             )}
           </ClampedTitle>
         }
-        actions={menu.onDelete && <RowActions itemLabel={ticketLabel} {...menu} />}
+        actions={<RowActionsMenu subject={ticketLabel} projectId={ticket.project_id} actions={menu} />}
         meta={
           <>
             <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-foreground">

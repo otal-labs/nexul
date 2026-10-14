@@ -1,3 +1,4 @@
+import { LockIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardRoleRow } from "@/components/wizard/WizardRoleRow";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useFetchGrants, useSaveRules } from "@/hooks/PermissionHooks";
+import { useActionState } from "@/hooks/useActionState";
+import { useEntityActions } from "@/hooks/useEntityActions";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
@@ -31,6 +34,8 @@ export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSki
   // Holder counts come from Team, so only a viewer who may read Team asks for it.
   const { data: team } = useFetchTeam(useCanOpenSection("team"));
   const save = useSaveRules();
+  const answer = useEntityActions("project", project.id);
+  const manage = useActionState({ permission: "projects:access", projectId: project.id, answer: answer("projects:access"), verb: "choose who is in a project" });
   // Ticks the person changed here, over what the project's rules already list.
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
   const listed = grants ? projectPeopleRules(grants).roles.map((g) => g.role_id ?? "") : [];
@@ -57,10 +62,16 @@ export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSki
       {(isPending || !ready) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {grants && ready && roles.length === 0 && <p className="text-sm text-muted-foreground">This workspace has no roles but the Owner's yet.</p>}
+      {manage.state === "locked" && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <LockIcon className="size-3.5 shrink-0" aria-hidden />
+          {manage.reason}
+        </p>
+      )}
       {grants && ready && roles.length > 0 && (
         <ul className="divide-y divide-border border-y border-border" aria-label="Roles in this project">
           {roles.map((role) => (
-            <WizardRoleRow key={role.key} role={role} checked={isTicked(role.id)} line={holders(role.id)} onToggle={(on) => setTicked((t) => ({ ...t, [role.id]: on }))} />
+            <WizardRoleRow key={role.key} role={role} checked={isTicked(role.id)} line={holders(role.id)} locked={manage.state !== "live"} onToggle={(on) => setTicked((t) => ({ ...t, [role.id]: on }))} />
           ))}
         </ul>
       )}

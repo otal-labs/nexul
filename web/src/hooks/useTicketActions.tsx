@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 
-import type { RowMenu } from "@/components/listpane/rowMenu";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import type { RowAction } from "@/components/settings/RowActionsMenu";
 import { useDeleteTicket } from "@/hooks/TicketHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useIsEmbedded } from "@/hooks/useEmbeddedCrumbs";
@@ -10,10 +9,8 @@ import type { Project } from "@/models/Project";
 import { boardPath } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 
-// A ticket's ⋯ menu: Delete is left out when the viewer lacks it, and the server still checks. A ticket shown inside
-// another page (the Inbox) stays where it is; a ticket page returns to its project's board.
-export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined): RowMenu => {
-  const canDelete = useAreaAccess(ticket.project_id)?.("deleteTickets") ?? false;
+// After Delete, a ticket shown inside another page (the Inbox) stays put; a ticket page returns to its board.
+export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined): RowAction[] => {
   const embedded = useIsEmbedded();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
@@ -34,5 +31,5 @@ export const useTicketActions = (ticket: Ticket, label: string, project: Project
     });
   };
 
-  return { onDelete: canDelete ? () => void remove() : undefined };
+  return [{ label: "Delete", destructive: true, permission: "tickets:delete", onSelect: () => void remove() }];
 };

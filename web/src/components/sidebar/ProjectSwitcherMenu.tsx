@@ -1,5 +1,6 @@
 import { ProjectSwitcherItem } from "@/components/sidebar/ProjectSwitcherItem";
 import { SwitcherMenu } from "@/components/SwitcherMenu";
+import { wizardDoorPermissions } from "@/models/Access";
 import type { Project } from "@/models/Project";
 
 interface ProjectSwitcherMenuProps {
@@ -8,12 +9,11 @@ interface ProjectSwitcherMenuProps {
   onSelect: (project: Project) => void;
   onSettings: (project: Project) => void;
   onPermissions: (project: Project) => void;
-  // Absent for a viewer who may not create a project.
-  onCreate?: (() => void) | undefined;
+  onCreate: () => void;
 }
 
 export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onSettings, onPermissions, onCreate }: ProjectSwitcherMenuProps) => (
-  <SwitcherMenu createLabel="New project" onCreate={onCreate}>
+  <SwitcherMenu createLabel="New project" onCreate={onCreate} createGate={{ permission: wizardDoorPermissions(true), verb: "create projects" }}>
     {projects.map((project) => (
       <ProjectSwitcherItem key={project.id} project={project} selected={project.id === currentId} onSelect={onSelect} onSettings={onSettings} onPermissions={onPermissions} />
     ))}

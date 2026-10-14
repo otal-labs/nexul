@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
 import type { TicketLinks } from "@/models/Ticket";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asViewer, memberWho } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -13,7 +15,6 @@ vi.mock("@/api/client", () => ({
 }));
 
 const perms = vi.hoisted(() => ({ canWrite: true }));
-vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: (value: string) => value !== "tickets:write" || perms.canWrite }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -24,6 +25,10 @@ const links = {
   ],
   branches: [{ owner: "acme", repo: "app", branch: "ticket/1" }],
 };
+
+// The viewer's permission reads answer as a member who may or may not write tickets; every other read gets `data`.
+const serve = (data: unknown) =>
+  vi.mocked(api.get).mockImplementation(asViewer(memberWho(perms.canWrite ? ["tickets:write"] : [], false), () => data));
 
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -39,25 +44,24 @@ beforeEach(() => {
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
   perms.canWrite = true;
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("DevelopmentSection", () => {
   it("shows an empty state with no links", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { prs: [], branches: [] } });
+    serve({ prs: [], branches: [] });
     renderSection();
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 
   it("tolerates null link arrays from a stale backend shape", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { prs: null, branches: null },
-    } as unknown as { data: TicketLinks });
+    serve({ prs: null, branches: null } as unknown as TicketLinks);
     renderSection();
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 
   it("lists linked branches and prs under their repo", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: links });
+    serve(links);
     renderSection();
     expect(await screen.findByRole("link", { name: "acme/app" })).toHaveAttribute("href", "https://github.com/acme/app");
     expect(screen.getByRole("link", { name: "ticket/1" })).toBeInTheDocument();
@@ -67,7 +71,7 @@ describe("DevelopmentSection", () => {
 
   it("links an existing branch", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: { prs: [], branches: [] } });
+    serve({ prs: [], branches: [] });
     vi.mocked(api.post).mockResolvedValue({ data: { prs: [], branches: [{ owner: "acme", repo: "app", branch: "feat" }] } });
     renderSection();
 
@@ -88,7 +92,7 @@ describe("DevelopmentSection", () => {
 
   it("links an existing pull request", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: { prs: [], branches: [] } });
+    serve({ prs: [], branches: [] });
     vi.mocked(api.post).mockResolvedValue({ data: { prs: [], branches: [] } });
     renderSection();
 
@@ -109,7 +113,7 @@ describe("DevelopmentSection", () => {
 
   it("unlinks a branch and shows the links the server answers with", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: links });
+    serve(links);
     vi.mocked(api.delete).mockResolvedValue({ data: { prs: links.prs, branches: [] } });
     renderSection();
 
@@ -122,7 +126,7 @@ describe("DevelopmentSection", () => {
 
   it("unlinks a pull request and keeps the others", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: links });
+    serve(links);
     vi.mocked(api.delete).mockResolvedValue({ data: { prs: [links.prs[1]], branches: links.branches } });
     renderSection();
 
@@ -135,7 +139,7 @@ describe("DevelopmentSection", () => {
 
   it("offers no unlink to someone who cannot write tickets", async () => {
     perms.canWrite = false;
-    vi.mocked(api.get).mockResolvedValue({ data: links });
+    serve(links);
     renderSection();
 
     expect(await screen.findByRole("link", { name: "ticket/1" })).toBeInTheDocument();

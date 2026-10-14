@@ -6,7 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { CandidateChoice } from "@/components/wizard/CandidateChoice";
@@ -32,6 +32,8 @@ const buildSourceFrom = (repository: Repo, candidate: Candidate, branch: string)
   ...(candidate.kind === "dockerfile" && { dockerfile: candidate.path }),
   ...(candidate.kind === "compose" && { compose_path: candidate.path }),
 });
+
+const STACK_AND_DEPLOY = ["stacks:write", "deploys:write"] as const;
 
 interface WizardServiceStepProps {
   onDone: () => void;
@@ -59,6 +61,8 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
     })),
   );
   const envStepFollows = (scanResult?.env_keys.length ?? 0) > 0;
+  // Without an env step the first deploy starts here, so the step writes a stack and a deploy.
+  const writes = envStepFollows ? "stacks:write" : STACK_AND_DEPLOY;
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
   const setStackId = useProjectWizardStore((s) => s.setStackId);
   const createStack = useCreateStack();
@@ -132,9 +136,9 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
           <span className="font-mono text-foreground">{attachStack.machine}</span>.
         </p>
         <WizardFooter onBack={onBack}>
-          <Button type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
+          <ActionButton permission={writes} projectId={projectId} type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
             Attach
-          </Button>
+          </ActionButton>
         </WizardFooter>
       </div>
     );
@@ -172,9 +176,9 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
       <FormInput control={form.control} name="name" label="Name" placeholder="e.g. web" />
       <MachinePicker control={form.control} name="machine" />
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <Button type="submit" loading={createStack.isPending}>
+        <ActionButton permission={writes} projectId={projectId} type="submit" loading={createStack.isPending}>
           {envStepFollows ? "Create" : "Create & deploy"}
-        </Button>
+        </ActionButton>
       </WizardFooter>
     </form>
   );
