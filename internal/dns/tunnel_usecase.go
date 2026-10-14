@@ -246,8 +246,8 @@ func (s *Service) RotateTunnelCredentials(ctx context.Context, tunnelID string) 
 	return t, nil
 }
 
-// DeleteTunnel removes the tunnel at the provider (idempotent) and drops the
-// local row, publishing dns.tunnel_changed (deleted).
+// DeleteTunnel refuses while a gateway or an exposed hostname uses the tunnel, naming them; otherwise it removes
+// the tunnel at the provider (idempotent), its CNAME, and the local row, publishing dns.tunnel_changed (deleted).
 func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err := s.require(ctx, permissions.DNSDelete); err != nil {
 		return err
@@ -259,6 +259,13 @@ func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err != nil {
 		return fmt.Errorf("get tunnel %s: %w", tunnelID, err)
 	}
+	users, err := s.tunnelUsers(ctx, tunnelID)
+	if err != nil {
+		return err
+	}
+	if len(users) > 0 {
+		return &apperrs.InUseError{Thing: fmt.Sprintf("tunnel %q", t.Name), Users: users, Fix: "edit or remove them first"}
+	}
 	p, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return err
@@ -266,10 +273,60 @@ func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err := p.DeleteTunnel(ctx, tunnelID); err != nil {
 		return s.classify(err)
 	}
+	if err := s.deleteTunnelRecord(ctx, t); err != nil {
+		return err
+	}
 	evt := s.tunnelEvent(TunnelChangedEvent{TunnelID: t.ID, Name: t.Name, Action: "deleted"})
 	if err := s.repo.DeleteTunnel(ctx, tunnelID, evt); err != nil {
 		return fmt.Errorf("delete tunnel %s: %w", tunnelID, err)
 	}
+	return nil
+}
+
+// tunnelUsers names what still routes through the tunnel: the hostnames exposed on its gateways, then the gateways.
+func (s *Service) tunnelUsers(ctx context.Context, tunnelID string) ([]string, error) {
+	gateways, err := s.repo.ListGateways(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list gateways: %w", err)
+	}
+	exposures, err := s.repo.ListExposures(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list exposures: %w", err)
+	}
+	onTunnel := map[string]bool{}
+	gatewayNames := []string{}
+	for _, g := range gateways {
+		if g.TunnelID != tunnelID {
+			continue
+		}
+		onTunnel[g.ID] = true
+		gatewayNames = append(gatewayNames, "gateway on network "+g.DockerNetwork)
+	}
+	users := []string{}
+	for _, e := range exposures {
+		if onTunnel[e.GatewayID] {
+			users = append(users, e.Hostname)
+		}
+	}
+	return append(users, gatewayNames...), nil
+}
+
+// deleteTunnelRecord removes the CNAME the tunnel's own hostname route created; already-absent counts as removed.
+func (s *Service) deleteTunnelRecord(ctx context.Context, t *Tunnel) error {
+	if t.RecordID == "" {
+		return nil
+	}
+	dnsp, err := s.providerFor(ctx)
+	if err != nil {
+		return err
+	}
+	if err := dnsp.DeleteRecord(ctx, t.ZoneID, t.RecordID); err != nil {
+		return s.classify(err)
+	}
+	s.recordChanged(ctx, RecordChangedEvent{
+		ZoneID: t.ZoneID, Zone: t.Zone, RecordID: t.RecordID, Action: "deleted",
+		Type: RecordCNAME, Name: t.Hostname, Service: "tunnel:" + t.ID,
+	})
 	return nil
 }
 

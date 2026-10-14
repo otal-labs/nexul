@@ -4,6 +4,7 @@ package apperrors
 import (
 	std "errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -42,3 +43,20 @@ func (e *Coded) Unwrap() error { return e.Err }
 func WithCode(code string, err error) error {
 	return &Coded{Code: code, Err: err}
 }
+
+// InUseError refuses removing a thing while others still depend on it and names them; it matches ErrConflict,
+// so every adapter reports it as a conflict with this one message.
+type InUseError struct {
+	// Thing is what was asked to go, as it reads in a sentence, such as `tunnel "edge"`.
+	Thing string
+	// Users are what depend on it, each as it reads in a list, such as "app.example.com".
+	Users []string
+	// Fix says what to do first, such as "edit or remove them first".
+	Fix string
+}
+
+func (e *InUseError) Error() string {
+	return fmt.Sprintf("%s is still used by %s; %s", e.Thing, strings.Join(e.Users, ", "), e.Fix)
+}
+
+func (e *InUseError) Unwrap() error { return ErrConflict }

@@ -152,6 +152,17 @@ func TestHandler_DeleteTunnel(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestHandler_DeleteTunnel_RefusedWhileInUse(t *testing.T) {
+	h, repo, _, _ := newTunnelTestHandler()
+	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
+	require.NoError(t, repo.SaveGateway(context.Background(), Gateway{ID: "g1", Kind: GatewayTunnel, DockerNetwork: "web", TunnelID: "t1"}))
+	require.NoError(t, repo.SaveExposure(context.Background(), Exposure{ID: "e1", GatewayID: "g1", Hostname: "app.example.com"}))
+	rec := doJSON(t, h.Routes(), http.MethodDelete, "/api/dns/tunnels/t1", nil)
+	require.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "app.example.com")
+	assert.Contains(t, rec.Body.String(), "gateway on network web")
+}
+
 func TestHandler_DeleteTunnel_Missing(t *testing.T) {
 	h, _, _, _ := newTunnelTestHandler()
 	rec := doJSON(t, h.Routes(), http.MethodDelete, "/api/dns/tunnels/nope", nil)
