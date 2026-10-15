@@ -29,7 +29,7 @@ export const StackLogsTabs = ({ stackId, service }: StackLogsTabsProps) => {
       {services && services.length === 0 && <EmptyRow flush>No services found in this stack yet.</EmptyRow>}
       {services && active && (
         <Tabs value={active.name} onValueChange={(name) => navigate(wsPath(`/stacks/${stackId}/logs/${name}`))}>
-          <TabsList variant="line" aria-label="Service" className="relative isolate w-full justify-start overflow-x-auto border-b border-border p-0">
+          <TabsList variant="line" aria-label="Service" className="relative isolate w-full justify-start overflow-x-auto scrollbar-none border-b border-border p-0">
             <TabUnderline />
             {services.map((c) => (
               <TabsTrigger

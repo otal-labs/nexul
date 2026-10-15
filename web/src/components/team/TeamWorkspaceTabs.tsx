@@ -32,7 +32,7 @@ export const TeamWorkspaceTabs = ({ workspaces, steps }: TeamWorkspaceTabsProps)
   return (
     <Tabs value={active?.workspace.id ?? ""} onValueChange={setSelected} className="min-h-0 flex-1 gap-0">
       <div className="flex items-end gap-1 border-b border-border px-6">
-        <TabsList variant="line" aria-label="Workspaces" className="h-auto min-w-0 justify-start gap-0.5 overflow-x-auto overflow-y-hidden p-0">
+        <TabsList variant="line" aria-label="Workspaces" className="h-auto min-w-0 justify-start gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-none p-0">
           {tabs.map(({ workspace }) => (
             <TeamWorkspaceTab key={workspace.id} value={workspace.id} name={workspace.name} pending={pending.has(workspace.id)} />
           ))}
