@@ -78,13 +78,11 @@ tickets they wait on are resolved.
 - [Where a stack's request counts come from](issues/08-where-request-counts-come-from.md): Traefik's Prometheus router counters read by the machine runner for proxy gateways; Cloudflare's per-hostname GraphQL analytics read by the server for tunnel gateways, with Analytics Read added to the token's checks; per-minute counts only, a day kept, gaps stored as missing.
 - [What an error-rate rule is and what happens when it trips](issues/09-the-error-rate-rule.md): one rule per stack, off by default, 5xx above 5% for 5 minutes with at least 20 requests; a stored episode and crossed/recovered events that notify watchers, open the crash ticket and start stack plays; Nexul's own error rate is a follow-up.
 
-## Not yet specified
+## Build
 
-- The build slices for each decision, and the walkthrough on a real install
-  with no shell on the box. They graduate as the decision tickets resolve.
-- Whether `CONTEXT.md` needs its own term for Nexul's own logs. Its
-  "Container logs" entry says to avoid "service logs (Nexul's own, which
-  OpenObserve holds)" but gives them no name of their own.
+Every decision is made. The build is tickets 10 to 19, in that order where they
+block each other, and ticket 20 walks it through on a real install. Ticket 10
+places the stack page's new pieces, so the UI parts of 14 to 18 follow it.
 
 ## Out of scope
 
