@@ -1954,7 +1954,11 @@ bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
 with the name and mono clock time; day dividers are the microheader between
 hairlines. Bot embeds are the web's status-edged cards with facts. The
 composer is one framed field with the send button inside it, ember once there
-is text.
+is text. A hand-off reads as the web's: each turn of the helper agent is one
+row, a status glyph (the orbit while it runs, a `success` check, a
+`destructive` warning when a step failed, a muted dashed circle when a call
+never came back), "Worked for" and its step counts, folding open to the steps
+behind a hairline rule. Open while it runs, folded once it ends.
 
 ### Phone motion
 
@@ -1992,6 +1996,8 @@ The numbers are the web's [Motion baseline](#motion-baseline) unless named.
 - Empty state: the orbit turns into place as on the web; a compact one fades
   and rises 4px. Loader: the orbit at 16pt, a linear 1.2s keyframe turn,
   held back 300ms. Hand-off: content that replaces a loader rises 6px over
-  200ms where it stood.
+  200ms where it stood. A folded group (a hand-off's turn) opens in one layout
+  step and its rows fade and rise 4px over 200ms, the compact empty state's
+  numbers; its chevron turns at once.
 - Reduced motion (Android's Remove animations): every moment is a 150ms
   fade or nothing; the loader holds still; a drag still tracks the finger.

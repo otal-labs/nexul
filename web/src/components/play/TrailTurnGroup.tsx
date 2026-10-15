@@ -1,11 +1,12 @@
 import { ChevronRight } from "lucide-react";
 
+import { formatElapsed, turnCounts, turnSpanSeconds, turnStartMs, turnSummary } from "@nexul/client-core/agentSteps";
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { TrailActionRow } from "@/components/play/TrailActionRow";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import type { ActivityEntry } from "@/models/Trail";
-import { formatElapsed, turnCounts, turnSpanSeconds, turnStartMs, turnSummary } from "@/utils/TrailTranscriptUtility";
 
 interface TrailTurnGroupProps {
   entries: ActivityEntry[];

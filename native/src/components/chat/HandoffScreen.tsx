@@ -22,7 +22,7 @@ export const HandoffScreen = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} notFound="This conversation doesn't exist or was deleted." />}
       {messages && !handoff && <EmptyState size="compact" title="This hand-off is gone" message="It is no longer on the reply that started it." />}
-      {handoff && <HandoffConversation handoff={handoff} />}
+      {handoff && <HandoffConversation key={handoff.id} handoff={handoff} />}
     </View>
   );
 };

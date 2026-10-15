@@ -1,5 +1,6 @@
+import { formatElapsed } from "@nexul/client-core/agentSteps";
+
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
-import { formatElapsed } from "@/utils/TrailTranscriptUtility";
 
 interface RunTimerProps {
   startedAt: string;

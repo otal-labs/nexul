@@ -1,8 +1,10 @@
 import { ChevronRight, CircleHelp, Dot, FileText, Terminal, Wrench } from "lucide-react";
 
+import { isCommandTool, isFailedStep, isFileReadTool, isFileTool, isToolStep, stepLabel } from "@nexul/client-core/agentSteps";
+
 import { ToolRow, type ToolRowStatus } from "@/components/play/ToolRowVisual";
 import { TrailStepDetail } from "@/components/play/TrailStepDetail";
-import { isCommandTool, isFailedStep, isFileReadTool, isFileTool, stepLabel, type ActivityEntry } from "@/models/Trail";
+import type { ActivityEntry } from "@/models/Trail";
 
 interface TrailActionRowProps {
   entry: ActivityEntry;
@@ -15,12 +17,10 @@ interface TrailActionRowProps {
 
 const iconClass = "size-4";
 
-const isTool = (entry: ActivityEntry): boolean => entry.kind === "tool_call" || entry.kind === "tool_result";
-
 // A terminal for a command, a file for a file read or change, a wrench for an MCP call or any other tool; the Agent's own
 // sentence has none and reads as prose.
 const KindIcon = ({ entry }: { entry: ActivityEntry }) => {
-  const tool = isTool(entry);
+  const tool = isToolStep(entry);
   return (
     <>
       {tool && isCommandTool(entry.tool) && <Terminal className={iconClass} role="img" aria-label="command" />}

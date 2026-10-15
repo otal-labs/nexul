@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { turnSpanSeconds } from "@nexul/client-core/agentSteps";
+
 import type { ActivityEntry, Trail } from "@/models/Trail";
-import { formatElapsed, pullRequestLink, segmentTranscript, turnCounts, turnSpanSeconds, turnSummary } from "@/utils/TrailTranscriptUtility";
+import { pullRequestLink, segmentTranscript } from "@/utils/TrailTranscriptUtility";
 
 const trail = { play_label: "Fix with AI", custom_instructions: "", started_at: "2026-09-18T10:00:00Z" } as Trail;
 const text = (s: string, at = ""): ActivityEntry => ({ kind: "text", summary: s, detail: s, at });
@@ -91,24 +93,7 @@ describe("segmentTranscript", () => {
   });
 });
 
-describe("turn counts and clock", () => {
-  it("counts tools, commands, and the Agent's sentences", () => {
-    const counts = turnCounts([text("a"), tool("Read"), tool("Bash"), tool("Edit"), { kind: "tool_call", tool: "Bash", summary: "ls", at: "" }]);
-    expect(counts).toEqual({ tools: 2, commands: 2, updates: 1 });
-    expect(turnSummary(counts)).toBe("Used 2 tools, ran 2 commands, and received 1 update");
-    expect(turnSummary({ tools: 1, commands: 0, updates: 0 })).toBe("Used 1 tool");
-    expect(turnSummary({ tools: 0, commands: 3, updates: 1 })).toBe("Ran 3 commands and received 1 update");
-    expect(turnSummary({ tools: 0, commands: 0, updates: 0 })).toBe("No steps yet");
-  });
-
-  it("spans first to last timestamp, skipping missing ones", () => {
-    expect(turnSpanSeconds([text("a", ""), tool("Read", "2026-09-18T10:00:00Z"), tool("Edit", "2026-09-18T10:01:43Z"), text("b", "0001-01-01T00:00:00Z")])).toBe(103);
-    expect(turnSpanSeconds([text("a")])).toBeNull();
-    expect(formatElapsed(103)).toBe("1m 43s");
-    expect(formatElapsed(12)).toBe("12s");
-    expect(formatElapsed(3725)).toBe("1h 2m");
-  });
-
+describe("pullRequestLink", () => {
   it("finds the pull request the reply links", () => {
     expect(pullRequestLink("Opened https://github.com/otal-labs/nexul/pull/51 for review.")).toEqual({
       url: "https://github.com/otal-labs/nexul/pull/51",
