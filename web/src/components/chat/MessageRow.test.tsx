@@ -234,6 +234,6 @@ describe("MessageRow hand-offs", () => {
     expect(within(dialog).getByText("The refresh holds the lock throughout.")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: /Worked for 5s/ }));
     expect(within(dialog).getByText("go test -race ./internal/auth/...")).toBeInTheDocument();
-    expect(within(dialog).getByText("Read: internal/auth/refresh.go")).toBeInTheDocument();
+    expect(within(dialog).getByText("refresh.go")).toBeInTheDocument();
   });
 });

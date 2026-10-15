@@ -31,9 +31,9 @@ describe("SetupTranscript", () => {
     renderTranscript("running");
 
     expect(screen.getByText(said)).toBeInTheDocument();
-    expect(screen.getByText("Used 1 tool and ran 1 command")).toBeInTheDocument();
+    expect(screen.getByText("· ran 1 command, used 1 tool")).toBeInTheDocument();
     expect(screen.queryByText("ls ~/.claude/skills")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Working/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Running python3 - <<'PY'/ })).toBeInTheDocument();
     expect(screen.getByText("python3 - <<'PY'")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
@@ -44,8 +44,8 @@ describe("SetupTranscript", () => {
     rerender(<SetupTranscript row={row("confirmed")} />);
 
     expect(screen.queryByText("python3 - <<'PY'")).not.toBeInTheDocument();
-    expect(screen.getByText("Ran 1 command")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Working/ })).not.toBeInTheDocument();
+    expect(screen.getByText("· ran 1 command")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Running/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Confirmed with 119 skills/)).toBeInTheDocument();
   });
 });

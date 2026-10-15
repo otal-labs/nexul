@@ -979,6 +979,26 @@ a.mention-chip:hover {
   animation: arrive 200ms var(--ease-out) both;
 }
 
+/* The Agent's live step: a highlight sweeps across the muted label while it works; still and muted under reduced motion. */
+@keyframes shimmer-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@utility shimmer-text {
+  background: linear-gradient(90deg, var(--muted-foreground) 40%, var(--foreground) 50%, var(--muted-foreground) 60%) 0 0 / 300% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 2s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    background: none;
+    color: var(--muted-foreground);
+  }
+}
+
 /* An inline editor opened in place of a row settles in 4px, the disclosure's own numbers. */
 @utility settle-in {
   animation: empty-rise 200ms var(--ease-out) both;

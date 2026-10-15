@@ -336,9 +336,10 @@ and how it ended. A step is structured (tool call, tool result, question,
 or assistant text, with the tool name, an argument preview, the raw detail,
 and its time), never a bare line, so the trail reads as a transcript. The
 transcript is the Agent's turn as a conversation: the starter's "Started
-<play>" message, one collapsible "Worked for" group per turn holding what
-the Agent said between actions and each action as a row (a command names
-its command, a file change its path, an MCP call its server and tool), the question card and the answer
+<play>" message, one fold per turn (the live step while it runs, then
+"Worked for" and what it did) holding what the Agent said between actions,
+neighbouring file reads and edits as one line of file names, each command in
+a well, and any other tool by its name, the question card and the answer
 where they happened, a message the starter typed in T3 Code itself as their
 own bubble marked "via T3" (ADR 0126), the final reply as prose, and the lines
 about the run itself (a stop, a reconnect) as muted lines.

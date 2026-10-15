@@ -917,6 +917,24 @@ is not this one) between two hairlines. The composer is one framed field
 attach, the text and emoji. `MessageList` and `ChatComposer` are the
 reference.
 
+Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
+setup transcript is a fold with no box. Its header is one muted line: while the
+turn runs, the step in flight in plain words ("Running bun run lint", "Reading
+BoardOrder.ts", "Thinking" between steps) under the `shimmer-text` sweep, then
+the clock ("· 12s"); once over, "Worked for 14s" and what it did ("·
+explored 2 files, 1 search, ran 1 command", at 70%), then the chevron. It is
+open while it runs, folded once over, and opens at any time, a running turn
+beside it included. Opened, the steps hang off a hairline left rule:
+neighbouring reads and searches as one line ("Explored 2 files, 1 search")
+over the file names and quoted patterns in mono, neighbouring edits the same
+way ("Edited 2 files"), a command as "Ran a command" over the command in a
+`surface-2` well, any other tool as its verb and mono name ("Called Github ·
+create_pull_request"), and what the Agent said between steps as plain text. A
+name, a command or a tool line opens its time, arguments and result. A failed
+step adds a `destructive` circled cross and the word "failed"; the step in
+flight spins a muted loader. `TrailTurnGroup` and `TurnStepGroup` are the
+reference.
+
 Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
 (assigned, mentioned, status, doc created or edited, questions, memory, a
 play run), a `foreground` dot on its corner while unread (it shrinks to 0.6
@@ -1332,6 +1350,18 @@ Opening a ticket from the board: decided 2026-10-08.
   (the ticket's panels scale from 0.98 out of the card's spot) moved the
   panels, which never move on a route change, and 0.98 was too small to read
   as coming from the card.
+
+Agent's live step: decided 2026-10-15.
+- Direction: a highlight sweeps left across the step's muted label, 2s a
+  pass, linear, looping while the step runs; steps that join the open fold
+  settle in 4px over 200ms (`settle-in`); the loader in the well spins.
+- Reduced motion: the label sits still in `muted-foreground`.
+- Rejected: task cards (a bordered card per turn with the live step as its
+  title and the steps on a rail) put a box around every turn of a long run;
+  a timeline (the Agent's sentences as nodes, the steps behind an icon count
+  line, a dotted orb for the live node) hid the commands a reader checks
+  first. Both were built on seeded data beside this one and judged by the
+  owner.
 
 ### Motion locks: lists, states and feedback
 
@@ -1954,7 +1984,7 @@ bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
 with the name and mono clock time; day dividers are the microheader between
 hairlines. Bot embeds are the web's status-edged cards with facts. The
 composer is one framed field with the send button inside it, ember once there
-is text. A hand-off reads as the web's: each turn of the helper agent is one
+is text. A hand-off folds each turn of the helper agent into one
 row, a status glyph (the orbit while it runs, a `success` check, a
 `destructive` warning when a step failed, a muted dashed circle when a call
 never came back), "Worked for" and its step counts, folding open to the steps

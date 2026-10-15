@@ -156,17 +156,15 @@ describe("TrailSection", () => {
     expect(within(dialog).getByText("Ran tests, all green.")).toBeInTheDocument();
     expect(within(dialog).queryByRole("listitem")).not.toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("button", { name: /Worked for 3m/ }));
-    const steps = within(dialog).getAllByRole("listitem");
-    expect(steps).toHaveLength(1);
-    expect(steps[0]).toHaveTextContent("Read: main.go");
-    expect(within(steps[0]!).getByRole("img", { name: "file" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: /^Worked for 3m 0s · explored 1 file/ }));
+    expect(within(dialog).getByText("Explored 1 file")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Arguments")).not.toBeInTheDocument();
 
-    expect(within(steps[0]!).getByText("Arguments")).not.toBeVisible();
-    await user.click(within(steps[0]!).getByText("Read: main.go"));
-    expect(within(steps[0]!).getByText("Arguments")).toBeVisible();
-    expect(steps[0]).toHaveTextContent('"file_path": "main.go"');
-    expect(within(steps[0]!).getByText("Result")).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "main.go" }));
+    expect(within(dialog).getByRole("button", { name: "main.go" })).toHaveAttribute("aria-expanded", "true");
+    expect(within(dialog).getByText("Arguments")).toBeVisible();
+    expect(dialog).toHaveTextContent('"file_path": "main.go"');
+    expect(within(dialog).getByText("Result")).toBeVisible();
   });
 
   it("follows live frames: the row's state and latest step change without a refetch", async () => {
@@ -207,7 +205,7 @@ describe("TrailSection", () => {
     );
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(1);
-    expect(steps[0]).toHaveTextContent(/^go test/);
+    expect(steps[0]).toHaveTextContent(/^Ran a command\$go test/);
     expect(within(steps[0]!).queryByRole("img", { name: "running" })).not.toBeInTheDocument();
   });
 });

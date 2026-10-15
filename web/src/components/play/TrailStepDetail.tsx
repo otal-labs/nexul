@@ -45,7 +45,7 @@ export const TrailStepDetail = ({ detail, at }: TrailStepDetailProps) => {
   const blocks = parseBlocks(detail);
   const time = clock(at);
   return (
-    <div className="space-y-2 py-1 pr-2 pl-8">
+    <div className="space-y-2 py-1.5">
       {time && <p className="font-mono text-xs text-muted-foreground tabular-nums">{time}</p>}
       {blocks === null && <pre className={blockClass}>{detail}</pre>}
       {blocks !== null && blocks.input !== undefined && (
