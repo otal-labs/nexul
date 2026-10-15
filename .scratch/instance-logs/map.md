@@ -71,6 +71,7 @@ tickets they wait on are resolved.
 - [The Logs instance area and how an agent reads the instance's logs](issues/03-the-logs-tool-and-area.md): `logs:read` in a new Logs area; `instance_get` takes `logs` (no new tool) and `GET /api/instance/logs`, paged with a pinned `until`; the server filters secret-named attributes and redacts tokens; upgrade re-renders the server env to carry the OpenObserve password.
 - [How a personal runner keeps and serves its own logs, and the share's Read logs](issues/04-personal-runner-logs-and-the-share.md): its own rotated `runner.log` on every OS, tail from the file and follow from the logger, `logs_request` with `target: runner`; `computers:read_logs` on a share covers runner and container logs, masked for sharees.
 - [How a container dying after its deploy becomes an event](issues/05-container-stopped-event.md): machine runners forward Docker's die/oom/start events and a reconnect snapshot; the server matches them to stacks, counts non-zero exits and OOM outside deploys, stores outages, and publishes `service.container_stopped` and `service.container_recovered` (60s steady) with no output lines.
+- [How a stopped container reaches an agent without writing an automation](issues/07-from-stopped-container-to-agent.md): a stack switch opens one crash ticket per service; stack plays become a third play type with crashed and came-back moments; any play can run on a chosen computer; a shipped "Investigate a crash" play never deploys; everyone who reads a stack watches it unless they turn Watching off.
 
 ## Not yet specified
 
