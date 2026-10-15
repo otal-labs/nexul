@@ -66,7 +66,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
             tile={projectTile(current)}
             name={current.name}
             collapsed={collapsed}
-            mark={<ProjectMark project={current} className="h-7 w-auto min-w-8 rounded-md px-1 text-[11px] shadow-none" />}
+            mark={<ProjectMark project={current} className="size-8 rounded-lg text-[11px] shadow-none" />}
           />
         </div>
       </RowContextMenu>

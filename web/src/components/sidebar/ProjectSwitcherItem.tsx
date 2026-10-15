@@ -27,7 +27,7 @@ export const ProjectSwitcherItem = ({ project, selected, onSelect, onSettings, o
       <div className="rounded-[5px]">
         <SwitcherMenuItem
           tile={projectTile(project)}
-          mark={<ProjectMark project={project} className="h-5 w-auto min-w-6 rounded-sm px-1 text-[10px] shadow-none" />}
+          mark={<ProjectMark project={project} className="size-7 rounded-md text-[10px] shadow-none" />}
           name={project.name}
           selected={selected}
           onSelect={() => onSelect(project)}

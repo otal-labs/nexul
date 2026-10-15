@@ -21,7 +21,8 @@ export const SwitcherMenu = ({ children, createLabel, onCreate, createGate }: Sw
   <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-1">
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
-      <div className="flex flex-col">
+      // Centres the plus over the 28px tiles above, so the label starts where their names do.
+      <div className="flex flex-col [&_button>svg:first-child]:mx-1.5">
         {createGate && (
           <ActionMenuItem {...createGate} icon={PlusIcon} separated onSelect={onCreate}>
             {createLabel}
@@ -53,7 +54,7 @@ export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadC
   <button type="button" onClick={onSelect} aria-current={selected || undefined} title={name} className={menuItemClass}>
     {mark}
     {!mark && (
-      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-accent px-1 text-xs font-semibold text-primary">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-primary">
         {tile}
       </span>
     )}
