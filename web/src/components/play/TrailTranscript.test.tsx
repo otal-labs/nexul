@@ -82,43 +82,39 @@ describe("TrailTranscript as a conversation", () => {
     const texts = blocks.map((b) => b.textContent ?? "");
     expect(texts[0]).toContain("Started Fix with AI");
     expect(texts[0]).toContain("Touch only the docs.");
-    expect(texts[1]).toMatch(/^Worked for 3s/);
-    expect(texts[1]).toContain("Used 1 tool, ran 1 command, and received 1 update");
+    expect(texts[1]).toMatch(/^Worked for 3s · explored 1 file, ran 1 command/);
     expect(within(blocks[2] as HTMLElement).getByRole("group", { name: "Question from the Agent" })).toBeInTheDocument();
     expect(texts[3]).toBe("Answered: Yes");
-    expect(texts[4]).toMatch(/^Worked for 44s/);
-    expect(texts[4]).toContain("Used 1 tool and received 1 update");
+    expect(texts[4]).toMatch(/^Worked for 44s · edited 1 file/);
     expect(texts[5]).toContain("Opened the PR");
 
     expect(screen.getByRole("link", { name: /otal-labs\/nexul#51/ })).toHaveAttribute("href", "https://github.com/otal-labs/nexul/pull/51");
     expect(screen.getByText("go test", { selector: "code" })).toBeInTheDocument();
 
     const group = within(blocks[1] as HTMLElement);
-    expect(group.queryByRole("listitem")).not.toBeInTheDocument();
+    expect(group.queryByText("Reading the handler first.")).not.toBeInTheDocument();
     await user.click(group.getByRole("button", { name: /Worked for 3s/ }));
-    const rows = group.getAllByRole("listitem");
-    expect(rows).toHaveLength(3);
-    expect(within(rows[0]!).queryByRole("img")).not.toBeInTheDocument();
-    expect(rows[0]).toHaveTextContent("Reading the handler first.");
-    expect(rows[1]).toHaveTextContent("Read: handler.go");
-    expect(rows[2]).toHaveTextContent("go test ./...");
-    expect(rows[2]).not.toHaveTextContent("· failed");
-    expect(within(rows[2]!).getByRole("img", { name: "failed" })).toBeInTheDocument();
+    expect(group.getByText("Reading the handler first.")).toBeInTheDocument();
+    expect(group.getByText("Explored 1 file")).toBeInTheDocument();
+    expect(group.getByRole("button", { name: "handler.go" })).toBeInTheDocument();
+    expect(group.getByText("Ran a command")).toBeInTheDocument();
+    expect(group.getByText("go test ./...")).toBeInTheDocument();
+    expect(group.getByText("failed")).toBeInTheDocument();
+    expect(group.queryByText(/· failed/)).not.toBeInTheDocument();
   });
 
   it("a running trail keeps its group open with the newest row spinning, and no reply is split off yet", () => {
     renderTranscript(trail({ state: "running", ended_at: null, question: null, activity: [thinking, { ...read, kind: "tool_call" }] }));
-    expect(screen.getByRole("button", { name: /Working for/ })).toBeInTheDocument();
-    const rows = screen.getAllByRole("listitem");
-    expect(rows).toHaveLength(2);
-    expect(within(rows[1]!).getByRole("img", { name: "running" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Reading handler\.go/ })).toBeInTheDocument();
+    expect(screen.getByText("Exploring 1 file")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
 
   it("legacy string steps render as plain rows in the group", async () => {
     const user = userEvent.setup();
     renderTranscript(trail({ question: null, activity: [{ kind: "other", summary: "Read main.go", at: "" }, { kind: "other", summary: "Bash go test", at: "" }] }));
     await user.click(screen.getByRole("button", { name: /^Worked/ }));
-    expect(screen.getAllByRole("img", { name: "step" })).toHaveLength(2);
+    expect(screen.getByText("Read main.go")).toBeInTheDocument();
     expect(screen.getByText("Bash go test")).toBeInTheDocument();
   });
 

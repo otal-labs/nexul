@@ -1,8 +1,9 @@
 import { Bot, Square } from "lucide-react";
 
+import { stepPhrase } from "@nexul/client-core/agentSteps";
+
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { HandoffPills } from "@/components/handoff/HandoffPills";
-import { TrailActionRow } from "@/components/play/TrailActionRow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { microheaderClass } from "@/components/Microheader";
@@ -26,13 +27,12 @@ const streamingLabel = (frame: AgentStreamFrame, elapsed: number, hasTurns: bool
   return `Working for ${elapsed}s`;
 };
 
-// The frame carries the latest step without its detail or time, enough for the same row the trail shows.
-const latestStep = (frame: AgentStreamFrame): ActivityEntry => ({
-  kind: frame.activityKind ?? "other",
-  ...(frame.activityTool && { tool: frame.activityTool }),
-  summary: frame.activity,
-  at: "",
-});
+// The frame carries the latest step without its detail or time, enough to say what the Agent is doing.
+const latestStepLabel = (frame: AgentStreamFrame): string => {
+  const step: ActivityEntry = { kind: frame.activityKind ?? "other", ...(frame.activityTool && { tool: frame.activityTool }), summary: frame.activity, at: "" };
+  const { verb, object } = stepPhrase(step, step.kind === "tool_call");
+  return verb === "" ? object : `${verb} ${object}`;
+};
 
 // Mirrors MessageRow's agent-kind shape so it doesn't visually jump when the persisted message replaces it.
 export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbleProps) => {
@@ -55,9 +55,9 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
         {frame.text && <p className="px-1 py-1 text-sm break-words whitespace-pre-wrap">{frame.text}</p>}
         {/* A snapshot clears the step, so a step in the frame is newer than the text above it. */}
         {live === null && frame.activity && (
-          <ul className="max-w-[85%]">
-            <TrailActionRow entry={latestStep(frame)} live />
-          </ul>
+          <p className="max-w-[85%] truncate px-1 py-1 text-sm">
+            <span className="shimmer-text">{latestStepLabel(frame)}</span>
+          </p>
         )}
         {frame.handoffs.length > 0 && <HandoffPills handoffs={frame.handoffs} />}
         {live === null && !frame.text && !frame.activity && frame.handoffs.length === 0 && (

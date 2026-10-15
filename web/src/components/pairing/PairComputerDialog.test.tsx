@@ -334,7 +334,7 @@ describe("PairComputerDialog opened at Set up", () => {
     push("tool_result", "nexul mcp add", "call-1");
     push("tool_call", "ls ~/.claude/skills", "call-2");
     const log = screen.getByRole("log", { name: "Codex steps" });
-    expect(within(log).getAllByText(/nexul mcp add|ls ~\/\.claude\/skills/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
+    expect(within(log).getAllByText(/^(nexul mcp add|ls ~\/\.claude\/skills)$/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
 
     await user.click(screen.getByRole("button", { name: /^opencode/i }));
     expect(screen.getByRole("button", { name: /^opencode/i })).toHaveAttribute("aria-expanded", "true");

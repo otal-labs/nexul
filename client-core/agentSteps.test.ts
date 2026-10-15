@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { formatElapsed, segmentSteps, stepLabel, turnCounts, turnSpanSeconds, turnSummary, unwrapShellCommand, type AgentStep } from "@nexul/client-core/agentSteps";
+import {
+  formatElapsed,
+  groupSteps,
+  liveStepLabel,
+  segmentSteps,
+  stepLabel,
+  stepPhrase,
+  turnCounts,
+  turnPhrase,
+  turnSpanSeconds,
+  turnSummary,
+  unwrapShellCommand,
+  type AgentStep,
+} from "@nexul/client-core/agentSteps";
 
 const call: AgentStep = { kind: "tool_call", call_id: "c-1", tool: "Bash", summary: "go test", at: "2026-09-18T10:00:00Z" };
 const result: AgentStep = { ...call, kind: "tool_result", detail: '{"input":{},"result":{"content":"ok"}}', at: "2026-09-18T10:00:04Z" };
@@ -84,5 +97,61 @@ describe("segmentSteps", () => {
   it("keeps a running turn open after the last message, and has nothing before the first step", () => {
     expect(segmentSteps([read, done], true).at(-1)).toEqual({ kind: "turn", entries: [], running: true, from: done.at, until: null });
     expect(segmentSteps([], true)).toEqual([]);
+  });
+});
+
+const step = (tool: string, summary: string, kind: AgentStep["kind"] = "tool_result"): AgentStep => ({ kind, tool, summary, at: "" });
+
+describe("stepPhrase", () => {
+  it.each([
+    ["a file read by its JSON path", step("Read", '{"file_path":"/repo/web/src/BoardOrder.ts"}'), "Read", "BoardOrder.ts"],
+    ["a search by its pattern, not its path", step("Grep", '{"pattern":"useSortable","path":"web/src"}'), "Searched for", "useSortable"],
+    ["an edit Codex names by a bare path", step("Edit", "web/src/utils/BoardOrder.ts"), "Edited", "BoardOrder.ts"],
+    ["a cut-short JSON preview, by what is left of its file name", step("Read", '{"file_path":"/repo/a-pa…'), "Read", "a-pa…"],
+    ["a failed command, without the failed marker or its shell wrapper", step("Shell", `/bin/bash -lc "go test ./..." · failed`), "Ran", "go test ./..."],
+    ["an MCP call by server and tool", step("mcp__github__create_pull_request", '{"title":"x"}'), "Called", "Github · create_pull_request"],
+    ["any other tool by its name", step("WebFetch", '{"url":"https://example.com"}'), "Used", "WebFetch"],
+  ])("%s", (_name, s, verb, object) => {
+    expect(stepPhrase(s, false)).toEqual({ verb, object });
+  });
+
+  it("speaks in the present while the step runs", () => {
+    expect(stepPhrase(step("Bash", "bun run lint", "tool_call"), true)).toEqual({ verb: "Running", object: "bun run lint" });
+  });
+});
+
+describe("liveStepLabel", () => {
+  it("names the newest unanswered call, and reads as thinking between steps or before the first", () => {
+    expect(liveStepLabel([step("Read", "a.go"), step("Bash", "go vet", "tool_call")])).toBe("Running go vet");
+    expect(liveStepLabel([step("Bash", "go vet")])).toBe("Thinking");
+    expect(liveStepLabel([])).toBe("Thinking");
+  });
+});
+
+describe("groupSteps and turnPhrase", () => {
+  const turn = [
+    step("Read", '{"file_path":"a/BoardColumn.tsx"}'),
+    step("Grep", '{"pattern":"useSortable"}'),
+    step("Read", '{"file_path":"a/BoardColumn.tsx"}'),
+    step("Bash", "bun run test"),
+    text("Swapping the comparator."),
+    step("Edit", "a/BoardOrder.ts"),
+    step("Edit", "a/BoardOrder.test.ts"),
+    step("mcp__github__create_pull_request", "{}"),
+  ];
+
+  it("folds neighbouring reads and searches, and neighbouring edits, leaving every other step alone", () => {
+    expect(groupSteps(turn).map((g) => [g.act, g.entries.length])).toEqual([
+      ["explore", 3],
+      ["command", 1],
+      ["say", 1],
+      ["edit", 2],
+      ["tool", 1],
+    ]);
+  });
+
+  it("counts a file read twice once, leaves the Agent's sentences out, and says nothing for a turn of sentences", () => {
+    expect(turnPhrase(turn)).toBe("explored 1 file, 1 search, edited 2 files, ran 1 command, used 1 tool");
+    expect(turnPhrase([text("Looking.")])).toBe("");
   });
 });

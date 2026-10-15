@@ -136,8 +136,7 @@ describe("MessageList agent stream bubble lifecycle", () => {
     );
     renderList([message({})]);
     expect(screen.getByText(/Working for \d+s/)).toBeInTheDocument();
-    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "file" })).toBeInTheDocument();
+    expect(screen.getByText("Reading main.go")).toBeInTheDocument();
   });
 
   it("shows a tool step that follows the Agent's text, still working with a stop button", () => {
@@ -153,7 +152,7 @@ describe("MessageList agent stream bubble lifecycle", () => {
     );
     renderList([message({})]);
     expect(screen.getByText("Reading the handler.")).toBeInTheDocument();
-    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
+    expect(screen.getByText("Reading main.go")).toBeInTheDocument();
     expect(screen.getByText(/Working for \d+s/)).toBeInTheDocument();
     expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
   });
@@ -352,14 +351,14 @@ describe("MessageList play runs in a ticket thread", () => {
       [trail({})],
     );
     expect(screen.getByText("Started Fix with AI")).toBeInTheDocument();
-    const group = screen.getByRole("button", { name: /Worked for 30s/ });
-    expect(screen.getByText("Used 2 tools")).toBeInTheDocument();
+    const group = screen.getByRole("button", { name: /^Worked for 30s · explored 1 file, edited 1 file/ });
     expect(screen.getByRole("link", { name: /otal-labs\/nexul#51/ })).toHaveAttribute("href", "https://github.com/otal-labs/nexul/pull/51");
     expect(document.querySelector('[data-slot="bubble"]')).toHaveTextContent("Started Fix with AI");
 
     await userEvent.click(group);
-    expect(screen.getByText("Read: handler.go")).toBeInTheDocument();
-    expect(screen.getByText("Edit: /src/handler.go")).toBeInTheDocument();
+    expect(screen.getByText("Explored 1 file")).toBeInTheDocument();
+    expect(screen.getByText("Edited 1 file")).toBeInTheDocument();
+    expect(screen.getAllByText("handler.go")).toHaveLength(2);
   });
 
   it("a running run's stream bubble shows the open turn group with every step the frames carried", () => {
@@ -371,10 +370,9 @@ describe("MessageList play runs in a ticket thread", () => {
       }),
     );
     renderThread([message({ body: "Started Fix with AI" })], [trail({ state: "running", ended_at: null, reply_message_id: "", activity: [read] })]);
-    expect(screen.getByRole("button", { name: /Working for/ })).toBeInTheDocument();
-    const rows = screen.getAllByRole("listitem");
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toHaveTextContent("/src/handler.go");
+    expect(screen.getByRole("button", { name: /^Editing handler\.go/ })).toBeInTheDocument();
+    expect(screen.getByText("Explored 1 file")).toBeInTheDocument();
+    expect(screen.getByText("Editing 1 file")).toBeInTheDocument();
     expect(screen.queryByText(/Working for \d+s/, { selector: "span" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
   });
