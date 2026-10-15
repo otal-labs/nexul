@@ -1,3 +1,5 @@
+import { segmentSteps } from "@nexul/client-core/agentSteps";
+
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 import { EmptyRow } from "@/components/EmptyRow";
@@ -8,7 +10,6 @@ import { TrailReplyProse } from "@/components/play/TrailReplyProse";
 import { TrailUserBubble } from "@/components/play/TrailUserBubble";
 import { TurnSegment } from "@/components/play/TurnSegment";
 import { HANDOFF_STATE_LABELS, type Handoff } from "@/models/Handoff";
-import { segmentSetupTurn } from "@/utils/TrailTranscriptUtility";
 
 interface HandoffConversationProps {
   handoff: Handoff;
@@ -17,7 +18,7 @@ interface HandoffConversationProps {
 // The handed-off agent's conversation: the prompt it was given as the opening bubble, its steps, then its reply.
 export const HandoffConversation = ({ handoff }: HandoffConversationProps) => {
   const running = handoff.state === "running";
-  const segments = segmentSetupTurn(handoff.steps, running);
+  const segments = segmentSteps(handoff.steps, running);
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className="space-y-2 pr-8">

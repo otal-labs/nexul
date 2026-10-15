@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { HandoffScreen } from "@/components/chat/HandoffScreen";
@@ -63,17 +63,53 @@ test("a reply without the hand-off says it is no longer there", async () => {
   expect(await screen.findByText("This hand-off is gone")).toBeTruthy();
 });
 
-test("the hand-off shows the helper's prompt, each step and its reply", async () => {
+const turn = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+
+test("a failed step marks its turn and reads as failed", async () => {
+  const failed = { kind: "tool_result", call_id: "t2", tool: "Shell", summary: "/bin/bash -lc 'go test ./...' · failed", at: "2026-10-04T10:00:30Z" } as const;
+  get.mockResolvedValue([reply([{ ...handoff, state: "failed", steps: [failed] }])]);
+  await renderHandoff();
+
+  expect(await screen.findByLabelText("A step failed")).toBeTruthy();
+  await fireEvent.press(turn("Worked"));
+  expect(screen.getByLabelText("go test ./..., failed")).toBeTruthy();
+});
+
+test("a call that never got its result marks the ended turn unfinished", async () => {
+  const call = { kind: "tool_call", call_id: "t3", tool: "Read", summary: '{"file_path":"main.go"}', at: "2026-10-04T10:00:00Z" } as const;
+  get.mockResolvedValue([reply([{ ...handoff, state: "interrupted", steps: [call] }])]);
+  await renderHandoff();
+
+  expect(await screen.findByLabelText("Unfinished")).toBeTruthy();
+});
+
+test("the hand-off shows the helper's prompt, its steps folded under how long it worked, and its reply", async () => {
   get.mockResolvedValue([reply([{ ...handoff, id: "h0", prompt: "Another helper's prompt" }, handoff])]);
   await renderHandoff();
 
   expect(await screen.findByText("Run the unit tests and report failures.")).toBeTruthy();
   expect(screen.queryByText("Another helper's prompt")).toBeNull();
-  expect(screen.getByText("Shell")).toBeTruthy();
+  expect(screen.getByText("Worked for 1m 0s")).toBeTruthy();
+  expect(screen.getByText("Used 1 tool and ran 1 command")).toBeTruthy();
+  expect(screen.getByLabelText("Done")).toBeTruthy();
+  expect(screen.queryByText("bun run test")).toBeNull();
+
+  await fireEvent.press(turn("Worked for 1m 0s"));
   expect(screen.getByText("bun run test")).toBeTruthy();
   expect(screen.getByText("Retried after a timeout")).toBeTruthy();
   expect(screen.getByText("All 212 tests pass.")).toBeTruthy();
   expect(get).toHaveBeenCalledWith(expect.stringContaining("/conversations/c1/messages"));
+});
+
+test("a running turn is open on its steps, and a message between turns reads as prose", async () => {
+  const message = { kind: "text", summary: "Tests compiled, running them now.", at: "2026-10-04T10:00:10Z" } as const;
+  const running = { kind: "tool_call", call_id: "t4", tool: "Shell", summary: "bun run test", at: "2026-10-04T10:00:20Z" } as const;
+  get.mockResolvedValue([reply([{ ...handoff, state: "running", reply: "", steps: [handoff.steps[0]!, message, running] }])]);
+  await renderHandoff();
+
+  expect(await screen.findByText("Tests compiled, running them now.")).toBeTruthy();
+  expect(screen.getByText("Working")).toBeTruthy();
+  expect(screen.getAllByText("bun run test")).toHaveLength(1);
 });
 
 test.each([

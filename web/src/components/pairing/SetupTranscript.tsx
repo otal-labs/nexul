@@ -1,3 +1,5 @@
+import { segmentSteps } from "@nexul/client-core/agentSteps";
+
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -14,7 +16,6 @@ import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { SETUP_STATE_LABEL, type SetupRunRow } from "@/models/Pairing";
 import type { ActivityEntry } from "@/models/Trail";
 import { cn } from "@/lib/utils";
-import { segmentSetupTurn } from "@/utils/TrailTranscriptUtility";
 
 const EMPTY: ActivityEntry[] = [];
 
@@ -42,7 +43,7 @@ interface SetupTranscriptProps {
 // One provider's turn read like a play run's, newest at the bottom, in a well under its row; a live turn scrolls in a fixed height.
 export const SetupTranscript = ({ row }: SetupTranscriptProps) => {
   const steps = useSetupActivityStore((s) => (row.turnId && s.steps[row.turnId]) || EMPTY);
-  const segments = segmentSetupTurn(steps, row.state === "running");
+  const segments = segmentSteps(steps, row.state === "running");
   return (
     <section aria-label={`${row.name} transcript`} className={cn("flex min-h-0 flex-col rounded-md bg-surface-2", steps.length > 0 && "h-60")}>
       <MessageScrollerProvider key={row.provider} autoScroll>
