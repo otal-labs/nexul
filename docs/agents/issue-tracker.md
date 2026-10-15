@@ -65,8 +65,9 @@ git history, and anything durable it decided is an ADR.
   written 2026-10-10.
 - `.scratch/instance-logs/` — debugging an instance without its box: a Logs instance area and
   a Nexul tool over OpenObserve, runner and automations host logs shipped, personal runner logs
-  read live behind the computer's share, a container-stopped event, and a triage playbook.
-  Wayfinder map charted 2026-10-14; carries the build.
+  read live behind the computer's share, container outages and stack error-rate rules that
+  notify watchers, open a ticket and start stack plays, and a triage skill. Decided; build
+  tickets 10–20.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
