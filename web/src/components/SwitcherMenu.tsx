@@ -18,7 +18,7 @@ interface SwitcherMenuProps {
 }
 
 export const SwitcherMenu = ({ children, createLabel, onCreate, createGate }: SwitcherMenuProps) => (
-  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-1">
+  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-[max(var(--radix-popover-trigger-width),12rem)] p-1">
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
       // Centres the plus over the 28px tiles above, so the label starts where their names do.
