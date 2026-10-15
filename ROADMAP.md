@@ -348,6 +348,17 @@ provider its own switch and run, and sets them up side by side; a provider
 switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).
 
+In progress: **debugging an instance without its box**. Anyone given the new
+Logs area reads the server's, runners' and the automations host's logs
+through Nexul, an agent included, with no shell and no OpenObserve password.
+A personal runner's logs stay on its computer and are read live by its owner
+and anyone its share allows. A service that crashes after its deploy, or a
+stack whose 5xx share crosses a rule its team set, notifies everyone watching
+the stack, can open a ticket, and starts stack plays, such as "Investigate a
+crash" on a computer that is always on. A bug in Nexul itself becomes a
+diagnosed issue through a triage skill the person's own agent runs, posted
+only after they approve the draft. Tracked in `.scratch/instance-logs/`.
+
 ---
 
 ## Next — ecosystem & reach
