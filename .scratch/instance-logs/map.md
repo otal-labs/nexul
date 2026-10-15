@@ -20,7 +20,8 @@ anyone the owner's share allows. A container that dies after its deploy
 raises an event an auto play or an automation can act on, and so does a
 stack whose share of 5xx answers crosses a rule its team set. A triage playbook
 lets a person's own agent turn a bug into an issue on `otal-labs/nexul`.
-This map carries the build: build tickets are worked here once the decision
+The stack page is redesigned to hold the outage and error-rate lines, the
+Watching toggle and the crash ticket switch. This map carries the build: build tickets are worked here once the decision
 tickets they wait on are resolved.
 
 ## Notes
