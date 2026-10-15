@@ -64,6 +64,8 @@ interface WizardFraming {
   // Whether this run continues the project's setup, rather than adding a service beside it.
   continuing: boolean;
   firstProject: boolean;
+  // The repository picked or waiting to deploy, as owner/name.
+  repository: string | undefined;
 }
 
 const wizardTitle = ({ isAttach, project, revisit, continuing, firstProject }: WizardFraming): string => {
@@ -75,10 +77,11 @@ const wizardTitle = ({ isAttach, project, revisit, continuing, firstProject }: W
   return "New project";
 };
 
-const wizardSubtitle = ({ isAttach, project, revisit, continuing, firstProject }: WizardFraming): string => {
+const wizardSubtitle = ({ isAttach, project, revisit, continuing, firstProject, repository }: WizardFraming): string => {
   if (isAttach) return "Point this stack at a repository so Nexul can build and deploy it.";
   if (project && continuing) return "Pick up where it stopped. Skip any step and come back to it, then Finish.";
   if (project && revisit) return "Open any step to change it. The project stays set up.";
+  if (project && repository) return `Deploy ${repository} as a new service. The project's setup stays as it is.`;
   if (project) return "Pick the repository for the new service. The project's setup stays as it is.";
   if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then pick its repository if it has one.";
   return "Name the project, then pick its repository if it has one.";
@@ -100,6 +103,7 @@ export const ProjectWizardPage = () => {
   const session = useSetupSession();
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
+  const repository = useProjectWizardStore((s) => s.repository?.full_name);
 
   const framing: WizardFraming = {
     isAttach,
@@ -107,6 +111,7 @@ export const ProjectWizardPage = () => {
     revisit: searchParams.has("revisit"),
     continuing: session && !searchParams.has("revisit"),
     firstProject,
+    repository,
   };
 
   return (

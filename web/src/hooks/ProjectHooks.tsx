@@ -13,6 +13,7 @@ import { refetchHolding, type LiveFollower } from "@/lib/live";
 export const getProjectsKey = "getProjects";
 export const getProjectKey = "getProject";
 const getProjectReposKey = "getProjectRepos";
+const getProjectImpactKey = "getProjectImpact";
 
 // The projects of a workspace the viewer may open; Team and invitations read workspaces other than the selected one.
 export const useFetchWorkspaceProjects = (workspaceId: string, enabled = true) =>
@@ -35,7 +36,7 @@ export const useFetchProject = (id: string | undefined) =>
 
 export const useFetchProjectDeleteImpact = (id: string | undefined) =>
   useQuery({
-    queryKey: ["getProjectImpact", id],
+    queryKey: [getProjectImpactKey, id],
     queryFn: async () => (await api.get<DeleteImpact>(`/api/projects/${id}/impact`)).data,
     enabled: !!id,
   });
@@ -153,6 +154,7 @@ export const useAddProjectRepo = () => {
     }) => api.post(`/api/projects/${projectId}/repos`, { owner, name, connector_id: connectorId })),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey] });
+      await client.invalidateQueries({ queryKey: [getProjectImpactKey] });
       toast.success("Repository added");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -189,6 +191,7 @@ export const useSaveTestsAnswer = () => {
     onSuccess: async (_, { projectId }) => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey, projectId] });
       await client.invalidateQueries({ queryKey: [getProjectKey, projectId] });
+      await client.invalidateQueries({ queryKey: [getProjectImpactKey, projectId] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -201,6 +204,7 @@ export const useRemoveProjectRepo = () => {
       api.delete(`/api/projects/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`)),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey] });
+      await client.invalidateQueries({ queryKey: [getProjectImpactKey] });
       toast.success("Repository removed");
     },
     onError: (error) => toast.error(errorMessage(error)),

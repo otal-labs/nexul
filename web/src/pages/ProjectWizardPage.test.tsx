@@ -570,6 +570,7 @@ describe("ProjectWizardPage", () => {
       const [owner, name] = picked.split("/");
       expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner, name, workspace_id: "ws-1" });
       expect(useProjectWizardStore.getState().repository?.full_name).toBe(picked);
+      expect(screen.getByText(`Deploy ${picked} as a new service. The project's setup stays as it is.`)).toBeInTheDocument();
     });
 
     it("asks which one when several wait and the link names none", async () => {

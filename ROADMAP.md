@@ -304,6 +304,16 @@ that, and someone who already has an account is turned away without using up
 the link meant for someone new. Nexul sends no email: the admin copies the
 link and sends it.
 
+### Projects before code
+
+A project can start with no code: the wizard's Repository step offers "No
+repository yet" for a project that is only docs and tickets for now, and
+"Attach without deploying" for a repository that isn't ready to ship. Both end
+on a Done step that says what was made, keeps the interview offer, and points
+to Docs, Board and Invite people. A repository no service builds from shows in
+the project's Services as "Attached, not deployed yet" with Deploy this
+repository, and New service goes straight to it when it is the only one.
+
 ---
 
 ## Now — improving what's built
@@ -337,12 +347,6 @@ history; the tunnel is deleted once the app has paired it. Setup gives each
 provider its own switch and run, and sets them up side by side; a provider
 switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).
-
-Planned: **projects before code**. The project wizard offers "No
-repository yet" and "Attach without deploying" as plain choices instead of a
-muted skip, both end on a Done screen that says what was made, and a project
-with a repository waiting to deploy shows the way back to deploying it. The
-map is in `.scratch/project-paths/`.
 
 ---
 

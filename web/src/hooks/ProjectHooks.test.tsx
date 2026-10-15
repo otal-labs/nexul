@@ -138,11 +138,16 @@ describe("useAddProjectRepo", () => {
 });
 
 describe("useRemoveProjectRepo", () => {
-  it("deletes the repo association", async () => {
+  it("deletes the repo association and refreshes the project's counts", async () => {
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
-    const { result } = renderHook(() => useRemoveProjectRepo(), { wrapper });
-    await result.current.mutateAsync({ owner: "acme", name: "app" });
+    vi.mocked(api.get)
+      .mockResolvedValueOnce({ data: { tickets: 0, repos: 1, services: 0 } })
+      .mockResolvedValueOnce({ data: { tickets: 0, repos: 0, services: 0 } });
+    const { result } = renderHook(() => ({ impact: useFetchProjectDeleteImpact("p-1"), remove: useRemoveProjectRepo() }), { wrapper });
+    await waitFor(() => expect(result.current.impact.data?.repos).toBe(1));
+    await result.current.remove.mutateAsync({ owner: "acme", name: "app" });
     expect(api.delete).toHaveBeenCalledWith("/api/projects/repos/acme/app");
+    await waitFor(() => expect(result.current.impact.data?.repos).toBe(0));
   });
 });
 
