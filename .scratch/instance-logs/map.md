@@ -17,7 +17,8 @@ read the instance's own logs through Nexul, with no box and no root password:
 the server, the browser, server runners and the automations host. A personal
 runner's logs and its computer's containers can be read by its owner and by
 anyone the owner's share allows. A container that dies after its deploy
-raises an event an auto play or an automation can act on. A triage playbook
+raises an event an auto play or an automation can act on, and so does a
+stack whose share of 5xx answers crosses a rule its team set. A triage playbook
 lets a person's own agent turn a bug into an issue on `otal-labs/nexul`.
 This map carries the build: build tickets are worked here once the decision
 tickets they wait on are resolved.
@@ -74,6 +75,7 @@ tickets they wait on are resolved.
 - [What the triage playbook does and what a filed issue carries](issues/06-the-triage-playbook.md): a shipped `nexul-triage` skill, run by hand, only for bugs in Nexul itself; it diagnoses against the installed tag, files through the person's own GitHub on a `via-triage` form with a "Filed by" credit, never carries the instance's address or names, and posts only after a yes to the full draft.
 - [How a stopped container reaches an agent without writing an automation](issues/07-from-stopped-container-to-agent.md): a stack switch opens one crash ticket per service; stack plays become a third play type with crashed and came-back moments; any play can run on a chosen computer; a shipped "Investigate a crash" play never deploys; everyone who reads a stack watches it unless they turn Watching off.
 - [Where a stack's request counts come from](issues/08-where-request-counts-come-from.md): Traefik's Prometheus router counters read by the machine runner for proxy gateways; Cloudflare's per-hostname GraphQL analytics read by the server for tunnel gateways, with Analytics Read added to the token's checks; per-minute counts only, a day kept, gaps stored as missing.
+- [What an error-rate rule is and what happens when it trips](issues/09-the-error-rate-rule.md): one rule per stack, off by default, 5xx above 5% for 5 minutes with at least 20 requests; a stored episode and crossed/recovered events that notify watchers, open the crash ticket and start stack plays; Nexul's own error rate is a follow-up.
 
 ## Not yet specified
 
@@ -93,3 +95,5 @@ tickets they wait on are resolved.
   them.
 - Storing container output anywhere (ADR 0091).
 - Changing how long OpenObserve keeps logs.
+- An error-rate rule on Nexul's own server. A follow-up: an instance rule that
+  notifies the instance Owner, with no play.
