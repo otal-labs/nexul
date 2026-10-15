@@ -57,10 +57,6 @@ git history, and anything durable it decided is an ADR.
   built and shipped; two tickets are left: 16, the owner's walkthrough on the
   nightly, and 17, the guide pages and glossary terms. Wire research in
   `research/`.
-- `.scratch/project-paths/` — starting a project without deploying it:
-  "No repository yet" and "Attach without deploying" on the wizard's
-  Repository step, the early Done screens, and the way back to deploying.
-  Wayfinder map charted 2026-10-05; carries the build.
 - `.scratch/personal-runners/` — a personal runner on each person's own
   computer: one command adds the computer, Nexul reaches T3 Code through the
   runner's connection instead of a Cloudflare tunnel (ADR 0146), the old
