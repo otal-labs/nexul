@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strconv"
 	"time"
@@ -155,6 +156,7 @@ type stackDetail struct {
 	stackResult
 	Services          []*Container   `json:"services"`
 	OpenOutages       []outageResult `json:"open_outages"`
+	Watching          bool           `json:"watching"`
 	RecentDeploys     []deployResult `json:"recent_deploys"`
 	BranchDeployments []stackSummary `json:"branch_deployments,omitempty"`
 	Logs              *serviceLogs   `json:"logs,omitempty"`
@@ -186,8 +188,9 @@ func stackGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_get", "Get stack",
 		"Returns one stack's definition with its services (the containers it runs, with image, status, networks, "+
 			"and ports), the services that are down now (open_outages: since when, exit code, whether it ran out of "+
-			"memory, how many times it crashed again; read the crashed container's output with logs), its ten most "+
-			"recent deploys, and its branch deployments. Environment variables are listed "+
+			"memory, how many times it crashed again; read the crashed container's output with logs), whether you "+
+			"watch it (watching: everyone who can read a stack does until they stop, and a watcher is notified when a "+
+			"service crashes and when it comes back), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
 			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
 			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
 			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
@@ -243,6 +246,9 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 		Services:      services,
 		OpenOutages:   toOutageResults(open),
 		RecentDeploys: toDeployResults(deploys[:min(len(deploys), recentDeploys)]),
+	}
+	if out.Watching, err = s.Watching(ctx, stack.ID); err != nil {
+		return stackDetail{}, err
 	}
 	if stack.DerivedFrom != "" {
 		return out, nil
@@ -447,6 +453,13 @@ type stackUpdateIn struct {
 	BuildSource       *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
 	BranchDeployRules []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
 	CrashTickets      *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
+	Watching          *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher of the stack, notified when a service crashes and when it comes back; false stops that for you alone. Needs only read access. Omit to leave it as is."`
+}
+
+// stackUpdated is stack_update's answer: the stack, and whether the caller watches it now.
+type stackUpdated struct {
+	stackResult
+	Watching bool `json:"watching"`
 }
 
 func stackUpdateTool(s *Service) mcptool.Tool {
@@ -454,19 +467,45 @@ func stackUpdateTool(s *Service) mcptool.Tool {
 		"Changes a stack's definition; only the fields you send change, and every other field keeps its value. "+
 			"Env changes go through set and unset, so values you never saw are kept; branch_deploy_rules replaces "+
 			"the whole list, and a rule sent without overrides keeps the current overrides of the rule with the same "+
-			"pattern. crash_tickets switches the stack's crash tickets on or off. It does not redeploy: use stack_deploy for that. Returns the updated stack.",
+			"pattern. crash_tickets switches the stack's crash tickets on or off. watching true or false starts or "+
+			"stops your own notices of the stack's crashes and recoveries, and alone it needs only read access. It does "+
+			"not redeploy: use stack_deploy for that. Returns the updated stack and whether you watch it.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in stackUpdateIn) (any, error) {
 			cur, err := s.GetStack(ctx, in.ID)
 			if err != nil {
 				return nil, withHint(err, "stack_list lists stacks")
 			}
-			updated, err := s.UpdateStack(ctx, patchStack(*cur, in))
+			updated := cur
+			var applied []string
+			if !onlyWatching(in) {
+				if updated, err = s.UpdateStack(ctx, patchStack(*cur, in)); err != nil {
+					return nil, err
+				}
+				applied = append(applied, "stack")
+			}
+			watching, err := watchingAfter(ctx, s, updated.ID, in.Watching)
+			if err != nil && len(applied) > 0 {
+				return nil, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("watching: %w", err)}
+			}
 			if err != nil {
 				return nil, err
 			}
-			return toStackResult(updated), nil
+			return stackUpdated{stackResult: toStackResult(updated), Watching: watching}, nil
 		})
+}
+
+// watchingAfter applies the caller's watching choice when they sent one, and reads the state either way.
+func watchingAfter(ctx context.Context, s *Service, stackID string, choice *bool) (bool, error) {
+	if choice == nil {
+		return s.Watching(ctx, stackID)
+	}
+	return s.SetWatching(ctx, stackID, *choice)
+}
+
+// onlyWatching is a call that sends nothing but watching, which needs stacks:read and not stacks:write.
+func onlyWatching(in stackUpdateIn) bool {
+	return in.Watching != nil && reflect.DeepEqual(in, stackUpdateIn{ID: in.ID, Watching: in.Watching})
 }
 
 // patchStack overlays only the fields the caller sent, so an omitted field keeps its stored value.

@@ -303,6 +303,7 @@ func (f *fakeProjects) Get(_ context.Context, id string) (*Project, error) {
 type fakeAccessChecker struct {
 	denyUserIDs    map[string]bool
 	denyInProject  map[string]bool // "user:project"
+	denyStack      map[string]bool // "user:stack"
 	inProjectCalls int
 }
 
@@ -317,6 +318,10 @@ func (f *fakeAccessChecker) HasPermission(_ context.Context, userID, _ string, _
 
 func (f *fakeAccessChecker) CanReadDoc(_ context.Context, userID, _ string) bool {
 	return !f.denyUserIDs[userID]
+}
+
+func (f *fakeAccessChecker) CanReadStack(_ context.Context, userID, stackID string) bool {
+	return !f.denyUserIDs[userID] && !f.denyStack[userID+":"+stackID]
 }
 
 // notifWorkspaces and notifProjects are every workspace and project the notification tests name.

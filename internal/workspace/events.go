@@ -149,6 +149,21 @@ type ticketRef struct {
 	} `json:"reporter"`
 }
 
+// serviceOutageEvent mirrors the deploy domain's service.container_stopped and service.container_recovered payloads.
+type serviceOutageEvent struct {
+	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
+	StackID     string `json:"stack_id"`
+	StackName   string `json:"stack_name"`
+	Service     string `json:"service"`
+	ExitCode    int    `json:"exit_code"`
+	OOM         bool   `json:"oom"`
+}
+
+func (e serviceOutageEvent) stack() stackNotice {
+	return stackNotice{ID: e.StackID, WorkspaceID: e.WorkspaceID, ProjectID: e.ProjectID}
+}
+
 // docEvent mirrors the docs domain's doc.created / doc.updated payloads.
 type docEvent struct {
 	Doc              docRef   `json:"doc"`
@@ -281,6 +296,30 @@ func HandleTicketStatusChanged(ctx context.Context, svc *NotificationService, ev
 		return apperrs.Fatal(fmt.Errorf("ticket.status_changed missing ticket id"))
 	}
 	return svc.onTicketStatusChanged(CtxWithEventKey(ctx, ev.ID), e.Ticket, e.Actor.UserID)
+}
+
+// HandleServiceStopped tells the stack's watchers a service went down.
+func HandleServiceStopped(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e serviceOutageEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse service.container_stopped: %w", err))
+	}
+	if e.StackID == "" {
+		return apperrs.Fatal(fmt.Errorf("service.container_stopped missing stack id"))
+	}
+	return svc.onServiceStopped(CtxWithEventKey(ctx, ev.ID), e)
+}
+
+// HandleServiceRecovered tells the stack's watchers the service has stayed up.
+func HandleServiceRecovered(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e serviceOutageEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse service.container_recovered: %w", err))
+	}
+	if e.StackID == "" {
+		return apperrs.Fatal(fmt.Errorf("service.container_recovered missing stack id"))
+	}
+	return svc.onServiceRecovered(CtxWithEventKey(ctx, ev.ID), e)
 }
 
 // HandleDocCreated tells the people the new doc @-mentions; nobody else is watching it yet but its creator.

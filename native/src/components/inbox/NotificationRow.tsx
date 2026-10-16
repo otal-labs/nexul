@@ -27,6 +27,8 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.PlayRunFinished]: "Play run ended",
   [NotificationKind.PlayRunWaiting]: "Needs your answer",
   [NotificationKind.ComputerMoveRequested]: "Move to the Nexul app",
+  [NotificationKind.ServiceStopped]: "Service crashed",
+  [NotificationKind.ServiceRecovered]: "Service came back",
 };
 
 interface NotificationRowProps {

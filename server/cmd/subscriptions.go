@@ -330,6 +330,13 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 		return workspace.HandleComputerMoveRequested(ctx, svc.notifSvc, ev)
 	})
 
+	mustSubscribe(ctx, bus, "notifications", deploy.TopicContainerStopped, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleServiceStopped(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", deploy.TopicContainerRecovered, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleServiceRecovered(ctx, svc.notifSvc, ev)
+	})
+
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))
 	mustSubscribe(ctx, bus, "voice.remove_from_call", chat.TopicConversationMembersChanged, "", voiceCallRemoveHandler(svc.voiceSvc))
 

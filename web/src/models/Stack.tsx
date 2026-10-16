@@ -114,6 +114,8 @@ export interface ServiceOutage {
 export interface StackWithBranches extends Stack {
   branch_deployments?: Stack[];
   outages?: ServiceOutage[];
+  // Whether the viewer gets the stack's notices; everyone who reads a stack does until they turn it off.
+  watching?: boolean;
 }
 
 export interface Deploy {

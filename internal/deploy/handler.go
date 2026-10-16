@@ -28,6 +28,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/deploys/{id}/cancel", h.cancel)
 	mux.HandleFunc("POST /api/deploys/{id}/retry", h.retry)
 	h.mountStackRoutes(mux, "/api/stacks")
+	mux.HandleFunc("PUT /api/stacks/{id}/watchers/me", h.watch)
+	mux.HandleFunc("DELETE /api/stacks/{id}/watchers/me", h.unwatch)
 	// /api/services stays mounted through the same handlers for one release (2026-09-10): the pre-rename web
 	// build still calls it, and it is dropped once web moves to /api/stacks.
 	h.mountStackRoutes(mux, "/api/services")
@@ -203,6 +205,13 @@ type stackResponse struct {
 	BranchDeployments []*Stack `json:"branch_deployments,omitempty"`
 	// Outages are the services that are down now; a stack with none has an empty list.
 	Outages []*Outage `json:"outages"`
+	// Watching is whether the viewer gets the stack's notices.
+	Watching bool `json:"watching"`
+}
+
+// watchingResponse is the viewer's watching state after a PUT or DELETE on watchers/me.
+type watchingResponse struct {
+	Watching bool `json:"watching"`
 }
 
 func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +223,10 @@ func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
 	resp := stackResponse{Stack: stack}
 	resp.Outages, err = h.svc.OpenOutages(r.Context(), stack.ID)
 	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if resp.Watching, err = h.svc.Watching(r.Context(), stack.ID); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -258,6 +271,23 @@ func (h *Handler) rollback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, d)
+}
+
+func (h *Handler) watch(w http.ResponseWriter, r *http.Request) {
+	h.setWatching(w, r, true)
+}
+
+func (h *Handler) unwatch(w http.ResponseWriter, r *http.Request) {
+	h.setWatching(w, r, false)
+}
+
+func (h *Handler) setWatching(w http.ResponseWriter, r *http.Request, watching bool) {
+	watching, err := h.svc.SetWatching(r.Context(), r.PathValue("id"), watching)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, watchingResponse{Watching: watching})
 }
 
 func (h *Handler) listStackDeploys(w http.ResponseWriter, r *http.Request) {

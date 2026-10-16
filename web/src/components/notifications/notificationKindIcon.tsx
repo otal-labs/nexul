@@ -2,7 +2,9 @@ import {
   ArrowRightLeftIcon,
   AtSignIcon,
   BrainIcon,
+  CircleCheckIcon,
   CircleHelpIcon,
+  CircleXIcon,
   FilePenLineIcon,
   FilePlusIcon,
   LaptopIcon,
@@ -29,4 +31,6 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.PlayRunFinished]: SparklesIcon,
   [NotificationKind.PlayRunWaiting]: CircleHelpIcon,
   [NotificationKind.ComputerMoveRequested]: LaptopIcon,
+  [NotificationKind.ServiceStopped]: CircleXIcon,
+  [NotificationKind.ServiceRecovered]: CircleCheckIcon,
 };

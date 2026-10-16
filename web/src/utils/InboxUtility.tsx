@@ -13,6 +13,8 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",
   [NotificationKind.ComputerMoveRequested]: "move to the Nexul app",
+  [NotificationKind.ServiceStopped]: "service crashed",
+  [NotificationKind.ServiceRecovered]: "service came back",
 };
 
 /** One inbox row: a doc with every notification about it, or any other notification on its own. */

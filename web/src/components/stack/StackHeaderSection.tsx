@@ -5,6 +5,7 @@ import type { Crumb } from "@/components/PageBreadcrumb";
 import { RowActions } from "@/components/listpane/RowActions";
 import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { StackMetaLine } from "@/components/stack/StackMetaLine";
+import { StackWatchButton } from "@/components/stack/StackWatchButton";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -60,6 +61,7 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
                 Attach repository
               </ActionButton>
             )}
+            <StackWatchButton stackId={stack.id} />
             {manages && <RowActions itemLabel={stack.name} {...menu} />}
           </div>
         }

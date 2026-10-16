@@ -25,6 +25,7 @@ type NotificationService struct {
 	projects ProjectReader
 	tickets  TicketProjects
 	watchers DocWatchers
+	unwatch  StackUnwatchers
 	now      func() time.Time
 }
 
@@ -41,6 +42,12 @@ func NewNotificationService(repo NotificationRepo, users UserStore, members Work
 // WithDocWatchers sets who a doc's changes notify; without it a doc save notifies only the people it mentions.
 func (s *NotificationService) WithDocWatchers(w DocWatchers) *NotificationService {
 	s.watchers = w
+	return s
+}
+
+// WithStackUnwatchers sets who opted out of a stack's notices; without it a stack notice has nobody to tell.
+func (s *NotificationService) WithStackUnwatchers(u StackUnwatchers) *NotificationService {
+	s.unwatch = u
 	return s
 }
 
@@ -227,6 +234,8 @@ func (s *NotificationService) canOpen(ctx context.Context, n notice, userID stri
 		return s.access.HasPermission(ctx, userID, n.workspaceID, permissions.TicketsRead)
 	case SubjectDoc:
 		return s.access.CanReadDoc(ctx, userID, n.subjectID)
+	case SubjectStack:
+		return s.access.CanReadStack(ctx, userID, n.subjectID)
 	}
 	return true
 }
@@ -433,6 +442,55 @@ func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFi
 	}
 	n := notice{subjectType: subjectType, subjectID: e.TargetID, subjectTitle: fmt.Sprintf("%s %s on %s", e.PlayLabel, outcome, title), workspaceID: e.WorkspaceID}
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, []string{e.StarterID})
+}
+
+// stackNotice is the stack a notice is about and where it lives.
+type stackNotice struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   string
+}
+
+// notifyStackWatchers tells everyone in the stack's workspace who reads it and has not opted out; a stack outside every
+// project has no workspace to tell. Access is checked at send time, as for every notice (canOpen).
+func (s *NotificationService) notifyStackWatchers(ctx context.Context, st stackNotice, kind Kind, message string) error {
+	if st.WorkspaceID == "" || s.members == nil || s.unwatch == nil {
+		return nil
+	}
+	userIDs, err := s.members.ListMemberUserIDs(ctx, st.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("list members for workspace %s: %w", st.WorkspaceID, err)
+	}
+	optedOut, err := s.unwatch.ListUnwatcherIDs(ctx, st.ID)
+	if err != nil {
+		return fmt.Errorf("list opt-outs of stack %s: %w", st.ID, err)
+	}
+	watchers := slices.DeleteFunc(slices.Clone(userIDs), func(id string) bool { return slices.Contains(optedOut, id) })
+	n := notice{subjectType: SubjectStack, subjectID: st.ID, subjectTitle: message, workspaceID: st.WorkspaceID, projectID: st.ProjectID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, watchers)
+}
+
+// onServiceStopped tells a stack's watchers a service went down, with how it exited.
+func (s *NotificationService) onServiceStopped(ctx context.Context, e serviceOutageEvent) error {
+	message := fmt.Sprintf("%s crashed on %s: %s", e.Service, e.StackName, exitReason(e))
+	return s.notifyStackWatchers(ctx, e.stack(), KindServiceStopped, message)
+}
+
+// onServiceRecovered tells a stack's watchers the service has stayed up.
+func (s *NotificationService) onServiceRecovered(ctx context.Context, e serviceOutageEvent) error {
+	message := fmt.Sprintf("%s came back on %s", e.Service, e.StackName)
+	return s.notifyStackWatchers(ctx, e.stack(), KindServiceRecovered, message)
+}
+
+// exitReason words how a container died: the exit code, and the kernel's out-of-memory kill when it was one.
+func exitReason(e serviceOutageEvent) string {
+	if e.OOM && e.ExitCode == 0 {
+		return "out of memory"
+	}
+	if e.OOM {
+		return fmt.Sprintf("exit %d, out of memory", e.ExitCode)
+	}
+	return fmt.Sprintf("exit %d", e.ExitCode)
 }
 
 // moveNoticeTitle is the inbox line that asks an owner to move their computers off a tunnel or an address.

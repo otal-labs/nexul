@@ -23,6 +23,8 @@ export const subjectRoute = (notification: Notification, canReadTickets: boolean
   if (notification.subject_type === SubjectType.Ticket) return canReadTickets ? `/board/ticket/${notification.subject_id}` : null;
   if (notification.subject_type === SubjectType.Doc && isQuestionsNotice(notification)) return `/more/docs/${notification.subject_id}?view=questions`;
   if (notification.subject_type === SubjectType.Doc) return `/more/docs/${notification.subject_id}`;
+  // Only people who read the stack are told of it, and a screen they can't open renders the plain not-found state.
+  if (notification.subject_type === SubjectType.Stack) return `/deploys/stack/${notification.subject_id}`;
   return null;
 };
 

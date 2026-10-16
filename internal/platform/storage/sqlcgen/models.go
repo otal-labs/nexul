@@ -1066,6 +1066,12 @@ type StackCrashTicket struct {
 	TicketID string
 }
 
+type StackUnwatcher struct {
+	StackID   string
+	UserID    string
+	CreatedAt int64
+}
+
 type Status struct {
 	ID        string
 	ProjectID string

@@ -116,6 +116,17 @@ describe("InboxScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1?view=questions", { withAnchor: true });
   });
 
+  test("tapping a crashed-service notice opens the stack's screen", async () => {
+    mockInbox([{ ...docNotification, kind: "service.container_stopped", subject_type: "stack", subject_id: "stack-1", subject_title: "api crashed on web: exit 1" }]);
+    await renderScreen();
+    await screen.findByText("api crashed on web: exit 1");
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /api crashed/ }));
+
+    expect(screen.getByText("Service crashed")).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith("/deploys/stack/stack-1", { withAnchor: true });
+  });
+
   test("tapping a ticket notification marks it read but stays in the inbox without tickets:read", async () => {
     mockInbox([ticketNotification], []);
     jest.mocked(api.post).mockResolvedValue(undefined);

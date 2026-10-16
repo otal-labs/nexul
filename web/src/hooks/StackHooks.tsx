@@ -66,6 +66,28 @@ export const useUpdateStack = () => {
   });
 };
 
+// Watching is the viewer's own and rides the stack's read: the toggle flips it at once and a refused change flips it back.
+export const useSetStackWatching = (stackId: string) => {
+  const client = useQueryClient();
+  const show = (watching: boolean) =>
+    client.setQueryData<StackWithBranches>([getStackKey, stackId], (stack) => stack && { ...stack, watching });
+  return useMutation({
+    mutationFn: requires("stacks:read", async (watching: boolean) => {
+      const url = `/api/stacks/${stackId}/watchers/me`;
+      return (watching ? await api.put<{ watching: boolean }>(url) : await api.delete<{ watching: boolean }>(url)).data;
+    }),
+    onMutate: async (watching) => {
+      await client.cancelQueries({ queryKey: [getStackKey, stackId] });
+      show(watching);
+    },
+    onError: (error, watching) => {
+      show(!watching);
+      toast.error(errorMessage(error));
+    },
+    onSuccess: ({ watching }) => toast.success(watching ? "Watching this stack" : "Stopped watching this stack"),
+  });
+};
+
 export const useDeleteStack = () => {
   const client = useQueryClient();
   return useMutation({

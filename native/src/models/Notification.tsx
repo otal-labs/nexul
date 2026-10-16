@@ -11,6 +11,8 @@ export const NotificationKind = {
   PlayRunFinished: "play.run_finished",
   PlayRunWaiting: "play.run_waiting",
   ComputerMoveRequested: "computer.move_requested",
+  ServiceStopped: "service.container_stopped",
+  ServiceRecovered: "service.container_recovered",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -21,6 +23,7 @@ export const SubjectType = {
   Memory: "memory",
   // The phone shows no computers; the notice marks read with nothing to open.
   Computer: "computer",
+  Stack: "stack",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

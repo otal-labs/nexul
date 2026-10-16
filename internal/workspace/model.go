@@ -272,6 +272,8 @@ const (
 	KindPlayRunFinished      Kind = "play.run_finished"
 	KindPlayRunWaiting       Kind = "play.run_waiting"
 	KindComputerMove         Kind = "computer.move_requested"
+	KindServiceStopped       Kind = "service.container_stopped"
+	KindServiceRecovered     Kind = "service.container_recovered"
 )
 
 // LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,
@@ -289,6 +291,8 @@ const (
 	SubjectMemory SubjectType = "memory"
 	// SubjectComputer opens Your settings → Computers; the inbox never reads the computer itself, which is its owner's.
 	SubjectComputer SubjectType = "computer"
+	// SubjectStack opens the stack's page; its notices go to the people who watch it.
+	SubjectStack SubjectType = "stack"
 )
 
 // Notification's SubjectTitle is denormalized so the frontend renders the list without extra fetches.

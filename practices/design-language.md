@@ -765,7 +765,7 @@ then the exit code, "out of memory" and the restart count in muted mono.
 Alerts sits after Logs in the section nav, with a Crash tickets card (one
 switch row) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname
-or the instance can't read analytics). Requests, Alerts, Watching and the
+or the instance can't read analytics). Requests, Alerts and the
 outage line arrive with the features that feed them; until then the page shows
 none of them. Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Alerts, Exposures, Branch deploys,
