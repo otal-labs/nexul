@@ -58,7 +58,7 @@ type RequestSources interface {
 	TunnelCounts(ctx context.Context, zoneID string, hostnames []string, from, to time.Time) ([]HostMinute, error)
 }
 
-// RequestAdd is requests and 5xx answers to add to a stack's minute.
+// RequestAdd is requests and 5xx answers for a stack's minute: a delta for Add, the whole minute for Set.
 type RequestAdd struct {
 	StackID  string
 	Minute   time.Time
@@ -77,6 +77,8 @@ type RequestMinute struct {
 type RequestRepo interface {
 	// Add sums each entry into its minute, which replaces a missing one.
 	Add(ctx context.Context, adds []RequestAdd) error
+	// Set replaces each entry's minute with its counts, so reading the same minute again changes nothing.
+	Set(ctx context.Context, sets []RequestAdd) error
 	// MarkMissing stores the minute as missing for each stack that has no row for it yet.
 	MarkMissing(ctx context.Context, stackIDs []string, minute time.Time) error
 	// Since returns a stack's stored minutes from the given one on, oldest first.
@@ -99,7 +101,7 @@ type RequestWindow struct {
 type requestState struct {
 	sources RequestSources
 	repo    RequestRepo
-	// polled is the end of the last window read; the next one starts there.
+	// polled is the end of the last window read; the next one starts there, or requestCatchUp back on a fresh process.
 	polled time.Time
 	// probes remembers, per zone, whether Cloudflare refused the token its analytics; probeMu guards it, since stack
 	// reads and the poll run on different goroutines.
@@ -227,9 +229,6 @@ func (s *Service) pollRequestCounts(ctx context.Context, log *slog.Logger) error
 	if from.Before(end.Add(-requestCatchUp * time.Minute)) {
 		from = end.Add(-requestCatchUp * time.Minute)
 	}
-	if s.requests.polled.IsZero() {
-		from = end.Add(-time.Minute)
-	}
 	defer func() { s.requests.polled = end }()
 	if err := s.requests.repo.Prune(ctx, end.Add(-requestRetention)); err != nil {
 		return fmt.Errorf("prune request counts: %w", err)
@@ -258,15 +257,9 @@ func (s *Service) pollRequestCounts(ctx context.Context, log *slog.Logger) error
 			byZone[r.ZoneID] = append(byZone[r.ZoneID], r)
 		}
 	}
-	for zone, zoneRoutes := range byZone {
-		adds, err := s.tunnelAdds(ctx, zone, zoneRoutes, stackOf, from, end)
-		if err != nil {
-			log.Warn("request counts unavailable for a zone", "zone", zone, "error", err)
-			continue
-		}
-		if err := s.requests.repo.Add(ctx, adds); err != nil {
-			return fmt.Errorf("add request counts: %w", err)
-		}
+	sums := s.zoneSums(ctx, log, byZone, stackOf, from, end)
+	if err := s.requests.repo.Set(ctx, addList(sums)); err != nil {
+		return fmt.Errorf("set request counts: %w", err)
 	}
 	for m := from; m.Before(end); m = m.Add(time.Minute) {
 		if err := s.requests.repo.MarkMissing(ctx, slices.Sorted(maps.Keys(counted)), m); err != nil {
@@ -276,9 +269,45 @@ func (s *Service) pollRequestCounts(ctx context.Context, log *slog.Logger) error
 	return nil
 }
 
-// tunnelAdds reads a zone's hostnames over [from, end) and returns a row for each stack and minute, at zero where
+// zoneSums reads every zone and adds up a stack's hostnames across them. A stack with a zone that failed gets no sum
+// at all, since half a total would replace a good count with a low one.
+func (s *Service) zoneSums(ctx context.Context, log *slog.Logger, byZone map[string][]RequestRoute, stackOf map[string]string, from, end time.Time) map[stackMinute]*RequestAdd {
+	sums := map[stackMinute]*RequestAdd{}
+	unread := map[string]bool{}
+	for zone, zoneRoutes := range byZone {
+		zoneSums, err := s.tunnelSums(ctx, zone, zoneRoutes, stackOf, from, end)
+		if err != nil {
+			log.Warn("request counts unavailable for a zone", "zone", zone, "error", err)
+			for _, r := range zoneRoutes {
+				unread[stackOf[r.ContainerID]] = true
+			}
+			continue
+		}
+		for k, a := range zoneSums {
+			if sum := sums[k]; sum != nil {
+				sum.Requests += a.Requests
+				sum.Errors += a.Errors
+				continue
+			}
+			sums[k] = a
+		}
+	}
+	for k := range sums {
+		if unread[k.stack] {
+			delete(sums, k)
+		}
+	}
+	return sums
+}
+
+type stackMinute struct {
+	stack  string
+	minute time.Time
+}
+
+// tunnelSums reads a zone's hostnames over [from, end) and returns a total for each stack and minute, at zero where
 // Cloudflare reported nothing: a successful read with no traffic is zero requests, not a gap.
-func (s *Service) tunnelAdds(ctx context.Context, zone string, routes []RequestRoute, stackOf map[string]string, from, end time.Time) ([]RequestAdd, error) {
+func (s *Service) tunnelSums(ctx context.Context, zone string, routes []RequestRoute, stackOf map[string]string, from, end time.Time) (map[stackMinute]*RequestAdd, error) {
 	stackByHost := map[string]string{}
 	for _, r := range routes {
 		stackByHost[strings.ToLower(r.Hostname)] = stackOf[r.ContainerID]
@@ -287,23 +316,19 @@ func (s *Service) tunnelAdds(ctx context.Context, zone string, routes []RequestR
 	if err != nil {
 		return nil, err
 	}
-	type key struct {
-		stack  string
-		minute time.Time
-	}
-	sums := map[key]*RequestAdd{}
+	sums := map[stackMinute]*RequestAdd{}
 	for _, stackID := range stackByHost {
 		for m := from; m.Before(end); m = m.Add(time.Minute) {
-			sums[key{stackID, m}] = &RequestAdd{StackID: stackID, Minute: m}
+			sums[stackMinute{stackID, m}] = &RequestAdd{StackID: stackID, Minute: m}
 		}
 	}
 	for _, c := range counts {
-		if add := sums[key{stackByHost[strings.ToLower(c.Hostname)], c.Minute.UTC()}]; add != nil {
+		if add := sums[stackMinute{stackByHost[strings.ToLower(c.Hostname)], c.Minute.UTC()}]; add != nil {
 			add.Requests += c.Requests
 			add.Errors += c.Errors
 		}
 	}
-	return addList(sums), nil
+	return sums, nil
 }
 
 // RequestWindow returns a stack's last hour of counts. The caller has already read the stack. Counted is false for a

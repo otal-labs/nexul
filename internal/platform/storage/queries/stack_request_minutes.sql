@@ -4,6 +4,10 @@ ON CONFLICT (stack_id, minute) DO UPDATE SET
     requests = COALESCE(stack_request_minutes.requests, 0) + excluded.requests,
     errors_5xx = COALESCE(stack_request_minutes.errors_5xx, 0) + excluded.errors_5xx;
 
+-- name: SetStackRequestMinute :exec
+INSERT INTO stack_request_minutes (stack_id, minute, requests, errors_5xx) VALUES (?, ?, ?, ?)
+ON CONFLICT (stack_id, minute) DO UPDATE SET requests = excluded.requests, errors_5xx = excluded.errors_5xx;
+
 -- name: MarkStackRequestMinuteMissing :exec
 INSERT OR IGNORE INTO stack_request_minutes (stack_id, minute) VALUES (?, ?);
 

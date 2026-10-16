@@ -57,6 +57,35 @@ func TestRequestMinutesRepo_AMissingMinuteHasNoCountsAndIsFilledByTheNextAdd(t *
 	assert.EqualValues(t, 4, *got[0].Requests, "marking a counted minute missing changes nothing")
 }
 
+func TestRequestMinutesRepo_SetReplacesAMinuteAndFillsAMissingOne(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedStackForContainers(t, s, "stack-1")
+	require.NoError(t, s.RequestMinutes.MarkMissing(ctx, []string{"stack-1"}, minute0.Add(time.Minute)))
+	require.NoError(t, s.RequestMinutes.Set(ctx, []deploy.RequestAdd{{StackID: "stack-1", Minute: minute0, Requests: 56, Errors: 4}}))
+	require.NoError(t, s.RequestMinutes.Set(ctx, []deploy.RequestAdd{
+		{StackID: "stack-1", Minute: minute0, Requests: 56, Errors: 4},
+		{StackID: "stack-1", Minute: minute0.Add(time.Minute), Requests: 9},
+	}))
+	require.NoError(t, s.RequestMinutes.Set(ctx, nil))
+	require.NoError(t, s.RequestMinutes.MarkMissing(ctx, []string{"stack-1"}, minute0))
+
+	got, err := s.RequestMinutes.Since(ctx, "stack-1", minute0)
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.EqualValues(t, 56, *got[0].Requests, "setting the same minute twice does not double it")
+	assert.EqualValues(t, 4, *got[0].Errors)
+	assert.EqualValues(t, 9, *got[1].Requests)
+
+	require.NoError(t, s.RequestMinutes.Set(ctx, []deploy.RequestAdd{{StackID: "stack-1", Minute: minute0, Requests: 3}}))
+	got, err = s.RequestMinutes.Since(ctx, "stack-1", minute0)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, *got[0].Requests, "a newer total replaces the stored one")
+	assert.Error(t, s.RequestMinutes.Set(ctx, []deploy.RequestAdd{{StackID: "gone", Minute: minute0}}), "a minute of a stack that is gone is refused")
+}
+
 func TestRequestMinutesRepo_PruneDropsOlderMinutesAndEmptyInputsDoNothing(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

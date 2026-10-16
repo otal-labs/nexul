@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeRequestRepo keeps minutes the way the table does: Add sums into a row and fills a missing one, MarkMissing leaves
-// a row that is already there alone.
+// fakeRequestRepo keeps minutes the way the table does: Add sums into a row and fills a missing one, Set replaces it,
+// MarkMissing leaves a row that is already there alone.
 type fakeRequestRepo struct {
 	mu   sync.Mutex
 	rows map[string]map[time.Time]*RequestMinute
@@ -45,6 +45,17 @@ func (f *fakeRequestRepo) Add(_ context.Context, adds []RequestAdd) error {
 			f.rows[a.StackID][a.Minute] = r
 		}
 		r.Requests, r.Errors = addTo(r.Requests, a.Requests), addTo(r.Errors, a.Errors)
+	}
+	return nil
+}
+
+func (f *fakeRequestRepo) Set(_ context.Context, sets []RequestAdd) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, a := range sets {
+		f.row(a.StackID, a.Minute)
+		requests, errs := a.Requests, a.Errors
+		f.rows[a.StackID][a.Minute] = &RequestMinute{Minute: a.Minute, Requests: &requests, Errors: &errs}
 	}
 	return nil
 }
@@ -224,13 +235,13 @@ func TestHandleRequestCounts_SkipsARouteWhoseContainerIsGone(t *testing.T) {
 
 func TestPollRequestCounts_WritesTheTunnelMinuteAndZeroFillsQuietOnes(t *testing.T) {
 	env := newRequestEnv(t, tunnelRoute)
-	// now 10:42:30, so the window ends at 10:40 and the poll reads the minute 10:39.
+	// now 10:42:30, so the window ends at 10:40 and a fresh process reads the five minutes from 10:35.
 	env.sources.counts = map[string][]HostMinute{"z1": {{Hostname: "app.example.com", Minute: clock(10, 39), Requests: 40, Errors: 3}}}
 
 	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
 
 	require.Len(t, env.sources.calls, 1, "one query for the zone")
-	assert.Equal(t, tunnelCall{"z1", []string{"app.example.com"}, clock(10, 39), clock(10, 40)}, env.sources.calls[0])
+	assert.Equal(t, tunnelCall{"z1", []string{"app.example.com"}, clock(10, 35), clock(10, 40)}, env.sources.calls[0])
 	row := env.repo.at("svc-1", clock(10, 39))
 	require.NotNil(t, row)
 	assert.EqualValues(t, 40, *row.Requests)
@@ -239,6 +250,7 @@ func TestPollRequestCounts_WritesTheTunnelMinuteAndZeroFillsQuietOnes(t *testing
 	env.now = env.now.Add(time.Minute)
 	env.sources.counts = nil
 	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+	assert.EqualValues(t, 40, *env.repo.at("svc-1", clock(10, 39)).Requests, "a minute the poll does not read again keeps its count")
 	quiet := env.repo.at("svc-1", clock(10, 40))
 	require.NotNil(t, quiet)
 	require.NotNil(t, quiet.Requests, "an answered query with no traffic is zero requests")
@@ -261,6 +273,91 @@ func TestPollRequestCounts_AFailedQueryLeavesTheMinuteMissing(t *testing.T) {
 	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
 	assert.Nil(t, env.repo.at("svc-1", clock(10, 39)).Requests, "the next poll does not go back for it")
 	assert.NotNil(t, env.repo.at("svc-1", clock(10, 40)).Requests)
+}
+
+func tunnelHost(host string, minute time.Time, requests, errs int64) HostMinute {
+	return HostMinute{Hostname: host, Minute: minute, Requests: requests, Errors: errs}
+}
+
+func TestPollRequestCounts_ReadingTheSameTunnelMinuteAgainLeavesTheCount(t *testing.T) {
+	env := newRequestEnv(t, tunnelRoute)
+	env.sources.counts = map[string][]HostMinute{"z1": {tunnelHost("app.example.com", clock(10, 39), 56, 4)}}
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	// a restart: a fresh service over the same stored minutes re-reads the recent ones.
+	env.svc.SetRequestCounts(env.sources, env.repo)
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+	env.now = env.now.Add(time.Minute)
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	row := env.repo.at("svc-1", clock(10, 39))
+	assert.EqualValues(t, 56, *row.Requests)
+	assert.EqualValues(t, 4, *row.Errors)
+}
+
+func TestPollRequestCounts_ARestartReadsTheMinutesItSkipped(t *testing.T) {
+	env := newRequestEnv(t, tunnelRoute)
+	env.sources.counts = map[string][]HostMinute{"z1": {tunnelHost("app.example.com", clock(10, 39), 5, 0)}}
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	env.now = env.now.Add(3 * time.Minute)
+	env.sources.counts = map[string][]HostMinute{"z1": {
+		tunnelHost("app.example.com", clock(10, 39), 5, 0),
+		tunnelHost("app.example.com", clock(10, 40), 6, 1),
+		tunnelHost("app.example.com", clock(10, 41), 7, 0),
+		tunnelHost("app.example.com", clock(10, 42), 8, 2),
+	}}
+	env.svc.SetRequestCounts(env.sources, env.repo)
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	for m, want := range map[int]int64{39: 5, 40: 6, 41: 7, 42: 8} {
+		row := env.repo.at("svc-1", clock(10, m))
+		require.NotNil(t, row, "minute 10:%d", m)
+		require.NotNil(t, row.Requests, "minute 10:%d", m)
+		assert.Equal(t, want, *row.Requests, "minute 10:%d", m)
+	}
+}
+
+func TestPollRequestCounts_HostnamesAndZonesOfOneStackCombineInAMinute(t *testing.T) {
+	second := RequestRoute{Router: "nexul-e3", Hostname: "api.example.com", ContainerID: "c-web", ZoneID: "z1", Machine: outageMachine, Tunnel: true}
+	other := RequestRoute{Router: "nexul-e4", Hostname: "app.example.org", ContainerID: "c-web", ZoneID: "z2", Machine: outageMachine, Tunnel: true}
+	env := newRequestEnv(t, tunnelRoute, second, other)
+	env.sources.counts = map[string][]HostMinute{
+		"z1": {tunnelHost("app.example.com", clock(10, 39), 10, 1), tunnelHost("api.example.com", clock(10, 39), 20, 2)},
+		"z2": {tunnelHost("app.example.org", clock(10, 39), 30, 3)},
+	}
+
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	row := env.repo.at("svc-1", clock(10, 39))
+	assert.EqualValues(t, 60, *row.Requests)
+	assert.EqualValues(t, 6, *row.Errors)
+}
+
+func TestPollRequestCounts_AFailedZoneLeavesTheStacksOtherZoneUnwritten(t *testing.T) {
+	other := RequestRoute{Router: "nexul-e4", Hostname: "app.example.org", ContainerID: "c-web", ZoneID: "z2", Machine: outageMachine, Tunnel: true}
+	env := newRequestEnv(t, tunnelRoute, other)
+	env.sources.counts = map[string][]HostMinute{"z1": {tunnelHost("app.example.com", clock(10, 39), 10, 1)}}
+	env.sources.zoneErr = map[string]error{"z2": errors.New("cloudflare down")}
+
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	row := env.repo.at("svc-1", clock(10, 39))
+	require.NotNil(t, row)
+	assert.Nil(t, row.Requests, "half a sum is not a count")
+}
+
+func TestPollRequestCounts_ProxyFramesStillAddAcrossGateways(t *testing.T) {
+	second := RequestRoute{Router: "nexul-e5", Hostname: "api.example.com", ContainerID: "c-web", Machine: "other-box"}
+	env := newRequestEnv(t, proxyRoute, second)
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 10, Errors: 1})
+	env.counts(t, "other-box", routerCount{Router: "nexul-e5@file", Requests: 5, Errors: 2})
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	row := env.repo.at("svc-1", clock(10, 42))
+	assert.EqualValues(t, 15, *row.Requests)
+	assert.EqualValues(t, 3, *row.Errors)
 }
 
 func TestPollRequestCounts_AProxyMinuteNoRunnerReportedIsMissingAndAReportedOneIsKept(t *testing.T) {

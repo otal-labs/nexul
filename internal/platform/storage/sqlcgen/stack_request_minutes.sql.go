@@ -93,3 +93,25 @@ func (q *Queries) PruneStackRequestMinutes(ctx context.Context, minute int64) er
 	_, err := q.db.ExecContext(ctx, pruneStackRequestMinutes, minute)
 	return err
 }
+
+const setStackRequestMinute = `-- name: SetStackRequestMinute :exec
+INSERT INTO stack_request_minutes (stack_id, minute, requests, errors_5xx) VALUES (?, ?, ?, ?)
+ON CONFLICT (stack_id, minute) DO UPDATE SET requests = excluded.requests, errors_5xx = excluded.errors_5xx
+`
+
+type SetStackRequestMinuteParams struct {
+	StackID   string
+	Minute    int64
+	Requests  sql.NullInt64
+	Errors5xx sql.NullInt64
+}
+
+func (q *Queries) SetStackRequestMinute(ctx context.Context, arg SetStackRequestMinuteParams) error {
+	_, err := q.db.ExecContext(ctx, setStackRequestMinute,
+		arg.StackID,
+		arg.Minute,
+		arg.Requests,
+		arg.Errors5xx,
+	)
+	return err
+}

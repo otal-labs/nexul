@@ -20,18 +20,32 @@ type RequestMinutesRepo struct {
 }
 
 func (r *RequestMinutesRepo) Add(ctx context.Context, adds []deploy.RequestAdd) error {
-	if len(adds) == 0 {
+	return r.write(ctx, "add", adds, func(q *sqlcgen.Queries, a deploy.RequestAdd) error {
+		return q.AddStackRequestMinute(ctx, sqlcgen.AddStackRequestMinuteParams{
+			StackID: a.StackID, Minute: a.Minute.Unix(),
+			Requests: sql.NullInt64{Int64: a.Requests, Valid: true}, Errors5xx: sql.NullInt64{Int64: a.Errors, Valid: true},
+		})
+	})
+}
+
+func (r *RequestMinutesRepo) Set(ctx context.Context, sets []deploy.RequestAdd) error {
+	return r.write(ctx, "set", sets, func(q *sqlcgen.Queries, a deploy.RequestAdd) error {
+		return q.SetStackRequestMinute(ctx, sqlcgen.SetStackRequestMinuteParams{
+			StackID: a.StackID, Minute: a.Minute.Unix(),
+			Requests: sql.NullInt64{Int64: a.Requests, Valid: true}, Errors5xx: sql.NullInt64{Int64: a.Errors, Valid: true},
+		})
+	})
+}
+
+func (r *RequestMinutesRepo) write(ctx context.Context, verb string, entries []deploy.RequestAdd, one func(*sqlcgen.Queries, deploy.RequestAdd) error) error {
+	if len(entries) == 0 {
 		return nil
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		for _, a := range adds {
-			err := q.AddStackRequestMinute(ctx, sqlcgen.AddStackRequestMinuteParams{
-				StackID: a.StackID, Minute: a.Minute.Unix(),
-				Requests: sql.NullInt64{Int64: a.Requests, Valid: true}, Errors5xx: sql.NullInt64{Int64: a.Errors, Valid: true},
-			})
-			if err != nil {
-				return fmt.Errorf("add request minute of stack %s: %w", a.StackID, classifyWriteErr(err))
+		for _, a := range entries {
+			if err := one(q, a); err != nil {
+				return fmt.Errorf("%s request minute of stack %s: %w", verb, a.StackID, classifyWriteErr(err))
 			}
 		}
 		return nil
