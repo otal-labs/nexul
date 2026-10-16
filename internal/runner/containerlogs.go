@@ -14,6 +14,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
@@ -58,6 +59,15 @@ func (e *ShellExecutor) Logs(ctx context.Context, req Frame, send func(Frame)) {
 	}
 	args = append(args, req.Container)
 	out := &containerLogStream{id: req.ID, send: send, capped: req.Follow}
+	if req.Mask {
+		mask, err := e.containerEnvMask(ctx, req.Container)
+		if err != nil {
+			e.log.Warn("could not read a container's env to mask its logs", "container", req.Container, "error", err)
+			send(Frame{Type: FrameLogsEnd, ID: req.ID, Error: "could not read the container's environment to hide its secrets"})
+			return
+		}
+		out.mask = mask
+	}
 	stdout, stderr := out.writer(LogStreamStdout), out.writer(LogStreamStderr)
 	err := e.streams(ctx, stdout, stderr, "docker", args...)
 	stdout.flush()
@@ -74,11 +84,32 @@ func (e *ShellExecutor) Logs(ctx context.Context, req Frame, send func(Frame)) {
 	send(end)
 }
 
+// containerEnvMask is what hides the container's own env values from its logs, as a stack's logs hide the stack's.
+func (e *ShellExecutor) containerEnvMask(ctx context.Context, container string) (*strings.Replacer, error) {
+	raw, err := e.output(ctx, "docker", "inspect", "--format", "{{json .Config.Env}}", container)
+	if err != nil {
+		return nil, err
+	}
+	var entries []string
+	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
+		return nil, fmt.Errorf("read %s's env: %w", container, err)
+	}
+	env := make(map[string]string, len(entries))
+	for _, entry := range entries {
+		if k, v, ok := strings.Cut(entry, "="); ok {
+			env[k] = v
+		}
+	}
+	return containerlog.EnvMask(env), nil
+}
+
 // containerLogStream batches lines like the deploy log and holds a follow to logRateBytes a second.
 type containerLogStream struct {
 	id     string
 	send   func(Frame)
 	capped bool
+	// mask hides env values in every line; nil leaves lines as they are.
+	mask *strings.Replacer
 
 	mu          sync.Mutex
 	batch       []ContainerLogLine
@@ -95,11 +126,25 @@ func (l *containerLogStream) writer(stream string) *lineSplitter {
 }
 
 func (l *containerLogStream) add(stream, raw string) {
-	line := parseLogLine(stream, raw)
+	l.addLine(parseLogLine(stream, raw))
+}
+
+// capFrom holds the lines added from now on to the rate cap; what came before it was a snapshot.
+func (l *containerLogStream) capFrom() {
+	l.flush()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.capped, l.windowStart, l.windowBytes = true, time.Now(), 0
+}
+
+func (l *containerLogStream) addLine(line ContainerLogLine) {
+	if l.mask != nil {
+		line.Line = l.mask.Replace(line.Line)
+	}
 	size := encodedSize(line)
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if stream == LogStreamStderr {
+	if line.Stream == LogStreamStderr {
 		l.lastStderr = line.Line
 	}
 	if l.capped {
@@ -250,8 +295,53 @@ func (c *Client) startLogs(ctx context.Context, conn *websocket.Conn, f Frame) {
 	go func() {
 		defer c.stopLogs(f.ID)
 		defer c.contained(f, func(msg string) { send(Frame{Type: FrameLogsEnd, ID: f.ID, Error: msg}) })
+		if f.Target == LogTargetRunner {
+			c.serveRunnerLogs(streamCtx, f, send)
+			return
+		}
 		c.cfg.Executor.Logs(streamCtx, f, send)
 	}()
+}
+
+// serveRunnerLogs answers a logs_request for the runner's own log: its last lines, then each new one while the request follows.
+func (c *Client) serveRunnerLogs(ctx context.Context, req Frame, send func(Frame)) {
+	end := Frame{Type: FrameLogsEnd, ID: req.ID}
+	if !c.cfg.Personal || c.cfg.RunnerLog == nil {
+		end.Error = "this runner keeps no log of its own"
+		send(end)
+		return
+	}
+	tail, follower, err := c.cfg.RunnerLog.Open(min(req.Tail, maxLogTail), req.Follow)
+	if err != nil {
+		c.log.Warn("could not read the runner log", "error", err)
+		end.Error = "the runner could not read its log"
+		send(end)
+		return
+	}
+	out := &containerLogStream{id: req.ID, send: send}
+	for _, raw := range tail {
+		out.addLine(renderRunnerLine(raw))
+	}
+	if follower == nil {
+		out.close()
+		send(end)
+		return
+	}
+	defer follower.Close()
+	out.capFrom()
+	for {
+		select {
+		case raw := <-follower.Lines():
+			out.addLine(renderRunnerLine(raw))
+			if n := follower.Dropped(); n > 0 {
+				out.addLine(skippedLine(n))
+			}
+		case <-ctx.Done():
+			out.close()
+			send(end)
+			return
+		}
+	}
 }
 
 // stopLogs kills one stream's process; an id that already ended is a no-op.
@@ -356,20 +446,31 @@ func (h *Handler) OpenLogs(ctx context.Context, machine, container string, tail 
 	if c == nil {
 		return nil, fmt.Errorf("%w: no runner is connected on machine %q", apperrs.ErrRetryable, machine)
 	}
-	return h.openLogs(ctx, c, container, tail, follow)
+	return h.openLogs(ctx, c, Frame{Container: container, Tail: tail, Follow: follow})
 }
 
-// OpenComputerLogs asks computerID's personal runner to stream container's logs, under the same limits as a machine's.
-func (h *Handler) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow bool) (*LogFeed, error) {
+// OpenComputerLogs asks computerID's personal runner to stream container's logs, under the same limits as a machine's;
+// mask has the runner hide the container's own env values in them.
+func (h *Handler) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow, mask bool) (*LogFeed, error) {
 	c, err := h.computerConn(ctx, computerID)
 	if err != nil {
 		return nil, err
 	}
-	return h.openLogs(ctx, c, container, tail, follow)
+	return h.openLogs(ctx, c, Frame{Container: container, Tail: tail, Follow: follow, Mask: mask})
 }
 
-func (h *Handler) openLogs(ctx context.Context, c *runnerConn, container string, tail int, follow bool) (*LogFeed, error) {
+// OpenComputerRunnerLogs asks computerID's personal runner to stream its own log, under the same limits.
+func (h *Handler) OpenComputerRunnerLogs(ctx context.Context, computerID string, tail int, follow bool) (*LogFeed, error) {
+	c, err := h.computerConn(ctx, computerID)
+	if err != nil {
+		return nil, err
+	}
+	return h.openLogs(ctx, c, Frame{Target: LogTargetRunner, Tail: tail, Follow: follow})
+}
+
+func (h *Handler) openLogs(ctx context.Context, c *runnerConn, req Frame) (*LogFeed, error) {
 	id := ids.New()
+	req.Type, req.ID = FrameLogsRequest, id
 	feed := &LogFeed{ready: make(chan struct{}, 1)}
 	feed.stop = func() {
 		sub, ok := h.takeLogSub(id)
@@ -384,7 +485,7 @@ func (h *Handler) openLogs(ctx context.Context, c *runnerConn, container string,
 	h.logsMu.Lock()
 	h.logSubs[id] = logSub{feed: feed, conn: c}
 	h.logsMu.Unlock()
-	if err := h.sendFrame(ctx, c, Frame{Type: FrameLogsRequest, ID: id, Container: container, Tail: tail, Follow: follow}); err != nil {
+	if err := h.sendFrame(ctx, c, req); err != nil {
 		h.takeLogSub(id)
 		return nil, fmt.Errorf("send logs_request: %w", err)
 	}

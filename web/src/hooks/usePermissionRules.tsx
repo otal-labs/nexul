@@ -7,13 +7,13 @@ import { RuleState, type PermissionRulesFormData } from "@/models/Permission";
 import { grantKey, parseTarget, ruleKey, savedState } from "@/models/PermissionPanel";
 import { ComputerPermission } from "@/models/SharedComputer";
 
-const runs = [ComputerPermission.RunAgents, ComputerPermission.RunCommands];
+const needsSee = [ComputerPermission.RunAgents, ComputerPermission.RunCommands, ComputerPermission.ReadLogs];
 
-// On a computer, allowing either Run allows See too, and taking See off takes both Runs with it, as the server keeps them.
+// On a computer, allowing a Run or Read logs allows See too, and taking See off takes all three with it, as the server keeps them.
 const computerChanges = (key: string, action: string, state: RuleState): Record<string, RuleState> => {
   const change = { [ruleKey(key, action)]: state };
-  if (state === RuleState.Allow && runs.some((r) => r === action)) return { ...change, [ruleKey(key, ComputerPermission.See)]: RuleState.Allow };
-  if (state !== RuleState.Allow && action === ComputerPermission.See) return { ...change, ...Object.fromEntries(runs.map((r) => [ruleKey(key, r), state])) };
+  if (state === RuleState.Allow && needsSee.some((r) => r === action)) return { ...change, [ruleKey(key, ComputerPermission.See)]: RuleState.Allow };
+  if (state !== RuleState.Allow && action === ComputerPermission.See) return { ...change, ...Object.fromEntries(needsSee.map((r) => [ruleKey(key, r), state])) };
   return change;
 };
 

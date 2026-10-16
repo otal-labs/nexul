@@ -46,6 +46,8 @@ type ClientConfig struct {
 	StreamURL string
 	// T3Home is T3 Code's base directory, whose runtime file names the port it listens on.
 	T3Home string
+	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
+	RunnerLog *RunnerLog
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.

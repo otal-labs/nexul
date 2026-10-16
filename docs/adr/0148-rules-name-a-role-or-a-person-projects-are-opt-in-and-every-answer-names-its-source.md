@@ -45,8 +45,8 @@ Decision: roles are the only grouping, projects are opt-in, and things carry rul
   computer and the instance Owner for an instance area. Nobody allows, or lifts a Deny on, what they don't hold there
   (ADR 0088), on doc and play rules too; adding a Deny is never limited.
 - **Computers are private, and rules are how they are shared.** The Owner's bypass and every-bit roles don't reach a
-  personal computer. Only its owner writes rules on it, for named people, as See this computer, Run agents and Run
-  commands, in force on the next check. They are the computer sharing ADR 0146 describes.
+  personal computer. Only its owner writes rules on it, for named people, as See this computer, Run agents, Run
+  commands and Read logs (ADR 0091), in force on the next check. They are the computer sharing ADR 0146 describes.
 - **Instance areas carry rules** for a role or a person, written only by the instance Owner, so one area can be handed
   out without a custom role. A role bit in any workspace still holds an area.
 - **The upgrade wipes.** Every per-person permission goes: Team's allow and deny, Project access, the Restricted flag,

@@ -116,12 +116,25 @@ func (r *runnerComputers) ComputerContainers(ctx context.Context, computerID str
 }
 
 // OpenComputerLogs is pairing's seam for one container's logs on a computer, streamed by its runner.
-func (r *runnerComputers) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow bool) (containerlog.Feed, error) {
+func (r *runnerComputers) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow, mask bool) (containerlog.Feed, error) {
 	h := r.handler.Load()
 	if h == nil {
 		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
-	feed, err := h.OpenComputerLogs(ctx, computerID, container, tail, follow)
+	feed, err := h.OpenComputerLogs(ctx, computerID, container, tail, follow, mask)
+	if err != nil {
+		return nil, err
+	}
+	return runnerLogFeed{feed: feed}, nil
+}
+
+// OpenRunnerLogs is pairing's seam for a computer's runner's own log, streamed by that runner.
+func (r *runnerComputers) OpenRunnerLogs(ctx context.Context, computerID string, tail int, follow bool) (containerlog.Feed, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	feed, err := h.OpenComputerRunnerLogs(ctx, computerID, tail, follow)
 	if err != nil {
 		return nil, err
 	}

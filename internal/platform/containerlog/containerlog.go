@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -28,6 +30,11 @@ const (
 	snapshotTimeout = 30 * time.Second
 	// writeTimeout drops a viewer whose socket has not taken one message in this long.
 	writeTimeout = 10 * time.Second
+)
+
+const (
+	mask       = "••••"
+	maskMinLen = 6
 )
 
 // Line is one line a container printed, with its timestamp and stream.
@@ -74,6 +81,22 @@ func Snapshot(ctx context.Context, open Open, tail int, what string) ([]Line, er
 		}
 		out = append(out, lines...)
 	}
+}
+
+// EnvMask masks env values of six or more characters, longest first so one holding another goes whole (ADR 0091).
+func EnvMask(env map[string]string) *strings.Replacer {
+	var values []string
+	for _, v := range env {
+		if utf8.RuneCountInString(v) >= maskMinLen {
+			values = append(values, v)
+		}
+	}
+	slices.SortFunc(values, func(a, b string) int { return len(b) - len(a) })
+	pairs := make([]string, 0, 2*len(values))
+	for _, v := range values {
+		pairs = append(pairs, v, mask)
+	}
+	return strings.NewReplacer(pairs...)
 }
 
 // CutForAgent cuts every line past agentLineChars, in place.

@@ -1747,7 +1747,7 @@
         "items": {
           "type": "string"
         },
-        "description": "What the person now holds on the computer, of computers:see, computers:run_agents and computers:run_commands; empty once the rule ends."
+        "description": "What the person now holds on the computer, of computers:see, computers:run_agents, computers:run_commands and computers:read_logs; empty once the rule ends."
       },
       "actor_id": {
         "type": "string",

@@ -85,7 +85,7 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   stack: {},
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
   channel: { "channels:read": "See this channel", "channels:post": "Post in this channel" },
-  computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
+  computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands", "computers:read_logs": "Read logs" },
   instance_area: {},
   machine: {
     "machines:see": "See this machine",
@@ -94,6 +94,13 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
     "machines:delete": "Delete this machine",
   },
 };
+
+// What an action covers where its label alone leaves that open.
+const panelHints: Partial<Record<PanelEntity["type"], Record<string, string>>> = {
+  computer: { "computers:read_logs": "This runner's logs and its Docker containers' logs" },
+};
+
+export const permissionHint = (action: string, type: PanelEntity["type"]) => panelHints[type]?.[action];
 
 export const permissionLabel = (action: string, catalog: PermissionInfo[] | undefined, type: PanelEntity["type"] = "doc") =>
   panelLabels[type][action] ?? catalog?.find((c) => c.value === action)?.label ?? action;

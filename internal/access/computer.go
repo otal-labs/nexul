@@ -62,18 +62,18 @@ func (s *Service) ComputerPermissions(ctx context.Context, userID, computerID st
 	return ownerID, held, nil
 }
 
-// seeWithRun adds See to a Run, which can't be used on a computer one can't see.
+// seeWithRun adds See to a Run or Read logs, which can't be used on a computer one can't see.
 func seeWithRun(allow permissions.Set) permissions.Set {
-	if allow.Has(permissions.ComputersAgents) || allow.Has(permissions.ComputersCommands) {
+	if allow.Has(permissions.ComputersAgents) || allow.Has(permissions.ComputersCommands) || allow.Has(permissions.ComputersLogs) {
 		return allow.With(permissions.ComputersSee)
 	}
 	return allow
 }
 
-// computerRule is a computer rule after a write moved actions to state: Run keeps See, and See going takes both Runs.
+// computerRule is a computer rule after a write moved actions to state: Run and Read logs keep See, and See going takes all three.
 func computerRule(allow permissions.Set, actions []permissions.Action, state string) permissions.Set {
 	if state != StateAllow && slices.Contains(actions, permissions.ComputersSee) {
-		return allow.Without(permissions.ComputersAgents).Without(permissions.ComputersCommands)
+		return allow.Without(permissions.ComputersAgents).Without(permissions.ComputersCommands).Without(permissions.ComputersLogs)
 	}
 	return seeWithRun(allow)
 }

@@ -104,12 +104,12 @@ func TestHandler_ComputerContainers(t *testing.T) {
 	t.Run("a computer whose runner is not connected is retryable", func(t *testing.T) {
 		_, err := f.h.ComputerContainers(ctx, "c-desktop")
 		require.ErrorIs(t, err, apperrs.ErrRetryable)
-		_, err = f.h.OpenComputerLogs(ctx, "c-desktop", "db", 10, false)
+		_, err = f.h.OpenComputerLogs(ctx, "c-desktop", "db", 10, false, false)
 		require.ErrorIs(t, err, apperrs.ErrRetryable)
 	})
 
 	t.Run("logs stream from the computer's runner and end with it", func(t *testing.T) {
-		feed, err := f.h.OpenComputerLogs(ctx, "c-laptop", "db", 50, false)
+		feed, err := f.h.OpenComputerLogs(ctx, "c-laptop", "db", 50, false, false)
 		require.NoError(t, err)
 		defer feed.Close()
 		req := nextFrame(t, frames)

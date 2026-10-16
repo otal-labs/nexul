@@ -79,6 +79,9 @@ const (
 
 	LogStreamStdout = "stdout"
 	LogStreamStderr = "stderr"
+
+	// LogTargetRunner on a logs_request asks for the runner's own log, not a container's.
+	LogTargetRunner = "runner"
 )
 
 // Frame is the flat JSON wire message of the runner protocol; per-type field requirements are enforced by Validate.
@@ -131,8 +134,11 @@ type Frame struct {
 	Version string `json:"version,omitempty"`
 	URL     string `json:"url,omitempty"`
 	Sha256  string `json:"sha256,omitempty"`
-	// Container, Tail and Follow carry a logs_request; Lines a logs_chunk.
+	// Container, Tail and Follow carry a logs_request; Lines a logs_chunk. Target is empty for a container's logs;
+	// Mask asks the runner to hide the container's own env values in them.
 	Container string             `json:"container,omitempty"`
+	Target    string             `json:"target,omitempty"`
+	Mask      bool               `json:"mask,omitempty"`
 	Tail      int                `json:"tail,omitempty"`
 	Follow    bool               `json:"follow,omitempty"`
 	Lines     []ContainerLogLine `json:"lines,omitempty"`
@@ -334,8 +340,17 @@ func (f *Frame) validateUpgradeResult() error {
 }
 
 func (f *Frame) validateLogsRequest() error {
-	if f.ID == "" || f.Container == "" || f.Tail < 0 {
-		return fmt.Errorf("%w: logs_request requires id, container and a tail of zero or more", apperrs.ErrInvalid)
+	if f.ID == "" || f.Tail < 0 {
+		return fmt.Errorf("%w: logs_request requires id and a tail of zero or more", apperrs.ErrInvalid)
+	}
+	if f.Target == LogTargetRunner && (f.Container != "" || f.Mask) {
+		return fmt.Errorf("%w: a logs_request for the runner's own log names no container and masks nothing", apperrs.ErrInvalid)
+	}
+	if f.Target != "" && f.Target != LogTargetRunner {
+		return fmt.Errorf("%w: logs_request target %q", apperrs.ErrInvalid, f.Target)
+	}
+	if f.Target == "" && f.Container == "" {
+		return fmt.Errorf("%w: logs_request requires a container", apperrs.ErrInvalid)
 	}
 	return nil
 }

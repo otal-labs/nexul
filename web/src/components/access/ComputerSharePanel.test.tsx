@@ -17,7 +17,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const actions = ["computers:see", "computers:run_agents", "computers:run_commands"];
+const actions = ["computers:see", "computers:run_agents", "computers:run_commands", "computers:read_logs"];
 const person = (login: string) => ({ user_id: login, login, display_name: "", avatar_url: "" });
 const verdict = (allowed: boolean, kind: string, sentence: string) => ({
   allowed,
@@ -98,7 +98,7 @@ describe("sharing a computer", () => {
     await user.click(screen.getByRole("button", { name: /dave/ }));
     expect(await control("See this computer").findByRole("radio", { name: "Allow" })).toBeChecked();
     expect(control("Run agents").queryByRole("radio", { name: "Deny" })).not.toBeInTheDocument();
-    expect(screen.getAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not shared with dave")).toHaveLength(2);
+    expect(screen.getAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not shared with dave")).toHaveLength(3);
 
     await user.click(control("See this computer").getByRole("radio", { name: "Fallback" }));
     await user.click(control("Run commands").getByRole("radio", { name: "Allow" }));
@@ -108,5 +108,29 @@ describe("sharing a computer", () => {
     expect(await screen.findByText("saved")).toBeInTheDocument();
     expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "computer", resource_ids: ["c-1"], user_ids: ["dave"], actions: ["computers:run_commands"], state: "allow" });
     expect(api.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Read logs, off by default, saying what it covers, and it brings See along and goes with it", async () => {
+    await openPanel();
+    await user.click(screen.getByRole("button", { name: /dave/ }));
+    expect(await control("Read logs").findByRole("radio", { name: "Fallback" })).toBeChecked();
+    expect(screen.getByText("This runner's logs and its Docker containers' logs")).toBeInTheDocument();
+
+    await user.click(control("See this computer").getByRole("radio", { name: "Fallback" }));
+    await user.click(control("Read logs").getByRole("radio", { name: "Allow" }));
+    expect(control("See this computer").getByRole("radio", { name: "Allow" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("saved")).toBeInTheDocument();
+    expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "computer", resource_ids: ["c-1"], user_ids: ["dave"], actions: ["computers:read_logs"], state: "allow" });
+  });
+
+  it("takes Read logs off with See", async () => {
+    await openPanel();
+    await user.click(screen.getByRole("button", { name: /dave/ }));
+    await user.click(await control("Read logs").findByRole("radio", { name: "Allow" }));
+    await user.click(control("See this computer").getByRole("radio", { name: "Fallback" }));
+    expect(control("Read logs").getByRole("radio", { name: "Fallback" })).toBeChecked();
+    await user.keyboard("{Escape}");
   });
 });

@@ -32,7 +32,14 @@ Searchable history, shipping container output into the install's OpenObserve, is
 across restarts or redeploys, or an automation needs to react to a log line.
 
 A paired computer's personal runner (ADR 0146) answers the same frames under the same limits for its owner's own
-containers once its facts report Docker: found by computer instead of machine, checked by ownership instead of
-`stacks:logs`, and unmasked, since Nexul holds no env for them.
+containers once its facts report Docker: found by computer instead of machine, checked by ownership or a computer
+share that allows Read logs (ADR 0148) instead of `stacks:logs`. The owner reads them unmasked; for anyone else the
+server sets `mask` on the `logs_request` and the runner hides the container's own env values of six characters or more,
+read with `docker inspect`, since Nexul holds no env for them.
+
+The same request with `target: "runner"` and no container reads the runner's own log, which a personal runner also
+writes to `runner.log` in its own directory on every OS (JSON lines, owner-only, rotated at 5 MiB with one previous file
+kept). A tail reads the file and a follow subscribes to the logger; each record is one line with tokens hidden. The
+server sends it only to personal runners, and the same Read logs share covers it.
 
 Decided 2026-09-30.

@@ -327,7 +327,7 @@ func refusal(f Frame) (Frame, bool) {
 	case FrameDiscover:
 		return Frame{Type: FrameDiscoverResult, ID: f.ID, Error: noDocker}, true
 	case FrameLogsRequest:
-		return Frame{Type: FrameLogsEnd, ID: f.ID, Error: noDocker}, true
+		return Frame{Type: FrameLogsEnd, ID: f.ID, Error: noDocker}, f.Target != LogTargetRunner
 	}
 	return Frame{}, false
 }

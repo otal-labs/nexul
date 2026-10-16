@@ -170,3 +170,9 @@ func TestServeSocket(t *testing.T) {
 		<-feed.closed
 	})
 }
+
+func TestEnvMask_HidesValuesOfSixCharactersOrMoreLongestFirst(t *testing.T) {
+	mask := EnvMask(map[string]string{"TOKEN": "abcdef", "LONGER": "abcdef-and-more", "SHORT": "abcde", "EMPTY": ""})
+	assert.Equal(t, "got •••• and •••• and abcde", mask.Replace("got abcdef-and-more and abcdef and abcde"))
+	assert.Equal(t, "nothing here", EnvMask(nil).Replace("nothing here"))
+}

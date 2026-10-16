@@ -137,14 +137,24 @@ _Avoid_: Device, host, runner (a runner builds and deploys)
 
 **Computer sharing**:
 A paired computer's owner letting named people use it, through a rule on the
-computer naming each person (ADR 0148): See this computer, Run agents and Run
-commands, either Run bringing See along. Only the owner writes these rules, for
-people who share a workspace with them, never for a role, and none denies. No
+computer naming each person (ADR 0148): See this computer, Run agents, Run
+commands and Read logs, each of the other three bringing See along. Only the
+owner writes these rules, for people who share a workspace with them, never for a role, and none denies. No
 role, Owner or permission bit reaches a computer, so to everyone no rule names it
 is not found. A rule ends for good when the two share no workspace or either
 account is disabled or removed. The person it is shared with sees it as
-"<owner>'s <computer> (shared)", by its name and whether it is online only.
+"<owner>'s <computer> (shared)", by its name and whether it is online only,
+and with Read logs also its Docker containers and the logs of the runner and
+the containers (Runner log).
 _Avoid_: lend, delegate, borrow
+
+**Runner log**:
+The personal runner's own log, kept in `runner.log` beside its credential on every
+OS (JSON lines, owner-only, 5 MiB and one previous file) and read live through
+the runner like container logs, never stored in Nexul. Its owner reads it, and a
+person its share gives Read logs; each record is one line, `time level message
+key=value…`, with tokens hidden.
+_Avoid_: Service log, journal
 
 **Computer facts**:
 What a paired computer's personal runner and harness last reported about it:
@@ -585,8 +595,9 @@ timestamp and stream, read live from Docker through the machine's runner and
 never stored in Nexul: a snapshot of the last lines, or a live tail that
 follows new ones. The stack's own env values are masked before a line leaves
 the server. Gated by `stacks:logs`. A paired computer with Docker offers the
-same for its own containers through its personal runner, to its owner only
-and unmasked; those containers are not services.
+same for its own containers through its personal runner, to its owner unmasked
+and to a person its share gives Read logs with the container's own env values
+masked; those containers are not services.
 _Avoid_: Deploy log (the build and start output Nexul stores per deploy),
 service logs (Nexul's own: Instance logs)
 

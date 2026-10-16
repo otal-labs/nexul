@@ -31,7 +31,7 @@ type ComputerGrantEvent struct {
 	ComputerID  string   `json:"computer_id"`
 	OwnerID     string   `json:"owner_id" jsonschema:"The computer's owner, the one person who writes its rules."`
 	UserID      string   `json:"user_id" jsonschema:"The person the rule names."`
-	Permissions []string `json:"permissions" jsonschema:"What the person now holds on the computer, of computers:see, computers:run_agents and computers:run_commands; empty once the rule ends."`
+	Permissions []string `json:"permissions" jsonschema:"What the person now holds on the computer, of computers:see, computers:run_agents, computers:run_commands and computers:read_logs; empty once the rule ends."`
 	ActorID     string   `json:"actor_id,omitempty" jsonschema:"Who changed the rule; absent when it ended because the two share no workspace or an account closed."`
 	MembersOnly bool     `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
