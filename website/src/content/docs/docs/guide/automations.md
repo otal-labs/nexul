@@ -58,6 +58,10 @@ Two events mark a moment rather than one change. `ticket.unblocked` fires when a
 
 `service.container_stopped` fires when a service of a stack goes down: its container died with a non-zero exit code or was killed for running out of memory. `service.container_recovered` fires once that container has stayed running for a minute. A container that keeps restarting is one outage, so the stopped event fires once, at the first crash. Both carry the stack, service, container, machine, an `outage_id` that pairs the two, the exit code, `oom` and `restart_count`; they carry no output lines, so to see why it crashed, read that service's logs while Docker still holds the container. Events for a stack with a deploy running, and for containers that exit with code 0, are never sent.
 
+## When the error rate trips
+
+`stack.error_rate_crossed` fires when a stack's [error-rate rule](/docs/guide/stacks-and-deploys/#error-rate) trips: the share of 5xx answers went above its limit with enough requests. `stack.error_rate_recovered` fires once every minute of a window has stayed under the limit. Both carry the stack, an `episode_id` that pairs the two, the worst share the episode reached (`peak_percent`) with its `requests` and `errors`, and the rule's `limit_percent`, `window_minutes` and `min_requests` as they were when it tripped. They carry no request lines, since Nexul keeps none. Switching the rule off ends an episode without sending the recovery.
+
 ## Start a play
 
 `ctx.runPlay` queues one of the workspace's ticket plays on a ticket, named by the play's label:

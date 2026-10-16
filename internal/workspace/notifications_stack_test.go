@@ -148,3 +148,92 @@ func TestHandleServiceRecovered(t *testing.T) {
 		assert.ErrorIs(t, err, apperrs.ErrFatal)
 	})
 }
+
+func errorRatePayload(overrides map[string]any) map[string]any {
+	payload := map[string]any{
+		"workspace_id": "ws-1", "project_id": "p-1", "stack_id": "st-1", "stack_name": "acme-web",
+		"peak_percent": 12.34, "limit_percent": 5, "window_minutes": 5,
+	}
+	for k, v := range overrides {
+		payload[k] = v
+	}
+	return payload
+}
+
+func TestHandleErrorRateCrossed(t *testing.T) {
+	t.Run("tells every member who reads the stack and has not opted out", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		access := &fakeAccessChecker{denyStack: map[string]bool{"carol:st-1": true}}
+		s := newStackNotifService(repo, access, &fakeStackUnwatchers{byStack: map[string][]string{"st-1": {"bob"}}})
+
+		require.NoError(t, HandleErrorRateCrossed(t.Context(), s, notifEvFor(t, "stack.error_rate_crossed", errorRatePayload(nil))))
+
+		assert.Empty(t, repo.notifsFor("bob"), "an opt-out is not told")
+		assert.Empty(t, repo.notifsFor("carol"), "someone who cannot read the stack is not told")
+		require.Len(t, repo.notifsFor("alice"), 1)
+		n := repo.notifsFor("alice")[0]
+		assert.Equal(t, KindErrorRateCrossed, n.Kind)
+		assert.Equal(t, SubjectStack, n.SubjectType)
+		assert.Equal(t, "st-1", n.SubjectID)
+		assert.Equal(t, "5xx at 12.3% on acme-web over the last 5 minutes, above 5%", n.SubjectTitle)
+	})
+
+	t.Run("tells nobody about a stack outside every project", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newStackNotifService(repo, &fakeAccessChecker{}, &fakeStackUnwatchers{})
+
+		require.NoError(t, HandleErrorRateCrossed(t.Context(), s, notifEvFor(t, "stack.error_rate_crossed", errorRatePayload(map[string]any{"workspace_id": "", "project_id": ""}))))
+
+		assert.Empty(t, repo.topics())
+	})
+
+	t.Run("a redelivered event adds nothing", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newStackNotifService(repo, &fakeAccessChecker{}, &fakeStackUnwatchers{})
+		ev := notifEvFor(t, "stack.error_rate_crossed", errorRatePayload(nil))
+
+		require.NoError(t, HandleErrorRateCrossed(t.Context(), s, ev))
+		require.NoError(t, HandleErrorRateCrossed(t.Context(), s, ev))
+
+		assert.Len(t, repo.notifsFor("alice"), 1)
+	})
+
+	t.Run("a malformed or stackless payload is fatal", func(t *testing.T) {
+		s := newStackNotifService(newFakeNotifRepo(), &fakeAccessChecker{}, &fakeStackUnwatchers{})
+
+		assert.ErrorIs(t, HandleErrorRateCrossed(t.Context(), s, eventbus.Event{ID: "e1", Payload: []byte(`{`)}), apperrs.ErrFatal)
+		assert.ErrorIs(t, HandleErrorRateCrossed(t.Context(), s, notifEvFor(t, "stack.error_rate_crossed", map[string]any{})), apperrs.ErrFatal)
+	})
+
+	t.Run("a failed opt-out read fails the delivery so it retries", func(t *testing.T) {
+		boom := errors.New("db down")
+		s := newStackNotifService(newFakeNotifRepo(), &fakeAccessChecker{}, &fakeStackUnwatchers{err: boom})
+
+		err := HandleErrorRateCrossed(t.Context(), s, notifEvFor(t, "stack.error_rate_crossed", errorRatePayload(nil)))
+
+		assert.ErrorIs(t, err, boom)
+	})
+}
+
+func TestHandleErrorRateRecovered(t *testing.T) {
+	t.Run("tells the stack's watchers the share is back under the limit", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newStackNotifService(repo, &fakeAccessChecker{}, &fakeStackUnwatchers{byStack: map[string][]string{"st-1": {"bob"}}})
+
+		require.NoError(t, HandleErrorRateRecovered(t.Context(), s, notifEvFor(t, "stack.error_rate_recovered", errorRatePayload(nil))))
+
+		assert.Empty(t, repo.notifsFor("bob"))
+		require.Len(t, repo.notifsFor("alice"), 1)
+		n := repo.notifsFor("alice")[0]
+		assert.Equal(t, KindErrorRateRecovered, n.Kind)
+		assert.Equal(t, "5xx on acme-web is back under 5%", n.SubjectTitle)
+	})
+
+	t.Run("a stackless payload is fatal", func(t *testing.T) {
+		s := newStackNotifService(newFakeNotifRepo(), &fakeAccessChecker{}, &fakeStackUnwatchers{})
+
+		err := HandleErrorRateRecovered(t.Context(), s, notifEvFor(t, "stack.error_rate_recovered", map[string]any{}))
+
+		assert.ErrorIs(t, err, apperrs.ErrFatal)
+	})
+}

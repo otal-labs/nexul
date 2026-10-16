@@ -294,6 +294,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// A stack with crash tickets switched on files a ticket per crashed service, then comments on repeats and recoveries.
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerStopped, "", svc.deploySvc.HandleContainerStopped)
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerRecovered, "", svc.deploySvc.HandleContainerRecovered)
+	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicErrorRateCrossed, "", svc.deploySvc.HandleErrorRateCrossed)
+	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicErrorRateRecovered, "", svc.deploySvc.HandleErrorRateRecovered)
 	// A healthy deploy settles its containers' exposures: an exposure made mid-deploy would otherwise wait for the next one.
 	mustSubscribe(ctx, bus, "dns.exposure_reconcile", deploy.TopicDeployStatusChanged, "", exposureReconcileHandler(svc.deploySvc, svc.dnsSvc))
 
@@ -337,6 +339,13 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 	mustSubscribe(ctx, bus, "notifications", deploy.TopicContainerRecovered, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleServiceRecovered(ctx, svc.notifSvc, ev)
+	})
+
+	mustSubscribe(ctx, bus, "notifications", deploy.TopicErrorRateCrossed, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleErrorRateCrossed(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", deploy.TopicErrorRateRecovered, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleErrorRateRecovered(ctx, svc.notifSvc, ev)
 	})
 
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))

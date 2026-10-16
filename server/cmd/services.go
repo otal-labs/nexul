@@ -170,6 +170,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	topoSvc.SetScope(topologyScope{stacks: store.Stacks, services: store.Services, dns: store.DNS})
 	deploySvc.SetGate(accessSvc)
 	deploySvc.SetOutageRepo(store.Outages)
+	deploySvc.SetErrorRateRepo(store.ErrorRate)
 	deploySvc.SetStackWatchRepo(store.StackWatchers)
 	reviewSvc := codereview.NewService(store.CodeReviews)
 	reviewSvc.SetGate(projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets})

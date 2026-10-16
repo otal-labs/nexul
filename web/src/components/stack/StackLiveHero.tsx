@@ -6,10 +6,12 @@ import { formatRelativeTime } from "@/components/service/DeployTime";
 import { microheaderClass } from "@/components/Microheader";
 import { useFetchStackServices } from "@/hooks/StackHooks";
 import { cn } from "@/lib/utils";
-import { ContainerStatus, type Container, type Deploy } from "@/models/Stack";
+import { ContainerStatus, type Container, type Deploy, type StackWithBranches } from "@/models/Stack";
+import { errorRateHealth } from "@/utils/ErrorRateUtility";
+import { formatClockTime } from "@/utils/TimeUtility";
 
 interface StackLiveHeroProps {
-  stackId: string;
+  stack: StackWithBranches;
   latest: Deploy | undefined;
   hostnames: string[];
 }
@@ -23,14 +25,15 @@ const Cell = ({ label, children }: { label: string; children: ReactNode }) => (
   </div>
 );
 
-const Health = ({ services }: { services: Container[] | undefined }) => {
+const Health = ({ services, stack }: { services: Container[] | undefined; stack: StackWithBranches }) => {
   const stopped = (services ?? []).filter((c) => down.includes(c.status));
   const [only] = stopped;
   const label = stopped.length === 1 ? `${only?.name} not running` : `${stopped.length} not running`;
+  const rate = errorRateHealth(stack);
   return (
     <Cell label="Health">
       {!services && <span className="text-sm text-muted-foreground">—</span>}
-      {services && stopped.length === 0 && (
+      {services && stopped.length === 0 && !rate && (
         <p className="flex items-center gap-2 text-sm font-medium">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
           No issues
@@ -40,6 +43,15 @@ const Health = ({ services }: { services: Container[] | undefined }) => {
         <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-destructive" />
           <span className="min-w-0 truncate" title={label}>{label}</span>
+        </p>
+      )}
+      {rate && (
+        <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", rate.tone === "warning" ? "bg-warning" : "bg-success")} />
+          <span className="min-w-0 truncate">{rate.text}</span>
+          <span className="shrink-0 font-mono text-xs font-normal text-muted-foreground">
+            {rate.tone === "warning" ? "since" : "at"} {formatClockTime(rate.at)}
+          </span>
         </p>
       )}
     </Cell>
@@ -100,8 +112,8 @@ const Hostnames = ({ hostnames }: { hostnames: string[] }) => {
 };
 
 // What a stack is doing right now, read before anything else on its page: one strip, health first.
-export const StackLiveHero = ({ stackId, latest, hostnames }: StackLiveHeroProps) => {
-  const { data: services } = useFetchStackServices(stackId);
+export const StackLiveHero = ({ stack, latest, hostnames }: StackLiveHeroProps) => {
+  const { data: services } = useFetchStackServices(stack.id);
   return (
     <div className="@container">
       <section
@@ -111,7 +123,7 @@ export const StackLiveHero = ({ stackId, latest, hostnames }: StackLiveHeroProps
         "@2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1.3fr)]",
       )}
     >
-      <Health services={services} />
+      <Health services={services} stack={stack} />
       <LastDeploy latest={latest} />
       <Services services={services} />
       <Hostnames hostnames={hostnames} />

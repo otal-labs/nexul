@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
@@ -206,6 +207,10 @@ type stackResponse struct {
 	BranchDeployments []*Stack `json:"branch_deployments,omitempty"`
 	// Outages are the services that are down now; a stack with none has an empty list.
 	Outages []*Outage `json:"outages"`
+	// ErrorRateEpisode is set while the stack's 5xx share is over its rule, and ErrorRateRecoveredAt when the last
+	// episode ended within the hour; both are empty while the rule is off.
+	ErrorRateEpisode     *ErrorRateEpisode `json:"error_rate_episode"`
+	ErrorRateRecoveredAt *time.Time        `json:"error_rate_recovered_at"`
 	// Watching is whether the viewer gets the stack's notices.
 	Watching bool `json:"watching"`
 }
@@ -224,6 +229,10 @@ func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
 	resp := stackResponse{Stack: stack}
 	resp.Outages, err = h.svc.OpenOutages(r.Context(), stack.ID)
 	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if resp.ErrorRateEpisode, resp.ErrorRateRecoveredAt, err = h.svc.ErrorRateState(r.Context(), stack); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

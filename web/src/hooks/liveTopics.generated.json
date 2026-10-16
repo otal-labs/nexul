@@ -102,6 +102,8 @@
   "service.updated",
   "session.created",
   "session.revoked",
+  "stack.error_rate_crossed",
+  "stack.error_rate_recovered",
   "status.created",
   "status.deleted",
   "status.updated",

@@ -274,6 +274,8 @@ const (
 	KindComputerMove         Kind = "computer.move_requested"
 	KindServiceStopped       Kind = "service.container_stopped"
 	KindServiceRecovered     Kind = "service.container_recovered"
+	KindErrorRateCrossed     Kind = "stack.error_rate_crossed"
+	KindErrorRateRecovered   Kind = "stack.error_rate_recovered"
 )
 
 // LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,

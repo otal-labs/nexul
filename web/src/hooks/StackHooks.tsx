@@ -221,7 +221,8 @@ export const stackFollower: LiveFollower = {
   // The frame carries the keys and no values, so the stack's own read refetches to show a change made elsewhere.
   "service.updated": ({ stack }: { stack: { id: string } }, { client }) => client.invalidateQueries({ queryKey: [getStackKey, stack.id] }),
   // The stack's own read carries its open outages; the frame names the stack and the service, not the list.
-  ...followEach(["service.container_stopped", "service.container_recovered"], ({ stack_id }: { stack_id: string }, { client }) =>
+  // The same read carries the open error-rate episode, so a crossing and a recovery refetch it too.
+  ...followEach(["service.container_stopped", "service.container_recovered", "stack.error_rate_crossed", "stack.error_rate_recovered"], ({ stack_id }: { stack_id: string }, { client }) =>
     client.invalidateQueries({ queryKey: [getStackKey, stack_id] }),
   ),
   // A stack's rule can hide it or its deploys from whom it names, so its lists and its own reads refetch; a machine's

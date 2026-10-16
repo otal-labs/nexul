@@ -65,6 +65,30 @@ export const derivesClone = (rule: Pick<BranchDeployRule, "pattern" | "name_suff
 export const defaultNetwork = (stack: Pick<Stack, "strategy" | "slug" | "docker_network">): string =>
   stack.strategy === "run" ? (stack.docker_network ?? "") : `${stack.slug}_default`;
 
+// The stack's error-rate rule (internal/deploy/error_rate.go): 5xx above `percent` over the last `minutes` minutes, with
+// at least `min_requests` requests. Off until switched on.
+export interface ErrorRateRule {
+  enabled: boolean;
+  percent: number;
+  minutes: number;
+  min_requests: number;
+}
+
+export const DEFAULT_ERROR_RATE: ErrorRateRule = { enabled: false, percent: 5, minutes: 5, min_requests: 20 };
+
+// A stretch of a stack answering too many requests with 5xx; peak, requests and errors are those of the worst window.
+export interface ErrorRateEpisode {
+  id: string;
+  stack_id: string;
+  started_at: string;
+  peak_percent: number;
+  requests: number;
+  errors: number;
+  limit_percent: number;
+  window_minutes: number;
+  min_requests: number;
+}
+
 // Stack is a deploy stack definition (spec §2): a workload on one machine, with a strategy, owned by one project,
 // or by the instance itself (a gateway), when project_id is empty.
 export interface Stack {
@@ -93,6 +117,7 @@ export interface Stack {
   managed: boolean;
   // Open a ticket in the project when a service crashes; only a stack with a project may switch it on.
   crash_tickets?: boolean;
+  error_rate?: ErrorRateRule;
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +139,9 @@ export interface ServiceOutage {
 export interface StackWithBranches extends Stack {
   branch_deployments?: Stack[];
   outages?: ServiceOutage[];
+  // Set while the stack's 5xx share is over its rule; the time the last episode ended when that was within the hour.
+  error_rate_episode?: ErrorRateEpisode | null;
+  error_rate_recovered_at?: string | null;
   // Whether the viewer gets the stack's notices; everyone who reads a stack does until they turn it off.
   watching?: boolean;
 }
@@ -125,6 +153,8 @@ export interface StackRequests {
   from: string;
   requests: (number | null)[];
   errors_5xx: (number | null)[];
+  // Why the error-rate rule cannot watch this stack (no hostname, a Cloudflare token without analytics); empty when it can.
+  error_rate_unavailable?: string;
 }
 
 export interface Deploy {
@@ -247,6 +277,13 @@ export type RuleFormData = z.infer<typeof RuleFormSchema>;
 export const RuleOverridesFormSchema = z.object({ overrides: z.string() });
 
 export type RuleOverridesFormData = z.infer<typeof RuleOverridesFormSchema>;
+
+export const ErrorRateFormSchema = z.object({
+  percent: z.coerce.number<number>().min(0.1, "Enter a limit of at least 0.1%").max(100, "A limit can't pass 100%"),
+  minutes: z.coerce.number<number>().int("Enter whole minutes").min(1, "Enter at least 1 minute").max(60, "Enter at most 60 minutes"),
+  min_requests: z.coerce.number<number>().int("Enter a whole number of requests").min(1, "Enter at least 1 request").max(1_000_000, "Enter at most 1,000,000 requests"),
+});
+export type ErrorRateFormData = z.infer<typeof ErrorRateFormSchema>;
 
 export const DeployRefFormSchema = z.object({
   ref: z.string().trim().min(1, "Ref is required"),

@@ -186,6 +186,8 @@ describe("dispatch", () => {
     ["doc.created", { doc: { id: "d1", project_id: "p-1", title: "Spec", version: 1 } }, getDocsKey, "p-1", "p-2"],
     ["service.container_stopped", { stack_id: "s-1", service: "web" }, getStackKey, "s-1", "s-2"],
     ["service.container_recovered", { stack_id: "s-1", service: "web" }, getStackKey, "s-1", "s-2"],
+    ["stack.error_rate_crossed", { stack_id: "s-1", episode_id: "e-1" }, getStackKey, "s-1", "s-2"],
+    ["stack.error_rate_recovered", { stack_id: "s-1", episode_id: "e-1" }, getStackKey, "s-1", "s-2"],
   ])("%s refetches only the entry its payload names", (topic, payload, key, named, other) => {
     const client = new QueryClient();
     client.setQueryData([key, named], []);

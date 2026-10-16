@@ -40,6 +40,11 @@ func TestRequestCounts_AProxyGatewaysRouterCountsReachTheStacksPage(t *testing.T
 	require.NoError(t, store.Services.Create(ctx, &deploy.Container{ID: "c-web", StackID: f.stack, Name: "web"}))
 	require.NoError(t, store.DNS.SaveGateway(ctx, dns.Gateway{ID: "gw-1", Kind: dns.GatewayProxy, DockerNetwork: "net1", Machine: "m1", CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, store.DNS.SaveExposure(ctx, dns.Exposure{ID: "e1", GatewayID: "gw-1", Hostname: "web.example.com", ServiceID: "c-web", Port: 80, ZoneID: "z1", Zone: "example.com", CreatedAt: now, UpdatedAt: now}))
+	stack, err := svc.deploySvc.GetStack(as(uOwner), f.stack)
+	require.NoError(t, err)
+	stack.ErrorRate.Enabled, stack.DockerNetwork = true, "net"
+	_, err = svc.deploySvc.UpdateStack(as(uOwner), *stack)
+	require.NoError(t, err, "only a stack whose error-rate rule is on is counted")
 	h := deploy.NewHandler(svc.deploySvc).Routes()
 	get := func(user string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()

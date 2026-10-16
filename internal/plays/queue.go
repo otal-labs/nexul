@@ -51,7 +51,7 @@ type QueueItem struct {
 	AutomationID string      `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
 	PersonID     string      `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
 	RunOn        RunOn       `json:"run_on" enum:"developer,tester,causer,computer"`
-	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,automation"`
+	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,automation"`
 	Priority     Level       `json:"priority" enum:"high,normal,low"`
 	Status       QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
 	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."`

@@ -72,6 +72,7 @@ type Service struct {
 	crashLinks  CrashTicketRepo
 	watchers    StackWatchRepo
 	requests    *requestState
+	errorRates  ErrorRateRepo
 	// outageMu serializes outage changes with the recovery timers; recoveries are the steady-state waits in flight.
 	outageMu   sync.Mutex
 	recoveries map[string]*recovery
@@ -542,15 +543,16 @@ func (s *Service) UpdateStack(ctx context.Context, stack Stack) (*Stack, error) 
 	if err != nil {
 		return nil, fmt.Errorf("update stack %s: %w", stack.ID, err)
 	}
-	if bs := stack.BuildSource; existing.BuildSource == nil && bs != nil && bs.RepoOwner != "" && bs.RepoName != "" && s.projects != nil {
-		if err := s.projects.LinkRepo(ctx, stack.ProjectID, bs.RepoOwner, bs.RepoName); err != nil {
-			return nil, fmt.Errorf("link repository %s/%s: %w", bs.RepoOwner, bs.RepoName, err)
-		}
+	if err := s.linkNewRepo(ctx, existing, &stack); err != nil {
+		return nil, err
 	}
 	if err := s.checkProject(ctx, &stack); err != nil {
 		return nil, err
 	}
 	if err := s.checkBranchDeployRules(ctx, &stack); err != nil {
+		return nil, err
+	}
+	if err := s.changeErrorRate(ctx, existing, &stack); err != nil {
 		return nil, err
 	}
 	// Slug is derived once at creation and never re-derived from a later name change (spec §2).
@@ -570,6 +572,18 @@ func (s *Service) UpdateStack(ctx context.Context, stack Stack) (*Stack, error) 
 		return nil, fmt.Errorf("update stack %s: %w", stack.ID, err)
 	}
 	return &stack, nil
+}
+
+// linkNewRepo links the repository a stack has just been given to its project.
+func (s *Service) linkNewRepo(ctx context.Context, existing, stack *Stack) error {
+	bs := stack.BuildSource
+	if existing.BuildSource != nil || bs == nil || bs.RepoOwner == "" || bs.RepoName == "" || s.projects == nil {
+		return nil
+	}
+	if err := s.projects.LinkRepo(ctx, stack.ProjectID, bs.RepoOwner, bs.RepoName); err != nil {
+		return fmt.Errorf("link repository %s/%s: %w", bs.RepoOwner, bs.RepoName, err)
+	}
+	return nil
 }
 
 // DeleteStack releases every hostname the stack holds from the tunnel/DNS first, then tears down the
@@ -1116,6 +1130,7 @@ func (s *Service) listScope(ctx context.Context, workspaceID string, action perm
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.
 func applyStackDefaults(stack Stack) Stack {
 	stack.EnvMasked = false
+	stack.ErrorRate = stack.ErrorRate.withDefaults()
 	if stack.Strategy == StrategyCompose && strings.TrimSpace(stack.ComposePath) == "" {
 		stack.ComposePath = defaultComposePath
 	}

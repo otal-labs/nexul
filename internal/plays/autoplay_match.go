@@ -197,7 +197,7 @@ type momentPayload struct {
 // MomentTopics are the topics auto play moments come from; HandleAutoPlayMoment is subscribed to each.
 var MomentTopics = []string{
 	"ticket.unblocked", "ticket.created", "ticket.status_changed", "ticket.developer_changed", "ticket.tester_changed",
-	"ticket.test_failed", "doc.settled", "service.container_stopped", "service.container_recovered",
+	"ticket.test_failed", "doc.settled", "service.container_stopped", "service.container_recovered", "stack.error_rate_crossed",
 }
 
 // HandleAutoPlayMoment queues a run for every switched-on auto play the event's moment matches (ADR 0132).
@@ -263,6 +263,9 @@ func (r *Runner) momentOf(ctx context.Context, topic string, p momentPayload) (m
 			stack.name = MomentStackServiceRecovered
 		}
 		// An instance stack has no project, so no workspace's auto play can wait for it.
+		return stack, stack.targetID != "" && stack.projectID != "", nil
+	case "stack.error_rate_crossed":
+		stack := moment{name: MomentStackErrorRateCrossed, targetType: TargetStack, targetID: p.StackID, projectID: p.ProjectID, via: ViaWeb}
 		return stack, stack.targetID != "" && stack.projectID != "", nil
 	}
 	return ticket, ticket.name != "" && ticket.targetID != "", nil

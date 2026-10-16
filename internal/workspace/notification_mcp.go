@@ -48,7 +48,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("notification_list", "List notifications",
 			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, memory, or stack (subject), and whether you have read it. "+
-				"A stack's item is a service that crashed (service.container_stopped) or came back (service.container_recovered), worded in subject_title, and its subject_id is the stack to read with stack_get. "+
+				"A stack's item is a service that crashed (service.container_stopped) or came back (service.container_recovered), or its 5xx share went over its error-rate rule (stack.error_rate_crossed) or back under it (stack.error_rate_recovered), worded in subject_title, and its subject_id is the stack to read with stack_get. "+
 				"A doc's item also names the folder the doc is in now (folder_id, folder_name, folder_is_default for its project's default folder), so items can be grouped by folder. "+
 				"Set workspace_id to see one workspace's inbox and unread_only to see only what is new, then mark items read with notification_update. "+
 				"It never shows another user's inbox.",

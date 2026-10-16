@@ -33,4 +33,6 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.ComputerMoveRequested]: LaptopIcon,
   [NotificationKind.ServiceStopped]: CircleXIcon,
   [NotificationKind.ServiceRecovered]: CircleCheckIcon,
+  [NotificationKind.ErrorRateCrossed]: CircleXIcon,
+  [NotificationKind.ErrorRateRecovered]: CircleCheckIcon,
 };

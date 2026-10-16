@@ -9,6 +9,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -90,6 +91,8 @@ type RequestWindow struct {
 	From      time.Time `json:"from"`
 	Requests  []*int64  `json:"requests"`
 	Errors5xx []*int64  `json:"errors_5xx"`
+	// ErrorRateUnavailable is why the stack's error-rate rule cannot watch it; empty when it can.
+	ErrorRateUnavailable string `json:"error_rate_unavailable"`
 }
 
 // requestState is the counting wiring and the poll's place in time.
@@ -98,6 +101,15 @@ type requestState struct {
 	repo    RequestRepo
 	// polled is the end of the last window read; the next one starts there.
 	polled time.Time
+	// probes remembers, per zone, whether Cloudflare refused the token its analytics; probeMu guards it, since stack
+	// reads and the poll run on different goroutines.
+	probeMu sync.Mutex
+	probes  map[string]analyticsProbe
+}
+
+type analyticsProbe struct {
+	at     time.Time
+	denied bool
 }
 
 // routerCount and requestCountsEvent mirror the runner's event independently (ADR 0017).
@@ -117,9 +129,9 @@ func (s *Service) SetRequestCounts(sources RequestSources, repo RequestRepo) {
 	s.requests = &requestState{sources: sources, repo: repo}
 }
 
-// wantsCounts says whether a stack's requests are worth counting. Every stack with a hostname is for now; the
-// error-rate rule narrows this to the stacks that have it turned on.
-func wantsCounts(*Stack) bool { return true }
+// wantsCounts says whether a stack's requests are worth counting: only a stack whose error-rate rule is on, so
+// Cloudflare is asked about nothing else.
+func wantsCounts(stack *Stack) bool { return stack.ErrorRate.Enabled }
 
 // HandleRequestCounts is the runner.request_counts consumer: it adds what a machine's proxy routers served to the
 // minute it arrived in. Every stack the machine's proxy gateways carry gets its minute, even at zero requests, since
@@ -186,7 +198,7 @@ func (s *Service) countedStack(ctx context.Context, containerID string) (string,
 }
 
 // RunRequestCounts polls Cloudflare for the tunnel hostnames' counts every minute, marks the minutes nobody counted
-// as missing and drops what is older than a day.
+// as missing, drops what is older than a day, and then checks every error-rate rule against what is stored.
 func (s *Service) RunRequestCounts(ctx context.Context, log *slog.Logger) {
 	if s.requests == nil {
 		return
@@ -197,6 +209,7 @@ func (s *Service) RunRequestCounts(ctx context.Context, log *slog.Logger) {
 		if err := s.pollRequestCounts(ctx, log); err != nil && ctx.Err() == nil {
 			log.Warn("request counts poll failed", "error", err)
 		}
+		s.evaluateErrorRates(ctx, log)
 		select {
 		case <-ctx.Done():
 			return
@@ -297,12 +310,16 @@ func (s *Service) tunnelAdds(ctx context.Context, zone string, routes []RequestR
 // stack with no hostname, which has nothing to count.
 func (s *Service) RequestWindow(ctx context.Context, stack *Stack) (*RequestWindow, error) {
 	w := &RequestWindow{Requests: []*int64{}, Errors5xx: []*int64{}}
-	if s.requests == nil || !wantsCounts(stack) {
+	if s.requests == nil {
 		return w, nil
 	}
-	counted, err := s.hasRoute(ctx, stack.ID)
-	if err != nil || !counted {
-		return w, err
+	routes, err := s.stackRoutes(ctx, stack.ID)
+	if err != nil {
+		return nil, err
+	}
+	w.ErrorRateUnavailable = s.errorRateUnavailable(ctx, routes)
+	if len(routes) == 0 {
+		return w, nil
 	}
 	w.Counted = true
 	w.From = s.now().UTC().Truncate(time.Minute).Add(-(requestWindowMinutes - 1) * time.Minute)
@@ -320,21 +337,21 @@ func (s *Service) RequestWindow(ctx context.Context, stack *Stack) (*RequestWind
 	return w, nil
 }
 
-// hasRoute reports whether any exposure reaches one of the stack's containers.
-func (s *Service) hasRoute(ctx context.Context, stackID string) (bool, error) {
+// stackRoutes lists the exposures that reach one of the stack's containers.
+func (s *Service) stackRoutes(ctx context.Context, stackID string) ([]RequestRoute, error) {
 	routes, err := s.requests.sources.Routes(ctx)
 	if err != nil {
-		return false, fmt.Errorf("list routes: %w", err)
+		return nil, fmt.Errorf("list routes: %w", err)
 	}
 	containers, err := s.services.ListByStack(ctx, stackID)
 	if err != nil {
-		return false, fmt.Errorf("list containers of stack %s: %w", stackID, err)
+		return nil, fmt.Errorf("list containers of stack %s: %w", stackID, err)
 	}
 	ids := map[string]bool{}
 	for _, c := range containers {
 		ids[c.ID] = true
 	}
-	return slices.ContainsFunc(routes, func(r RequestRoute) bool { return ids[r.ContainerID] }), nil
+	return slices.DeleteFunc(slices.Clone(routes), func(r RequestRoute) bool { return !ids[r.ContainerID] }), nil
 }
 
 // addList flattens adds in a stable order.

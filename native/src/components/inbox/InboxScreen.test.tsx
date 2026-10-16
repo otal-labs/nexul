@@ -127,6 +127,17 @@ describe("InboxScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/deploys/stack/stack-1", { withAnchor: true });
   });
 
+  test("tapping an error-rate notice opens the stack's screen", async () => {
+    mockInbox([{ ...docNotification, kind: "stack.error_rate_crossed", subject_type: "stack", subject_id: "stack-1", subject_title: "5xx at 12% on web over the last 5 minutes, above 5%" }]);
+    await renderScreen();
+    await screen.findByText(/5xx at 12% on web/);
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /5xx at 12%/ }));
+
+    expect(screen.getByText("5xx over the limit")).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith("/deploys/stack/stack-1", { withAnchor: true });
+  });
+
   test("tapping a ticket notification marks it read but stays in the inbox without tickets:read", async () => {
     mockInbox([ticketNotification], []);
     jest.mocked(api.post).mockResolvedValue(undefined);

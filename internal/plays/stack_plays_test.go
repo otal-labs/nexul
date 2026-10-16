@@ -274,3 +274,88 @@ func TestStackQueue_WaitsOnAGapAndIsReadThroughItsProject(t *testing.T) {
 	_, err = r.Runner.GetQueue(as(t.Context(), "u-stranger"), plays.TargetStack, "st-1")
 	assert.ErrorIs(t, err, apperrs.ErrNotFound, "someone who cannot open the project sees no queue")
 }
+
+func (r *rig) errorRate(t *testing.T, topic, stack, projectID string) {
+	t.Helper()
+	r.moment(t, topic, map[string]any{
+		"workspace_id": ws, "project_id": projectID, "stack_id": stack, "stack_name": "acme-web", "episode_id": "ep-1",
+		"peak_percent": 12.3, "limit_percent": 5, "window_minutes": 5,
+	})
+}
+
+func TestStackMoment_ErrorRateCrossedQueuesARunThatNamesOnlyTheStack(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.Grant(alice)
+	r.SetStack("st-1", project, "acme-web")
+	r.OwnComputer("c-1", alice)
+	r.autoPlay(t, r.stackPlay(t, "Look into the errors").ID, plays.MomentStackErrorRateCrossed, onComputer("c-1"))
+
+	r.errorRate(t, "stack.error_rate_crossed", "st-1", project)
+
+	items := r.stackQueue(t, "st-1")
+	require.Len(t, items, 1)
+	it := items[0]
+	assert.Equal(t, []any{plays.QueueQueued, alice, plays.RunOnComputer, "c-1", "", "", plays.MomentStackErrorRateCrossed, project},
+		[]any{it.Status, it.PersonID, it.RunOn, it.ComputerID, it.Service, it.OutageID, it.Moment, it.ProjectID})
+	r.dispatch(t)
+	blocks := strings.Join(r.LastPlayBlocks(), "\n")
+	assert.Contains(t, blocks, `Stack "acme-web" (stack id st-1)`)
+	assert.NotContains(t, blocks, "Service:", "an error rate belongs to the stack, not to a service")
+}
+
+func TestStackMoment_ErrorRateCrossedIsNotACrashAndARecoveryIsNotACrossing(t *testing.T) {
+	r, _ := newStackRig(t)
+	r.autoPlay(t, r.stackPlay(t, "Look into the errors").ID, plays.MomentStackErrorRateCrossed, onComputer("c-1"))
+
+	r.errorRate(t, "stack.error_rate_recovered", "st-1", project)
+	assert.Empty(t, r.stackQueue(t, "st-1"), "no auto play waits for a recovery")
+
+	r.errorRate(t, "stack.error_rate_crossed", "st-1", project)
+	items := r.stackQueue(t, "st-1")
+	require.Len(t, items, 1, "only the play waiting for the crossing runs; the crash one stays idle")
+	assert.Equal(t, plays.MomentStackErrorRateCrossed, items[0].Moment)
+}
+
+func TestStackMoment_ErrorRateCrossedConditionsReadTheStackAndProject(t *testing.T) {
+	rule := func(field plays.Field, values ...string) func(*plays.AutoPlay) {
+		return func(a *plays.AutoPlay) {
+			a.Conditions = plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{{Match: plays.MatchAll, Rules: []plays.Rule{{Field: field, Op: plays.OpIs, Values: values}}}}}
+		}
+	}
+	tests := []struct {
+		name   string
+		edit   func(*plays.AutoPlay)
+		queued bool
+	}{
+		{"the stack is the one named", rule(plays.FieldStack, "st-1"), true},
+		{"the stack is another", rule(plays.FieldStack, "st-2"), false},
+		{"the project is another", rule(plays.FieldProject, "p-other"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newRig(t, openStore(t))
+			r.Grant(alice)
+			r.SetStack("st-1", project, "acme-web")
+			r.OwnComputer("c-1", alice)
+			r.autoPlay(t, r.stackPlay(t, "Look into the errors").ID, plays.MomentStackErrorRateCrossed, onComputer("c-1"), tt.edit)
+
+			r.errorRate(t, "stack.error_rate_crossed", "st-1", project)
+
+			assert.Equal(t, tt.queued, len(r.stackQueue(t, "st-1")) == 1)
+		})
+	}
+}
+
+func TestStackMoment_ErrorRateNothingWaitsForAnInstanceStack(t *testing.T) {
+	r, _ := newStackRig(t)
+	r.autoPlay(t, r.stackPlay(t, "Look into the errors").ID, plays.MomentStackErrorRateCrossed, onComputer("c-1"))
+
+	r.errorRate(t, "stack.error_rate_crossed", "st-1", "")
+
+	assert.Empty(t, r.stackQueue(t, "st-1"))
+}
+
+func TestMomentTopics_IncludeTheErrorRateCrossing(t *testing.T) {
+	assert.Contains(t, plays.MomentTopics, "stack.error_rate_crossed")
+	assert.NotContains(t, plays.MomentTopics, "stack.error_rate_recovered")
+}

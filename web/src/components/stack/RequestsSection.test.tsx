@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequestsSection } from "@/components/stack/RequestsSection";
-import type { StackRequests } from "@/models/Stack";
+import type { Stack, StackRequests } from "@/models/Stack";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "boom" }));
@@ -17,10 +17,23 @@ const hour = (requests: (number | null)[], errors?: (number | null)[]): StackReq
   errors_5xx: errors ?? requests.map((r) => (r === null ? null : 0)),
 });
 
-const renderSection = () =>
+const stack: Stack = {
+  id: "stack-1",
+  project_id: "proj-1",
+  name: "api",
+  slug: "api",
+  machine: "box",
+  strategy: "compose",
+  managed: true,
+  error_rate: { enabled: true, percent: 5, minutes: 5, min_requests: 20 },
+  created_at: "2026-10-01T09:00:00Z",
+  updated_at: "2026-10-01T09:00:00Z",
+};
+
+const renderSection = (value: Stack = stack) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <RequestsSection stackId="stack-1" />
+      <RequestsSection stack={value} />
     </QueryClientProvider>,
   );
 
@@ -73,6 +86,21 @@ describe("RequestsSection", () => {
 
     expect(await screen.findByText(/^No request data yet/)).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("states the error-rate rule in the footer", async () => {
+    mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => 4)) });
+    renderSection({ ...stack, error_rate: { enabled: true, percent: 2.5, minutes: 10, min_requests: 1000 } });
+    expect(await screen.findByText("Alert when 5xx above 2.5% for 10 minutes, with at least 1,000 requests.")).toBeInTheDocument();
+  });
+
+  it("says nothing is counted while the rule is off, and where to turn it on", async () => {
+    mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => null)) });
+    renderSection({ ...stack, error_rate: { enabled: false, percent: 5, minutes: 5, min_requests: 20 } });
+
+    expect(await screen.findByText(/^No error-rate rule on this stack/)).toBeInTheDocument();
+    expect(screen.getByText(/^Not counted\. Turn on the error-rate rule under Alerts/)).toBeInTheDocument();
+    expect(screen.queryByText(/^No request data yet/)).not.toBeInTheDocument();
   });
 
   it("draws nothing for a stack with no hostname", async () => {

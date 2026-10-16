@@ -134,7 +134,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"play's type never changes. Use enabled false to hide a play without deleting it, and play_delete to remove it. "+
 				"An auto play starts the play by itself on a moment: ticket.unblocked, ticket.entered_stage (with "+
 				"moment_stage), ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed for a ticket "+
-				"play, doc.created or doc.changed for a doc play, stack.service_crashed or stack.service_recovered for a "+
+				"play, doc.created or doc.changed for a doc play, stack.service_crashed, stack.service_recovered or stack.error_rate_crossed for a "+
 				"stack play, none for an interview play. Its conditions read a ticket's "+
 				"type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked, a "+
 				"doc's project or folder, or a stack play's project, stack or service, with is and is_not over values or set and unset, at most 20 rules in all. "+

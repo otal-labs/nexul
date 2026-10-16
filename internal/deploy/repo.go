@@ -50,6 +50,8 @@ type StackRepo interface {
 	ListByBuildRepo(ctx context.Context, owner, name string) ([]*Stack, error)
 	// ListByDerivedFrom returns a base stack's branch deployments, oldest first.
 	ListByDerivedFrom(ctx context.Context, baseStackID string) ([]*Stack, error)
+	// ListWithErrorRate lists the stacks whose error-rate rule is switched on.
+	ListWithErrorRate(ctx context.Context) ([]*Stack, error)
 	Update(ctx context.Context, s *Stack, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 }

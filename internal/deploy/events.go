@@ -23,6 +23,10 @@ const (
 	TopicContainerStopped = "service.container_stopped"
 	// TopicContainerRecovered closes an outage once the container has stayed running.
 	TopicContainerRecovered = "service.container_recovered"
+	// TopicErrorRateCrossed opens an error-rate episode: the stack's share of 5xx answers went over its rule.
+	TopicErrorRateCrossed = "stack.error_rate_crossed"
+	// TopicErrorRateRecovered closes it once every minute of a window has stayed under the limit.
+	TopicErrorRateRecovered = "stack.error_rate_recovered"
 	// TopicDeployLog is consumed, not published: the runner domain streams output batches on it.
 	TopicDeployLog = "deploy.log"
 )
@@ -39,6 +43,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicStackDeleted, Payload: StackDeletedEvent{}},
 		{Name: TopicContainerStopped, Payload: OutageEvent{}},
 		{Name: TopicContainerRecovered, Payload: OutageEvent{}},
+		{Name: TopicErrorRateCrossed, Payload: ErrorRateEvent{}},
+		{Name: TopicErrorRateRecovered, Payload: ErrorRateEvent{}},
 	}
 }
 

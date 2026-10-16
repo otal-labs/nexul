@@ -114,6 +114,37 @@ describe("StackPage", () => {
     expect(screen.getAllByText(/^Down since/)).toHaveLength(1);
   });
 
+  it("reads the error rate in Health: the open episode in the warning hue, a recovery in success, and nothing once the rule is off", async () => {
+    const rule = { enabled: true, percent: 5, minutes: 5, min_requests: 20 };
+    const episode = { id: "ep-1", stack_id: "stack-1", started_at: "2026-10-16T09:42:00Z", peak_percent: 7.24, requests: 400, errors: 29, limit_percent: 5, window_minutes: 5, min_requests: 20 };
+    const serve = (extra: object) =>
+      mocks.get.mockImplementation((url: string) => {
+        if (url === "/api/stacks/stack-1") return Promise.resolve({ data: { ...stack, error_rate: rule, ...extra } });
+        if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
+        return Promise.resolve({ data: [] });
+      });
+    const health = async () => within((await screen.findByText("Health")).parentElement!);
+
+    serve({ error_rate_episode: episode });
+    const open = renderPage();
+    expect((await health()).getByText("5xx 7.2%")).toBeInTheDocument();
+    expect((await health()).getByText(/^since \d\d:\d\d$/)).toBeInTheDocument();
+    expect((await health()).queryByText("No issues")).not.toBeInTheDocument();
+    expect(open.container.querySelector("section[aria-label='Live status'] .bg-warning")).not.toBeNull();
+    open.unmount();
+
+    serve({ error_rate_recovered_at: "2026-10-16T09:52:00Z" });
+    const recovered = renderPage();
+    expect((await health()).getByText("5xx recovered")).toBeInTheDocument();
+    expect(recovered.container.querySelector("section[aria-label='Live status'] .bg-success")).not.toBeNull();
+    recovered.unmount();
+
+    serve({ error_rate: { ...rule, enabled: false }, error_rate_episode: episode });
+    renderPage();
+    expect(await (await health()).findByText("No issues")).toBeInTheDocument();
+    expect((await health()).queryByText(/^5xx/)).not.toBeInTheDocument();
+  });
+
   it("puts Requests between Services and Deploy for a stack with a hostname, and leaves it out otherwise", async () => {
     const counted = { counted: true, from: "2026-10-16T09:43:00.000Z", requests: Array.from({ length: 60 }, () => 5), errors_5xx: Array.from({ length: 60 }, () => 0) };
     mocks.get.mockImplementation((url: string) => {

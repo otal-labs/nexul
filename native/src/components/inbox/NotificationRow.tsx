@@ -29,6 +29,8 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.ComputerMoveRequested]: "Move to the Nexul app",
   [NotificationKind.ServiceStopped]: "Service crashed",
   [NotificationKind.ServiceRecovered]: "Service came back",
+  [NotificationKind.ErrorRateCrossed]: "5xx over the limit",
+  [NotificationKind.ErrorRateRecovered]: "5xx back under the limit",
 };
 
 interface NotificationRowProps {

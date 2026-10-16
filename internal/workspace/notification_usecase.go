@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -480,6 +482,23 @@ func (s *NotificationService) onServiceStopped(ctx context.Context, e serviceOut
 func (s *NotificationService) onServiceRecovered(ctx context.Context, e serviceOutageEvent) error {
 	message := fmt.Sprintf("%s came back on %s", e.Service, e.StackName)
 	return s.notifyStackWatchers(ctx, e.stack(), KindServiceRecovered, message)
+}
+
+// onErrorRateCrossed tells a stack's watchers its share of 5xx answers went over the rule.
+func (s *NotificationService) onErrorRateCrossed(ctx context.Context, e errorRateEvent) error {
+	message := fmt.Sprintf("5xx at %s on %s over the last %d minutes, above %s", percentText(e.PeakPercent), e.StackName, e.WindowMinutes, percentText(e.LimitPercent))
+	return s.notifyStackWatchers(ctx, e.stack(), KindErrorRateCrossed, message)
+}
+
+// onErrorRateRecovered tells a stack's watchers the share has stayed under the limit.
+func (s *NotificationService) onErrorRateRecovered(ctx context.Context, e errorRateEvent) error {
+	message := fmt.Sprintf("5xx on %s is back under %s", e.StackName, percentText(e.LimitPercent))
+	return s.notifyStackWatchers(ctx, e.stack(), KindErrorRateRecovered, message)
+}
+
+// percentText reads a share like "7.2%" or "5%".
+func percentText(p float64) string {
+	return strconv.FormatFloat(math.Round(p*10)/10, 'f', -1, 64) + "%"
 }
 
 // exitReason words how a container died: the exit code, and the kernel's out-of-memory kill when it was one.

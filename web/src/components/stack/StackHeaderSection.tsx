@@ -12,10 +12,10 @@ import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useStackActions } from "@/hooks/useStackActions";
 import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { Deploy, Stack } from "@/models/Stack";
+import type { Deploy, Stack, StackWithBranches } from "@/models/Stack";
 
 interface StackHeaderSectionProps {
-  stack: Stack;
+  stack: StackWithBranches;
   latest: Deploy | undefined;
   image: string | undefined;
   hostnames: string[];
@@ -67,7 +67,7 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
         }
       />
 
-      <StackLiveHero stackId={stack.id} latest={latest} hostnames={hostnames} />
+      <StackLiveHero stack={stack} latest={latest} hostnames={hostnames} />
     </div>
   );
 };

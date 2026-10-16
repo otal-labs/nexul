@@ -3,12 +3,13 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { RequestBars } from "@/components/stack/RequestBars";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchStackRequests } from "@/hooks/StackHooks";
-import type { StackRequests } from "@/models/Stack";
+import type { Stack, StackRequests } from "@/models/Stack";
+import { errorRateOf, ruleText } from "@/utils/ErrorRateUtility";
 import { formatShare, missingSince, requestTotals } from "@/utils/RequestsUtility";
 import { formatClockTime } from "@/utils/TimeUtility";
 
 interface RequestsSectionProps {
-  stackId: string;
+  stack: Stack;
 }
 
 const Summary = ({ requests }: { requests: StackRequests }) => {
@@ -41,8 +42,10 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
 };
 
 // A stack with a hostname: what its hostnames served in the last hour, counted a minute at a time (nothing per request is kept).
-export const RequestsSection = ({ stackId }: RequestsSectionProps) => {
-  const { data, error } = useFetchStackRequests(stackId);
+// The footer states the error-rate rule, since requests are only counted for a stack that has it on.
+export const RequestsSection = ({ stack }: RequestsSectionProps) => {
+  const { data, error } = useFetchStackRequests(stack.id);
+  const rule = errorRateOf(stack);
   const requests = data?.counted ? data : undefined;
   const hasData = !!requests && requestTotals(requests).counted > 0;
   return (
@@ -53,9 +56,20 @@ export const RequestsSection = ({ stackId }: RequestsSectionProps) => {
         </SettingsCard>
       )}
       {requests && (
-        <SettingsCard id="requests" title="Requests" description="What this stack's hostnames served in the last hour, counted a minute at a time.">
+        <SettingsCard
+          id="requests"
+          title="Requests"
+          description="What this stack's hostnames served in the last hour, counted a minute at a time."
+          footer={
+            <p className="text-xs text-muted-foreground">
+              {rule.enabled && `Alert when ${ruleText(rule)}.`}
+              {!rule.enabled && "No error-rate rule on this stack. Requests are counted while one is on; set it under Alerts."}
+            </p>
+          }
+        >
           {hasData && <Summary requests={requests} />}
-          {!hasData && <EmptyRow flush>No request data yet. Counts show up within a few minutes of the first request.</EmptyRow>}
+          {!hasData && rule.enabled && <EmptyRow flush>No request data yet. Counts show up within a few minutes of the first request.</EmptyRow>}
+          {!hasData && !rule.enabled && <EmptyRow flush>Not counted. Turn on the error-rate rule under Alerts to count this stack's requests.</EmptyRow>}
         </SettingsCard>
       )}
     </>

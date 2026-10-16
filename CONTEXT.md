@@ -631,10 +631,21 @@ output lines, because event payloads are stored and container output never is. N
 stack runs, for a container that exits 0, or from a personal runner.
 _Avoid_: Incident, downtime, crash (one exit is not an outage)
 
+**Error-rate episode**:
+One stretch of a stack answering too many requests with 5xx: it opens when the stack's error-rate rule trips (the share of
+5xx above its limit over the last few minutes, with at least its floor of requests) and ends once every minute of such a
+window has stayed at or under the limit. Defaults: 5% for 5 minutes with 20 requests, off until switched on, one rule per
+stack. A window with a minute nobody could count neither opens nor ends one. It keeps the worst window it saw, publishes
+`stack.error_rate_crossed` and `stack.error_rate_recovered`, tells the stack's watchers, opens a crash ticket when that switch
+is on, and starts stack plays waiting for `stack.error_rate_crossed`. Switching the rule off ends an open one with no
+recovered event. At most one is open per stack.
+_Avoid_: Incident, alert, outage (that is a service being down)
+
 **Request counts**:
 How many requests a stack's hostnames served each minute, and how many answered 5xx, kept for a day and never as
 requests. A reverse proxy gateway's Traefik counts them per route and the machine's runner reads them; for a Cloudflare
-tunnel gateway the server asks Cloudflare's analytics. A minute nobody could count is stored as missing, which is not zero.
+tunnel gateway the server asks Cloudflare's analytics. Only a stack whose error-rate rule is on is counted. A minute nobody could
+count is stored as missing, which is not zero.
 _Avoid_: Traffic, metrics, access log
 
 **Crash ticket**:
@@ -642,7 +653,7 @@ The ticket a stack opens in its project when a service's outage starts, if the s
 crashes" switch is on (off by default; only a stack with a project has it). It takes the project's default ticket type
 and first stage, has no developer or tester, and is created by the instance. A service has one while that ticket is
 open: a repeat crash or a recovery adds a comment to its thread and never closes it, and once the ticket reaches a done
-stage the next crash opens a new one.
+stage the next crash opens a new one. A stack's error-rate episode has its own ticket the same way, titled by the 5xx share.
 _Avoid_: Incident ticket, alert ticket
 
 **Watching a stack**:
