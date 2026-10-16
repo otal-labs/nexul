@@ -586,11 +586,8 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return nil
 	case FrameFacts:
 		return h.publishFacts(ctx, c, f)
-	case FrameContainerEvent, FrameContainerStates:
-		return h.publishContainers(ctx, c, f)
-	case FrameLog:
-		h.relayLogs(ctx, c, f)
-		return nil
+	case FrameContainerEvent, FrameContainerStates, FrameLog:
+		return h.machineFrame(ctx, c, f)
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
 			h.log.Warn("join_networks failed on runner", "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
@@ -604,6 +601,15 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 	default:
 		return nil
 	}
+}
+
+// machineFrame routes what only a machine runner sends: its Docker events and its own log records.
+func (h *Handler) machineFrame(ctx context.Context, c *runnerConn, f Frame) error {
+	if f.Type == FrameLog {
+		h.relayLogs(ctx, c, f)
+		return nil
+	}
+	return h.publishContainers(ctx, c, f)
 }
 
 // publishContainers hands a machine runner's Docker events to the deploy domain, which knows whose containers they are;
