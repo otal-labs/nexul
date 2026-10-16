@@ -210,6 +210,15 @@ func (r *UsersRepo) ListActiveOwnerIDs(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
+// FirstWorkspaceOwner is the active Owner of a workspace who has held the role longest; ErrNotFound when it has none.
+func (r *UsersRepo) FirstWorkspaceOwner(ctx context.Context, workspaceID string) (string, error) {
+	id, err := r.q.FirstActiveWorkspaceOwner(ctx, workspaceID)
+	if err != nil {
+		return "", fmt.Errorf("first owner of workspace %s: %w", workspaceID, notFoundIfNoRows(err))
+	}
+	return id, nil
+}
+
 func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus, events ...eventbus.OutboxEvent) error {
 	if !validAccountStatus(status) {
 		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)

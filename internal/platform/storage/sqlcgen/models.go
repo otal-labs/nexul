@@ -1057,6 +1057,13 @@ type Stack struct {
 	Managed           int64
 	CreatedAt         int64
 	UpdatedAt         int64
+	CrashTickets      int64
+}
+
+type StackCrashTicket struct {
+	StackID  string
+	Subject  string
+	TicketID string
 }
 
 type Status struct {

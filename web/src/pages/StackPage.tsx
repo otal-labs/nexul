@@ -5,6 +5,7 @@ import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
+import { StackAlertsSection } from "@/components/stack/StackAlertsSection";
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
 import { ServicesSection } from "@/components/stack/ServicesSection";
@@ -80,6 +81,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
             )}
             {section === "environment" && <StackEnvironmentSection stack={stack} image={image} />}
             {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
+            {section === "alerts" && <StackAlertsSection stack={stack} />}
             {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
             {section === "branches" && <StackBranchDeploySection stack={stack} />}
             {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} error={deploysError} />}

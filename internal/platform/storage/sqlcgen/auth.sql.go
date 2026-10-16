@@ -125,6 +125,22 @@ func (q *Queries) EndAccountInvitations(ctx context.Context, arg EndAccountInvit
 	return err
 }
 
+const firstActiveWorkspaceOwner = `-- name: FirstActiveWorkspaceOwner :one
+SELECT mr.user_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id AND r.is_owner_role = 1
+JOIN users u ON u.id = mr.user_id AND u.account_status = 'active'
+WHERE mr.workspace_id = ?
+ORDER BY mr.created_at, mr.user_id LIMIT 1
+`
+
+// The active Owner of one workspace who has held the role longest.
+func (q *Queries) FirstActiveWorkspaceOwner(ctx context.Context, workspaceID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, firstActiveWorkspaceOwner, workspaceID)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const getSettings = `-- name: GetSettings :one
 SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret FROM instance_settings WHERE id = 1
 `

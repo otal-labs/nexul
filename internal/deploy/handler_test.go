@@ -281,6 +281,32 @@ func TestStackRoutes(t *testing.T) {
 		decodeDeploy(t, rec, &got)
 		assert.Equal(t, "api-v2", got.Name)
 	})
+	t.Run("update takes the crash tickets switch", func(t *testing.T) {
+		stacks := newFakeStackRepo()
+		projects := newFakeProjects()
+		projects.exists["proj-1"] = true
+		requireStack(t, stacks, validStack())
+		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
+		h := NewHandler(s).Routes()
+
+		body := `{"project_id":"proj-1","name":"api","machine":"10.0.0.1:22","strategy":"compose","crash_tickets":true}`
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, withActor(httptest.NewRequest(http.MethodPatch, "/api/stacks/svc-1", strings.NewReader(body))))
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var got Stack
+		decodeDeploy(t, rec, &got)
+		assert.True(t, got.CrashTickets)
+
+		rec = httptest.NewRecorder()
+		h.ServeHTTP(rec, withActor(httptest.NewRequest(http.MethodGet, "/api/stacks/svc-1", nil)))
+		decodeDeploy(t, rec, &got)
+		assert.True(t, got.CrashTickets, "a read shows it")
+
+		rec = httptest.NewRecorder()
+		instance := `{"project_id":"","name":"api","machine":"10.0.0.1:22","strategy":"compose","crash_tickets":true}`
+		h.ServeHTTP(rec, withActor(httptest.NewRequest(http.MethodPatch, "/api/stacks/svc-1", strings.NewReader(instance))))
+		assert.Equal(t, http.StatusBadRequest, rec.Code, "a stack with no project cannot switch it on")
+	})
 	t.Run("delete returns deleted", func(t *testing.T) {
 		stacks := newFakeStackRepo()
 		projects := newFakeProjects()

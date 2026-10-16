@@ -6170,6 +6170,10 @@
           "managed": {
             "type": "boolean"
           },
+          "crash_tickets": {
+            "type": "boolean",
+            "description": "True when a service crashing opens a ticket in the stack's project."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -6425,6 +6429,10 @@
           },
           "managed": {
             "type": "boolean"
+          },
+          "crash_tickets": {
+            "type": "boolean",
+            "description": "True when a service crashing opens a ticket in the stack's project."
           },
           "created_at": {
             "type": "string",

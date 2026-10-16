@@ -125,7 +125,7 @@ func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...ev
 			Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 			BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
 			BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
-			Managed: boolToInt(stack.Managed), UpdatedAt: stack.UpdatedAt.Unix(), ID: stack.ID,
+			Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets), UpdatedAt: stack.UpdatedAt.Unix(), ID: stack.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update stack %s: %w", stack.ID, classifyWriteErr(err))
@@ -161,7 +161,7 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 		Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 		BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
 		BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
-		Managed: boolToInt(stack.Managed), CreatedAt: stack.CreatedAt.Unix(), UpdatedAt: stack.UpdatedAt.Unix(),
+		Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets), CreatedAt: stack.CreatedAt.Unix(), UpdatedAt: stack.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert stack %s: %w", stack.Name, classifyWriteErr(err))
@@ -182,6 +182,7 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 		DerivedFrom:   row.DerivedFrom,
 		Branch:        row.Branch,
 		Managed:       row.Managed != 0,
+		CrashTickets:  row.CrashTickets != 0,
 		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
 	}

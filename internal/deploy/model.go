@@ -309,9 +309,11 @@ type Stack struct {
 	// Branch is the source branch this clone tracks; empty unless DerivedFrom is set.
 	Branch string `json:"branch,omitempty"`
 	// Managed is false until a build source is attached (UpdateStack flips it) — an unmanaged stack has no repo to build or deploy from.
-	Managed   bool      `json:"managed"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Managed bool `json:"managed"`
+	// CrashTickets opens a ticket in the stack's project when one of its services crashes; only a stack with a project may switch it on.
+	CrashTickets bool      `json:"crash_tickets,omitempty" jsonschema:"True when a service crashing opens a ticket in the stack's project."`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // DefaultNetwork returns the docker network the stack's own containers join: DockerNetwork for a run
@@ -327,6 +329,9 @@ func (s *Stack) DefaultNetwork() string {
 func (s *Stack) Validate() error {
 	if strings.TrimSpace(s.Name) == "" {
 		return fmt.Errorf("%w: stack name is required", apperrs.ErrInvalid)
+	}
+	if s.CrashTickets && strings.TrimSpace(s.ProjectID) == "" {
+		return fmt.Errorf("%w: crash tickets need a stack in a project, since the ticket is opened there", apperrs.ErrInvalid)
 	}
 	if s.BuildSource != nil && strings.TrimSpace(s.ProjectID) == "" {
 		return fmt.Errorf("%w: a stack that builds from a repository belongs to that repository's project", apperrs.ErrInvalid)

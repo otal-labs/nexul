@@ -68,6 +68,8 @@ type Service struct {
 	gate        Gate
 	now         func() time.Time
 	outages     OutageRepo
+	desk        TicketDesk
+	crashLinks  CrashTicketRepo
 	// outageMu serializes outage changes with the recovery timers; recoveries are the steady-state waits in flight.
 	outageMu   sync.Mutex
 	recoveries map[string]*recovery

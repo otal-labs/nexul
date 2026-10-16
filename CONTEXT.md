@@ -607,6 +607,14 @@ output lines, because event payloads are stored and container output never is. N
 stack runs, for a container that exits 0, or from a personal runner.
 _Avoid_: Incident, downtime, crash (one exit is not an outage)
 
+**Crash ticket**:
+The ticket a stack opens in its project when a service's outage starts, if the stack's "Open a ticket when a service
+crashes" switch is on (off by default; only a stack with a project has it). It takes the project's default ticket type
+and first stage, has no developer or tester, and is created by the instance. A service has one while that ticket is
+open: a repeat crash or a recovery adds a comment to its thread and never closes it, and once the ticket reaches a done
+stage the next crash opens a new one.
+_Avoid_: Incident ticket, alert ticket
+
 **Container logs**:
 What a service's container prints on stdout and stderr, each line with its
 timestamp and stream, read live from Docker through the machine's runner and

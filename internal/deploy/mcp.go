@@ -446,6 +446,7 @@ type stackUpdateIn struct {
 	Env               *envPatchIn         `json:"env,omitempty" jsonschema:"Changes to the environment variables; keys not named keep their values."`
 	BuildSource       *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
 	BranchDeployRules []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
+	CrashTickets      *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
 }
 
 func stackUpdateTool(s *Service) mcptool.Tool {
@@ -453,7 +454,7 @@ func stackUpdateTool(s *Service) mcptool.Tool {
 		"Changes a stack's definition; only the fields you send change, and every other field keeps its value. "+
 			"Env changes go through set and unset, so values you never saw are kept; branch_deploy_rules replaces "+
 			"the whole list, and a rule sent without overrides keeps the current overrides of the rule with the same "+
-			"pattern. It does not redeploy: use stack_deploy for that. Returns the updated stack.",
+			"pattern. crash_tickets switches the stack's crash tickets on or off. It does not redeploy: use stack_deploy for that. Returns the updated stack.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in stackUpdateIn) (any, error) {
 			cur, err := s.GetStack(ctx, in.ID)
@@ -476,6 +477,7 @@ func patchStack(cur Stack, in stackUpdateIn) Stack {
 	set(&cur.Strategy, in.Strategy)
 	set(&cur.ComposePath, in.ComposePath)
 	set(&cur.DockerNetwork, in.DockerNetwork)
+	set(&cur.CrashTickets, in.CrashTickets)
 	cur.Ports = replaced(cur.Ports, in.Ports)
 	cur.Mounts = replaced(cur.Mounts, in.Mounts)
 	cur.Command = replaced(cur.Command, in.Command)
@@ -771,6 +773,7 @@ type stackResult struct {
 	EnvKeys           []string           `json:"env_keys"`
 	BranchDeployRules []branchRuleResult `json:"branch_deploy_rules,omitempty"`
 	DerivedFrom       string             `json:"derived_from,omitempty"`
+	CrashTickets      bool               `json:"crash_tickets"`
 }
 
 func toStackResult(st *Stack) stackResult {
@@ -788,5 +791,6 @@ func toStackResult(st *Stack) stackResult {
 		EnvKeys:           slices.Sorted(maps.Keys(st.Env)),
 		BranchDeployRules: rules,
 		DerivedFrom:       st.DerivedFrom,
+		CrashTickets:      st.CrashTickets,
 	}
 }
