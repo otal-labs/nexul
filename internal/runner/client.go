@@ -20,6 +20,8 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
+
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // ClientConfig wires the runner host binary's connection to the server.
@@ -50,6 +52,9 @@ type ClientConfig struct {
 	RunnerLog *RunnerLog
 	// Containers is how a machine runner reads its host's containers; nil, and any personal runner, watches none.
 	Containers *ContainerWatch
+	// Logs queues this runner's own log records for the server to relay to the log store; only a machine's runner
+	// sets it, and a personal runner never ships even when it is set.
+	Logs *logging.Queue
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -79,6 +84,8 @@ type Client struct {
 	// dockerFacts reads Docker on the computer; dockerAvailable is what the last facts report said.
 	dockerFacts     func(ctx context.Context) *DockerFacts
 	dockerAvailable atomic.Bool
+	// logEvery is how often queued log records go to the server.
+	logEvery time.Duration
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -101,10 +108,13 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts, logEvery: logFlushEvery}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
 	return c
 }
+
+// logFlushEvery is how often queued log records go to the server.
+const logFlushEvery = 2 * time.Second
 
 // errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
 var errRemoved = errors.New("runner removed")
@@ -171,6 +181,9 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	}
 	if !c.cfg.Personal && c.cfg.Containers != nil {
 		loops.Go(func() { c.watchContainers(ctx, conn) })
+	}
+	if c.cfg.Logs != nil && !c.cfg.Personal {
+		loops.Go(func() { c.logLoop(ctx, conn) })
 	}
 
 	for {
@@ -342,15 +355,49 @@ func (c *Client) heartbeatLoop(ctx context.Context, conn *websocket.Conn) {
 	}
 }
 
+// logLoop sends the queued log records on connect, which is how a reconnect replays what piled up, and every
+// logEvery after.
+func (c *Client) logLoop(ctx context.Context, conn *websocket.Conn) {
+	ticker := time.NewTicker(c.logEvery)
+	defer ticker.Stop()
+	for {
+		c.flushLogs(ctx, conn)
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// flushLogs sends batches until the queue is empty or one fails; a failed batch stays queued and is not logged,
+// since the lost connection is.
+func (c *Client) flushLogs(ctx context.Context, conn *websocket.Conn) {
+	for {
+		recs, next, dropped := c.cfg.Logs.Peek(logging.MaxBatch, logging.MaxBatchBytes)
+		if len(recs) == 0 {
+			return
+		}
+		if err := c.writeFrame(ctx, conn, Frame{Type: FrameLog, Records: recs}); err != nil {
+			return
+		}
+		c.cfg.Logs.Ack(next, dropped)
+	}
+}
+
 // sendFrame logs write failures instead of failing the caller; the connection drop surfaces on the next read.
 func (c *Client) sendFrame(ctx context.Context, conn *websocket.Conn, f Frame) {
+	if err := c.writeFrame(ctx, conn, f); err != nil {
+		c.log.Warn("frame send failed", "runner", c.cfg.Name, "type", f.Type, "error", err)
+	}
+}
+
+func (c *Client) writeFrame(ctx context.Context, conn *websocket.Conn, f Frame) error {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.WriteTimeout)
 	defer cancel()
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	if err := wsjson.Write(ctx, conn, f); err != nil {
-		c.log.Warn("frame send failed", "runner", c.cfg.Name, "type", f.Type, "error", err)
-	}
+	return wsjson.Write(ctx, conn, f)
 }
 
 // wsURL carries what the server needs to offer an update: this build's version and platform.

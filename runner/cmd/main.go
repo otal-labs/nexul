@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	logger, runnerLog := newLogger(cfg)
+	logger, runnerLog, logs := newLogger(cfg)
 	if runnerLog != nil {
 		defer func() {
 			if err := runnerLog.Close(); err != nil {
@@ -59,6 +59,7 @@ func main() {
 		T3Home:            cfg.T3Home,
 		RunnerLog:         runnerLog,
 		Containers:        runner.HostContainerWatch(),
+		Logs:              logs,
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)
@@ -66,18 +67,23 @@ func main() {
 	}
 }
 
-// newLogger is the stderr logger and, for a personal runner, a log file of its own beside its credential.
-func newLogger(cfg *runner.RunnerConfig) (*slog.Logger, *runner.RunnerLog) {
+// newLogger is the stderr logger. A machine's runner also queues its records for the server to relay; a personal
+// one writes a log file of its own beside its credential instead and ships nothing.
+func newLogger(cfg *runner.RunnerConfig) (*slog.Logger, *runner.RunnerLog, *logging.Queue) {
+	if cfg.Mode != runner.ModePersonal {
+		q := logging.NewQueue()
+		return logging.NewWithQueue(cfg.LogLevel, q), nil, q
+	}
 	logger := logging.New(cfg.LogLevel)
-	if cfg.Mode != runner.ModePersonal || cfg.CredentialFile == "" {
-		return logger, nil
+	if cfg.CredentialFile == "" {
+		return logger, nil, nil
 	}
 	file, err := runner.OpenRunnerLog(filepath.Dir(cfg.CredentialFile))
 	if err != nil {
 		logger.Warn("runner log file unavailable; its logs stay on the OS output", "error", err)
-		return logger, nil
+		return logger, nil, nil
 	}
-	return logging.NewTee(cfg.LogLevel, file), file
+	return logging.NewTee(cfg.LogLevel, file), file, nil
 }
 
 func fail(err error) {

@@ -5,7 +5,22 @@ sidebar:
   order: 8
 ---
 
-`nexul install` bundles [OpenObserve](https://openobserve.ai). The server sends every log line there, and so do errors and warnings from people's browsers (`source=web`) and the logs of the runners and automations hosts that serve a machine. Your stacks' container output is not here; read it on the stack's [Logs section](/docs/guide/stacks-and-deploys/#logs). A [paired computer](/docs/guide/paired-computers/)'s runner keeps its logs on that computer.
+`nexul install` bundles [OpenObserve](https://openobserve.ai). Four sources write to it. Your stacks' container output is not here; read it on the stack's [Logs section](/docs/guide/stacks-and-deploys/#logs).
+
+## Where the lines come from
+
+| `source` | What it is |
+| --- | --- |
+| `server` | Every line the server logs. |
+| `web` | Errors and warnings from people's browsers. |
+| `runner` | The log of each runner that serves a [machine](/docs/guide/runners/), the one bundled with the instance included. |
+| `automations` | The log of each [automations host](/docs/guide/automations/), the one bundled with the instance included. A script's own output is not here; it stays with the automation's runs. |
+
+A runner or host sends its lines to the server over the connection it already holds, and the server writes them to OpenObserve. Nothing needs to reach OpenObserve from another machine, and no OpenObserve login leaves the server. Each line is stamped by the server with the `source`, the runner's or host's `name`, its `machine` and its `version`, taken from the credential it connected with, so a line cannot claim to come from somewhere else: an attribute with one of those names is dropped. Lines go out every 2 seconds with tokens redacted, a runner's at its configured log level (`info` by default). A runner's or host's own journal keeps them too.
+
+While the server is unreachable a runner or host keeps its newest 1000 lines and sends them when it connects again, so the line saying why the connection dropped is there. If more than 1000 pile up, the oldest go and the next batch carries one `dropped N log lines` warning. Restarting the runner or host loses what was still queued; its journal still has it.
+
+A [paired computer](/docs/guide/paired-computers/)'s runner never sends its lines. They stay on that computer, and its owner, or anyone its share gives **Read logs**, reads them through Nexul instead.
 
 ## Reading the logs through Nexul
 

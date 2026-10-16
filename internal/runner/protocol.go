@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // FrameType discriminates runner protocol frames.
@@ -60,6 +61,9 @@ const (
 	FrameContainerStates FrameType = "container_states"
 	// FrameFacts (runner -> server) is a personal runner's report about its computer, on connect and every 6 hours.
 	FrameFacts FrameType = "facts"
+	// FrameLog (runner -> server) carries a batch of the runner's own log records for the server to relay to the log
+	// store; only a machine's runner sends it, and the server stamps where they came from.
+	FrameLog FrameType = "log"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -165,6 +169,8 @@ type Frame struct {
 	ExitCode int    `json:"exit_code,omitempty"`
 	// States carries a container_states snapshot.
 	States []ContainerState `json:"states,omitempty"`
+	// Records carries a log frame's batch.
+	Records []logging.Record `json:"records,omitempty"`
 }
 
 // ContainerState is one container in a container_states snapshot. State is running, or exited for a container that
@@ -241,6 +247,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameFacts:              (*Frame).validateFacts,
 	FrameContainerEvent:     (*Frame).validateContainerEvent,
 	FrameContainerStates:    (*Frame).validateContainerStates,
+	FrameLog:                (*Frame).validateLog,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -436,6 +443,13 @@ func (f *Frame) validateContainerStates() error {
 		if st.Container == "" || !oneOf(st.State, ContainerStateRunning, ContainerStateExited) {
 			return fmt.Errorf("%w: container_states entry %q needs a container and a running or exited state", apperrs.ErrInvalid, st.Container)
 		}
+	}
+	return nil
+}
+
+func (f *Frame) validateLog() error {
+	if len(f.Records) == 0 || len(f.Records) > logging.MaxBatch {
+		return fmt.Errorf("%w: log requires 1..%d records", apperrs.ErrInvalid, logging.MaxBatch)
 	}
 	return nil
 }

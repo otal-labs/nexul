@@ -621,8 +621,10 @@ service logs (Nexul's own: Instance logs)
 
 **Instance logs**:
 Nexul's own log lines, kept in the instance's log store (OpenObserve): the
-server's, the browser's errors and warnings, and those of the instance's
-runners and automations hosts. Read through Nexul, never through the log
+server's, the browser's errors and warnings, and those of the runners that
+serve a machine and of automations hosts, which they send over their own
+connection and the server stamps with where each line came from. A personal
+runner's never ship. Read through Nexul, never through the log
 store's own login: newest first, filtered by source, level, time range, trace,
 name or text, with secret-named attributes dropped and tokens redacted. Gated
 by `logs:read`, held by the instance Owner by right and handed out like any

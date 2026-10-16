@@ -2,10 +2,13 @@ package automations
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // HostsHandler adapts the automations host use-cases to the HTTP gateway (ADR 0019).
@@ -34,6 +37,7 @@ func (h *HostsHandler) PublicRoutes() http.Handler {
 	mux.HandleFunc("POST /api/automation-hosts/enroll", h.enroll)
 	mux.HandleFunc("POST /api/automation-hosts/self/remove", h.removeSelf)
 	mux.HandleFunc("GET /api/automation-hosts/self/assignments", h.assignments)
+	mux.HandleFunc("POST /api/automation-hosts/self/logs", h.logs)
 	return mux
 }
 
@@ -109,6 +113,29 @@ func (h *HostsHandler) assignments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, a)
+}
+
+// maxLogsBody caps a log request like the browser's: a batch is at most logging.MaxBatchBytes of records.
+const maxLogsBody = 64 << 10
+
+func (h *HostsHandler) logs(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxLogsBody)
+	var body struct {
+		Records []logging.Record `json:"records"`
+	}
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if len(body.Records) == 0 || len(body.Records) > logging.MaxBatch {
+		httpx.WriteError(w, fmt.Errorf("%w: records must hold 1..%d entries", apperrs.ErrInvalid, logging.MaxBatch))
+		return
+	}
+	if err := h.svc.RelayLogs(r.Context(), bearerToken(r), body.Records); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func bearerToken(r *http.Request) string {

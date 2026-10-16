@@ -2,13 +2,18 @@ import { httpAutomationsApi } from "./automations-api.ts";
 import { loadConfig } from "./config.ts";
 import { loadCredential } from "./enroll.ts";
 import { pollOnce, uninstallSelf } from "./host.ts";
-import { log } from "./log.ts";
+import { log, LogQueue, shipLogsTo } from "./log.ts";
+import { httpPostLogs, LogShipper } from "./log-shipper.ts";
 import { Supervisor } from "./supervisor.ts";
 import { threadWorkerFactory } from "./worker.ts";
 
 async function main(): Promise<void> {
+  const logQueue = new LogQueue();
+  shipLogsTo(logQueue);
   const cfg = loadConfig();
   const credential = await loadCredential(cfg);
+  const shipper = new LogShipper(logQueue, httpPostLogs(cfg.serverUrl, credential));
+  shipper.start();
   log("info", "automations host starting", { serverUrl: cfg.serverUrl, name: cfg.hostName });
 
   const supervisor = new Supervisor(httpAutomationsApi, threadWorkerFactory, {
@@ -30,6 +35,7 @@ async function main(): Promise<void> {
       return;
     }
     removing = true;
+    shipper.stop();
     clearInterval(interval);
     await supervisor.stopAll();
     uninstallSelf(cfg.ctl, cfg.hostName);
@@ -43,6 +49,8 @@ async function main(): Promise<void> {
     log("info", "automations host shutting down", { signal });
     clearInterval(interval);
     await supervisor.stopAll();
+    shipper.stop();
+    await shipper.flush();
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));

@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -52,6 +53,7 @@ type HostsService struct {
 	enrollDir   string
 	conns       ConnectionRegistry
 	gate        Gate
+	logs        *logging.Relay
 	now         func() time.Time
 }
 
@@ -75,6 +77,12 @@ type Gate interface {
 // WithGate wires the permission check; unset, only the server's own calls pass.
 func (h *HostsService) WithGate(g Gate) *HostsService {
 	h.gate = g
+	return h
+}
+
+// WithLogs wires the relay a host's log records go to the log store through; unset, they are dropped.
+func (h *HostsService) WithLogs(r *logging.Relay) *HostsService {
+	h.logs = r
 	return h
 }
 
@@ -366,6 +374,24 @@ func (h *HostsService) Assignments(ctx context.Context, credential string) (Assi
 		out.Automations = append(out.Automations, Assignment{ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash)})
 	}
 	return out, nil
+}
+
+// RelayLogs writes a host's own log records to the log store, stamped with the host its credential names; nothing in
+// recs says where they came from. A removed host gets errHostRemoved.
+func (h *HostsService) RelayLogs(ctx context.Context, credential string, recs []logging.Record) error {
+	cred, err := h.authenticate(ctx, credential)
+	if err != nil {
+		return err
+	}
+	if cred.Revoked {
+		return errHostRemoved
+	}
+	host, err := h.repo.GetHost(ctx, cred.HostID)
+	if err != nil {
+		return fmt.Errorf("get automations host %s: %w", cred.HostID, err)
+	}
+	h.logs.Emit(ctx, logging.Stamp{Source: "automations", Name: host.Name, ID: host.ID, Machine: host.Machine, Version: host.Version}, recs)
+	return nil
 }
 
 // placedOn lists the automations host runs: those placed on it, plus the unplaced ones when it is the instance host.

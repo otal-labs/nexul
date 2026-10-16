@@ -62,3 +62,16 @@ func TestShape_MessageIsCut(t *testing.T) {
 	l := shape(map[string]any{"body": strings.Repeat("x", maxChars+1)})
 	require.Len(t, []rune(l.Message), maxChars+1)
 }
+
+// A relayed runner or host line is written with these columns (logging.Relay), and the reader files each one.
+func TestShape_ARelayedLineKeepsItsStampedColumns(t *testing.T) {
+	l := shape(map[string]any{
+		"_timestamp": json.Number("1790000000123456"), "severity": "WARN", "body": "pull failed",
+		"source": "runner", "name": "edge", "source_id": "r-1", "machine": "box", "version": "v1", "image": "acme/api",
+	})
+
+	assert.Equal(t, Line{
+		Time: time.UnixMicro(1790000000123456).UTC(), Level: "warn", Source: "runner", Message: "pull failed",
+		Name: "edge", Machine: "box", Version: "v1", Attrs: map[string]any{"source_id": "r-1", "image": "acme/api"},
+	}, l)
+}

@@ -1,5 +1,5 @@
 import { Worker } from "node:worker_threads";
-import { log } from "./log.ts";
+import { log, logScript } from "./log.ts";
 
 export interface SpawnOptions {
   automationId: string;
@@ -65,7 +65,7 @@ export const threadWorkerFactory: WorkerFactory = {
         lastHeartbeat = Date.now();
         return;
       }
-      log(msg.level ?? "info", msg.message ?? "", { automationId: opts.automationId, automationName: opts.automationName, ...msg.meta });
+      logScript(msg.level ?? "info", msg.message ?? "", { automationId: opts.automationId, automationName: opts.automationName, ...msg.meta });
     });
     worker.on("error", (err: Error) => log("error", "automation worker error", { automationId: opts.automationId, error: err.message }));
     worker.on("exit", (code) => {

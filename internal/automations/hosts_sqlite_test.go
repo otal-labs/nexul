@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
@@ -55,7 +57,38 @@ func (c *recordingConns) snapshot() []string {
 	return append([]string(nil), c.ids...)
 }
 
+// loggedRecords keeps what the log relay wrote, standing in for the log store.
+type loggedRecords struct {
+	mu   sync.Mutex
+	recs []slog.Record
+}
+
+func (l *loggedRecords) Enabled(context.Context, slog.Level) bool { return true }
+func (l *loggedRecords) WithAttrs([]slog.Attr) slog.Handler       { return l }
+func (l *loggedRecords) WithGroup(string) slog.Handler            { return l }
+func (l *loggedRecords) Handle(_ context.Context, r slog.Record) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.recs = append(l.recs, r)
+	return nil
+}
+
+func (l *loggedRecords) snapshot() []map[string]any {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := make([]map[string]any, len(l.recs))
+	for i, r := range l.recs {
+		out[i] = map[string]any{"message": r.Message}
+		r.Attrs(func(a slog.Attr) bool {
+			out[i][a.Key] = a.Value.Any()
+			return true
+		})
+	}
+	return out
+}
+
 type hostsFixture struct {
+	logs      *loggedRecords
 	store     *storage.Store
 	svc       *automations.Service
 	hosts     *automations.HostsService
@@ -87,8 +120,9 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	svc := automations.NewService(store.Automations, allowAllPerm{})
 	svc.SetGateway(func(string, string, []string) bool { return false }, nil)
 	enrollDir := filepath.Join(t.TempDir(), "enroll")
+	logs := &loggedRecords{}
 	hosts := automations.NewHostsService(store.AutomationHosts, store.Automations, []byte("host-token-key")).
-		WithGate(allowAnywhere{}).WithInstanceURL(instanceURL("https://nexul.example.com/")).WithEnrollDir(enrollDir)
+		WithGate(allowAnywhere{}).WithInstanceURL(instanceURL("https://nexul.example.com/")).WithEnrollDir(enrollDir).WithLogs(logging.NewRelay(logs))
 	svc.SetHosts(hosts)
 	dial := automations.NewDialinHandler(svc, automations.DialinConfig{
 		Repo: store.Automations, Cursors: store.AutomationCursors, EventLog: store.AutomationEventLog,
@@ -110,6 +144,7 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	mux.Handle("POST /api/automation-hosts/enroll", public)
 	mux.Handle("POST /api/automation-hosts/self/remove", public)
 	mux.Handle("GET /api/automation-hosts/self/assignments", public)
+	mux.Handle("POST /api/automation-hosts/self/logs", public)
 	mux.Handle("/api/automation-hosts", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("/api/automation-hosts/", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("PATCH /api/automations/{id}/host", asAdmin(automationsHTTP))
@@ -117,7 +152,7 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	mux.Handle("/ws/automations", dial)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &hostsFixture{store: store, svc: svc, hosts: hosts, conns: conns, srv: srv, enrollDir: enrollDir}
+	return &hostsFixture{logs: logs, store: store, svc: svc, hosts: hosts, conns: conns, srv: srv, enrollDir: enrollDir}
 }
 
 func (f *hostsFixture) do(t *testing.T, method, path, bearer string, body any) (int, []byte) {
@@ -481,6 +516,55 @@ func TestHostRemoveSelf(t *testing.T) {
 	list, err := f.hosts.List(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, list)
+}
+
+func TestHostLogs_RelayedRecordsAreStampedFromTheCredentialNotThePayload(t *testing.T) {
+	f := newHostsFixture(t)
+	jobsID, jobsCredential := f.enroll(t, "jobs")
+	_, otherCredential := f.enroll(t, "other")
+
+	spoof := map[string]any{"source": "server", "name": "other", "machine": "elsewhere", "version": "v9", "automationId": "a1"}
+	body := map[string]any{"records": []map[string]any{{"time": "2026-10-01T12:00:00Z", "level": "error", "message": "poll tick failed", "attrs": spoof}}}
+	status, resp := f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", jobsCredential, body)
+	require.Equal(t, http.StatusNoContent, status, string(resp))
+
+	got := f.logs.snapshot()
+	require.Len(t, got, 1)
+	assert.Equal(t, map[string]any{
+		"message": "poll tick failed", "source": "automations", "name": "jobs", "source_id": jobsID, "machine": "jobs", "version": "v0.3.0", "automationId": "a1",
+	}, got[0])
+
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", otherCredential, body)
+	require.Equal(t, http.StatusNoContent, status)
+	assert.Equal(t, "other", f.logs.snapshot()[1]["name"], "another host's credential stamps another host")
+}
+
+func TestHostLogs_Refusals(t *testing.T) {
+	f := newHostsFixture(t)
+	_, credential := f.enroll(t, "jobs")
+	one := map[string]any{"records": []map[string]any{{"level": "info", "message": "x"}}}
+
+	status, _ := f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", "", one)
+	assert.Equal(t, http.StatusUnauthorized, status, "no credential")
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", "nxa_unknown", one)
+	assert.Equal(t, http.StatusUnauthorized, status, "an unknown credential")
+
+	status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", credential, map[string]any{"records": []map[string]any{}})
+	assert.Equal(t, http.StatusBadRequest, status, string(body))
+	tooMany := make([]map[string]any, logging.MaxBatch+1)
+	for i := range tooMany {
+		tooMany[i] = map[string]any{"level": "info", "message": "x"}
+	}
+	status, body = f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", credential, map[string]any{"records": tooMany})
+	assert.Equal(t, http.StatusBadRequest, status, string(body))
+	assert.Empty(t, f.logs.snapshot(), "nothing refused was relayed")
+
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/remove", credential, nil)
+	require.Equal(t, http.StatusNoContent, status)
+	status, body = f.do(t, http.MethodPost, "/api/automation-hosts/self/logs", credential, one)
+	assert.Equal(t, http.StatusUnauthorized, status, "a removed host")
+	assert.Equal(t, "automations_host_removed", errorCode(t, body))
+	assert.Empty(t, f.logs.snapshot())
 }
 
 func TestWriteInstanceEnrollment_UntilTheInstanceHostEnrolls(t *testing.T) {

@@ -35,9 +35,9 @@ func TestFanout_WritesToEveryHandlerAndGatesOnLevel(t *testing.T) {
 }
 
 func TestNewWithOTLP_EmptyEndpointIsPlainLogger(t *testing.T) {
-	l, shutdown, err := NewWithOTLP(context.Background(), "info", OTLP{})
-	if err != nil || l == nil {
-		t.Fatalf("err=%v logger=%v", err, l)
+	l, relay, shutdown, err := NewWithOTLP(context.Background(), "info", OTLP{})
+	if err != nil || l == nil || relay != nil {
+		t.Fatalf("err=%v logger=%v relay=%v", err, l, relay)
 	}
 	if err := shutdown(context.Background()); err != nil {
 		t.Fatalf("shutdown: %v", err)
@@ -54,7 +54,7 @@ func TestNewWithOTLP_ShipsRecordsWithAuthAndStream(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	l, shutdown, err := NewWithOTLP(context.Background(), "info", OTLP{
+	l, _, shutdown, err := NewWithOTLP(context.Background(), "info", OTLP{
 		Endpoint: srv.URL + "/api/default", User: "u@example.com", Token: "tok", Stream: "nexul", Service: "test",
 	})
 	if err != nil {

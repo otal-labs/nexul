@@ -25,6 +25,7 @@ type ActorResolver func(ctx context.Context) (actorType, actorID, tokenID string
 // readOnlyRoutes are the non-GET routes that only read; every other non-GET route changes state (ADR 0138).
 var readOnlyRoutes = []string{
 	"POST /api/auth/bootstrap/verify",
+	"POST /api/automation-hosts/self/logs",
 	"POST /api/connectors/{id}/manual/verify",
 	"POST /api/connectors/{id}/private-key/verify",
 	"POST /api/dns/tunnels/{tunnelID}/verify",

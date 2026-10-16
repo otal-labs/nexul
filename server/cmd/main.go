@@ -67,7 +67,7 @@ Installing, upgrading and removing it is the nexul command's job.
 
 func serve() {
 	cfg := mustLoadConfig()
-	logger, flushLogs, err := logging.NewWithOTLP(context.Background(), cfg.LogLevel, logging.OTLP{
+	logger, logRelay, flushLogs, err := logging.NewWithOTLP(context.Background(), cfg.LogLevel, logging.OTLP{
 		Endpoint: cfg.OTLPEndpoint,
 		User:     cfg.OTLPUser,
 		Token:    cfg.OTLPToken,
@@ -115,7 +115,7 @@ func serve() {
 
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
 	wireIntegrationFanout(ctx, bus, store, svc, logger)
-	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger)
+	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger, logRelay)
 	// runner is constructed above, after deploy (wireCoreServices); closing the machine-import cycle here
 	// mirrors deploy's own dns seams (SetGatewayLookup/SetExposureManager), just wired one phase later.
 	svc.deploySvc.SetMachineLookup(deployMachineLookupAdapter{runner: runnerSvc, machines: store.Machines})

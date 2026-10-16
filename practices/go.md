@@ -163,9 +163,13 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
   underneath slog is how they reach it without giving application code a
   second logging API to call.
 - stderr is always the primary sink. The browser posts its console errors to
-  `POST /api/logs` and the server relays them under `source=web`. Nothing
-  outside the server talks to the log store, and the server reads it back only
-  through `internal/platform/logstore` (ADR 0155).
+  `POST /api/logs` and the server relays them under `source=web`. A machine's
+  runner queues its records and sends them as `log` frames, and the automations
+  host posts to `self/logs`; the server stamps the source, name, machine and
+  version from the connection (`logging.Relay`) and writes to the log store
+  alone, never trusting the payload. Nothing outside the server talks to the
+  log store, and the server reads it back only through
+  `internal/platform/logstore` (ADR 0155).
 
 ---
 
