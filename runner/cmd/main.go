@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,7 +21,14 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	logger := logging.New(cfg.LogLevel)
+	logger, runnerLog := newLogger(cfg)
+	if runnerLog != nil {
+		defer func() {
+			if err := runnerLog.Close(); err != nil {
+				logger.Warn("close runner log", "error", err)
+			}
+		}()
+	}
 	logger.Info("runner version", "version", version.Version)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -48,11 +57,26 @@ func main() {
 		Personal:          cfg.Mode == runner.ModePersonal,
 		StreamURL:         cfg.StreamURL(),
 		T3Home:            cfg.T3Home,
+		RunnerLog:         runnerLog,
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)
 		os.Exit(1)
 	}
+}
+
+// newLogger is the stderr logger and, for a personal runner, a log file of its own beside its credential.
+func newLogger(cfg *runner.RunnerConfig) (*slog.Logger, *runner.RunnerLog) {
+	logger := logging.New(cfg.LogLevel)
+	if cfg.Mode != runner.ModePersonal || cfg.CredentialFile == "" {
+		return logger, nil
+	}
+	file, err := runner.OpenRunnerLog(filepath.Dir(cfg.CredentialFile))
+	if err != nil {
+		logger.Warn("runner log file unavailable; its logs stay on the OS output", "error", err)
+		return logger, nil
+	}
+	return logging.NewTee(cfg.LogLevel, file), file
 }
 
 func fail(err error) {

@@ -25,6 +25,12 @@ import (
 // answers each logs_request with one line, counting every container request that reaches the computer.
 func connectComputerRunner(t *testing.T, c privacyCast, srv *httptest.Server, computerID string) *atomic.Int32 {
 	t.Helper()
+	return connectRecordingComputerRunner(t, c, srv, computerID, func(runner.Frame) {})
+}
+
+// connectRecordingComputerRunner is connectComputerRunner that also hands each logs_request to seen, and answers one for the runner's own log.
+func connectRecordingComputerRunner(t *testing.T, c privacyCast, srv *httptest.Server, computerID string, seen func(runner.Frame)) *atomic.Int32 {
+	t.Helper()
 	ctx := t.Context()
 	now := time.Now().UTC()
 	_, codeHash, err := hostcred.MintCode()
@@ -50,7 +56,12 @@ func connectComputerRunner(t *testing.T, c privacyCast, srv *httptest.Server, co
 				_ = wsjson.Write(ctx, conn, runner.Frame{Type: runner.FrameDiscoverResult, ID: f.ID, Containers: []runner.DiscoveredContainer{{Name: "shop-web-1", Image: "shop:1", Status: "running"}}})
 			case runner.FrameLogsRequest:
 				requests.Add(1)
-				_ = wsjson.Write(ctx, conn, runner.Frame{Type: runner.FrameLogsChunk, ID: f.ID, Lines: []runner.ContainerLogLine{{TS: "2026-10-11T10:00:00Z", Stream: runner.LogStreamStdout, Line: "listening on :8080"}}})
+				seen(f)
+				line := "listening on :8080"
+				if f.Target == runner.LogTargetRunner {
+					line = "2026-10-11T10:00:00Z INFO runner connected"
+				}
+				_ = wsjson.Write(ctx, conn, runner.Frame{Type: runner.FrameLogsChunk, ID: f.ID, Lines: []runner.ContainerLogLine{{TS: "2026-10-11T10:00:00Z", Stream: runner.LogStreamStdout, Line: line}}})
 				if !f.Follow {
 					_ = wsjson.Write(ctx, conn, runner.Frame{Type: runner.FrameLogsEnd, ID: f.ID})
 				}

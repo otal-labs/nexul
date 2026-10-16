@@ -123,6 +123,20 @@ func TestFrame_Encode(t *testing.T) {
 			want: `{"type":"logs_request","id":"l1","container":"shop-web-1","tail":200,"follow":true}`,
 		},
 		{
+			name: "logs_request for the runner's own log wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsRequest, ID: "l1", Target: LogTargetRunner, Tail: 200, Follow: true}
+			},
+			want: `{"type":"logs_request","id":"l1","target":"runner","tail":200,"follow":true}`,
+		},
+		{
+			name: "logs_request with masking wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsRequest, ID: "l1", Container: "shop-web-1", Mask: true}
+			},
+			want: `{"type":"logs_request","id":"l1","container":"shop-web-1","mask":true}`,
+		},
+		{
 			name: "logs_chunk wire shape",
 			got: func() Frame {
 				return Frame{Type: FrameLogsChunk, ID: "l1", Lines: []ContainerLogLine{{TS: "2026-09-30T10:00:00.5Z", Stream: LogStreamStderr, Line: "boom"}}}
@@ -207,6 +221,9 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "update missing version", f: Frame{Type: FrameUpdate, URL: "https://instance/download"}},
 		{name: "logs_request missing container", f: Frame{Type: FrameLogsRequest, ID: "l1"}},
 		{name: "logs_request negative tail", f: Frame{Type: FrameLogsRequest, ID: "l1", Container: "web", Tail: -1}},
+		{name: "logs_request unknown target", f: Frame{Type: FrameLogsRequest, ID: "l1", Container: "web", Target: "host"}},
+		{name: "logs_request for the runner naming a container", f: Frame{Type: FrameLogsRequest, ID: "l1", Target: LogTargetRunner, Container: "web"}},
+		{name: "logs_request for the runner masking", f: Frame{Type: FrameLogsRequest, ID: "l1", Target: LogTargetRunner, Mask: true}},
 		{name: "logs_chunk without lines", f: Frame{Type: FrameLogsChunk, ID: "l1"}},
 		{name: "logs_chunk bad stream", f: Frame{Type: FrameLogsChunk, ID: "l1", Lines: []ContainerLogLine{{Stream: "stdin", Line: "x"}}}},
 		{name: "logs_end missing id", f: Frame{Type: FrameLogsEnd}},
@@ -242,6 +259,8 @@ func TestParseFrame(t *testing.T) {
 			{Type: FrameJoinNetworks, GatewayContainer: "gw", JoinNetworks: []string{"net1"}},
 			{Type: FrameJoinNetworksResult, GatewayContainer: "gw", Status: BuildStatusSuccess},
 			{Type: FrameUpdate, Version: "v0.2.0", URL: "https://instance/download", Sha256: "abc123"},
+			{Type: FrameLogsRequest, ID: "l1", Target: LogTargetRunner, Tail: 5, Follow: true},
+			{Type: FrameLogsRequest, ID: "l2", Container: "web", Mask: true},
 		}
 		for _, want := range frames {
 			data, err := (&want).Encode()

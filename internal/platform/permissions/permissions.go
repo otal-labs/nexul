@@ -113,10 +113,11 @@ const (
 	ComputersSee      Action = "computers:see"
 	ComputersAgents   Action = "computers:run_agents"
 	ComputersCommands Action = "computers:run_commands"
+	ComputersLogs     Action = "computers:read_logs"
 )
 
 // ComputerActions are what a computer rule may set, See first.
-var ComputerActions = []Action{ComputersSee, ComputersAgents, ComputersCommands}
+var ComputerActions = []Action{ComputersSee, ComputersAgents, ComputersCommands, ComputersLogs}
 
 const (
 	read     = "read"

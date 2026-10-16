@@ -251,6 +251,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Projects:           accessSvc,
 		Runners:            computers,
 		Containers:         computers,
+		ComputerAccess:     accessSvc,
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,

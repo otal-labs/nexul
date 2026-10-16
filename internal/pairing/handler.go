@@ -40,6 +40,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers", h.listContainers)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/runner/logs", h.runnerLogs)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
 	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
 	mux.HandleFunc("PUT /api/pairing/computers/{id}/setup/choices", h.saveSetupChoices)
@@ -96,7 +97,16 @@ func (h *Handler) containerLogs(w http.ResponseWriter, r *http.Request) {
 	containerlog.ServeSnapshot(w, r, h.svc.containerLogOpener(actorID(r), r.PathValue("id"), r.PathValue("name")), r.PathValue("name"))
 }
 
-// ContainerLogsSocket serves one container's live tail to its computer's owner; closing it stops docker logs there.
+func (h *Handler) runnerLogs(w http.ResponseWriter, r *http.Request) {
+	containerlog.ServeSnapshot(w, r, h.svc.runnerLogOpener(actorID(r), r.PathValue("id")), "the runner")
+}
+
+// RunnerLogsSocket serves the live tail of a computer's runner's own log to its owner or a person its share lets read logs.
+func (h *Handler) RunnerLogsSocket(w http.ResponseWriter, r *http.Request) {
+	containerlog.ServeSocket(w, r, h.svc.runnerLogOpener(actorID(r), r.PathValue("id")))
+}
+
+// ContainerLogsSocket serves one container's live tail to its computer's owner or a person its share lets read logs; closing it stops docker logs there.
 func (h *Handler) ContainerLogsSocket(w http.ResponseWriter, r *http.Request) {
 	containerlog.ServeSocket(w, r, h.svc.containerLogOpener(actorID(r), r.PathValue("id"), r.PathValue("name")))
 }

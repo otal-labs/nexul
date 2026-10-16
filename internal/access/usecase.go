@@ -808,14 +808,14 @@ var onlyActions = map[string]struct {
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set See, Run, Edit and Delete, a project's In this
 // project and the project-area actions, a folder's the docs actions and their access, a channel's read and post, a stack's
-// the stacks and deploys actions, an instance area's its own actions (checkArea), a computer's its three permissions and nothing else.
+// the stacks and deploys actions, an instance area's its own actions (checkArea), a computer's its four permissions and nothing else.
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
 	if !slices.Contains(ruleTypes, resourceType) {
 		return errNotARuleType(resourceType)
 	}
 	for _, a := range actions {
 		if slices.Contains(permissions.ComputerActions, a) != (resourceType == resourceTypeComputer) {
-			return fmt.Errorf("%w: a computer's rules set computers:see, computers:run_agents and computers:run_commands, and only they", apperrs.ErrInvalid)
+			return fmt.Errorf("%w: a computer's rules set computers:see, computers:run_agents, computers:run_commands and computers:read_logs, and only they", apperrs.ErrInvalid)
 		}
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
 			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)

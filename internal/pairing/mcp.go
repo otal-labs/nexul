@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // MCPTools returns the computer tools: pairing, the tunnel token, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
@@ -28,12 +29,22 @@ func MCPTools(s *Service) []mcptool.Tool {
 type computerListIn struct {
 	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its tunnel's live status. Omit to list every computer you own."`
 	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also return the last lines one Docker container on that computer printed. Omit it for the computer alone."`
+	RunnerLogs    *computerRunnerLogsIn    `json:"runner_logs,omitzero" jsonschema:"With id only: also return the last lines the computer's Nexul app (its runner) logged. Omit it for the computer alone."`
 	mcptool.PageArgs
 }
 
 type computerContainerLogsIn struct {
 	Container string `json:"container" jsonschema:"The container's name, from this computer's containers, for example shop-web-1."`
 	Tail      int    `json:"tail,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
+}
+
+type computerRunnerLogsIn struct {
+	Lines int `json:"lines,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
+}
+
+// computerRunnerLogs is the last lines the computer's runner logged.
+type computerRunnerLogs struct {
+	Lines []containerlog.Line `json:"lines"`
 }
 
 // computerContainerLogs is the last lines one container on the computer printed.
@@ -105,6 +116,7 @@ type computerResult struct {
 	Containers        []Container            `json:"containers,omitempty"`
 	ContainersError   string                 `json:"containers_error,omitempty"`
 	ContainerLogs     *computerContainerLogs `json:"container_logs,omitempty"`
+	RunnerLogs        *computerRunnerLogs    `json:"runner_logs,omitempty"`
 	Shared            *SharedComputer        `json:"shared,omitempty"`
 }
 
@@ -130,10 +142,12 @@ func computerListTool(s *Service) mcptool.Tool {
 			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
 			"available also lists its Docker containers (name, image, status); pass container_logs with a container's name "+
 			"to read its last lines (200 by default, at most 1000, each cut at 2000 characters), which needs the computer's "+
-			"Nexul app connected. After yours come the computers other people share with you by name, each named "+
+			"Nexul app connected. Pass runner_logs to read the last lines the computer's Nexul app itself logged, the same way. After yours come the computers other people share with you by name, each named "+
 			"\"<owner>'s <computer> (shared)\" with runner.connected and shared (its owner, and the permissions you hold: "+
-			"computers:see, computers:run_agents, computers:run_commands) and nothing else; its owner shares or stops "+
-			"sharing one with permission_overwrite_update on resource_type computer.",
+			"computers:see, computers:run_agents, computers:run_commands, computers:read_logs) and little else; with "+
+			"computers:read_logs it also lists the computer's containers and answers container_logs and runner_logs, with "+
+			"the container's own env values hidden. Its owner shares or stops sharing one with permission_overwrite_update "+
+			"on resource_type computer.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)
@@ -147,11 +161,8 @@ func computerListTool(s *Service) mcptool.Tool {
 			if in.ID != "" && len(computers) == 0 {
 				return nil, fmt.Errorf("%w: computer %s is not one of yours; computer_list without id lists them", apperrs.ErrNotFound, in.ID)
 			}
-			if in.ID == "" && in.ContainerLogs != nil {
-				return nil, fmt.Errorf("%w: container_logs needs the computer's id", apperrs.ErrInvalid)
-			}
-			if in.ContainerLogs != nil && computers[0].Shared != nil {
-				return nil, fmt.Errorf("%w: the containers of computer %s are its owner's alone", apperrs.ErrNotFound, in.ID)
+			if in.ID == "" && (in.ContainerLogs != nil || in.RunnerLogs != nil) {
+				return nil, fmt.Errorf("%w: container_logs and runner_logs need the computer's id", apperrs.ErrInvalid)
 			}
 			out := make([]computerResult, 0, len(computers))
 			for _, c := range computers {
@@ -166,6 +177,11 @@ func computerListTool(s *Service) mcptool.Tool {
 					return nil, err
 				}
 			}
+			if in.RunnerLogs != nil {
+				if out[0].RunnerLogs, err = runnerLogsFor(ctx, s, userID, computers[0], *in.RunnerLogs); err != nil {
+					return nil, err
+				}
+			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
 }
@@ -173,7 +189,11 @@ func computerListTool(s *Service) mcptool.Tool {
 // listedComputer adds the setup and MCP token reads, and the live tunnel status only when one computer was asked for.
 func listedComputer(ctx context.Context, s *Service, userID string, c Computer, live bool) (computerResult, error) {
 	if c.Shared != nil {
-		return computerResult{ID: c.ID, Name: c.SharedName(), Runner: c.Runner, Shared: c.Shared}, nil
+		r := computerResult{ID: c.ID, Name: c.SharedName(), Runner: c.Runner, Shared: c.Shared}
+		if live && c.Shared.Permissions.Has(permissions.ComputersLogs) {
+			r.Containers, r.ContainersError = listedContainers(ctx, s, userID, c)
+		}
+		return r, nil
 	}
 	r := toComputerResult(c)
 	setup, err := s.GetSetup(ctx, userID, c.ID)
@@ -231,21 +251,37 @@ func listedContainers(ctx context.Context, s *Service, userID string, c Computer
 }
 
 func containerLogsFor(ctx context.Context, s *Service, userID string, c Computer, in computerContainerLogsIn) (*computerContainerLogs, error) {
-	tail := in.Tail
-	if tail < 1 {
-		tail = containerlog.DefaultTail
-	}
-	lines, err := s.ContainerLogSnapshot(ctx, userID, c.ID, in.Container, tail)
-	if errors.Is(err, apperrs.ErrRetryable) {
-		// Retryable is hidden from the model as an internal error; the offline case is the one it can act on.
-		return nil, fmt.Errorf("%w: the logs of %s are unavailable, %s's Nexul app is offline or did not answer; retry once it reconnects",
-			apperrs.ErrConflict, in.Container, c.Name)
-	}
+	lines, err := s.ContainerLogSnapshot(ctx, userID, c.ID, in.Container, agentTail(in.Tail))
 	if err != nil {
-		return nil, err
+		return nil, offlineLogs(err, in.Container, c)
 	}
 	containerlog.CutForAgent(lines)
 	return &computerContainerLogs{Container: in.Container, Lines: lines}, nil
+}
+
+func runnerLogsFor(ctx context.Context, s *Service, userID string, c Computer, in computerRunnerLogsIn) (*computerRunnerLogs, error) {
+	lines, err := s.RunnerLogSnapshot(ctx, userID, c.ID, agentTail(in.Lines))
+	if err != nil {
+		return nil, offlineLogs(err, "the Nexul app", c)
+	}
+	containerlog.CutForAgent(lines)
+	return &computerRunnerLogs{Lines: lines}, nil
+}
+
+func agentTail(n int) int {
+	if n < 1 {
+		return containerlog.DefaultTail
+	}
+	return n
+}
+
+// offlineLogs turns the retryable error, which the model would see as an internal one, into the offline case it can act on.
+func offlineLogs(err error, what string, c Computer) error {
+	if errors.Is(err, apperrs.ErrRetryable) {
+		return fmt.Errorf("%w: the logs of %s are unavailable, %s's Nexul app is offline or did not answer; retry once it reconnects",
+			apperrs.ErrConflict, what, c.Name)
+	}
+	return err
 }
 
 // computerCreateResult is a computer waiting for its runner, with the command that installs the runner there.

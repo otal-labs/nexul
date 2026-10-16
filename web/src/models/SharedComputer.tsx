@@ -11,6 +11,7 @@ export const ComputerPermission = {
   See: "computers:see",
   RunAgents: "computers:run_agents",
   RunCommands: "computers:run_commands",
+  ReadLogs: "computers:read_logs",
 } as const;
 
 // How a person a computer is shared with reads it.
@@ -19,11 +20,12 @@ export const sharedComputerName = (computer: Computer) =>
 
 // What the viewer may do on a shared computer, in words; seeing it alone says so.
 export const sharedComputerAbilities = (shared: SharedComputer) => {
-  const runs = [
+  const abilities = [
     shared.permissions.includes(ComputerPermission.RunAgents) && "Run agents",
     shared.permissions.includes(ComputerPermission.RunCommands) && "Run commands",
+    shared.permissions.includes(ComputerPermission.ReadLogs) && "Read logs",
   ].filter(Boolean);
-  return runs.length > 0 ? runs.join(" · ") : "See only";
+  return abilities.length > 0 ? abilities.join(" · ") : "See only";
 };
 
 // Why a picker lists a shared computer it can't pick: running on someone else's computer isn't built yet.

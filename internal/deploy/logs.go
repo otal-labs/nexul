@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -14,11 +13,6 @@ import (
 
 // DefaultLogTail is how many lines a container log read starts from when the caller names none.
 const DefaultLogTail = containerlog.DefaultTail
-
-const (
-	logMask       = "••••"
-	logMaskMinLen = 6
-)
 
 // ContainerLogLine is one line a service's container printed.
 type ContainerLogLine = containerlog.Line
@@ -54,7 +48,7 @@ func (s *Service) ServiceLogs(ctx context.Context, stackID, service string, tail
 	if err != nil {
 		return nil, fmt.Errorf("logs of %s: %w", service, err)
 	}
-	return maskedFeed{LogFeed: feed, mask: envMask(stack.Env)}, nil
+	return maskedFeed{LogFeed: feed, mask: containerlog.EnvMask(stack.Env)}, nil
 }
 
 // ServiceLogSnapshot reads the last tail lines of a service's container without following them.
@@ -82,22 +76,6 @@ func (s *Service) containerOf(ctx context.Context, stack *Stack, service string)
 		return "", fmt.Errorf("%w: service %q has not started a container yet", apperrs.ErrConflict, service)
 	}
 	return containers[i].ContainerName, nil
-}
-
-// envMask masks env values of logMaskMinLen or more characters, longest first so one holding another goes whole.
-func envMask(env map[string]string) *strings.Replacer {
-	var values []string
-	for _, v := range env {
-		if utf8.RuneCountInString(v) >= logMaskMinLen {
-			values = append(values, v)
-		}
-	}
-	slices.SortFunc(values, func(a, b string) int { return len(b) - len(a) })
-	pairs := make([]string, 0, 2*len(values))
-	for _, v := range values {
-		pairs = append(pairs, v, logMask)
-	}
-	return strings.NewReplacer(pairs...)
 }
 
 type maskedFeed struct {

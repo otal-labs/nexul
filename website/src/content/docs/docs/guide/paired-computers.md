@@ -113,7 +113,13 @@ Facts are yours alone. Nobody else sees them, a workspace Owner included, and an
 
 When Docker answers you on the computer (Docker Desktop, Colima, or your account in the `docker` group), the computer's details have a **Containers** section listing every container there with its image and state. **Logs** opens the stack page's log viewer on that container: the last 200 lines, then new ones as they come, with the same pause, errors filter, copy and download. Nexul reads the output live from Docker through the Nexul app and stores none of it; closing the viewer stops the read on the computer. The limits are a deploy runner's: at most 16 open log views per computer, 1000 lines of history, and 64 KB a second, past which lines are skipped and counted.
 
-These are your own containers, not Nexul services: nothing is imported, deployed, masked, or drawn on Topology. Only you see them; anyone else, a workspace Owner included, gets not found. Docker is checked when the app connects and every 6 hours, so a Docker started later shows after the app's next report, or at once when the app restarts, as it does when the computer does. A computer without Docker has no Containers section. An agent acting for you reads the same through [`computer_list`](/docs/guide/mcp-server/) with the computer's `id`.
+These are your own containers, not Nexul services: nothing is imported, deployed, or drawn on Topology. Only you see them, unmasked; anyone else, a workspace Owner included, gets not found, unless you [share the computer with Read logs](#share-a-computer), which shows them its containers with each container's own environment values hidden. Docker is checked when the app connects and every 6 hours, so a Docker started later shows after the app's next report, or at once when the app restarts, as it does when the computer does. A computer without Docker has no Containers section. An agent acting for you reads the same through [`computer_list`](/docs/guide/mcp-server/) with the computer's `id`.
+
+### The Nexul app's own log
+
+On a computer you add with **Add a computer**, the Nexul app also writes its own log to `runner.log` in its own folder next to its credential (`~/.local/share/nexul/computer` on Linux, `~/Library/Application Support/nexul/computer` on a Mac, `%LOCALAPPDATA%\Nexul\computer` on Windows), readable only by you. At 5 MB it starts a new file and keeps the one before it, so there are never more than two. The service manager's own output is unchanged: `journalctl -u nexul-computer` on Linux, the log file on a Mac, `service.log` on Windows.
+
+Nexul reads it live through the app and stores none of it. An agent acting for you reads the last lines through [`computer_list`](/docs/guide/mcp-server/) with the computer's `id` and `runner_logs: {lines}`, 200 by default and at most 1000; the HTTP gateway serves the same at `/api/pairing/computers/<id>/runner/logs`, with a live tail on a WebSocket beside it. Each record is one line, `time level message key=value…`, with any Nexul token hidden. The limits are the containers' above. Only you read it, unless you [share the computer with Read logs](#share-a-computer).
 
 **Remove**, in the **…** menu, asks first, then deletes the pairing and revokes the computer's MCP token. On a computer added with **Add a computer**, it also revokes the Nexul app's credential: the app removes its `nexul-computer` service and files within a heartbeat, or the next time the computer comes online, and on the way out ends every T3 Code session labelled `Nexul`, so Nexul keeps no way into T3 Code there. A command made for the computer and never run stops working too. On a computer still paired through a tunnel, Remove deletes the tunnel and hostname instead, which already makes it unreachable; Nexul's session inside T3 Code stays until it expires, or until you run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. Re-pair never ends a session.
 
@@ -127,8 +133,9 @@ A computer is yours alone until you share it: nobody else sees it, a workspace O
 
 - **See this computer**: it shows in their **Computers** list under **Shared with you**, as "<you>'s <computer> (shared)", with its name and whether it is online. Its facts, setup, containers, MCP token and everything else stay yours.
 - **Run agents** and **Run commands**: allowing either also lets them see it. A shared computer shows in their run dialog and project links, where it can't be picked yet.
+- **Read logs**: this runner's logs and its Docker containers' logs. It is off unless you allow it, and allowing it also lets them see the computer. They then read the Nexul app's own log, list the computer's containers and read each one's logs; the values of a container's own environment that are six characters or longer show as `••••` in what they read, which your own reads never do. A container's output can still show a secret the app derives or fetches by itself, so allow it only for people you would trust with that.
 
-Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the rest away too, and **Remove from this computer** takes the person off. **Check access** shows what each person can do on it.
+Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the other three away too, and **Remove from this computer** takes the person off. **Check access** shows what each person can do on it.
 
 Read the warning at the top of the dialog before you share: agents and commands on your computer run as your own user there, so whoever you let run them can read what your account can, your SSH keys, git credentials and logins included.
 
@@ -136,7 +143,7 @@ Read the warning at the top of the dialog before you share: agents and commands 
 - Only you change who it's shared with. The people you share it with can't share it on or raise their own permissions, and a change takes effect at once.
 - Sharing ends for good when the two of you no longer share a workspace, or either account is disabled or removed: adding them back, or turning the account back on, doesn't bring it back, so share it again. Removing the computer ends all of its sharing.
 
-An agent shares a computer with [`permission_overwrite_update`](/docs/guide/mcp-server/), `resource_type` `computer`, the people's `user_ids`, and `computers:see`, `computers:run_agents` or `computers:run_commands`; only the computer's owner can. `computer_list` lists the computers shared with you after your own.
+An agent shares a computer with [`permission_overwrite_update`](/docs/guide/mcp-server/), `resource_type` `computer`, the people's `user_ids`, and `computers:see`, `computers:run_agents`, `computers:run_commands` or `computers:read_logs`; only the computer's owner can. `computer_list` lists the computers shared with you after your own.
 
 ## Choose where turns run
 

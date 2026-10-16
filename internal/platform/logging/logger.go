@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 )
@@ -10,6 +11,12 @@ type ctxKey struct{}
 
 func New(level string) *slog.Logger {
 	return slog.New(stderrHandler(level))
+}
+
+// NewTee is New plus one JSON line per record written to w, at the same level.
+func NewTee(level string, w io.Writer) *slog.Logger {
+	l := parseLevel(level)
+	return slog.New(fanout{min: l, handlers: []slog.Handler{stderrHandler(level), slog.NewJSONHandler(w, &slog.HandlerOptions{Level: l})}})
 }
 
 // NewWithOTLP is New plus shipping every record to o.Endpoint; with an empty endpoint it is exactly New.

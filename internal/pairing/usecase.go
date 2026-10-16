@@ -24,6 +24,11 @@ type ProjectGate interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
+// ComputerGate reads what a person holds on a computer through its owner's rules (ADR 0148).
+type ComputerGate interface {
+	ComputerPermissions(ctx context.Context, userID, computerID string) (ownerID string, held permissions.Set, err error)
+}
+
 // Config wires the pairing use-cases.
 type Config struct {
 	// Repo persists computers and defaults.
@@ -50,25 +55,28 @@ type Config struct {
 	Runners Runners
 	// Containers reads a computer's Docker containers and their logs through its runner; nil serves none.
 	Containers Containers
+	// ComputerAccess lets a person a computer is shared with read its logs; nil leaves them to the owner.
+	ComputerAccess ComputerGate
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
 type Service struct {
-	repo       Repo
-	harnesses  harness.Registry
-	key        []byte
-	now        func() time.Time
-	changed    func(userID string)
-	tunnels    Tunnels
-	bus        Publisher
-	tokens     MCPTokens
-	instance   InstanceSettings
-	projects   ProjectGate
-	runners    Runners
-	containers Containers
-	watchMu    sync.Mutex
-	watching   map[string]tunnelWatch
-	setupMu    sync.Mutex
+	repo           Repo
+	harnesses      harness.Registry
+	key            []byte
+	now            func() time.Time
+	changed        func(userID string)
+	tunnels        Tunnels
+	bus            Publisher
+	tokens         MCPTokens
+	instance       InstanceSettings
+	projects       ProjectGate
+	runners        Runners
+	containers     Containers
+	computerAccess ComputerGate
+	watchMu        sync.Mutex
+	watching       map[string]tunnelWatch
+	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
 	settingUp map[string]bool
 	setupRuns sync.WaitGroup
@@ -86,7 +94,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
 		pairFailures: map[string]string{},
 	}
 }

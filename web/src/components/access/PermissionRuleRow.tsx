@@ -5,6 +5,7 @@ import { useAreaDenyWarning } from "@/hooks/useAreaDenyWarning";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { RuleState, type PermissionAnswer } from "@/models/Permission";
+import { permissionHint } from "@/models/PermissionPanel";
 
 interface PermissionRuleRowProps {
   targetKey: string;
@@ -21,6 +22,7 @@ export const PermissionRuleRow = ({ targetKey, action, label, answer }: Permissi
   const warnDeny = useAreaDenyWarning();
   const value = stateOf(targetKey, action);
   const held = holds(action);
+  const hint = permissionHint(action, entity.type);
   const liftLocked = !held && saved(targetKey, action) === RuleState.Deny;
   const locked = {
     ...(!held ? { [RuleState.Allow]: lockedAllowReason } : {}),
@@ -36,6 +38,7 @@ export const PermissionRuleRow = ({ targetKey, action, label, answer }: Permissi
     <li className="flex items-start justify-between gap-4 px-3 py-2.5">
       <div className="min-w-0 flex-1 pt-1">
         <p className="text-sm">{label}</p>
+        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
         {value === RuleState.Fallback && answer && <SourceLine verdict={answer.fallback} className="mt-1" />}
         <RequiresLine answer={answer} />
       </div>

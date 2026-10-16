@@ -110,6 +110,34 @@ func TestComputerPermissions_RunBringsSeeAndReadsFreshEveryTime(t *testing.T) {
 	assert.Equal(t, 3, computers.reads, "one read per check, none remembered")
 }
 
+func TestComputerPermissions_ReadLogsIsOffByDefaultAndBringsSee(t *testing.T) {
+	s, repo, _ := newComputerService(t)
+	setOverwrite(repo, resourceTypeComputer, "laptop", "bob", permissions.SetOf(permissions.ComputersSee))
+	_, held, err := s.ComputerPermissions(context.Background(), "bob", "laptop")
+	require.NoError(t, err)
+	assert.False(t, held.Has(permissions.ComputersLogs), "a share is See alone until the owner adds Read logs")
+
+	setOverwrite(repo, resourceTypeComputer, "laptop", "bob", permissions.SetOf(permissions.ComputersLogs))
+	_, held, err = s.ComputerPermissions(context.Background(), "bob", "laptop")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.ComputersSee, permissions.ComputersLogs), held)
+	_, held, err = s.ComputerPermissions(context.Background(), "sam", "laptop")
+	require.NoError(t, err)
+	assert.True(t, held.Has(permissions.ComputersLogs), "the owner always holds it")
+}
+
+func TestSetRules_OnAComputer_ReadLogsKeepsSeeAndGoesWhenSeeDoes(t *testing.T) {
+	s, repo, _ := newComputerService(t)
+	require.NoError(t, s.SetRules(context.Background(), "sam", resourceTypeComputer, []string{"laptop"}, Targets{UserIDs: []string{"bob"}}, []permissions.Action{permissions.ComputersLogs}, StateAllow))
+	ow, err := repo.get(resourceTypeComputer, "laptop", "bob")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.ComputersSee, permissions.ComputersLogs), ow.Allow)
+
+	require.NoError(t, s.SetRules(context.Background(), "sam", resourceTypeComputer, []string{"laptop"}, Targets{UserIDs: []string{"bob"}}, []permissions.Action{permissions.ComputersSee}, StateFallback))
+	_, err = repo.get(resourceTypeComputer, "laptop", "bob")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "See going takes Read logs with it")
+}
+
 func TestSetRules_OnAComputer_RefusesRolesDenyStrangersAndAnyoneButItsOwner(t *testing.T) {
 	s, repo, computers := newComputerService(t)
 	see := []permissions.Action{permissions.ComputersSee}
@@ -181,7 +209,7 @@ func TestExplain_OnAComputer(t *testing.T) {
 
 	got, err := s.Explain(context.Background(), "sam", resourceTypeComputer, "laptop", "")
 	require.NoError(t, err)
-	require.Len(t, got.Effective, 3)
+	require.Len(t, got.Effective, 4)
 	for _, a := range got.Effective {
 		assert.True(t, a.Allowed)
 		assert.Equal(t, "Owner of this computer", a.Source.Sentence)
