@@ -303,6 +303,7 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 	if err != nil {
 		return nil, target{}, goAhead, fmt.Errorf("read %s %s: %w", it.TargetType, it.TargetID, err)
 	}
+	f.Service = it.Service
 	if err := r.checkPlay(ctx, it.PersonID, play, f.ProjectID); err != nil {
 		if errors.Is(err, apperrs.ErrInvalid) {
 			return nil, target{}, skip(err.Error()), nil
@@ -315,10 +316,14 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 	if slices.ContainsFunc(trails, func(t *Trail) bool { return t.PlayID == it.PlayID && !t.StartedAt.Before(it.QueuedAt) }) {
 		return nil, target{}, skip("already ran"), nil
 	}
+	if reason := r.whyNoComputer(ctx, it); reason != "" {
+		return nil, target{}, verdict{status: QueueDidntRun, reason: reason}, nil
+	}
 	tgt, err := r.readTarget(identity.WithActor(ctx, identity.Actor{ID: it.PersonID}), it.TargetType, it.TargetID)
 	if err != nil {
 		return nil, target{}, verdict{status: QueueDidntRun, reason: err.Error()}, nil
 	}
+	tgt.service, tgt.outageID = it.Service, it.OutageID
 	return play, tgt, goAhead, nil
 }
 
@@ -371,6 +376,9 @@ func stillMatches(a *AutoPlay, it *QueueItem, f Facts) verdict {
 	}
 	if !a.Conditions.holds(f) {
 		return skip("its conditions no longer hold")
+	}
+	if a.RunOn == RunOnComputer && a.RunAs != it.PersonID {
+		return skip("its computer was picked by someone else")
 	}
 	return samePerson(a.RunOn, it.PersonID, f)
 }

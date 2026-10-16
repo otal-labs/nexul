@@ -1,6 +1,6 @@
 ---
 title: Plays
-description: Press a play on a ticket, a doc, or a project's interview and an agent on your own computer does the work, with every step recorded.
+description: Press a play on a ticket, a doc, or a project's interview, or let one start itself when a service crashes, and an agent on a computer does the work, with every step recorded.
 sidebar:
   order: 10
 ---
@@ -39,7 +39,7 @@ A doc play locks its doc when it starts, so nobody edits the doc under the agent
 
 ## The built-in plays
 
-Every workspace starts with eight. They are ordinary plays: rename, edit, or delete them.
+Every workspace starts with nine. They are ordinary plays: rename, edit, or delete them.
 
 | Play | Runs on | What it does |
 |---|---|---|
@@ -51,6 +51,7 @@ Every workspace starts with eight. They are ordinary plays: rename, edit, or del
 | **Draft interview** | a project's Interview page | Drafts interview answers from the project's sources. |
 | **Audit via AI** | a project's Interview page | Checks code against the interview memory and writes the findings as a doc. |
 | **Decisions check** | a ticket in a Done column | Records in the project's decisions log whether the ticket changed how the project works. See [The decisions check](#the-decisions-check). |
+| **Investigate a crash** | a stack, when one of its services crashes | Reads the service's logs and the stack's recent deploys, finds the cause, and writes it down. It never deploys. See [Investigate a crash](#investigate-a-crash). |
 
 **Test with AI** works like pressing **Pass** or **Fail** yourself. It never tests production: with no safe test environment it stops and says a branch deploy is needed. A pass moves the card to the first Done column; a fail posts steps to reproduce, the expected result, and the actual result to the thread and moves the card back to In progress. Leave out footer memories that move the card for this play, because the result already does.
 
@@ -61,7 +62,7 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 Open **Configuration → Plays**. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
-- **Type**: ticket, doc, or interview. It can't change later.
+- **Type**: ticket, doc, interview, or stack. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
 - **Description**, shown as the button's tooltip.
 - **Instructions**, what the agent should do on every run.
@@ -75,17 +76,17 @@ A play someone can't see is gone for them: from **Configuration → Plays**, the
 
 ## Auto plays
 
-An auto play starts its play by itself when something happens to a ticket or doc, so nobody has to press the button. A play can have several. Open the play in **Configuration → Plays**, press **Edit**, and go to the **Auto plays** tab. Interview plays have none.
+An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Configuration → Plays**, press **Edit**, and go to the **Auto plays** tab. Interview plays have none.
 
 Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it.
 
 An auto play has:
 
-- **When**, the moment it waits for. A ticket play: the ticket becomes unblocked, enters a stage, is created, gets a developer, gets a tester, or fails a test. A doc play: the doc is created, or changes. A change counts once edits have stopped for 10 minutes, and never for an agent's edits.
-- **If**, conditions on the ticket's or doc's fields: type, project, stage, status column, category, label, developer, tester, whether it has a source doc or a linked pull request, and whether it is blocked; a doc's project and folder. Pick whether all or any of them must match, and add a group one level in for an "any of these" inside an "all of these". With no conditions, every match of the moment runs it.
+- **When**, the moment it waits for. A ticket play: the ticket becomes unblocked, enters a stage, is created, gets a developer, gets a tester, or fails a test. A doc play: the doc is created, or changes. A change counts once edits have stopped for 10 minutes, and never for an agent's edits. A stack play: a service crashes, or recovers once it has run steadily again.
+- **If**, conditions on the ticket's or doc's fields: type, project, stage, status column, category, label, developer, tester, whether it has a source doc or a linked pull request, and whether it is blocked; a doc's project and folder; a stack's project, the stack, and the service by name. Pick whether all or any of them must match, and add a group one level in for an "any of these" inside an "all of these". With no conditions, every match of the moment runs it.
 - **Priority**, High, Normal, or Low, with rules such as "High if Type is Bug" checked in order, then the level for everything else. A higher priority runs first in the person's queue.
 - **Limits**, at most once per ticket or doc every hour, 24 hours, or 7 days, or no limit.
-- **Run on**, whose computer runs it: the ticket's developer, its tester, or whoever caused the moment. A doc play always runs on whoever caused it.
+- **Run on**, whose computer runs it: the ticket's developer, its tester, whoever caused the moment, or a chosen computer. A doc play has no developer or tester, so it offers whoever caused it and a chosen computer. A stack play offers only a chosen computer. See [Run on a chosen computer](#run-on-a-chosen-computer).
 
 The play's **Show when** stage does not apply to an auto play; add a **Stage is** condition instead. A run waits until its person has a free slot and their computer is online and set up, and its conditions are checked again before it starts. If nothing is paired yet, the computer needs pairing again, no T3 project is linked for the project, the computer's setup isn't done, or several computers are paired and none is the default, the run waits rather than failing and starts once that is fixed. The person it runs on needs to see the play and hold `plays:run`; if they can't see it, it doesn't run, and says why only to those who can.
 
@@ -94,6 +95,22 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computer offline)".
 
 On the ticket, the rail's **Plays** section shows what is waiting: each queued run with its person and why it waits (computer offline, busy with another run, ticket busy, paused, or what to fix in their computer setup), and **Cancel** for that person or anyone with `autoplays:write`. When several computers are paired and none is the default, the person it runs on gets **Pick a computer**: a menu of their computers with each one's T3 projects. Picking one starts the run there and saves it as their link for the project, as the run dialog does the first time, so their other runs in that project start without asking; it doesn't change their default. While the run still waits, say because the picked computer went offline, the same person gets **Change computer** to pick another, which replaces the pick and the link. Once the run is starting, a pick is refused with "the run is already starting". Once a ticket reaches the daily cap, it shows **Auto plays paused** with the runs today; the ticket's developer or anyone with `autoplays:write` can press **Resume**, or it resumes by itself as the day rolls on. What already happened sits in the ticket's thread at the time it happened: "Fix with AI skipped: no longer unblocked" when the ticket stopped matching before the run's turn came, or "Fix with AI didn't run" with the reason when there was nobody to run it on. **Run it** on the latest one runs the play on your own computer. A ticket with no thread yet shows these lines above **Start thread**. A doc shows the same: queued and paused beside its trail, skipped and didn't run in its thread, or beside its trail too while it has no thread.
+
+## Run on a chosen computer
+
+Any auto play can run on one computer you pick, such as a box that is on all day. **Run on** then asks for the computer, and lists the ones you own. A computer shared with you shows as "can't run here yet" and can't be picked yet. A stack has no developer, tester or person who caused a crash, so a stack play always runs this way.
+
+The run is yours: it takes the identity and permissions of whoever picked the computer, shows as their run, and waits in their queue. Saving the auto play again with the same computer keeps who picked it; picking a different computer makes the person who saved it the one it runs as. An auto play that runs on a computer can't be switched on until one is picked.
+
+Nexul checks that you still own the computer or hold **Run agents** on it when you pick it, when the moment happens, and again just before the run starts. If you no longer do, the run doesn't start and shows as **didn't run** with that reason. If someone else has picked the computer since the run was queued, it is skipped.
+
+## Investigate a crash
+
+**Investigate a crash** is a built-in stack play with one auto play, "When a stack **service crashes**", that starts off. A service crashes when its container dies with a non-zero exit code or is killed for running out of memory, outside a deploy; a service that keeps restarting counts once. To switch it on, open **Configuration → Plays**, press **Edit** on **Investigate a crash**, go to the **Auto plays** tab, pick the computer it runs on, and turn it on. You can add conditions on the project, the stack or the service, such as only `api`.
+
+The agent reads the stack with `stack_get`, the crashed service's logs, and the stack's recent deploys, and finds the cause in the project's repository. It writes what it found on the crash's ticket if one is open for that service, or on a new ticket in the stack's project. It never deploys, restarts or edits the stack, and opens a fix pull request only if you edit the play's instructions to say so. If it thinks the fault is in Nexul rather than your app, it says so and points to the [triage skill](/docs/guide/triage/).
+
+A stack run is recorded as a trail under the person whose computer it ran on, in the stack's own thread. One run goes at a time on a stack, and it counts against the same daily limit of automatic runs a ticket has, per stack, so a service that keeps failing can't start a run every time.
 
 ## The decisions check
 
@@ -117,6 +134,6 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 
 A role gives these for every play; a play's own rules turn **See this play**, **Run**, **Edit** and **Delete** on or off for that play alone. A play whose own rule allows you **Run** shows its button even when your roles don't hold `plays:run`, and one whose rule denies it keeps its button hidden.
 
-Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link once that computer lists the T3 project. `computer_list` with a computer's id lists its T3 projects.
+Agents create a play of any type with `play_create`, and add and change its auto plays, including the computer a run goes to with `computer_id`, with `play_update`. They run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link once that computer lists the T3 project. `computer_list` with a computer's id lists its T3 projects.
 
 Auto plays, automation `runPlay` requests, and the automatic decisions check use your project link or, without one, your defaults. The decisions check's **Run again** keeps the same fallback. These paths have no location dialog.

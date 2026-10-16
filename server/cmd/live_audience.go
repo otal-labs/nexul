@@ -526,6 +526,10 @@ func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool
 	if p.TargetType == plays.TargetInterview {
 		return a.access.RequireProject(ctx, p.TargetID, permissions.MemoriesRead) == nil
 	}
+	if p.TargetType == plays.TargetStack {
+		_, err := a.deploy.GetStack(ctx, p.TargetID)
+		return err == nil
+	}
 	return readsTicket(ctx, a, p.TargetID)
 }
 

@@ -91,8 +91,9 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		return refuse(err)
 	}
 	links = append(links, r.interviewBlocks(ctx, play, trail, tgt)...)
+	links = append(links, stackBlocks(trail, tgt)...)
 	drafting := trail.TargetType == TargetInterview && play.BuiltinKey == DraftInterviewKey
-	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
+	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.ProjectID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
 		return refuse(err)
 	}
@@ -190,6 +191,23 @@ func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, 
 		blocks = append(blocks, "This project has no project source under question: audit its own code, in the checkout you are running in.")
 	}
 	return blocks
+}
+
+// stackBlocks names a stack run's stack and, for an auto run, the service and outage that started it; the agent reads
+// the rest itself with stack_get and its logs.
+func stackBlocks(trail *Trail, tgt target) []string {
+	if trail.TargetType != TargetStack {
+		return nil
+	}
+	blocks := []string{fmt.Sprintf("Stack %q (stack id %s). Read it with `stack_get`; pass `logs` with a service name for that service's output.", tgt.title, trail.TargetID)}
+	if tgt.service == "" {
+		return blocks
+	}
+	line := fmt.Sprintf("Service: %s.", tgt.service)
+	if tgt.outageID != "" {
+		line += fmt.Sprintf(" Outage id %s; while the service is still down `stack_get` shows its exit code and restart count under `open_outages`.", tgt.outageID)
+	}
+	return append(blocks, line)
 }
 
 // draftingBlock tells a drafting run its trail id, for the drafts it saves, and where its follow project sources are.
@@ -510,7 +528,7 @@ func optionLabels(options []harness.QuestionOption, selected []string) []string 
 // exclusion, the caller's plays:run on this play, and a ticket play's stage.
 func (r *Runner) checkPlayAndTarget(ctx context.Context, starter string, in RunInput) (*Play, target, error) {
 	if !in.TargetType.valid() {
-		return nil, target{}, fmt.Errorf("%w: target type must be ticket, doc, or interview", apperrs.ErrInvalid)
+		return nil, target{}, fmt.Errorf("%w: target type must be ticket, doc, interview, or stack", apperrs.ErrInvalid)
 	}
 	if strings.TrimSpace(in.TargetID) == "" {
 		return nil, target{}, fmt.Errorf("%w: target id is required", apperrs.ErrInvalid)
@@ -570,6 +588,13 @@ func (r *Runner) readTarget(ctx context.Context, targetType TargetType, targetID
 			return target{}, fmt.Errorf("get project %s: %w", targetID, err)
 		}
 		return target{projectID: targetID, title: p.Name, testsLocation: p.TestsLocation}, nil
+	}
+	if targetType == TargetStack {
+		st, err := r.targets.GetStack(ctx, targetID)
+		if err != nil {
+			return target{}, fmt.Errorf("get stack %s: %w", targetID, err)
+		}
+		return target{projectID: st.ProjectID, title: st.Name}, nil
 	}
 	if targetType == TargetDoc {
 		d, err := r.targets.GetDoc(ctx, targetID)
@@ -687,7 +712,14 @@ func orderMemories(all []Memory, selected []string) (runMemories, []string) {
 	return ms, missing
 }
 
-func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType TargetType, targetID, starter string) (string, error) {
+func (r *Runner) openThread(ctx context.Context, workspaceID, projectID string, targetType TargetType, targetID, starter string) (string, error) {
+	if targetType == TargetStack {
+		id, err := r.threads.GetOrCreateStackThread(ctx, workspaceID, projectID, targetID, starter)
+		if err != nil {
+			return "", fmt.Errorf("open stack thread for %s: %w", targetID, err)
+		}
+		return id, nil
+	}
 	if targetType == TargetInterview {
 		id, err := r.threads.GetOrCreateInterviewThread(ctx, workspaceID, targetID, starter)
 		if err != nil {

@@ -54,6 +54,25 @@ func TestPlayQueueRepo_WaitingMatchIsANoOpAndPublishesNothing(t *testing.T) {
 	assert.True(t, inserted, "once started, the next match waits again")
 }
 
+func TestPlayQueueRepo_KeepsTheStackServiceAndOutageARunWasQueuedFor(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedPlays(t, s)
+	at := time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
+	it := newTestQueueItem("q-1", "ap-1", "st-1", "u-alice", plays.LevelNormal, at)
+	it.TargetType, it.RunOn, it.Moment = plays.TargetStack, plays.RunOnComputer, plays.MomentStackServiceCrashed
+	it.ComputerID, it.Service, it.OutageID = "c-1", "api", "o-1"
+	_, err := s.PlayQueue.EnqueueRun(t.Context(), it)
+	require.NoError(t, err)
+
+	got, err := s.PlayQueue.GetQueueItem(t.Context(), "q-1")
+	require.NoError(t, err)
+	assert.Equal(t, it, got)
+	listed, err := s.PlayQueue.ListQueueByTarget(t.Context(), plays.TargetStack, "st-1")
+	require.NoError(t, err)
+	assert.Equal(t, []*plays.QueueItem{it}, listed)
+}
+
 func TestPlayQueueRepo_PickAndMove_NeverOverwriteEachOther(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

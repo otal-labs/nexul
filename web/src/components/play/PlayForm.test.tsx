@@ -167,6 +167,24 @@ describe("PlayForm", () => {
     );
   });
 
+  it("creates a stack play with no show-when stage", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "play-1" } });
+    renderHarness();
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(screen.getByLabelText("Label"), "Investigate a crash");
+    await user.click(screen.getByLabelText("Type"));
+    await user.click(screen.getByRole("option", { name: "Stack" }));
+    expect(screen.queryByLabelText("Show when")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create play" }));
+    expect(api.post).toHaveBeenCalledWith(
+      "/api/workspaces/ws-1/plays",
+      expect.objectContaining({ type: "stack", show_when_stage: null }),
+    );
+  });
+
   it("shows a taken label on the label field", async () => {
     const user = userEvent.setup();
     vi.mocked(api.post).mockRejectedValue({

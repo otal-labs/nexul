@@ -9,6 +9,7 @@ export type ConversationKind =
   | "ticket_thread"
   | "doc_thread"
   | "interview_thread"
+  | "stack_thread"
   | "voice_channel";
 
 export interface Conversation {
@@ -18,8 +19,10 @@ export interface Conversation {
   name?: string;
   ticket_id?: string;
   doc_id?: string;
-  // Only set on an interview thread.
+  // Set on an interview thread, and on a stack thread to the stack's project.
   project_id?: string;
+  // Only set on a stack thread.
+  stack_id?: string;
   parent_message_id?: string;
   created_by: string;
   created_at: string;
@@ -140,6 +143,7 @@ export const conversationLabel = (c: Conversation, dmCtx?: DMLabelContext): stri
   if (c.kind === "ticket_thread") return "Ticket thread";
   if (c.kind === "doc_thread") return "Doc thread";
   if (c.kind === "interview_thread") return "Interview";
+  if (c.kind === "stack_thread") return "Stack thread";
   return "Thread";
 };
 

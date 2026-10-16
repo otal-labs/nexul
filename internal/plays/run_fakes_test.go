@@ -202,6 +202,7 @@ type fakeTargets struct {
 	tickets  map[string]TicketTarget
 	docs     map[string]DocTarget
 	statuses map[string]StatusTarget
+	stacks   map[string]StackTarget
 	// needActor refuses reads without an actor, the way the real ticket and doc services check permissions.
 	needActor bool
 }
@@ -233,6 +234,19 @@ func (f *fakeTargets) GetDoc(ctx context.Context, id string) (DocTarget, error) 
 		return DocTarget{}, apperrs.ErrNotFound
 	}
 	return d, nil
+}
+
+func (f *fakeTargets) GetStack(ctx context.Context, id string) (StackTarget, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.refuses(ctx) {
+		return StackTarget{}, apperrs.ErrForbidden
+	}
+	s, ok := f.stacks[id]
+	if !ok {
+		return StackTarget{}, apperrs.ErrNotFound
+	}
+	return s, nil
 }
 
 func (f *fakeTargets) GetStatus(_ context.Context, id string) (StatusTarget, error) {
@@ -536,6 +550,10 @@ func (f *fakeThreads) GetOrCreateInterviewThread(_ context.Context, _, projectID
 		return "", f.interviewErr
 	}
 	return "conv-interview-" + projectID, nil
+}
+
+func (f *fakeThreads) GetOrCreateStackThread(_ context.Context, _, _, stackID, _ string) (string, error) {
+	return "conv-stack-" + stackID, nil
 }
 
 func (f *fakeThreads) PostMessage(_ context.Context, conversationID, authorID, body string) (string, error) {

@@ -1,4 +1,4 @@
-import type { PlayStage } from "@/models/Play";
+import type { Play, PlayStage } from "@/models/Play";
 
 // Mirrors internal/plays/autoplay.go: what starts a play by itself, its conditions, priority, and whom it runs on.
 export type AutoPlayMoment =
@@ -9,11 +9,13 @@ export type AutoPlayMoment =
   | "ticket.tester_set"
   | "ticket.test_failed"
   | "doc.created"
-  | "doc.changed";
+  | "doc.changed"
+  | "stack.service_crashed"
+  | "stack.service_recovered";
 
 export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
-export type AutoPlayRunOn = "developer" | "tester" | "causer";
+export type AutoPlayRunOn = "developer" | "tester" | "causer" | "computer";
 export type AutoPlayOp = "is" | "is_not" | "set" | "unset";
 export type AutoPlayField =
   | "type"
@@ -27,9 +29,11 @@ export type AutoPlayField =
   | "source_doc"
   | "linked_pr"
   | "blocked"
-  | "folder";
+  | "folder"
+  | "stack"
+  | "service";
 
-// Values are ids for project, status and folder, names for type, category and label, user ids for developer and tester.
+// Values are ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester.
 export interface AutoPlayRule {
   field: AutoPlayField;
   op: AutoPlayOp;
@@ -57,6 +61,9 @@ export interface AutoPlay {
   priority: AutoPlayPriority;
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
+  // The computer a "computer" auto play lands on, and the person who picked it, whose identity the run takes; both "" otherwise.
+  computer_id: string;
+  run_as: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -65,7 +72,7 @@ export interface AutoPlay {
 // The full replace the create and update routes take.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on"
+  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "computer_id"
 >;
 
 export interface AutoPlayLimits {
@@ -75,11 +82,18 @@ export interface AutoPlayLimits {
 export const MIN_DAILY_CAP = 1;
 export const MAX_DAILY_CAP = 50;
 
-export type AutoPlaySubject = "ticket" | "doc";
+export type AutoPlaySubject = "ticket" | "doc" | "stack";
+
+// What an auto play's play fires on; an interview play has no auto plays, so it never gets here.
+export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {
+  if (play.type === "doc" || play.type === "stack") return play.type;
+  return "ticket";
+};
 
 export const SUBJECT_MOMENTS: Record<AutoPlaySubject, AutoPlayMoment[]> = {
   ticket: ["ticket.unblocked", "ticket.entered_stage", "ticket.created", "ticket.developer_set", "ticket.tester_set", "ticket.test_failed"],
   doc: ["doc.created", "doc.changed"],
+  stack: ["stack.service_crashed", "stack.service_recovered"],
 };
 
 export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
@@ -91,6 +105,8 @@ export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
   "ticket.test_failed": "Ticket fails a test",
   "doc.created": "Doc is created",
   "doc.changed": "Doc changes",
+  "stack.service_crashed": "Service crashes",
+  "stack.service_recovered": "Service recovers",
 };
 
 // The moment as the list row's sentence says it after "When a ticket".
@@ -103,11 +119,14 @@ export const MOMENT_PHRASES: Record<AutoPlayMoment, string> = {
   "ticket.test_failed": "fails a test",
   "doc.created": "is created",
   "doc.changed": "changes",
+  "stack.service_crashed": "service crashes",
+  "stack.service_recovered": "service recovers",
 };
 
 export const SUBJECT_FIELDS: Record<AutoPlaySubject, AutoPlayField[]> = {
   ticket: ["type", "project", "stage", "status", "category", "label", "developer", "tester", "source_doc", "linked_pr", "blocked"],
   doc: ["project", "folder"],
+  stack: ["project", "stack", "service"],
 };
 
 export const FIELD_LABELS: Record<AutoPlayField, string> = {
@@ -123,6 +142,8 @@ export const FIELD_LABELS: Record<AutoPlayField, string> = {
   linked_pr: "Has linked PR",
   blocked: "Blocked",
   folder: "Folder",
+  stack: "Stack",
+  service: "Service",
 };
 
 const VALUE_OPS: AutoPlayOp[] = ["is", "is_not"];
@@ -135,6 +156,8 @@ export const FIELD_OPS: Record<AutoPlayField, AutoPlayOp[]> = {
   stage: VALUE_OPS,
   status: VALUE_OPS,
   folder: VALUE_OPS,
+  stack: VALUE_OPS,
+  service: VALUE_OPS,
   category: ANY_OP,
   label: ANY_OP,
   developer: ANY_OP,
@@ -155,7 +178,7 @@ export const opLabel = (field: AutoPlayField, op: AutoPlayOp): string => {
 export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
-export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "developer", "tester"]);
+export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "stack", "developer", "tester"]);
 
 export const LEVEL_LABELS: Record<AutoPlayLevel, string> = { high: "High", normal: "Normal", low: "Low" };
 
@@ -163,6 +186,14 @@ export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
+  computer: "A chosen computer",
+};
+
+// Which run-on choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
+export const SUBJECT_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn[]> = {
+  ticket: ["developer", "tester", "causer", "computer"],
+  doc: ["causer", "computer"],
+  stack: ["computer"],
 };
 
 export const LIMIT_PRESETS = [0, 60, 24 * 60, 7 * 24 * 60];
@@ -194,6 +225,7 @@ export interface AutoPlayDraft {
   priority: AutoPlayPriority;
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
+  computer_id: string;
 }
 
 export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
@@ -205,7 +237,8 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   groups: [],
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 24 * 60,
-  run_on: subject === "doc" ? "causer" : "developer",
+  run_on: SUBJECT_RUN_ON[subject][0] ?? "developer",
+  computer_id: "",
 });
 
 export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayDraft => ({
@@ -218,6 +251,7 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
+  computer_id: autoPlay.computer_id,
 });
 
 // Values the editor cannot name (a project the viewer can't open) ride along untouched, so a save never drops them.
@@ -232,6 +266,7 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   priority: draft.priority,
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
+  computer_id: draft.run_on === "computer" ? draft.computer_id : "",
 });
 
 export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
@@ -242,6 +277,7 @@ export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
+  computer_id: autoPlay.computer_id,
 });
 
 export const MATCH_OPTIONS = [

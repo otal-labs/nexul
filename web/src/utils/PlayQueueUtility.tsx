@@ -61,6 +61,7 @@ export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined =>
   item.status === "queued" ? setupGaps[item.reason]?.link : undefined;
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^nobody to run it on: no one has picked a computer for it$/, () => "no one has picked a computer for it"],
   [/^nobody to run it on: no person caused it and the (ticket|doc) has no developer$/, (m) => `nobody caused it and the ${m[1]} has no developer`],
   [/^nobody to run it on: the (ticket|doc) has no causer$/, () => "nobody caused it"],
   [/^nobody to run it on: the (ticket|doc) has no (developer|tester)$/, (m) => `nobody is the ${m[1]}'s ${m[2]}`],
@@ -69,7 +70,7 @@ const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^forbidden: plays:run required/, () => "its person may not run the play"],
   [/^get project \S+: not found$/, () => "its person can't open the project"],
   [/^get play \S+: not found$/, () => "its person can't see the play"],
-  [/^get (ticket|doc) \S+: not found$/, (m) => `the ${m[1]} is gone`],
+  [/^get (ticket|doc|stack) \S+: not found$/, (m) => `the ${m[1]} is gone`],
 ];
 
 // A server error's message without the sentinel's prefix, so a sentence reads as one.

@@ -1,13 +1,14 @@
 import { z } from "zod";
 
-// An interview play runs on a project's Interview page; its run target id is the project id.
-export const PLAY_TYPES = ["ticket", "doc", "interview"] as const;
+// An interview play runs on a project's Interview page; its run target id is the project id. A stack play runs on a stack.
+export const PLAY_TYPES = ["ticket", "doc", "interview", "stack"] as const;
 export type PlayType = (typeof PLAY_TYPES)[number];
 
 export const PLAY_TYPE_LABELS: Record<PlayType, string> = {
   ticket: "Ticket",
   doc: "Doc",
   interview: "Interview",
+  stack: "Stack",
 };
 
 // Mirrors the Go backend's five fixed board stages (ADR 0022); a ticket play shows on exactly one.
@@ -31,6 +32,9 @@ export const AUDIT_KEY = "audit";
 // The built-in ticket play a ticket entering done starts through its seeded auto play.
 export const DECISIONS_CHECK_KEY = "decisions-check";
 
+// The built-in stack play a crashed service starts through its seeded auto play, once someone picks its computer.
+export const INVESTIGATE_CRASH_KEY = "investigate-crash";
+
 export interface Play {
   id: string;
   workspace_id: string;
@@ -41,7 +45,7 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
-  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, audit, decisions-check), kept through renames; "" for a play a person made.
+  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, audit, decisions-check, investigate-crash), kept through renames; "" for a play a person made.
   builtin_key: string;
   created_by: string;
   created_at: string;

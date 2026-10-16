@@ -50,6 +50,8 @@ type AutoPlay struct {
 	CreatedBy         string
 	CreatedAt         int64
 	UpdatedAt         int64
+	ComputerID        string
+	RunAs             string
 }
 
 type Automation struct {
@@ -232,6 +234,7 @@ type Conversation struct {
 	IsGeneral       int64
 	Private         int64
 	AgentSeen       string
+	StackID         sql.NullString
 }
 
 type ConversationParticipant struct {
@@ -872,6 +875,8 @@ type PlayQueue struct {
 	AutomationID     string
 	ComputerID       string
 	HarnessProjectID string
+	Service          string
+	OutageID         string
 }
 
 type PlayQueueResume struct {

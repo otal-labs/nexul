@@ -82,7 +82,7 @@ type playRunIn struct {
 	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
 	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the workspace's Decisions check play on a done ticket without looking up its play_id: pass it with target_type ticket and target_id, and no play_id or other run choices."`
 	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays on a ticket or doc the daily cap paused, instead of running a play: pass it with target_type and target_id only. Its count of automatic runs starts again and its queued runs go ahead."`
-	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
+	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, interview, or stack."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
@@ -95,7 +95,7 @@ type playRunIn struct {
 
 type trailListIn struct {
 	ID         string     `json:"id,omitempty" jsonschema:"A trail's id. Returns that one trail with its run choices, open question, and newest steps instead of a list."`
-	TargetType TargetType `json:"target_type,omitempty" jsonschema:"Without id: the target kind to list trails for, ticket, doc, or interview."`
+	TargetType TargetType `json:"target_type,omitempty" jsonschema:"Without id: the target kind to list trails for, ticket, doc, interview, or stack."`
 	TargetID   string     `json:"target_id,omitempty" jsonschema:"Without id: the ticket's or doc's id, or for an interview the project's id."`
 	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the target's trails of this play."`
 	Steps      int        `json:"steps,omitzero" jsonschema:"With id: how many of the newest transcript steps to return, 1 to 300. Defaults to 50."`
@@ -179,7 +179,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 					return toTrailDetail(t, in.Steps), nil
 				}
 				if in.TargetType == "" || in.TargetID == "" {
-					return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, or interview) and target_id "+
+					return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, interview, or stack) and target_id "+
 						"for a target's trails, which play_id only narrows; ticket_list, doc_list, and project_list give target ids", apperrs.ErrInvalid)
 				}
 				list, err := r.ListTrails(ctx, in.TargetType, in.TargetID, in.PlayID)

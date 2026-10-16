@@ -71,5 +71,5 @@ func (r *Runner) RetryDecisionsCheck(ctx context.Context, ticketID string, via V
 // DefaultInstructions returns every built-in instruction text a run hands the agent, the seeded plays' and the origin
 // line; they name MCP tools.
 func DefaultInstructions() []string {
-	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, originLine}
+	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, investigateCrashInstructions, originLine}
 }

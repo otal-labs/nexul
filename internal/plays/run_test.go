@@ -540,6 +540,39 @@ func TestRun_InterviewPlay_PostsInTheInterviewThreadWithTheProjectsAnswers(t *te
 	}
 }
 
+func TestRun_StackPlay_ReportsInTheStacksThreadAndNamesTheStackForTheAgent(t *testing.T) {
+	f := newRunnerFixture()
+	f.targets.stacks = map[string]StackTarget{"st-1": {ProjectID: projectID, Name: "acme-web"}}
+	f.plays.byID["play-stack"] = &Play{ID: "play-stack", WorkspaceID: workspaceID, Label: "Investigate a crash", Type: TypeStack, Instructions: "Look.", Enabled: true}
+
+	trail, err := f.runner.Run(ctxAs(starter), RunInput{PlayID: "play-stack", TargetType: TargetStack, TargetID: "st-1", Via: ViaMCP})
+	require.NoError(t, err)
+	<-f.turns.done
+
+	assert.Equal(t, []any{"conv-stack-st-1", TargetStack, projectID, starter}, []any{trail.ConversationID, trail.TargetType, trail.ProjectID, trail.StarterID})
+	blocks := strings.Join(f.turns.last().Play.Blocks, "\n")
+	assert.Contains(t, blocks, `Stack "acme-web" (stack id st-1)`)
+	assert.Contains(t, blocks, "`stack_get`")
+	assert.NotContains(t, blocks, "Service:", "a press names no service")
+
+	_, err = f.runner.Run(ctxAs(starter), RunInput{PlayID: fixPlayID, TargetType: TargetStack, TargetID: "st-1"})
+	assert.ErrorIs(t, err, apperrs.ErrInvalid, "a ticket play does not run on a stack")
+	_, err = f.runner.Run(ctxAs(starter), RunInput{PlayID: "play-stack", TargetType: TargetStack, TargetID: "st-missing"})
+	assert.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestStackBlocks_NameTheServiceAndOutageAnAutoRunWasQueuedFor(t *testing.T) {
+	trail := &Trail{TargetType: TargetStack, TargetID: "st-1"}
+
+	blocks := stackBlocks(trail, target{title: "acme-web", service: "api", outageID: "o-1"})
+
+	require.Len(t, blocks, 2)
+	assert.Contains(t, blocks[1], "Service: api.")
+	assert.Contains(t, blocks[1], "Outage id o-1")
+	assert.Len(t, stackBlocks(trail, target{title: "acme-web", service: "api"}), 2)
+	assert.Nil(t, stackBlocks(&Trail{TargetType: TargetTicket}, target{service: "api"}), "only a stack run names a stack")
+}
+
 // newHarnessRunner swaps the fake turn runner for the real pipeline over harnesstest.Client.
 func newHarnessRunner(f *runnerFixture, client *harnesstest.Client) *agentConvs {
 	convs := &agentConvs{ticketID: ticketID}

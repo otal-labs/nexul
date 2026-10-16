@@ -7,10 +7,21 @@ import { api, errorMessage } from "@/api/client";
 import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
 import { getRunnerEnrollmentsKey } from "@/hooks/RunnerHooks";
 import type { Computer, ComputerEnrollment, RenameComputerFormData } from "@/models/Pairing";
-import { sharedComputers } from "@/models/SharedComputer";
+import { sharedComputerName, sharedComputers } from "@/models/SharedComputer";
 
 // The computers other people share with the viewer by name, from the same request as their own.
 export const useListSharedComputers = () => useQuery({ ...computersQuery, select: sharedComputers });
+
+// A computer's name as the viewer reads it; "" while unknown, or for one nobody shared with them.
+export const useComputerName = (computerId: string) =>
+  useQuery({
+    ...computersQuery,
+    select: (computers) => {
+      const computer = computers.find((c) => c.id === computerId);
+      return computer ? sharedComputerName(computer) : "";
+    },
+    enabled: computerId !== "",
+  }).data ?? "";
 
 // Adds a computer waiting for its runner, or with an id mints a fresh command for one that has none; the dialog shows failures.
 export const useEnrollComputer = () => {

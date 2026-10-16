@@ -11,17 +11,18 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// Type says what a play is fired from: a ticket, a doc, or a project's interview.
+// Type says what a play is fired from: a ticket, a doc, a project's interview, or a stack.
 type Type string
 
 const (
 	TypeTicket    Type = "ticket"
 	TypeDoc       Type = "doc"
 	TypeInterview Type = "interview"
+	TypeStack     Type = "stack"
 )
 
 func (t Type) valid() bool {
-	return t == TypeTicket || t == TypeDoc || t == TypeInterview
+	return t == TypeTicket || t == TypeDoc || t == TypeInterview || t == TypeStack
 }
 
 // Stage mirrors the five fixed board stages (ADR 0022); plays never import internal/workspace for it (ADR 0017).
@@ -77,10 +78,11 @@ const (
 	TargetTicket    TargetType = "ticket"
 	TargetDoc       TargetType = "doc"
 	TargetInterview TargetType = "interview"
+	TargetStack     TargetType = "stack"
 )
 
 func (t TargetType) valid() bool {
-	return t == TargetTicket || t == TargetDoc || t == TargetInterview
+	return t == TargetTicket || t == TargetDoc || t == TargetInterview || t == TargetStack
 }
 
 // Via records which adapter started a run, the provenance ADR 0049 asks for.
@@ -209,7 +211,7 @@ func (p *Play) Validate() error {
 		return fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
 	}
 	if !p.Type.valid() {
-		return fmt.Errorf("%w: type must be ticket, doc, or interview", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: type must be ticket, doc, interview, or stack", apperrs.ErrInvalid)
 	}
 	if p.Type == TypeTicket {
 		if p.ShowWhenStage == nil {

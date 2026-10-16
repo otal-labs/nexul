@@ -43,15 +43,15 @@ type QueueItem struct {
 	ID           string      `json:"id"`
 	WorkspaceID  string      `json:"workspace_id"`
 	ProjectID    string      `json:"project_id"`
-	TargetType   TargetType  `json:"target_type" enum:"ticket,doc"`
+	TargetType   TargetType  `json:"target_type" enum:"ticket,doc,stack"`
 	TargetID     string      `json:"target_id"`
 	PlayID       string      `json:"play_id"`
 	PlayLabel    string      `json:"play_label"`
 	AutoPlayID   string      `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
 	AutomationID string      `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
 	PersonID     string      `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
-	RunOn        RunOn       `json:"run_on" enum:"developer,tester,causer"`
-	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,automation"`
+	RunOn        RunOn       `json:"run_on" enum:"developer,tester,causer,computer"`
+	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,automation"`
 	Priority     Level       `json:"priority" enum:"high,normal,low"`
 	Status       QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
 	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."`
@@ -60,7 +60,9 @@ type QueueItem struct {
 	QueuedAt     time.Time   `json:"queued_at"`
 	DecidedAt    *time.Time  `json:"decided_at"`
 	NotBefore    time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
-	ComputerID   string      `json:"computer_id" jsonschema:"The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."`
+	ComputerID   string      `json:"computer_id" jsonschema:"The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."`
+	Service      string      `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
+	OutageID     string      `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
 	// HarnessProjectID is the T3 project picked with ComputerID; like a trail's, it stays off the wire.
 	HarnessProjectID string `json:"-"`
 }
@@ -79,7 +81,7 @@ type Queue struct {
 type QueueResumedEvent struct {
 	WorkspaceID string     `json:"workspace_id"`
 	ProjectID   string     `json:"project_id"`
-	TargetType  TargetType `json:"target_type" enum:"ticket,doc"`
+	TargetType  TargetType `json:"target_type" enum:"ticket,doc,stack"`
 	TargetID    string     `json:"target_id"`
 	ResumedBy   string     `json:"resumed_by"`
 	ResumedAt   time.Time  `json:"resumed_at"`
@@ -280,8 +282,8 @@ func (r *Runner) seenItems(ctx context.Context, workspaceID string, items []*Que
 // queueTarget reads a ticket or doc for the queue's surfaces and checks the caller may read its trails.
 func (r *Runner) queueTarget(ctx context.Context, targetType TargetType, targetID string) (Facts, string, error) {
 	targetID = strings.TrimSpace(targetID)
-	if (targetType != TargetTicket && targetType != TargetDoc) || targetID == "" {
-		return Facts{}, "", fmt.Errorf("%w: target type (ticket or doc) and target id are required", apperrs.ErrInvalid)
+	if (targetType != TargetTicket && targetType != TargetDoc && targetType != TargetStack) || targetID == "" {
+		return Facts{}, "", fmt.Errorf("%w: target type (ticket, doc, or stack) and target id are required", apperrs.ErrInvalid)
 	}
 	if r.queue == nil || r.facts == nil {
 		return Facts{}, "", fmt.Errorf("%w: auto plays are not running on this server", apperrs.ErrNotFound)

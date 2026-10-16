@@ -83,9 +83,9 @@ func (s *Service) require(ctx context.Context, workspaceID string, action permis
 	return s.gate.Require(ctx, workspaceID, action)
 }
 
-// projectThread reports a kind read through its project: a ticket or an interview thread.
+// projectThread reports a kind read through its project: a ticket, interview, or stack thread.
 func projectThread(kind Kind) bool {
-	return kind == KindTicketThread || kind == KindInterviewThread
+	return kind == KindTicketThread || kind == KindInterviewThread || kind == KindStackThread
 }
 
 // requireGate is the gate's part of reading c: a ticket or interview thread through its project, else membership.
@@ -101,6 +101,11 @@ func (s *Service) requireGate(ctx context.Context, c *Conversation) error {
 			return s.require(ctx, c.WorkspaceID, permissions.MemoriesRead)
 		}
 		return s.threads.RequireProject(ctx, c.ProjectID, permissions.MemoriesRead)
+	case KindStackThread:
+		if s.threads == nil {
+			return s.require(ctx, c.WorkspaceID, permissions.StacksRead)
+		}
+		return s.threads.RequireProject(ctx, c.ProjectID, permissions.StacksRead)
 	case KindDM:
 		// A DM is read by its participants from any workspace they share, not only the one it started in (ADR 0141).
 		return nil

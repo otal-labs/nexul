@@ -18,6 +18,8 @@ type QueueRig struct {
 	perm    *fakePerm
 	facts   *fakeFacts
 	targets *fakeTargets
+	shares  *fakeComputers
+	turns   *idleTurns
 }
 
 // NewQueueRig wires a runner whose plays, trails, and queue are the given stores; projectID is in workspaceID.
@@ -26,12 +28,14 @@ func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID,
 		harness: &switchableHarness{links: map[string][2]string{}},
 		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:   &fakeFacts{byID: map[string]Facts{}},
-		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}},
+		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
+		turns:   &idleTurns{},
+		shares:  &fakeComputers{owners: map[string]string{}, held: map[string]permissions.Set{}},
 	}
 	q.Runner = NewRunner(RunnerConfig{
 		Plays: playsRepo, Trails: trails, Queue: queue, Facts: q.facts, Perm: q.perm, Targets: q.targets,
 		Projects: &fakeProjects{workspaces: map[string]string{projectID: workspaceID}},
-		Harness:  q.harness, Checkouts: q.harness, Memories: &fakeMemories{}, Threads: &fakeThreads{}, Turns: idleTurns{}, Users: fakeUsers{}, Now: now,
+		Harness:  q.harness, Checkouts: q.harness, Memories: &fakeMemories{}, Threads: &fakeThreads{}, Turns: q.turns, Users: fakeUsers{}, Computers: q.shares, Now: now,
 	})
 	return q
 }
@@ -43,6 +47,38 @@ func (q *QueueRig) SetTicket(id string, f Facts) {
 	defer q.targets.mu.Unlock()
 	q.targets.tickets[id] = TicketTarget{ProjectID: f.ProjectID, Key: id, Stage: f.Stage}
 }
+
+// SetStack gives a stack its facts now, and the project and name a run reads.
+func (q *QueueRig) SetStack(id, projectID, name string) {
+	q.facts.set(id, Facts{ProjectID: projectID, StackID: id})
+	q.targets.mu.Lock()
+	defer q.targets.mu.Unlock()
+	q.targets.stacks[id] = StackTarget{ProjectID: projectID, Name: name}
+}
+
+// OwnComputer makes ownerID the owner of computerID.
+func (q *QueueRig) OwnComputer(computerID, ownerID string) { q.shares.owners[computerID] = ownerID }
+
+// FailComputerCheck makes every check of what a person holds on a computer fail with err; nil answers again.
+func (q *QueueRig) FailComputerCheck(err error) { q.shares.err = err }
+
+// ShareComputer gives userID actions on computerID through its owner's rule; none takes the share away.
+func (q *QueueRig) ShareComputer(computerID, userID string, actions ...permissions.Action) {
+	q.shares.held[computerID+"/"+userID] = permissions.SetOf(actions...)
+}
+
+// LastPlayBlocks are the context blocks the last started run was handed, one per line.
+func (q *QueueRig) LastPlayBlocks() []string {
+	q.turns.mu.Lock()
+	defer q.turns.mu.Unlock()
+	if q.turns.last.Play == nil {
+		return nil
+	}
+	return q.turns.last.Play.Blocks
+}
+
+// LastChoice is the computer and T3 project the last start was asked to run on.
+func (q *QueueRig) LastChoice() HarnessChoice { return q.harness.lastChoice() }
 
 // SetStatus names a board column's stage, for moments read off a move.
 func (q *QueueRig) SetStatus(id string, stage Stage) {
@@ -166,6 +202,13 @@ type switchableHarness struct {
 	links    map[string][2]string // user id + "/" + project id -> computer id, T3 project id
 	saveErr  error
 	next     func()
+	last     HarnessChoice
+}
+
+func (h *switchableHarness) lastChoice() HarnessChoice {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.last
 }
 
 // takeNext returns the hook OnNextResolve set, once.
@@ -192,11 +235,12 @@ func (h *switchableHarness) count() int {
 	return h.resolves
 }
 
-func (h *switchableHarness) ResolveTarget(_ context.Context, userID, projectID string, _ HarnessChoice) (HarnessChoice, error) {
+func (h *switchableHarness) ResolveTarget(_ context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
 	h.takeNext()()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++
+	h.last = choice
 	if link, ok := h.links[userID+"/"+projectID]; ok && h.reason == RefusalNoDefaultComputer {
 		return HarnessChoice{ComputerID: link[0], HarnessProjectID: link[1], Provider: "codex"}, nil
 	}
@@ -248,10 +292,41 @@ func (h *switchableHarness) Link(userID, projectID string) [2]string {
 }
 
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.
-type idleTurns struct{}
+// It keeps the last request it was given.
+type idleTurns struct {
+	mu   sync.Mutex
+	last agent.TurnRequest
+}
 
-func (idleTurns) RunTurn(context.Context, agent.TurnRequest) {}
+func (t *idleTurns) RunTurn(_ context.Context, req agent.TurnRequest) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.last = req
+}
 
-func (idleTurns) Interrupt(context.Context, string) error { return nil }
+func (*idleTurns) Interrupt(context.Context, string) error { return nil }
 
-func (idleTurns) Answer(context.Context, string, string, harness.QuestionAnswer) error { return nil }
+func (*idleTurns) Answer(context.Context, string, string, harness.QuestionAnswer) error { return nil }
+
+// fakeComputers answers ComputerGate the way access does: the owner holds every computer action, a person a computer
+// is shared with what the rule gives them, anyone else finds no such computer.
+type fakeComputers struct {
+	owners map[string]string
+	held   map[string]permissions.Set
+	err    error
+}
+
+func (f *fakeComputers) ComputerPermissions(_ context.Context, userID, computerID string) (string, permissions.Set, error) {
+	if f.err != nil {
+		return "", nil, f.err
+	}
+	owner, ok := f.owners[computerID]
+	if ok && owner == userID {
+		return owner, permissions.SetOf(permissions.ComputerActions...), nil
+	}
+	held, shared := f.held[computerID+"/"+userID]
+	if !ok || !shared || !held.Has(permissions.ComputersSee) {
+		return "", nil, apperrs.ErrNotFound
+	}
+	return owner, held, nil
+}

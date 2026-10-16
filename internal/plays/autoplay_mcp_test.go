@@ -97,3 +97,29 @@ func TestPlayList_AttachesAutoPlaysInOneReadForTheirReaders(t *testing.T) {
 	_, err = callTool(t, tools, ctxAs("editor"), "play_list", `{"workspace_id":"$WS"}`)
 	require.ErrorIs(t, err, assert.AnError)
 }
+
+func TestPlayCreateAndUpdate_StackPlayRunsOnAChosenComputer(t *testing.T) {
+	s, repo, _ := computerFixture(t)
+	tools := MCPTools(s)
+
+	out, err := callTool(t, tools, ctxAs("owner"), "play_create", `{"workspace_id":"$WS","label":"Look into it","type":"stack","instructions":"Look."}`)
+	require.NoError(t, err)
+	play := out.(playResult)
+	assert.Equal(t, TypeStack, play.Type)
+
+	out, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","add_auto_plays":[
+		{"moment":"stack.service_crashed","computer_id":"c-run","conditions":{"match":"all","groups":[{"match":"all","rules":[{"field":"service","op":"is","values":["api"]}]}]}}]}`)
+	require.NoError(t, err)
+	added := out.(playResult).AutoPlays
+	require.Len(t, added, 1)
+	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnComputer, "c-run"}, []any{added[0].Enabled, added[0].Moment, added[0].RunOn, added[0].ComputerID},
+		"a stack play's auto play runs on the computer, with no run_on to say")
+
+	out, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added[0].ID+`","enabled":true,"computer_id":"c-own"}]}`)
+	require.NoError(t, err)
+	assert.Equal(t, []any{true, "c-own"}, []any{out.(playResult).AutoPlays[0].Enabled, out.(playResult).AutoPlays[0].ComputerID})
+	assert.Equal(t, "editor", repo.autoPlays[0].RunAs, "the run takes the identity of whoever picked the computer")
+
+	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added[0].ID+`","computer_id":"c-see"}]}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer shared for seeing only cannot be picked")
+}

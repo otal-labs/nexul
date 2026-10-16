@@ -23,7 +23,7 @@ func (r *PlaysRepo) CreateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 		err := r.q.WithTx(tx).CreateAutoPlay(ctx, sqlcgen.CreateAutoPlayParams{
 			ID: a.ID, PlayID: a.PlayID, WorkspaceID: a.WorkspaceID, Enabled: int64(boolInt(a.Enabled)),
 			Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage), Conditions: conditions, Priority: priority,
-			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), CreatedBy: a.CreatedBy,
+			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), ComputerID: a.ComputerID, RunAs: a.RunAs, CreatedBy: a.CreatedBy,
 			CreatedAt: a.CreatedAt.Unix(), UpdatedAt: a.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -69,7 +69,7 @@ func (r *PlaysRepo) UpdateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 		n, err := r.q.WithTx(tx).UpdateAutoPlay(ctx, sqlcgen.UpdateAutoPlayParams{
 			Enabled: int64(boolInt(a.Enabled)), Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage),
 			Conditions: conditions, Priority: priority, OnceWithinMinutes: int64(a.OnceWithinMinutes),
-			RunOn: string(a.RunOn), UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
+			RunOn: string(a.RunOn), ComputerID: a.ComputerID, RunAs: a.RunAs, UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update auto play %s: %w", a.ID, classifyWriteErr(err))
@@ -150,7 +150,7 @@ func toAutoPlay(row sqlcgen.AutoPlay) (*plays.AutoPlay, error) {
 	a := &plays.AutoPlay{
 		ID: row.ID, PlayID: row.PlayID, WorkspaceID: row.WorkspaceID, Enabled: row.Enabled != 0,
 		Moment: plays.Moment(row.Moment), OnceWithinMinutes: int(row.OnceWithinMinutes), RunOn: plays.RunOn(row.RunOn),
-		CreatedBy: row.CreatedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		ComputerID: row.ComputerID, RunAs: row.RunAs, CreatedBy: row.CreatedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if row.MomentStage.Valid {
 		s := plays.Stage(row.MomentStage.String)
