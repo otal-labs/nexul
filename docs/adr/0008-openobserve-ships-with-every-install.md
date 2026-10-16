@@ -1,6 +1,6 @@
 # OpenObserve ships in the compose stack and receives the server's logs over OTLP
 
-Superseded in part by ADR 0155: the logs are read through Nexul, after its permission check, not through OpenObserve's own MCP. Shipping them over OTLP stands.
+Superseded in part by ADR 0155: the logs are read through Nexul, after its permission check, not through OpenObserve's own MCP. Shipping them over OTLP stands, and now carries more than the server's own: a machine's runner and the automations host send their lines to the server over the connection they already hold, and the server writes them to the same stream with the source, name, machine and version it takes from that connection. A personal runner never ships.
 
 Amended by ADR 0073: OpenObserve runs as a native service, `nexul-openobserve`, listening on localhost only and capped with `MemoryMax=1G` on Linux. The server proxies its UI and MCP at `/openobserve/`, so there is no second public port and no compose service.
 

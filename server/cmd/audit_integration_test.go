@@ -28,6 +28,7 @@ import (
 // readOnlyRoutes are the non-GET routes that only read, so they write no audit row; every other non-GET route does.
 var readOnlyRoutes = []string{
 	"POST /api/auth/bootstrap/verify",
+	"POST /api/automation-hosts/self/logs",
 	"POST /api/connectors/{id}/manual/verify",
 	"POST /api/connectors/{id}/private-key/verify",
 	"POST /api/dns/tunnels/{tunnelID}/verify",
@@ -60,7 +61,7 @@ func routerOver(t *testing.T, db *sql.DB) (http.Handler, *storage.Store, *coreSe
 	svc := wireCoreServices(cfg, store, key, bus, logger)
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
 	wireIntegrationFanout(ctx, bus, store, svc, logger)
-	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger)
+	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger, nil)
 	svc.deploySvc.SetMachineLookup(deployMachineLookupAdapter{runner: runnerSvc})
 	svc.deploySvc.SetMachineDiscoverer(deployMachineDiscovererAdapter{runner: runnerSvc})
 	liveHub, agentHandler := wireLiveHubAndAgent(ctx, bus, store, svc, logger)

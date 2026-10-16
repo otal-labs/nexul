@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/logstore"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -20,7 +21,7 @@ import (
 )
 
 // startBackgroundWorkers must run after event subscriptions, so the outbox relay never outruns consumers.
-func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *storage.Store, bus *inprocess.Bus, svc *coreServices, logger *slog.Logger) (wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler) {
+func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *storage.Store, bus *inprocess.Bus, svc *coreServices, logger *slog.Logger, logRelay *logging.Relay) (wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler) {
 	// The sole occupancy feed on localhost/dev, where LiveKit's webhook can't reach back to this instance.
 	go svc.voiceSvc.RunReconciliation(ctx, logger)
 	go svc.repoHooks.ensureAll(ctx, store.Projects.ListAllRepos, logger)
@@ -39,6 +40,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Envs:      runnerEnvLookupAdapter{deploy: svc.deploySvc},
 		GitTokens: svc.gitRouter,
 		Logger:    logger,
+		Logs:      logRelay,
 	})
 	svc.computers.handler.Store(wsHandler)
 	// dns can only join a connected runner's gateway once the WS handler exists (workers start after core services).
@@ -83,6 +85,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Logger:   logger,
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)
+	svc.automationHostsSvc.WithLogs(logRelay)
 	svc.automationHostsSvc.SetConnectionRegistry(automationsDialin)
 	// Last of the wiring a consumer reads, so no event is handled against a half-built server.
 	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits().Next, Logger: logger})

@@ -93,7 +93,7 @@ export class Supervisor {
     );
     this.handles.set(target.id, handle);
     this.tracked.set(target.id, toTracked(state, target, true));
-    log("info", "automation worker started", { automationId: target.id, name: target.name, versionId: state.activeVersionId });
+    log("info", "automation worker started", { automationId: target.id, automationName: target.name, versionId: state.activeVersionId });
   }
 
   private async stop(id: string): Promise<void> {

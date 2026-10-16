@@ -17,6 +17,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/version"
 )
@@ -60,6 +61,8 @@ type HandlerConfig struct {
 	Upgrades UpgradeRepo
 	// Logger for lifecycle and failure logs. Defaults to slog.Default().
 	Logger *slog.Logger
+	// Logs relays the log frames a machine's runner sends to the log store; nil drops them.
+	Logs *logging.Relay
 	// HeartbeatInterval is the expected beat cadence. Defaults to 10s.
 	HeartbeatInterval time.Duration
 	// MissedHeartbeats disconnects a runner after this many missed beats. Defaults to 3.
@@ -113,7 +116,9 @@ type runnerConn struct {
 	machineID string
 	// personal marks a person's computer runner (ADR 0146): dispatch and machine lookups never pick it, and its
 	// changes reach only its owner.
-	personal      bool
+	personal bool
+	// version is the build the runner reported when it connected.
+	version       string
 	record        *Runner
 	ws            *websocket.Conn
 	ctx           context.Context
@@ -198,7 +203,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(h.cfg.ReadLimit)
 	q := r.URL.Query()
-	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), record: rn, ws: conn}
+	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), version: q.Get("version"), record: rn, ws: conn}
 	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch")})
 }
 
@@ -583,6 +588,9 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.publishFacts(ctx, c, f)
 	case FrameContainerEvent, FrameContainerStates:
 		return h.publishContainers(ctx, c, f)
+	case FrameLog:
+		h.relayLogs(ctx, c, f)
+		return nil
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
 			h.log.Warn("join_networks failed on runner", "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
@@ -611,6 +619,19 @@ func (h *Handler) publishContainers(ctx context.Context, c *runnerConn, f Frame)
 	return h.bus.Publish(ctx, TopicContainerEvent, ContainerEvent{
 		Machine: c.machine, Container: f.Container, Project: f.Project, Service: f.Service, Action: f.Action, ExitCode: f.ExitCode,
 	})
+}
+
+// relayLogs writes a machine runner's records to the log store, stamped from its connection; a personal runner's
+// logs stay on its computer, so a frame from one is dropped.
+func (h *Handler) relayLogs(ctx context.Context, c *runnerConn, f Frame) {
+	if c.personal {
+		return
+	}
+	machine := c.machine
+	if machine == "" {
+		machine = c.machineID
+	}
+	h.cfg.Logs.Emit(ctx, logging.Stamp{Source: "runner", Name: c.name, ID: c.id, Machine: machine, Version: c.version}, f.Records)
 }
 
 // heartbeat records a runner's beat; a personal runner's is never published, since the topic reaches automations.

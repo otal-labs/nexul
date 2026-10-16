@@ -19,17 +19,23 @@ func NewTee(level string, w io.Writer) *slog.Logger {
 	return slog.New(fanout{min: l, handlers: []slog.Handler{stderrHandler(level), slog.NewJSONHandler(w, &slog.HandlerOptions{Level: l})}})
 }
 
-// NewWithOTLP is New plus shipping every record to o.Endpoint; with an empty endpoint it is exactly New.
-func NewWithOTLP(ctx context.Context, level string, o OTLP) (*slog.Logger, Shutdown, error) {
+// NewWithQueue is New plus every record at level or above queued for the server to relay.
+func NewWithQueue(level string, q *Queue) *slog.Logger {
+	return slog.New(fanout{min: parseLevel(level), handlers: []slog.Handler{stderrHandler(level), q.Handler(level)}})
+}
+
+// NewWithOTLP is New plus shipping every record to o.Endpoint, and the Relay that writes records senders shipped to
+// that endpoint alone. With an empty endpoint it is exactly New, and the Relay is nil.
+func NewWithOTLP(ctx context.Context, level string, o OTLP) (*slog.Logger, *Relay, Shutdown, error) {
 	stderr := stderrHandler(level)
 	if o.Endpoint == "" {
-		return slog.New(stderr), func(context.Context) error { return nil }, nil
+		return slog.New(stderr), nil, func(context.Context) error { return nil }, nil
 	}
 	otlp, shutdown, err := newOTLPHandler(ctx, o)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return slog.New(fanout{min: parseLevel(level), handlers: []slog.Handler{stderr, otlp}}), shutdown, nil
+	return slog.New(fanout{min: parseLevel(level), handlers: []slog.Handler{stderr, otlp}}), NewRelay(otlp), shutdown, nil
 }
 
 func stderrHandler(level string) slog.Handler {

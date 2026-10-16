@@ -40,6 +40,7 @@ var routePermissions = map[string][]string{
 
 	"POST /api/automation-hosts/enroll":                        none,
 	"POST /api/automation-hosts/enrollments":                   {"machines:write"},
+	"POST /api/automation-hosts/self/logs":                     none,
 	"POST /api/automation-hosts/self/remove":                   none,
 	"DELETE /api/automation-hosts/{id}":                        {"machines:write"},
 	"DELETE /api/automation-secrets/{name}":                    {"automations:write"},
