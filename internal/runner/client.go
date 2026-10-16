@@ -229,6 +229,9 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 	case FrameGatewayRoutes:
 		// Inline, not a goroutine: two changes in a row must land in the order they were sent.
 		c.setRoutes(ctx, conn, frame)
+	case FrameStackTeardown:
+		// Inline for the same reason: a teardown must finish before the deploy that reuses its slug starts.
+		c.teardownStack(ctx, conn, frame)
 	case FrameUpdate:
 		go c.handleUpdate(ctx, frame)
 	case FrameLogsRequest:
@@ -327,6 +330,15 @@ func (c *Client) setRoutes(ctx context.Context, conn *websocket.Conn, f Frame) {
 	ctx, cancel := context.WithTimeout(ctx, setRoutesTimeout)
 	defer cancel()
 	c.cfg.Executor.SetRoutes(ctx, f.GatewayContainer, f.GatewayRoutes, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
+}
+
+func (c *Client) teardownStack(ctx context.Context, conn *websocket.Conn, f Frame) {
+	defer c.contained(f, func(msg string) {
+		c.sendFrame(ctx, conn, Frame{Type: FrameStackTeardownResult, StackSlug: f.StackSlug, Status: BuildStatusFailed, Error: msg})
+	})
+	ctx, cancel := context.WithTimeout(ctx, stackTeardownTimeout)
+	defer cancel()
+	c.cfg.Executor.Teardown(ctx, f.StackSlug, f.Strategy, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
 }
 
 // contained is deferred first in a goroutine the client starts: a panic there is logged and answered with reply

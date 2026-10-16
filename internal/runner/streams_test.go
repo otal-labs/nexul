@@ -254,6 +254,7 @@ func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 		{Type: FrameAssignDeploy, ID: "d1", Service: "api", Image: "api:1"},
 		{Type: FrameAssignUpgrade, ID: "u1", Version: "v1.2.3"},
 		{Type: FrameJoinNetworks, GatewayContainer: "gw", JoinNetworks: []string{"shop_default"}},
+		{Type: FrameStackTeardown, StackSlug: "shop", Strategy: "compose"},
 		{Type: FrameDiscover, ID: "x1"},
 		{Type: FrameLogsRequest, ID: "l1", Container: "shop-web-1", Tail: 10},
 	}
@@ -263,6 +264,7 @@ func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 		{Type: FrameDeployResult, ID: "d1", Status: DeployStatusFailed, Error: reason},
 		{Type: FrameUpgradeResult, ID: "u1", Status: UpgradeStatusFailed, Error: reason},
 		{Type: FrameJoinNetworksResult, GatewayContainer: "gw", Status: BuildStatusFailed, Error: reason},
+		{Type: FrameStackTeardownResult, StackSlug: "shop", Status: BuildStatusFailed, Error: reason},
 		{Type: FrameDiscoverResult, ID: "x1", Error: noDocker},
 		{Type: FrameLogsEnd, ID: "l1", Error: noDocker},
 	}
@@ -295,6 +297,7 @@ func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 	assert.Empty(t, exec.deploys)
 	assert.Empty(t, exec.upgrades)
 	assert.Empty(t, exec.joinCalls)
+	assert.Empty(t, exec.teardowns)
 }
 
 // dialRecorder counts every connection the runner attempts, and answers each with the next conn in line.

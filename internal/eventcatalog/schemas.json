@@ -6399,6 +6399,22 @@
       },
       "project_id": {
         "type": "string"
+      },
+      "machine": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "strategy": {
+        "type": "string",
+        "enum": [
+          "compose",
+          "run"
+        ]
+      },
+      "managed": {
+        "type": "boolean"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

@@ -820,6 +820,32 @@ func TestStackCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, deploys, 1, "deploy history is kept on stack delete")
 	})
+	t.Run("delete tells the machine's runner what to remove, and that an imported stack's containers are not Nexul's", func(t *testing.T) {
+		for name, tc := range map[string]struct {
+			strategy Strategy
+			managed  bool
+		}{
+			"a run stack":       {strategy: StrategyRun, managed: true},
+			"a compose stack":   {strategy: StrategyCompose, managed: true},
+			"an imported stack": {strategy: StrategyCompose, managed: false},
+		} {
+			t.Run(name, func(t *testing.T) {
+				stacks := newFakeStackRepo()
+				s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), newFakeProjects(), newFakeBus())
+				stack := validStack()
+				stack.ID, stack.ProjectID, stack.Machine, stack.Strategy = "st-1", "", "host-a", tc.strategy
+				stack.Slug, stack.Managed = "edge", tc.managed
+				stacks.stored[stack.ID] = &stack
+
+				require.NoError(t, s.DeleteStack(t.Context(), stack.ID))
+
+				require.Len(t, stacks.outbox, 1)
+				assert.Equal(t, StackDeletedEvent{
+					ID: stack.ID, Name: stack.Name, ServiceIDs: []string{}, Machine: "host-a", Slug: "edge", Strategy: tc.strategy, Managed: tc.managed,
+				}, stacks.outbox[0].Payload)
+			})
+		}
+	})
 	t.Run("delete releases every hostname via the exposure manager, by name and by container id", func(t *testing.T) {
 		repo := newFakeRepo()
 		stacks := newFakeStackRepo()

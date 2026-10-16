@@ -589,7 +589,8 @@ func (s *Service) linkNewRepo(ctx context.Context, existing, stack *Stack) error
 }
 
 // DeleteStack releases every hostname the stack holds from the tunnel/DNS first, then tears down the
-// definition; deploy history is kept, its services are dropped.
+// definition; deploy history is kept, its services are dropped. A managed stack's containers are removed by its
+// machine's runner, which hears of the delete on service.deleted.
 func (s *Service) DeleteStack(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
@@ -612,9 +613,12 @@ func (s *Service) DeleteStack(ctx context.Context, id string) error {
 		}
 	}
 	evt := eventbus.OutboxEvent{
-		ID:      ids.New(),
-		Topic:   TopicStackDeleted,
-		Payload: StackDeletedEvent{ID: stack.ID, Name: stack.Name, ServiceIDs: serviceIDs, ProjectID: stack.ProjectID},
+		ID:    ids.New(),
+		Topic: TopicStackDeleted,
+		Payload: StackDeletedEvent{
+			ID: stack.ID, Name: stack.Name, ServiceIDs: serviceIDs, ProjectID: stack.ProjectID,
+			Machine: stack.Machine, Slug: stack.Slug, Strategy: stack.Strategy, Managed: stack.Managed,
+		},
 	}
 	if err := s.stacks.Delete(ctx, id, evt); err != nil {
 		return fmt.Errorf("delete stack %s: %w", id, err)

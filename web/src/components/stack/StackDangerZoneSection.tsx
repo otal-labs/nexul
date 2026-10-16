@@ -13,6 +13,12 @@ interface StackDangerZoneSectionProps {
   hostnames: string[];
 }
 
+// A managed stack's runner removes its containers once it is online; an adopted stack's were started outside Nexul.
+const containersClause = (managed: boolean) => {
+  if (managed) return "its machine's runner removes its containers, once it is online if it is not now";
+  return "its containers keep running, because they were started outside Nexul";
+};
+
 export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackDangerZoneSectionProps) => {
   const navigate = useNavigate();
   const deleteStack = useDeleteStack();
@@ -25,7 +31,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
         ? `${hostnames.join(", ")} stop routing to it`
         : "its hostnames stop routing to it";
     const ok = await confirmDelete({
-      message: `The stack and its containers are removed, and ${releaseClause}. Deploy history is kept.`,
+      message: `The stack is deleted and ${containersClause(stack.managed)}. Volumes stay on the machine, and ${releaseClause}. Deploy history is kept.`,
       title: `Delete ${stack.name}?`,
       confirmLabel: "Delete stack",
     });
@@ -38,7 +44,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
     <DangerZone>
       <DangerAction
         title="Delete stack"
-        consequence="Removes the stack and its containers. Its hostnames stop routing to it. Deploy history is kept."
+        consequence={`Deletes the stack; ${containersClause(stack.managed)}. Its hostnames stop routing to it. Deploy history is kept.`}
         details={
           hostnames.length > 0 && (
             <ul className="space-y-0.5 pt-1">

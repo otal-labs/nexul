@@ -3,6 +3,7 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/logging"
@@ -37,6 +38,10 @@ const (
 	// exposure change reaches Traefik without redeploying it; FrameGatewayRoutesResult (runner -> server) reports the outcome.
 	FrameGatewayRoutes       FrameType = "gateway_routes"
 	FrameGatewayRoutesResult FrameType = "gateway_routes_result"
+	// FrameStackTeardown (server -> runner) removes a deleted managed stack's containers: its compose project, or its run
+	// container, named by stack_slug; FrameStackTeardownResult (runner -> server) reports the outcome.
+	FrameStackTeardown       FrameType = "stack_teardown"
+	FrameStackTeardownResult FrameType = "stack_teardown_result"
 	// FrameUpdate (server -> runner) carries a newer release for the runner to download and swap itself with
 	// (upgrade-path spec, "Runner protocol"); sent best-effort right after registerRunner on connect.
 	FrameUpdate FrameType = "update"
@@ -247,6 +252,8 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameJoinNetworksResult:  (*Frame).validateJoinNetworksResult,
 	FrameGatewayRoutes:       (*Frame).validateGatewayRoutes,
 	FrameGatewayRoutesResult: (*Frame).validateGatewayRoutesResult,
+	FrameStackTeardown:       (*Frame).validateStackTeardown,
+	FrameStackTeardownResult: (*Frame).validateStackTeardownResult,
 	FrameUpdate:              (*Frame).validateUpdate,
 	FrameAssignUpgrade:       (*Frame).validateAssignUpgrade,
 	FrameUpgradeProgress:     (*Frame).validateUpgradeProgress,
@@ -378,6 +385,26 @@ func (f *Frame) validateGatewayRoutes() error {
 func (f *Frame) validateGatewayRoutesResult() error {
 	if f.GatewayContainer == "" {
 		return fmt.Errorf("%w: gateway_routes_result requires gateway_container", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+// slugPattern is what a stack slug is derived to; the teardown refuses anything else because the slug reaches docker's argv.
+var slugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+
+func (f *Frame) validateStackTeardown() error {
+	if !slugPattern.MatchString(f.StackSlug) {
+		return fmt.Errorf("%w: stack_teardown requires a stack_slug of lowercase letters, digits and hyphens", apperrs.ErrInvalid)
+	}
+	if f.Strategy != "" && f.Strategy != "compose" && f.Strategy != "run" {
+		return fmt.Errorf("%w: stack_teardown strategy must be compose or run", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateStackTeardownResult() error {
+	if f.StackSlug == "" {
+		return fmt.Errorf("%w: stack_teardown_result requires stack_slug", apperrs.ErrInvalid)
 	}
 	return nil
 }
