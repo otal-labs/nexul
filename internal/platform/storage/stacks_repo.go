@@ -200,7 +200,7 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 		CrashTickets:  row.CrashTickets != 0,
 		ErrorRate: deploy.ErrorRateRule{
 			Enabled: row.ErrorRateEnabled != 0, Percent: row.ErrorRatePercent, Minutes: int(row.ErrorRateMinutes), MinRequests: int(row.ErrorRateMinRequests),
-		},
+		}.WithDefaults(),
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}

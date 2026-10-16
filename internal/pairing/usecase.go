@@ -114,7 +114,7 @@ func (s *Service) notifyComputersChanged(userID string) {
 	}
 }
 
-// ListComputers returns the caller's computers, then those shared with them by name, by name and online state only.
+// ListComputers returns the caller's computers, then those shared with them by name, by name and runner connection only.
 func (s *Service) ListComputers(ctx context.Context, userID string) ([]Computer, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)

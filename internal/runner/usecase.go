@@ -516,7 +516,7 @@ func (s *Service) upgradeStatus(ctx context.Context) (UpgradeStatus, error) {
 	rel, relErr := s.install.Release.Latest(ctx, version.Channel())
 	if rel != nil {
 		status.Latest = &LatestRelease{Version: rel.Tag, URL: rel.URL}
-		status.UpdateAvailable = rel.Tag != version.Version
+		status.UpdateAvailable = version.Newer(rel.Tag, version.Version)
 	}
 	status.CanUpgrade, status.Reason = s.canUpgrade(rel, relErr, latest)
 	return status, nil
@@ -530,7 +530,7 @@ func (s *Service) canUpgrade(rel *release.Release, relErr error, latest *Upgrade
 	if relErr != nil || rel == nil {
 		return false, "release lookup failed"
 	}
-	if rel.Tag == version.Version {
+	if !version.Newer(rel.Tag, version.Version) {
 		return false, "already on the newest release"
 	}
 	if latest.unresolved() {

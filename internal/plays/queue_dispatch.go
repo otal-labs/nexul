@@ -73,6 +73,43 @@ func (r *Runner) HandleComputerChanged(ctx context.Context, ev eventbus.Event) e
 	return nil
 }
 
+// AutoPlayOffTopics are the changes that can end an auto play's say over its queued runs; HandleAutoPlayOff is subscribed to each.
+var AutoPlayOffTopics = []string{TopicAutoPlayUpdated, TopicAutoPlayDeleted}
+
+// HandleAutoPlayOff skips the queued runs of an auto play that was switched off or deleted, so a run held behind a
+// busy ticket or an offline computer does not keep retrying for a rule that is gone. A run already dispatching goes on.
+func (r *Runner) HandleAutoPlayOff(ctx context.Context, ev eventbus.Event) error {
+	if r.queue == nil {
+		return nil
+	}
+	var p struct {
+		ID       string   `json:"id"`
+		PlayID   string   `json:"play_id"`
+		AutoPlay AutoPlay `json:"auto_play"`
+	}
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	id, playID, reason := p.ID, p.PlayID, "its auto play was removed"
+	if ev.Topic == TopicAutoPlayUpdated {
+		if p.AutoPlay.Enabled {
+			return nil
+		}
+		id, playID, reason = p.AutoPlay.ID, p.AutoPlay.PlayID, "its auto play was switched off"
+	}
+	items, err := r.queue.ListQueuedByPlay(ctx, playID, ProjectScope{All: true})
+	if err != nil {
+		return apperrs.Retryable(fmt.Errorf("list the queued runs of play %s: %w", playID, err))
+	}
+	for _, it := range items {
+		if it.AutoPlayID == id {
+			r.logDecide(ctx, it, QueueQueued, QueueSkipped, reason)
+		}
+	}
+	r.Kick()
+	return nil
+}
+
 // RunQueue starts queued auto runs until ctx ends. It passes once at boot, then on every kick, and on a timer to the
 // next held item (a held computer's retry, a paused target's oldest run leaving the day); it never polls.
 func (r *Runner) RunQueue(ctx context.Context) {

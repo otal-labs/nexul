@@ -78,7 +78,7 @@ A play someone can't see is gone for them: from **Configuration → Plays**, the
 
 An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Configuration → Plays**, press **Edit**, and go to the **Auto plays** tab. Interview plays have none.
 
-Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it.
+Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
 
 An auto play has:
 

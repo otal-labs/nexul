@@ -174,6 +174,18 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		assert.False(t, status.UpdateAvailable)
 	})
 
+	t.Run("an installed version ahead of the channel's latest has no update", func(t *testing.T) {
+		withVersion(t, "v0.3.41")
+		srv := fakeGitHub(t, "v0.3.40", "x")
+		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
+
+		status, err := svc.UpgradeStatus(asAdmin())
+		require.NoError(t, err)
+		assert.False(t, status.UpdateAvailable)
+		assert.False(t, status.CanUpgrade)
+		assert.Equal(t, "already on the newest release", status.Reason)
+	})
+
 	t.Run("an upgrade is already in progress takes precedence over runner connectivity", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")

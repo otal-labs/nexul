@@ -351,3 +351,17 @@ func TestComputerList_RunnerLogsAndAShare(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrConflict)
 	})
 }
+
+func TestComputerList_NoDockerIsNoContainersLineForOwnerAndSharee(t *testing.T) {
+	t.Parallel()
+	svc, containers := newSharedFixture(t, nil, aliceShares())
+	laptop := Computer{ID: "c-laptop", Name: "Laptop", Shared: &SharedComputer{OwnerID: "u-alice", OwnerName: "Alice", Permissions: permissions.SetOf(permissions.ComputersSee, permissions.ComputersLogs)}}
+	svc.repo.(*fakeRepo).sharedWith = map[string][]Computer{"u-bob": {laptop}}
+	for _, user := range []string{"u-alice", "u-bob"} {
+		out, err := callTool(t, actorCtx(t, user), svc, "computer_list", `{"id":"c-laptop"}`)
+		require.NoError(t, err)
+		raw, _ := json.Marshal(out)
+		assert.NotContains(t, string(raw), "containers", user)
+	}
+	assert.Empty(t, containers.asked(), "no Docker, nothing reached the computer")
+}

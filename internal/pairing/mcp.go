@@ -241,9 +241,13 @@ func listedT3Projects(ctx context.Context, s *Service, userID, computerID string
 }
 
 // listedContainers asks the computer's runner for its containers; like the T3 projects, a failure is a line, not the call's.
+// A computer whose runner reported no Docker has none to list, which is no failure, for its owner and a sharee alike.
 func listedContainers(ctx context.Context, s *Service, userID string, c Computer) ([]Container, string) {
 	containers, err := s.ListContainers(ctx, userID, c.ID)
 	if err != nil {
+		if errors.Is(err, apperrs.ErrConflict) {
+			return nil, ""
+		}
 		logging.FromCtx(ctx).Warn("computer containers unavailable", "computer_id", c.ID, "err", err)
 		return nil, fmt.Sprintf("%s didn't list its containers; check its Nexul app is connected, then ask again.", c.Name)
 	}

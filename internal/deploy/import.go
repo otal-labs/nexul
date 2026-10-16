@@ -291,11 +291,12 @@ func (s *Service) importStack(ctx context.Context, projectID, machineName, slugS
 	}
 	now := s.now().UTC()
 	if stack == nil {
-		stack = &Stack{
+		created := applyStackDefaults(Stack{
 			ID: ids.New(), ProjectID: projectID, Name: slugSource, Slug: slug, Machine: machineName,
-			Strategy: StrategyCompose, ComposePath: defaultComposePath, Managed: false,
+			Strategy: StrategyCompose, Managed: false,
 			CreatedAt: now, UpdatedAt: now,
-		}
+		})
+		stack = &created
 		if err := s.stacks.Create(ctx, stack); err != nil {
 			return nil, fmt.Errorf("create unmanaged stack %s: %w", slug, err)
 		}

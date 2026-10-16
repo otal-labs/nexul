@@ -337,8 +337,8 @@ type ErrorRateRule struct {
 	MinRequests int     `json:"min_requests" jsonschema:"The fewest requests in those minutes for the rule to trip, so a single failure at night wakes nobody; 20 by default." minimum:"1"`
 }
 
-// withDefaults fills a number left at zero with its default.
-func (r ErrorRateRule) withDefaults() ErrorRateRule {
+// WithDefaults fills a number left at zero with its default; zero is never a stored rule number.
+func (r ErrorRateRule) WithDefaults() ErrorRateRule {
 	if r.Percent == 0 {
 		r.Percent = defaultErrorPercent
 	}
@@ -382,7 +382,7 @@ func (s *Stack) Validate() error {
 	if s.CrashTickets && strings.TrimSpace(s.ProjectID) == "" {
 		return fmt.Errorf("%w: crash tickets need a stack in a project, since the ticket is opened there", apperrs.ErrInvalid)
 	}
-	if err := s.ErrorRate.withDefaults().Validate(); err != nil {
+	if err := s.ErrorRate.WithDefaults().Validate(); err != nil {
 		return err
 	}
 	if s.BuildSource != nil && strings.TrimSpace(s.ProjectID) == "" {

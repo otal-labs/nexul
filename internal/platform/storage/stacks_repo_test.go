@@ -313,3 +313,13 @@ func TestProjectsRepo_CountServices(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, n)
 }
+
+func TestStacksRepo_ZeroErrorRateRule_ReadsAsTheDefaults(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Stacks.Create(context.Background(), newTestStack("svc-1")))
+
+	got, err := s.Stacks.GetByID(context.Background(), "svc-1")
+	require.NoError(t, err)
+	assert.Equal(t, deploy.ErrorRateRule{Percent: 5, Minutes: 5, MinRequests: 20}, got.ErrorRate)
+}

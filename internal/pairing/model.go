@@ -61,11 +61,11 @@ func (c Computer) SharedName() string {
 	return fmt.Sprintf("%s's %s (shared)", c.Shared.OwnerName, c.Name)
 }
 
-// sharedView is c with only its name, who shares it and whether its runner is connected.
+// sharedView is c with only its name, who shares it and its runner's connection: whether it is connected, and since when it last was.
 func sharedView(c Computer) Computer {
 	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared}
 	if c.Runner != nil {
-		out.Runner = &ComputerRunner{Connected: c.Runner.Connected}
+		out.Runner = &ComputerRunner{Connected: c.Runner.Connected, LastSeen: c.Runner.LastSeen}
 	}
 	return out
 }
