@@ -13,6 +13,8 @@ export const NotificationKind = {
   ComputerMoveRequested: "computer.move_requested",
   ServiceStopped: "service.container_stopped",
   ServiceRecovered: "service.container_recovered",
+  ErrorRateCrossed: "stack.error_rate_crossed",
+  ErrorRateRecovered: "stack.error_rate_recovered",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];

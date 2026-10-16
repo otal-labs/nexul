@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -85,9 +85,16 @@ describe("StackAlertsSection", () => {
 
     const toggle = screen.getByRole("switch", { name: SWITCH });
     expect(toggle).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Crash tickets" })).getByText(reason)).toBeInTheDocument();
     await user.click(toggle);
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("puts the error-rate card under the crash tickets card", async () => {
+    await renderSection();
+
+    const regions = screen.getAllByRole("region").map((r) => r.id);
+    expect(regions).toEqual(["crash-tickets", "error-rate"]);
   });
 
   it("shows the state but does not flip for someone without stacks:write", async () => {

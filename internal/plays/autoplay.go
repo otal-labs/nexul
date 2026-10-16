@@ -13,17 +13,18 @@ import (
 type Moment string
 
 const (
-	MomentTicketUnblocked    Moment = "ticket.unblocked"
-	MomentTicketEnteredStage Moment = "ticket.entered_stage"
-	MomentTicketCreated      Moment = "ticket.created"
-	MomentTicketDeveloperSet Moment = "ticket.developer_set"
-	MomentTicketTesterSet    Moment = "ticket.tester_set"
-	MomentTicketTestFailed   Moment = "ticket.test_failed"
-	MomentDocCreated         Moment = "doc.created"
-	MomentDocChanged         Moment = "doc.changed"
-	// The stack moments leave room for stack.error_rate_crossed.
+	MomentTicketUnblocked       Moment = "ticket.unblocked"
+	MomentTicketEnteredStage    Moment = "ticket.entered_stage"
+	MomentTicketCreated         Moment = "ticket.created"
+	MomentTicketDeveloperSet    Moment = "ticket.developer_set"
+	MomentTicketTesterSet       Moment = "ticket.tester_set"
+	MomentTicketTestFailed      Moment = "ticket.test_failed"
+	MomentDocCreated            Moment = "doc.created"
+	MomentDocChanged            Moment = "doc.changed"
 	MomentStackServiceCrashed   Moment = "stack.service_crashed"
 	MomentStackServiceRecovered Moment = "stack.service_recovered"
+	// MomentStackErrorRateCrossed is a stack's share of 5xx answers going over its rule; it names no service.
+	MomentStackErrorRateCrossed Moment = "stack.error_rate_crossed"
 	// MomentAutomation marks a queued run an automation's runPlay asked for; no auto play waits for it.
 	MomentAutomation Moment = "automation"
 )
@@ -32,7 +33,7 @@ var momentPlayType = map[Moment]Type{
 	MomentTicketUnblocked: TypeTicket, MomentTicketEnteredStage: TypeTicket, MomentTicketCreated: TypeTicket,
 	MomentTicketDeveloperSet: TypeTicket, MomentTicketTesterSet: TypeTicket, MomentTicketTestFailed: TypeTicket,
 	MomentDocCreated: TypeDoc, MomentDocChanged: TypeDoc,
-	MomentStackServiceCrashed: TypeStack, MomentStackServiceRecovered: TypeStack,
+	MomentStackServiceCrashed: TypeStack, MomentStackServiceRecovered: TypeStack, MomentStackErrorRateCrossed: TypeStack,
 }
 
 // RunOn names whose computer an auto play's run lands on.
@@ -157,7 +158,7 @@ type AutoPlay struct {
 	PlayID      string `json:"play_id"`
 	WorkspaceID string `json:"workspace_id"`
 	Enabled     bool   `json:"enabled"`
-	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered"`
+	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed"`
 	// MomentStage is set only for ticket.entered_stage.
 	MomentStage *Stage     `json:"moment_stage" enum:"backlog,progress,review,testing,done"`
 	Conditions  Conditions `json:"conditions"`
@@ -271,7 +272,7 @@ func (a *AutoPlay) Validate(playType Type) error {
 func (a *AutoPlay) validateMoment(playType Type) error {
 	want, ok := momentPlayType[a.Moment]
 	if !ok {
-		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, doc.created, doc.changed, stack.service_crashed, stack.service_recovered", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, doc.created, doc.changed, stack.service_crashed, stack.service_recovered, stack.error_rate_crossed", apperrs.ErrInvalid)
 	}
 	if want != playType {
 		return fmt.Errorf("%w: moment %s belongs to %s plays; this is a %s play", apperrs.ErrInvalid, a.Moment, want, playType)

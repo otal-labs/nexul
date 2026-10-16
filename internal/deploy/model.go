@@ -311,9 +311,58 @@ type Stack struct {
 	// Managed is false until a build source is attached (UpdateStack flips it) — an unmanaged stack has no repo to build or deploy from.
 	Managed bool `json:"managed"`
 	// CrashTickets opens a ticket in the stack's project when one of its services crashes; only a stack with a project may switch it on.
-	CrashTickets bool      `json:"crash_tickets,omitempty" jsonschema:"True when a service crashing opens a ticket in the stack's project."`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	CrashTickets bool `json:"crash_tickets,omitempty" jsonschema:"True when a service crashing opens a ticket in the stack's project."`
+	// ErrorRate is the stack's error-rate rule; a stack that predates it, or a client that omits it, gets the defaults, off.
+	ErrorRate ErrorRateRule `json:"error_rate" jsonschema:"The stack's error-rate rule: off until switched on."`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+}
+
+// The error-rate rule's defaults and the bounds its numbers are held to.
+const (
+	defaultErrorPercent     = 5.0
+	defaultErrorMinutes     = 5
+	defaultErrorMinRequests = 20
+	// maxErrorMinutes is the longest window a rule reads, the hour of counts a stack page shows.
+	maxErrorMinutes     = requestWindowMinutes
+	maxErrorMinRequests = 1_000_000
+)
+
+// ErrorRateRule trips when the share of 5xx answers over the last Minutes minutes is above Percent with at least
+// MinRequests requests, and ends once each of those minutes has stayed at or under it.
+type ErrorRateRule struct {
+	Enabled     bool    `json:"enabled" jsonschema:"True when the rule is watching the stack."`
+	Percent     float64 `json:"percent" jsonschema:"The share of 5xx answers, in percent, above which the rule trips; 5 by default." minimum:"0.1" maximum:"100"`
+	Minutes     int     `json:"minutes" jsonschema:"How many minutes the share is read over, and how long it must stay under the limit to recover; 5 by default." minimum:"1" maximum:"60"`
+	MinRequests int     `json:"min_requests" jsonschema:"The fewest requests in those minutes for the rule to trip, so a single failure at night wakes nobody; 20 by default." minimum:"1"`
+}
+
+// withDefaults fills a number left at zero with its default.
+func (r ErrorRateRule) withDefaults() ErrorRateRule {
+	if r.Percent == 0 {
+		r.Percent = defaultErrorPercent
+	}
+	if r.Minutes == 0 {
+		r.Minutes = defaultErrorMinutes
+	}
+	if r.MinRequests == 0 {
+		r.MinRequests = defaultErrorMinRequests
+	}
+	return r
+}
+
+// Validate holds the rule's numbers to sane bounds.
+func (r ErrorRateRule) Validate() error {
+	if r.Percent < 0.1 || r.Percent > 100 {
+		return fmt.Errorf("%w: the error-rate limit must be between 0.1 and 100 percent", apperrs.ErrInvalid)
+	}
+	if r.Minutes < 1 || r.Minutes > maxErrorMinutes {
+		return fmt.Errorf("%w: the error-rate window must be between 1 and %d minutes", apperrs.ErrInvalid, maxErrorMinutes)
+	}
+	if r.MinRequests < 1 || r.MinRequests > maxErrorMinRequests {
+		return fmt.Errorf("%w: the error-rate request floor must be between 1 and %d requests", apperrs.ErrInvalid, maxErrorMinRequests)
+	}
+	return nil
 }
 
 // DefaultNetwork returns the docker network the stack's own containers join: DockerNetwork for a run
@@ -332,6 +381,9 @@ func (s *Stack) Validate() error {
 	}
 	if s.CrashTickets && strings.TrimSpace(s.ProjectID) == "" {
 		return fmt.Errorf("%w: crash tickets need a stack in a project, since the ticket is opened there", apperrs.ErrInvalid)
+	}
+	if err := s.ErrorRate.withDefaults().Validate(); err != nil {
+		return err
 	}
 	if s.BuildSource != nil && strings.TrimSpace(s.ProjectID) == "" {
 		return fmt.Errorf("%w: a stack that builds from a repository belongs to that repository's project", apperrs.ErrInvalid)

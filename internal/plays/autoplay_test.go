@@ -48,6 +48,7 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		{"a stack play run on its developer", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, RunOn: RunOnDeveloper}, "runs on a chosen computer"},
 		{"a ticket moment on a stack play", TypeStack, AutoPlay{Moment: MomentTicketCreated}, "belongs to ticket plays"},
 		{"a stack moment on a ticket play", TypeTicket, AutoPlay{Moment: MomentStackServiceCrashed}, "belongs to stack plays"},
+		{"an error-rate crossing on a ticket play", TypeTicket, AutoPlay{Moment: MomentStackErrorRateCrossed}, "belongs to stack plays"},
 		{"a switched-on run on a computer nobody picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true}, "pick the computer"},
 		{"a ticket field on a stack play", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldLabel, OpIs, "bug"))}}}, `field "label" is not one a stack play reads`},
 		{"a stack field on a ticket play", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"))}}}, `field "service" is not one a ticket play reads`},
@@ -91,6 +92,10 @@ func TestAutoPlayValidate_AcceptsWhatTheComposerBuilds(t *testing.T) {
 		{"a doc moment", TypeDoc, AutoPlay{Moment: MomentDocChanged, Conditions: Conditions{Match: MatchAny, Groups: []Group{when(rule(FieldFolder, OpIsNot, "f-1"))}}}},
 		{"a doc moment on a chosen computer", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnComputer, ComputerID: "c-1"}},
 		{"a stack moment off until a computer is picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed}},
+		{"an error-rate crossing on a computer", TypeStack, AutoPlay{
+			Moment: MomentStackErrorRateCrossed, Enabled: true, ComputerID: "c-1",
+			Conditions: Conditions{Groups: []Group{when(rule(FieldStack, OpIs, "st-1"), rule(FieldProject, OpIs, "p-1"))}},
+		}},
 		{"a stack moment on a computer", TypeStack, AutoPlay{
 			Moment: MomentStackServiceRecovered, Enabled: true, ComputerID: "c-1",
 			Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"), rule(FieldStack, OpIsNot, "st-2"), rule(FieldProject, OpIs, "p-1"))}},

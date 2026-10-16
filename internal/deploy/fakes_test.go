@@ -396,6 +396,20 @@ func (f *fakeStackRepo) ListByDerivedFrom(_ context.Context, baseStackID string)
 	return out, nil
 }
 
+func (f *fakeStackRepo) ListWithErrorRate(context.Context) ([]*Stack, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*Stack
+	for _, st := range f.stored {
+		if st.ErrorRate.Enabled {
+			cp := *st
+			out = append(out, &cp)
+		}
+	}
+	slices.SortFunc(out, func(a, b *Stack) int { return strings.Compare(a.ID, b.ID) })
+	return out, nil
+}
+
 func (f *fakeStackRepo) Update(_ context.Context, stack *Stack, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

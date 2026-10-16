@@ -11,7 +11,8 @@ export type AutoPlayMoment =
   | "doc.created"
   | "doc.changed"
   | "stack.service_crashed"
-  | "stack.service_recovered";
+  | "stack.service_recovered"
+  | "stack.error_rate_crossed";
 
 export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
@@ -93,7 +94,7 @@ export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {
 export const SUBJECT_MOMENTS: Record<AutoPlaySubject, AutoPlayMoment[]> = {
   ticket: ["ticket.unblocked", "ticket.entered_stage", "ticket.created", "ticket.developer_set", "ticket.tester_set", "ticket.test_failed"],
   doc: ["doc.created", "doc.changed"],
-  stack: ["stack.service_crashed", "stack.service_recovered"],
+  stack: ["stack.service_crashed", "stack.service_recovered", "stack.error_rate_crossed"],
 };
 
 export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
@@ -107,6 +108,7 @@ export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
   "doc.changed": "Doc changes",
   "stack.service_crashed": "Service crashes",
   "stack.service_recovered": "Service recovers",
+  "stack.error_rate_crossed": "Error rate goes over its limit",
 };
 
 // The moment as the list row's sentence says it after "When a ticket".
@@ -121,6 +123,7 @@ export const MOMENT_PHRASES: Record<AutoPlayMoment, string> = {
   "doc.changed": "changes",
   "stack.service_crashed": "service crashes",
   "stack.service_recovered": "service recovers",
+  "stack.error_rate_crossed": "error rate goes over its limit",
 };
 
 export const SUBJECT_FIELDS: Record<AutoPlaySubject, AutoPlayField[]> = {

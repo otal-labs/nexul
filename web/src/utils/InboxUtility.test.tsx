@@ -35,6 +35,15 @@ describe("groupInbox", () => {
     ]);
   });
 
+  it("words an error rate crossing and its recovery the same way", () => {
+    const entries = groupInbox([
+      note({ id: "e2", kind: "stack.error_rate_recovered", subject_type: "stack", subject_id: "st-1", subject_title: "5xx on web is back under 5%", created_at: at(11) }),
+      note({ id: "e1", kind: "stack.error_rate_crossed", subject_type: "stack", subject_id: "st-1", subject_title: "5xx at 12% on web over the last 5 minutes, above 5%", created_at: at(10) }),
+    ]);
+
+    expect(entries.map((e) => (e as InboxRow).summary)).toEqual(["5xx back under the limit", "5xx over the limit"]);
+  });
+
   it("collapses every notification about one doc into a single row placed by its newest", () => {
     const entries = groupInbox([
       note({ id: "u2", kind: "doc.updated", subject_id: "d-spec", created_at: at(12), ...inMain }),

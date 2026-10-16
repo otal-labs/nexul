@@ -136,7 +136,7 @@ describe("a stack play's auto plays", () => {
 
     expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Service crashes");
     await user.click(within(dialog).getByRole("combobox", { name: "Moment" }));
-    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Service crashes", "Service recovers"]);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Service crashes", "Service recovers", "Error rate goes over its limit"]);
     await user.keyboard("{Escape}");
 
     const runOn = within(dialog).getByRole("region", { name: "Run on" });

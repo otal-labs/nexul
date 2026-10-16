@@ -33,7 +33,7 @@ func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
 }
 
 type autoPlayIn struct {
-	Moment            Moment      `json:"moment" jsonschema:"When it fires. Ticket plays: ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed. Doc plays: doc.created, or doc.changed once edits have settled. Stack plays: stack.service_crashed, or stack.service_recovered once the service has run steadily again."`
+	Moment            Moment      `json:"moment" jsonschema:"When it fires. Ticket plays: ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed. Doc plays: doc.created, or doc.changed once edits have settled. Stack plays: stack.service_crashed, stack.service_recovered once the service has run steadily again, or stack.error_rate_crossed when the stack's share of 5xx answers goes over its error-rate rule."`
 	MomentStage       Stage       `json:"moment_stage,omitempty" jsonschema:"Required with ticket.entered_stage and refused otherwise: backlog, progress, review, testing, or done."`
 	Conditions        *Conditions `json:"conditions,omitempty" jsonschema:"What must also hold; omit to fire on every match of the moment."`
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"The run's place in its person's queue; omit for normal."`

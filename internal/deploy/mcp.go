@@ -154,13 +154,35 @@ type stackLogsIn struct {
 // stackDetail is stack_get's answer: the stack plus what an agent reads next about it.
 type stackDetail struct {
 	stackResult
-	Services          []*Container    `json:"services"`
-	OpenOutages       []outageResult  `json:"open_outages"`
-	Requests          *requestsResult `json:"requests,omitempty"`
-	Watching          bool            `json:"watching"`
-	RecentDeploys     []deployResult  `json:"recent_deploys"`
-	BranchDeployments []stackSummary  `json:"branch_deployments,omitempty"`
-	Logs              *serviceLogs    `json:"logs,omitempty"`
+	Services    []*Container    `json:"services"`
+	OpenOutages []outageResult  `json:"open_outages"`
+	Requests    *requestsResult `json:"requests,omitempty"`
+	// OpenErrorRateEpisode is set while the stack's 5xx share is over its rule; ErrorRateRecoveredAt, when the last
+	// episode ended within the hour; ErrorRateUnavailable, why the rule cannot watch this stack.
+	OpenErrorRateEpisode *errorRateResult `json:"open_error_rate_episode,omitempty"`
+	ErrorRateRecoveredAt *time.Time       `json:"error_rate_recovered_at,omitempty"`
+	ErrorRateUnavailable string           `json:"error_rate_unavailable,omitempty"`
+	Watching             bool             `json:"watching"`
+	RecentDeploys        []deployResult   `json:"recent_deploys"`
+	BranchDeployments    []stackSummary   `json:"branch_deployments,omitempty"`
+	Logs                 *serviceLogs     `json:"logs,omitempty"`
+}
+
+// errorRateResult is an open error-rate episode: since when, and the worst window it has seen.
+type errorRateResult struct {
+	Since         time.Time `json:"since"`
+	PeakPercent   float64   `json:"peak_percent"`
+	Requests      int64     `json:"requests"`
+	Errors5xx     int64     `json:"errors_5xx"`
+	LimitPercent  float64   `json:"limit_percent"`
+	WindowMinutes int       `json:"window_minutes"`
+}
+
+func toErrorRateResult(e *ErrorRateEpisode) *errorRateResult {
+	if e == nil {
+		return nil
+	}
+	return &errorRateResult{Since: e.StartedAt, PeakPercent: e.PeakPercent, Requests: e.Requests, Errors5xx: e.Errors, LimitPercent: e.LimitPercent, WindowMinutes: e.WindowMinutes}
 }
 
 // outageResult is a service that is down: since when, how it last exited, and how often it crashed again.
@@ -220,7 +242,9 @@ func stackGetTool(s *Service) mcptool.Tool {
 			"watch it (watching: everyone who can read a stack does until they stop, and a watcher is notified when a "+
 			"service crashes and when it comes back), for a stack with a hostname its requests over the last hour "+
 			"(requests: counts per minute and totals, 5xx answers apart, null for a minute that could not be counted), "+
-			"its ten most recent deploys, and its branch deployments. Environment variables are listed "+
+			"the stack's error-rate rule (error_rate) with its open episode while the share of 5xx answers is over it "+
+			"(open_error_rate_episode), when the last one ended within the hour (error_rate_recovered_at) and why the "+
+			"rule cannot watch the stack (error_rate_unavailable), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
 			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
 			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
 			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
@@ -285,6 +309,12 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 		return stackDetail{}, err
 	}
 	out.Requests = toRequestsResult(window)
+	out.ErrorRateUnavailable = window.ErrorRateUnavailable
+	episode, recovered, err := s.ErrorRateState(ctx, stack)
+	if err != nil {
+		return stackDetail{}, err
+	}
+	out.OpenErrorRateEpisode, out.ErrorRateRecoveredAt = toErrorRateResult(episode), recovered
 	if stack.DerivedFrom != "" {
 		return out, nil
 	}
@@ -488,7 +518,28 @@ type stackUpdateIn struct {
 	BuildSource       *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
 	BranchDeployRules []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
 	CrashTickets      *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
+	ErrorRate         *errorRatePatchIn   `json:"error_rate,omitempty" jsonschema:"Changes to the error-rate rule; fields not sent keep their values."`
 	Watching          *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher of the stack, notified when a service crashes and when it comes back; false stops that for you alone. Needs only read access. Omit to leave it as is."`
+}
+
+// errorRatePatchIn changes a stack's error-rate rule: it trips when the share of 5xx answers over the last minutes is
+// above percent with at least min_requests requests, and ends once each of those minutes has stayed under the limit.
+type errorRatePatchIn struct {
+	Enabled     *bool    `json:"enabled,omitempty" jsonschema:"True switches the rule on; false switches it off and ends an open episode. Needs a hostname on the stack, and for a Cloudflare tunnel hostname a token that can read analytics."`
+	Percent     *float64 `json:"percent,omitempty" jsonschema:"The share of 5xx answers, in percent, above which the rule trips, 0.1 to 100. 5 by default."`
+	Minutes     *int     `json:"minutes,omitempty" jsonschema:"How many minutes the share is read over, and how long it must stay under the limit to recover, 1 to 60. 5 by default."`
+	MinRequests *int     `json:"min_requests,omitempty" jsonschema:"The fewest requests in those minutes for the rule to trip, 1 or more. 20 by default."`
+}
+
+func patchErrorRate(cur ErrorRateRule, p *errorRatePatchIn) ErrorRateRule {
+	if p == nil {
+		return cur
+	}
+	set(&cur.Enabled, p.Enabled)
+	set(&cur.Percent, p.Percent)
+	set(&cur.Minutes, p.Minutes)
+	set(&cur.MinRequests, p.MinRequests)
+	return cur
 }
 
 // stackUpdated is stack_update's answer: the stack, and whether the caller watches it now.
@@ -502,7 +553,8 @@ func stackUpdateTool(s *Service) mcptool.Tool {
 		"Changes a stack's definition; only the fields you send change, and every other field keeps its value. "+
 			"Env changes go through set and unset, so values you never saw are kept; branch_deploy_rules replaces "+
 			"the whole list, and a rule sent without overrides keeps the current overrides of the rule with the same "+
-			"pattern. crash_tickets switches the stack's crash tickets on or off. watching true or false starts or "+
+			"pattern. crash_tickets switches the stack's crash tickets on or off. error_rate sets the rule that watches the "+
+			"share of 5xx answers (on or off, the percent limit, the minutes and the request floor). watching true or false starts or "+
 			"stops your own notices of the stack's crashes and recoveries, and alone it needs only read access. It does "+
 			"not redeploy: use stack_deploy for that. Returns the updated stack and whether you watch it.",
 		mcptool.Hints{Idempotent: true, Local: true},
@@ -552,6 +604,7 @@ func patchStack(cur Stack, in stackUpdateIn) Stack {
 	set(&cur.ComposePath, in.ComposePath)
 	set(&cur.DockerNetwork, in.DockerNetwork)
 	set(&cur.CrashTickets, in.CrashTickets)
+	cur.ErrorRate = patchErrorRate(cur.ErrorRate, in.ErrorRate)
 	cur.Ports = replaced(cur.Ports, in.Ports)
 	cur.Mounts = replaced(cur.Mounts, in.Mounts)
 	cur.Command = replaced(cur.Command, in.Command)
@@ -848,6 +901,7 @@ type stackResult struct {
 	BranchDeployRules []branchRuleResult `json:"branch_deploy_rules,omitempty"`
 	DerivedFrom       string             `json:"derived_from,omitempty"`
 	CrashTickets      bool               `json:"crash_tickets"`
+	ErrorRate         ErrorRateRule      `json:"error_rate"`
 }
 
 func toStackResult(st *Stack) stackResult {
@@ -866,5 +920,6 @@ func toStackResult(st *Stack) stackResult {
 		BranchDeployRules: rules,
 		DerivedFrom:       st.DerivedFrom,
 		CrashTickets:      st.CrashTickets,
+		ErrorRate:         st.ErrorRate,
 	}
 }

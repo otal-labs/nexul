@@ -2,6 +2,7 @@ import { TicketIcon } from "lucide-react";
 
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { StackErrorRateCard } from "@/components/stack/StackErrorRateCard";
 import { useUpdateStack } from "@/hooks/StackHooks";
 import { useStackActions } from "@/hooks/useStackActions";
 import type { Stack } from "@/models/Stack";
@@ -23,29 +24,32 @@ export const StackAlertsSection = ({ stack }: StackAlertsSectionProps) => {
   const off = reasonOff(stack);
 
   return (
-    <SettingsCard id="crash-tickets" title="Crash tickets" icon={TicketIcon}>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-sm font-medium">
-            Open a ticket when a service crashes
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {off ?? "One ticket per service in the project's first stage, created by the instance. A repeat or a recovery adds a comment."}
-          </p>
+    <>
+      <SettingsCard id="crash-tickets" title="Crash tickets" icon={TicketIcon}>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-sm font-medium">
+              Open a ticket when a service crashes
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {off ?? "One ticket per service in the project's first stage, created by the instance. A repeat or a recovery adds a comment. The error-rate rule opens one the same way."}
+            </p>
+          </div>
+          <ActionSwitch
+            permission="stacks:write"
+            projectId={stack.project_id || undefined}
+            answer={answer("stacks:write")}
+            verb="change this stack's alerts"
+            checked={!!stack.crash_tickets}
+            disabled={!!off || update.isPending}
+            onCheckedChange={(crash_tickets) => update.mutate({ ...stack, crash_tickets })}
+            aria-label="Open a ticket when a service crashes"
+            {...(off && { title: off })}
+            className="mt-0.5"
+          />
         </div>
-        <ActionSwitch
-          permission="stacks:write"
-          projectId={stack.project_id || undefined}
-          answer={answer("stacks:write")}
-          verb="change this stack's alerts"
-          checked={!!stack.crash_tickets}
-          disabled={!!off || update.isPending}
-          onCheckedChange={(crash_tickets) => update.mutate({ ...stack, crash_tickets })}
-          aria-label="Open a ticket when a service crashes"
-          {...(off && { title: off })}
-          className="mt-0.5"
-        />
-      </div>
-    </SettingsCard>
+      </SettingsCard>
+      <StackErrorRateCard stack={stack} />
+    </>
   );
 };

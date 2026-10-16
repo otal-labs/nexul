@@ -77,7 +77,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
             {section === "overview" && (
               <>
                 <ServicesSection stackId={stack.id} />
-                <RequestsSection stackId={stack.id} />
+                <RequestsSection stack={stack} />
                 <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
               </>
             )}

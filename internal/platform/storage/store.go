@@ -24,6 +24,7 @@ type Store struct {
 	Stacks                *StacksRepo
 	Services              *ServicesRepo
 	Outages               *OutagesRepo
+	ErrorRate             *ErrorRateRepo
 	RequestMinutes        *RequestMinutesRepo
 	CrashTickets          *CrashTicketsRepo
 	StackWatchers         *StackWatchersRepo
@@ -101,6 +102,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Stacks:                &StacksRepo{db: db, w: w, q: q, hot: hot},
 		Services:              &ServicesRepo{db: db, w: w, q: q},
 		Outages:               &OutagesRepo{db: db, w: w, q: q},
+		ErrorRate:             &ErrorRateRepo{db: db, w: w, q: q},
 		RequestMinutes:        &RequestMinutesRepo{db: db, w: w, q: q},
 		CrashTickets:          &CrashTicketsRepo{db: db, w: w, q: q},
 		StackWatchers:         &StackWatchersRepo{db: db, w: w, q: q},

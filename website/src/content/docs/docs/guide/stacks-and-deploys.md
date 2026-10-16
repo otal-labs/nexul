@@ -22,7 +22,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, which services are down, and the last hour of requests |
 | **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
-| **Alerts** | Have a crashed service open a ticket in the stack's project |
+| **Alerts** | Have a crashed service open a ticket in the stack's project, and set the error-rate rule |
 | **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
 | **Branch deploys** | Deploy other branches as their own copies |
 | **Deploy history** | Every build and deploy, with its log |
@@ -98,11 +98,11 @@ While that ticket is open, the next crash of the same service adds a comment to 
 
 Everyone who can read a stack in a project watches it. A watcher gets one [notification](/docs/guide/docs-tickets-and-board/#inbox) when a service goes down, such as `api crashed on web: exit 137, out of memory`, and one when it is back. A restart loop is one notification, not one per crash. The **Watching** button in the stack page's header turns this off for you alone; the button then reads **Watch**, and pressing it turns notices back on. Someone who joins the project later starts out watching, and one who loses the right to read the stack stops being told. A stack that belongs to no project, such as a gateway, has no watchers.
 
-Agents change it with `stack_update` and `watching`, which needs only read access, and see it as `watching` on `stack_get`. They read the notifications with `notification_list`, where a stack's notice has the kind `service.container_stopped` or `service.container_recovered` and the stack as its subject.
+Agents change it with `stack_update` and `watching`, which needs only read access, and see it as `watching` on `stack_get`. They read the notifications with `notification_list`, where a stack's notice has the kind `service.container_stopped`, `service.container_recovered`, `stack.error_rate_crossed` or `stack.error_rate_recovered` and the stack as its subject. The [error-rate rule](#error-rate) sends the last two.
 
 ## Requests
 
-A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Nexul keeps only these per-minute counts, for a day, and never a request itself.
+A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Its footer states the stack's [error-rate rule](#error-rate). Nexul keeps only these per-minute counts, for a day, and never a request itself. It counts a stack's requests only while that rule is on; a stack with the rule off shows the card with a line saying so.
 
 Where the counts come from depends on the gateway carrying the hostname:
 
@@ -110,6 +110,20 @@ Where the counts come from depends on the gateway carrying the hostname:
 - **Cloudflare tunnel.** Nexul asks Cloudflare's analytics for the hostname once a minute, using the connected token, so the token needs **Zone → Analytics: Read** (see [Cloudflare API token permissions](/docs/guide/topology-and-dns/#cloudflare-api-token-permissions)). Cloudflare's numbers arrive a couple of minutes late, so the newest bars trail the clock. Without that permission nothing else breaks; the stack just has no request data.
 
 A minute nobody could count, because the runner was offline or Cloudflare did not answer, is a gap in the chart and never a zero. After five such minutes the card says `No request data since 10:42`. A stack that has a hostname but no counts yet says so. `stack_get` returns the same hour under `requests`, as per-minute arrays with `null` for a gap, and `GET /api/stacks/{id}/requests` serves the card.
+
+## Error rate
+
+A stack can watch its own 5xx answers. Open **Alerts**, find the **Error rate** card and turn on **Alert when 5xx errors stay high**. It is off until someone does, and changing it takes permission to change the stack. By default it trips when more than **5%** of the requests in the last **5 minutes** answered 5xx, with at least **20** requests in those minutes, so one failed request at 3am wakes nobody. The three numbers are fields under the switch: the limit from 0.1% to 100%, the minutes from 1 to 60, and the request floor from 1 up, saved with **Save**. The rule counts all of the stack's hostnames together. Agents set it with `stack_update` and its `error_rate` field (`enabled`, `percent`, `minutes`, `min_requests`; numbers left out keep their values), and `stack_get` shows the rule as `error_rate`.
+
+The rule needs request counts, so the switch is greyed out with its reason when it can't work: **Needs a hostname on this stack** for a stack that no hostname reaches, and **Your Cloudflare token can't read analytics; add Zone Analytics Read to it** for a Cloudflare tunnel hostname when the connected token lacks that permission. `stack_get` returns the reason as `error_rate_unavailable`. A rule that is already on can always be switched off.
+
+Every minute Nexul reads the last few minutes of the counts. The rule trips when the 5xx share is above the limit and the requests reach the floor. That opens an **episode**: the stack's **Health** reads `5xx 7.2%` in amber with the time it began, `stack_get` returns it as `open_error_rate_episode`, and the worst share the episode has reached is kept as it goes. The episode ends once every one of those minutes has stayed at or under the limit; a minute with no requests counts as under it. Health then reads `5xx recovered` in green for an hour. A window with a minute nobody could count, because the runner was offline or Cloudflare did not answer, neither trips the rule nor ends an episode. Switching the rule off ends an open episode without a recovery.
+
+Tripping and recovering publish `stack.error_rate_crossed` and `stack.error_rate_recovered`, which [automations](/docs/guide/automations/#when-the-error-rate-trips) can act on and which reach whoever can read the stack. What else happens:
+
+- **Watchers** get one notification when the rule trips, such as `5xx at 12% on web over the last 5 minutes, above 5%`, and one when it recovers. See [Watching a stack](#watching-a-stack).
+- **Crash tickets**, when that switch is on, open one ticket for the episode, titled like `api errors: 5xx at 12%`. While that ticket is open, a later episode adds a comment instead, and a recovery adds a comment and leaves it open. A crashed service and an error-rate episode each have their own ticket.
+- **Stack plays** can start on the moment **Error rate goes over its limit**. See [Plays](/docs/guide/plays/).
 
 ## Logs
 

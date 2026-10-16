@@ -752,7 +752,8 @@ up"), and Hostnames (the first as a link with an arrow, then "+N more"). It is
 four columns from a 42rem page and two by two below. Health is "No issues"
 behind a `success` dot, or one line per problem behind its status hue: an
 open outage is `destructive` ("api down"), an error rate over its rule is
-`warning` ("5xx 7.2%"), and a recovery reads `success`.
+`warning` ("5xx 7.2%" in the line's own weight, then the time it began in muted mono), and a recovery within the hour reads
+`success` ("5xx recovered").
 The strip names a problem; the card below it explains it, so no incident list
 or banner sits between them. The per-person Watching toggle is an outline
 button with an eye in the header's actions, left of the row menu. Overview is
@@ -765,8 +766,9 @@ then the exit code, "out of memory" and the restart count in muted mono.
 Alerts sits after Logs in the section nav, with a Crash tickets card (one
 switch row) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname
-or the instance can't read analytics). The Requests card and the Error rate
-card arrive with request counts; until then the page shows neither. Below it the page is the settings shell:
+or the instance can't read analytics), and under the switch row the rule's three numbers as small number fields saved from the
+footer, whose hint states how it recovers. A stack whose rule is off still shows the Requests card, with a line saying nothing
+is counted. Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Alerts, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every

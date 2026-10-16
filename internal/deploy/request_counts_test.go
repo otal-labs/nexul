@@ -127,11 +127,12 @@ type requestEnv struct {
 	now     time.Time
 }
 
-// newRequestEnv is the shared stack svc-1 on outageMachine with one container, c-web, and request counting wired.
+// newRequestEnv is the shared stack svc-1 on outageMachine with the error-rate rule on, one container, c-web, and request counting wired.
 func newRequestEnv(t *testing.T, routes ...RequestRoute) *requestEnv {
 	t.Helper()
 	stacks, containers := newFakeStackRepo(), newFakeContainerRepo()
 	stack := validStack()
+	stack.ErrorRate = ErrorRateRule{Enabled: true, Percent: 5, Minutes: 5, MinRequests: 20}
 	require.NoError(t, stacks.Create(t.Context(), &stack))
 	require.NoError(t, containers.Create(t.Context(), &Container{ID: "c-web", StackID: "svc-1", Name: "web"}))
 	svc := newTestServiceWith(newFakeRepo(), stacks, containers, newFakeProjects(), newFakeBus())

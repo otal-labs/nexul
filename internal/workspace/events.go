@@ -164,6 +164,21 @@ func (e serviceOutageEvent) stack() stackNotice {
 	return stackNotice{ID: e.StackID, WorkspaceID: e.WorkspaceID, ProjectID: e.ProjectID}
 }
 
+// errorRateEvent mirrors the deploy domain's stack.error_rate_crossed and stack.error_rate_recovered payloads.
+type errorRateEvent struct {
+	WorkspaceID   string  `json:"workspace_id"`
+	ProjectID     string  `json:"project_id"`
+	StackID       string  `json:"stack_id"`
+	StackName     string  `json:"stack_name"`
+	PeakPercent   float64 `json:"peak_percent"`
+	LimitPercent  float64 `json:"limit_percent"`
+	WindowMinutes int     `json:"window_minutes"`
+}
+
+func (e errorRateEvent) stack() stackNotice {
+	return stackNotice{ID: e.StackID, WorkspaceID: e.WorkspaceID, ProjectID: e.ProjectID}
+}
+
 // docEvent mirrors the docs domain's doc.created / doc.updated payloads.
 type docEvent struct {
 	Doc              docRef   `json:"doc"`
@@ -320,6 +335,35 @@ func HandleServiceRecovered(ctx context.Context, svc *NotificationService, ev ev
 		return apperrs.Fatal(fmt.Errorf("service.container_recovered missing stack id"))
 	}
 	return svc.onServiceRecovered(CtxWithEventKey(ctx, ev.ID), e)
+}
+
+// HandleErrorRateCrossed tells the stack's watchers its 5xx share went over the rule.
+func HandleErrorRateCrossed(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	e, err := parseErrorRate(ev)
+	if err != nil {
+		return err
+	}
+	return svc.onErrorRateCrossed(CtxWithEventKey(ctx, ev.ID), e)
+}
+
+// HandleErrorRateRecovered tells the stack's watchers the share has stayed under the limit.
+func HandleErrorRateRecovered(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	e, err := parseErrorRate(ev)
+	if err != nil {
+		return err
+	}
+	return svc.onErrorRateRecovered(CtxWithEventKey(ctx, ev.ID), e)
+}
+
+func parseErrorRate(ev eventbus.Event) (errorRateEvent, error) {
+	var e errorRateEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return e, apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if e.StackID == "" {
+		return e, apperrs.Fatal(fmt.Errorf("%s missing stack id", ev.Topic))
+	}
+	return e, nil
 }
 
 // HandleDocCreated tells the people the new doc @-mentions; nobody else is watching it yet but its creator.

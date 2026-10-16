@@ -108,6 +108,15 @@ func (r *StacksRepo) ListByBuildRepo(ctx context.Context, owner, name string) ([
 	return toStacks(rows)
 }
 
+// ListWithErrorRate lists the stacks whose error-rate rule is switched on.
+func (r *StacksRepo) ListWithErrorRate(ctx context.Context) ([]*deploy.Stack, error) {
+	rows, err := r.q.ListStacksWithErrorRate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list stacks with an error-rate rule: %w", err)
+	}
+	return toStacks(rows)
+}
+
 // ListByDerivedFrom returns a base stack's branch deployments, oldest first.
 func (r *StacksRepo) ListByDerivedFrom(ctx context.Context, baseStackID string) ([]*deploy.Stack, error) {
 	rows, err := r.q.ListStacksByDerivedFrom(ctx, baseStackID)
@@ -125,7 +134,10 @@ func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...ev
 			Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 			BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
 			BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
-			Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets), UpdatedAt: stack.UpdatedAt.Unix(), ID: stack.ID,
+			Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
+			ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
+			ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
+			UpdatedAt: stack.UpdatedAt.Unix(), ID: stack.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update stack %s: %w", stack.ID, classifyWriteErr(err))
@@ -161,7 +173,10 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 		Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 		BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
 		BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
-		Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets), CreatedAt: stack.CreatedAt.Unix(), UpdatedAt: stack.UpdatedAt.Unix(),
+		Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
+		ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
+		ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
+		CreatedAt: stack.CreatedAt.Unix(), UpdatedAt: stack.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert stack %s: %w", stack.Name, classifyWriteErr(err))
@@ -183,8 +198,11 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 		Branch:        row.Branch,
 		Managed:       row.Managed != 0,
 		CrashTickets:  row.CrashTickets != 0,
-		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
+		ErrorRate: deploy.ErrorRateRule{
+			Enabled: row.ErrorRateEnabled != 0, Percent: row.ErrorRatePercent, Minutes: int(row.ErrorRateMinutes), MinRequests: int(row.ErrorRateMinRequests),
+		},
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if err := json.Unmarshal([]byte(row.Env), &stack.Env); err != nil {
 		return nil, fmt.Errorf("unmarshal env for stack %s: %w", stack.ID, err)
