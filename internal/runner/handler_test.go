@@ -558,6 +558,32 @@ func TestHandler_JoinNetworks_SendsFrameToConnectedRunner(t *testing.T) {
 	assert.Equal(t, []string{"net1"}, frame.JoinNetworks)
 }
 
+// TestHandler_SetRoutes_SendsAGatewayRoutesFrame covers the server -> runner push of a proxy gateway's exposure routes.
+func TestHandler_SetRoutes_SendsAGatewayRoutesFrame(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	h := newTestHandler(newFakeBus(), repo)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", "host1"), "")
+	require.NoError(t, err)
+	defer func() { _ = conn.CloseNow() }()
+	eventually(t, 2*time.Second, func() bool { return repo.connectedCount() == 1 })
+
+	require.NoError(t, h.SetRoutes(ctx, "host1", "gateway-container", `{"routers":{},"services":{}}`))
+
+	_, data, err := conn.Read(ctx)
+	require.NoError(t, err)
+	frame, err := ParseFrame(data)
+	require.NoError(t, err)
+	assert.Equal(t, FrameGatewayRoutes, frame.Type)
+	assert.Equal(t, "gateway-container", frame.GatewayContainer)
+	assert.JSONEq(t, `{"routers":{},"services":{}}`, frame.GatewayRoutes)
+
+	require.NoError(t, h.SetRoutes(ctx, "no-such-machine", "gateway-container", "{}"), "a machine with no runner connected is not an error")
+}
+
 // TestHandler_JoinNetworks_NoConnectedRunnerIsANoOp covers the best-effort contract: a machine with nothing
 // currently connected is not an error, since the next deploy carries the same join step.
 func TestHandler_JoinNetworks_NoConnectedRunnerIsANoOp(t *testing.T) {

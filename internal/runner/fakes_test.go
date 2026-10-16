@@ -645,6 +645,7 @@ type fakeExecutor struct {
 	deploys      []DeployRequestedEvent
 	upgrades     []Frame
 	joinCalls    []joinNetworksCall
+	routeCalls   []string
 	buildFn      func(ctx context.Context, req DeployRequestedEvent, send func(Frame))
 	deployFn     func(ctx context.Context, req DeployRequestedEvent, send func(Frame))
 	discoverFn   func(ctx context.Context) (DiscoverReport, error)
@@ -725,6 +726,13 @@ func (f *fakeExecutor) JoinNetworks(ctx context.Context, gatewayContainer string
 		return
 	}
 	fn(ctx, gatewayContainer, networks, send)
+}
+
+func (f *fakeExecutor) SetRoutes(ctx context.Context, gatewayContainer, routes string, send func(Frame)) {
+	f.mu.Lock()
+	f.routeCalls = append(f.routeCalls, gatewayContainer+" "+routes)
+	f.mu.Unlock()
+	send(Frame{Type: FrameGatewayRoutesResult, GatewayContainer: gatewayContainer, Status: BuildStatusSuccess})
 }
 
 func (f *fakeExecutor) Upgrade(ctx context.Context, req Frame, send func(Frame) error) error {

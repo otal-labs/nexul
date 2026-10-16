@@ -53,7 +53,7 @@ func TestRequestCounts_AProxyGatewaysRouterCountsReachTheStacksPage(t *testing.T
 	}
 
 	require.NoError(t, bus.Publish(ctx, runner.TopicRequestCounts, runner.RequestCountsEvent{Machine: "m1", Counts: []runner.RouterCount{
-		{Router: dns.RouterName("e1") + "@docker", Requests: 20, Errors: 5},
+		{Router: dns.RouterName("e1") + "@file", Requests: 20, Errors: 5},
 		{Router: "nexul@file", Requests: 99, Errors: 99},
 	}}))
 

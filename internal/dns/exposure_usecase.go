@@ -70,6 +70,8 @@ func (s *Service) CreateExposure(ctx context.Context, in CreateExposureInput) (*
 	if err := s.repo.SaveExposure(ctx, *e, evt); err != nil {
 		return nil, fmt.Errorf("save exposure %s: %w", e.ID, err)
 	}
+	// The exposure is saved; if the routes miss the gateway now, the runner's next connect sends them again.
+	_ = s.syncProxyRoutes(ctx, g)
 	return e, nil
 }
 
@@ -282,11 +284,14 @@ func (s *Service) joinGatewayNetworks(ctx context.Context, g *Gateway, target *E
 }
 
 // ReconcileExposures settles the exposures of containers a deploy just reported running: the gateway joins
-// their networks, and a tunnel route written before the container had a runtime name (the stack slug stood
-// in) is re-routed to the name Docker gave it.
+// their networks, and a route written before the container had a runtime name (the stack slug stood in) is
+// re-routed to the name Docker gave it. A proxy gateway's own deploy gets its routes written back.
 func (s *Service) ReconcileExposures(ctx context.Context, running []ExposureTarget) error {
 	for i := range running {
 		target := &running[i]
+		if err := s.syncGatewayOf(ctx, target); err != nil {
+			return err
+		}
 		exps, err := s.repo.ListExposuresByService(ctx, target.ContainerID)
 		if err != nil {
 			return fmt.Errorf("list exposures for container %s: %w", target.ContainerID, err)
@@ -308,21 +313,23 @@ func (s *Service) reconcileExposure(ctx context.Context, e *Exposure, target *Ex
 	if err := s.joinGatewayNetworks(ctx, g, target); err != nil {
 		return err
 	}
-	if g.Kind != GatewayTunnel || target.Name == "" || e.Service == target.Name {
+	if target.Name == "" || e.Service == target.Name {
 		return nil
 	}
-	tp, err := s.tunnelProviderFor(ctx, g.TunnelID)
-	if err != nil {
-		return err
-	}
-	if err := tp.RouteTunnelHostname(ctx, g.TunnelID, e.Hostname, tunnelOrigin(target.Name, e.Port)); err != nil {
-		return s.classify(err)
+	if g.Kind == GatewayTunnel {
+		tp, err := s.tunnelProviderFor(ctx, g.TunnelID)
+		if err != nil {
+			return err
+		}
+		if err := tp.RouteTunnelHostname(ctx, g.TunnelID, e.Hostname, tunnelOrigin(target.Name, e.Port)); err != nil {
+			return s.classify(err)
+		}
 	}
 	e.Service, e.UpdatedAt = target.Name, s.now().UTC()
 	if err := s.repo.SaveExposure(ctx, *e); err != nil {
 		return fmt.Errorf("save exposure %s: %w", e.ID, err)
 	}
-	return nil
+	return s.syncProxyRoutes(ctx, g)
 }
 
 // gatewayContainerName resolves a gateway's own backing container name, for the join_networks request.
@@ -507,6 +514,8 @@ func (s *Service) deleteExposure(ctx context.Context, exposureID string) error {
 	if err := s.repo.DeleteExposure(ctx, exposureID, evt); err != nil {
 		return fmt.Errorf("delete exposure %s: %w", exposureID, err)
 	}
+	// Deleted; if the routes miss the gateway now, the runner's next connect sends them again.
+	_ = s.syncProxyRoutes(ctx, g)
 	return nil
 }
 

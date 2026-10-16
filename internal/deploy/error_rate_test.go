@@ -455,7 +455,7 @@ func TestWantsCounts_OnlyAStackWithTheRuleOnIsCounted(t *testing.T) {
 	stack.ErrorRate.Enabled = false
 	require.NoError(t, env.svc.stacks.Update(t.Context(), stack))
 
-	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@docker", Requests: 9, Errors: 9})
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 9, Errors: 9})
 	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.New(slog.DiscardHandler)))
 
 	assert.Nil(t, env.repo.at("svc-1", clock(10, 42)), "the proxy frame adds nothing for a stack with the rule off")

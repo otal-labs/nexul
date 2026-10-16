@@ -324,6 +324,8 @@ func refusal(f Frame) (Frame, bool) {
 		return Frame{Type: FrameUpgradeResult, ID: f.ID, Status: UpgradeStatusFailed, Error: reason}, true
 	case FrameJoinNetworks:
 		return Frame{Type: FrameJoinNetworksResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: reason}, true
+	case FrameGatewayRoutes:
+		return Frame{Type: FrameGatewayRoutesResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: reason}, true
 	case FrameDiscover:
 		return Frame{Type: FrameDiscoverResult, ID: f.ID, Error: noDocker}, true
 	case FrameLogsRequest:

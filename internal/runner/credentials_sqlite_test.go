@@ -91,6 +91,8 @@ func (e *recordingExecutor) Discover(context.Context) (runner.DiscoverReport, er
 
 func (e *recordingExecutor) JoinNetworks(context.Context, string, []string, func(runner.Frame)) {}
 
+func (e *recordingExecutor) SetRoutes(context.Context, string, string, func(runner.Frame)) {}
+
 func (e *recordingExecutor) Upgrade(context.Context, runner.Frame, func(runner.Frame) error) error {
 	return nil
 }

@@ -21,11 +21,11 @@ import (
 
 const metricsPage = `# HELP traefik_router_requests_total How many HTTP requests are processed on a router.
 # TYPE traefik_router_requests_total counter
-traefik_router_requests_total{code="200",method="GET",protocol="http",router="nexul-e1@docker",service="app@docker"} 90
-traefik_router_requests_total{code="502",method="GET",protocol="http",router="nexul-e1@docker",service="app@docker"} 4
-traefik_router_requests_total{code="503",method="POST",protocol="http",router="nexul-e1@docker",service="app@docker"} 1
+traefik_router_requests_total{code="200",method="GET",protocol="http",router="nexul-e1@file",service="nexul-e1@file"} 90
+traefik_router_requests_total{code="502",method="GET",protocol="http",router="nexul-e1@file",service="nexul-e1@file"} 4
+traefik_router_requests_total{code="503",method="POST",protocol="http",router="nexul-e1@file",service="nexul-e1@file"} 1
 traefik_router_requests_total{code="200",method="GET",protocol="http",router="nexul@file",service="nexul@file"} 7
-traefik_service_requests_total{code="200",service="app@docker"} 99
+traefik_service_requests_total{code="200",service="nexul-e1@file"} 99
 traefik_router_requests_total{code="404",router=""} 3
 traefik_router_requests_total{code="200",router="broken"} not-a-number
 `
@@ -34,10 +34,10 @@ func TestParseRouterCounters_ReadsTheRouterCounterAndNothingElse(t *testing.T) {
 	got := parseRouterCounters("gw", metricsPage)
 
 	assert.Equal(t, map[counterKey]int64{
-		{"gw", "nexul-e1@docker", "200"}: 90,
-		{"gw", "nexul-e1@docker", "502"}: 4,
-		{"gw", "nexul-e1@docker", "503"}: 1,
-		{"gw", "nexul@file", "200"}:      7,
+		{"gw", "nexul-e1@file", "200"}: 90,
+		{"gw", "nexul-e1@file", "502"}: 4,
+		{"gw", "nexul-e1@file", "503"}: 1,
+		{"gw", "nexul@file", "200"}:    7,
 	}, got, "service counters, a series with no router and an unreadable value are skipped")
 }
 
@@ -141,8 +141,8 @@ func countsClient(t *testing.T, h *fakeTraefikHost) <-chan Frame {
 
 func page(ok, bad int) string {
 	return strings.NewReplacer("OK", strconv.Itoa(ok), "BAD", strconv.Itoa(bad)).Replace(
-		`traefik_router_requests_total{code="200",router="nexul-e1@docker"} OK` + "\n" +
-			`traefik_router_requests_total{code="502",router="nexul-e1@docker"} BAD` + "\n")
+		`traefik_router_requests_total{code="200",router="nexul-e1@file"} OK` + "\n" +
+			`traefik_router_requests_total{code="502",router="nexul-e1@file"} BAD` + "\n")
 }
 
 func TestWatchRequests_ReadsTheGatewayOnItsAddressAndSendsDeltas(t *testing.T) {
@@ -156,7 +156,7 @@ func TestWatchRequests_ReadsTheGatewayOnItsAddressAndSendsDeltas(t *testing.T) {
 	first := nextFrame(t, frames)
 	assert.Empty(t, first.Counts, "the first read is the baseline, and the frame still says the read worked")
 	second := nextFrame(t, frames)
-	assert.Equal(t, []RouterCount{{Router: "nexul-e1@docker", Requests: 32, Errors: 2}}, second.Counts)
+	assert.Equal(t, []RouterCount{{Router: "nexul-e1@file", Requests: 32, Errors: 2}}, second.Counts)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	assert.NotContains(t, strings.Join(h.urls, " "), "postgres")
@@ -216,7 +216,7 @@ func TestHost_RequestCountsBecomeAnInternalBusEventStampedWithTheMachine(t *test
 	_, deploy := f.control(t, f.deploy)
 	_, alice := f.control(t, f.alice)
 	ctx := t.Context()
-	counts := []RouterCount{{Router: "nexul-e1@docker", Requests: 9, Errors: 2}}
+	counts := []RouterCount{{Router: "nexul-e1@file", Requests: 9, Errors: 2}}
 
 	require.NoError(t, wsjson.Write(ctx, alice, Frame{Type: FrameRequestCounts, Counts: counts}))
 	require.NoError(t, wsjson.Write(ctx, deploy, Frame{Type: FrameRequestCounts, Counts: counts}))

@@ -173,6 +173,50 @@ func TestClient_ExecutesAssignedBuild(t *testing.T) {
 	assert.NoError(t, <-done)
 }
 
+// TestClient_ExecutesGatewayRoutes covers a server-pushed gateway_routes frame reaching the executor and its result
+// coming back.
+func TestClient_ExecutesGatewayRoutes(t *testing.T) {
+	results := make(chan Frame, 4)
+	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+		var raw json.RawMessage
+		if err := wsjson.Read(ctx, conn, &raw); err != nil {
+			return
+		}
+		if err := wsjson.Write(ctx, conn, Frame{Type: FrameGatewayRoutes, GatewayContainer: "gw", GatewayRoutes: `{"routers":{},"services":{}}`}); err != nil {
+			return
+		}
+		for {
+			var r json.RawMessage
+			if err := wsjson.Read(ctx, conn, &r); err != nil {
+				return
+			}
+			fr, err := ParseFrame(r)
+			if err != nil {
+				return
+			}
+			results <- *fr
+			if fr.Type == FrameGatewayRoutesResult {
+				return
+			}
+		}
+	})
+	exec := &fakeExecutor{}
+	cancel, done := runClient(t, newTestClient(wsURL(srv), exec))
+
+	select {
+	case result := <-results:
+		assert.Equal(t, FrameGatewayRoutesResult, result.Type)
+		assert.Equal(t, BuildStatusSuccess, result.Status)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for gateway_routes_result")
+	}
+	exec.mu.Lock()
+	assert.Equal(t, []string{`gw {"routers":{},"services":{}}`}, exec.routeCalls)
+	exec.mu.Unlock()
+	cancel()
+	assert.NoError(t, <-done)
+}
+
 // TestClient_ExecutesJoinNetworks covers the standalone join_networks path: a
 // server-pushed join_networks frame, outside the deploy flow, reaches the executor and gets a result back.
 func TestClient_ExecutesJoinNetworks(t *testing.T) {

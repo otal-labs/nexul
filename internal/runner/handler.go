@@ -588,9 +588,9 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.publishFacts(ctx, c, f)
 	case FrameContainerEvent, FrameContainerStates, FrameLog, FrameRequestCounts:
 		return h.machineFrame(ctx, c, f)
-	case FrameJoinNetworksResult:
+	case FrameJoinNetworksResult, FrameGatewayRoutesResult:
 		if f.Status == BuildStatusFailed {
-			h.log.Warn("join_networks failed on runner", "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
+			h.log.Warn("gateway request failed on runner", "frame", f.Type, "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
 		}
 		return nil
 	case FrameUpgradeProgress:
@@ -889,6 +889,16 @@ func (h *Handler) JoinNetworks(ctx context.Context, machine, gatewayContainer st
 		return nil
 	}
 	return h.sendFrame(ctx, c, Frame{Type: FrameJoinNetworks, GatewayContainer: gatewayContainer, JoinNetworks: networks})
+}
+
+// SetRoutes pushes a gateway_routes frame to the connected runner for machine; like JoinNetworks it is best-effort, and a
+// runner that isn't connected is not an error since its next connect has the routes sent again.
+func (h *Handler) SetRoutes(ctx context.Context, machine, gatewayContainer, routes string) error {
+	c := h.connOnMachine(machine)
+	if c == nil {
+		return nil
+	}
+	return h.sendFrame(ctx, c, Frame{Type: FrameGatewayRoutes, GatewayContainer: gatewayContainer, GatewayRoutes: routes})
 }
 
 // connOnMachine returns any connected deploy runner on machine, busy or not, or nil.

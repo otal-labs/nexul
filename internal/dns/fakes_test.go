@@ -738,9 +738,21 @@ func (f *fakeContainerLookup) ContainerByStackID(_ context.Context, stackID stri
 
 // fakeRunnerJoiner is an in-memory dns.RunnerJoiner, recording each call for tests to assert against.
 type fakeRunnerJoiner struct {
-	mu    sync.Mutex
-	calls []joinCall
-	err   error
+	mu     sync.Mutex
+	calls  []joinCall
+	routes []routesCall
+	err    error
+}
+
+type routesCall struct {
+	Machine, GatewayContainer, Routes string
+}
+
+func (f *fakeRunnerJoiner) SetRoutes(_ context.Context, machine, gatewayContainer, routes string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.routes = append(f.routes, routesCall{Machine: machine, GatewayContainer: gatewayContainer, Routes: routes})
+	return f.err
 }
 
 type joinCall struct {
