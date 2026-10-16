@@ -1132,7 +1132,7 @@ func (s *Service) listScope(ctx context.Context, workspaceID string, action perm
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.
 func applyStackDefaults(stack Stack) Stack {
 	stack.EnvMasked = false
-	stack.ErrorRate = stack.ErrorRate.withDefaults()
+	stack.ErrorRate = stack.ErrorRate.WithDefaults()
 	if stack.Strategy == StrategyCompose && strings.TrimSpace(stack.ComposePath) == "" {
 		stack.ComposePath = defaultComposePath
 	}

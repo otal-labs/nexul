@@ -60,7 +60,7 @@ func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 			return
 		}
 		resp.Latest = &latestVersion{Version: rel.Tag, URL: rel.URL}
-		resp.UpdateAvailable = rel.Tag != version.Version
+		resp.UpdateAvailable = version.Newer(rel.Tag, version.Version)
 		if resp.UpdateAvailable {
 			resp.Changes = versionChanges(r, runnerSvc)
 		}

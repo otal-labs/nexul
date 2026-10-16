@@ -276,7 +276,7 @@ func TestListComputers_ShowsASharedComputerByNameAndOnlineStateOnly(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, listed, 2)
 	assert.Equal(t, own.Computer.ID, listed[0].ID)
-	assert.Equal(t, Computer{ID: "c-bob", Name: "Laptop", Runner: &ComputerRunner{Connected: true}, Shared: sharedLaptop().Shared}, listed[1])
+	assert.Equal(t, Computer{ID: "c-bob", Name: "Laptop", Runner: &ComputerRunner{Connected: true, LastSeen: testNow}, Shared: sharedLaptop().Shared}, listed[1])
 	assert.Equal(t, "Bob's Laptop (shared)", listed[1].SharedName())
 	assert.Equal(t, "Desk", listed[0].SharedName())
 

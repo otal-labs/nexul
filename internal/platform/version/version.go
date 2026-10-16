@@ -1,7 +1,11 @@
 // Package version holds the single build-stamped version both binaries read (server and runner).
 package version
 
-import "strings"
+import (
+	"strings"
+
+	"golang.org/x/mod/semver"
+)
 
 // Version is the release tag stamped at build time, e.g. -ldflags "-X .../version.Version=v0.3.4-beta".
 // "dev" means a local, unstamped build.
@@ -22,4 +26,13 @@ func Channel() string {
 // IsRelease reports whether Version was stamped at build time.
 func IsRelease() bool {
 	return Version != "dev"
+}
+
+// Newer reports whether release is strictly newer than installed. A tag semver cannot read, such as a dev build's,
+// counts as newer whenever it differs.
+func Newer(release, installed string) bool {
+	if !semver.IsValid(release) || !semver.IsValid(installed) {
+		return release != installed
+	}
+	return semver.Compare(release, installed) > 0
 }

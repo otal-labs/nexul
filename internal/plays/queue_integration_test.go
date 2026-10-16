@@ -1090,3 +1090,63 @@ func TestDecisionsCheck_AutomationMoveWithoutADeveloper_DidntRunWithAFailedTrail
 	require.NoError(t, err)
 	assert.Equal(t, []any{check.ID, plays.TrailFailed}, []any{trail.PlayID, trail.State}, "the ticket's notice offers to run it again")
 }
+
+func TestHandleAutoPlayOff_SkipsWhatItStillHasQueued(t *testing.T) {
+	tests := []struct {
+		name   string
+		topic  string
+		event  func(a *plays.AutoPlay) map[string]any
+		reason string
+	}{
+		{"switched off", plays.TopicAutoPlayUpdated, func(a *plays.AutoPlay) map[string]any {
+			off := *a
+			off.Enabled = false
+			return map[string]any{"auto_play": off}
+		}, "its auto play was switched off"},
+		{"deleted", plays.TopicAutoPlayDeleted, func(a *plays.AutoPlay) map[string]any {
+			return map[string]any{"id": a.ID, "play_id": a.PlayID, "workspace_id": ws}
+		}, "its auto play was removed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newRig(t, openStore(t))
+			fix := r.play(t, "Fix it")
+			a := r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+			other := r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked, func(o *plays.AutoPlay) { o.RunOn = plays.RunOnTester })
+			r.ticket("t-1")
+			r.Offline(true)
+			r.unblock(t, "t-1")
+			r.dispatch(t)
+			require.Equal(t, []plays.QueueStatus{plays.QueueQueued, plays.QueueQueued}, statuses(r.queued(t, "t-1")))
+
+			raw, err := json.Marshal(tt.event(a))
+			require.NoError(t, err)
+			require.NoError(t, r.Runner.HandleAutoPlayOff(t.Context(), eventbus.Event{ID: ids.New(), Topic: tt.topic, Payload: raw}))
+
+			for _, it := range r.queued(t, "t-1") {
+				if it.AutoPlayID == a.ID {
+					assert.Equal(t, []any{plays.QueueSkipped, tt.reason}, []any{it.Status, it.Reason})
+					continue
+				}
+				assert.Equal(t, other.ID, it.AutoPlayID)
+				assert.Equal(t, plays.QueueQueued, it.Status, "another auto play's run keeps waiting")
+			}
+		})
+	}
+}
+
+func TestHandleAutoPlayOff_StaysOutOfTheWayOfAnAutoPlayStillOn(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	a := r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.ticket("t-1")
+	r.Offline(true)
+	r.unblock(t, "t-1")
+	r.dispatch(t)
+
+	raw, err := json.Marshal(map[string]any{"auto_play": a})
+	require.NoError(t, err)
+	require.NoError(t, r.Runner.HandleAutoPlayOff(t.Context(), eventbus.Event{ID: ids.New(), Topic: plays.TopicAutoPlayUpdated, Payload: raw}))
+
+	assert.Equal(t, plays.QueueQueued, r.only(t, "t-1").Status)
+}

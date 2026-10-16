@@ -471,6 +471,10 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	for _, topic := range plays.ComputerTopics {
 		mustSubscribe(ctx, bus, "plays.queue_computer", topic, " for the run queue", svc.playsRunner.HandleComputerChanged)
 	}
+	// A switched-off or deleted auto play lets go of the runs it still has queued.
+	for _, topic := range plays.AutoPlayOffTopics {
+		mustSubscribe(ctx, bus, "plays.queue_auto_play", topic, " for the run queue", svc.playsRunner.HandleAutoPlayOff)
+	}
 	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
 	go svc.playsRunner.RunQueue(ctx)
 

@@ -191,3 +191,13 @@ func TestGrantTools_ProjectRulesForARoleAndAPerson(t *testing.T) {
 	_, err = callGrantTool(t, s, "client", "permission_overwrite_list", `{"resource_type": "project", "resource_id": "p-hidden"}`)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+func TestGrantList_ResourceIDNamesEveryInstanceArea(t *testing.T) {
+	t.Parallel()
+	svc, _ := newGrantsHarness(t)
+	tool := MCPTools(svc)[0]
+	description := tool.InputSchema.Properties["resource_id"].Description
+	for _, area := range permissions.InstanceAreas() {
+		assert.Contains(t, description, area.Key+",", "resource_id must name the %s area", area.Key)
+	}
+}

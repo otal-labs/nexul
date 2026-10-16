@@ -75,6 +75,7 @@ func TestImport_CreatesOneStackPerComposeProjectWithObservedFacts(t *testing.T) 
 	assert.Equal(t, "prod", stack.Machine)
 	assert.Equal(t, StrategyCompose, stack.Strategy)
 	assert.False(t, stack.Managed, "an imported stack starts unmanaged (issue 08)")
+	assert.Equal(t, ErrorRateRule{Percent: 5, Minutes: 5, MinRequests: 20}, stack.ErrorRate, "an imported stack carries the default rule, off")
 
 	stored, err := stacks.GetBySlugAndMachine(context.Background(), "myapp", "prod")
 	require.NoError(t, err)
