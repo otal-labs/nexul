@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -24,6 +25,8 @@ const (
 	containerDie   = "die"
 	containerOOM   = "oom"
 	containerStart = "start"
+	containerKill  = "kill"
+	containerStop  = "stop"
 )
 
 // Container states a runner's snapshot reports; every other state is left out of it.
@@ -34,6 +37,13 @@ const (
 
 // outageSteady is how long a restarted container must stay up before its outage is over.
 const outageSteady = 60 * time.Second
+
+// Windows in which a die is read against the event before it: Docker emits kill (and stop) for an API-requested stop
+// and oom for a memory kill ahead of the die, and the kernel's own OOM kill emits no kill.
+const (
+	oomWindow  = 10 * time.Second
+	stopWindow = 30 * time.Second
+)
 
 // outageCloseTimeout bounds the write a recovery timer makes outside any request.
 const outageCloseTimeout = 10 * time.Second
@@ -103,6 +113,7 @@ type recovery struct{ timer *time.Timer }
 func (s *Service) SetOutageRepo(r OutageRepo) {
 	s.outages = r
 	s.recoveries = map[string]*recovery{}
+	s.containerMarks = map[string]time.Time{}
 }
 
 // OpenOutages lists the stack's services that are down. The caller has already read the stack.
@@ -117,8 +128,9 @@ func (s *Service) OpenOutages(ctx context.Context, stackID string) ([]*Outage, e
 	return open, nil
 }
 
-// HandleContainerEvent is the runner.container_event consumer: a death or OOM kill opens the service's outage, a
-// start begins the steady-state wait that ends it.
+// HandleContainerEvent is the runner.container_event consumer: a death opens the service's outage unless a kill or stop
+// asked for it, a start begins the steady-state wait that ends it. An OOM kill only marks the container, since the
+// kernel may have killed a child and left the container running; the death that follows is the outage.
 func (s *Service) HandleContainerEvent(ctx context.Context, ev eventbus.Event) error {
 	var p containerEvent
 	if err := json.Unmarshal(ev.Payload, &p); err != nil {
@@ -135,11 +147,36 @@ func (s *Service) HandleContainerEvent(ctx context.Context, ev eventbus.Event) e
 	}
 	switch p.Action {
 	case containerStart:
+		delete(s.containerMarks, markKey(containerKill, stack.ID, p.Container))
+		delete(s.containerMarks, markKey(containerStop, stack.ID, p.Container))
 		return s.containerStarted(ctx, stack, service)
-	case containerDie, containerOOM:
+	case containerOOM, containerKill, containerStop:
+		s.markContainer(p.Action, stack.ID, p.Container)
+	case containerDie:
 		return s.containerStopped(ctx, stack, service, p)
 	}
 	return nil
+}
+
+func markKey(kind, stackID, container string) string { return kind + "/" + stackID + "/" + container }
+
+// markContainer remembers an event that colours the die after it, dropping marks too old for any die to read.
+func (s *Service) markContainer(kind, stackID, container string) {
+	now := s.now()
+	for k, at := range s.containerMarks {
+		if now.Sub(at) > stopWindow {
+			delete(s.containerMarks, k)
+		}
+	}
+	s.containerMarks[markKey(kind, stackID, container)] = now
+}
+
+// marked consumes the mark of a kind on a container and says whether it is still within window.
+func (s *Service) marked(kind, stackID, container string, window time.Duration) bool {
+	key := markKey(kind, stackID, container)
+	at, ok := s.containerMarks[key]
+	delete(s.containerMarks, key)
+	return ok && s.now().Sub(at) <= window
 }
 
 // HandleContainerStates is the runner.container_states consumer: a runner's report of what its containers are now
@@ -170,7 +207,7 @@ func (s *Service) HandleContainerStates(ctx context.Context, ev eventbus.Event) 
 }
 
 // outageTarget finds the stack and service a container belongs to on a machine: by compose project, else by the
-// container's own name for a run stack. It answers nil for a container Nexul did not deploy and for a stack with a
+// container's own name for a run stack, and names the service as the stack's own rows do. It answers nil for a container Nexul did not deploy and for a stack with a
 // deploy under way, whose recreated containers are not crashes.
 func (s *Service) outageTarget(ctx context.Context, machine, project, container, service string) (*Stack, string, error) {
 	if machine == "" {
@@ -194,43 +231,57 @@ func (s *Service) outageTarget(ctx context.Context, machine, project, container,
 	if busy {
 		return nil, "", nil
 	}
-	if service == "" {
-		service = stack.Slug
+	service, err = s.serviceName(ctx, stack, container, service)
+	if err != nil {
+		return nil, "", err
 	}
 	return stack, service, nil
 }
 
+// serviceName is the name the stack's service rows give a container: an imported compose stack names its rows after
+// the containers, a deployed one after the compose service, so the compose label is only the answer for a container
+// no row holds yet.
+func (s *Service) serviceName(ctx context.Context, stack *Stack, container, label string) (string, error) {
+	rows, err := s.services.ListByStack(ctx, stack.ID)
+	if err != nil {
+		return "", fmt.Errorf("list services of stack %s: %w", stack.ID, err)
+	}
+	if i := slices.IndexFunc(rows, func(c *Container) bool { return c.ContainerName == container }); i >= 0 {
+		return rows[i].Name, nil
+	}
+	if label == "" {
+		return stack.Slug, nil
+	}
+	return label, nil
+}
+
 func (s *Service) containerStopped(ctx context.Context, stack *Stack, service string, p containerEvent) error {
 	s.cancelRecovery(stack.ID, service)
-	if p.Action == containerDie && p.ExitCode == 0 {
+	oom := s.marked(containerOOM, stack.ID, p.Container, oomWindow)
+	asked := s.marked(containerKill, stack.ID, p.Container, stopWindow)
+	asked = s.marked(containerStop, stack.ID, p.Container, stopWindow) || asked
+	if asked || p.ExitCode == 0 {
 		return nil
 	}
 	open, err := s.outages.GetOpen(ctx, stack.ID, service)
 	if err == nil {
-		return s.continueOutage(ctx, open, p)
+		return s.continueOutage(ctx, open, p, oom)
 	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return fmt.Errorf("get open outage of %s: %w", service, err)
 	}
 	return s.openOutage(ctx, stack, &Outage{
 		ID: ids.New(), StackID: stack.ID, Service: service, Container: p.Container,
-		StartedAt: s.now().UTC(), ExitCode: p.ExitCode, OOM: p.Action == containerOOM,
+		StartedAt: s.now().UTC(), ExitCode: p.ExitCode, OOM: oom,
 	})
 }
 
-// continueOutage records another crash on an open outage without announcing it again. An OOM kill is followed by the
-// death it caused, which fills in the exit code and does not count as a second crash.
-func (s *Service) continueOutage(ctx context.Context, open *Outage, p containerEvent) error {
+// continueOutage records another crash on an open outage without announcing it again.
+func (s *Service) continueOutage(ctx context.Context, open *Outage, p containerEvent, oom bool) error {
 	open.Container = p.Container
-	if p.Action == containerOOM {
-		open.OOM = true
-	}
-	if p.Action == containerDie {
-		if open.ExitCode != 0 {
-			open.RestartCount++
-		}
-		open.ExitCode = p.ExitCode
-	}
+	open.OOM = open.OOM || oom
+	open.RestartCount++
+	open.ExitCode = p.ExitCode
 	if err := s.outages.Update(ctx, open); err != nil {
 		return fmt.Errorf("update outage %s: %w", open.ID, err)
 	}

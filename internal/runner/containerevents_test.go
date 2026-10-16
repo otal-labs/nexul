@@ -125,12 +125,15 @@ func collect(t *testing.T, frames <-chan Frame, n int) []Frame {
 	return out
 }
 
-func TestContainerWatch_ForwardsDieOOMAndStartAndASnapshot(t *testing.T) {
+func TestContainerWatch_ForwardsDieOOMStartKillStopAndASnapshot(t *testing.T) {
 	compose := map[string]string{"name": "shop-web-1", composeProjectLabel: "shop", composeServiceLabel: "web"}
 	docker := &fakeHostDocker{
 		streamOut: eventLine("die", withAttr(compose, "exitCode", "137")) +
 			eventLine("oom", compose) +
 			eventLine("start", compose) +
+			eventLine("kill", withAttr(compose, "signal", "15")) +
+			eventLine("stop", compose) +
+			eventLine("destroy", compose) +
 			eventLine("die", map[string]string{"name": "shop-seed-run-1", composeProjectLabel: "shop", composeOneOffLabel: "True", "exitCode": "1"}) +
 			eventLine("exec_start: sh", compose) +
 			eventLine("die", map[string]string{"exitCode": "1"}) +
@@ -142,18 +145,20 @@ func TestContainerWatch_ForwardsDieOOMAndStartAndASnapshot(t *testing.T) {
 				inspectLine("shop-db-1", "exited", 1, false, "2026-10-01T10:42:00Z", map[string]string{composeProjectLabel: "shop", composeServiceLabel: "db"})
 		},
 	}
-	frames := collect(t, framesFrom(t, docker.watch(), false), 5)
+	frames := collect(t, framesFrom(t, docker.watch(), false), 7)
 
 	got := map[FrameType][]Frame{}
 	for _, f := range frames {
 		got[f.Type] = append(got[f.Type], f)
 	}
 	events := got[FrameContainerEvent]
-	require.Len(t, events, 4)
+	require.Len(t, events, 6)
 	assert.Equal(t, Frame{Type: FrameContainerEvent, Container: "shop-web-1", Project: "shop", Service: "web", Action: "die", ExitCode: 137, TS: 1700000000}, events[0])
 	assert.Equal(t, "oom", events[1].Action)
 	assert.Equal(t, "start", events[2].Action)
-	assert.Equal(t, Frame{Type: FrameContainerEvent, Container: "api", Action: "die", TS: 1700000000}, events[3], "an exit code that does not parse is zero; a run container has no compose labels")
+	assert.Equal(t, "kill", events[3].Action)
+	assert.Equal(t, "stop", events[4].Action)
+	assert.Equal(t, Frame{Type: FrameContainerEvent, Container: "api", Action: "die", TS: 1700000000}, events[5], "an exit code that does not parse is zero; a run container has no compose labels")
 
 	require.Len(t, got[FrameContainerStates], 1)
 	assert.Equal(t, []ContainerState{
@@ -164,7 +169,7 @@ func TestContainerWatch_ForwardsDieOOMAndStartAndASnapshot(t *testing.T) {
 	docker.mu.Lock()
 	defer docker.mu.Unlock()
 	assert.Equal(t, append([]string{"docker"}, containerEventsArgs...), docker.argv)
-	assert.Equal(t, []string{"event=die", "event=oom", "event=start"}, filterValues(docker.argv, "event="))
+	assert.Equal(t, []string{"event=die", "event=oom", "event=start", "event=kill", "event=stop"}, filterValues(docker.argv, "event="))
 }
 
 func withAttr(attrs map[string]string, k, v string) map[string]string {

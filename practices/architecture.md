@@ -322,9 +322,9 @@ with a `type` discriminator, declared in `internal/runner/protocol.go`:
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
   `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`,
   `harness_dial_refused`, and from a machine runner `container_event` and
-  `container_states`, Docker's die, oom and start events and a snapshot taken
-  whenever its event stream (re)starts, `request_counts`, the requests each
-  proxy router served since its previous 30-second read, and `log`, a
+  `container_states`, Docker's die, oom, start, kill and stop events and a
+  snapshot taken whenever its event stream (re)starts, `request_counts`, the
+  requests each proxy router served since its previous 30-second read, and `log`, a
   machine runner's own records for the server to relay.
 
 A personal runner answers `harness_dial {id}` by opening a WebSocket of its

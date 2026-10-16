@@ -76,6 +76,8 @@ type Service struct {
 	// outageMu serializes outage changes with the recovery timers; recoveries are the steady-state waits in flight.
 	outageMu   sync.Mutex
 	recoveries map[string]*recovery
+	// containerMarks holds the oom, kill and stop events a following die is read against, by kind, stack and container.
+	containerMarks map[string]time.Time
 }
 
 // Gate is the permission check a stack or deploy passes before the caller touches it (the access domain, ADR 0042).

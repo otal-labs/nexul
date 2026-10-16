@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -162,6 +163,7 @@ type outageEnv struct {
 	repo    *fakeOutageRepo
 	deploys *fakeRepo
 	stacks  *fakeStackRepo
+	rows    *fakeContainerRepo
 }
 
 // newOutageEnv is the shared stack (slug api, on outageMachine) with outage storage wired.
@@ -170,10 +172,11 @@ func newOutageEnv(t *testing.T) *outageEnv {
 	deploys, stacks := newFakeRepo(), newFakeStackRepo()
 	stack := validStack()
 	require.NoError(t, stacks.Create(t.Context(), &stack))
-	svc := newTestServiceWith(deploys, stacks, newFakeContainerRepo(), newFakeProjects(), newFakeBus())
+	rows := newFakeContainerRepo()
+	svc := newTestServiceWith(deploys, stacks, rows, newFakeProjects(), newFakeBus())
 	repo := &fakeOutageRepo{}
 	svc.SetOutageRepo(repo)
-	return &outageEnv{svc: svc, repo: repo, deploys: deploys, stacks: stacks}
+	return &outageEnv{svc: svc, repo: repo, deploys: deploys, stacks: stacks, rows: rows}
 }
 
 func busEvent(t *testing.T, topic string, payload any) eventbus.Event {
@@ -245,7 +248,9 @@ func TestHandleContainerEvent_OnlyACrashOpensAnOutage(t *testing.T) {
 		{"die with a non-zero exit", dockerEvent(containerDie, 1), 1},
 		{"die killed by SIGKILL", dockerEvent(containerDie, 137), 1},
 		{"die with exit 0 is a job that finished", dockerEvent(containerDie, 0), 0},
-		{"oom", dockerEvent(containerOOM, 0), 1},
+		{"oom alone leaves a running container up", dockerEvent(containerOOM, 0), 0},
+		{"kill alone", dockerEvent(containerKill, 0), 0},
+		{"stop alone", dockerEvent(containerStop, 0), 0},
 		{"start with nothing open", dockerEvent(containerStart, 0), 0},
 		{"an action nobody asked for", dockerEvent("exec_start: sh", 0), 0},
 	}
@@ -305,7 +310,7 @@ func TestHandleContainerEvent_ARestartLoopIsOneOutage(t *testing.T) {
 	assert.Len(t, env.repo.events(t, TopicContainerStopped), 1, "one event for the whole loop")
 }
 
-func TestHandleContainerEvent_AnOOMKillAndItsDeathAreOneCrash(t *testing.T) {
+func TestHandleContainerEvent_AnOOMKillThenItsDeathIsOneOOMCrash(t *testing.T) {
 	env := newOutageEnv(t)
 	env.handle(t, dockerEvent(containerOOM, 0))
 	env.handle(t, dockerEvent(containerDie, 137))
@@ -317,9 +322,178 @@ func TestHandleContainerEvent_AnOOMKillAndItsDeathAreOneCrash(t *testing.T) {
 	assert.Equal(t, 137, open[0].ExitCode)
 	assert.Equal(t, 0, open[0].RestartCount)
 
+	stopped := env.repo.events(t, TopicContainerStopped)
+	require.Len(t, stopped, 1)
+	assert.Equal(t, 137, stopped[0].ExitCode, "the first notice carries the exit code")
+	assert.True(t, stopped[0].OOM)
+
 	env.handle(t, dockerEvent(containerDie, 137))
 	open, _ = env.repo.ListOpenByStack(t.Context(), outageStack)
 	assert.Equal(t, 1, open[0].RestartCount, "the next death is a second crash")
+	assert.True(t, open[0].OOM)
+}
+
+func TestHandleContainerEvent_AnOOMMarkLapsesAndIsUsedOnce(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		env := newOutageEnv(t)
+		env.svc.now = time.Now
+
+		env.handle(t, dockerEvent(containerOOM, 0))
+		time.Sleep(oomWindow + time.Second)
+		env.handle(t, dockerEvent(containerDie, 1))
+		open, err := env.repo.ListOpenByStack(t.Context(), outageStack)
+		require.NoError(t, err)
+		require.Len(t, open, 1)
+		assert.False(t, open[0].OOM, "a die long after the oom is some other crash")
+
+		env.handle(t, dockerEvent(containerOOM, 0))
+		time.Sleep(oomWindow)
+		env.handle(t, dockerEvent(containerDie, 137))
+		open, _ = env.repo.ListOpenByStack(t.Context(), outageStack)
+		assert.True(t, open[0].OOM, "the edge of the window still counts")
+
+		env.handle(t, dockerEvent(containerDie, 137))
+		open, _ = env.repo.ListOpenByStack(t.Context(), outageStack)
+		assert.Equal(t, 2, open[0].RestartCount)
+		assert.True(t, open[0].OOM, "an outage that was OOM stays so")
+	})
+}
+
+func TestHandleContainerEvent_ARequestedStopIsNotACrash(t *testing.T) {
+	tests := []struct {
+		name     string
+		before   []string
+		exit     int
+		wantOpen int
+	}{
+		{"die alone is a crash", nil, 1, 1},
+		{"kill then die", []string{containerKill}, 137, 0},
+		{"stop then die", []string{containerStop}, 143, 0},
+		{"kill and stop then die", []string{containerKill, containerStop}, 143, 0},
+		{"oom then die with no kill is a crash", []string{containerOOM}, 137, 1},
+		{"kill and oom then die was still asked for", []string{containerOOM, containerKill}, 137, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newOutageEnv(t)
+			for _, action := range tt.before {
+				env.handle(t, dockerEvent(action, 0))
+			}
+			env.handle(t, dockerEvent(containerDie, tt.exit))
+			assert.Equal(t, tt.wantOpen, env.repo.openCount(outageStack))
+			assert.Len(t, env.repo.events(t, TopicContainerStopped), tt.wantOpen)
+		})
+	}
+}
+
+func TestHandleContainerEvent_AKillCoversOnlyTheDieItPrecedes(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		env := newOutageEnv(t)
+		env.svc.now = time.Now
+
+		env.handle(t, dockerEvent(containerKill, 0))
+		env.handle(t, dockerEvent(containerDie, 137))
+		env.handle(t, dockerEvent(containerDie, 137))
+		assert.Equal(t, 1, env.repo.openCount(outageStack), "the kill was used up by the first die")
+		env.repo.cascade(outageStack)
+
+		env.handle(t, dockerEvent(containerKill, 0))
+		time.Sleep(stopWindow + time.Second)
+		env.handle(t, dockerEvent(containerDie, 137))
+		assert.Equal(t, 1, env.repo.openCount(outageStack), "a die long after the kill is a crash")
+		env.repo.cascade(outageStack)
+
+		env.handle(t, dockerEvent(containerStop, 0))
+		env.handle(t, dockerEvent(containerStart, 0))
+		env.handle(t, dockerEvent(containerDie, 1))
+		assert.Equal(t, 1, env.repo.openCount(outageStack), "a restart after the stop clears it, so a crash on boot is seen")
+	})
+}
+
+func TestHandleContainerEvent_AKillOnAnotherContainerChangesNothing(t *testing.T) {
+	env := newOutageEnv(t)
+	other := dockerEvent(containerKill, 0)
+	other.Container, other.Service = "api-worker-1", "worker"
+	env.handle(t, other)
+	env.handle(t, dockerEvent(containerDie, 1))
+	assert.Equal(t, 1, env.repo.openCount(outageStack))
+}
+
+func TestOutageTarget_NamesTheServiceAsTheStacksRowsDo(t *testing.T) {
+	tests := []struct {
+		name          string
+		rows          []Container
+		container     string
+		label         string
+		want          string
+		wantStackSlug string
+	}{
+		{name: "deployed compose stack names rows after the compose service", rows: []Container{{Name: "web", ContainerName: "api-web-1"}}, container: "api-web-1", label: "web", want: "web"},
+		{name: "imported compose stack names rows after the container", rows: []Container{{Name: "api-worker-1", ContainerName: "api-worker-1"}, {Name: "api-web-1", ContainerName: "api-web-1"}}, container: "api-worker-1", label: "worker", want: "api-worker-1"},
+		{name: "run stack row is the container", rows: []Container{{Name: "api", ContainerName: "api"}}, container: "api", want: "api"},
+		{name: "a container no row holds yet keeps its compose service", rows: []Container{{Name: "api-web-1", ContainerName: "api-web-1"}}, container: "api-worker-1", label: "worker", want: "worker"},
+		{name: "a stack with no rows yet", container: "api-web-1", label: "web", want: "web"},
+		{name: "no rows and no label is the stack itself", container: "api", want: "api"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newOutageEnv(t)
+			for i := range tt.rows {
+				tt.rows[i].ID, tt.rows[i].StackID = fmt.Sprintf("row-%d", i), outageStack
+				require.NoError(t, env.rows.Upsert(t.Context(), &tt.rows[i]))
+			}
+			project := ""
+			if tt.label != "" {
+				project = "api"
+			}
+			stack, service, err := env.svc.outageTarget(t.Context(), outageMachine, project, tt.container, tt.label)
+			require.NoError(t, err)
+			require.NotNil(t, stack)
+			assert.Equal(t, tt.want, service)
+		})
+	}
+}
+
+func TestHandleContainerEvent_AnImportedStacksOutageNamesARowTheLogsCanRead(t *testing.T) {
+	env := newOutageEnv(t)
+	for _, name := range []string{"api-web-1", "api-worker-1"} {
+		require.NoError(t, env.rows.Upsert(t.Context(), &Container{ID: name, StackID: outageStack, Name: name, ContainerName: name}))
+	}
+	ev := dockerEvent(containerDie, 1)
+	ev.Container, ev.Service = "api-worker-1", "worker"
+	env.handle(t, ev)
+
+	open, err := env.repo.ListOpenByStack(t.Context(), outageStack)
+	require.NoError(t, err)
+	require.Len(t, open, 1)
+	assert.Equal(t, "api-worker-1", open[0].Service)
+	stack, err := env.stacks.GetByID(t.Context(), outageStack)
+	require.NoError(t, err)
+	container, err := env.svc.containerOf(t.Context(), stack, open[0].Service)
+	require.NoError(t, err)
+	assert.Equal(t, "api-worker-1", container)
+	assert.Equal(t, "api-worker-1", env.repo.events(t, TopicContainerStopped)[0].Service)
+}
+
+func TestHandleContainerStates_ARunningContainerNeverOpensAnOutage(t *testing.T) {
+	env := newOutageEnv(t)
+	require.NoError(t, env.settle(t, webState(snapshotRunning, 0, 0)))
+	require.NoError(t, env.settle(t, webState(snapshotRunning, 137, 1_700_000_000)))
+	assert.Zero(t, env.repo.openCount(outageStack))
+}
+
+func TestOutageTarget_AFailedRowReadIsReturned(t *testing.T) {
+	env := newOutageEnv(t)
+	env.svc.services = failingRows{env.rows}
+	_, _, err := env.svc.outageTarget(t.Context(), outageMachine, "api", "api-web-1", "web")
+	assert.ErrorContains(t, err, "rows unreadable")
+}
+
+// failingRows is a container repo whose listing fails.
+type failingRows struct{ *fakeContainerRepo }
+
+func (failingRows) ListByStack(context.Context, string) ([]*Container, error) {
+	return nil, errors.New("rows unreadable")
 }
 
 func TestHandleContainerEvent_AServiceHasItsOwnOutage(t *testing.T) {
@@ -357,11 +531,11 @@ func TestHandleContainerEvent_ARecoveryNeedsSixtySecondsRunning(t *testing.T) {
 func TestHandleContainerEvent_ADeathInsideTheWindowKeepsTheOutageOpen(t *testing.T) {
 	tests := []struct {
 		name string
-		ev   containerEvent
+		evs  []containerEvent
 	}{
-		{"another crash", dockerEvent(containerDie, 1)},
-		{"a clean exit still means it is not running", dockerEvent(containerDie, 0)},
-		{"an OOM kill", dockerEvent(containerOOM, 0)},
+		{"another crash", []containerEvent{dockerEvent(containerDie, 1)}},
+		{"a clean exit still means it is not running", []containerEvent{dockerEvent(containerDie, 0)}},
+		{"a requested stop still means it is not running", []containerEvent{dockerEvent(containerKill, 0), dockerEvent(containerDie, 143)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -371,7 +545,9 @@ func TestHandleContainerEvent_ADeathInsideTheWindowKeepsTheOutageOpen(t *testing
 				env.handle(t, dockerEvent(containerDie, 1))
 				env.handle(t, dockerEvent(containerStart, 0))
 				time.Sleep(30 * time.Second)
-				env.handle(t, tt.ev)
+				for _, ev := range tt.evs {
+					env.handle(t, ev)
+				}
 
 				time.Sleep(10 * outageSteady)
 				synctest.Wait()
@@ -380,6 +556,21 @@ func TestHandleContainerEvent_ADeathInsideTheWindowKeepsTheOutageOpen(t *testing
 			})
 		})
 	}
+}
+
+func TestHandleContainerEvent_AnOOMKillOfAChildDoesNotInterruptTheWait(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		env := newOutageEnv(t)
+		env.svc.now = time.Now
+		env.handle(t, dockerEvent(containerDie, 1))
+		env.handle(t, dockerEvent(containerStart, 0))
+		time.Sleep(30 * time.Second)
+		env.handle(t, dockerEvent(containerOOM, 0))
+
+		time.Sleep(outageSteady)
+		synctest.Wait()
+		assert.Zero(t, env.repo.openCount(outageStack), "the container kept running, so it recovers")
+	})
 }
 
 func TestHandleContainerEvent_ARestartInTheWindowStartsTheWaitOver(t *testing.T) {
