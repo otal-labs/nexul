@@ -586,7 +586,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return nil
 	case FrameFacts:
 		return h.publishFacts(ctx, c, f)
-	case FrameContainerEvent, FrameContainerStates, FrameLog:
+	case FrameContainerEvent, FrameContainerStates, FrameLog, FrameRequestCounts:
 		return h.machineFrame(ctx, c, f)
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
@@ -603,13 +603,26 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 	}
 }
 
-// machineFrame routes what only a machine runner sends: its Docker events and its own log records.
+// machineFrame routes what only a machine runner sends: its Docker events, request counts and its own log records.
 func (h *Handler) machineFrame(ctx context.Context, c *runnerConn, f Frame) error {
 	if f.Type == FrameLog {
 		h.relayLogs(ctx, c, f)
 		return nil
 	}
+	if f.Type == FrameRequestCounts {
+		return h.publishRequestCounts(ctx, c, f)
+	}
 	return h.publishContainers(ctx, c, f)
+}
+
+// publishRequestCounts hands a machine runner's proxy counts to the deploy domain, stamped with the machine its
+// connection belongs to; a personal runner never sends them.
+func (h *Handler) publishRequestCounts(ctx context.Context, c *runnerConn, f Frame) error {
+	if c.personal {
+		h.log.Warn("request counts from a personal runner", "runner_id", c.id)
+		return nil
+	}
+	return h.bus.Publish(ctx, TopicRequestCounts, RequestCountsEvent{Machine: c.machine, Counts: f.Counts})
 }
 
 // publishContainers hands a machine runner's Docker events to the deploy domain, which knows whose containers they are;

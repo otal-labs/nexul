@@ -154,6 +154,9 @@ const (
 	instanceProxyNetwork = "nexul_proxy"
 )
 
+// traefikMetricsPort is where a proxy gateway's Traefik serves its Prometheus metrics, reached on the gateway's own address and never published.
+const traefikMetricsPort = "8082"
+
 // traefikCommand writes the dynamic config to the file provider's file, then starts Traefik on its TRAEFIK_* env
 // (the image runs a non-Traefik command through sh; static config cannot mix env and flags).
 func traefikCommand() []string {
@@ -176,7 +179,12 @@ func traefikSpec(domain, origin, email string) AgentSpec {
 		"TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER":                     certResolver,
 		"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE":                  "/letsencrypt/acme.json",
 		"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT": "web",
-		dynamicConfigEnv: dynamicConfig(domain, origin),
+		// The runner on this host reads these counters; the metrics port is never published.
+		"TRAEFIK_ENTRYPOINTS_METRICS_ADDRESS":         ":" + traefikMetricsPort,
+		"TRAEFIK_METRICS_PROMETHEUS":                  "true",
+		"TRAEFIK_METRICS_PROMETHEUS_ADDROUTERSLABELS": "true",
+		"TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT":       "metrics",
+		dynamicConfigEnv:                              dynamicConfig(domain, origin),
 	}
 	if email != "" {
 		env["TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL"] = email

@@ -86,6 +86,8 @@ type Client struct {
 	dockerAvailable atomic.Bool
 	// logEvery is how often queued log records go to the server.
 	logEvery time.Duration
+	// requestEvery is how often a proxy gateway's request counters are read.
+	requestEvery time.Duration
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -108,7 +110,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts, logEvery: logFlushEvery}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
 	return c
 }
@@ -181,6 +183,9 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	}
 	if !c.cfg.Personal && c.cfg.Containers != nil {
 		loops.Go(func() { c.watchContainers(ctx, conn) })
+		if c.cfg.Containers.Fetch != nil {
+			loops.Go(func() { c.watchRequests(ctx, conn) })
+		}
 	}
 	if c.cfg.Logs != nil && !c.cfg.Personal {
 		loops.Go(func() { c.logLoop(ctx, conn) })

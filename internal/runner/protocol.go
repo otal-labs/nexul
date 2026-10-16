@@ -64,6 +64,9 @@ const (
 	// FrameLog (runner -> server) carries a batch of the runner's own log records for the server to relay to the log
 	// store; only a machine's runner sends it, and the server stamps where they came from.
 	FrameLog FrameType = "log"
+	// FrameRequestCounts (runner -> server) carries the requests each proxy router served since the runner's previous
+	// read, every 30 seconds; a frame with no counts still says the read worked, and only a machine's runner sends it.
+	FrameRequestCounts FrameType = "request_counts"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -171,6 +174,8 @@ type Frame struct {
 	States []ContainerState `json:"states,omitempty"`
 	// Records carries a log frame's batch.
 	Records []logging.Record `json:"records,omitempty"`
+	// Counts carries a request_counts frame's per-router deltas.
+	Counts []RouterCount `json:"counts,omitempty"`
 }
 
 // ContainerState is one container in a container_states snapshot. State is running, or exited for a container that
@@ -248,6 +253,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameContainerEvent:     (*Frame).validateContainerEvent,
 	FrameContainerStates:    (*Frame).validateContainerStates,
 	FrameLog:                (*Frame).validateLog,
+	FrameRequestCounts:      (*Frame).validateRequestCounts,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -450,6 +456,15 @@ func (f *Frame) validateContainerStates() error {
 func (f *Frame) validateLog() error {
 	if len(f.Records) == 0 || len(f.Records) > logging.MaxBatch {
 		return fmt.Errorf("%w: log requires 1..%d records", apperrs.ErrInvalid, logging.MaxBatch)
+	}
+	return nil
+}
+
+func (f *Frame) validateRequestCounts() error {
+	for _, rc := range f.Counts {
+		if rc.Router == "" || rc.Requests < 0 || rc.Errors < 0 || rc.Errors > rc.Requests {
+			return fmt.Errorf("%w: request_counts entry %q needs a router and 0 <= errors <= requests", apperrs.ErrInvalid, rc.Router)
+		}
 	}
 	return nil
 }

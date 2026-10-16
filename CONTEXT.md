@@ -631,6 +631,12 @@ output lines, because event payloads are stored and container output never is. N
 stack runs, for a container that exits 0, or from a personal runner.
 _Avoid_: Incident, downtime, crash (one exit is not an outage)
 
+**Request counts**:
+How many requests a stack's hostnames served each minute, and how many answered 5xx, kept for a day and never as
+requests. A reverse proxy gateway's Traefik counts them per route and the machine's runner reads them; for a Cloudflare
+tunnel gateway the server asks Cloudflare's analytics. A minute nobody could count is stored as missing, which is not zero.
+_Avoid_: Traffic, metrics, access log
+
 **Crash ticket**:
 The ticket a stack opens in its project when a service's outage starts, if the stack's "Open a ticket when a service
 crashes" switch is on (off by default; only a stack with a project has it). It takes the project's default ticket type

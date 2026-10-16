@@ -123,6 +123,13 @@ func TestFrame_Encode(t *testing.T) {
 			want: `{"type":"container_event","ts":1700000000,"container":"shop-web-1","service":"web","project":"shop","action":"die","exit_code":137}`,
 		},
 		{
+			name: "request_counts wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Router: "nexul-e1@docker", Requests: 12, Errors: 2}}}
+			},
+			want: `{"type":"request_counts","counts":[{"router":"nexul-e1@docker","requests":12,"errors":2}]}`,
+		},
+		{
 			name: "container_states wire shape",
 			got: func() Frame {
 				return Frame{Type: FrameContainerStates, States: []ContainerState{{Container: "shop-web-1", Project: "shop", Service: "web", State: ContainerStateExited, ExitCode: 1, OOM: true, FinishedAt: 1700000000}}}
@@ -253,6 +260,9 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "container_states without states", f: Frame{Type: FrameContainerStates}},
 		{name: "container_states entry without a container", f: Frame{Type: FrameContainerStates, States: []ContainerState{{State: ContainerStateRunning}}}},
 		{name: "container_states entry in a state nobody reports", f: Frame{Type: FrameContainerStates, States: []ContainerState{{Container: "web", State: "paused"}}}},
+		{name: "request_counts entry without a router", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Requests: 1}}}},
+		{name: "request_counts entry with a negative count", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Router: "r", Requests: -1}}}},
+		{name: "request_counts entry with more errors than requests", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Router: "r", Requests: 1, Errors: 2}}}},
 		{name: "facts missing its report", f: Frame{Type: FrameFacts}},
 		{name: "facts with an unknown T3 Code state", f: Frame{Type: FrameFacts, Facts: &Facts{T3: T3Facts{State: "asleep"}}}},
 	}

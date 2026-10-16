@@ -100,6 +100,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	}
 	go automations.RunCleanupLoop(ctx, svc.automationRunsSvc, 30*24*time.Hour, time.Hour, logger)
 	go svc.notifSvc.RunCleanupLoop(ctx, logger)
+	go svc.deploySvc.RunRequestCounts(ctx, logger)
 	go svc.integrationsSvc.RunAuditRetention(ctx, logger)
 	go docs.RunSettleLoop(ctx, store.Docs, store.Commits().Next, logger)
 

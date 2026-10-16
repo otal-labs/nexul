@@ -2,6 +2,7 @@ package cloudflare
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -269,4 +270,76 @@ func TestTokenVerifier_DNSEdit_NamesEveryZone(t *testing.T) {
 			assert.Equal(t, tt.wantInvalid, errors.Is(err, apperrs.ErrInvalid))
 		})
 	}
+}
+
+// analyticsAPI answers the zones list and the GraphQL probe: zones named in denied get an authz error, the rest an
+// empty answer.
+func analyticsAPI(t *testing.T, zones string, denied map[string]bool, graphqlStatus int) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/user/tokens/verify"):
+			_, _ = w.Write([]byte(`{"success":true,"result":{"status":"active"}}`))
+		case strings.HasSuffix(r.URL.Path, "/zones"):
+			_, _ = w.Write([]byte(`{"success":true,"result":` + zones + `}`))
+		case strings.HasSuffix(r.URL.Path, "/graphql"):
+			if graphqlStatus != 0 {
+				w.WriteHeader(graphqlStatus)
+				return
+			}
+			var body struct {
+				Variables map[string]string `json:"variables"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			if denied[body.Variables["zone"]] {
+				_, _ = w.Write([]byte(`{"data":null,"errors":[{"message":"zone does not have access to the path","extensions":{"code":"authz"}}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":{"viewer":{"zones":[{"httpRequestsAdaptiveGroups":[]}]}},"errors":null}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	prev := apiBaseURL
+	apiBaseURL = srv.URL
+	t.Cleanup(func() { apiBaseURL = prev })
+}
+
+const twoZones = `[{"id":"z1","name":"example.com","account":{"id":"a"}},{"id":"z2","name":"example.org","account":{"id":"a"}}]`
+
+func TestTokenVerifier_AnalyticsRead(t *testing.T) {
+	fields := map[string]string{"api_token": "tok"}
+	tests := []struct {
+		name    string
+		denied  map[string]bool
+		status  int
+		want    string
+		wantErr string
+		invalid bool
+	}{
+		{name: "readable everywhere", want: "Can read analytics on example.com, example.org"},
+		{name: "readable on one zone", denied: map[string]bool{"z2": true}, want: "Can read analytics on example.com; not on example.org"},
+		{name: "readable nowhere", denied: map[string]bool{"z1": true, "z2": true}, wantErr: "Zone → Analytics: Read on example.com, example.org", invalid: true},
+		{name: "refused outright", status: http.StatusForbidden, wantErr: "Zone → Analytics: Read", invalid: true},
+		{name: "a server error is not a missing permission", status: http.StatusBadGateway, wantErr: "status 502"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			analyticsAPI(t, twoZones, tt.denied, tt.status)
+			detail, err := NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "analytics_read")
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+				assert.Equal(t, tt.invalid, errors.Is(err, apperrs.ErrInvalid))
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, detail)
+		})
+	}
+}
+
+func TestTokenVerifier_ATokenWithoutAnalyticsStillVerifies(t *testing.T) {
+	stubAPI(t, nil, "active")
+	require.NoError(t, NewTokenVerifier(nil).Verify(context.Background(), map[string]string{"api_token": "tok"}),
+		"analytics is optional, so saving the connector never asks for it")
 }

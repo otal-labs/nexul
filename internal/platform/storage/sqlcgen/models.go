@@ -1071,6 +1071,13 @@ type StackCrashTicket struct {
 	TicketID string
 }
 
+type StackRequestMinute struct {
+	StackID   string
+	Minute    int64
+	Requests  sql.NullInt64
+	Errors5xx sql.NullInt64
+}
+
 type StackUnwatcher struct {
 	StackID   string
 	UserID    string

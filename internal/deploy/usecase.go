@@ -71,6 +71,7 @@ type Service struct {
 	desk        TicketDesk
 	crashLinks  CrashTicketRepo
 	watchers    StackWatchRepo
+	requests    *requestState
 	// outageMu serializes outage changes with the recovery timers; recoveries are the steady-state waits in flight.
 	outageMu   sync.Mutex
 	recoveries map[string]*recovery

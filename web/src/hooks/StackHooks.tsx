@@ -7,7 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
 import { useFetchGateways } from "@/hooks/DnsHooks";
-import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackWithBranches } from "@/models/Stack";
+import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackRequests, type StackWithBranches } from "@/models/Stack";
 import { machineNetworks, type MachineNetwork } from "@/utils/MachineNetworkUtility";
 import { followEach, type LiveFollower } from "@/lib/live";
 
@@ -15,6 +15,10 @@ export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
 export const getStackServicesKey = "getStackServices";
 export const getStackDeploysKey = "getStackDeploys";
+export const getStackRequestsKey = "getStackRequests";
+
+// Counts arrive a minute at a time and no frame names them, so the card refetches on the minute while its tab is visible.
+const REQUESTS_REFETCH_MS = 60_000;
 
 // No projectId lists every project's stacks, which the workspace-wide topology canvas wires from.
 export const stacksQuery = (projectId?: string) =>
@@ -41,6 +45,14 @@ export const stackServicesQuery = (stackId: string | undefined) =>
   });
 
 export const useFetchStackServices = (stackId: string | undefined) => useQuery(stackServicesQuery(stackId));
+
+export const useFetchStackRequests = (stackId: string | undefined) =>
+  useQuery({
+    queryKey: [getStackRequestsKey, stackId],
+    queryFn: async () => (await api.get<StackRequests>(`/api/stacks/${stackId}/requests`)).data,
+    enabled: !!stackId,
+    refetchInterval: REQUESTS_REFETCH_MS,
+  });
 
 // pollMs keeps refetching while a deploy is pending/running, for watchers that cannot rely on catching the live event.
 export const useFetchStackDeploys = (stackId: string | undefined, pollMs?: number) =>

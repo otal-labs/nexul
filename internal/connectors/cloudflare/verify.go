@@ -1,6 +1,7 @@
 package cloudflare
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -65,6 +66,8 @@ func (v *TokenVerifier) VerifyCheck(ctx context.Context, fields map[string]strin
 		return "", nil
 	case "dns_edit":
 		return v.dnsEdit(ctx, token, zones)
+	case "analytics_read":
+		return v.analyticsRead(ctx, token, zones)
 	case "tunnel_edit":
 		return "", v.requireWrite(ctx, token, "accounts/"+url.PathEscape(account)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
 	case "access_apps_edit":
@@ -105,6 +108,85 @@ func (v *TokenVerifier) dnsEdit(ctx context.Context, token string, zones []verif
 		detail += "; read-only on " + strings.Join(readOnly, ", ")
 	}
 	return detail, nil
+}
+
+// analyticsRead probes Analytics Read on every zone in parallel and names the domains the token can read; the API
+// answers a query it may not run with a GraphQL error, not an HTTP status.
+func (v *TokenVerifier) analyticsRead(ctx context.Context, token string, zones []verifyZone) (string, error) {
+	errs := make([]error, len(zones))
+	var wg sync.WaitGroup
+	for i, z := range zones {
+		wg.Go(func() { errs[i] = v.requireAnalytics(ctx, token, z.ID) })
+	}
+	wg.Wait()
+	var readable, denied []string
+	for i, err := range errs {
+		if err == nil {
+			readable = append(readable, zones[i].Name)
+			continue
+		}
+		if !errors.Is(err, apperrs.ErrInvalid) {
+			return "", err
+		}
+		denied = append(denied, zones[i].Name)
+	}
+	if len(readable) == 0 {
+		return "", fmt.Errorf("%w: the token is missing %s on %s, needed only for the request counts of tunnel hostnames", apperrs.ErrInvalid, analyticsPermission, strings.Join(denied, ", "))
+	}
+	detail := "Can read analytics on " + strings.Join(readable, ", ")
+	if len(denied) > 0 {
+		detail += "; not on " + strings.Join(denied, ", ")
+	}
+	return detail, nil
+}
+
+const analyticsProbe = `query ($zone: string!, $from: Time!, $to: Time!) {
+  viewer { zones(filter: {zoneTag: $zone}) { httpRequestsAdaptiveGroups(limit: 1, filter: {datetime_geq: $from, datetime_lt: $to}) { count } } }
+}`
+
+// requireAnalytics runs a one-row analytics query for the last hour.
+func (v *TokenVerifier) requireAnalytics(ctx context.Context, token, zoneID string) (err error) {
+	now := time.Now().UTC()
+	body, err := json.Marshal(map[string]any{"query": analyticsProbe, "variables": map[string]any{
+		"zone": zoneID, "from": now.Add(-time.Hour).Format(time.RFC3339), "to": now.Format(time.RFC3339),
+	}})
+	if err != nil {
+		return fmt.Errorf("marshal analytics probe: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseURL+"/graphql", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build cloudflare request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := v.httpc.Do(req)
+	if err != nil {
+		return fmt.Errorf("reach cloudflare: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("%w: the token is missing %s", apperrs.ErrInvalid, analyticsPermission)
+	}
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("cloudflare analytics: status %d", resp.StatusCode)
+	}
+	var out struct {
+		Errors []struct {
+			Message    string `json:"message"`
+			Extensions struct {
+				Code string `json:"code"`
+			} `json:"extensions"`
+		} `json:"errors"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&out) != nil || len(out.Errors) == 0 {
+		return nil
+	}
+	if first := out.Errors[0]; first.Extensions.Code == "authz" || strings.Contains(first.Message, "does not have access") {
+		return fmt.Errorf("%w: the token is missing %s", apperrs.ErrInvalid, analyticsPermission)
+	}
+	return fmt.Errorf("cloudflare analytics: %s", out.Errors[0].Message)
 }
 
 type verifyZone struct {
@@ -171,6 +253,7 @@ func (v *TokenVerifier) requireWrite(ctx context.Context, token, path, permissio
 
 const (
 	dnsEditPermission      = "Zone → DNS: Edit"
+	analyticsPermission    = "Zone → Analytics: Read"
 	accessAppsPermission   = "Account → Access: Apps and Policies: Edit"
 	accessTokensPermission = "Account → Access: Service Tokens: Edit"
 	// nilUUID names no real service token, so the delete probe cannot change or mint anything.
