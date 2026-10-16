@@ -1,4 +1,4 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { personLabel } from "@nexul/client-core/person";
 
@@ -6,6 +6,7 @@ import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { docFoldersQuery } from "@/hooks/DocFolderHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { stackServicesQuery, stacksQuery } from "@/hooks/StackHooks";
 import { projectStatusesQuery } from "@/hooks/StatusHooks";
 import { useFetchAllLabels } from "@/hooks/TicketHooks";
 import { projectTicketTypesQuery } from "@/hooks/TicketTypeHooks";
@@ -17,6 +18,7 @@ import type { Project } from "@/models/Project";
 export interface ValueOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export interface FieldValues {
@@ -49,12 +51,19 @@ export const useAutoPlayValues = (field: AutoPlayField): FieldValues => {
     queries: list.map((p) => ({ ...projectTicketTypesQuery(p.id), enabled: field === "type" })),
   });
   const folders = useQueries({ queries: list.map((p) => ({ ...docFoldersQuery(p.id), enabled: field === "folder" })) });
+  const stacksWanted = field === "stack" || field === "service";
+  const { data: stacks, isPending: stacksPending } = useQuery({ ...stacksQuery(), enabled: stacksWanted });
+  const services = useQueries({
+    queries: (stacks ?? []).map((s) => ({ ...stackServicesQuery(s.id), enabled: field === "service" })),
+  });
 
   const options = ((): ValueOption[] => {
     if (field === "project") return list.map((p) => ({ value: p.id, label: p.name }));
     if (field === "stage") return PLAY_STAGES.map((stage) => ({ value: stage, label: PLAY_STAGE_LABELS[stage] }));
     if (field === "status") return perProject(list, statuses.map((q) => q.data));
     if (field === "folder") return perProject(list, folders.map((q) => q.data));
+    if (field === "stack") return (stacks ?? []).map((s) => ({ value: s.id, label: s.name }));
+    if (field === "service") return byName(services.flatMap((q) => q.data ?? []).map((c) => c.name));
     if (field === "type") return byName(types.flatMap((q) => q.data ?? []).map((t) => t.name));
     if (field === "category") {
       const ids = new Set(list.map((p) => p.id));
@@ -69,6 +78,7 @@ export const useAutoPlayValues = (field: AutoPlayField): FieldValues => {
     projectsPending ||
     (field === "status" && statuses.some((q) => q.isPending)) ||
     (field === "folder" && folders.some((q) => q.isPending)) ||
+    (stacksWanted && stacksPending) ||
     ((field === "developer" || field === "tester") && !people);
 
   const label = (value: string) => {

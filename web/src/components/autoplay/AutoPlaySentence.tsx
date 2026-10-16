@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { useAutoPlayValues, type FieldValues } from "@/hooks/AutoPlayValueHooks";
+import { useComputerName } from "@/hooks/ComputerHooks";
 import {
   FIELD_LABELS,
   LEVEL_LABELS,
@@ -15,6 +16,13 @@ import {
 import { PLAY_STAGE_LABELS } from "@/models/Play";
 
 const Part = ({ children }: { children: ReactNode }) => <span className="font-medium text-foreground">{children}</span>;
+
+// Where the run lands: the role it runs on, or for a chosen computer its name, once someone has picked one.
+const runsOn = (autoPlay: AutoPlay, computerName: string) => {
+  if (autoPlay.run_on !== "computer") return RUN_ON_LABELS[autoPlay.run_on];
+  if (autoPlay.computer_id === "") return "a computer nobody has picked yet";
+  return computerName || "a computer you can't see";
+};
 
 const ruleText = (rule: AutoPlayRule | undefined, values: FieldValues) =>
   rule && [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), (rule.values ?? []).map(values.label).join(" or ")]
@@ -43,6 +51,7 @@ export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) =
   const top = autoPlay.priority.rules[0];
   const [topFirst] = top?.when.rules ?? [];
   const topValues = useAutoPlayValues(topFirst?.field ?? "project");
+  const computerName = useComputerName(autoPlay.computer_id);
   const stage = autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : "";
   const condition = ruleText(first, values);
   const topCondition = ruleText(topFirst, topValues);
@@ -73,7 +82,7 @@ export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) =
           , else <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>
         </>
       )}
-      , runs on <Part>{RUN_ON_LABELS[autoPlay.run_on]}</Part>
+      , runs on <Part>{runsOn(autoPlay, computerName)}</Part>
     </p>
   );
 };

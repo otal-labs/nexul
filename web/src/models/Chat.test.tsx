@@ -126,6 +126,14 @@ describe("conversationPlayTarget", () => {
     expect(conversationLabel(conversation({ kind: "interview_thread", project_id: "p-1" }))).toBe("Interview");
   });
 
+  it("maps a stack thread to its stack", () => {
+    expect(conversationPlayTarget(conversation({ kind: "stack_thread", project_id: "p-1", stack_id: "st-1" }))).toEqual({
+      type: "stack",
+      id: "st-1",
+    });
+    expect(conversationLabel(conversation({ kind: "stack_thread", project_id: "p-1", stack_id: "st-1" }))).toBe("Stack thread");
+  });
+
   it("maps nothing for a channel", () => {
     expect(conversationPlayTarget(conversation({ kind: "channel", name: "general" }))).toBeNull();
   });

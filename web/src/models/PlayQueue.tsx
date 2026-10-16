@@ -15,7 +15,7 @@ export interface PlayQueueItem {
   auto_play_id: string;
   automation_id: string;
   person_id: string;
-  run_on: "developer" | "tester" | "causer";
+  run_on: "developer" | "tester" | "causer" | "computer";
   moment: string;
   priority: "high" | "normal" | "low";
   status: PlayQueueStatus;
@@ -27,11 +27,15 @@ export interface PlayQueueItem {
   queued_at: string;
   decided_at: string | null;
   not_before: string;
-  // The computer its person picked for it when several are paired and none is the default; "" until picked.
+  // The computer it runs on: the one its auto play names for "computer", else the one its person picked when several
+  // are paired and none is the default; "" until picked.
   computer_id: string;
+  // For a stack moment, the service that went down or came back and its outage; "" otherwise.
+  service: string;
+  outage_id: string;
 }
 
-// Mirrors internal/plays.Queue: a ticket's or doc's auto runs, newest first, and whether the daily cap paused them.
+// Mirrors internal/plays.Queue: a ticket's, doc's or stack's auto runs, newest first, and whether the daily cap paused them.
 export interface PlayQueue {
   items: PlayQueueItem[];
   paused: boolean;

@@ -57,6 +57,7 @@ INSERT INTO conversations (id, workspace_id, kind, name, created_by, created_at,
 	assert.ElementsMatch(t, []string{"channels:delete", "channels:write", "chat:write"}, storedAutomationScopes(t, db, "auto-chat"))
 	assert.Empty(t, storedAutomationScopes(t, db, "auto-empty"))
 
+	require.NoError(t, Migrate(db), "the chat read below selects columns later migrations add")
 	for id, general := range map[string]bool{"conv-general": true, "conv-eng": false, "conv-voice": false} {
 		c, err := s.Chat.GetConversation(ctx, id)
 		require.NoError(t, err)

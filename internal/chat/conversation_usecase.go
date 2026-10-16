@@ -199,6 +199,45 @@ func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, p
 	return existing, nil
 }
 
+// GetOrCreateStackThread lazily creates a stack's thread in its project; a losing race just re-fetches.
+func (s *Service) GetOrCreateStackThread(ctx context.Context, workspaceID, projectID, stackID, creatorUserID string) (*Conversation, error) {
+	stackID = strings.TrimSpace(stackID)
+	if stackID == "" {
+		return nil, fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
+	}
+	existing, err := s.repo.GetStackThread(ctx, stackID)
+	if err == nil {
+		return existing, s.requireRead(ctx, existing, creatorUserID)
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("get stack thread for stack %s: %w", stackID, err)
+	}
+	workspaceID, projectID, creatorUserID = strings.TrimSpace(workspaceID), strings.TrimSpace(projectID), strings.TrimSpace(creatorUserID)
+	if workspaceID == "" || projectID == "" {
+		return nil, fmt.Errorf("%w: workspace id and project id are required", apperrs.ErrInvalid)
+	}
+	thread := &Conversation{WorkspaceID: workspaceID, Kind: KindStackThread, ProjectID: projectID, StackID: stackID}
+	if err := s.requireNewThread(ctx, thread); err != nil {
+		return nil, err
+	}
+	if creatorUserID == "" {
+		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
+	}
+	thread.CreatedBy = creatorUserID
+	created, err := s.createConversation(ctx, thread, []string{creatorUserID})
+	if err == nil {
+		return created, nil
+	}
+	if !errors.Is(err, apperrs.ErrConflict) {
+		return nil, err
+	}
+	existing, getErr := s.repo.GetStackThread(ctx, stackID)
+	if getErr != nil {
+		return nil, fmt.Errorf("get stack thread for stack %s after conflict: %w", stackID, getErr)
+	}
+	return existing, nil
+}
+
 // requireNewThread checks a thread about to start: membership of its workspace, then its project.
 func (s *Service) requireNewThread(ctx context.Context, thread *Conversation) error {
 	if err := s.require(ctx, thread.WorkspaceID, permissions.Member); err != nil {
@@ -207,7 +246,7 @@ func (s *Service) requireNewThread(ctx context.Context, thread *Conversation) er
 	return s.requireGate(ctx, thread)
 }
 
-// ExistingThread returns a doc, ticket, or interview thread without creating it, ErrNotFound until one exists; doc threads need docs:thread.
+// ExistingThread returns a doc, ticket, interview, or stack thread without creating it, ErrNotFound until one exists; doc threads need docs:thread.
 func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, callerID string) (*Conversation, error) {
 	targetID = strings.TrimSpace(targetID)
 	if targetID == "" {
@@ -225,6 +264,8 @@ func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, calle
 		c, err = s.repo.GetTicketThread(ctx, targetID)
 	case KindInterviewThread:
 		c, err = s.repo.GetInterviewThread(ctx, targetID)
+	case KindStackThread:
+		c, err = s.repo.GetStackThread(ctx, targetID)
 	default:
 		return nil, fmt.Errorf("%w: %s conversations are not threads of a doc, ticket, or project", apperrs.ErrInvalid, kind)
 	}

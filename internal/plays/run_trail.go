@@ -59,7 +59,7 @@ func (r *Runner) readable(ctx context.Context, list []*Trail) []*Trail {
 func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID, playID string) ([]*Trail, error) {
 	targetID = strings.TrimSpace(targetID)
 	if !targetType.valid() || targetID == "" {
-		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) and target id are required", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: target type (ticket, doc, interview, or stack) and target id are required", apperrs.ErrInvalid)
 	}
 	list, err := r.trails.ListTrailsByTarget(ctx, targetType, targetID)
 	if err != nil {
@@ -78,7 +78,7 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 // ActiveTrails maps each target with an active trail to that trail; targets the caller cannot read are left out, not refused.
 func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]*Trail, error) {
 	if !targetType.valid() {
-		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) is required", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: target type (ticket, doc, interview, or stack) is required", apperrs.ErrInvalid)
 	}
 	ids := make([]string, 0, len(targetIDs))
 	for _, id := range targetIDs {

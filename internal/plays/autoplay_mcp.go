@@ -18,6 +18,7 @@ type autoPlayResult struct {
 	Priority          Priority   `json:"priority"`
 	OnceWithinMinutes int        `json:"once_within_minutes"`
 	RunOn             RunOn      `json:"run_on"`
+	ComputerID        string     `json:"computer_id,omitempty"`
 }
 
 func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
@@ -25,23 +26,24 @@ func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
 	for _, a := range list {
 		out = append(out, autoPlayResult{
 			ID: a.ID, Enabled: a.Enabled, Moment: a.Moment, MomentStage: a.MomentStage, Conditions: a.Conditions,
-			Priority: a.Priority, OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn,
+			Priority: a.Priority, OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerID: a.ComputerID,
 		})
 	}
 	return out
 }
 
 type autoPlayIn struct {
-	Moment            Moment      `json:"moment" jsonschema:"When it fires. Ticket plays: ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed. Doc plays: doc.created, or doc.changed once edits have settled."`
+	Moment            Moment      `json:"moment" jsonschema:"When it fires. Ticket plays: ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed. Doc plays: doc.created, or doc.changed once edits have settled. Stack plays: stack.service_crashed, or stack.service_recovered once the service has run steadily again."`
 	MomentStage       Stage       `json:"moment_stage,omitempty" jsonschema:"Required with ticket.entered_stage and refused otherwise: backlog, progress, review, testing, or done."`
 	Conditions        *Conditions `json:"conditions,omitempty" jsonschema:"What must also hold; omit to fire on every match of the moment."`
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"The run's place in its person's queue; omit for normal."`
 	OnceWithinMinutes int         `json:"once_within_minutes,omitempty" jsonschema:"At most one run per ticket or doc within this many minutes of the moment, up to 43200; 0 or omitted is no limit."`
-	RunOn             RunOn       `json:"run_on,omitempty" jsonschema:"Whose computer runs it: developer (the default for ticket plays), tester, or causer (whoever caused the moment, the only choice for doc plays)."`
+	RunOn             RunOn       `json:"run_on,omitempty" jsonschema:"Whose computer runs it: developer (the default for ticket plays), tester, causer (whoever caused the moment, the default for doc plays), or computer (a chosen one, the only choice for stack plays, with computer_id)."`
+	ComputerID        string      `json:"computer_id,omitempty" jsonschema:"With run_on computer: the computer's id, from computer_list. You must own it or hold computers:run_agents on its share, and the run takes your identity. Needed before the auto play is switched on."`
 }
 
 func (in autoPlayIn) input() AutoPlayInput {
-	out := AutoPlayInput{Moment: in.Moment, MomentStage: optionalStage(in.MomentStage), OnceWithinMinutes: in.OnceWithinMinutes, RunOn: in.RunOn}
+	out := AutoPlayInput{Moment: in.Moment, MomentStage: optionalStage(in.MomentStage), OnceWithinMinutes: in.OnceWithinMinutes, RunOn: in.RunOn, ComputerID: in.ComputerID}
 	if in.Conditions != nil {
 		out.Conditions = *in.Conditions
 	}
@@ -59,7 +61,8 @@ type autoPlayChangeIn struct {
 	Conditions        *Conditions `json:"conditions,omitempty" jsonschema:"New conditions, replacing the old ones whole; omit to keep them."`
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"A new priority, replacing the old one whole; omit to keep it."`
 	OnceWithinMinutes *int        `json:"once_within_minutes,omitempty" jsonschema:"A new limit in minutes, 0 for none; omit to keep it."`
-	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, or causer; omit to keep it."`
+	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, causer, or computer; omit to keep it."`
+	ComputerID        *string     `json:"computer_id,omitempty" jsonschema:"With run_on computer: a new computer's id, picked as you; omit to keep it."`
 }
 
 // overlay keeps every field the change left out.
@@ -67,7 +70,7 @@ func (in autoPlayChangeIn) overlay(a *AutoPlay) (bool, AutoPlayInput) {
 	enabled := a.Enabled
 	out := AutoPlayInput{
 		Moment: a.Moment, MomentStage: a.MomentStage, Conditions: a.Conditions, Priority: a.Priority,
-		OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn,
+		OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerID: a.ComputerID,
 	}
 	if in.Enabled != nil {
 		enabled = *in.Enabled
@@ -89,6 +92,9 @@ func (in autoPlayChangeIn) overlay(a *AutoPlay) (bool, AutoPlayInput) {
 	}
 	if in.RunOn != nil {
 		out.RunOn = *in.RunOn
+	}
+	if in.ComputerID != nil {
+		out.ComputerID = *in.ComputerID
 	}
 	return enabled, out
 }

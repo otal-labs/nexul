@@ -130,6 +130,44 @@ func TestChatRepo_InterviewThread_OnePerProject(t *testing.T) {
 	assert.Equal(t, "p-1", got.ProjectID)
 }
 
+func TestChatRepo_StackThread_OnePerStackBesideTheProjectsInterviewThread(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedChatUser(t, s, "u-1")
+	_, err := s.Chat.GetStackThread(ctx, "st-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-1", "Backend", 0)))
+	_, err = s.db.ExecContext(ctx, `INSERT INTO stacks (id, project_id, name, slug, machine, strategy, created_at, updated_at) VALUES ('st-1', 'p-1', 'acme-web', 'acme-web', 'box', 'compose', 1, 1)`)
+	require.NoError(t, err)
+	stack := func(id string) *chat.Conversation {
+		return &chat.Conversation{
+			ID: id, WorkspaceID: "workspace-default", Kind: chat.KindStackThread, ProjectID: "p-1", StackID: "st-1",
+			CreatedBy: "u-1", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
+		}
+	}
+	interview := &chat.Conversation{
+		ID: "conv-interview", WorkspaceID: "workspace-default", Kind: chat.KindInterviewThread, ProjectID: "p-1",
+		CreatedBy: "u-1", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
+	}
+
+	require.NoError(t, s.Chat.CreateConversation(ctx, stack("conv-stack"), []string{"u-1"}))
+	require.NoError(t, s.Chat.CreateConversation(ctx, interview, []string{"u-1"}), "the stack's thread leaves the project's interview thread free")
+	require.ErrorIs(t, s.Chat.CreateConversation(ctx, stack("conv-stack-2"), []string{"u-1"}), apperrs.ErrConflict)
+
+	got, err := s.Chat.GetStackThread(ctx, "st-1")
+	require.NoError(t, err)
+	assert.Equal(t, []any{"conv-stack", chat.KindStackThread, "p-1", "st-1"}, []any{got.ID, got.Kind, got.ProjectID, got.StackID})
+	gotInterview, err := s.Chat.GetInterviewThread(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, "conv-interview", gotInterview.ID, "the interview lookup never returns a stack's thread")
+
+	_, err = s.db.ExecContext(ctx, `DELETE FROM stacks WHERE id = 'st-1'`)
+	require.NoError(t, err)
+	_, err = s.Chat.GetStackThread(ctx, "st-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a deleted stack takes its thread with it")
+}
+
 func TestChatRepo_CreateConversation_DocThread_DuplicateDoc_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

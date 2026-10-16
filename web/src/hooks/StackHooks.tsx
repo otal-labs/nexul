@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
 
@@ -17,12 +17,14 @@ export const getStackServicesKey = "getStackServices";
 export const getStackDeploysKey = "getStackDeploys";
 
 // No projectId lists every project's stacks, which the workspace-wide topology canvas wires from.
-export const useFetchStacks = (projectId?: string) =>
-  useQuery({
+export const stacksQuery = (projectId?: string) =>
+  queryOptions({
     queryKey: [getStacksKey, projectId ?? "all"],
     queryFn: async () =>
       (await api.get<Stack[]>("/api/stacks", { params: projectId ? { project_id: projectId } : {} })).data,
   });
+
+export const useFetchStacks = (projectId?: string) => useQuery(stacksQuery(projectId));
 
 export const useFetchStack = (id: string | undefined) =>
   useQuery({
@@ -31,12 +33,14 @@ export const useFetchStack = (id: string | undefined) =>
     enabled: !!id,
   });
 
-export const useFetchStackServices = (stackId: string | undefined) =>
-  useQuery({
+export const stackServicesQuery = (stackId: string | undefined) =>
+  queryOptions({
     queryKey: [getStackServicesKey, stackId],
     queryFn: async () => (await api.get<Container[]>(`/api/stacks/${stackId}/services`)).data,
     enabled: !!stackId,
   });
+
+export const useFetchStackServices = (stackId: string | undefined) => useQuery(stackServicesQuery(stackId));
 
 // pollMs keeps refetching while a deploy is pending/running, for watchers that cannot rely on catching the live event.
 export const useFetchStackDeploys = (stackId: string | undefined, pollMs?: number) =>
@@ -143,11 +147,7 @@ export const useFetchAllContainers = () => {
   const stacks = useFetchStacks();
   const stackIds = stacks.data?.map((s) => s.id) ?? [];
   const results = useQueries({
-    queries: stackIds.map((id) => ({
-      queryKey: [getStackServicesKey, id],
-      queryFn: async () => (await api.get<Container[]>(`/api/stacks/${id}/services`)).data,
-      enabled: !!stacks.data,
-    })),
+    queries: stackIds.map((id) => ({ ...stackServicesQuery(id), enabled: !!stacks.data })),
   });
 
   const isPending = stacks.isPending || results.some((r) => r.isPending);

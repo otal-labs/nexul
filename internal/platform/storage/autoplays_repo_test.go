@@ -65,6 +65,26 @@ func TestAutoPlaysRepo_RoundTripsTheTreesAndPublishesInTheSameWrite(t *testing.T
 	assert.Equal(t, got, again)
 }
 
+func TestAutoPlaysRepo_RoundTripsTheComputerAndThePersonWhoPickedIt(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedPlays(t, s, "play-1")
+	at := time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
+	want := newTestAutoPlay("ap-1", "play-1", at)
+	want.Moment, want.RunOn, want.ComputerID, want.RunAs = plays.MomentStackServiceCrashed, plays.RunOnComputer, "c-1", "u-alice"
+	require.NoError(t, s.Plays.CreateAutoPlay(t.Context(), want))
+
+	got, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+
+	got.ComputerID, got.RunAs = "c-2", "u-bob"
+	require.NoError(t, s.Plays.UpdateAutoPlay(t.Context(), got))
+	again, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, got, again)
+}
+
 func TestAutoPlaysRepo_ListsEachPlaysOldestFirstInOneRead(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

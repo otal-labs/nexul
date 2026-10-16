@@ -305,22 +305,23 @@ _Avoid_: Closing summary, retrospective, done hook
 
 **Play**:
 A pre-configured Agent turn a user fires from a ticket page, a doc page, or
-a project's Interview page with one button ("Fix with AI", "To tickets via
+a project's Interview page, or that runs on a stack, with one button ("Fix with AI", "To tickets via
 AI", "Run the interview"), or that starts by itself through an auto play.
 Defined per workspace with a label (unique in the workspace, ignoring case,
-since an automation names a play by it), a type (ticket, doc, or interview),
+since an automation names a play by it), a type (ticket, doc, interview, or stack),
 a one-line description, base instructions, an enabled switch, and an
 excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
-target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
+target's thread, which for an interview is hidden plumbing and for a stack is the stack's own thread; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same eight, "Fix with AI" (ticket,
+new or existing, is seeded with the same nine, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
 "Test with AI" (ticket, testing stage), "Draft interview" (interview),
-"Clarify via AI" (doc), "Audit via AI" (interview), and "Decisions check"
-(ticket, done stage, with its auto play), as ordinary plays
+"Clarify via AI" (doc), "Audit via AI" (interview), "Decisions check"
+(ticket, done stage, with its auto play), and "Investigate a crash" (stack,
+with its auto play), as ordinary plays
 a member
 may edit or delete; each keeps a built-in key through renames, and a new
 workspace's start from the instance template of their instructions. Seen with `plays:read`, fired with `plays:run`,
@@ -335,10 +336,13 @@ A play starting by itself when a moment matches, set up on the play's own
 settings page; a play can have several. Each names one moment (a ticket
 becomes unblocked, enters a stage, is created, gets a developer or tester,
 fails a test; a doc is created, or changed once edits have settled and not
-by an agent), conditions on the ticket's or doc's existing fields in all/any
-groups, a priority, limits, and whom it runs on: the developer, the tester,
-or whoever caused the moment (a doc play always runs on whoever caused it,
-since a doc has no developer). The play's show-when stage does not apply; a
+by an agent; a stack's service crashes, or recovers), conditions on the
+ticket's, doc's or stack's existing fields in all/any groups (a stack's are
+its project, the stack and the service by name), a priority, limits, and whom
+it runs on: the developer, the tester, whoever caused the moment (a doc has
+no developer, so it offers only that), or a chosen computer, which every
+play type offers and a stack play offers alone (see **Run on a chosen
+computer**). The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot and their computer
 is online and set up, and is checked again before it starts; with several
@@ -348,6 +352,26 @@ cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`.
 _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
+
+**Run on a chosen computer**:
+A choice of whose computer an auto play's run lands on, offered on every play
+type and the only one a stack play has, since a stack has no developer, tester
+or causer. The auto play stores the computer and the person who picked it,
+who must own the computer or hold `computers:run_agents` on its share, and
+the run acts as that person: the trail is theirs and the run waits in their
+queue. The right is checked again when the moment matches and at the front of
+the queue; a person who has lost it leaves the run as "didn't run" with the
+reason. An auto play that runs on a computer stays off until one is picked.
+_Avoid_: Shared computer run, service account
+
+**Investigate a crash**:
+A seeded stack play with one seeded auto play, on a service crashing, off
+until someone picks the computer it runs on. It reads the stack with
+`stack_get` and the crashed service's logs, finds the cause against the
+project's repository, and writes the findings on the crash's ticket, or a new
+one. It never deploys, restarts or edits the stack, and opens a fix pull
+request only if its instructions are edited to say so.
+_Avoid_: Auto-fix, self-healing, incident response
 
 **Trail**:
 What one press of a play leaves behind: who started it, on which ticket,

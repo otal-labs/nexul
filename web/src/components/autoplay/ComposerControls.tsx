@@ -14,17 +14,18 @@ interface InlineSelectProps {
   onChange: (value: string) => void;
   disabled?: boolean | undefined;
   className?: string;
+  placeholder?: string;
 }
 
 // A select sized to its value, so a line of them reads as a sentence.
-export const InlineSelect = ({ label, value, options, onChange, disabled, className }: InlineSelectProps) => (
+export const InlineSelect = ({ label, value, options, onChange, disabled, className, placeholder }: InlineSelectProps) => (
   <Select value={value} onValueChange={onChange} disabled={disabled ?? false}>
     <SelectTrigger aria-label={label} className={cn("h-8 w-auto gap-1.5 px-2.5", className)}>
-      <SelectValue />
+      <SelectValue placeholder={placeholder} />
     </SelectTrigger>
     <SelectContent>
       {options.map((option) => (
-        <SelectItem key={option.value} value={option.value}>
+        <SelectItem key={option.value} value={option.value} disabled={option.disabled ?? false}>
           {option.label}
         </SelectItem>
       ))}

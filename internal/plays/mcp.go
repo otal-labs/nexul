@@ -38,7 +38,7 @@ func toPlayResult(p *Play) playResult {
 
 type playListIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
-	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, or interview. When set, lists only the plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
+	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, interview, or stack. When set, lists only the plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id, so plays excluded from that project are left out."`
 	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done); only plays showing in that stage are listed."`
 	mcptool.PageArgs
@@ -47,7 +47,7 @@ type playListIn struct {
 type playCreateIn struct {
 	WorkspaceID        string   `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
 	Label              string   `json:"label" jsonschema:"The button text people press, for example Fix with AI; unique in the workspace, ignoring case."`
-	Type               Type     `json:"type" jsonschema:"What the play runs on: ticket, doc, or interview. Fixed once created."`
+	Type               Type     `json:"type" jsonschema:"What the play runs on: ticket, doc, interview, or stack. Fixed once created."`
 	Description        string   `json:"description,omitempty" jsonschema:"One line saying what the play does, shown under the button."`
 	Instructions       string   `json:"instructions,omitempty" jsonschema:"The base instructions the Agent gets on every run, as markdown."`
 	Enabled            bool     `json:"enabled,omitempty" jsonschema:"Whether the play shows and can run. Defaults to false."`
@@ -113,8 +113,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 				return page, nil
 			}),
 		mcptool.New("play_create", "Create play",
-			"Creates a play: a button that starts a pre-configured Agent turn on a ticket, a doc, or a project's "+
-				"interview. A ticket play needs show_when_stage and no other type takes one; a new play is disabled "+
+			"Creates a play: a button that starts a pre-configured Agent turn on a ticket, a doc, a project's "+
+				"interview, or a stack. A ticket play needs show_when_stage and no other type takes one; a new play is disabled "+
 				"unless enabled is true. Returns the created play; change it later with play_update, and start it "+
 				"with play_run. Needs plays:write.",
 			mcptool.Hints{Additive: true, Local: true},
@@ -134,9 +134,12 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"play's type never changes. Use enabled false to hide a play without deleting it, and play_delete to remove it. "+
 				"An auto play starts the play by itself on a moment: ticket.unblocked, ticket.entered_stage (with "+
 				"moment_stage), ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed for a ticket "+
-				"play, doc.created or doc.changed for a doc play, none for an interview play. Its conditions read a ticket's "+
-				"type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked, or a "+
-				"doc's project or folder, with is and is_not over values or set and unset, at most 20 rules in all. "+
+				"play, doc.created or doc.changed for a doc play, stack.service_crashed or stack.service_recovered for a "+
+				"stack play, none for an interview play. Its conditions read a ticket's "+
+				"type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked, a "+
+				"doc's project or folder, or a stack play's project, stack or service, with is and is_not over values or set and unset, at most 20 rules in all. "+
+				"run_on says whose computer runs it; computer, with a computer_id you own or may run agents on, picks one "+
+				"computer and runs as you, and is the only choice for a stack play. "+
 				"Play fields apply first, then add_auto_plays, update_auto_plays, and remove_auto_plays in that order, "+
 				"stopping at the first failure with what already took effect. Returns the play, with its auto plays when "+
 				"they changed. A new label still applies when automations call the play by its old one with runPlay, and "+
@@ -163,7 +166,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func listPlays(ctx context.Context, s *Service, in playListIn) ([]Listed, error) {
 	if in.Type == "" && (in.ProjectID != "" || in.Stage != "") {
-		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, or interview)", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, interview, or stack)", apperrs.ErrInvalid)
 	}
 	if in.Type == "" {
 		return s.List(ctx, in.WorkspaceID)

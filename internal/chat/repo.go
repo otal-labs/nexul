@@ -42,6 +42,8 @@ type Repo interface {
 	GetDocThread(ctx context.Context, docID string) (*Conversation, error)
 	// GetInterviewThread returns ErrNotFound if the project's interview thread hasn't been lazily created yet.
 	GetInterviewThread(ctx context.Context, projectID string) (*Conversation, error)
+	// GetStackThread returns ErrNotFound if the stack's thread hasn't been lazily created yet.
+	GetStackThread(ctx context.Context, stackID string) (*Conversation, error)
 	// ListConversationsForUser includes every workspace channel plus conversations with an explicit participant row.
 	ListConversationsForUser(ctx context.Context, workspaceID, userID string) ([]*Conversation, error)
 

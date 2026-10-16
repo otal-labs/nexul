@@ -14,7 +14,7 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useCreateAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
 import { usePlayDialogStore } from "@/stores/playDialogStore";
-import { newDraft, toDraft, toSaveRequest, type AutoPlay, type AutoPlayDraft, type AutoPlaySubject } from "@/models/AutoPlay";
+import { newDraft, subjectOf, toDraft, toSaveRequest, type AutoPlay, type AutoPlayDraft } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
 
 interface AutoPlayComposerProps {
@@ -26,7 +26,7 @@ interface AutoPlayComposerProps {
 
 // Takes the list's place in the play's dialog; while open, the dialog's Save and Cancel act on this auto play.
 export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerProps) => {
-  const subject: AutoPlaySubject = play.type === "doc" ? "doc" : "ticket";
+  const subject = subjectOf(play);
   const can = useAreaAccess();
   const canWrite = can?.("editAutoPlays") ?? false;
   const form = useForm<AutoPlayDraft>({

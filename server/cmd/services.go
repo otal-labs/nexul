@@ -274,6 +274,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceHandler := voice.NewHandler(voiceSvc)
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, accessSvc)
+	playsSvc.SetComputers(accessSvc)
 	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, accessSvc, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder, roles: rolesSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
 	tenancySvc.SetProjects(tenancyProjectGate{projects: store.Projects, access: accessSvc})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})

@@ -88,7 +88,9 @@ func duplicateConversation(existing, c *Conversation) bool {
 	case KindDocThread:
 		return existing.DocID == c.DocID
 	case KindInterviewThread:
-		return existing.ProjectID == c.ProjectID
+		return existing.Kind == KindInterviewThread && existing.ProjectID == c.ProjectID
+	case KindStackThread:
+		return existing.StackID == c.StackID
 	}
 	return false
 }
@@ -235,6 +237,17 @@ func (f *fakeRepo) GetInterviewThread(_ context.Context, projectID string) (*Con
 	defer f.mu.Unlock()
 	for _, c := range f.conversations {
 		if c.Kind == KindInterviewThread && c.ProjectID == projectID {
+			return c, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeRepo) GetStackThread(_ context.Context, stackID string) (*Conversation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, c := range f.conversations {
+		if c.Kind == KindStackThread && c.StackID == stackID {
 			return c, nil
 		}
 	}
@@ -903,6 +916,76 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 		repo.createConversationErr = errors.New("disk full")
 		_, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
 		require.ErrorContains(t, err, "disk full")
+	})
+}
+
+func TestGetOrCreateStackThread(t *testing.T) {
+	ctx := context.Background()
+	for _, tt := range []struct {
+		name                                         string
+		workspaceID, projectID, stackID, creatorUser string
+	}{
+		{"empty stack id is invalid", "w-1", "p-1", "", "u-1"},
+		{"empty workspace id is invalid", "", "p-1", "st-1", "u-1"},
+		{"empty project id is invalid", "w-1", "", "st-1", "u-1"},
+		{"empty creator is invalid", "w-1", "p-1", "st-1", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := newTestService(newFakeRepo()).GetOrCreateStackThread(ctx, tt.workspaceID, tt.projectID, tt.stackID, tt.creatorUser)
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+		})
+	}
+	t.Run("creates one thread per stack in the stack's project and returns it on every later call", func(t *testing.T) {
+		s := newTestService(newFakeRepo())
+		first, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-1")
+		require.NoError(t, err)
+		assert.Equal(t, []any{KindStackThread, "p-1", "st-1"}, []any{first.Kind, first.ProjectID, first.StackID})
+		again, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-2")
+		require.NoError(t, err)
+		assert.Equal(t, first.ID, again.ID)
+		other, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-2", "u-1")
+		require.NoError(t, err)
+		assert.NotEqual(t, first.ID, other.ID)
+		interview, err := s.GetOrCreateInterviewThread(ctx, "w-1", "p-1", "u-1")
+		require.NoError(t, err)
+		assert.NotEqual(t, first.ID, interview.ID, "a stack thread in a project does not take the project's interview thread")
+	})
+	t.Run("a losing race re-fetches the winner's thread", func(t *testing.T) {
+		s := newTestService(newFakeRepo())
+		existing, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-1")
+		require.NoError(t, err)
+		_, err = s.createConversation(ctx, &Conversation{WorkspaceID: "w-1", Kind: KindStackThread, ProjectID: "p-1", StackID: "st-1", CreatedBy: "u-2"}, []string{"u-2"})
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		refetched, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-2")
+		require.NoError(t, err)
+		assert.Equal(t, existing.ID, refetched.ID)
+	})
+	t.Run("a create failure other than a conflict surfaces", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.createConversationErr = errors.New("disk full")
+		_, err := newTestService(repo).GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-1")
+		require.ErrorContains(t, err, "disk full")
+	})
+	t.Run("is read, listed, and started through the stack's project", func(t *testing.T) {
+		repo := newFakeRepo()
+		thread, err := newTestService(repo).GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-1")
+		require.NoError(t, err)
+		other, err := newTestService(repo).GetOrCreateStackThread(ctx, "w-1", "p-2", "st-2", "u-1")
+		require.NoError(t, err)
+		s := newTestService(repo)
+		s.SetGate(projectMemoriesGate{})
+		s.SetThreadGate(projectMemoriesGate{})
+		actor := identity.WithActor(ctx, identity.Actor{ID: "u-2"})
+
+		_, err = s.GetConversation(actor, thread.ID)
+		require.NoError(t, err)
+		_, err = s.GetConversation(actor, other.ID)
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		_, err = s.GetOrCreateStackThread(actor, "w-1", "p-3", "st-3", "u-2")
+		require.ErrorIs(t, err, apperrs.ErrForbidden, "starting one takes the project's stacks:read too")
+		got, err := s.ExistingThread(actor, KindStackThread, "st-1", "u-2")
+		require.NoError(t, err)
+		assert.Equal(t, thread.ID, got.ID)
 	})
 }
 

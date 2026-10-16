@@ -33,6 +33,7 @@ func (r *ChatRepo) CreateConversation(ctx context.Context, c *chat.Conversation,
 			TicketID:        sql.NullString{String: c.TicketID, Valid: c.TicketID != ""},
 			DocID:           sql.NullString{String: c.DocID, Valid: c.DocID != ""},
 			ProjectID:       sql.NullString{String: c.ProjectID, Valid: c.ProjectID != ""},
+			StackID:         sql.NullString{String: c.StackID, Valid: c.StackID != ""},
 			ParentMessageID: c.ParentMessageID, CreatedBy: c.CreatedBy,
 			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(), IsGeneral: boolToInt(c.General), Private: boolToInt(c.Private),
 		})
@@ -167,6 +168,14 @@ func (r *ChatRepo) GetInterviewThread(ctx context.Context, projectID string) (*c
 	row, err := r.q.GetInterviewThread(ctx, nullString(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("get interview thread for project %s: %w", projectID, notFoundIfNoRows(err))
+	}
+	return toConversation(row), nil
+}
+
+func (r *ChatRepo) GetStackThread(ctx context.Context, stackID string) (*chat.Conversation, error) {
+	row, err := r.q.GetStackThread(ctx, nullString(stackID))
+	if err != nil {
+		return nil, fmt.Errorf("get stack thread for stack %s: %w", stackID, notFoundIfNoRows(err))
 	}
 	return toConversation(row), nil
 }
@@ -614,7 +623,7 @@ func (r *ChatRepo) UnreadCounts(ctx context.Context, workspaceID, userID string)
 func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 	return &chat.Conversation{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Kind: chat.Kind(row.Kind), Name: row.Name,
-		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
+		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, StackID: row.StackID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), AgentSeen: row.AgentSeen, General: row.IsGeneral != 0,
 		Private: row.Private != 0,

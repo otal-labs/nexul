@@ -211,7 +211,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesTheEightDefaultPlays(t *testing.T) {
+func TestSeedDefaults_CreatesTheNineDefaultPlays(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -220,7 +220,7 @@ func TestSeedDefaults_CreatesTheEightDefaultPlays(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 8)
+	require.Len(t, list, 9)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
@@ -240,6 +240,7 @@ func TestSeedDefaults_CreatesTheEightDefaultPlays(t *testing.T) {
 		{"Clarify via AI", TypeDoc, nil, []string{"doc_get", "`questions`", "`anything_else_reply`", "`no_gaps`", "Never use your question tool"}},
 		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "known breaks", "doc_create", "Main folder", "Carry over", "Keeps", "Never ask"}},
 		{"Decisions check", TypeTicket, &done, []string{"`decisions_log`", "memory_update", "superseded by"}},
+		{"Investigate a crash", TypeStack, nil, []string{"stack_get", "`logs`", "Never deploy, restart, stop or edit", "nexul-triage"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {
@@ -457,8 +458,8 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 8)
-	assert.Len(t, repo.autoPlays, 1, "the decisions check's auto play is seeded once")
+	assert.Len(t, list, 9)
+	assert.Len(t, repo.autoPlays, 2, "the decisions check's and the crash investigation's auto plays are seeded once")
 }
 
 func TestSeedDefaults_DecisionsCheckGetsItsAutoPlaySwitchedOff(t *testing.T) {
@@ -468,13 +469,34 @@ func TestSeedDefaults_DecisionsCheckGetsItsAutoPlaySwitchedOff(t *testing.T) {
 
 	check, err := s.builtin(context.Background(), workspaceID, DecisionsCheckKey)
 	require.NoError(t, err)
-	require.Len(t, repo.autoPlays, 1)
+	require.Len(t, repo.autoPlays, 2)
 	a := repo.autoPlays[0]
 	done := StageDone
 	assert.Equal(t, []any{check.ID, workspaceID, false, MomentTicketEnteredStage, &done, RunOnCauser, LevelNormal, 0},
 		[]any{a.PlayID, a.WorkspaceID, a.Enabled, a.Moment, a.MomentStage, a.RunOn, a.Priority.Otherwise, a.OnceWithinMinutes})
 	assert.NoError(t, a.Validate(TypeTicket))
 	assert.Empty(t, a.Conditions.Groups, "no conditions: every ticket entering done")
+}
+
+func TestSeedDefaults_InvestigateACrashWaitsForAComputerBeforeItRuns(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, newFakePerm(nil))
+	require.NoError(t, s.SeedDefaults(context.Background(), workspaceID))
+
+	crash, err := s.builtin(context.Background(), workspaceID, InvestigateCrashKey)
+	require.NoError(t, err)
+	var a *AutoPlay
+	for _, seeded := range repo.autoPlays {
+		if seeded.PlayID == crash.ID {
+			a = seeded
+		}
+	}
+	require.NotNil(t, a)
+	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnComputer, "", ""},
+		[]any{a.Enabled, a.Moment, a.RunOn, a.ComputerID, a.RunAs}, "off, and nobody has picked its computer yet")
+	require.NoError(t, a.Validate(TypeStack))
+	a.Enabled = true
+	assert.ErrorIs(t, a.Validate(TypeStack), apperrs.ErrInvalid, "it cannot be switched on before a computer is picked")
 }
 
 func TestSeedDefaults_AutoPlayFails_ReturnsTheError(t *testing.T) {

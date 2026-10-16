@@ -23,7 +23,7 @@ func (q *Queries) CountLiveMessages(ctx context.Context, conversationID string) 
 }
 
 const createConversation = `-- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, stack_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateConversationParams struct {
@@ -34,6 +34,7 @@ type CreateConversationParams struct {
 	TicketID        sql.NullString
 	DocID           sql.NullString
 	ProjectID       sql.NullString
+	StackID         sql.NullString
 	ParentMessageID string
 	CreatedBy       string
 	CreatedAt       int64
@@ -51,6 +52,7 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 		arg.TicketID,
 		arg.DocID,
 		arg.ProjectID,
+		arg.StackID,
 		arg.ParentMessageID,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -199,7 +201,7 @@ func (q *Queries) DeleteNoteImages(ctx context.Context, arg DeleteNoteImagesPara
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
 `
 
 type GetChannelByNameParams struct {
@@ -227,12 +229,13 @@ func (q *Queries) GetChannelByName(ctx context.Context, arg GetChannelByNamePara
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
 
 const getConversation = `-- name: GetConversation :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE id = ?
 `
 
 func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation, error) {
@@ -255,12 +258,13 @@ func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation,
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
 
 const getConversationByAgentThread = `-- name: GetConversationByAgentThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != ''
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != ''
   AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = conversations.workspace_id AND w.archived_at IS NOT NULL)
 LIMIT 1
 `
@@ -285,12 +289,13 @@ func (q *Queries) GetConversationByAgentThread(ctx context.Context, agentThreadI
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
 
 const getDocThread = `-- name: GetDocThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE doc_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE doc_id = ?
 `
 
 func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conversation, error) {
@@ -313,12 +318,13 @@ func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conve
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
 
 const getInterviewThread = `-- name: GetInterviewThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE project_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE project_id = ? AND kind = 'interview_thread'
 `
 
 func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullString) (Conversation, error) {
@@ -341,6 +347,7 @@ func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullStri
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
@@ -373,8 +380,37 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 	return i, err
 }
 
+const getStackThread = `-- name: GetStackThread :one
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE stack_id = ?
+`
+
+func (q *Queries) GetStackThread(ctx context.Context, stackID sql.NullString) (Conversation, error) {
+	row := q.db.QueryRowContext(ctx, getStackThread, stackID)
+	var i Conversation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.Name,
+		&i.TicketID,
+		&i.ParentMessageID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.AgentThreadID,
+		&i.AgentSyncedAt,
+		&i.DocID,
+		&i.ProjectID,
+		&i.IsGeneral,
+		&i.Private,
+		&i.AgentSeen,
+		&i.StackID,
+	)
+	return i, err
+}
+
 const getTicketThread = `-- name: GetTicketThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE ticket_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen, stack_id FROM conversations WHERE ticket_id = ?
 `
 
 func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) (Conversation, error) {
@@ -397,6 +433,7 @@ func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) 
 		&i.IsGeneral,
 		&i.Private,
 		&i.AgentSeen,
+		&i.StackID,
 	)
 	return i, err
 }
@@ -471,7 +508,7 @@ WITH listed AS (
         WHERE o.conversation_id = c.id AND NOT EXISTS (
             SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = ?2))
 )
-SELECT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen FROM conversations c JOIN listed l ON l.id = c.id
+SELECT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen, c.stack_id FROM conversations c JOIN listed l ON l.id = c.id
 ORDER BY c.created_at
 `
 
@@ -506,6 +543,7 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.IsGeneral,
 			&i.Private,
 			&i.AgentSeen,
+			&i.StackID,
 		); err != nil {
 			return nil, err
 		}

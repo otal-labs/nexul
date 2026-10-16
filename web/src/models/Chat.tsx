@@ -26,11 +26,12 @@ export const channelMention = (c: { kind: ConversationKind; name?: string | unde
 // Whether a channel's settings card has anything to show: its permissions and private switch, or a private channel's members.
 export const channelHasSettingsCard = (c: Conversation, canEditChannels: boolean): boolean => !!c.private || canEditChannels;
 
-// The ticket, doc, or project interview a thread belongs to, as a play target; null for a conversation no play can run on.
+// The ticket, doc, project interview, or stack a thread belongs to, as a play target; null for a conversation no play can run on.
 export const conversationPlayTarget = (c: Conversation): { type: PlayType; id: string } | null => {
   if (c.kind === "ticket_thread" && c.ticket_id) return { type: "ticket", id: c.ticket_id };
   if (c.kind === "doc_thread" && c.doc_id) return { type: "doc", id: c.doc_id };
   if (c.kind === "interview_thread" && c.project_id) return { type: "interview", id: c.project_id };
+  if (c.kind === "stack_thread" && c.stack_id) return { type: "stack", id: c.stack_id };
   return null;
 };
 

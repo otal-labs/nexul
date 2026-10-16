@@ -84,7 +84,9 @@ type Service struct {
 	repo     Repo
 	perm     PermissionGate
 	instance InstanceTemplates
-	now      func() time.Time
+	// computers is optional; without it no auto play can be pinned to a computer.
+	computers ComputerGate
+	now       func() time.Time
 }
 
 // InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
@@ -94,6 +96,9 @@ type InstanceTemplates interface {
 
 // SetInstanceTemplates wires the instance layer a new workspace's built-in plays take their instructions from.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
+
+// SetComputers wires the share check an auto play's chosen computer is picked under.
+func (s *Service) SetComputers(c ComputerGate) { s.computers = c }
 
 // NewService wires the plays use-cases over the given repo and permission gate.
 func NewService(repo Repo, perm PermissionGate) *Service {
@@ -142,7 +147,7 @@ func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, proje
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
 	if !playType.valid() {
-		return nil, fmt.Errorf("%w: type must be ticket, doc, or interview", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: type must be ticket, doc, interview, or stack", apperrs.ErrInvalid)
 	}
 	list, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
@@ -344,6 +349,8 @@ func Builtins() []Builtin {
 			Instructions: auditInstructions},
 		{Key: DecisionsCheckKey, Label: decisionsCheckLabel, Type: TypeTicket, ShowWhenStage: &done,
 			Description: decisionsCheckDescription, Instructions: decisionsCheckInstructions, AutoPlay: decisionsCheckAutoPlay()},
+		{Key: InvestigateCrashKey, Label: investigateCrashLabel, Type: TypeStack,
+			Description: investigateCrashDescription, Instructions: investigateCrashInstructions, AutoPlay: investigateCrashAutoPlay()},
 	}
 }
 

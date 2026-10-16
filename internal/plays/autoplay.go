@@ -9,7 +9,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// Moment is what happens to a ticket or doc that an auto play waits for; the values are stored, so they never change.
+// Moment is what happens to a ticket, doc, or stack that an auto play waits for; the values are stored, so they never change.
 type Moment string
 
 const (
@@ -21,6 +21,9 @@ const (
 	MomentTicketTestFailed   Moment = "ticket.test_failed"
 	MomentDocCreated         Moment = "doc.created"
 	MomentDocChanged         Moment = "doc.changed"
+	// The stack moments leave room for stack.error_rate_crossed.
+	MomentStackServiceCrashed   Moment = "stack.service_crashed"
+	MomentStackServiceRecovered Moment = "stack.service_recovered"
 	// MomentAutomation marks a queued run an automation's runPlay asked for; no auto play waits for it.
 	MomentAutomation Moment = "automation"
 )
@@ -29,6 +32,7 @@ var momentPlayType = map[Moment]Type{
 	MomentTicketUnblocked: TypeTicket, MomentTicketEnteredStage: TypeTicket, MomentTicketCreated: TypeTicket,
 	MomentTicketDeveloperSet: TypeTicket, MomentTicketTesterSet: TypeTicket, MomentTicketTestFailed: TypeTicket,
 	MomentDocCreated: TypeDoc, MomentDocChanged: TypeDoc,
+	MomentStackServiceCrashed: TypeStack, MomentStackServiceRecovered: TypeStack,
 }
 
 // RunOn names whose computer an auto play's run lands on.
@@ -38,6 +42,8 @@ const (
 	RunOnDeveloper RunOn = "developer"
 	RunOnTester    RunOn = "tester"
 	RunOnCauser    RunOn = "causer"
+	// RunOnComputer lands on a chosen computer, as whoever picked it.
+	RunOnComputer RunOn = "computer"
 )
 
 // Level is an auto play run's place in its person's queue.
@@ -73,6 +79,8 @@ const (
 	FieldLinkedPR  Field = "linked_pr"
 	FieldBlocked   Field = "blocked"
 	FieldFolder    Field = "folder"
+	FieldStack     Field = "stack"
+	FieldService   Field = "service"
 )
 
 // Op compares a field: is and is_not against any of the values, set and unset on the field alone.
@@ -98,7 +106,8 @@ var fieldOps = map[Type]map[Field][]Op{
 		FieldCategory: anyOp, FieldLabel: anyOp, FieldDeveloper: anyOp, FieldTester: anyOp,
 		FieldSourceDoc: presenceOps, FieldLinkedPR: presenceOps, FieldBlocked: presenceOps,
 	},
-	TypeDoc: {FieldProject: valueOps, FieldFolder: valueOps},
+	TypeDoc:   {FieldProject: valueOps, FieldFolder: valueOps},
+	TypeStack: {FieldProject: valueOps, FieldStack: valueOps, FieldService: valueOps},
 }
 
 // Bounds on what one auto play may hold, so a pasted tree cannot grow without limit.
@@ -123,11 +132,11 @@ type Group struct {
 	Rules []Rule `json:"rules" jsonschema:"The rules, at least one."`
 }
 
-// Rule compares one field; project, status and folder values are ids, type and category names, developer and tester user ids.
+// Rule compares one field; project, status, folder and stack values are ids, service values names, type and category names, developer and tester user ids.
 type Rule struct {
-	Field  Field    `json:"field" jsonschema:"Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder." enum:"type,project,stage,status,category,label,developer,tester,source_doc,linked_pr,blocked,folder"`
+	Field  Field    `json:"field" jsonschema:"Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder. Stack plays: project, stack, or service." enum:"type,project,stage,status,category,label,developer,tester,source_doc,linked_pr,blocked,folder,stack,service"`
 	Op     Op       `json:"op" jsonschema:"is or is_not compare with values; set or unset take no values (source_doc, linked_pr and blocked take only these)." enum:"is,is_not,set,unset"`
-	Values []string `json:"values,omitempty" jsonschema:"For is and is_not, matched if the field is any of them: ids for project, status and folder, names for type, category and label, user ids for developer and tester, and backlog, progress, review, testing or done for stage."`
+	Values []string `json:"values,omitempty" jsonschema:"For is and is_not, matched if the field is any of them: ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester, and backlog, progress, review, testing or done for stage."`
 }
 
 // Priority sets a run's level: the first rule whose group holds, else Otherwise.
@@ -148,17 +157,21 @@ type AutoPlay struct {
 	PlayID      string `json:"play_id"`
 	WorkspaceID string `json:"workspace_id"`
 	Enabled     bool   `json:"enabled"`
-	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed"`
+	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered"`
 	// MomentStage is set only for ticket.entered_stage.
 	MomentStage *Stage     `json:"moment_stage" enum:"backlog,progress,review,testing,done"`
 	Conditions  Conditions `json:"conditions"`
 	Priority    Priority   `json:"priority"`
 	// OnceWithinMinutes allows one run per target per window after the moment; 0 is no limit.
-	OnceWithinMinutes int       `json:"once_within_minutes"`
-	RunOn             RunOn     `json:"run_on" enum:"developer,tester,causer"`
-	CreatedBy         string    `json:"created_by"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	OnceWithinMinutes int   `json:"once_within_minutes"`
+	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,computer"`
+	// ComputerID is the computer a RunOnComputer auto play lands on, and RunAs the person who picked it, whose
+	// identity the run takes; both are empty for any other RunOn, and ComputerID while a seeded one waits for its pick.
+	ComputerID string    `json:"computer_id"`
+	RunAs      string    `json:"run_as"`
+	CreatedBy  string    `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // normalize fills the defaults an omitted part means and tidies values, so equal auto plays store equal.
@@ -186,6 +199,12 @@ func (a *AutoPlay) normalize(playType Type) {
 		if playType == TypeDoc {
 			a.RunOn = RunOnCauser
 		}
+		if playType == TypeStack {
+			a.RunOn = RunOnComputer
+		}
+	}
+	if a.RunOn != RunOnComputer {
+		a.ComputerID, a.RunAs = "", ""
 	}
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
@@ -210,7 +229,7 @@ func normalizeGroup(g *Group) {
 // Validate checks an auto play against its play's type; ids it names are not checked, since they can go stale anyway.
 func (a *AutoPlay) Validate(playType Type) error {
 	if playType == TypeInterview {
-		return fmt.Errorf("%w: an interview play takes no auto plays; only ticket and doc plays do", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: an interview play takes no auto plays; only ticket, doc and stack plays do", apperrs.ErrInvalid)
 	}
 	if err := a.validateMoment(playType); err != nil {
 		return err
@@ -252,7 +271,7 @@ func (a *AutoPlay) Validate(playType Type) error {
 func (a *AutoPlay) validateMoment(playType Type) error {
 	want, ok := momentPlayType[a.Moment]
 	if !ok {
-		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, doc.created, doc.changed", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, doc.created, doc.changed, stack.service_crashed, stack.service_recovered", apperrs.ErrInvalid)
 	}
 	if want != playType {
 		return fmt.Errorf("%w: moment %s belongs to %s plays; this is a %s play", apperrs.ErrInvalid, a.Moment, want, playType)
@@ -267,11 +286,17 @@ func (a *AutoPlay) validateMoment(playType Type) error {
 }
 
 func (a *AutoPlay) validateRunOn(playType Type) error {
-	if playType == TypeDoc && a.RunOn != RunOnCauser {
-		return fmt.Errorf("%w: a doc play's auto play runs on causer, whoever created or changed the doc; a doc has no developer or tester", apperrs.ErrInvalid)
+	if a.RunOn != RunOnDeveloper && a.RunOn != RunOnTester && a.RunOn != RunOnCauser && a.RunOn != RunOnComputer {
+		return fmt.Errorf("%w: run_on must be developer, tester, causer, or computer", apperrs.ErrInvalid)
 	}
-	if a.RunOn != RunOnDeveloper && a.RunOn != RunOnTester && a.RunOn != RunOnCauser {
-		return fmt.Errorf("%w: run_on must be developer, tester, or causer", apperrs.ErrInvalid)
+	if playType == TypeDoc && a.RunOn != RunOnCauser && a.RunOn != RunOnComputer {
+		return fmt.Errorf("%w: a doc play's auto play runs on causer, whoever created or changed the doc, or on a chosen computer; a doc has no developer or tester", apperrs.ErrInvalid)
+	}
+	if playType == TypeStack && a.RunOn != RunOnComputer {
+		return fmt.Errorf("%w: a stack play's auto play runs on a chosen computer; a stack has no developer, tester or causer", apperrs.ErrInvalid)
+	}
+	if a.RunOn == RunOnComputer && a.Enabled && a.ComputerID == "" {
+		return fmt.Errorf("%w: pick the computer it runs on before switching it on", apperrs.ErrInvalid)
 	}
 	return nil
 }

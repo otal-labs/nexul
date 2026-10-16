@@ -16,11 +16,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Facts is a ticket or doc as an auto play's conditions read it now; type and category are names, developer and
-// tester user ids, status a column id.
+// Facts is a ticket, doc, or stack as an auto play's conditions read it now; type and category are names, developer and
+// tester user ids, status a column id. Service is the stack service the moment is about, which the stack alone cannot say.
 type Facts struct {
 	ProjectID string
 	FolderID  string
+	StackID   string
+	Service   string
 	Type      string
 	Stage     Stage
 	Status    string
@@ -53,6 +55,8 @@ var factFields = map[Field]func(Facts) []string{
 	FieldLinkedPR:  func(f Facts) []string { return flag(f.LinkedPR) },
 	FieldBlocked:   func(f Facts) []string { return flag(f.Blocked) },
 	FieldFolder:    func(f Facts) []string { return present(f.FolderID) },
+	FieldStack:     func(f Facts) []string { return present(f.StackID) },
+	FieldService:   func(f Facts) []string { return present(f.Service) },
 }
 
 func present(v string) []string {
@@ -133,6 +137,9 @@ type moment struct {
 	targetID   string
 	projectID  string
 	causerID   string
+	// service and outageID name the stack service that went down or came back, for a stack moment.
+	service  string
+	outageID string
 	// automation marks a moment an automation caused; it runs on the developer, as nobody pressed anything.
 	automation bool
 	via        Via
@@ -142,6 +149,9 @@ type moment struct {
 
 // person is whose computer a's run lands on.
 func (a *AutoPlay) person(f Facts, m moment) string {
+	if a.RunOn == RunOnComputer {
+		return a.RunAs
+	}
 	if a.RunOn == RunOnDeveloper {
 		return f.Developer
 	}
@@ -170,12 +180,15 @@ type momentPayload struct {
 		ID        string `json:"id"`
 		ProjectID string `json:"project_id"`
 	} `json:"doc"`
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Tester  string `json:"tester"`
-	First   bool   `json:"first"`
-	ActorID string `json:"actor_id"`
-	Actor   struct {
+	StackID  string `json:"stack_id"`
+	Service  string `json:"service"`
+	OutageID string `json:"outage_id"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Tester   string `json:"tester"`
+	First    bool   `json:"first"`
+	ActorID  string `json:"actor_id"`
+	Actor    struct {
 		Kind   string `json:"kind"`
 		UserID string `json:"user_id"`
 	} `json:"actor"`
@@ -184,7 +197,7 @@ type momentPayload struct {
 // MomentTopics are the topics auto play moments come from; HandleAutoPlayMoment is subscribed to each.
 var MomentTopics = []string{
 	"ticket.unblocked", "ticket.created", "ticket.status_changed", "ticket.developer_changed", "ticket.tester_changed",
-	"ticket.test_failed", "doc.settled",
+	"ticket.test_failed", "doc.settled", "service.container_stopped", "service.container_recovered",
 }
 
 // HandleAutoPlayMoment queues a run for every switched-on auto play the event's moment matches (ADR 0132).
@@ -241,6 +254,16 @@ func (r *Runner) momentOf(ctx context.Context, topic string, p momentPayload) (m
 			doc.name = MomentDocCreated
 		}
 		return doc, doc.targetID != "", nil
+	case "service.container_stopped", "service.container_recovered":
+		stack := moment{
+			name: MomentStackServiceCrashed, targetType: TargetStack, targetID: p.StackID, projectID: p.ProjectID, service: p.Service,
+			outageID: p.OutageID, via: ViaWeb,
+		}
+		if topic == "service.container_recovered" {
+			stack.name = MomentStackServiceRecovered
+		}
+		// An instance stack has no project, so no workspace's auto play can wait for it.
+		return stack, stack.targetID != "" && stack.projectID != "", nil
 	}
 	return ticket, ticket.name != "" && ticket.targetID != "", nil
 }
@@ -308,6 +331,7 @@ func (r *Runner) match(ctx context.Context, m moment) error {
 	if err != nil {
 		return fmt.Errorf("read %s %s: %w", m.targetType, m.targetID, err)
 	}
+	f.Service = m.service
 	queued := false
 	for _, a := range autoPlays {
 		ok, err := r.matchOne(ctx, workspaceID, a, m, f)
@@ -348,7 +372,7 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 	it := &QueueItem{
 		ID: ids.From("auto-play-match:" + m.eventID + ":" + a.ID), WorkspaceID: workspaceID, ProjectID: f.ProjectID,
 		TargetType: m.targetType, TargetID: m.targetID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
-		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name,
+		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
 	}
 	if reason := r.whyNobody(ctx, it); reason != "" {
@@ -362,6 +386,9 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 
 // whyNobody says why a run has nobody to land on: no such person, or one who can't see or run the play there.
 func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
+	if it.PersonID == "" && it.RunOn == RunOnComputer {
+		return "nobody to run it on: no one has picked a computer for it"
+	}
 	if it.PersonID == "" && it.RunOn == RunOnCauser {
 		return fmt.Sprintf("nobody to run it on: no person caused it and the %s has no developer", it.TargetType)
 	}
@@ -372,6 +399,23 @@ func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 		!r.sees(ctx, it.PersonID, it) ||
 		!r.perm.HasPermission(ctx, it.PersonID, it.WorkspaceID, permissions.PlaysRun, resourceTypePlay, it.PlayID) {
 		return fmt.Sprintf("%s may not run %s here", r.login(ctx, it.PersonID), it.PlayLabel)
+	}
+	return r.whyNoComputer(ctx, it)
+}
+
+// whyNoComputer says why a run on a chosen computer can't start there: its person no longer owns the computer or holds
+// computers:run_agents on its share. A run on anything else has no such limit.
+func (r *Runner) whyNoComputer(ctx context.Context, it *QueueItem) string {
+	if it.RunOn != RunOnComputer {
+		return ""
+	}
+	ok, err := mayRunAgents(ctx, r.computers, it.PersonID, it.ComputerID)
+	if err != nil {
+		r.log.Error("plays: check who may run agents on a computer", "item", it.ID, "computer", it.ComputerID, "error", err)
+		return fmt.Sprintf("could not check whether %s may run agents on the computer picked for it", r.login(ctx, it.PersonID))
+	}
+	if !ok {
+		return fmt.Sprintf("%s may not run agents on the computer picked for it", r.login(ctx, it.PersonID))
 	}
 	return ""
 }

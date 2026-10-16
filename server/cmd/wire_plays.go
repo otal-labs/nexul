@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -17,12 +18,13 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-// playsTargetReader adapts tickets, docs, and workspace statuses to the runner's TargetReader seam (ADR 0017):
-// a ticket's stage is its current column's kind.
+// playsTargetReader adapts tickets, docs, stacks, and workspace statuses to the runner's TargetReader seam (ADR 0017):
+// a ticket's stage is its current column's kind. Without deploy, no stack can be read.
 type playsTargetReader struct {
 	tickets   *tickets.Service
 	docs      *docs.Service
 	workspace *workspace.Service
+	deploy    *deploy.Service
 }
 
 func (a playsTargetReader) GetTicket(ctx context.Context, id string) (plays.TicketTarget, error) {
@@ -47,6 +49,14 @@ func (a playsTargetReader) GetDoc(ctx context.Context, id string) (plays.DocTarg
 		return plays.DocTarget{}, err
 	}
 	return plays.DocTarget{ProjectID: d.ProjectID, Title: d.Title}, nil
+}
+
+func (a playsTargetReader) GetStack(ctx context.Context, id string) (plays.StackTarget, error) {
+	s, err := a.deploy.GetStack(ctx, id)
+	if err != nil {
+		return plays.StackTarget{}, err
+	}
+	return plays.StackTarget{ProjectID: s.ProjectID, Name: s.Name}, nil
 }
 
 func (a playsTargetReader) GetStatus(ctx context.Context, id string) (plays.StatusTarget, error) {
@@ -244,6 +254,14 @@ func (a playsThreads) GetOrCreateInterviewThread(ctx context.Context, workspaceI
 	return c.ID, nil
 }
 
+func (a playsThreads) GetOrCreateStackThread(ctx context.Context, workspaceID, projectID, stackID, userID string) (string, error) {
+	c, err := a.svc.GetOrCreateStackThread(ctx, workspaceID, projectID, stackID, userID)
+	if err != nil {
+		return "", err
+	}
+	return c.ID, nil
+}
+
 func (a playsThreads) PostMessage(ctx context.Context, conversationID, authorID, body string) (string, error) {
 	m, err := a.svc.PostMessage(ctx, conversationID, authorID, body)
 	if err != nil {
@@ -282,13 +300,20 @@ func playsLinkedTicket(t tickets.LinkedTicket) plays.LinkedTicket {
 	return plays.LinkedTicket{Key: ticketKey(t.Prefix, t.Number, t.ID), Title: t.Title, Done: t.Done}
 }
 
-// playsFacts reads a ticket's or doc's fields for auto play conditions straight from storage: matching runs in the
+// playsFacts reads a ticket's, doc's, or stack's fields for auto play conditions straight from storage: matching runs in the
 // background as nobody, and the queue checks the person a run lands on itself.
 type playsFacts struct {
 	store *storage.Store
 }
 
 func (a playsFacts) Facts(ctx context.Context, targetType plays.TargetType, id string) (plays.Facts, error) {
+	if targetType == plays.TargetStack {
+		s, err := a.store.Stacks.GetByID(ctx, id)
+		if err != nil {
+			return plays.Facts{}, err
+		}
+		return plays.Facts{ProjectID: s.ProjectID, StackID: s.ID}, nil
+	}
 	if targetType == plays.TargetDoc {
 		d, err := a.store.Docs.GetByID(ctx, id)
 		if err != nil {

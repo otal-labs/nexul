@@ -41,16 +41,23 @@ type DocTarget struct {
 	Title     string
 }
 
+// StackTarget is the slice of a stack the runner needs to name it.
+type StackTarget struct {
+	ProjectID string
+	Name      string
+}
+
 // StatusTarget is the slice of a board column the move-to needs.
 type StatusTarget struct {
 	Name  string
 	Stage Stage
 }
 
-// TargetReader is the runner's seam onto tickets, docs, and board columns (ADR 0017); a deleted column is ErrNotFound.
+// TargetReader is the runner's seam onto tickets, docs, stacks, and board columns (ADR 0017); a deleted column is ErrNotFound.
 type TargetReader interface {
 	GetTicket(ctx context.Context, id string) (TicketTarget, error)
 	GetDoc(ctx context.Context, id string) (DocTarget, error)
+	GetStack(ctx context.Context, id string) (StackTarget, error)
 	GetStatus(ctx context.Context, id string) (StatusTarget, error)
 }
 
@@ -189,6 +196,7 @@ type Threads interface {
 	GetOrCreateTicketThread(ctx context.Context, workspaceID, ticketID, userID string) (string, error)
 	GetOrCreateDocThread(ctx context.Context, workspaceID, docID, userID string) (string, error)
 	GetOrCreateInterviewThread(ctx context.Context, workspaceID, projectID, userID string) (string, error)
+	GetOrCreateStackThread(ctx context.Context, workspaceID, projectID, stackID, userID string) (string, error)
 	PostMessage(ctx context.Context, conversationID, authorID, body string) (string, error)
 	PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error
 }
@@ -229,6 +237,8 @@ type RunnerConfig struct {
 	Turns    TurnRunner
 	Live     LivePublisher
 	Users    UserReader
+	// Computers is optional; without it a run on a chosen computer never starts.
+	Computers ComputerGate
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
 	Links LinkReader
 	// Answers is optional; nil means an interview run's follow-ups live only on the trail and it names no sources.
@@ -261,6 +271,7 @@ type Runner struct {
 	turns     TurnRunner
 	live      LivePublisher
 	users     UserReader
+	computers ComputerGate
 	links     LinkReader
 	answers   InterviewAnswers
 	checkouts Checkouts
@@ -293,7 +304,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, queue: cfg.Queue, facts: cfg.Facts,
+		live: cfg.Live, users: cfg.Users, computers: cfg.Computers, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, queue: cfg.Queue, facts: cfg.Facts,
 		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1),
 		runs: map[string]*trailObserver{},
 	}
@@ -326,12 +337,15 @@ type Choices struct {
 	ModelOptions []harness.OptionSetting `json:"model_options"`
 }
 
-// target is what the runner read about a ticket, doc, or interview at press time.
+// target is what the runner read about a ticket, doc, interview, or stack at press time; service and outageID are what
+// a queued stack run carries from the moment that matched.
 type target struct {
 	projectID     string
 	stage         Stage
 	title         string
 	testsLocation string
+	service       string
+	outageID      string
 }
 
 func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, result harness.TurnResult, replyMessageID, note string) {

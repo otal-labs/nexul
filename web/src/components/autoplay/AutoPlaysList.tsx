@@ -11,7 +11,7 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { useActionState } from "@/hooks/useActionState";
 import { useFetchAutoPlays } from "@/hooks/PlayHooks";
 import { useRowGlide } from "@/hooks/useRowGlide";
-import type { AutoPlay, AutoPlaySubject } from "@/models/AutoPlay";
+import { subjectOf, type AutoPlay } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
 
 interface AutoPlaysListProps {
@@ -20,7 +20,7 @@ interface AutoPlaysListProps {
 }
 
 export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
-  const subject: AutoPlaySubject = play.type === "doc" ? "doc" : "ticket";
+  const subject = subjectOf(play);
   const canWrite = useActionState({ permission: "autoplays:write" }).state === "live";
   const { data: autoPlays, error, isPending } = useFetchAutoPlays(play.workspace_id, play.id);
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();

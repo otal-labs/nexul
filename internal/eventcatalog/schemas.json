@@ -181,7 +181,9 @@
               "ticket.tester_set",
               "ticket.test_failed",
               "doc.created",
-              "doc.changed"
+              "doc.changed",
+              "stack.service_crashed",
+              "stack.service_recovered"
             ]
           },
           "moment_stage": {
@@ -228,7 +230,7 @@
                         "properties": {
                           "field": {
                             "type": "string",
-                            "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder.",
+                            "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder. Stack plays: project, stack, or service.",
                             "enum": [
                               "type",
                               "project",
@@ -241,7 +243,9 @@
                               "source_doc",
                               "linked_pr",
                               "blocked",
-                              "folder"
+                              "folder",
+                              "stack",
+                              "service"
                             ]
                           },
                           "op": {
@@ -259,7 +263,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "For is and is_not, matched if the field is any of them: ids for project, status and folder, names for type, category and label, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
+                            "description": "For is and is_not, matched if the field is any of them: ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
                           }
                         },
                         "required": [
@@ -318,7 +322,7 @@
                             "properties": {
                               "field": {
                                 "type": "string",
-                                "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder.",
+                                "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder. Stack plays: project, stack, or service.",
                                 "enum": [
                                   "type",
                                   "project",
@@ -331,7 +335,9 @@
                                   "source_doc",
                                   "linked_pr",
                                   "blocked",
-                                  "folder"
+                                  "folder",
+                                  "stack",
+                                  "service"
                                 ]
                               },
                               "op": {
@@ -349,7 +355,7 @@
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "For is and is_not, matched if the field is any of them: ids for project, status and folder, names for type, category and label, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
+                                "description": "For is and is_not, matched if the field is any of them: ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
                               }
                             },
                             "required": [
@@ -397,8 +403,15 @@
             "enum": [
               "developer",
               "tester",
-              "causer"
+              "causer",
+              "computer"
             ]
+          },
+          "computer_id": {
+            "type": "string"
+          },
+          "run_as": {
+            "type": "string"
           },
           "created_by": {
             "type": "string"
@@ -423,6 +436,8 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "computer_id",
+          "run_as",
           "created_by",
           "created_at",
           "updated_at"
@@ -499,7 +514,9 @@
               "ticket.tester_set",
               "ticket.test_failed",
               "doc.created",
-              "doc.changed"
+              "doc.changed",
+              "stack.service_crashed",
+              "stack.service_recovered"
             ]
           },
           "moment_stage": {
@@ -546,7 +563,7 @@
                         "properties": {
                           "field": {
                             "type": "string",
-                            "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder.",
+                            "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder. Stack plays: project, stack, or service.",
                             "enum": [
                               "type",
                               "project",
@@ -559,7 +576,9 @@
                               "source_doc",
                               "linked_pr",
                               "blocked",
-                              "folder"
+                              "folder",
+                              "stack",
+                              "service"
                             ]
                           },
                           "op": {
@@ -577,7 +596,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "For is and is_not, matched if the field is any of them: ids for project, status and folder, names for type, category and label, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
+                            "description": "For is and is_not, matched if the field is any of them: ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
                           }
                         },
                         "required": [
@@ -636,7 +655,7 @@
                             "properties": {
                               "field": {
                                 "type": "string",
-                                "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder.",
+                                "description": "Ticket plays: type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked. Doc plays: project or folder. Stack plays: project, stack, or service.",
                                 "enum": [
                                   "type",
                                   "project",
@@ -649,7 +668,9 @@
                                   "source_doc",
                                   "linked_pr",
                                   "blocked",
-                                  "folder"
+                                  "folder",
+                                  "stack",
+                                  "service"
                                 ]
                               },
                               "op": {
@@ -667,7 +688,7 @@
                                 "items": {
                                   "type": "string"
                                 },
-                                "description": "For is and is_not, matched if the field is any of them: ids for project, status and folder, names for type, category and label, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
+                                "description": "For is and is_not, matched if the field is any of them: ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester, and backlog, progress, review, testing or done for stage."
                               }
                             },
                             "required": [
@@ -715,8 +736,15 @@
             "enum": [
               "developer",
               "tester",
-              "causer"
+              "causer",
+              "computer"
             ]
+          },
+          "computer_id": {
+            "type": "string"
+          },
+          "run_as": {
+            "type": "string"
           },
           "created_by": {
             "type": "string"
@@ -741,6 +769,8 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "computer_id",
+          "run_as",
           "created_by",
           "created_at",
           "updated_at"
@@ -1091,6 +1121,9 @@
             "type": "string"
           },
           "project_id": {
+            "type": "string"
+          },
+          "stack_id": {
             "type": "string"
           },
           "parent_message_id": {
@@ -4935,7 +4968,8 @@
         "type": "string",
         "enum": [
           "ticket",
-          "doc"
+          "doc",
+          "stack"
         ]
       },
       "target_id": {
@@ -4976,7 +5010,8 @@
         "type": "string",
         "enum": [
           "ticket",
-          "doc"
+          "doc",
+          "stack"
         ]
       },
       "target_id": {
@@ -5005,7 +5040,8 @@
         "enum": [
           "developer",
           "tester",
-          "causer"
+          "causer",
+          "computer"
         ]
       },
       "moment": {
@@ -5019,6 +5055,8 @@
           "ticket.test_failed",
           "doc.created",
           "doc.changed",
+          "stack.service_crashed",
+          "stack.service_recovered",
           "automation"
         ]
       },
@@ -5075,7 +5113,15 @@
       },
       "computer_id": {
         "type": "string",
-        "description": "The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."
+        "description": "The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."
+      },
+      "service": {
+        "type": "string",
+        "description": "For a stack moment, the service that went down or came back; empty otherwise."
+      },
+      "outage_id": {
+        "type": "string",
+        "description": "For a stack moment, the outage it opened or closed; empty otherwise."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5101,7 +5147,9 @@
       "queued_at",
       "decided_at",
       "not_before",
-      "computer_id"
+      "computer_id",
+      "service",
+      "outage_id"
     ]
   },
   "play.queued": {
@@ -5120,7 +5168,8 @@
         "type": "string",
         "enum": [
           "ticket",
-          "doc"
+          "doc",
+          "stack"
         ]
       },
       "target_id": {
@@ -5149,7 +5198,8 @@
         "enum": [
           "developer",
           "tester",
-          "causer"
+          "causer",
+          "computer"
         ]
       },
       "moment": {
@@ -5163,6 +5213,8 @@
           "ticket.test_failed",
           "doc.created",
           "doc.changed",
+          "stack.service_crashed",
+          "stack.service_recovered",
           "automation"
         ]
       },
@@ -5219,7 +5271,15 @@
       },
       "computer_id": {
         "type": "string",
-        "description": "The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."
+        "description": "The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."
+      },
+      "service": {
+        "type": "string",
+        "description": "For a stack moment, the service that went down or came back; empty otherwise."
+      },
+      "outage_id": {
+        "type": "string",
+        "description": "For a stack moment, the outage it opened or closed; empty otherwise."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5245,7 +5305,9 @@
       "queued_at",
       "decided_at",
       "not_before",
-      "computer_id"
+      "computer_id",
+      "service",
+      "outage_id"
     ]
   },
   "play.run_finished": {

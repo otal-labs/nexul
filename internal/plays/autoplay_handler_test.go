@@ -56,3 +56,21 @@ func TestHandler_AutoPlayLimits(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{`, "editor").Code)
 	assert.Equal(t, http.StatusForbidden, do(t, routes, http.MethodGet, path, "", "player").Code)
 }
+
+func TestHandler_StackAutoPlayPicksAComputerAsTheCaller(t *testing.T) {
+	s, _, ps := computerFixture(t)
+	routes := NewHandler(s).Routes()
+	base := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeStack].ID + "/auto-plays"
+
+	rec := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed","computer_id":"c-own"}`, "editor")
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var created AutoPlay
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	assert.Equal(t, []any{RunOnComputer, "c-own", "editor"}, []any{created.RunOn, created.ComputerID, created.RunAs})
+
+	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-see"}`, "editor").Code)
+	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed"}`, "editor").Code,
+		"switching on needs the computer")
+	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-run"}`, "editor")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+}

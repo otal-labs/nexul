@@ -15,12 +15,13 @@ type autoPlayRequest struct {
 	Priority          Priority   `json:"priority"`
 	OnceWithinMinutes int        `json:"once_within_minutes"`
 	RunOn             RunOn      `json:"run_on"`
+	ComputerID        string     `json:"computer_id"`
 }
 
 func (req autoPlayRequest) input() AutoPlayInput {
 	return AutoPlayInput{
 		Moment: req.Moment, MomentStage: req.MomentStage, Conditions: req.Conditions, Priority: req.Priority,
-		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn,
+		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn, ComputerID: req.ComputerID,
 	}
 }
 

@@ -26,6 +26,8 @@ const autoPlay: AutoPlay = {
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 1440,
   run_on: "developer",
+  computer_id: "",
+  run_as: "",
   created_by: "u1",
   created_at: "",
   updated_at: "",

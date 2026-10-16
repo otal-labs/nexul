@@ -1,5 +1,5 @@
 -- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, stack_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: RenameConversation :execrows
 UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?;
@@ -33,7 +33,10 @@ SELECT * FROM conversations WHERE ticket_id = ?;
 SELECT * FROM conversations WHERE doc_id = ?;
 
 -- name: GetInterviewThread :one
-SELECT * FROM conversations WHERE project_id = ?;
+SELECT * FROM conversations WHERE project_id = ? AND kind = 'interview_thread';
+
+-- name: GetStackThread :one
+SELECT * FROM conversations WHERE stack_id = ?;
 
 -- name: ListTicketIDsWithThreads :many
 SELECT ticket_id FROM conversations WHERE ticket_id IN (sqlc.slice('ids'));
