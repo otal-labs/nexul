@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
+	"github.com/otal-labs/nexul/internal/platform/logstore"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -57,6 +58,9 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithGate(svc.accessSvc).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc})
+	if cfg.LogsURL != nil {
+		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
+	}
 	svc.computers.svc.Store(runnerSvc)
 	// `nexul install` enrolls the bundled runner from this file; it goes away once that runner is enrolled.
 	if err := runnerSvc.WriteInstanceEnrollment(ctx); err != nil {

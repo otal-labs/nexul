@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -102,6 +103,9 @@ func (h *Host) upgradeUnit(ctx context.Context, u Unit, tag string, fetched map[
 	if err := h.fetchBinary(ctx, u, tag, fetched); err != nil {
 		return "", err
 	}
+	if err := h.refreshServerEnv(&u); err != nil {
+		return "", err
+	}
 	u.Version = want
 	if err := h.saveUnit(u); err != nil {
 		return "", err
@@ -110,6 +114,23 @@ func (h *Host) upgradeUnit(ctx context.Context, u Unit, tag string, fetched map[
 		return "", err
 	}
 	return u.Version, nil
+}
+
+// refreshServerEnv gives the server unit what serverEnv sets today, so an install made before a setting existed
+// gets it on upgrade; any other variable the unit holds stays.
+func (h *Host) refreshServerEnv(u *Unit) error {
+	if u.Kind != kindServer {
+		return nil
+	}
+	prev, err := h.loadInstall()
+	if err != nil || prev == nil {
+		return err
+	}
+	if u.Env == nil {
+		u.Env = map[string]string{}
+	}
+	maps.Copy(u.Env, serverEnv(prev.Dir, prev.intEnv("NEXUL_PORT", defaultPort), prev.Env, h.desktop()))
+	return nil
 }
 
 func (h *Host) fetchBinary(ctx context.Context, u Unit, tag string, fetched map[string]string) error {

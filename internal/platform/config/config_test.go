@@ -102,3 +102,13 @@ func TestLoad_Local(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_LogsLogin(t *testing.T) {
+	t.Setenv("NEXUL_DB_PATH", filepath.Join(t.TempDir(), "d.db"))
+	t.Setenv("NEXUL_LOGS_EMAIL", "nexul@example.com")
+	t.Setenv("NEXUL_LOGS_PASSWORD", "pw")
+	cfg, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, "nexul@example.com", cfg.LogsEmail)
+	assert.Equal(t, "pw", cfg.LogsPassword)
+}

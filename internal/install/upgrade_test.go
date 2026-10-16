@@ -77,6 +77,50 @@ func TestUpgrade_ThisVersion_ReplacesEveryUnitsBinaryAndRestartsIt(t *testing.T)
 	assert.Nil(t, th.reexec)
 }
 
+func TestUpgrade_ServerUnit_GetsTheLogsLoginAndKeepsItsOtherVariables(t *testing.T) {
+	th := newTestHost(t)
+	dir := th.installed(t)
+	u, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	u.Version = "v0.2.0"
+	delete(u.Env, "NEXUL_LOGS_EMAIL")
+	delete(u.Env, "NEXUL_LOGS_PASSWORD")
+	u.Env["NEXUL_SITE_URL"] = "https://site.example.com"
+	require.NoError(t, th.saveUnit(*u))
+	settings, err := readEnvFile(filepath.Join(dir, ".env"))
+	require.NoError(t, err)
+
+	require.NoError(t, th.Upgrade(t.Context(), "v0.2.1"))
+
+	after, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	assert.Equal(t, "nexul@nexul.local", after.Env["NEXUL_LOGS_EMAIL"])
+	assert.Equal(t, settings["NEXUL_LOGS_PASSWORD"], after.Env["NEXUL_LOGS_PASSWORD"])
+	assert.Equal(t, "https://site.example.com", after.Env["NEXUL_SITE_URL"])
+	runnerUnit, err := th.loadUnit("nexul-runner-instance")
+	require.NoError(t, err)
+	assert.NotContains(t, runnerUnit.Env, "NEXUL_LOGS_PASSWORD", "only the server reads the logs")
+}
+
+func TestUpgrade_ServerUnitSavedWithoutEnv_GetsTheLogsLogin(t *testing.T) {
+	th := newTestHost(t)
+	dir := th.installed(t)
+	u, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	u.Version = "v0.2.0"
+	u.Env = nil
+	require.NoError(t, th.saveUnit(*u))
+	settings, err := readEnvFile(filepath.Join(dir, ".env"))
+	require.NoError(t, err)
+
+	require.NoError(t, th.Upgrade(t.Context(), "v0.2.1"))
+
+	after, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	assert.Equal(t, settings["NEXUL_LOGS_PASSWORD"], after.Env["NEXUL_LOGS_PASSWORD"])
+	assert.Equal(t, "nexul@nexul.local", after.Env["NEXUL_LOGS_EMAIL"])
+}
+
 func TestUpgrade_NewOpenObservePin_ReplacesAndRestartsIt(t *testing.T) {
 	th := newTestHost(t)
 	th.installed(t)

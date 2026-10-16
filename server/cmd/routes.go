@@ -147,6 +147,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.HandleFunc("GET /api/version", versionHandler(runnerSvc))
 	apiMux.HandleFunc("GET /api/instance/upgrade", instanceUpgradeGetHandler(runnerSvc))
 	apiMux.HandleFunc("POST /api/instance/upgrade", instanceUpgradePostHandler(runnerSvc))
+	apiMux.HandleFunc("GET /api/instance/logs", instanceLogsHandler(runnerSvc))
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -286,7 +287,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("integrations", "Integration installs, subscriptions, deliveries")
 	spec.SetTagDescription("events", "Published event-schema catalog")
 	spec.SetTagDescription("audit", "Audit log")
-	spec.SetTagDescription("logs", "Browser log relay into the server's log sinks")
+	spec.SetTagDescription("logs", "The instance's logs: the browser log relay into the server's sinks, and reading them back")
 	spec.SetTagDescription("version", "Build version, channel, and update check")
 	spec.SetTagDescription("templates", "Instance templates, and cloning or resetting a template at any layer")
 
@@ -296,6 +297,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/version", "This build's version, channel, the channel's latest release, and the release notes since this build; ?refresh=1 skips the release cache", "version")
 	spec.Register("GET", "/api/instance/upgrade", "Needs instance:read: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
 	spec.Register("POST", "/api/instance/upgrade", "Needs instance:write: upgrade the instance to the channel's newest release", "version")
+	spec.Register("GET", "/api/instance/logs", "Needs logs:read: the instance's own logs, newest first, filtered by ?source, ?level, ?since, ?until, ?trace_id, ?name and ?text; ?limit (1 to 500, default 100) and ?offset page them, and the until a page returns pins the next one", "logs")
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")
 	spec.Register("DELETE", "/api/auth/tokens/{id}", "Revoke a personal access token", "auth")

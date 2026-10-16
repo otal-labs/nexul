@@ -72,6 +72,8 @@ type Service struct {
 	automationsHosts AutomationsHostLister
 	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
 	enrollDir string
+	// logs reads the instance's own logs; nil on a server that keeps none.
+	logs LogReader
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time
