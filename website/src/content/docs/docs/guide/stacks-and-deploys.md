@@ -30,6 +30,12 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 
 The containers table is read-only. To change a container, change the compose file or Dockerfile and deploy again.
 
+## Deleting a stack
+
+**Delete stack** removes the stack, its hostnames' routes and its services from Nexul, and keeps its deploy history. The machine's runner also removes the stack's containers: it brings a compose project down, or removes a single container. If the runner is offline, it removes them when it next connects; if the instance restarts first, they stay until you remove them on the machine. Volumes, networks and the stack's checkout stay on the machine either way.
+
+A stack adopted by [importing what's already running](/docs/guide/runners/#importing-whats-already-running) is the exception. Its containers were started outside Nexul, so deleting the stack leaves them running, and the confirm says so. A branch deployment torn down from its base stack is removed like any other stack.
+
 ## Deploying
 
 The **Deploy** card shows one way to ship, depending on the stack:

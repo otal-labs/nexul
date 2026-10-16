@@ -83,6 +83,8 @@ type Handler struct {
 	mu      sync.Mutex
 	conns   map[string]*runnerConn
 	pending []DeployRequestedEvent
+	// teardowns are stack_teardown frames waiting for a runner on their machine, by machine name (teardown.go).
+	teardowns map[string][]Frame
 
 	// discoverMu/discoverWaiters correlate in-flight discover jobs to the goroutine waiting on their result.
 	discoverMu      sync.Mutex
@@ -156,6 +158,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		repo:            cfg.Repo,
 		cfg:             cfg,
 		conns:           make(map[string]*runnerConn),
+		teardowns:       make(map[string][]Frame),
 		discoverWaiters: make(map[string]chan Frame),
 		logSubs:         make(map[string]logSub),
 		streamWaiters:   make(map[string]*streamWaiter),
@@ -180,6 +183,9 @@ func (h *Handler) Run(ctx context.Context) error {
 	}
 	if err := h.bus.Subscribe(ctx, TopicDeployCancelRequested, h.handleCancelRequest); err != nil {
 		return fmt.Errorf("subscribe %s: %w", TopicDeployCancelRequested, err)
+	}
+	if err := h.bus.Subscribe(ctx, TopicStackDeleted, h.handleStackDeleted); err != nil {
+		return fmt.Errorf("subscribe %s: %w", TopicStackDeleted, err)
 	}
 	if err := h.bus.Subscribe(ctx, TopicInstanceUpgradeRequested, h.handleUpgradeRequest); err != nil {
 		return fmt.Errorf("subscribe %s: %w", TopicInstanceUpgradeRequested, err)
@@ -278,6 +284,7 @@ func (h *Handler) handleConn(ctx context.Context, c *runnerConn, info connectInf
 	h.touchMachine(ctx, c)
 	h.publishPresence(ctx, c, true)
 
+	h.flushTeardowns(ctx, c)
 	h.dispatchPending(ctx, c)
 
 	go h.watchdog(c)
@@ -588,9 +595,9 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.publishFacts(ctx, c, f)
 	case FrameContainerEvent, FrameContainerStates, FrameLog, FrameRequestCounts:
 		return h.machineFrame(ctx, c, f)
-	case FrameJoinNetworksResult, FrameGatewayRoutesResult:
+	case FrameJoinNetworksResult, FrameGatewayRoutesResult, FrameStackTeardownResult:
 		if f.Status == BuildStatusFailed {
-			h.log.Warn("gateway request failed on runner", "frame", f.Type, "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
+			h.log.Warn("request failed on runner", "frame", f.Type, "runner_id", c.id, "gateway_container", f.GatewayContainer, "slug", f.StackSlug, "error", f.Error)
 		}
 		return nil
 	case FrameUpgradeProgress:
@@ -905,6 +912,11 @@ func (h *Handler) SetRoutes(ctx context.Context, machine, gatewayContainer, rout
 func (h *Handler) connOnMachine(machine string) *runnerConn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	return h.machineConnLocked(machine)
+}
+
+// machineConnLocked is connOnMachine for a caller already holding h.mu.
+func (h *Handler) machineConnLocked(machine string) *runnerConn {
 	for _, c := range h.conns {
 		if !c.personal && c.machine == machine {
 			return c

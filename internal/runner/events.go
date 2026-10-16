@@ -22,12 +22,14 @@ const (
 	TopicMachineDeleted        = "machine.deleted"
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
-	TopicDeployBuildStarted    = "deploy.build_started"
-	TopicDeployBuildProgress   = "deploy.build_progress"
-	TopicDeployBuildCompleted  = "deploy.build_completed"
-	TopicDeployDeployProgress  = "deploy.deploy_progress"
-	TopicDeployLog             = "deploy.log"
-	TopicDeployStatusChanged   = "deploy.status_changed"
+	// TopicStackDeleted is deploy's service.deleted, consumed here to remove a deleted managed stack's containers.
+	TopicStackDeleted         = "service.deleted"
+	TopicDeployBuildStarted   = "deploy.build_started"
+	TopicDeployBuildProgress  = "deploy.build_progress"
+	TopicDeployBuildCompleted = "deploy.build_completed"
+	TopicDeployDeployProgress = "deploy.deploy_progress"
+	TopicDeployLog            = "deploy.log"
+	TopicDeployStatusChanged  = "deploy.status_changed"
 	// TopicInstanceUpgradeRequested is the Service -> Handler dispatch edge: mirrors
 	// deploy.requested's own bus-topic handoff instead of a direct method call, so Run's existing Subscribe
 	// loop is the one place inbound work reaches a connection, matching deploy's plumbing exactly.
@@ -214,6 +216,14 @@ type DeployRequestedEvent struct {
 	// empty GatewayContainer skips it.
 	GatewayContainer string   `json:"gateway_container,omitempty"`
 	JoinNetworks     []string `json:"join_networks,omitempty"`
+}
+
+// StackDeletedEvent is the slice of the service.deleted payload the runner acts on.
+type StackDeletedEvent struct {
+	Machine  string `json:"machine,omitempty"`
+	Slug     string `json:"slug,omitempty"`
+	Strategy string `json:"strategy,omitempty"`
+	Managed  bool   `json:"managed,omitempty"`
 }
 
 // DeployCancelRequestedEvent's terminal state reports via deploy.status_changed, not this event.

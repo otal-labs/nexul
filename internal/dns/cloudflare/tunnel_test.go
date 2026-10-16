@@ -162,7 +162,38 @@ func TestClient_DeleteTunnel(t *testing.T) {
 	c, srv := newTunnelClient(t, api)
 	defer srv.Close()
 	require.NoError(t, c.DeleteTunnel(context.Background(), "t1"))
-	assert.Contains(t, api.reqs[0], "DELETE /client/v4/accounts/acct-1/cfd_tunnel/t1")
+	assert.Equal(t, []string{
+		"DELETE /client/v4/accounts/acct-1/cfd_tunnel/t1/connections",
+		"DELETE /client/v4/accounts/acct-1/cfd_tunnel/t1",
+	}, api.reqs, "connectors are cleaned up, then the tunnel goes")
+}
+
+func TestClient_DeleteTunnel_ConnectionCleanupFailureStopsBeforeTheDelete(t *testing.T) {
+	api := &tunnelAPI{failConns: true}
+	c, srv := newTunnelClient(t, api)
+	defer srv.Close()
+	require.Error(t, c.DeleteTunnel(context.Background(), "t1"))
+	assert.Equal(t, []string{"DELETE /client/v4/accounts/acct-1/cfd_tunnel/t1/connections"}, api.reqs)
+}
+
+func TestClient_DeleteTunnel_StillMapsCloudflaresRefusal(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if hasSuffix(r.URL.Path, "/connections") {
+			writeJSON(w, map[string]any{"success": true, "result": nil, "errors": []any{}})
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"success":false,"errors":[{"code":1022,"message":"This tunnel has active connections"}],"result":null}`))
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL + "/client/v4")
+	require.NoError(t, err)
+	c := New("test-token", WithBaseURL(u), WithAccountID("acct-1"))
+
+	err = c.DeleteTunnel(context.Background(), "t1")
+
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorContains(t, err, "active connections")
 }
 
 func TestClient_DeleteTunnel_MissingIsNoOp(t *testing.T) {

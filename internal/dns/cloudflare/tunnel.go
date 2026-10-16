@@ -155,6 +155,7 @@ func (c *Client) GetTunnel(ctx context.Context, tunnelID string) (*dns.Tunnel, e
 }
 
 // DeleteTunnel implements dns.TunnelProvider; a 404 for an already-absent tunnel is a no-op success (idempotent).
+// Connectors still attached are cleaned up first, because Cloudflare refuses to delete a tunnel with active connections.
 func (c *Client) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	acct, err := c.accountID(ctx)
 	if err != nil {
@@ -162,6 +163,12 @@ func (c *Client) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	}
 	var out apiResponse
 	path := fmt.Sprintf("accounts/%s/cfd_tunnel/%s", acct, tunnelID)
+	if err := c.do(ctx, http.MethodDelete, path+"/connections", nil, &out); err != nil {
+		if errors.Is(err, apperrs.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
 	if err := c.do(ctx, http.MethodDelete, path, nil, &out); err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) {
 			return nil

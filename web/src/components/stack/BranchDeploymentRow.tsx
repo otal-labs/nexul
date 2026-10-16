@@ -17,7 +17,7 @@ export const BranchDeploymentRow = ({ deployment }: BranchDeploymentRowProps) =>
   const tearDown = async () => {
     const ok = await confirm({
       title: `Tear down ${deployment.name}?`,
-      message: `Its containers stop and its stack is deleted. The next push to ${deployment.branch ?? "the branch"} deploys it again.`,
+      message: `Its stack is deleted and its containers are removed. The next push to ${deployment.branch ?? "the branch"} deploys it again.`,
       confirmLabel: "Tear down",
     });
     if (ok) deleteStack.mutate(deployment.id);

@@ -171,6 +171,12 @@ type StackDeletedEvent struct {
 	ServiceIDs []string `json:"service_ids,omitempty"`
 	// ProjectID is empty for an instance stack, which belongs to no workspace.
 	ProjectID string `json:"project_id,omitempty"`
+	// Machine, Slug, Strategy and Managed say what the machine's runner removes: a managed stack's compose project or
+	// run container. An unmanaged stack's containers were started by someone else and are left running.
+	Machine  string   `json:"machine,omitempty"`
+	Slug     string   `json:"slug,omitempty"`
+	Strategy Strategy `json:"strategy,omitempty" enum:"compose,run"`
+	Managed  bool     `json:"managed,omitempty"`
 }
 
 // PushTrigger mirrors gitprovider's PushEvent wire shape so deploy never imports gitprovider (ADR 0017).

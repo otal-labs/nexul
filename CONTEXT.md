@@ -702,7 +702,8 @@ fixed once it has deployed.
 A stack adopted from what was already running on a machine (a manual
 `docker run`, a stack some other tool deployed) with no repository attached. Its
 containers can be seen, wired, and exposed, but it cannot be deployed until
-a repository is attached, which makes it managed.
+a repository is attached, which makes it managed. Deleting it leaves its
+containers running: Nexul did not start them (ADR 0158).
 
 **Instance upgrade**:
 Moving every Nexul service on the instance's server to the newest release of
