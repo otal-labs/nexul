@@ -314,6 +314,20 @@ to Docs, Board and Invite people. A repository no service builds from shows in
 the project's Services as "Attached, not deployed yet" with Deploy this
 repository, and New service goes straight to it when it is the only one.
 
+### Debugging an instance without its box
+
+Anyone given the Logs area reads the server's, runners' and the automations
+host's logs through Nexul, an agent included, with no shell and no OpenObserve
+password. A personal runner keeps its own log, read live by its owner and by
+anyone its share allows to read logs. A service that crashes outside a deploy
+opens an outage: everyone watching the stack is told, the stack can open a
+ticket, and stack plays such as "Investigate a crash" start on a computer
+someone picked. Each stack counts its requests per minute, from its proxy
+gateway or Cloudflare's analytics, and a rule on its 5xx share does what a
+crash does when it trips. A bug in Nexul itself becomes a diagnosed issue
+through a triage skill the person's own agent runs, posted only after they
+approve the draft.
+
 ---
 
 ## Now — improving what's built
@@ -348,16 +362,6 @@ provider its own switch and run, and sets them up side by side; a provider
 switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).
 
-In progress: **debugging an instance without its box**. Anyone given the new
-Logs area reads the server's, runners' and the automations host's logs
-through Nexul, an agent included, with no shell and no OpenObserve password.
-A personal runner's logs stay on its computer and are read live by its owner
-and anyone its share allows. A service that crashes after its deploy, or a
-stack whose 5xx share crosses a rule its team set, notifies everyone watching
-the stack, can open a ticket, and starts stack plays, such as "Investigate a
-crash" on a computer that is always on. A bug in Nexul itself becomes a
-diagnosed issue through a triage skill the person's own agent runs, posted
-only after they approve the draft. Tracked in `.scratch/instance-logs/`.
 
 ---
 
@@ -376,6 +380,8 @@ without changing the core architecture.
   routing for deployed services.
 - **Desktop extensions** — auto-update (electron-updater), tray and menu
   niceties, diagnostics.
+- **Nexul's own error rate** — an instance rule on the server's own 5xx share,
+  telling the instance Owner, the way a stack's error-rate rule does.
 - **Semantic search / embeddings** — the event-driven indexing pipeline is the
   seam.
 - **Doc comments** — deferred during the domain sessions to keep momentum; the
