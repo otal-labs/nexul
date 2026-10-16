@@ -25,34 +25,41 @@ const Cell = ({ label, children }: { label: string; children: ReactNode }) => (
   </div>
 );
 
+// A service is down while its outage is open, or when the runner last saw its container stopped.
+const downNames = (services: Container[], stack: StackWithBranches): string[] => [
+  ...new Set([...(stack.outages ?? []).map((o) => o.service), ...services.filter((c) => down.includes(c.status)).map((c) => c.name)]),
+];
+
 const Health = ({ services, stack }: { services: Container[] | undefined; stack: StackWithBranches }) => {
-  const stopped = (services ?? []).filter((c) => down.includes(c.status));
-  const [only] = stopped;
-  const label = stopped.length === 1 ? `${only?.name} not running` : `${stopped.length} not running`;
+  const names = services ? downNames(services, stack) : [];
+  const [only] = names;
+  const label = names.length === 1 ? `${only} down` : `${names.length} services down`;
   const rate = errorRateHealth(stack);
   return (
     <Cell label="Health">
       {!services && <span className="text-sm text-muted-foreground">—</span>}
-      {services && stopped.length === 0 && !rate && (
+      {services && names.length === 0 && !rate && (
         <p className="flex items-center gap-2 text-sm font-medium">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
           No issues
         </p>
       )}
-      {stopped.length > 0 && (
+      {names.length > 0 && (
         <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-destructive" />
-          <span className="min-w-0 truncate" title={label}>{label}</span>
+          <span className="min-w-0 truncate" title={names.join(", ")}>{label}</span>
         </p>
       )}
       {rate && (
-        <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", rate.tone === "warning" ? "bg-warning" : "bg-success")} />
-          <span className="min-w-0 truncate">{rate.text}</span>
-          <span className="shrink-0 font-mono text-xs font-normal text-muted-foreground">
+        <>
+          <p className="mt-0.5 flex min-w-0 items-center gap-2 text-sm font-medium first:mt-0">
+            <span aria-hidden className={cn("size-2 shrink-0 rounded-full", rate.tone === "warning" ? "bg-warning" : "bg-success")} />
+            <span className="min-w-0 truncate" title={rate.text}>{rate.text}</span>
+          </p>
+          <p className="mt-0.5 pl-4 font-mono text-xs text-muted-foreground">
             {rate.tone === "warning" ? "since" : "at"} {formatClockTime(rate.at)}
-          </span>
-        </p>
+          </p>
+        </>
       )}
     </Cell>
   );
@@ -73,8 +80,8 @@ const LastDeploy = ({ latest }: { latest: Deploy | undefined }) => (
   </Cell>
 );
 
-const Services = ({ services }: { services: Container[] | undefined }) => {
-  const up = (services ?? []).filter((c) => !down.includes(c.status)).length;
+const Services = ({ services, stack }: { services: Container[] | undefined; stack: StackWithBranches }) => {
+  const up = Math.max(0, (services?.length ?? 0) - (services ? downNames(services, stack).length : 0));
   return (
     <Cell label="Services">
       {!services && <span className="text-sm text-muted-foreground">—</span>}
@@ -125,7 +132,7 @@ export const StackLiveHero = ({ stack, latest, hostnames }: StackLiveHeroProps) 
     >
       <Health services={services} stack={stack} />
       <LastDeploy latest={latest} />
-      <Services services={services} />
+      <Services services={services} stack={stack} />
       <Hostnames hostnames={hostnames} />
       </section>
     </div>

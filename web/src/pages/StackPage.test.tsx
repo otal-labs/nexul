@@ -325,9 +325,24 @@ describe("StackPage", () => {
     renderPage();
 
     const strip = await screen.findByRole("region", { name: "Live status" });
-    expect(await within(strip).findByText("worker not running")).toBeInTheDocument();
+    expect(await within(strip).findByText("worker down")).toBeInTheDocument();
     expect(within(strip).getByText("1 up")).toBeInTheDocument();
     expect(screen.queryByText("Image")).not.toBeInTheDocument();
+  });
+
+  it("reads a service with an open outage as down even while the runner still sees it running", async () => {
+    const outage = { id: "o-1", service: container.name, container: "c", started_at: "2026-08-12T09:00:00Z", exit_code: 137, oom: true, restart_count: 3 };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: { ...stack, outages: [outage] } });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+
+    const strip = await screen.findByRole("region", { name: "Live status" });
+    expect(await within(strip).findByText(`${container.name} down`)).toBeInTheDocument();
+    expect(within(strip).getByText("0 up")).toBeInTheDocument();
+    expect(within(strip).queryByText("No issues")).not.toBeInTheDocument();
   });
 
   describe("rollback", () => {
