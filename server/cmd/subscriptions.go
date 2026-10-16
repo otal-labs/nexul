@@ -168,6 +168,27 @@ func topologyDeployStatusHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 	}
 }
 
+// routesOnConnectHandler has dns re-send the proxy routes of the machine a runner just connected on.
+func routesOnConnectHandler(machines *storage.MachinesRepo, dnsSvc *dns.Service) eventbus.Handler {
+	return func(ctx context.Context, ev eventbus.Event) error {
+		var e runner.RunnerConnectedEvent
+		if err := json.Unmarshal(ev.Payload, &e); err != nil {
+			return apperrs.Fatal(fmt.Errorf("parse %s: %w", runner.TopicRunnerConnected, err))
+		}
+		if e.MachineID == "" {
+			return nil
+		}
+		m, err := machines.Get(ctx, e.MachineID)
+		if errors.Is(err, apperrs.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		return dnsSvc.SyncMachineRoutes(ctx, m.Name)
+	}
+}
+
 // exposureReconcileHandler hands dns the containers a healthy deploy started, read off the event itself so it
 // never races the consumer that writes the same report into the services table.
 func exposureReconcileHandler(deploySvc *deploy.Service, dnsSvc *dns.Service) eventbus.Handler {
@@ -298,6 +319,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicErrorRateRecovered, "", svc.deploySvc.HandleErrorRateRecovered)
 	// A healthy deploy settles its containers' exposures: an exposure made mid-deploy would otherwise wait for the next one.
 	mustSubscribe(ctx, bus, "dns.exposure_reconcile", deploy.TopicDeployStatusChanged, "", exposureReconcileHandler(svc.deploySvc, svc.dnsSvc))
+
+	// A runner that was away missed every route push meanwhile, so its machine's proxy gateways get theirs again.
+	mustSubscribe(ctx, bus, "dns.routes_on_connect", runner.TopicRunnerConnected, "", routesOnConnectHandler(svc.machines, svc.dnsSvc))
 
 	// Notification IDs derive from the source event, so redeliveries are idempotent.
 	mustSubscribe(ctx, bus, "notifications", tickets.TopicCreated, "", func(ctx context.Context, ev eventbus.Event) error {

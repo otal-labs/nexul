@@ -168,6 +168,8 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	defer func() {
 		err = errors.Join(err, conn.CloseNow())
 	}()
+	// A gateway_routes frame grows with the exposures; the library's 32KiB default would drop it.
+	conn.SetReadLimit(1 << 20)
 	c.log.Info("runner connected", "runner", c.cfg.Name)
 
 	streamCtx := ctx
@@ -224,6 +226,9 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 		go c.handleDiscover(ctx, conn, frame)
 	case FrameJoinNetworks:
 		go c.joinNetworks(ctx, conn, frame)
+	case FrameGatewayRoutes:
+		// Inline, not a goroutine: two changes in a row must land in the order they were sent.
+		c.setRoutes(ctx, conn, frame)
 	case FrameUpdate:
 		go c.handleUpdate(ctx, frame)
 	case FrameLogsRequest:
@@ -313,6 +318,15 @@ func (c *Client) joinNetworks(ctx context.Context, conn *websocket.Conn, f Frame
 		c.sendFrame(ctx, conn, Frame{Type: FrameJoinNetworksResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: msg})
 	})
 	c.cfg.Executor.JoinNetworks(ctx, f.GatewayContainer, f.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
+}
+
+func (c *Client) setRoutes(ctx context.Context, conn *websocket.Conn, f Frame) {
+	defer c.contained(f, func(msg string) {
+		c.sendFrame(ctx, conn, Frame{Type: FrameGatewayRoutesResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: msg})
+	})
+	ctx, cancel := context.WithTimeout(ctx, setRoutesTimeout)
+	defer cancel()
+	c.cfg.Executor.SetRoutes(ctx, f.GatewayContainer, f.GatewayRoutes, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
 }
 
 // contained is deferred first in a goroutine the client starts: a panic there is logged and answered with reply

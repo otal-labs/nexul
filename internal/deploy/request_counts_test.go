@@ -156,9 +156,9 @@ func clock(h, m int) time.Time { return time.Date(2026, 10, 16, h, m, 0, 0, time
 
 func TestHandleRequestCounts_AddsRouterCountsToTheStacksMinute(t *testing.T) {
 	env := newRequestEnv(t, proxyRoute)
-	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@docker", Requests: 10, Errors: 2})
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 10, Errors: 2})
 	env.now = env.now.Add(10 * time.Second)
-	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@docker", Requests: 5, Errors: 1})
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 5, Errors: 1})
 
 	row := env.repo.at("svc-1", clock(10, 42))
 	require.NotNil(t, row)
@@ -174,8 +174,8 @@ func TestHandleRequestCounts_IgnoresWhatIsNotAProxyRouteOfThisMachine(t *testing
 	}{
 		{"a router no exposure labelled", outageMachine, "api@internal"},
 		{"the instance route", outageMachine, "nexul@file"},
-		{"an exposure on a tunnel gateway", outageMachine, "nexul-e2@docker"},
-		{"another machine's frame", "elsewhere", "nexul-e1@docker"},
+		{"an exposure on a tunnel gateway", outageMachine, "nexul-e2@file"},
+		{"another machine's frame", "elsewhere", "nexul-e1@file"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestHandleRequestCounts_ErrorsAndUnwiredStayQuiet(t *testing.T) {
 
 func TestHandleRequestCounts_SkipsARouteWhoseContainerIsGone(t *testing.T) {
 	env := newRequestEnv(t, proxyRoute, RequestRoute{Router: "nexul-e9", ContainerID: "c-ghost", Machine: outageMachine})
-	env.counts(t, outageMachine, routerCount{Router: "nexul-e9@docker", Requests: 4})
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e9@file", Requests: 4})
 	assert.Nil(t, env.repo.rows["c-ghost"])
 	assert.NotNil(t, env.repo.at("svc-1", clock(10, 42)))
 }
@@ -266,7 +266,7 @@ func TestPollRequestCounts_AFailedQueryLeavesTheMinuteMissing(t *testing.T) {
 func TestPollRequestCounts_AProxyMinuteNoRunnerReportedIsMissingAndAReportedOneIsKept(t *testing.T) {
 	env := newRequestEnv(t, proxyRoute)
 	env.now = clock(10, 39).Add(5 * time.Second)
-	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@docker", Requests: 7})
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 7})
 	env.now = clock(10, 42).Add(30 * time.Second)
 	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
 

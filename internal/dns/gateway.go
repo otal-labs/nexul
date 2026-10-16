@@ -128,10 +128,13 @@ type ContainerLookup interface {
 }
 
 // RunnerJoiner asks a connected runner to join a gateway container onto networks immediately, when an
-// exposure is created for an already-running stack; best-effort, never blocks CreateExposure — a
-// runner that isn't connected right now still gets the same join as part of its next deploy.
+// exposure is created for an already-running stack, and to write a proxy gateway's exposure routes into its running
+// Traefik; best-effort, never blocks CreateExposure — a runner that isn't connected right now still gets the same
+// join as part of its next deploy.
 type RunnerJoiner interface {
 	JoinNetworks(ctx context.Context, machine, gatewayContainer string, networks []string) error
+	// SetRoutes replaces the exposure routes in the gateway container's file provider config with routes (proxyRoutes).
+	SetRoutes(ctx context.Context, machine, gatewayContainer, routes string) error
 }
 
 // traefikImage is the pinned proxy-gateway backing image.

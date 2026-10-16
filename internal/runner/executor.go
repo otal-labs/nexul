@@ -53,6 +53,8 @@ type Executor interface {
 	Discover(ctx context.Context) (DiscoverReport, error)
 	// JoinNetworks handles a standalone join_networks request (network.go).
 	JoinNetworks(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
+	// SetRoutes handles a gateway_routes request (gatewayroutes.go).
+	SetRoutes(ctx context.Context, gatewayContainer, routes string, send func(Frame))
 	// Upgrade starts `nexul upgrade` on the host for req.Version; send's error return reports a transport failure.
 	Upgrade(ctx context.Context, req Frame, send func(Frame) error) error
 	// Uninstall starts `nexul uninstall <kind> [name]` on the host, outside this runner's own service.

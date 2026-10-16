@@ -83,6 +83,7 @@ type coreServices struct {
 	connectorsSvc     *connectors.Service
 	connectorsHandler *connectors.Handler
 
+	machines   *storage.MachinesRepo
 	dnsSvc     *dns.Service
 	dnsHandler *dns.Handler
 
@@ -404,6 +405,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		connectorsHandler: connectorsHandler,
 
 		dnsSvc:     dnsSvc,
+		machines:   store.Machines,
 		dnsHandler: dnsHandler,
 
 		pairingSvc:     pairingSvc,

@@ -33,6 +33,10 @@ const (
 	// FrameJoinNetworksResult (runner -> server) reports the outcome; the server treats it as best-effort log
 	// fodder, not something it blocks on.
 	FrameJoinNetworksResult FrameType = "join_networks_result"
+	// FrameGatewayRoutes (server -> runner) replaces the exposure routes in a running proxy gateway's Traefik config, so an
+	// exposure change reaches Traefik without redeploying it; FrameGatewayRoutesResult (runner -> server) reports the outcome.
+	FrameGatewayRoutes       FrameType = "gateway_routes"
+	FrameGatewayRoutesResult FrameType = "gateway_routes_result"
 	// FrameUpdate (server -> runner) carries a newer release for the runner to download and swap itself with
 	// (upgrade-path spec, "Runner protocol"); sent best-effort right after registerRunner on connect.
 	FrameUpdate FrameType = "update"
@@ -151,6 +155,9 @@ type Frame struct {
 	// networks; on a join_networks frame they are the whole request.
 	GatewayContainer string   `json:"gateway_container,omitempty"`
 	JoinNetworks     []string `json:"join_networks,omitempty"`
+	// GatewayRoutes is a gateway_routes frame's file-provider fragment: the http.routers and http.services to merge into the
+	// gateway's base config.
+	GatewayRoutes string `json:"gateway_routes,omitempty"`
 	// Version, URL and Sha256 carry an update frame: the release the runner should fetch and swap itself with.
 	Version string `json:"version,omitempty"`
 	URL     string `json:"url,omitempty"`
@@ -225,37 +232,39 @@ type ObservedNetwork struct {
 
 // frameValidators maps each frame type to the check for the fields it requires.
 var frameValidators = map[FrameType]func(*Frame) error{
-	FrameHeartbeat:          (*Frame).validateNothing,
-	FrameAssignBuild:        (*Frame).validateAssignBuild,
-	FrameAssignDeploy:       (*Frame).validateAssignDeploy,
-	FrameCancel:             (*Frame).validateCancel,
-	FrameBuildProgress:      (*Frame).validateBuildProgress,
-	FrameBuildResult:        (*Frame).validateBuildResult,
-	FrameDeployProgress:     (*Frame).validateDeployProgress,
-	FrameDeployResult:       (*Frame).validateDeployResult,
-	FrameDeployLog:          (*Frame).validateDeployLog,
-	FrameDiscover:           (*Frame).validateDiscover,
-	FrameDiscoverResult:     (*Frame).validateDiscoverResult,
-	FrameJoinNetworks:       (*Frame).validateJoinNetworks,
-	FrameJoinNetworksResult: (*Frame).validateJoinNetworksResult,
-	FrameUpdate:             (*Frame).validateUpdate,
-	FrameAssignUpgrade:      (*Frame).validateAssignUpgrade,
-	FrameUpgradeProgress:    (*Frame).validateUpgradeProgress,
-	FrameUpgradeResult:      (*Frame).validateUpgradeResult,
-	FrameUninstall:          (*Frame).validateNothing,
-	FrameLogsRequest:        (*Frame).validateLogsRequest,
-	FrameLogsChunk:          (*Frame).validateLogsChunk,
-	FrameLogsEnd:            (*Frame).validateID,
-	FrameLogsCancel:         (*Frame).validateID,
-	FrameHarnessDial:        (*Frame).validateID,
-	FrameHarnessDialRefused: (*Frame).validateHarnessDialRefused,
-	FrameT3PairTokenRequest: (*Frame).validateID,
-	FrameT3PairToken:        (*Frame).validateT3PairToken,
-	FrameFacts:              (*Frame).validateFacts,
-	FrameContainerEvent:     (*Frame).validateContainerEvent,
-	FrameContainerStates:    (*Frame).validateContainerStates,
-	FrameLog:                (*Frame).validateLog,
-	FrameRequestCounts:      (*Frame).validateRequestCounts,
+	FrameHeartbeat:           (*Frame).validateNothing,
+	FrameAssignBuild:         (*Frame).validateAssignBuild,
+	FrameAssignDeploy:        (*Frame).validateAssignDeploy,
+	FrameCancel:              (*Frame).validateCancel,
+	FrameBuildProgress:       (*Frame).validateBuildProgress,
+	FrameBuildResult:         (*Frame).validateBuildResult,
+	FrameDeployProgress:      (*Frame).validateDeployProgress,
+	FrameDeployResult:        (*Frame).validateDeployResult,
+	FrameDeployLog:           (*Frame).validateDeployLog,
+	FrameDiscover:            (*Frame).validateDiscover,
+	FrameDiscoverResult:      (*Frame).validateDiscoverResult,
+	FrameJoinNetworks:        (*Frame).validateJoinNetworks,
+	FrameJoinNetworksResult:  (*Frame).validateJoinNetworksResult,
+	FrameGatewayRoutes:       (*Frame).validateGatewayRoutes,
+	FrameGatewayRoutesResult: (*Frame).validateGatewayRoutesResult,
+	FrameUpdate:              (*Frame).validateUpdate,
+	FrameAssignUpgrade:       (*Frame).validateAssignUpgrade,
+	FrameUpgradeProgress:     (*Frame).validateUpgradeProgress,
+	FrameUpgradeResult:       (*Frame).validateUpgradeResult,
+	FrameUninstall:           (*Frame).validateNothing,
+	FrameLogsRequest:         (*Frame).validateLogsRequest,
+	FrameLogsChunk:           (*Frame).validateLogsChunk,
+	FrameLogsEnd:             (*Frame).validateID,
+	FrameLogsCancel:          (*Frame).validateID,
+	FrameHarnessDial:         (*Frame).validateID,
+	FrameHarnessDialRefused:  (*Frame).validateHarnessDialRefused,
+	FrameT3PairTokenRequest:  (*Frame).validateID,
+	FrameT3PairToken:         (*Frame).validateT3PairToken,
+	FrameFacts:               (*Frame).validateFacts,
+	FrameContainerEvent:      (*Frame).validateContainerEvent,
+	FrameContainerStates:     (*Frame).validateContainerStates,
+	FrameLog:                 (*Frame).validateLog,
+	FrameRequestCounts:       (*Frame).validateRequestCounts,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -355,6 +364,20 @@ func (f *Frame) validateDiscoverResult() error {
 func (f *Frame) validateJoinNetworksResult() error {
 	if f.GatewayContainer == "" {
 		return fmt.Errorf("%w: join_networks_result requires gateway_container", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateGatewayRoutes() error {
+	if f.GatewayContainer == "" || f.GatewayRoutes == "" {
+		return fmt.Errorf("%w: gateway_routes requires gateway_container and gateway_routes", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateGatewayRoutesResult() error {
+	if f.GatewayContainer == "" {
+		return fmt.Errorf("%w: gateway_routes_result requires gateway_container", apperrs.ErrInvalid)
 	}
 	return nil
 }

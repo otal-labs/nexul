@@ -14,7 +14,7 @@ rewrites the target's compose file. That is what
 lets a compose stack, whose networks come from its own file rather than from
 a Nexul setting, be exposed at all; the alternative — requiring the
 container's network to equal the gateway's — made every compose stack
-unexposable. Tunnel ingress origins and proxy labels therefore key on the
+unexposable. Tunnel ingress origins and proxy routes therefore key on the
 container name, which stays unique once a gateway sits across several stacks.
 
 Decided: 2026-09-10 (the network-joining model; gateways-as-services 2026-08-27)

@@ -217,6 +217,10 @@ func (a dnsRunnerJoinAdapter) JoinNetworks(ctx context.Context, machine, gateway
 	return a.handler.JoinNetworks(ctx, machine, gatewayContainer, networks)
 }
 
+func (a dnsRunnerJoinAdapter) SetRoutes(ctx context.Context, machine, gatewayContainer, routes string) error {
+	return a.handler.SetRoutes(ctx, machine, gatewayContainer, routes)
+}
+
 // instanceOrigin is the URL a container on this machine reaches the server at: the runner maps host.docker.internal
 // to the host, and the server listens on addr's port.
 func instanceOrigin(addr string) string {

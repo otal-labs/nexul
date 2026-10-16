@@ -33,6 +33,8 @@ An exposure routes one hostname to one container.
 
 Nexul picks or deploys the gateway, adds the DNS record, and the hostname shows on the canvas. **Unexpose** removes it. Exposing needs the Cloudflare connector.
 
+On a reverse proxy gateway, Nexul also writes the route into the running Traefik, so the hostname answers within seconds and neither the gateway nor your stack is redeployed. Routes follow the exposures: one added or removed, or a container that comes back under a new name, rewrites them, and a redeployed gateway gets them back as soon as it is healthy. A machine whose runner was offline gets them as soon as the runner reconnects.
+
 ## Setting up DNS
 
 The instance gets its domain in the [setup wizard](/docs/guide/setup-wizard/). To change how it is reached later, open **Settings → DNS** and click **Set up DNS**. Connect Cloudflare under **Settings → Connectors** first.

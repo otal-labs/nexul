@@ -8,8 +8,8 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// RouterName is the Traefik router an exposure's labels name; the request counter's router label leads back to the
-// exposure through it (Traefik appends the provider, as in nexul-<id>@docker).
+// RouterName is the Traefik router an exposure's route names; the request counter's router label leads back to the
+// exposure through it (Traefik appends the provider, as in nexul-<id>@file).
 func RouterName(exposureID string) string { return "nexul-" + exposureID }
 
 // RequestRoute is one exposure as request counting reads it: the container its hostname reaches and how the gateway
