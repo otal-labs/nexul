@@ -8,6 +8,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/logstore"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -221,14 +222,29 @@ func instanceGetTool(s *Service) mcptool.Tool {
 		"Returns the instance's running version and release channel, the channel's newest release, whether an "+
 			"upgrade can start now and if not why, and the latest upgrade record. Check it before instance_upgrade "+
 			"and poll it afterwards to see the upgrade complete or fail; refresh asks GitHub for a release published "+
-			"in the last few minutes. Needs instance:read in any workspace.",
+			"in the last few minutes. Pass logs to also read the instance's own logs, the server's, the browser's, "+
+			"and the runners' and automations hosts', newest first, 100 lines by default and at most 500, in the "+
+			"list shape with the until the read is pinned to: pass that until back with next_offset for the next "+
+			"page. That needs logs:read besides instance:read, and never reaches a container's output, which "+
+			"stack_get with logs reads. Needs instance:read in any workspace.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in instanceGetIn) (any, error) {
 			if in.Refresh {
 				s.RefreshReleases()
 			}
-			return s.UpgradeStatus(ctx)
+			status, err := s.UpgradeStatus(ctx)
+			if err != nil || in.Logs == nil {
+				return status, err
+			}
+			page, err := s.InstanceLogs(ctx, *in.Logs)
+			return instanceDetail{UpgradeStatus: status, Logs: &page}, err
 		})
+}
+
+// instanceDetail is instance_get's answer: the upgrade facts plus the logs read when asked for.
+type instanceDetail struct {
+	UpgradeStatus
+	Logs *logstore.Page `json:"logs,omitempty"`
 }
 
 func instanceUpgradeTool(s *Service) mcptool.Tool {
@@ -244,7 +260,8 @@ func instanceUpgradeTool(s *Service) mcptool.Tool {
 }
 
 type instanceGetIn struct {
-	Refresh bool `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now. Defaults to false."`
+	Refresh bool             `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now. Defaults to false."`
+	Logs    *logstore.Params `json:"logs,omitzero" jsonschema:"Also read the instance's own logs, filtered by these fields; all of them are optional. Needs logs:read. Omit it for the upgrade facts alone."`
 }
 
 // mcpUpgradeActor is upgrade provenance for an MCP call (ADR 0049): "<user id>:mcp", empty with no actor.

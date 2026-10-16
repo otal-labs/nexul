@@ -197,6 +197,8 @@ WantedBy=multi-user.target
 		"NEXUL_DB_PATH":       filepath.Join(dir, "data", "nexul.db"),
 		"NEXUL_LOG_LEVEL":     "info",
 		"NEXUL_LOGS_URL":      "http://127.0.0.1:15080",
+		"NEXUL_LOGS_EMAIL":    "nexul@nexul.local",
+		"NEXUL_LOGS_PASSWORD": settings["NEXUL_LOGS_PASSWORD"],
 		"NEXUL_OTLP_ENDPOINT": "http://127.0.0.1:15080/openobserve/api/default",
 		"NEXUL_OTLP_USER":     "nexul@nexul.local",
 		"NEXUL_OTLP_TOKEN":    settings["NEXUL_LOGS_TOKEN"],

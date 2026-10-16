@@ -310,8 +310,8 @@ func (h *Host) installServer(ctx context.Context, o Options, settings map[string
 	return "running on port " + strconv.Itoa(o.Port), h.waitHealthy(ctx, o.Port, u)
 }
 
-// serverEnv points the server at its database and at the local OpenObserve, which it proxies at /openobserve/ and
-// ships its own logs to. A local install is one computer trying Nexul, where localhost is a valid instance URL.
+// serverEnv points the server at its database and at the local OpenObserve, which it proxies at /openobserve/, ships
+// its own logs to and reads them back from with the logs login. A local install is one computer trying Nexul, where localhost is a valid instance URL.
 func serverEnv(dir string, port int, settings map[string]string, local bool) map[string]string {
 	logs := "http://127.0.0.1:" + settings["NEXUL_LOGS_PORT"]
 	env := map[string]string{
@@ -319,6 +319,8 @@ func serverEnv(dir string, port int, settings map[string]string, local bool) map
 		"NEXUL_DB_PATH":       filepath.Join(dir, "data", "nexul.db"),
 		"NEXUL_LOG_LEVEL":     "info",
 		"NEXUL_LOGS_URL":      logs,
+		"NEXUL_LOGS_EMAIL":    settings["NEXUL_LOGS_EMAIL"],
+		"NEXUL_LOGS_PASSWORD": settings["NEXUL_LOGS_PASSWORD"],
 		"NEXUL_OTLP_ENDPOINT": logs + openObserveBase + "/api/default",
 		"NEXUL_OTLP_USER":     settings["NEXUL_LOGS_EMAIL"],
 		"NEXUL_OTLP_TOKEN":    settings["NEXUL_LOGS_TOKEN"],

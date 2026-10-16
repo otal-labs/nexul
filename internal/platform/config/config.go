@@ -27,6 +27,9 @@ type Config struct {
 	OTLPToken    string
 	// LogsURL is the local log store's base URL (NEXUL_LOGS_URL); when set the server proxies /openobserve/ to it.
 	LogsURL *url.URL
+	// LogsEmail and LogsPassword (NEXUL_LOGS_EMAIL, NEXUL_LOGS_PASSWORD) are the login the server reads the log store with.
+	LogsEmail    string
+	LogsPassword string
 	// Local marks a desktop install (NEXUL_LOCAL), where first run stays on http://localhost instead of a domain.
 	Local bool
 	// SiteURL (NEXUL_SITE_URL) serves the install scripts a computer's command fetches; empty is nexul.io. For testing
@@ -48,6 +51,8 @@ func Load() (*Config, error) {
 		OTLPEndpoint: os.Getenv("NEXUL_OTLP_ENDPOINT"),
 		OTLPUser:     os.Getenv("NEXUL_OTLP_USER"),
 		OTLPToken:    os.Getenv("NEXUL_OTLP_TOKEN"),
+		LogsEmail:    os.Getenv("NEXUL_LOGS_EMAIL"),
+		LogsPassword: os.Getenv("NEXUL_LOGS_PASSWORD"),
 		SiteURL:      os.Getenv("NEXUL_SITE_URL"),
 		ReleaseURL:   os.Getenv("NEXUL_RELEASE_URL"),
 	}

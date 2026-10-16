@@ -90,6 +90,7 @@ const (
 	IntegrationsWrite  Action = "integrations:write"
 	IntegrationsDelete Action = "integrations:delete"
 	AuditRead          Action = "audit:read"
+	LogsRead           Action = "logs:read"
 	EventsRead         Action = "events:read"
 	TemplatesRead      Action = "templates:read"
 	TemplatesWrite     Action = "templates:write"
@@ -205,6 +206,7 @@ var domainTable = []domainInfo{
 	{"connectors", "connectors", []string{read, write}, AreaInstance},
 	{"events", "events", []string{read}, AreaInstance},
 	{"audit", "audit log", []string{read}, AreaInstance},
+	{"logs", "the instance's logs", []string{read}, AreaInstance},
 	{"accounts", "accounts", []string{read, write, delete}, AreaInstance},
 	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
 	// templates:read scopes a token's reads; a signed-in member reads instance templates with membership alone.
@@ -233,6 +235,7 @@ var instanceAreas = []InstanceArea{
 	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
 	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},
 	{"audit", "the audit log", []Action{AuditRead}},
+	{"logs", "the instance's logs", []Action{LogsRead}},
 }
 
 // InstanceAreas is the fixed instance areas, without the connectors'.

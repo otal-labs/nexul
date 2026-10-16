@@ -78,6 +78,7 @@ var exactDenylist = map[string]bool{
 // verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, a conversation's bots, or a machine's reads, which have no read scope since seeing one is a rule (ADR 0057, 0094, 0101, 0107, 0150, 0151).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
+	"GET /api/instance/logs":                                     Scope(permissions.LogsRead),
 	"GET /api/services/{id}/services/{name}/logs":                Scope(permissions.StacksLogs),
 	"POST /api/chat/channels":                                    Scope(permissions.ChannelsWrite),
 	"POST /api/chat/voice-channels":                              Scope(permissions.ChannelsWrite),

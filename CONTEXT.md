@@ -588,7 +588,19 @@ the server. Gated by `stacks:logs`. A paired computer with Docker offers the
 same for its own containers through its personal runner, to its owner only
 and unmasked; those containers are not services.
 _Avoid_: Deploy log (the build and start output Nexul stores per deploy),
-service logs (Nexul's own, which OpenObserve holds)
+service logs (Nexul's own: Instance logs)
+
+**Instance logs**:
+Nexul's own log lines, kept in the instance's log store (OpenObserve): the
+server's, the browser's errors and warnings, and those of the instance's
+runners and automations hosts. Read through Nexul, never through the log
+store's own login: newest first, filtered by source, level, time range, trace,
+name or text, with secret-named attributes dropped and tokens redacted. Gated
+by `logs:read`, held by the instance Owner by right and handed out like any
+instance area. Never a container's output (Container logs) and never stored
+in Nexul's database.
+_Avoid_: Service logs, server logs (only one of its sources), audit log
+(that records changes)
 
 **Stack root**:
 The directory on a machine under which every stack's persistent checkout
@@ -967,7 +979,8 @@ _Avoid_: Whole instance, admin settings
 One part of the instance a Permission overwrite may sit on, outside every
 workspace: the instance itself (its URL, upgrades, failed events), Sign-in
 providers, each Connector, DNS and gateways, Instance templates, accounts,
-adding machines, the topology registry, integrations, and the audit log.
+adding machines, the topology registry, integrations, the audit log, and the
+instance's logs.
 Each names the permissions its rules may set. A person holds
 one of them through a role in any workspace they are in, then the area's rules
 for their roles, of which Allow wins, then a rule naming them. Only the instance

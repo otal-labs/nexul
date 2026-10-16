@@ -231,6 +231,8 @@ func TestScopeAllows(t *testing.T) {
 		{"runners list takes the machines:deploy scope", "GET", "/api/runners", []Scope{Scope("machines:deploy")}, true},
 		{"machines list takes the machines:deploy scope", "GET", "/api/machines", []Scope{Scope("machines:deploy")}, true},
 		{"removing a runner takes machines:write", "DELETE", "/api/runners/r1", []Scope{Scope("machines:write")}, true},
+		{"the instance's logs take logs:read", "GET", "/api/instance/logs", []Scope{Scope("logs:read")}, true},
+		{"instance:read does not read the logs", "GET", "/api/instance/logs", []Scope{Scope("instance:read")}, false},
 		{"the gone runners scopes open nothing", "GET", "/api/runners", []Scope{Scope("runners:read")}, false},
 
 		{"unknown domain", "GET", "/api/billing", []Scope{ScopeEventsRead}, false},
@@ -257,7 +259,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 95)
+	assert.Len(t, seen, 96)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {
