@@ -1113,14 +1113,14 @@ func (s *Service) ConfirmProviderSetup(ctx context.Context, userID, computerID, 
 	}
 	now := s.now().UTC()
 	// The setup that confirms has just written the current skill, so that is the version this provider now holds.
-	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills, SkillsVersion: shipped.NexulMemory.Version})
+	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills, SkillsVersion: shipped.SetVersion})
 }
 
 // RecordSkillsVersion records that the skill folders on the caller's computer hold version, for every confirmed provider since
 // they all read the same folders; it changes no confirmation. Only the version skill_get returns is accepted.
 func (s *Service) RecordSkillsVersion(ctx context.Context, userID, computerID, version string) (Setup, error) {
-	if version != shipped.NexulMemory.Version {
-		return Setup{}, fmt.Errorf("%w: skills_version %q is not the current nexul-memory version; skill_get returns it", apperrs.ErrInvalid, version)
+	if version != shipped.SetVersion {
+		return Setup{}, fmt.Errorf("%w: skills_version %q is not the current skills version; the skills update instructions name it", apperrs.ErrInvalid, version)
 	}
 	computer, err := s.ownComputer(ctx, userID, computerID)
 	if err != nil {

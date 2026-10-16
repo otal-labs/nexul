@@ -31,6 +31,8 @@ Before a line leaves the server, any field whose name holds `token`, `secret`, `
 
 When the instance has no log store (a server run by hand), the call is refused with "this instance keeps no logs". When OpenObserve does not answer, it fails with a conflict naming the log store and telling you to retry, never an empty list.
 
+An agent can use these reads to [triage a bug in Nexul](/docs/guide/triage/) and file it as an issue.
+
 ## Who can read them
 
 Reading takes `logs:read`, the **Logs** instance area. The instance Owner holds it. Nobody else does until the Owner hands it out: in **Settings**, open an instance entry's **Access** card, choose **The instance's logs**, and allow **Read the instance's logs** for a role or a person. `instance_get` itself still needs `instance:read`, so a role that should read logs needs both. See [People and access](/docs/guide/people-and-access/#instance-permissions) for how instance areas work.

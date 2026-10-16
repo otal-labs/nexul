@@ -394,7 +394,7 @@ and need more than an edit:
 - Play instructions are stored in the database when a workspace is created,
   and owners edit them, so a rename ships with a migration that rewrites the
   old names in stored instructions.
-- The `nexul-memory` skill lives on users' machines. It carries a version
+- The Nexul skills (`nexul-memory`, `nexul-triage`) live on users' machines. Each carries a version
   derived from its content (`internal/platform/skills`), so a change to the
   text changes the version: setup rewrites an outdated copy, the skill
   refreshes itself through `skill_get`, and each computer shows "skills out

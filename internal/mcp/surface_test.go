@@ -76,7 +76,7 @@ func TestSurface_TextsAgentsReadNameOnlyRegisteredTools(t *testing.T) {
 	for _, tool := range surface() {
 		registered[tool.Name] = true
 	}
-	texts := map[string]string{"server instructions": instructions, "nexul-memory skill": skills.NexulMemory.Content}
+	texts := map[string]string{"server instructions": instructions, "nexul-memory skill": skills.NexulMemory.Content, "nexul-triage skill": skills.NexulTriage.Content}
 	for _, p := range workflowPrompts() {
 		args := map[string]string{}
 		for _, a := range p.args {
@@ -94,7 +94,8 @@ func TestSurface_TextsAgentsReadNameOnlyRegisteredTools(t *testing.T) {
 		texts["description of "+tool.Name] = tool.Description
 	}
 	for source, text := range texts {
-		for _, name := range toolWord.FindAllString(text, -1) {
+		// The triage skill names its issue form's file, which ends in a tool verb.
+		for _, name := range toolWord.FindAllString(strings.ReplaceAll(text, "triage_report.yml", ""), -1) {
 			assert.True(t, registered[name], "%s names %s, which is not a tool", source, name)
 		}
 	}

@@ -18,7 +18,7 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 
 **Done** keeps your model and folder choices without running anything; **Cancel** drops them. The switches are already saved.
 
-Each turn connects the provider to Nexul with the computer's own MCP token, installs the default skill set and the nexul-memory skill into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others.
+Each turn connects the provider to Nexul with the computer's own MCP token, installs the default skill set and the nexul-memory and [nexul-triage](/docs/guide/triage/) skills into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others.
 
 ## Switch a provider off
 
@@ -36,7 +36,7 @@ Press **Re-run setup** in the row's **…** menu, or **Run all again** on the se
 
 ## Keep the skills current
 
-A Nexul release sometimes brings a newer nexul-memory skill. A provider set up with an older one shows **skills out of date**, and a yellow dot appears on the settings gear and on **Computers**. Nothing stops working; the agent just follows the rules in its prompt until the skill is refreshed.
+A Nexul release sometimes brings a newer Nexul skill. A provider set up with an older one shows **skills out of date**, and a yellow dot appears on the settings gear and on **Computers**. Nothing stops working; the agent just follows the rules in its prompt until the skill is refreshed.
 
 The row reads **Skills out of date**; press **Update skills** on it. One short turn rewrites the skills for every provider on the computer. Agents also check the skill's version once per session and refresh it themselves when it's behind.
 
