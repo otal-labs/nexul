@@ -29,7 +29,7 @@ An agent turn never carries a memory's text. It names memories for the agent to 
 
 Because only names travel, a long memory never stops a turn.
 
-Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory skill, which tells agents how to look memories up and when to write or update one. Agents may write memories too; every save keeps its author.
+Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory skill (and nexul-triage, which [files bugs in Nexul itself](/docs/guide/triage/)), which tells agents how to look memories up and when to write or update one. Agents may write memories too; every save keeps its author.
 
 ## Main and Footer
 

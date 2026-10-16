@@ -293,7 +293,7 @@ type ProviderSetup struct {
 	Provider    string     `json:"provider"`
 	ConfirmedAt *time.Time `json:"confirmed_at"`
 	Skills      []string   `json:"skills"`
-	// SkillsVersion is the nexul-memory version the confirming setup installed; empty for confirmations older than versioning.
+	// SkillsVersion is the shipped skills version the confirming setup installed; empty for confirmations older than versioning.
 	SkillsVersion string `json:"skills_version"`
 	// SkillsOutdated is a signal, never a gate (ADR 0063): a skills update or a setup re-run refreshes the skill.
 	SkillsOutdated bool `json:"skills_outdated"`
@@ -301,7 +301,7 @@ type ProviderSetup struct {
 
 // outdated is a confirmed provider whose recorded skills are not the ones this release ships.
 func (p ProviderSetup) outdated() bool {
-	return p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
+	return p.ConfirmedAt != nil && p.SkillsVersion != shipped.SetVersion
 }
 
 // SetupTurnState is where one provider's setup turn stands.

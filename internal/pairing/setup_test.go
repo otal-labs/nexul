@@ -130,7 +130,7 @@ func TestSetup_ConfirmAndUnconfirmProvider(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, setup.ConfirmedAt, "a provider's confirmation leaves the overall one alone")
 	require.Len(t, setup.Providers, 1)
-	assert.Equal(t, ProviderSetup{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}, SkillsVersion: shipped.NexulMemory.Version}, setup.Providers[0],
+	assert.Equal(t, ProviderSetup{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}, SkillsVersion: shipped.SetVersion}, setup.Providers[0],
 		"a confirmation records the skill version its setup just installed")
 
 	setup, err = svc.UnconfirmProviderSetup(t.Context(), "u1", "c1", "claude")
@@ -150,7 +150,7 @@ func TestSetup_AnOlderSkillVersionIsFlaggedNotGated(t *testing.T) {
 	for _, p := range []ProviderSetup{
 		{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: "0ld0ld0ld0ld"},
 		{Provider: "codex", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}},
-		{Provider: "opencode", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: shipped.NexulMemory.Version},
+		{Provider: "opencode", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: shipped.SetVersion},
 		{Provider: "cursor", Skills: []string{}},
 	} {
 		require.NoError(t, repo.SaveProviderSetup(t.Context(), "c1", p, testNow, eventbus.OutboxEvent{}))

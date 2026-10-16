@@ -12,6 +12,9 @@ import (
 //go:embed nexul-memory.md
 var nexulMemorySource string
 
+//go:embed nexul-triage.md
+var nexulTriageSource string
+
 // Skill is one skill as Nexul ships it; Content is the SKILL.md to write, its version already in the frontmatter.
 type Skill struct {
 	Name    string `json:"name"`
@@ -27,7 +30,21 @@ func (s Skill) Paths() []string {
 // NexulMemory is the memory protocol every paired provider installs.
 var NexulMemory = build("nexul-memory", nexulMemorySource)
 
-var all = []Skill{NexulMemory}
+// NexulTriage is the playbook that turns a bug in Nexul itself into a redacted, diagnosed issue.
+var NexulTriage = build("nexul-triage", nexulTriageSource)
+
+var all = []Skill{NexulMemory, NexulTriage}
+
+// SetVersion identifies the shipped set: it changes when any skill's text does, and is what a provider's setup records.
+var SetVersion = setVersion()
+
+func setVersion() string {
+	h := sha256.New()
+	for _, s := range all {
+		h.Write([]byte(s.Name + ":" + s.Version + "\n"))
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12]
+}
 
 // Get returns a shipped skill by name.
 func Get(name string) (Skill, bool) {

@@ -1,0 +1,61 @@
+name: Triage report
+description: A diagnosed bug, filed by an agent running Nexul's triage skill.
+labels: [via-triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What was done, what was expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: Diagnosis
+      description: The cause and the suspected file, or what was ruled out.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Runners page
+        2. Click "Add runner"
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The Nexul server version the problem was seen on.
+      placeholder: 0.3.40
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Runner versions, OS, architecture and how Nexul is installed.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The error, stack trace and any log lines, with host names, people and tokens replaced by placeholders.
+      render: text
+  - type: textarea
+    id: related
+    attributes:
+      label: Related issues
+      description: Duplicates and near misses found by searching open and closed issues.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: What keeps the person going, if anything.
+  - type: input
+    id: filed_by
+    attributes:
+      label: Filed by
+      description: Who filed it, which agent and model, and the Nexul version.
+      placeholder: alice via Nexul triage · <agent> (<model>) · Nexul 0.3.40
+    validations:
+      required: true

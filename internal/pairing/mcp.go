@@ -90,7 +90,7 @@ type computerSetupUpdateIn struct {
 	Provider      string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit to change the computer's overall confirmation."`
 	Confirmed     bool     `json:"confirmed" jsonschema:"true confirms, false withdraws the confirmation."`
 	Skills        []string `json:"skills,omitempty" jsonschema:"With provider and confirmed true, required: the skill names this session's harness reported as discovered, for example [\"tdd\", \"nexul-memory\"]."`
-	SkillsVersion string   `json:"skills_version,omitempty" jsonschema:"Without provider and with confirmed true: the nexul-memory version you just wrote from skill_get into every path it lists, for example 3f9a1c0b2d4e. Records it for every confirmed provider on the computer and changes no confirmation."`
+	SkillsVersion string   `json:"skills_version,omitempty" jsonschema:"Without provider and with confirmed true: the skills_version skill_get returns, once you have written every Nexul skill from skill_get into every path it lists, for example 3f9a1c0b2d4e. Records it for every confirmed provider on the computer and changes no confirmation."`
 }
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
@@ -438,7 +438,7 @@ func computerSetupUpdateTool(s *Service) mcptool.Tool {
 			"it records that Nexul's MCP server is connected to that provider and its harness reports the given "+
 			"skills; without provider it confirms the computer overall, the last step of its setup. Confirmed false "+
 			"withdraws the one named, and withdrawing the overall confirmation also revokes the computer's MCP token. "+
-			"With skills_version and confirmed true, alone, it records the nexul-memory version you just wrote from "+
+			"With skills_version and confirmed true, alone, it records the skills_version you just wrote from "+
 			"skill_get for every confirmed provider, since they read the same skill folders, and confirms nothing. "+
 			"Only this tool writes a confirmation, and repeating a call changes nothing more; returns the computer's "+
 			"setup, which computer_list also shows.",

@@ -81,7 +81,7 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		{"setup update with a skills version and a provider", "computer_setup_update", `{"computer_id": "c1", "provider": "codex", "confirmed": true, "skills_version": "abc"}`},
 		{"setup update withdrawing with a skills version", "computer_setup_update", `{"computer_id": "c1", "confirmed": false, "skills_version": "abc"}`},
 		{"setup update with an older skills version", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "0ld0ld0ld0ld"}`},
-		{"setup update with a skills version before any provider is confirmed", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "` + shipped.NexulMemory.Version + `"}`},
+		{"setup update with a skills version before any provider is confirmed", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "` + shipped.SetVersion + `"}`},
 		{"setup update with a non-string skill", "computer_setup_update", `{"computer_id": "c1", "provider": "claude", "confirmed": true, "skills": ["tdd", 3]}`},
 		{"token create naming another user", "computer_mcp_token_create", `{"computer_id": "c1", "user_id": "u2"}`},
 		{"token delete without a computer", "computer_mcp_token_delete", `{}`},
@@ -194,7 +194,7 @@ func TestComputerSetupUpdate_SkillsVersion_MarksEveryConfirmedProviderCurrent(t 
 	}
 	repo.outbox = nil
 
-	out, err := callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.NexulMemory.Version+`"}`)
+	out, err := callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.SetVersion+`"}`)
 	require.NoError(t, err)
 
 	setup := out.(Setup)
@@ -205,13 +205,13 @@ func TestComputerSetupUpdate_SkillsVersion_MarksEveryConfirmedProviderCurrent(t 
 			assert.Empty(t, p.SkillsVersion, "an unconfirmed provider gets nothing recorded")
 			continue
 		}
-		assert.Equal(t, shipped.NexulMemory.Version, p.SkillsVersion, p.Provider)
+		assert.Equal(t, shipped.SetVersion, p.SkillsVersion, p.Provider)
 		assert.Equal(t, &testNow, p.ConfirmedAt, "%s keeps its confirmation time", p.Provider)
 	}
 	require.Len(t, repo.outbox, 2, "one change event per provider whose record moved, so the browser follows it")
 	assert.Equal(t, TopicSetupConfirmed, repo.outbox[0].Topic)
 
-	_, err = callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.NexulMemory.Version+`"}`)
+	_, err = callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.SetVersion+`"}`)
 	require.NoError(t, err)
 	assert.Len(t, repo.outbox, 2, "repeating the report changes nothing more")
 }
@@ -465,4 +465,9 @@ func TestSkillGet(t *testing.T) {
 	assert.Equal(t, shipped.NexulMemory.Version, got.Version)
 	assert.Equal(t, shipped.NexulMemory.Content, got.Content)
 	assert.Equal(t, shipped.NexulMemory.Paths(), got.Paths)
+	assert.Equal(t, shipped.SetVersion, got.SkillsVersion)
+
+	out, err = call(t.Context(), json.RawMessage(`{"name":"nexul-triage"}`))
+	require.NoError(t, err)
+	assert.Equal(t, shipped.NexulTriage.Content, out.(skillResult).Content)
 }

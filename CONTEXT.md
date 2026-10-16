@@ -206,6 +206,16 @@ it is off: pickers leave it out and a run aimed at it is refused, and its
 confirmation comes back when it is switched on again.
 _Avoid_: Onboarded, verified, setup flag
 
+**Triage skill**:
+`nexul-triage`, the second skill Nexul ships beside `nexul-memory`, installed by
+computer setup and served by `skill_get`. A person asks their own agent to run
+it for a bug in Nexul itself; the agent gathers the instance's facts, diagnoses
+against the source at the installed version, and, once the person approves the
+draft, files a Triage report on `otal-labs/nexul` through the person's own
+GitHub. A report never carries the instance's address or anyone's names. A
+problem in a team's own app is a crash ticket on their own board instead.
+_Avoid_: Bug reporter, support bot
+
 **Memory**:
 Knowledge written for agents, not people: a title, a one-line when-to-use
 phrase, and a rich-text body, belonging to exactly one project. It reaches

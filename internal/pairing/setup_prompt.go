@@ -50,13 +50,17 @@ func prepareInstructions(p setupPrompt) string {
 	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
 	b.WriteString("   - Copy each skill directory it wrote into ~/.claude/skills/ and into ~/.agents/skills/, creating them if needed and skipping any name already present, then delete the temporary directory.\n")
 	b.WriteString("   - " + atomicWrite + "\n")
-	memory := skills.NexulMemory
-	b.WriteString("3. " + skillInstallStep(memory, "the file at the end of these instructions"))
-	fmt.Fprintf(&b, "4. Verify that every skill from step 2 and nexul-memory has a SKILL.md in both %s\n\n", skillLocations)
-	b.WriteString("End with one line saying what you connected, installed, and verified.\n\n")
-	b.WriteString("The nexul-memory SKILL.md:\n\n````markdown\n")
-	b.WriteString(memory.Content)
-	b.WriteString("````\n")
+	names := skills.Names()
+	for i, name := range names {
+		skill, _ := skills.Get(name)
+		fmt.Fprintf(&b, "%d. %s", 3+i, skillInstallStep(skill, "the file named "+name+" at the end of these instructions"))
+	}
+	fmt.Fprintf(&b, "%d. Verify that every skill from step 2 and %s has a SKILL.md in both %s\n\n", 3+len(names), strings.Join(names, ", "), skillLocations)
+	b.WriteString("End with one line saying what you connected, installed, and verified.\n")
+	for _, name := range names {
+		skill, _ := skills.Get(name)
+		fmt.Fprintf(&b, "\nThe %s SKILL.md:\n\n````markdown\n%s````\n", name, skill.Content)
+	}
 	return b.String()
 }
 
@@ -81,7 +85,7 @@ func skillsUpdateInstructions(p setupPrompt) string {
 	}
 	fmt.Fprintf(&b, "%d. Verify that each skill above has a SKILL.md in both %s with that version.\n", len(names)+1, skillLocations)
 	fmt.Fprintf(&b, "%d. Call Nexul's MCP tool `computer_setup_update` with computer_id %q, confirmed true, and skills_version %q, and nothing else. Do not call it if Nexul's MCP tools are not available in this session or a write failed; say what failed instead.\n",
-		len(names)+2, p.ComputerID, skills.NexulMemory.Version)
+		len(names)+2, p.ComputerID, skills.SetVersion)
 	b.WriteString("\nEnd with one line saying what you updated.\n")
 	return b.String()
 }
