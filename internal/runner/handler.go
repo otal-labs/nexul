@@ -581,6 +581,8 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return nil
 	case FrameFacts:
 		return h.publishFacts(ctx, c, f)
+	case FrameContainerEvent, FrameContainerStates:
+		return h.publishContainers(ctx, c, f)
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
 			h.log.Warn("join_networks failed on runner", "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
@@ -594,6 +596,21 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 	default:
 		return nil
 	}
+}
+
+// publishContainers hands a machine runner's Docker events to the deploy domain, which knows whose containers they are;
+// a personal runner never sends them.
+func (h *Handler) publishContainers(ctx context.Context, c *runnerConn, f Frame) error {
+	if c.personal {
+		h.log.Warn("container frame from a personal runner", "runner_id", c.id, "type", f.Type)
+		return nil
+	}
+	if f.Type == FrameContainerStates {
+		return h.bus.Publish(ctx, TopicContainerStates, ContainerStatesEvent{Machine: c.machine, States: f.States})
+	}
+	return h.bus.Publish(ctx, TopicContainerEvent, ContainerEvent{
+		Machine: c.machine, Container: f.Container, Project: f.Project, Service: f.Service, Action: f.Action, ExitCode: f.ExitCode,
+	})
 }
 
 // heartbeat records a runner's beat; a personal runner's is never published, since the topic reaches automations.

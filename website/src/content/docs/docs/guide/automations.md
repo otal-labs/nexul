@@ -54,6 +54,10 @@ For unit tests, `createMockContext` from `@nexul/sdk/testing` gives you the same
 
 Two events mark a moment rather than one change. `ticket.unblocked` fires when a ticket's last open blocker reaches a done column, its blocked-by link is removed, or it's deleted, with `cause` saying which. `doc.settled` fires once a person's edits to a doc have stopped for ten minutes, with `first` true for a doc created inside that window; edits an agent makes through MCP, or an automation makes, never start the wait.
 
+## When a service goes down
+
+`service.container_stopped` fires when a service of a stack goes down: its container died with a non-zero exit code or was killed for running out of memory. `service.container_recovered` fires once that container has stayed running for a minute. A container that keeps restarting is one outage, so the stopped event fires once, at the first crash. Both carry the stack, service, container, machine, an `outage_id` that pairs the two, the exit code, `oom` and `restart_count`; they carry no output lines, so to see why it crashed, read that service's logs while Docker still holds the container. Events for a stack with a deploy running, and for containers that exit with code 0, are never sent.
+
 ## Start a play
 
 `ctx.runPlay` queues one of the workspace's ticket plays on a ticket, named by the play's label:

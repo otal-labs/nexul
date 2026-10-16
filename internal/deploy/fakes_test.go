@@ -511,6 +511,8 @@ type fakeProjects struct {
 	tests    map[string]bool     // "owner/name" attached as a tests repository
 	repoErr  error
 	testsErr error
+	// workspaceErr fails the workspace lookup an outage event needs.
+	workspaceErr error
 }
 
 func newFakeProjects() *fakeProjects {
@@ -519,6 +521,11 @@ func newFakeProjects() *fakeProjects {
 
 func (f *fakeProjects) ProjectExists(_ context.Context, projectID string) (bool, error) {
 	return f.exists[projectID], nil
+}
+
+// WorkspaceOf puts every project in ws-1, the workspace outage events name.
+func (f *fakeProjects) WorkspaceOf(context.Context, string) (string, error) {
+	return "ws-1", f.workspaceErr
 }
 
 func (f *fakeProjects) LinkRepo(_ context.Context, projectID, owner, name string) error {

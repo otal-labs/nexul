@@ -201,6 +201,8 @@ func (h *Handler) listStacks(w http.ResponseWriter, r *http.Request) {
 type stackResponse struct {
 	*Stack
 	BranchDeployments []*Stack `json:"branch_deployments,omitempty"`
+	// Outages are the services that are down now; a stack with none has an empty list.
+	Outages []*Outage `json:"outages"`
 }
 
 func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
@@ -210,6 +212,11 @@ func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := stackResponse{Stack: stack}
+	resp.Outages, err = h.svc.OpenOutages(r.Context(), stack.ID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
 	if stack.DerivedFrom == "" {
 		branches, err := h.svc.ListBranchDeployments(r.Context(), stack.ID)
 		if err != nil {

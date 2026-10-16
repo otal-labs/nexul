@@ -9,7 +9,7 @@ import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
 import { useFetchGateways } from "@/hooks/DnsHooks";
 import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackWithBranches } from "@/models/Stack";
 import { machineNetworks, type MachineNetwork } from "@/utils/MachineNetworkUtility";
-import type { LiveFollower } from "@/lib/live";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
@@ -186,6 +186,10 @@ export const stackFollower: LiveFollower = {
   "deploy.updated": (frame: DeployFrame, { client }) => refetchDeployHistory(client, getStackDeploysKey, frame),
   // The frame carries the keys and no values, so the stack's own read refetches to show a change made elsewhere.
   "service.updated": ({ stack }: { stack: { id: string } }, { client }) => client.invalidateQueries({ queryKey: [getStackKey, stack.id] }),
+  // The stack's own read carries its open outages; the frame names the stack and the service, not the list.
+  ...followEach(["service.container_stopped", "service.container_recovered"], ({ stack_id }: { stack_id: string }, { client }) =>
+    client.invalidateQueries({ queryKey: [getStackKey, stack_id] }),
+  ),
   // A stack's rule can hide it or its deploys from whom it names, so its lists and its own reads refetch; a machine's
   // rule does the same to the instance's stacks on it.
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) => {

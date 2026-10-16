@@ -12,6 +12,7 @@ import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocClarificationKey, getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
+import { getStackKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
 import { dispatch, useLiveEvents } from "@/hooks/useLiveEvents";
@@ -183,6 +184,8 @@ describe("dispatch", () => {
     ["ticket.status_changed", { ticket: { id: "t-1", project_id: "p-1" }, from: "a", to: "b" }, getTicketsByProjectKey, "p-1", "p-2"],
     ["status.updated", { status: { id: "st-1", project_id: "p-1" } }, getProjectStatusesKey, "p-1", "p-2"],
     ["doc.created", { doc: { id: "d1", project_id: "p-1", title: "Spec", version: 1 } }, getDocsKey, "p-1", "p-2"],
+    ["service.container_stopped", { stack_id: "s-1", service: "web" }, getStackKey, "s-1", "s-2"],
+    ["service.container_recovered", { stack_id: "s-1", service: "web" }, getStackKey, "s-1", "s-2"],
   ])("%s refetches only the entry its payload names", (topic, payload, key, named, other) => {
     const client = new QueryClient();
     client.setQueryData([key, named], []);

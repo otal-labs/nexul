@@ -5905,6 +5905,150 @@
       "members_only"
     ]
   },
+  "service.container_recovered": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the stack's project; empty for an instance stack."
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The stack's project; empty for an instance stack."
+      },
+      "stack_id": {
+        "type": "string",
+        "description": "The stack the service belongs to."
+      },
+      "stack_name": {
+        "type": "string",
+        "description": "The stack's name."
+      },
+      "service": {
+        "type": "string",
+        "description": "The service's name in the stack; read its output with stack_get and logs for this service."
+      },
+      "container": {
+        "type": "string",
+        "description": "The container's name on the machine."
+      },
+      "machine": {
+        "type": "string",
+        "description": "The machine the stack runs on."
+      },
+      "outage_id": {
+        "type": "string",
+        "description": "The outage this event opens or closes."
+      },
+      "exit_code": {
+        "type": "integer",
+        "description": "The exit code of the last crash; 0 when only an out-of-memory kill was seen so far."
+      },
+      "oom": {
+        "type": "boolean",
+        "description": "True when the kernel killed the container for running out of memory."
+      },
+      "restart_count": {
+        "type": "integer",
+        "description": "How many more times the container crashed after the first."
+      },
+      "started_at": {
+        "type": "string",
+        "description": "When the service went down.",
+        "format": "date-time"
+      },
+      "ended_at": {
+        "type": "string",
+        "description": "When the service was steady again; sent only with service.container_recovered.",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "stack_id",
+      "stack_name",
+      "service",
+      "container",
+      "machine",
+      "outage_id",
+      "exit_code",
+      "oom",
+      "restart_count",
+      "started_at"
+    ]
+  },
+  "service.container_stopped": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the stack's project; empty for an instance stack."
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The stack's project; empty for an instance stack."
+      },
+      "stack_id": {
+        "type": "string",
+        "description": "The stack the service belongs to."
+      },
+      "stack_name": {
+        "type": "string",
+        "description": "The stack's name."
+      },
+      "service": {
+        "type": "string",
+        "description": "The service's name in the stack; read its output with stack_get and logs for this service."
+      },
+      "container": {
+        "type": "string",
+        "description": "The container's name on the machine."
+      },
+      "machine": {
+        "type": "string",
+        "description": "The machine the stack runs on."
+      },
+      "outage_id": {
+        "type": "string",
+        "description": "The outage this event opens or closes."
+      },
+      "exit_code": {
+        "type": "integer",
+        "description": "The exit code of the last crash; 0 when only an out-of-memory kill was seen so far."
+      },
+      "oom": {
+        "type": "boolean",
+        "description": "True when the kernel killed the container for running out of memory."
+      },
+      "restart_count": {
+        "type": "integer",
+        "description": "How many more times the container crashed after the first."
+      },
+      "started_at": {
+        "type": "string",
+        "description": "When the service went down.",
+        "format": "date-time"
+      },
+      "ended_at": {
+        "type": "string",
+        "description": "When the service was steady again; sent only with service.container_recovered.",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "stack_id",
+      "stack_name",
+      "service",
+      "container",
+      "machine",
+      "outage_id",
+      "exit_code",
+      "oom",
+      "restart_count",
+      "started_at"
+    ]
+  },
   "service.created": {
     "type": "object",
     "properties": {

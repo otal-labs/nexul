@@ -101,6 +101,19 @@ describe("StackPage", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Permissions" })).not.toBeInTheDocument());
   });
 
+  it("shows a service that is down on its row, with when, how it exited and why, and no line on a service that is up", async () => {
+    const down = { id: "out-1", service: "worker", container: "api-worker-1", started_at: "2026-10-01T10:42:00Z", exit_code: 137, oom: true, restart_count: 0 };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: { ...stack, outages: [down] } });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container, { ...container, id: "svc-2", name: "worker", container_name: "api-worker-1" }] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+    const line = await screen.findByText(/^Down since \d\d:\d\d · exit 137 · out of memory$/);
+    expect(line.closest("li")).toHaveTextContent("worker");
+    expect(screen.getAllByText(/^Down since/)).toHaveLength(1);
+  });
+
   it("renders the stack header with the strategy and runner facts", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();

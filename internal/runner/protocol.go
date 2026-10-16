@@ -53,6 +53,11 @@ const (
 	// FrameT3PairTokenRequest asks a personal runner to mint a one-time T3 Code pairing token, answered by FrameT3PairToken.
 	FrameT3PairTokenRequest FrameType = "t3_pair_token_request"
 	FrameT3PairToken        FrameType = "t3_pair_token"
+	// FrameContainerEvent (runner -> server) is one die, oom or start of a container on a machine runner's host, and
+	// FrameContainerStates a snapshot of that host's containers sent when the event stream (re)starts. The runner
+	// does not know which containers are Nexul's; the server matches them to stacks.
+	FrameContainerEvent  FrameType = "container_event"
+	FrameContainerStates FrameType = "container_states"
 	// FrameFacts (runner -> server) is a personal runner's report about its computer, on connect and every 6 hours.
 	FrameFacts FrameType = "facts"
 )
@@ -76,6 +81,13 @@ const (
 
 	UpgradeStatusStarted = "started"
 	UpgradeStatusFailed  = "failed"
+
+	ContainerActionDie   = "die"
+	ContainerActionOOM   = "oom"
+	ContainerActionStart = "start"
+
+	ContainerStateRunning = "running"
+	ContainerStateExited  = "exited"
 
 	LogStreamStdout = "stdout"
 	LogStreamStderr = "stderr"
@@ -146,6 +158,25 @@ type Frame struct {
 	Token string `json:"token,omitempty"`
 	// Facts carries a facts frame's report.
 	Facts *Facts `json:"facts,omitempty"`
+	// Project is a container's compose project, Action its Docker event and ExitCode the exit code a die carried;
+	// they ride a container_event beside Container, Service and TS (unix seconds).
+	Project  string `json:"project,omitempty"`
+	Action   string `json:"action,omitempty"`
+	ExitCode int    `json:"exit_code,omitempty"`
+	// States carries a container_states snapshot.
+	States []ContainerState `json:"states,omitempty"`
+}
+
+// ContainerState is one container in a container_states snapshot. State is running, or exited for a container that
+// is down; only a running container and one that exited non-zero or was OOM-killed are reported.
+type ContainerState struct {
+	Container  string `json:"container"`
+	Project    string `json:"project,omitempty"`
+	Service    string `json:"service,omitempty"`
+	State      string `json:"state"`
+	ExitCode   int    `json:"exit_code,omitempty"`
+	OOM        bool   `json:"oom,omitempty"`
+	FinishedAt int64  `json:"finished_at,omitempty"`
 }
 
 // ContainerLogLine is one line a container printed: Docker's RFC 3339 timestamp, stdout or stderr, and the text.
@@ -208,6 +239,8 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameT3PairTokenRequest: (*Frame).validateID,
 	FrameT3PairToken:        (*Frame).validateT3PairToken,
 	FrameFacts:              (*Frame).validateFacts,
+	FrameContainerEvent:     (*Frame).validateContainerEvent,
+	FrameContainerStates:    (*Frame).validateContainerStates,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -384,6 +417,25 @@ func (f *Frame) validateT3PairToken() error {
 func (f *Frame) validateFacts() error {
 	if f.Facts == nil || !oneOf(f.Facts.T3.State, T3Answering, T3NotRunning, T3Missing, T3NotLoopback) {
 		return fmt.Errorf("%w: facts requires facts with a valid T3 Code state", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateContainerEvent() error {
+	if f.Container == "" || !oneOf(f.Action, ContainerActionDie, ContainerActionOOM, ContainerActionStart) {
+		return fmt.Errorf("%w: container_event requires container and a die, oom or start action", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateContainerStates() error {
+	if len(f.States) == 0 {
+		return fmt.Errorf("%w: container_states requires states", apperrs.ErrInvalid)
+	}
+	for _, st := range f.States {
+		if st.Container == "" || !oneOf(st.State, ContainerStateRunning, ContainerStateExited) {
+			return fmt.Errorf("%w: container_states entry %q needs a container and a running or exited state", apperrs.ErrInvalid, st.Container)
+		}
 	}
 	return nil
 }

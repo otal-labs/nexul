@@ -33,6 +33,10 @@ const (
 	// loop is the one place inbound work reaches a connection, matching deploy's plumbing exactly.
 	TopicInstanceUpgradeRequested = "instance.upgrade_requested"
 	TopicInstanceUpgradeChanged   = "instance.upgrade_changed"
+	// TopicContainerEvent and TopicContainerStates carry a machine runner's Docker events to the deploy domain. They are
+	// an internal edge, not in Topics(): the published contract is the outage events deploy makes of them.
+	TopicContainerEvent  = "runner.container_event"
+	TopicContainerStates = "runner.container_states"
 )
 
 // Topics returns every topic the runner domain publishes.
@@ -53,6 +57,22 @@ func Topics() []eventbus.Topic {
 		{Name: TopicInstanceUpgradeRequested, Payload: InstanceUpgradeRequestedEvent{}},
 		{Name: TopicInstanceUpgradeChanged, Payload: Upgrade{}},
 	}
+}
+
+// ContainerEvent is one die, oom or start a machine runner saw on its host, before anything knows whose container it is.
+type ContainerEvent struct {
+	Machine   string `json:"machine"`
+	Container string `json:"container"`
+	Project   string `json:"project,omitempty"`
+	Service   string `json:"service,omitempty"`
+	Action    string `json:"action"`
+	ExitCode  int    `json:"exit_code,omitempty"`
+}
+
+// ContainerStatesEvent is a machine runner's report of the containers on its host.
+type ContainerStatesEvent struct {
+	Machine string           `json:"machine"`
+	States  []ContainerState `json:"states"`
 }
 
 // Publisher is the narrow bus seam Service needs to announce upgrade state (ADR 0019); Handler's own Bus

@@ -19,7 +19,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 
 | Section | What you do there |
 | --- | --- |
-| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports |
+| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, and which services are down |
 | **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
 | **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
@@ -76,6 +76,14 @@ Agents set the same rules with `permission_overwrite_update` and `resource_type:
 A machine is a server's Docker, so putting a stack on one takes **Deploy to** on that machine, beside the stack permissions above. It is checked when you create a stack, move one to another machine, import containers from a machine, or set up a gateway, and again on every deploy you start. A stack page shows its deploy actions (**Redeploy**, **Rollback**, **Build & deploy**, **Deploy now**, **Retry** and **Cancel deploy**) only when you hold Deploy to on its machine; with **Show locked actions** on for one of your roles they stay in view, dimmed, with the reason `No Deploy to on machine <name>`. The project wizard's **Save & deploy** and **Attach** follow the same answer for the stack's machine, and a role's view on the stack's permissions panel folds it in too. Machine pickers list only the machines you may deploy to, and a machine you can't see is answered like a name no machine bears, even when you type its name into a tool.
 
 Taking someone off a machine stops their next deploy there. Deploys Nexul starts itself, after a push to a branch with a deploy rule or a merge, keep running. A stack on a machine you can't see still shows that machine's name on its page, as plain text with no link.
+
+## When a service goes down
+
+Each machine's runner watches Docker for the stacks on it. When a container dies with a non-zero exit code, or the kernel kills it for running out of memory, the **Overview** marks its service as down on its row: when it went down, how it exited, and whether memory was the reason, as in `Down since 10:42 · exit 137 · out of memory`. A container that crashes, restarts and crashes again is one outage, and the line counts the crashes after the first. It clears once the container has stayed running for a minute. `stack_get` lists the same services under `open_outages`.
+
+Three things raise nothing: a container that exits with code 0, which is a job that finished; anything that happens while a deploy of the stack is running, since a deploy replaces its containers; and a container on a computer's own runner, which does not watch Docker. If Nexul or a runner was offline when a container died, the runner reports what it finds the next time it connects, so the outage still shows once.
+
+Nexul keeps no copy of what the container printed. Docker holds a crashed container's output until the container is removed, so read it from **Logs**, or ask `stack_get` for that service's `logs`. Opening and closing an outage publishes `service.container_stopped` and `service.container_recovered`, which [automations](/docs/guide/automations/#when-a-service-goes-down) can act on. Both reach whoever can read the stack.
 
 ## Logs
 

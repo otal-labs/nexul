@@ -116,6 +116,20 @@ func TestFrame_Encode(t *testing.T) {
 			want: `{"type":"update","version":"v0.2.0","url":"https://instance/api/runners/download/linux-amd64?version=v0.2.0","sha256":"abc123"}`,
 		},
 		{
+			name: "container_event wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameContainerEvent, Container: "shop-web-1", Project: "shop", Service: "web", Action: ContainerActionDie, ExitCode: 137, TS: 1700000000}
+			},
+			want: `{"type":"container_event","ts":1700000000,"container":"shop-web-1","service":"web","project":"shop","action":"die","exit_code":137}`,
+		},
+		{
+			name: "container_states wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameContainerStates, States: []ContainerState{{Container: "shop-web-1", Project: "shop", Service: "web", State: ContainerStateExited, ExitCode: 1, OOM: true, FinishedAt: 1700000000}}}
+			},
+			want: `{"type":"container_states","states":[{"container":"shop-web-1","project":"shop","service":"web","state":"exited","exit_code":1,"oom":true,"finished_at":1700000000}]}`,
+		},
+		{
 			name: "logs_request wire shape",
 			got: func() Frame {
 				return Frame{Type: FrameLogsRequest, ID: "l1", Container: "shop-web-1", Tail: 200, Follow: true}
@@ -234,6 +248,11 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "t3_pair_token_request missing id", f: Frame{Type: FrameT3PairTokenRequest}},
 		{name: "t3_pair_token with neither token nor error", f: Frame{Type: FrameT3PairToken, ID: "p1"}},
 		{name: "t3_pair_token with both token and error", f: Frame{Type: FrameT3PairToken, ID: "p1", Token: "tok", Error: "refused"}},
+		{name: "container_event missing container", f: Frame{Type: FrameContainerEvent, Action: ContainerActionDie}},
+		{name: "container_event with an action nobody asked for", f: Frame{Type: FrameContainerEvent, Container: "web", Action: "exec_start"}},
+		{name: "container_states without states", f: Frame{Type: FrameContainerStates}},
+		{name: "container_states entry without a container", f: Frame{Type: FrameContainerStates, States: []ContainerState{{State: ContainerStateRunning}}}},
+		{name: "container_states entry in a state nobody reports", f: Frame{Type: FrameContainerStates, States: []ContainerState{{Container: "web", State: "paused"}}}},
 		{name: "facts missing its report", f: Frame{Type: FrameFacts}},
 		{name: "facts with an unknown T3 Code state", f: Frame{Type: FrameFacts, Facts: &Facts{T3: T3Facts{State: "asleep"}}}},
 	}

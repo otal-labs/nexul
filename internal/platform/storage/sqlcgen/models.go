@@ -1001,6 +1001,18 @@ type Service struct {
 	ObservedAt    int64
 }
 
+type ServiceOutage struct {
+	ID           string
+	StackID      string
+	Service      string
+	Container    string
+	StartedAt    int64
+	ExitCode     int64
+	Oom          int64
+	RestartCount int64
+	EndedAt      sql.NullInt64
+}
+
 type Session struct {
 	ID           string
 	UserID       string

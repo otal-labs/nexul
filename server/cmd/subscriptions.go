@@ -286,6 +286,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// Deploy terminal states drive the anchored node's badge.
 	mustSubscribe(ctx, bus, "deploy.live_status", deploy.TopicDeployStatusChanged, "", topologyDeployStatusHandler(svc.deploySvc, svc.topoSvc))
 	mustSubscribe(ctx, bus, "deploy.log", deploy.TopicDeployLog, "", svc.deploySvc.HandleLog)
+	// A machine runner's Docker events and reconnect snapshots become service outages.
+	mustSubscribe(ctx, bus, "deploy.container_event", deploy.TopicRunnerContainerEvent, "", svc.deploySvc.HandleContainerEvent)
+	mustSubscribe(ctx, bus, "deploy.container_states", deploy.TopicRunnerContainerStates, "", svc.deploySvc.HandleContainerStates)
 	// A healthy deploy settles its containers' exposures: an exposure made mid-deploy would otherwise wait for the next one.
 	mustSubscribe(ctx, bus, "dns.exposure_reconcile", deploy.TopicDeployStatusChanged, "", exposureReconcileHandler(svc.deploySvc, svc.dnsSvc))
 

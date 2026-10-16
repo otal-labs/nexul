@@ -167,6 +167,8 @@ var liveRules = map[string]liveRule{
 	deploy.TopicStackCreated:           stackFrame,
 	deploy.TopicStackUpdated:           stackFrame,
 	deploy.TopicStackDeleted:           anywhere(permissions.StacksRead),
+	deploy.TopicContainerStopped:       outageFrame,
+	deploy.TopicContainerRecovered:     outageFrame,
 	deploy.TopicDeployUpdated:          deployFrame,
 	runner.TopicDeployBuildStarted:     deployFrame,
 	runner.TopicDeployBuildProgress:    deployFrame,
@@ -592,6 +594,18 @@ func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		ruled = p.Stack.DerivedFrom
 	}
 	return a.access.RequireStack(ctx, p.Stack.ProjectID, ruled, permissions.StacksRead) == nil
+}
+
+// outageFrame reaches whoever reads the stack the outage is on, through the same read the stack's own fetch runs.
+func outageFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		StackID string `json:"stack_id"`
+	}
+	if !decode(raw, &p) {
+		return false
+	}
+	_, err := a.deploy.GetStack(ctx, p.StackID)
+	return err == nil
 }
 
 func deployFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
