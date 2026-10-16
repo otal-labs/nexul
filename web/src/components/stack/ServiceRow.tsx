@@ -43,7 +43,7 @@ export const ServiceRow = ({ container, hostnames, outage }: ServiceRowProps) =>
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="min-w-0 text-sm font-medium wrap-anywhere text-foreground">{container.name}</span>
-          <ContainerStatusBadge status={container.status} />
+          {!outage && <ContainerStatusBadge status={container.status} />}
           {canReadLogs && (
             <Link
               to={wsPath(`/stacks/${container.stack_id}/logs/${container.name}`)}
