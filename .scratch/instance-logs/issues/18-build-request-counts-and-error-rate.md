@@ -1,7 +1,7 @@
 # 18: Build request counts and the error-rate rule
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 14, 16, 17
 
 ## What to build
@@ -32,3 +32,16 @@ notified, the crash ticket switch and stack plays reused.
 - `wantsCounts(stack)` returns true for every stack until the rule narrows it.
 - Left: the rule, `error_rate_episodes`, the crossed and recovered events, watchers, the crash
   ticket switch, the `stack.error_rate_crossed` moment, the Error rate card and its greyed reasons.
+
+## Built
+
+- Migration 0123: the rule on the stack (5% / 5 minutes / 20 requests by default, bounded) and
+  `error_rate_episodes`, one open per stack. The evaluator runs after each minute's count poll.
+- Recovery is every one of the last N minutes at or under the limit; a minute with no requests
+  counts as under; a missing minute blocks crossing and recovery alike.
+- `wantsCounts` now means the rule is on, for proxy frames and Cloudflare alike; the Requests card
+  says "Not counted" while the rule is off.
+- Switching the rule off ends an open episode without a recovered event.
+- The analytics reason comes from probing a minute of the zone's counts, cached a minute per zone;
+  only a refusal counts, so a Cloudflare outage never reads as a missing permission. Not run
+  live yet: ticket 20 does, with a real token.
