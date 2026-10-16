@@ -48,6 +48,8 @@ type ClientConfig struct {
 	T3Home string
 	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
 	RunnerLog *RunnerLog
+	// Containers is how a machine runner reads its host's containers; nil, and any personal runner, watches none.
+	Containers *ContainerWatch
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -166,6 +168,9 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	loops.Go(func() { c.heartbeatLoop(ctx, conn) })
 	if c.cfg.Personal {
 		loops.Go(func() { c.factsLoop(ctx, conn) })
+	}
+	if !c.cfg.Personal && c.cfg.Containers != nil {
+		loops.Go(func() { c.watchContainers(ctx, conn) })
 	}
 
 	for {

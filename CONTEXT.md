@@ -589,6 +589,14 @@ address, status. A stack deploy creates or updates one service per
 container it started; an import adopts one per container found running.
 _Avoid_: Container (the Docker thing a service is a record of)
 
+**Outage**:
+One stretch of a service being down: its container died with a non-zero exit code or was OOM-killed, until it has
+stayed running for 60 seconds. A container that keeps crashing and restarting is one outage whose restart count
+grows. Opening one publishes `service.container_stopped` and closing one `service.container_recovered`; neither carries
+output lines, because event payloads are stored and container output never is. Nothing is opened while a deploy of the
+stack runs, for a container that exits 0, or from a personal runner.
+_Avoid_: Incident, downtime, crash (one exit is not an outage)
+
 **Container logs**:
 What a service's container prints on stdout and stderr, each line with its
 timestamp and stream, read live from Docker through the machine's runner and

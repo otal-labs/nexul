@@ -2,13 +2,15 @@ import { ScrollTextIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { ContainerStatusBadge } from "@/components/stack/ContainerStatusBadge";
+import { ServiceOutageLine } from "@/components/stack/ServiceOutageLine";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { parseContainerPort, type Container, type ContainerPort } from "@/models/Stack";
+import { parseContainerPort, type Container, type ContainerPort, type ServiceOutage } from "@/models/Stack";
 
 interface ServiceRowProps {
   container: Container;
   hostnames: string[];
+  outage?: ServiceOutage | undefined;
 }
 
 const imageOf = (c: Container): string => c.image || c.declared.image || c.declared.build || "";
@@ -30,7 +32,7 @@ const PortItem = ({ name, port }: { name: string; port: ContainerPort }) => (
 );
 
 // Trailing column reads how the service is reached: public hostnames first, then its address on the stack's network.
-export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
+export const ServiceRow = ({ container, hostnames, outage }: ServiceRowProps) => {
   const wsPath = useWorkspacePath();
   const canReadLogs = useAreaAccess()?.("stackLogs") ?? false;
   const image = imageOf(container);
@@ -51,6 +53,7 @@ export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
             </Link>
           )}
         </div>
+        {outage && <ServiceOutageLine outage={outage} />}
         {image && <p className="font-mono text-xs wrap-anywhere text-muted-foreground">{image}</p>}
         {container.container_name && (
           <p className="font-mono text-xs wrap-anywhere text-muted-foreground/70" title="Docker container name">

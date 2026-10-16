@@ -97,6 +97,7 @@ var scopeRules = map[string]scopeRule{
 	"status.created": boardScope("status"), "status.updated": boardScope("status"), "status.deleted": boardScope("status"),
 
 	"service.created": stackScope, "service.updated": stackScope, "service.deleted": stackScope,
+	"service.container_stopped": stackScope, "service.container_recovered": stackScope,
 	"deploy.requested": deployScope, "deploy.status_changed": deployScope, "deploy.cancel_requested": deployScope,
 	"deploy.retried": deployScope,
 	"deploy.updated": deployScope, "deploy.build_started": deployScope, "deploy.build_progress": deployScope,

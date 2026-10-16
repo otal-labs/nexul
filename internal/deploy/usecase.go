@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -26,6 +28,8 @@ type ProjectStore interface {
 	LinkRepo(ctx context.Context, projectID, owner, name string) error
 	// IsTestsRepo reports a project's tests repository, which never builds a stack or deploys.
 	IsTestsRepo(ctx context.Context, owner, name string) (bool, error)
+	// WorkspaceOf is the workspace a project belongs to.
+	WorkspaceOf(ctx context.Context, projectID string) (string, error)
 }
 
 // GatewayLookup is the dns seam checking a rule's network has a gateway before its hostname template resolves (ADR 0017).
@@ -63,6 +67,10 @@ type Service struct {
 	logs        LogSource
 	gate        Gate
 	now         func() time.Time
+	outages     OutageRepo
+	// outageMu serializes outage changes with the recovery timers; recoveries are the steady-state waits in flight.
+	outageMu   sync.Mutex
+	recoveries map[string]*recovery
 }
 
 // Gate is the permission check a stack or deploy passes before the caller touches it (the access domain, ADR 0042).
@@ -797,7 +805,26 @@ func (s *Service) HandleStatusChanged(ctx context.Context, ev eventbus.Event) er
 			return fmt.Errorf("reconcile services for deploy %s: %w", p.ID, err)
 		}
 	}
+	if status == StatusHealthy {
+		s.endOutagesAfterDeploy(ctx, p)
+	}
 	return nil
+}
+
+// endOutagesAfterDeploy is best-effort: a healthy deploy has already landed, and the next runner snapshot settles
+// whatever this misses.
+func (s *Service) endOutagesAfterDeploy(ctx context.Context, p DeployStatusChangedEvent) {
+	if s.outages == nil {
+		return
+	}
+	d, err := s.repo.GetByID(ctx, p.ID)
+	if err != nil {
+		slog.Warn("outages after deploy: get deploy failed", "deploy_id", p.ID, "error", err)
+		return
+	}
+	if err := s.recoverAfterDeploy(ctx, d.StackID, p.Services); err != nil {
+		slog.Warn("outages after deploy failed", "deploy_id", p.ID, "stack_id", d.StackID, "error", err)
+	}
 }
 
 // HandleLog is the deploy.log consumer: one row per line of the runner's batch, all stamped with the batch's

@@ -58,6 +58,7 @@ func main() {
 		StreamURL:         cfg.StreamURL(),
 		T3Home:            cfg.T3Home,
 		RunnerLog:         runnerLog,
+		Containers:        runner.HostContainerWatch(),
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)

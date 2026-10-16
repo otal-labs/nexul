@@ -39,6 +39,19 @@ describe("the stack follower", () => {
     expect([isStale(client, ["getStack", "s-1"]), isStale(client, ["getStack", "s-2"])]).toEqual([true, false]);
   });
 
+  it.each(["service.container_stopped", "service.container_recovered"])(
+    "refetches only the read of the stack %s names, since that read carries its open outages",
+    async (topic) => {
+      const client = seeded([
+        [["getStack", "s-1"], { id: "s-1" }],
+        [["getStack", "s-2"], { id: "s-2" }],
+        [["getStackServices", "s-1"], []],
+      ]);
+      await followFrame(stackFollower, topic, { stack_id: "s-1", service: "web", outage_id: "o-1" }, client);
+      expect([isStale(client, ["getStack", "s-1"]), isStale(client, ["getStack", "s-2"]), isStale(client, ["getStackServices", "s-1"])]).toEqual([true, false, false]);
+    },
+  );
+
   it("refetches the stack lists and the named stack's reads when its rule changes, and nothing for another entity's", async () => {
     const client = seeded([
       [["getStacks", "all"], []],

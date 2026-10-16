@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
@@ -61,4 +62,19 @@ type ServiceRepo interface {
 	ListByStack(ctx context.Context, stackID string) ([]*Container, error)
 	Get(ctx context.Context, id string) (*Container, error)
 	DeleteByStack(ctx context.Context, stackID string) error
+}
+
+// OutageRepo is the persistence contract for service outages; opening and closing write their events atomically.
+type OutageRepo interface {
+	// Open inserts an outage and writes evts in the same transaction; a service has at most one open outage.
+	Open(ctx context.Context, o *Outage, evts ...eventbus.OutboxEvent) error
+	// Update records another crash on an open outage.
+	Update(ctx context.Context, o *Outage) error
+	// Close ends an open outage and writes evts in the same transaction.
+	Close(ctx context.Context, id string, endedAt time.Time, evts ...eventbus.OutboxEvent) error
+	// GetOpen returns a service's open outage, ErrNotFound when it has none.
+	GetOpen(ctx context.Context, stackID, service string) (*Outage, error)
+	ListOpenByStack(ctx context.Context, stackID string) ([]*Outage, error)
+	// LatestEnd is when the service's newest closed outage ended, the zero time when it has had none.
+	LatestEnd(ctx context.Context, stackID, service string) (time.Time, error)
 }

@@ -321,7 +321,9 @@ with a `type` discriminator, declared in `internal/runner/protocol.go`:
   `logs_request`, `logs_cancel`, `harness_dial`.
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
   `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`,
-  `harness_dial_refused`.
+  `harness_dial_refused`, and from a machine runner `container_event` and
+  `container_states`, Docker's die, oom and start events and a snapshot taken
+  whenever its event stream (re)starts.
 
 A personal runner answers `harness_dial {id}` by opening a WebSocket of its
 own to `/api/runners/streams/{id}` and copying bytes between it and T3 Code

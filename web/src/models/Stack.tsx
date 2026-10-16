@@ -95,9 +95,23 @@ export interface Stack {
   updated_at: string;
 }
 
-// GET /api/stacks/{id} attaches the base stack's live branch deployments (empty for a derived stack).
+// A service that is down: its container crashed or was killed for memory and has not stayed up since (internal/deploy/outage.go).
+export interface ServiceOutage {
+  id: string;
+  service: string;
+  container: string;
+  started_at: string;
+  // 0 while only an out-of-memory kill has been seen.
+  exit_code: number;
+  oom: boolean;
+  // Crashes after the first.
+  restart_count: number;
+}
+
+// GET /api/stacks/{id} attaches the base stack's live branch deployments (empty for a derived stack) and the services that are down now.
 export interface StackWithBranches extends Stack {
   branch_deployments?: Stack[];
+  outages?: ServiceOutage[];
 }
 
 export interface Deploy {

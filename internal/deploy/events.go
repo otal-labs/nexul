@@ -19,6 +19,10 @@ const (
 	TopicStackCreated  = "service.created"
 	TopicStackUpdated  = "service.updated"
 	TopicStackDeleted  = "service.deleted"
+	// TopicContainerStopped opens an outage; a restart loop raises it once, at its first crash.
+	TopicContainerStopped = "service.container_stopped"
+	// TopicContainerRecovered closes an outage once the container has stayed running.
+	TopicContainerRecovered = "service.container_recovered"
 	// TopicDeployLog is consumed, not published: the runner domain streams output batches on it.
 	TopicDeployLog = "deploy.log"
 )
@@ -33,6 +37,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicStackCreated, Payload: StackEvent{}},
 		{Name: TopicStackUpdated, Payload: StackEvent{}},
 		{Name: TopicStackDeleted, Payload: StackDeletedEvent{}},
+		{Name: TopicContainerStopped, Payload: OutageEvent{}},
+		{Name: TopicContainerRecovered, Payload: OutageEvent{}},
 	}
 }
 

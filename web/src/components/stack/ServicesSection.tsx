@@ -7,7 +7,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import { ServiceRow } from "@/components/stack/ServiceRow";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
-import { useFetchStackServices } from "@/hooks/StackHooks";
+import { useFetchStack, useFetchStackServices } from "@/hooks/StackHooks";
 import type { Container } from "@/models/Stack";
 
 interface ServicesSectionProps {
@@ -25,6 +25,7 @@ const summary = (services: Container[]): string => {
 
 export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
   const { data: services, isPending, error } = useFetchStackServices(stackId);
+  const { data: stack } = useFetchStack(stackId);
   const canSeeDns = useAreaAccess()?.("dns") ?? false;
   const { data: exposures } = useFetchExposures(canSeeDns);
   const hostnamesOf = (id: string) => (exposures ?? []).filter((e) => e.service_id === id).map((e) => e.hostname);
@@ -42,7 +43,7 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
       {services && services.length > 0 && (
         <EnterList className="divide-y divide-border rounded-lg border border-border">
           {services.map((c) => (
-            <ServiceRow key={c.id} container={c} hostnames={hostnamesOf(c.id)} />
+            <ServiceRow key={c.id} container={c} hostnames={hostnamesOf(c.id)} outage={stack?.outages?.find((o) => o.service === c.name)} />
           ))}
         </EnterList>
       )}

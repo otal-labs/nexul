@@ -95,6 +95,8 @@
   "runner.connected",
   "runner.disconnected",
   "runner.personal_changed",
+  "service.container_recovered",
+  "service.container_stopped",
   "service.created",
   "service.deleted",
   "service.updated",

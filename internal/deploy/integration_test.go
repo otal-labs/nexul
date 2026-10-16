@@ -65,6 +65,14 @@ func (p *testProjects) ProjectExists(ctx context.Context, projectID string) (boo
 	return err == nil, nil
 }
 
+func (p *testProjects) WorkspaceOf(ctx context.Context, projectID string) (string, error) {
+	project, err := p.store.Projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return project.WorkspaceID, nil
+}
+
 func (p *testProjects) LinkRepo(_ context.Context, _ string, _ string, _ string) error { return nil }
 
 func (p *testProjects) RepoInProject(_ context.Context, _ string, _ string, _ string) (bool, error) {

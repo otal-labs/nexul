@@ -154,9 +154,27 @@ type stackLogsIn struct {
 type stackDetail struct {
 	stackResult
 	Services          []*Container   `json:"services"`
+	OpenOutages       []outageResult `json:"open_outages"`
 	RecentDeploys     []deployResult `json:"recent_deploys"`
 	BranchDeployments []stackSummary `json:"branch_deployments,omitempty"`
 	Logs              *serviceLogs   `json:"logs,omitempty"`
+}
+
+// outageResult is a service that is down: since when, how it last exited, and how often it crashed again.
+type outageResult struct {
+	Service      string    `json:"service"`
+	Since        time.Time `json:"since"`
+	ExitCode     int       `json:"exit_code"`
+	OOM          bool      `json:"oom"`
+	RestartCount int       `json:"restart_count"`
+}
+
+func toOutageResults(open []*Outage) []outageResult {
+	out := make([]outageResult, 0, len(open))
+	for _, o := range open {
+		out = append(out, outageResult{Service: o.Service, Since: o.StartedAt, ExitCode: o.ExitCode, OOM: o.OOM, RestartCount: o.RestartCount})
+	}
+	return out
 }
 
 type serviceLogs struct {
@@ -167,7 +185,9 @@ type serviceLogs struct {
 func stackGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_get", "Get stack",
 		"Returns one stack's definition with its services (the containers it runs, with image, status, networks, "+
-			"and ports), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
+			"and ports), the services that are down now (open_outages: since when, exit code, whether it ran out of "+
+			"memory, how many times it crashed again; read the crashed container's output with logs), its ten most "+
+			"recent deploys, and its branch deployments. Environment variables are listed "+
 			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
 			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
 			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
@@ -210,6 +230,10 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 	if err != nil {
 		return stackDetail{}, err
 	}
+	open, err := s.OpenOutages(ctx, stack.ID)
+	if err != nil {
+		return stackDetail{}, err
+	}
 	deploys, err := s.ListByStackID(ctx, stack.ID)
 	if err != nil {
 		return stackDetail{}, err
@@ -217,6 +241,7 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 	out := stackDetail{
 		stackResult:   toStackResult(stack),
 		Services:      services,
+		OpenOutages:   toOutageResults(open),
 		RecentDeploys: toDeployResults(deploys[:min(len(deploys), recentDeploys)]),
 	}
 	if stack.DerivedFrom != "" {

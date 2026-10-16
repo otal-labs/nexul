@@ -248,6 +248,8 @@ var livePushTopics = []string{
 	deploy.TopicStackCreated,
 	deploy.TopicStackUpdated,
 	deploy.TopicStackDeleted,
+	deploy.TopicContainerStopped,
+	deploy.TopicContainerRecovered,
 	dns.TopicRecordChanged,
 	dns.TopicTunnelChanged,
 	dns.TopicGatewayChanged,

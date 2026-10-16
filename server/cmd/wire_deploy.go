@@ -26,6 +26,14 @@ func (a deployProjectStore) ProjectExists(ctx context.Context, projectID string)
 	return true, nil
 }
 
+func (a deployProjectStore) WorkspaceOf(ctx context.Context, projectID string) (string, error) {
+	p, err := a.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
+}
+
 func (a deployProjectStore) RepoInProject(ctx context.Context, projectID, owner, name string) (bool, error) {
 	repos, err := a.projects.ListRepos(ctx, projectID)
 	if err != nil {
