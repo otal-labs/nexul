@@ -155,3 +155,10 @@ a request a second through its hostname (2026-10-16, a real install). The
 status looks fixed at creation; refresh it from Cloudflare's tunnel status
 when the list is read or when its cloudflared connects.
 
+## A stack exposed through both a tunnel and a proxy gateway mixes its counts
+
+Request minutes are keyed by stack and minute. A tunnel poll replaces a
+minute, and a proxy frame adds to it, so a stack with both kinds of exposure
+loses the proxy part of the minutes the tunnel poll reads (2026-10-16). Key
+the rows by source too (a forward-only migration) and sum the sources on read.
+
