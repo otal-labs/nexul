@@ -1,7 +1,7 @@
 # 17: Build stack plays, running on a chosen computer, and "Investigate a crash"
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 14
 
 ## What to build
@@ -18,3 +18,16 @@ until a computer is set.
 - MCP: `play_create` and `play_update` take the stack type, its moments and the computer.
 - UI: the play editor's type, moments and computer picker.
 - Docs: an ADR succeeding 0132 for the third play type; the plays guide.
+
+## Built
+
+- Migration 0121 and ADR 0156 (0132 superseded in part). A stack run's target is the stack, with
+  one active run and one daily cap per stack; it reports in a new per-stack conversation and its
+  trail is started by the person who picked the computer.
+- `run_as` is whoever saved the auto play with a new computer; the right (owner or
+  `computers:run_agents`) is checked at pick, at match and at the front of the queue.
+- Shared computers show "can't run here yet" in the picker, like every other picker: pairing
+  still resolves computers by owner, so a run on a shared one couldn't start. Only the picker
+  changes once it can.
+- "Investigate a crash" ships off until a computer is picked; existing workspaces get it from
+  the migration.
