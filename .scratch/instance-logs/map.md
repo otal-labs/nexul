@@ -77,6 +77,7 @@ tickets they wait on are resolved.
 - [How a stopped container reaches an agent without writing an automation](issues/07-from-stopped-container-to-agent.md): a stack switch opens one crash ticket per service; stack plays become a third play type with crashed and came-back moments; any play can run on a chosen computer; a shipped "Investigate a crash" play never deploys; everyone who reads a stack watches it unless they turn Watching off.
 - [Where a stack's request counts come from](issues/08-where-request-counts-come-from.md): Traefik's Prometheus router counters read by the machine runner for proxy gateways; Cloudflare's per-hostname GraphQL analytics read by the server for tunnel gateways, with Analytics Read added to the token's checks; per-minute counts only, a day kept, gaps stored as missing.
 - [What an error-rate rule is and what happens when it trips](issues/09-the-error-rate-rule.md): one rule per stack, off by default, 5xx above 5% for 5 minutes with at least 20 requests; a stored episode and crossed/recovered events that notify watchers, open the crash ticket and start stack plays; Nexul's own error rate is a follow-up.
+- [The stack page, redesigned](issues/10-the-stack-page-redesign.md): one status strip with Health first and the identity facts in the meta line; Services, Requests, Deploy on Overview; an outage line on the service row; an Alerts section for the crash ticket switch and the error-rate rule; Watching in the header.
 
 ## Build
 

@@ -741,17 +741,34 @@ one hairline row per step not done with an Open, then "Go to <workspace>".
 `WelcomeFrame` is the reference.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
-workspace and project, title, the mono slug in the meta line, actions top
-right), then the live status (`StackLiveHero`): one `surface-2` well split in
-three by hairlines from a 36rem page. Last deploy is the deploy's state in
-20px semibold behind its `HealthDot` with the mono "last deploy 4h ago" under
-it; Services is the mono count with how many are up or not running, over one
-line per service (a status dot, the mono name, its state trailing, four at
-most then "+N more"); Hostnames is the first as a link with an arrow, then
-"+N more". Under the well a facts grid holds the rest: a mono microheader
-over each value (Image for a run stack, Runner, Strategy, Repository, or
-Network when no repository is attached). Below it the page is the settings shell:
-`SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Exposures, Branch deploys,
+workspace and project, title, actions top right) and its meta line says what
+the stack is, in mono with dot separators: the slug, the runner, the strategy
+with its compose path, the repository with its branch (or the network when no
+repository is attached), and a run stack's image. Under it is one live status
+strip (`StackLiveHero`), a `surface-2` well with a microheader over each
+value and no second facts row: Health first, then Last deploy (its
+`HealthDot` and state over the mono age), Services (the mono count over "N
+up"), and Hostnames (the first as a link with an arrow, then "+N more"). It is
+four columns from a 42rem page and two by two below. Health is "No issues"
+behind a `success` dot, or one line per problem behind its status hue: an
+open outage is `destructive` ("api down"), an error rate over its rule is
+`warning` ("5xx 7.2%"), and a recovery reads `success`.
+The strip names a problem; the card below it explains it, so no incident list
+or banner sits between them. The per-person Watching toggle is an outline
+button with an eye in the header's actions, left of the row menu. Overview is
+Services, then Requests (a stack with a hostname: the mono totals for the last
+hour with the 5xx share behind its hue, per-minute bars in a `surface-2` well
+with the 5xx part in the status hue, and the error-rate rule in the footer),
+then Deploy. A service's open outage is one line under its name in the
+Services row: a `destructive` dot and "Down since 10:42" in the status hue,
+then the exit code, "out of memory" and the restart count in muted mono.
+Alerts sits after Logs in the section nav, with a Crash tickets card (one
+switch row) and an Error rate card (one switch row stating the rule, its
+recovery in the footer, greyed with the reason when the stack has no hostname
+or the instance can't read analytics). Requests, Alerts, Watching and the
+outage line arrive with the features that feed them; until then the page shows
+none of them. Below it the page is the settings shell:
+`SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Alerts, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);
@@ -977,8 +994,8 @@ same step list.
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column
 and the raw line, wrapped lines indented under the text, dense rows, and a
-copy button in the block's corner. Above it sit All / Errors, Pause, Copy and
-Download, with one mono status marker at the end: Live while following, Paused
+copy button in the block's corner. Above it sit All / Errors, Pause, and Copy
+and Download as icon buttons with tooltips, on one row with one mono status marker at the end: Live while following, Paused
 after the button, Scrolled up once scrolling released following, and the
 connection's own state (reconnecting, ended) ahead of those. Errors means a
 line that looks like one by its text, from either stream. A thin `destructive`

@@ -74,8 +74,8 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
           <SettingsShell className="mt-6" section={section} nav={<StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />}>
             {section === "overview" && (
               <>
-                <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
                 <ServicesSection stackId={stack.id} />
+                <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
               </>
             )}
             {section === "environment" && <StackEnvironmentSection stack={stack} image={image} />}

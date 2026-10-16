@@ -32,9 +32,9 @@ export const LogStatusMarker = ({ status, reason, paused }: LogStatusMarkerProps
   const { end: scrolledUp } = useMessageScrollerScrollable();
   const { label, dot } = describeMarker(status, paused, scrolledUp);
   return (
-    <span role="status" title={reason} className="ml-auto flex items-center gap-2 font-mono text-xs text-muted-foreground">
-      <span aria-hidden className={cn("size-1.5 rounded-full motion-reduce:animate-none", dot)} />
-      {label}
+    <span role="status" title={reason ?? label} className="flex min-w-0 grow basis-0 items-center justify-end gap-2 font-mono text-xs text-muted-foreground">
+      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full motion-reduce:animate-none", dot)} />
+      <span className="truncate">{label}</span>
     </span>
   );
 };
