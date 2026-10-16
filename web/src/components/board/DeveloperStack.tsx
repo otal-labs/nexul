@@ -49,7 +49,7 @@ const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggl
     aria-pressed={active}
     aria-label={`Developer ${personLabel(person)}`}
     onClick={() => onToggle(login)}
-    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+    className="quiet-focus flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent"
   >
     <PersonAvatar login={login} src={person.avatar_url} className="size-6" />
     <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>

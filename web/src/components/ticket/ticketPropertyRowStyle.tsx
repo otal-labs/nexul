@@ -9,5 +9,3 @@ export const liveRowClass = "transition-colors duration-150 ease-standard hover:
 export const rowIconClass = "flex size-4 shrink-0 items-center justify-center text-muted-foreground";
 export const rowLabelClass = "w-16 shrink-0 text-xs text-muted-foreground";
 export const rowValueClass = "min-w-0 truncate text-xs text-foreground";
-export const menuItemClass =
-  "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";

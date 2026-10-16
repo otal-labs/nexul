@@ -3,7 +3,8 @@ import { useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
-import { menuItemClass, rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
+import { rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useClearTicketCategory, useFetchProjectCategories, useMoveTicketToCategory } from "@/hooks/CategoryHooks";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/models/Ticket";

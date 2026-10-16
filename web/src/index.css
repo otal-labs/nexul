@@ -274,9 +274,9 @@ body {
   outline: none;
 }
 
-/* Borderless editor-style fields (New ticket title/body): the caret is the
-   focus indicator; the global ring above wins over layered Tailwind utilities,
-   so the opt-out must live unlayered too. */
+/* Focus shown another way: a menu row's highlight (the same fill as its hover),
+   an editor field's caret. The global ring above wins over layered Tailwind
+   utilities, so the opt-out must live unlayered too. */
 .quiet-focus:focus-visible {
   outline: none;
 }
