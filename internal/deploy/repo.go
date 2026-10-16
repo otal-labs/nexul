@@ -64,6 +64,14 @@ type ServiceRepo interface {
 	DeleteByStack(ctx context.Context, stackID string) error
 }
 
+// CrashTicketRepo links a stack's subject (a crashed service's name) to the ticket opened for it.
+type CrashTicketRepo interface {
+	// Get returns the subject's ticket id, ErrNotFound when none was opened.
+	Get(ctx context.Context, stackID, subject string) (string, error)
+	// Set links the ticket, replacing the subject's earlier one.
+	Set(ctx context.Context, stackID, subject, ticketID string) error
+}
+
 // OutageRepo is the persistence contract for service outages; opening and closing write their events atomically.
 type OutageRepo interface {
 	// Open inserts an outage and writes evts in the same transaction; a service has at most one open outage.

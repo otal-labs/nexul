@@ -91,6 +91,8 @@ export interface Stack {
   branch?: string;
   // A stack adopted from machine discovery starts unmanaged until a repository is attached.
   managed: boolean;
+  // Open a ticket in the project when a service crashes; only a stack with a project may switch it on.
+  crash_tickets?: boolean;
   created_at: string;
   updated_at: string;
 }

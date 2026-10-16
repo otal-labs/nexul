@@ -289,6 +289,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// A machine runner's Docker events and reconnect snapshots become service outages.
 	mustSubscribe(ctx, bus, "deploy.container_event", deploy.TopicRunnerContainerEvent, "", svc.deploySvc.HandleContainerEvent)
 	mustSubscribe(ctx, bus, "deploy.container_states", deploy.TopicRunnerContainerStates, "", svc.deploySvc.HandleContainerStates)
+	// A stack with crash tickets switched on files a ticket per crashed service, then comments on repeats and recoveries.
+	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerStopped, "", svc.deploySvc.HandleContainerStopped)
+	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerRecovered, "", svc.deploySvc.HandleContainerRecovered)
 	// A healthy deploy settles its containers' exposures: an exposure made mid-deploy would otherwise wait for the next one.
 	mustSubscribe(ctx, bus, "dns.exposure_reconcile", deploy.TopicDeployStatusChanged, "", exposureReconcileHandler(svc.deploySvc, svc.dnsSvc))
 

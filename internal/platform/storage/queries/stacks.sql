@@ -2,9 +2,9 @@
 INSERT INTO stacks (id, project_id, name, slug, machine, strategy, compose_path,
     env, docker_network, ports, mounts, command,
     build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path,
-    branch_deploy_rules, derived_from, branch, managed,
+    branch_deploy_rules, derived_from, branch, managed, crash_tickets,
     created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetStack :one
 SELECT * FROM stacks WHERE id = ?;
@@ -52,7 +52,7 @@ SELECT * FROM stacks WHERE derived_from = ? ORDER BY created_at;
 UPDATE stacks SET project_id = ?, name = ?, slug = ?, machine = ?, strategy = ?, compose_path = ?,
     env = ?, docker_network = ?, ports = ?, mounts = ?, command = ?,
     build_repo_owner = ?, build_repo_name = ?, build_branch = ?, build_dockerfile = ?, build_compose_path = ?,
-    branch_deploy_rules = ?, derived_from = ?, branch = ?, managed = ?,
+    branch_deploy_rules = ?, derived_from = ?, branch = ?, managed = ?, crash_tickets = ?,
     updated_at = ?
 WHERE id = ?;
 

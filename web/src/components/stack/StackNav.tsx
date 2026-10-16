@@ -1,7 +1,7 @@
 import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
-export const STACK_SECTIONS = ["overview", "environment", "logs", "exposures", "branches", "history", "danger"] as const;
+export const STACK_SECTIONS = ["overview", "environment", "logs", "alerts", "exposures", "branches", "history", "danger"] as const;
 
 export type StackSection = (typeof STACK_SECTIONS)[number];
 
@@ -14,6 +14,7 @@ const sectionLabels: Record<StackSection, string> = {
   overview: "Overview",
   environment: "Environment",
   logs: "Logs",
+  alerts: "Alerts",
   exposures: "Exposures",
   branches: "Branch deploys",
   history: "Deploy history",

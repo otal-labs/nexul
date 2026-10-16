@@ -369,6 +369,10 @@ func TestStackUpdate_Patches(t *testing.T) {
 			assert.False(t, after.BranchDeployRules[0].DerivesClone())
 			assert.Empty(t, after.BranchDeployRules[0].Overrides)
 		}},
+		{"crash tickets switch on and leave the rest alone", `"crash_tickets":true`, func(t *testing.T, before, after *Stack) {
+			assert.True(t, after.CrashTickets)
+			assert.Equal(t, before.Env, after.Env)
+		}},
 		{"an empty rule list removes every rule", `"branch_deploy_rules":[]`, func(t *testing.T, _, after *Stack) {
 			assert.Empty(t, after.BranchDeployRules)
 		}},
@@ -383,6 +387,34 @@ func TestStackUpdate_Patches(t *testing.T) {
 			tt.check(t, stack, after)
 		})
 	}
+}
+
+func TestStackUpdate_CrashTicketsSwitchAndShow(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	assert.False(t, stack.CrashTickets, "off by default")
+
+	got, err := call(t, s, "stack_update", `{"id":"`+stack.ID+`","crash_tickets":true}`)
+	require.NoError(t, err)
+	assert.Contains(t, asJSON(t, got), `"crash_tickets":true`)
+
+	got, err = call(t, s, "stack_update", `{"id":"`+stack.ID+`","name":"api-v2"}`)
+	require.NoError(t, err)
+	assert.True(t, got.(stackResult).CrashTickets, "a patch without the field keeps the switch")
+
+	got, err = call(t, s, "stack_get", `{"id":"`+stack.ID+`"}`)
+	require.NoError(t, err)
+	assert.Contains(t, asJSON(t, got), `"crash_tickets":true`)
+
+	got, err = call(t, s, "stack_update", `{"id":"`+stack.ID+`","crash_tickets":false}`)
+	require.NoError(t, err)
+	assert.Contains(t, asJSON(t, got), `"crash_tickets":false`)
+}
+
+func TestStackUpdate_CrashTicketsNeedAProject(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	_, err := call(t, s, "stack_update", `{"id":"`+stack.ID+`","project_id":"","crash_tickets":true}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorContains(t, err, "crash tickets need a stack in a project")
 }
 
 func TestStackDelete_ReturnsGone(t *testing.T) {

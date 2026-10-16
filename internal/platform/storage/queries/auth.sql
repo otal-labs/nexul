@@ -42,6 +42,14 @@ JOIN roles r ON r.id = mr.role_id AND r.is_owner_role = 1
 JOIN users u ON u.id = mr.user_id AND u.account_status = 'active'
 ORDER BY mr.user_id;
 
+-- The active Owner of one workspace who has held the role longest.
+-- name: FirstActiveWorkspaceOwner :one
+SELECT mr.user_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id AND r.is_owner_role = 1
+JOIN users u ON u.id = mr.user_id AND u.account_status = 'active'
+WHERE mr.workspace_id = ?
+ORDER BY mr.created_at, mr.user_id LIMIT 1;
+
 -- name: DeleteAccountMemberships :exec
 DELETE FROM workspace_members WHERE user_id = ?;
 

@@ -22,6 +22,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, and which services are down |
 | **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
+| **Alerts** | Have a crashed service open a ticket in the stack's project |
 | **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
 | **Branch deploys** | Deploy other branches as their own copies |
 | **Deploy history** | Every build and deploy, with its log |
@@ -84,6 +85,14 @@ Each machine's runner watches Docker for the stacks on it. When a container dies
 Three things raise nothing: a container that exits with code 0, which is a job that finished; anything that happens while a deploy of the stack is running, since a deploy replaces its containers; and a container on a computer's own runner, which does not watch Docker. If Nexul or a runner was offline when a container died, the runner reports what it finds the next time it connects, so the outage still shows once.
 
 Nexul keeps no copy of what the container printed. Docker holds a crashed container's output until the container is removed, so read it from **Logs**, or ask `stack_get` for that service's `logs`. Opening and closing an outage publishes `service.container_stopped` and `service.container_recovered`, which [automations](/docs/guide/automations/#when-a-service-goes-down) can act on. Both reach whoever can read the stack.
+
+### Crash tickets
+
+A stack can open a ticket for you. Turn on **Open a ticket when a service crashes** under **Alerts**; it is off until someone does. It needs the stack to be in a project, and changing it needs permission to change the stack. Agents set it with `stack_update` and its `crash_tickets` field, and `stack_get` shows it.
+
+With it on, the first crash of a service opens one ticket in the project, titled like `api crashed: exit 137, out of memory`. The ticket takes the project's default ticket type and lands in its first stage, with nobody assigned, and it is created by the instance rather than by a person. Its body names the stack, service, machine, exit code and when it went down, and says to read the container's output with `stack_get` and `logs` for that service. It carries no output lines, since Nexul keeps none.
+
+While that ticket is open, the next crash of the same service adds a comment to it instead of opening another, and so does the service coming back. A comment about a recovery does not close the ticket, because a crash that stopped is not a crash that was fixed. Once someone moves the ticket to a done stage, the next crash opens a fresh one. Each service has its own ticket. The comments appear in the ticket's thread, posted for the owner of the project's workspace.
 
 ## Logs
 
