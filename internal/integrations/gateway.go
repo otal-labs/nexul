@@ -89,6 +89,8 @@ var verbRouteScope = map[string]Scope{
 	"POST /api/conversations/{id}/botwebhooks":                   Scope(permissions.BotwebhookWrite),
 	"PUT /api/docs/{id}/watchers/me":                             Scope(permissions.DocsRead),
 	"DELETE /api/docs/{id}/watchers/me":                          Scope(permissions.DocsRead),
+	"PUT /api/stacks/{id}/watchers/me":                           Scope(permissions.StacksRead),
+	"DELETE /api/stacks/{id}/watchers/me":                        Scope(permissions.StacksRead),
 	"POST /api/docs/{id}/lock":                                   Scope(permissions.DocsLock),
 	"DELETE /api/docs/{id}/clarification/questions/{questionId}": Scope(permissions.DocsWrite),
 	"POST /api/docs/{id}/unlock":                                 Scope(permissions.DocsLock),

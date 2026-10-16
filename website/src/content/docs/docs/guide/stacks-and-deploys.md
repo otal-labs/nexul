@@ -94,6 +94,12 @@ With it on, the first crash of a service opens one ticket in the project, titled
 
 While that ticket is open, the next crash of the same service adds a comment to it instead of opening another, and so does the service coming back. A comment about a recovery does not close the ticket, because a crash that stopped is not a crash that was fixed. Once someone moves the ticket to a done stage, the next crash opens a fresh one. Each service has its own ticket. The comments appear in the ticket's thread, posted for the owner of the project's workspace.
 
+### Watching a stack
+
+Everyone who can read a stack in a project watches it. A watcher gets one [notification](/docs/guide/docs-tickets-and-board/#inbox) when a service goes down, such as `api crashed on web: exit 137, out of memory`, and one when it is back. A restart loop is one notification, not one per crash. The **Watching** button in the stack page's header turns this off for you alone; the button then reads **Watch**, and pressing it turns notices back on. Someone who joins the project later starts out watching, and one who loses the right to read the stack stops being told. A stack that belongs to no project, such as a gateway, has no watchers.
+
+Agents change it with `stack_update` and `watching`, which needs only read access, and see it as `watching` on `stack_get`. They read the notifications with `notification_list`, where a stack's notice has the kind `service.container_stopped` or `service.container_recovered` and the stack as its subject.
+
 ## Logs
 
 **Logs** shows what each container prints, one tab per service: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or **Pause** to stop following. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.

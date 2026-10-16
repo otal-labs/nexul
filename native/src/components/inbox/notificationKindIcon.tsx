@@ -1,7 +1,9 @@
 import ArrowRightLeft from "lucide-react-native/icons/arrow-right-left";
 import AtSign from "lucide-react-native/icons/at-sign";
 import Brain from "lucide-react-native/icons/brain";
+import CircleCheck from "lucide-react-native/icons/circle-check";
 import CircleHelp from "lucide-react-native/icons/circle-question-mark";
+import CircleX from "lucide-react-native/icons/circle-x";
 import FilePenLine from "lucide-react-native/icons/file-pen-line";
 import FilePlus from "lucide-react-native/icons/file-plus";
 import Laptop from "lucide-react-native/icons/laptop";
@@ -27,4 +29,6 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.PlayRunFinished]: Sparkles,
   [NotificationKind.PlayRunWaiting]: CircleHelp,
   [NotificationKind.ComputerMoveRequested]: Laptop,
+  [NotificationKind.ServiceStopped]: CircleX,
+  [NotificationKind.ServiceRecovered]: CircleCheck,
 };

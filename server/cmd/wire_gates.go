@@ -404,6 +404,10 @@ func (g notificationPermissionGate) CanReadDoc(ctx context.Context, userID, docI
 	return err == nil && ok
 }
 
+func (g notificationPermissionGate) CanReadStack(ctx context.Context, userID, stackID string) bool {
+	return g.svc.CanStack(ctx, userID, stackID, permissions.StacksRead)
+}
+
 // memoriesAttachmentsGate adapts attachments' owner-copy API to memories' AttachmentsCopier seam (ADR 0017:
 // memories never imports attachments), for Clone.
 type memoriesAttachmentsGate struct {

@@ -1,7 +1,7 @@
 # 15: Build watching a stack
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 14
 
 ## What to build
@@ -16,3 +16,13 @@ and one when it comes back, and the same for ticket 18's error-rate episodes onc
 - MCP: `stack_update` takes `watching`; agents read the notifications with `notification_list`.
 - UI: the toggle, placed where ticket 10 puts it; reverse state is turning it back on.
 - Docs: the stacks and notifications guides.
+
+## Built
+
+- Migration 0119 `stack_unwatchers`; `watching` rides the stack's GET, `stack_get` and
+  `stack_update` (which needs only read access when it changes `watching` alone).
+- Notices go to the stack's workspace members minus opt-outs, read access checked again at write;
+  `notifyStackWatchers` is the send path ticket 18 reuses. A stack outside every project has no
+  watchers.
+- No live topic: watching is the viewer's own state. The phone shows the notices and opens the
+  stack, with no toggle of its own.

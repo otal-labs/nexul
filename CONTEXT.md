@@ -615,6 +615,16 @@ open: a repeat crash or a recovery adds a comment to its thread and never closes
 stage the next crash opens a new one.
 _Avoid_: Incident ticket, alert ticket
 
+**Watching a stack**:
+Getting a notification when one of its services goes down and another when it
+is back. Everyone who can read a stack in a project watches it by default; the
+reverse of a doc's Watcher, which is opt-in. Turning Watching off is an opt-out
+kept per person and per stack, so a member who joins later starts watching, and
+turning it back on removes the opt-out. Losing the right to read the stack ends
+the notices, whatever the setting. A stack outside every project has no one to
+tell.
+_Avoid_: Subscribing, following
+
 **Container logs**:
 What a service's container prints on stdout and stderr, each line with its
 timestamp and stream, read live from Docker through the machine's runner and

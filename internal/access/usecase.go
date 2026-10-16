@@ -327,6 +327,20 @@ func (s *Service) CanInProject(ctx context.Context, userID, projectID string, ac
 	return held
 }
 
+// CanStack reports whether userID holds action on stackID: a branch deployment answers through its base stack's rules,
+// and a stack outside every project, which no workspace's members read, answers no (ADR 0148).
+func (s *Service) CanStack(ctx context.Context, userID, stackID string, action permissions.Action) bool {
+	scope, err := s.stackScopeOf(ctx, stackID)
+	if err != nil || scope.WorkspaceID == "" {
+		return false
+	}
+	ruleID := stackID
+	if scope.BaseID != "" {
+		ruleID = scope.BaseID
+	}
+	return s.HasPermission(ctx, userID, scope.WorkspaceID, action, resourceTypeStack, ruleID)
+}
+
 // applyRules lays an entity's rules over the answer from further out: the rules for the roles held, of which Allow
 // wins, then the rule naming the person, which beats them (ADR 0148). A rule that sets the action becomes the source;
 // one naming neither leaves the answer and its source untouched.

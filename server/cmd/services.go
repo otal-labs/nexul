@@ -170,6 +170,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	topoSvc.SetScope(topologyScope{stacks: store.Stacks, services: store.Services, dns: store.DNS})
 	deploySvc.SetGate(accessSvc)
 	deploySvc.SetOutageRepo(store.Outages)
+	deploySvc.SetStackWatchRepo(store.StackWatchers)
 	reviewSvc := codereview.NewService(store.CodeReviews)
 	reviewSvc.SetGate(projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets})
 	automationsSvc := automations.NewService(store.Automations, accessSvc)
@@ -355,7 +356,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	automationsSvc.SetHosts(automationHostsSvc)
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects).
-		WithDocWatchers(docWatchersAdapter{repo: store.Docs})
+		WithDocWatchers(docWatchersAdapter{repo: store.Docs}).
+		WithStackUnwatchers(store.StackWatchers)
 	notifSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	pushSender := push.New(push.Config{
 		Tokens:     store.Sessions,

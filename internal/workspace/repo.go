@@ -121,6 +121,12 @@ type WorkspaceMemberStore interface {
 	ListMemberUserIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
+// StackUnwatchers names the people who turned a stack's notices off, adapted at the composition root (ADR 0017); everyone
+// else who reads the stack watches it.
+type StackUnwatchers interface {
+	ListUnwatcherIDs(ctx context.Context, stackID string) ([]string, error)
+}
+
 // DocWatchers resolves a doc's watchers, adapted at the composition root onto the docs domain (ADR 0017).
 type DocWatchers interface {
 	ListDocWatcherIDs(ctx context.Context, docID string) ([]string, error)
@@ -132,6 +138,8 @@ type PermissionChecker interface {
 	CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool
 	CanReadDoc(ctx context.Context, userID, docID string) bool
+	// CanReadStack reports whether userID holds stacks:read on a stack, through the rules of its base for a branch deployment.
+	CanReadStack(ctx context.Context, userID, stackID string) bool
 	// ProjectsAnywhere lists the workspaces userID belongs to and, across them, the projects they hold action in.
 	ProjectsAnywhere(ctx context.Context, userID string, action permissions.Action) (workspaceIDs, projectIDs []string, err error)
 }

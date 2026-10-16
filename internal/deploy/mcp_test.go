@@ -327,7 +327,7 @@ func TestStackUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	s, stack, _ := stackFixture(t)
 	got, err := call(t, s, "stack_update", `{"id":"`+stack.ID+`","name":"api-v2"}`)
 	require.NoError(t, err)
-	assert.Equal(t, "api-v2", got.(stackResult).Name)
+	assert.Equal(t, "api-v2", got.(stackUpdated).Name)
 
 	after, err := s.GetStack(t.Context(), stack.ID)
 	require.NoError(t, err)
@@ -399,7 +399,7 @@ func TestStackUpdate_CrashTicketsSwitchAndShow(t *testing.T) {
 
 	got, err = call(t, s, "stack_update", `{"id":"`+stack.ID+`","name":"api-v2"}`)
 	require.NoError(t, err)
-	assert.True(t, got.(stackResult).CrashTickets, "a patch without the field keeps the switch")
+	assert.True(t, got.(stackUpdated).CrashTickets, "a patch without the field keeps the switch")
 
 	got, err = call(t, s, "stack_get", `{"id":"`+stack.ID+`"}`)
 	require.NoError(t, err)

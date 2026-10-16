@@ -25,6 +25,7 @@ type Store struct {
 	Services              *ServicesRepo
 	Outages               *OutagesRepo
 	CrashTickets          *CrashTicketsRepo
+	StackWatchers         *StackWatchersRepo
 	Topology              *TopologyRepo
 	Runners               *RunnersRepo
 	Machines              *MachinesRepo
@@ -100,6 +101,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Services:              &ServicesRepo{db: db, w: w, q: q},
 		Outages:               &OutagesRepo{db: db, w: w, q: q},
 		CrashTickets:          &CrashTicketsRepo{db: db, w: w, q: q},
+		StackWatchers:         &StackWatchersRepo{db: db, w: w, q: q},
 		Topology:              &TopologyRepo{db: db, w: w, q: q},
 		Runners:               &RunnersRepo{db: db, w: w, q: q},
 		Machines:              &MachinesRepo{db: db, w: w, q: q},

@@ -11,7 +11,7 @@ import (
 )
 
 type notificationListIn struct {
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications about tickets, docs, and memories in this workspace, from workspace_list. Omit for every workspace."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications about tickets, docs, memories, and stacks in this workspace, from workspace_list. Omit for every workspace."`
 	UnreadOnly  bool   `json:"unread_only,omitzero" jsonschema:"Only notifications you have not read yet. Defaults to false."`
 	mcptool.PageArgs
 }
@@ -47,7 +47,8 @@ type notificationUpdated struct {
 func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("notification_list", "List notifications",
-			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, or memory (subject), and whether you have read it. "+
+			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, memory, or stack (subject), and whether you have read it. "+
+				"A stack's item is a service that crashed (service.container_stopped) or came back (service.container_recovered), worded in subject_title, and its subject_id is the stack to read with stack_get. "+
 				"A doc's item also names the folder the doc is in now (folder_id, folder_name, folder_is_default for its project's default folder), so items can be grouped by folder. "+
 				"Set workspace_id to see one workspace's inbox and unread_only to see only what is new, then mark items read with notification_update. "+
 				"It never shows another user's inbox.",

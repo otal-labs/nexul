@@ -23,6 +23,18 @@ const inMain = { folder_id: "f-main", folder_name: "Main", folder_is_default: tr
 const at = (hour: number) => `2026-10-01T${String(hour).padStart(2, "0")}:00:00Z`;
 
 describe("groupInbox", () => {
+  it("gives a service that crashed and one that came back each their own row, worded by what happened", () => {
+    const entries = groupInbox([
+      note({ id: "s2", kind: "service.container_recovered", subject_type: "stack", subject_id: "st-1", subject_title: "api came back on web", created_at: at(11) }),
+      note({ id: "s1", kind: "service.container_stopped", subject_type: "stack", subject_id: "st-1", subject_title: "api crashed on web: exit 1", created_at: at(10) }),
+    ]);
+
+    expect(entries.map((e) => [e.key, (e as InboxRow).summary])).toEqual([
+      ["n:s2", "service came back"],
+      ["n:s1", "service crashed"],
+    ]);
+  });
+
   it("collapses every notification about one doc into a single row placed by its newest", () => {
     const entries = groupInbox([
       note({ id: "u2", kind: "doc.updated", subject_id: "d-spec", created_at: at(12), ...inMain }),
