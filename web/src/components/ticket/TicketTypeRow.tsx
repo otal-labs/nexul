@@ -2,12 +2,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
-import {
-  menuItemClass,
-  rowIconClass,
-  rowLabelClass,
-  rowValueClass,
-} from "@/components/ticket/ticketPropertyRowStyle";
+import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
+import { rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { TicketTypeOption } from "@/components/ticket/TicketTypeOption";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { cn } from "@/lib/utils";

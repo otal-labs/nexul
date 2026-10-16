@@ -1,7 +1,7 @@
 import { CheckIcon } from "lucide-react";
 
 import { StatusMark } from "@/components/board/StatusIcon";
-import { menuItemClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
