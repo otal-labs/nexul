@@ -25,9 +25,9 @@ const (
 	containerCommandWait  = 30 * time.Second
 )
 
-// containerEventsArgs is the one Docker event stream a machine runner keeps open: deaths, OOM kills and starts.
+// containerEventsArgs is the one Docker event stream a machine runner keeps open; kill and stop mark a requested stop.
 var containerEventsArgs = []string{
-	"events", "--filter", "type=container", "--filter", "event=die", "--filter", "event=oom", "--filter", "event=start", "--format", "{{json .}}",
+	"events", "--filter", "type=container", "--filter", "event=die", "--filter", "event=oom", "--filter", "event=start", "--filter", "event=kill", "--filter", "event=stop", "--format", "{{json .}}",
 }
 
 // inspectTemplate projects only what a snapshot needs, so no container environment is ever read.
@@ -108,7 +108,7 @@ type dockerEvent struct {
 	Time int64 `json:"time"`
 }
 
-// forwardContainerEvent sends one event line as a container_event; lines that are not a die, oom or start of a
+// forwardContainerEvent sends one event line as a container_event; lines that are not a die, oom, start, kill or stop of a
 // container that compose did not start for a one-off command are dropped.
 func (c *Client) forwardContainerEvent(ctx context.Context, conn *websocket.Conn, raw string) {
 	var ev dockerEvent
@@ -117,7 +117,7 @@ func (c *Client) forwardContainerEvent(ctx context.Context, conn *websocket.Conn
 		return
 	}
 	attrs := ev.Actor.Attributes
-	if !oneOf(ev.Action, ContainerActionDie, ContainerActionOOM, ContainerActionStart) || attrs["name"] == "" || oneOff(attrs) {
+	if !oneOf(ev.Action, ContainerActionDie, ContainerActionOOM, ContainerActionStart, ContainerActionKill, ContainerActionStop) || attrs["name"] == "" || oneOff(attrs) {
 		return
 	}
 	exit, err := strconv.Atoi(attrs["exitCode"])

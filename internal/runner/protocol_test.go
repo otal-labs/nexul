@@ -256,6 +256,7 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "t3_pair_token with neither token nor error", f: Frame{Type: FrameT3PairToken, ID: "p1"}},
 		{name: "t3_pair_token with both token and error", f: Frame{Type: FrameT3PairToken, ID: "p1", Token: "tok", Error: "refused"}},
 		{name: "container_event missing container", f: Frame{Type: FrameContainerEvent, Action: ContainerActionDie}},
+		{name: "container_event with destroy, which is not forwarded", f: Frame{Type: FrameContainerEvent, Container: "web", Action: "destroy"}},
 		{name: "container_event with an action nobody asked for", f: Frame{Type: FrameContainerEvent, Container: "web", Action: "exec_start"}},
 		{name: "container_states without states", f: Frame{Type: FrameContainerStates}},
 		{name: "container_states entry without a container", f: Frame{Type: FrameContainerStates, States: []ContainerState{{State: ContainerStateRunning}}}},
@@ -290,6 +291,8 @@ func TestParseFrame(t *testing.T) {
 			{Type: FrameUpdate, Version: "v0.2.0", URL: "https://instance/download", Sha256: "abc123"},
 			{Type: FrameLogsRequest, ID: "l1", Target: LogTargetRunner, Tail: 5, Follow: true},
 			{Type: FrameLogsRequest, ID: "l2", Container: "web", Mask: true},
+			{Type: FrameContainerEvent, Container: "web", Action: ContainerActionKill},
+			{Type: FrameContainerEvent, Container: "web", Action: ContainerActionStop},
 		}
 		for _, want := range frames {
 			data, err := (&want).Encode()

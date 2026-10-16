@@ -92,6 +92,8 @@ const (
 	ContainerActionDie   = "die"
 	ContainerActionOOM   = "oom"
 	ContainerActionStart = "start"
+	ContainerActionKill  = "kill"
+	ContainerActionStop  = "stop"
 
 	ContainerStateRunning = "running"
 	ContainerStateExited  = "exited"
@@ -435,8 +437,8 @@ func (f *Frame) validateFacts() error {
 }
 
 func (f *Frame) validateContainerEvent() error {
-	if f.Container == "" || !oneOf(f.Action, ContainerActionDie, ContainerActionOOM, ContainerActionStart) {
-		return fmt.Errorf("%w: container_event requires container and a die, oom or start action", apperrs.ErrInvalid)
+	if f.Container == "" || !oneOf(f.Action, ContainerActionDie, ContainerActionOOM, ContainerActionStart, ContainerActionKill, ContainerActionStop) {
+		return fmt.Errorf("%w: container_event requires container and a die, oom, start, kill or stop action", apperrs.ErrInvalid)
 	}
 	return nil
 }
