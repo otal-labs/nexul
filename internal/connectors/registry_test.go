@@ -101,14 +101,14 @@ func TestGitProviderFlag(t *testing.T) {
 	}
 }
 
-func TestCloudflareEntry_OnlyAccessChecksAreAdvisory(t *testing.T) {
+func TestCloudflareEntry_OnlyTheOptionalChecksAreAdvisory(t *testing.T) {
 	advisory := map[string]bool{}
 	for _, ch := range registry["cloudflare"].Checks {
 		advisory[ch.Key] = ch.Advisory
 	}
 	want := map[string]bool{
 		"token": false, "zone_read": false, "dns_edit": false, "tunnel_edit": false,
-		"access_apps_edit": true, "access_tokens_edit": true,
+		"access_apps_edit": true, "access_tokens_edit": true, "analytics_read": true,
 	}
 	for key, wantAdvisory := range want {
 		got, ok := advisory[key]

@@ -154,12 +154,13 @@ type stackLogsIn struct {
 // stackDetail is stack_get's answer: the stack plus what an agent reads next about it.
 type stackDetail struct {
 	stackResult
-	Services          []*Container   `json:"services"`
-	OpenOutages       []outageResult `json:"open_outages"`
-	Watching          bool           `json:"watching"`
-	RecentDeploys     []deployResult `json:"recent_deploys"`
-	BranchDeployments []stackSummary `json:"branch_deployments,omitempty"`
-	Logs              *serviceLogs   `json:"logs,omitempty"`
+	Services          []*Container    `json:"services"`
+	OpenOutages       []outageResult  `json:"open_outages"`
+	Requests          *requestsResult `json:"requests,omitempty"`
+	Watching          bool            `json:"watching"`
+	RecentDeploys     []deployResult  `json:"recent_deploys"`
+	BranchDeployments []stackSummary  `json:"branch_deployments,omitempty"`
+	Logs              *serviceLogs    `json:"logs,omitempty"`
 }
 
 // outageResult is a service that is down: since when, how it last exited, and how often it crashed again.
@@ -179,6 +180,33 @@ func toOutageResults(open []*Outage) []outageResult {
 	return out
 }
 
+// requestsResult is a stack's last hour of requests for an agent: one entry per minute from From, null for a minute
+// nobody could count, with the totals of the counted ones.
+type requestsResult struct {
+	From           time.Time `json:"from"`
+	Requests       []*int64  `json:"requests_per_minute"`
+	Errors5xx      []*int64  `json:"errors_5xx_per_minute"`
+	TotalRequests  int64     `json:"total_requests"`
+	Total5xx       int64     `json:"total_5xx"`
+	MissingMinutes int       `json:"missing_minutes"`
+}
+
+func toRequestsResult(w *RequestWindow) *requestsResult {
+	if !w.Counted {
+		return nil
+	}
+	out := &requestsResult{From: w.From, Requests: w.Requests, Errors5xx: w.Errors5xx}
+	for i, r := range w.Requests {
+		if r == nil {
+			out.MissingMinutes++
+			continue
+		}
+		out.TotalRequests += *r
+		out.Total5xx += *w.Errors5xx[i]
+	}
+	return out
+}
+
 type serviceLogs struct {
 	Service string             `json:"service"`
 	Lines   []ContainerLogLine `json:"lines"`
@@ -190,7 +218,9 @@ func stackGetTool(s *Service) mcptool.Tool {
 			"and ports), the services that are down now (open_outages: since when, exit code, whether it ran out of "+
 			"memory, how many times it crashed again; read the crashed container's output with logs), whether you "+
 			"watch it (watching: everyone who can read a stack does until they stop, and a watcher is notified when a "+
-			"service crashes and when it comes back), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
+			"service crashes and when it comes back), for a stack with a hostname its requests over the last hour "+
+			"(requests: counts per minute and totals, 5xx answers apart, null for a minute that could not be counted), "+
+			"its ten most recent deploys, and its branch deployments. Environment variables are listed "+
 			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
 			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
 			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
@@ -250,6 +280,11 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 	if out.Watching, err = s.Watching(ctx, stack.ID); err != nil {
 		return stackDetail{}, err
 	}
+	window, err := s.RequestWindow(ctx, stack)
+	if err != nil {
+		return stackDetail{}, err
+	}
+	out.Requests = toRequestsResult(window)
 	if stack.DerivedFrom != "" {
 		return out, nil
 	}

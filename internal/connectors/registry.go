@@ -32,6 +32,7 @@ var registry = map[string]Connector{
 			{Key: "token", Label: "Token is active", Why: "Cloudflare recognises the token and it has not expired or been revoked."},
 			{Key: "zone_read", Label: "Zone → Zone: Read", Why: "Lists your zones so you can pick one, and finds the account the tunnel lives in."},
 			{Key: "dns_edit", Label: "Zone → DNS: Edit", Why: "Creates and updates the records that point your hostnames at this instance."},
+			{Key: "analytics_read", Label: "Zone → Analytics: Read", Advisory: true, Why: "Needed only for the request counts of tunnel hostnames; without it those stacks show no request data."},
 			{Key: "tunnel_edit", Label: "Account → Cloudflare Tunnel: Edit", Why: "Creates the tunnel and issues the token cloudflared runs with."},
 			{Key: "access_apps_edit", Label: "Account → Access: Apps and Policies: Edit", Advisory: true, Why: "Needed only to pair computers by tunnel: closes each computer's hostname to everything but this instance."},
 			{Key: "access_tokens_edit", Label: "Account → Access: Service Tokens: Edit", Advisory: true, Why: "Needed only to pair computers by tunnel: issues the one service token this instance passes Access with."},

@@ -118,6 +118,15 @@ export interface StackWithBranches extends Stack {
   watching?: boolean;
 }
 
+// A stack's last hour of requests, one slot a minute from `from`; null is a minute nobody could count, which is not zero
+// (internal/deploy/request_counts.go). Counted is false for a stack with no hostname.
+export interface StackRequests {
+  counted: boolean;
+  from: string;
+  requests: (number | null)[];
+  errors_5xx: (number | null)[];
+}
+
 export interface Deploy {
   id: string;
   kind?: DeployKind;

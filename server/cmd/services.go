@@ -232,6 +232,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGatewayLookup(deployGatewayLookupAdapter{dns: dnsSvc})
 	deploySvc.SetExposureManager(deployExposureAdapter{dns: dnsSvc})
 	deploySvc.SetGatewayJoin(deployGatewayJoinAdapter{dns: dnsSvc})
+	deploySvc.SetRequestCounts(deployRequestSourcesAdapter{dns: dnsSvc}, store.RequestMinutes)
 	deploySvc.SetGatewayAdopter(deployGatewayAdopterAdapter{dns: dnsSvc})
 	// One client per harness kind; the real ones talk to the user's own machines, never reachable in tests.
 	computers := &runnerComputers{}

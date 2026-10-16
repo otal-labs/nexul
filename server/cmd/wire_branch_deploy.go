@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
@@ -67,4 +69,36 @@ func (a deployGatewayJoinAdapter) GatewayForStackNetwork(ctx context.Context, ne
 
 func (a deployExposureAdapter) RemoveExposures(ctx context.Context, stackName string, containerIDs []string) error {
 	return a.dns.DeleteExposuresForStack(ctx, stackName, containerIDs)
+}
+
+// deployRequestSourcesAdapter adapts dns to deploy's RequestSources seam (deploy must never import dns): where
+// hostnames are routed, and Cloudflare's per-minute counts for the tunnel ones.
+type deployRequestSourcesAdapter struct {
+	dns *dns.Service
+}
+
+func (a deployRequestSourcesAdapter) Routes(ctx context.Context) ([]deploy.RequestRoute, error) {
+	routes, err := a.dns.RequestRoutes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]deploy.RequestRoute, 0, len(routes))
+	for _, r := range routes {
+		out = append(out, deploy.RequestRoute{
+			Router: r.Router, Hostname: r.Hostname, ContainerID: r.ContainerID, ZoneID: r.ZoneID, Machine: r.Machine, Tunnel: r.Tunnel,
+		})
+	}
+	return out, nil
+}
+
+func (a deployRequestSourcesAdapter) TunnelCounts(ctx context.Context, zoneID string, hostnames []string, from, to time.Time) ([]deploy.HostMinute, error) {
+	counts, err := a.dns.HostnameRequests(ctx, zoneID, hostnames, from, to)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]deploy.HostMinute, 0, len(counts))
+	for _, c := range counts {
+		out = append(out, deploy.HostMinute{Hostname: c.Hostname, Minute: c.Minute, Requests: c.Requests, Errors: c.Errors})
+	}
+	return out, nil
 }

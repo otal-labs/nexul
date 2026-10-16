@@ -1,0 +1,90 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { RequestsSection } from "@/components/stack/RequestsSection";
+import type { StackRequests } from "@/models/Stack";
+
+const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "boom" }));
+
+const FROM = "2026-10-16T09:43:00.000Z";
+
+const hour = (requests: (number | null)[], errors?: (number | null)[]): StackRequests => ({
+  counted: true,
+  from: FROM,
+  requests,
+  errors_5xx: errors ?? requests.map((r) => (r === null ? null : 0)),
+});
+
+const renderSection = () =>
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <RequestsSection stackId="stack-1" />
+    </QueryClientProvider>,
+  );
+
+describe("RequestsSection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows the hour's total, the 5xx share, and a bar for every minute", async () => {
+    const requests = Array.from({ length: 60 }, (_, i) => (i % 2 === 0 ? 10 : 20));
+    const errors = Array.from({ length: 60 }, (_, i) => (i === 59 ? 3 : 0));
+    mocks.get.mockResolvedValue({ data: hour(requests, errors) });
+    renderSection();
+
+    expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(screen.getByText("900")).toBeInTheDocument();
+    expect(screen.getByText("5xx 0.3%")).toBeInTheDocument();
+    expect(screen.getByText("(3)")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Requests per minute over the last hour" })).toBeInTheDocument();
+    expect(screen.queryByText(/No request data/)).not.toBeInTheDocument();
+    expect(mocks.get).toHaveBeenCalledWith("/api/stacks/stack-1/requests");
+  });
+
+  it("says there is no 5xx when there were none", async () => {
+    mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => 4)) });
+    renderSection();
+    expect(await screen.findByText("No 5xx")).toBeInTheDocument();
+  });
+
+  it("names when the data stopped once five minutes are missing, and keeps the earlier bars", async () => {
+    const requests = [...Array.from({ length: 55 }, () => 2), ...Array.from({ length: 5 }, () => null)];
+    mocks.get.mockResolvedValue({ data: hour(requests) });
+    renderSection();
+
+    expect(await screen.findByText(/^No request data since \d\d:\d\d$/)).toBeInTheDocument();
+    expect(screen.getByText("110")).toBeInTheDocument();
+  });
+
+  it("does not call a short gap a stop", async () => {
+    const requests = [...Array.from({ length: 56 }, () => 2), ...Array.from({ length: 4 }, () => null)];
+    mocks.get.mockResolvedValue({ data: hour(requests) });
+    renderSection();
+    expect(await screen.findByText("112")).toBeInTheDocument();
+    expect(screen.queryByText(/No request data/)).not.toBeInTheDocument();
+  });
+
+  it("has an honest empty state for a stack with a hostname and no counts yet", async () => {
+    mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => null)) });
+    renderSection();
+
+    expect(await screen.findByText(/^No request data yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("draws nothing for a stack with no hostname", async () => {
+    mocks.get.mockResolvedValue({ data: { counted: false, from: "0001-01-01T00:00:00Z", requests: [], errors_5xx: [] } });
+    const { container } = renderSection();
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalled());
+    await vi.waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+
+  it("says the read failed instead of vanishing", async () => {
+    mocks.get.mockRejectedValue(new Error("boom"));
+    renderSection();
+    expect(await screen.findByText("Couldn't load requests.")).toBeInTheDocument();
+  });
+});

@@ -114,6 +114,32 @@ describe("StackPage", () => {
     expect(screen.getAllByText(/^Down since/)).toHaveLength(1);
   });
 
+  it("puts Requests between Services and Deploy for a stack with a hostname, and leaves it out otherwise", async () => {
+    const counted = { counted: true, from: "2026-10-16T09:43:00.000Z", requests: Array.from({ length: 60 }, () => 5), errors_5xx: Array.from({ length: 60 }, () => 0) };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
+      if (url === "/api/stacks/stack-1/requests") return Promise.resolve({ data: counted });
+      return Promise.resolve({ data: [] });
+    });
+    const { unmount } = renderPage();
+    const titles = async () => (await screen.findAllByRole("heading", { level: 2 })).map((h) => h.textContent);
+    await screen.findByText("requests in the last hour");
+    expect((await titles()).slice(0, 3)).toEqual(["Services", "Requests", "Deploy"]);
+    unmount();
+
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
+      if (url === "/api/stacks/stack-1/requests") return Promise.resolve({ data: { counted: false, from: "", requests: [], errors_5xx: [] } });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+    await screen.findByRole("heading", { name: "Services" });
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/stacks/stack-1/requests"));
+    expect(screen.queryByRole("heading", { name: "Requests" })).not.toBeInTheDocument();
+  });
+
   it("renders the stack header with the strategy and runner facts", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();

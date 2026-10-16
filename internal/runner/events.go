@@ -37,6 +37,8 @@ const (
 	// an internal edge, not in Topics(): the published contract is the outage events deploy makes of them.
 	TopicContainerEvent  = "runner.container_event"
 	TopicContainerStates = "runner.container_states"
+	// TopicRequestCounts carries a machine runner's proxy router counts to the deploy domain, which knows whose they are.
+	TopicRequestCounts = "runner.request_counts"
 )
 
 // Topics returns every topic the runner domain publishes.
@@ -73,6 +75,12 @@ type ContainerEvent struct {
 type ContainerStatesEvent struct {
 	Machine string           `json:"machine"`
 	States  []ContainerState `json:"states"`
+}
+
+// RequestCountsEvent is one read of a machine's proxy gateways: the requests each router served since the last one.
+type RequestCountsEvent struct {
+	Machine string        `json:"machine"`
+	Counts  []RouterCount `json:"counts"`
 }
 
 // Publisher is the narrow bus seam Service needs to announce upgrade state (ADR 0019); Handler's own Bus

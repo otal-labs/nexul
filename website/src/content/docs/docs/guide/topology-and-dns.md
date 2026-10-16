@@ -56,5 +56,6 @@ Create the token in the Cloudflare dashboard with:
 | Zone → Zone: Read | Listing your zones and the account each belongs to |
 | Zone → DNS: Edit | Creating the records that point hostnames at Nexul |
 | Account → Cloudflare Tunnel: Edit | Creating tunnels |
+| Zone → Analytics: Read | Optional. Counting the requests a tunnel hostname serves, for the stack page's [Requests](/docs/guide/stacks-and-deploys/#requests) card |
 
-When you connect the token, Nexul checks each permission and names any that are missing. It also lists the domains the token can edit; make sure yours is among them. The dialog may also list two Account → Access permissions. They only served computers paired through a tunnel in the past, so you can leave them off.
+When you connect the token, Nexul checks each permission and names any that are missing. It also lists the domains the token can edit; make sure yours is among them. Analytics: Read is advisory: a token without it connects and works, and only the request counts of tunnel hostnames are missing. The dialog may also list two Account → Access permissions. They only served computers paired through a tunnel in the past, so you can leave them off.

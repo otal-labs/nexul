@@ -19,7 +19,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 
 | Section | What you do there |
 | --- | --- |
-| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, and which services are down |
+| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, which services are down, and the last hour of requests |
 | **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
 | **Alerts** | Have a crashed service open a ticket in the stack's project |
@@ -99,6 +99,17 @@ While that ticket is open, the next crash of the same service adds a comment to 
 Everyone who can read a stack in a project watches it. A watcher gets one [notification](/docs/guide/docs-tickets-and-board/#inbox) when a service goes down, such as `api crashed on web: exit 137, out of memory`, and one when it is back. A restart loop is one notification, not one per crash. The **Watching** button in the stack page's header turns this off for you alone; the button then reads **Watch**, and pressing it turns notices back on. Someone who joins the project later starts out watching, and one who loses the right to read the stack stops being told. A stack that belongs to no project, such as a gateway, has no watchers.
 
 Agents change it with `stack_update` and `watching`, which needs only read access, and see it as `watching` on `stack_get`. They read the notifications with `notification_list`, where a stack's notice has the kind `service.container_stopped` or `service.container_recovered` and the stack as its subject.
+
+## Requests
+
+A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Nexul keeps only these per-minute counts, for a day, and never a request itself.
+
+Where the counts come from depends on the gateway carrying the hostname:
+
+- **Reverse proxy.** The gateway's Traefik counts requests per route, and the machine's runner reads them every 30 seconds. Traefik is set up this way when a gateway is deployed, so a proxy gateway that was running before this shipped counts after its next redeploy. For now a proxy hostname shows no request data: its routes don't yet carry the exposure's name, which is how a count finds its stack. The metrics port is never published, and a computer's own runner never reads it.
+- **Cloudflare tunnel.** Nexul asks Cloudflare's analytics for the hostname once a minute, using the connected token, so the token needs **Zone → Analytics: Read** (see [Cloudflare API token permissions](/docs/guide/topology-and-dns/#cloudflare-api-token-permissions)). Cloudflare's numbers arrive a couple of minutes late, so the newest bars trail the clock. Without that permission nothing else breaks; the stack just has no request data.
+
+A minute nobody could count, because the runner was offline or Cloudflare did not answer, is a gap in the chart and never a zero. After five such minutes the card says `No request data since 10:42`. A stack that has a hostname but no counts yet says so. `stack_get` returns the same hour under `requests`, as per-minute arrays with `null` for a gap, and `GET /api/stacks/{id}/requests` serves the card.
 
 ## Logs
 

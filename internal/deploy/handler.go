@@ -28,6 +28,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/deploys/{id}/cancel", h.cancel)
 	mux.HandleFunc("POST /api/deploys/{id}/retry", h.retry)
 	h.mountStackRoutes(mux, "/api/stacks")
+	mux.HandleFunc("GET /api/stacks/{id}/requests", h.requests)
 	mux.HandleFunc("PUT /api/stacks/{id}/watchers/me", h.watch)
 	mux.HandleFunc("DELETE /api/stacks/{id}/watchers/me", h.unwatch)
 	// /api/services stays mounted through the same handlers for one release (2026-09-10): the pre-rename web
@@ -239,6 +240,21 @@ func (h *Handler) getStack(w http.ResponseWriter, r *http.Request) {
 		resp.BranchDeployments = branches
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+// requests is the stack's last hour of request counts, one slot a minute, null where nothing could count it.
+func (h *Handler) requests(w http.ResponseWriter, r *http.Request) {
+	stack, err := h.svc.GetStack(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	window, err := h.svc.RequestWindow(r.Context(), stack)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, window)
 }
 
 func (h *Handler) updateStack(w http.ResponseWriter, r *http.Request) {

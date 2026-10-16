@@ -5,6 +5,7 @@ import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
+import { RequestsSection } from "@/components/stack/RequestsSection";
 import { StackAlertsSection } from "@/components/stack/StackAlertsSection";
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
@@ -76,6 +77,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
             {section === "overview" && (
               <>
                 <ServicesSection stackId={stack.id} />
+                <RequestsSection stackId={stack.id} />
                 <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
               </>
             )}

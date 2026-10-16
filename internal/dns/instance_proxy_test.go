@@ -108,6 +108,10 @@ func TestService_ProvisionInstanceProxy_DeploysTraefikWithTheInstanceRoute(t *te
 			"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE":                  "/letsencrypt/acme.json",
 			"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT": "web",
 			"TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL":                    "owner@example.com",
+			"TRAEFIK_ENTRYPOINTS_METRICS_ADDRESS":                                     ":8082",
+			"TRAEFIK_METRICS_PROMETHEUS":                                              "true",
+			"TRAEFIK_METRICS_PROMETHEUS_ADDROUTERSLABELS":                             "true",
+			"TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT":                                   "metrics",
 			"NEXUL_TRAEFIK_DYNAMIC": `{"http":{"routers":{"nexul":{"entryPoints":["websecure"],"rule":"Host(` +
 				"`nexul.example.com`" + `)","service":"nexul","tls":{"certResolver":"letsencrypt"}}},` +
 				`"services":{"nexul":{"loadBalancer":{"servers":[{"url":"http://host.docker.internal:5123"}]}}}}}`,

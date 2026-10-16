@@ -289,6 +289,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// A machine runner's Docker events and reconnect snapshots become service outages.
 	mustSubscribe(ctx, bus, "deploy.container_event", deploy.TopicRunnerContainerEvent, "", svc.deploySvc.HandleContainerEvent)
 	mustSubscribe(ctx, bus, "deploy.container_states", deploy.TopicRunnerContainerStates, "", svc.deploySvc.HandleContainerStates)
+	// A machine runner's proxy router counts become the stacks' minutes.
+	mustSubscribe(ctx, bus, "deploy.request_counts", deploy.TopicRunnerRequestCounts, "", svc.deploySvc.HandleRequestCounts)
 	// A stack with crash tickets switched on files a ticket per crashed service, then comments on repeats and recoveries.
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerStopped, "", svc.deploySvc.HandleContainerStopped)
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerRecovered, "", svc.deploySvc.HandleContainerRecovered)

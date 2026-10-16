@@ -35,15 +35,16 @@ const inspectTemplate = `{"name":{{json .Name}},"labels":{{json .Config.Labels}}
 	`"exit_code":{{.State.ExitCode}},"oom":{{.State.OOMKilled}},"finished_at":{{json .State.FinishedAt}}}`
 
 // ContainerWatch is how a machine runner reads its host's containers: Stream runs `docker events`, Output any other
-// docker command. A client without one watches nothing.
+// docker command, Fetch a gateway's metrics page. A client without one watches nothing, and without Fetch counts no requests.
 type ContainerWatch struct {
 	Stream StreamRunner
 	Output func(ctx context.Context, args ...string) (string, error)
+	Fetch  func(ctx context.Context, url string) (string, error)
 }
 
 // HostContainerWatch reads the host's own Docker.
 func HostContainerWatch() *ContainerWatch {
-	return &ContainerWatch{Stream: ShellStreamRunner, Output: hostDockerOutput}
+	return &ContainerWatch{Stream: ShellStreamRunner, Output: hostDockerOutput, Fetch: hostMetricsFetch}
 }
 
 // hostDockerOutput returns what a docker command printed, even when it failed after printing some of it: inspecting
