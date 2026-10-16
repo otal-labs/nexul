@@ -254,8 +254,9 @@ describe("StackPage", () => {
     });
     renderPage();
 
-    expect(await screen.findByText("2 services", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("1 not running")).toBeInTheDocument();
+    const strip = await screen.findByRole("region", { name: "Live status" });
+    expect(await within(strip).findByText("worker not running")).toBeInTheDocument();
+    expect(within(strip).getByText("1 up")).toBeInTheDocument();
     expect(screen.queryByText("Image")).not.toBeInTheDocument();
   });
 
@@ -388,7 +389,7 @@ describe("StackPage", () => {
     });
     renderPage("/acme/stacks/stack-1/history");
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
-    expect(screen.getByText("deployed 3h ago")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Live status" })).getByText("3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
     expect(screen.getByText("d-1")).toBeInTheDocument();
   });

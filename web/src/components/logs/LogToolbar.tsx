@@ -2,6 +2,7 @@ import { CopyIcon, DownloadIcon, PauseIcon, PlayIcon } from "lucide-react";
 
 import { LogStatusMarker } from "@/components/logs/LogStatusMarker";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { LogFilter, LogStatus } from "@/models/ContainerLog";
 
@@ -16,6 +17,25 @@ interface LogToolbarProps {
   onDownload: () => void;
   empty: boolean;
 }
+
+interface ToolButtonProps {
+  label: string;
+  icon: typeof CopyIcon;
+  onClick: () => void;
+  disabled: boolean;
+}
+
+// Copy and Download are well-known tools, so they are icons; the row then fits one line beside its status marker.
+const ToolButton = ({ label, icon: Icon, onClick, disabled }: ToolButtonProps) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button type="button" variant="outline" size="icon" aria-label={label} onClick={onClick} disabled={disabled} className="size-8">
+        <Icon aria-hidden />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
 
 export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onPausedChange, onCopy, onDownload, empty }: LogToolbarProps) => (
   <div className="flex flex-wrap items-center gap-2">
@@ -35,12 +55,8 @@ export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onP
       {!paused && <PauseIcon aria-hidden />}
       {paused ? "Resume" : "Pause"}
     </Button>
-    <Button type="button" variant="outline" size="sm" onClick={onCopy} disabled={empty}>
-      <CopyIcon aria-hidden /> Copy
-    </Button>
-    <Button type="button" variant="outline" size="sm" onClick={onDownload} disabled={empty}>
-      <DownloadIcon aria-hidden /> Download
-    </Button>
+    <ToolButton label="Copy" icon={CopyIcon} onClick={onCopy} disabled={empty} />
+    <ToolButton label="Download" icon={DownloadIcon} onClick={onDownload} disabled={empty} />
     <LogStatusMarker status={status} reason={reason} paused={paused} />
   </div>
 );
