@@ -147,3 +147,18 @@ the run no longer needs it for the session.
 The questions and round-answered notices reach the inbox once each on the web and the phone, but no one has
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
+
+## The error-rate rule hasn't run through a Cloudflare tunnel on a real install
+
+The instance-logs walkthrough (2026-10-16) tripped and recovered the rule
+through a proxy gateway only: the Cloudflare token it had lacked Zone
+Analytics Read. The GraphQL query, its error shape for a missing permission,
+and the greyed "can't read analytics" reason are covered by tests against a
+fake only. Run it once with a token that has the permission.
+
+## "Investigate a crash" hasn't run an agent on a real install
+
+The walkthrough saw the shipped play queue on a crash and refuse with the
+right reasons, but the test computer had no T3 Code, so no agent ran and no
+cause was written. Run it once on a paired computer and read what it writes.
+

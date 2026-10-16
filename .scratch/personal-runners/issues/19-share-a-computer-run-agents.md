@@ -58,3 +58,10 @@ runs use per-run tokens), or to keep it and say so in the dialog. Either way rec
 - [ ] Revoking Run agents interrupts a running grantee turn and refuses the next start, with no cache wait.
 - [ ] `TestRunAgents_DoesNotShowTheOwnerTheTranscript`.
 - [ ] The ADR for the decision is written, and the sharing dialog matches the open technical detail's outcome.
+
+## Comments
+
+- 2026-10-16: auto plays can now run on a chosen computer (ADR 0156), checked against
+  `computers:run_agents` at pick, match and queue. Their picker shows a computer shared with you
+  as "can't run here yet", like every other picker; flip it with the rest when this lands.
+
