@@ -147,11 +147,3 @@ the run no longer needs it for the session.
 The questions and round-answered notices reach the inbox once each on the web and the phone, but no one has
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
-
-## A stack exposed through both a tunnel and a proxy gateway mixes its counts
-
-Request minutes are keyed by stack and minute. A tunnel poll replaces a
-minute, and a proxy frame adds to it, so a stack with both kinds of exposure
-loses the proxy part of the minutes the tunnel poll reads (2026-10-16). Key
-the rows by source too (a forward-only migration) and sum the sources on read.
-

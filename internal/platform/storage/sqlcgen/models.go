@@ -1090,6 +1090,7 @@ type StackCrashTicket struct {
 
 type StackRequestMinute struct {
 	StackID   string
+	Source    string
 	Minute    int64
 	Requests  sql.NullInt64
 	Errors5xx sql.NullInt64

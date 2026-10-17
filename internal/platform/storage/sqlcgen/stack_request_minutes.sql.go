@@ -11,14 +11,15 @@ import (
 )
 
 const addStackRequestMinute = `-- name: AddStackRequestMinute :exec
-INSERT INTO stack_request_minutes (stack_id, minute, requests, errors_5xx) VALUES (?, ?, ?, ?)
-ON CONFLICT (stack_id, minute) DO UPDATE SET
+INSERT INTO stack_request_minutes (stack_id, source, minute, requests, errors_5xx) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (stack_id, source, minute) DO UPDATE SET
     requests = COALESCE(stack_request_minutes.requests, 0) + excluded.requests,
     errors_5xx = COALESCE(stack_request_minutes.errors_5xx, 0) + excluded.errors_5xx
 `
 
 type AddStackRequestMinuteParams struct {
 	StackID   string
+	Source    string
 	Minute    int64
 	Requests  sql.NullInt64
 	Errors5xx sql.NullInt64
@@ -27,6 +28,7 @@ type AddStackRequestMinuteParams struct {
 func (q *Queries) AddStackRequestMinute(ctx context.Context, arg AddStackRequestMinuteParams) error {
 	_, err := q.db.ExecContext(ctx, addStackRequestMinute,
 		arg.StackID,
+		arg.Source,
 		arg.Minute,
 		arg.Requests,
 		arg.Errors5xx,
@@ -35,7 +37,9 @@ func (q *Queries) AddStackRequestMinute(ctx context.Context, arg AddStackRequest
 }
 
 const listStackRequestMinutes = `-- name: ListStackRequestMinutes :many
-SELECT stack_id, minute, requests, errors_5xx FROM stack_request_minutes WHERE stack_id = ? AND minute >= ? ORDER BY minute
+SELECT minute, COUNT(requests) AS counted_sources, CAST(COALESCE(SUM(requests), 0) AS INTEGER) AS requests,
+       CAST(COALESCE(SUM(errors_5xx), 0) AS INTEGER) AS errors_5xx
+FROM stack_request_minutes WHERE stack_id = ? AND minute >= ? GROUP BY minute ORDER BY minute
 `
 
 type ListStackRequestMinutesParams struct {
@@ -43,18 +47,26 @@ type ListStackRequestMinutesParams struct {
 	Minute  int64
 }
 
-func (q *Queries) ListStackRequestMinutes(ctx context.Context, arg ListStackRequestMinutesParams) ([]StackRequestMinute, error) {
+type ListStackRequestMinutesRow struct {
+	Minute         int64
+	CountedSources int64
+	Requests       int64
+	Errors5xx      int64
+}
+
+// A minute's count is the sum of its sources; counted_sources is 0 when none could count it, which is not zero requests.
+func (q *Queries) ListStackRequestMinutes(ctx context.Context, arg ListStackRequestMinutesParams) ([]ListStackRequestMinutesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listStackRequestMinutes, arg.StackID, arg.Minute)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []StackRequestMinute
+	var items []ListStackRequestMinutesRow
 	for rows.Next() {
-		var i StackRequestMinute
+		var i ListStackRequestMinutesRow
 		if err := rows.Scan(
-			&i.StackID,
 			&i.Minute,
+			&i.CountedSources,
 			&i.Requests,
 			&i.Errors5xx,
 		); err != nil {
@@ -72,16 +84,17 @@ func (q *Queries) ListStackRequestMinutes(ctx context.Context, arg ListStackRequ
 }
 
 const markStackRequestMinuteMissing = `-- name: MarkStackRequestMinuteMissing :exec
-INSERT OR IGNORE INTO stack_request_minutes (stack_id, minute) VALUES (?, ?)
+INSERT OR IGNORE INTO stack_request_minutes (stack_id, source, minute) VALUES (?, ?, ?)
 `
 
 type MarkStackRequestMinuteMissingParams struct {
 	StackID string
+	Source  string
 	Minute  int64
 }
 
 func (q *Queries) MarkStackRequestMinuteMissing(ctx context.Context, arg MarkStackRequestMinuteMissingParams) error {
-	_, err := q.db.ExecContext(ctx, markStackRequestMinuteMissing, arg.StackID, arg.Minute)
+	_, err := q.db.ExecContext(ctx, markStackRequestMinuteMissing, arg.StackID, arg.Source, arg.Minute)
 	return err
 }
 
@@ -95,12 +108,13 @@ func (q *Queries) PruneStackRequestMinutes(ctx context.Context, minute int64) er
 }
 
 const setStackRequestMinute = `-- name: SetStackRequestMinute :exec
-INSERT INTO stack_request_minutes (stack_id, minute, requests, errors_5xx) VALUES (?, ?, ?, ?)
-ON CONFLICT (stack_id, minute) DO UPDATE SET requests = excluded.requests, errors_5xx = excluded.errors_5xx
+INSERT INTO stack_request_minutes (stack_id, source, minute, requests, errors_5xx) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (stack_id, source, minute) DO UPDATE SET requests = excluded.requests, errors_5xx = excluded.errors_5xx
 `
 
 type SetStackRequestMinuteParams struct {
 	StackID   string
+	Source    string
 	Minute    int64
 	Requests  sql.NullInt64
 	Errors5xx sql.NullInt64
@@ -109,6 +123,7 @@ type SetStackRequestMinuteParams struct {
 func (q *Queries) SetStackRequestMinute(ctx context.Context, arg SetStackRequestMinuteParams) error {
 	_, err := q.db.ExecContext(ctx, setStackRequestMinute,
 		arg.StackID,
+		arg.Source,
 		arg.Minute,
 		arg.Requests,
 		arg.Errors5xx,

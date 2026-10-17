@@ -15,34 +15,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeRequestRepo keeps minutes the way the table does: Add sums into a row and fills a missing one, Set replaces it,
-// MarkMissing leaves a row that is already there alone.
+// fakeRequestRepo keeps minutes the way the table does, one row per stack, source and minute: Add sums into the proxy's
+// row and fills a missing one, Set replaces the tunnel's, MarkMissing leaves a row that is already there alone, and
+// reads sum the sources.
 type fakeRequestRepo struct {
 	mu   sync.Mutex
-	rows map[string]map[time.Time]*RequestMinute
+	rows map[string]map[RequestSource]map[time.Time]*RequestMinute
 	// pruned is the last cut-off Prune was given.
 	pruned time.Time
 }
 
 func newFakeRequestRepo() *fakeRequestRepo {
-	return &fakeRequestRepo{rows: map[string]map[time.Time]*RequestMinute{}}
+	return &fakeRequestRepo{rows: map[string]map[RequestSource]map[time.Time]*RequestMinute{}}
 }
 
-func (f *fakeRequestRepo) row(stackID string, m time.Time) *RequestMinute {
+func (f *fakeRequestRepo) row(stackID string, source RequestSource, m time.Time) *RequestMinute {
 	if f.rows[stackID] == nil {
-		f.rows[stackID] = map[time.Time]*RequestMinute{}
+		f.rows[stackID] = map[RequestSource]map[time.Time]*RequestMinute{}
 	}
-	return f.rows[stackID][m]
+	if f.rows[stackID][source] == nil {
+		f.rows[stackID][source] = map[time.Time]*RequestMinute{}
+	}
+	return f.rows[stackID][source][m]
 }
 
 func (f *fakeRequestRepo) Add(_ context.Context, adds []RequestAdd) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, a := range adds {
-		r := f.row(a.StackID, a.Minute)
+		r := f.row(a.StackID, SourceProxy, a.Minute)
 		if r == nil {
 			r = &RequestMinute{Minute: a.Minute}
-			f.rows[a.StackID][a.Minute] = r
+			f.rows[a.StackID][SourceProxy][a.Minute] = r
 		}
 		r.Requests, r.Errors = addTo(r.Requests, a.Requests), addTo(r.Errors, a.Errors)
 	}
@@ -53,9 +57,9 @@ func (f *fakeRequestRepo) Set(_ context.Context, sets []RequestAdd) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, a := range sets {
-		f.row(a.StackID, a.Minute)
+		f.row(a.StackID, SourceTunnel, a.Minute)
 		requests, errs := a.Requests, a.Errors
-		f.rows[a.StackID][a.Minute] = &RequestMinute{Minute: a.Minute, Requests: &requests, Errors: &errs}
+		f.rows[a.StackID][SourceTunnel][a.Minute] = &RequestMinute{Minute: a.Minute, Requests: &requests, Errors: &errs}
 	}
 	return nil
 }
@@ -67,12 +71,12 @@ func addTo(cur *int64, n int64) *int64 {
 	return &n
 }
 
-func (f *fakeRequestRepo) MarkMissing(_ context.Context, stackIDs []string, minute time.Time) error {
+func (f *fakeRequestRepo) MarkMissing(_ context.Context, source RequestSource, stackIDs []string, minute time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, id := range stackIDs {
-		if f.row(id, minute) == nil {
-			f.rows[id][minute] = &RequestMinute{Minute: minute}
+		if f.row(id, source, minute) == nil {
+			f.rows[id][source][minute] = &RequestMinute{Minute: minute}
 		}
 	}
 	return nil
@@ -81,11 +85,25 @@ func (f *fakeRequestRepo) MarkMissing(_ context.Context, stackIDs []string, minu
 func (f *fakeRequestRepo) Since(_ context.Context, stackID string, from time.Time) ([]RequestMinute, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []RequestMinute
-	for m, r := range f.rows[stackID] {
-		if !m.Before(from) {
-			out = append(out, *r)
+	merged := map[time.Time]*RequestMinute{}
+	for _, minutes := range f.rows[stackID] {
+		for m, r := range minutes {
+			if m.Before(from) {
+				continue
+			}
+			sum := merged[m]
+			if sum == nil {
+				sum = &RequestMinute{Minute: m}
+				merged[m] = sum
+			}
+			if r.Requests != nil {
+				sum.Requests, sum.Errors = addTo(sum.Requests, *r.Requests), addTo(sum.Errors, *r.Errors)
+			}
 		}
+	}
+	out := make([]RequestMinute, 0, len(merged))
+	for _, r := range merged {
+		out = append(out, *r)
 	}
 	slices.SortFunc(out, func(a, b RequestMinute) int { return a.Minute.Compare(b.Minute) })
 	return out, nil
@@ -100,9 +118,11 @@ func (f *fakeRequestRepo) Prune(_ context.Context, before time.Time) error {
 
 // at returns the counts stored for a minute: nil when there is no row, and a row with nil counts when it is missing.
 func (f *fakeRequestRepo) at(stackID string, m time.Time) *RequestMinute {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.row(stackID, m)
+	rows, _ := f.Since(context.Background(), stackID, m)
+	if len(rows) == 0 || !rows[0].Minute.Equal(m) {
+		return nil
+	}
+	return &rows[0]
 }
 
 type tunnelCall struct {
@@ -275,6 +295,36 @@ func TestPollRequestCounts_AFailedQueryLeavesTheMinuteMissing(t *testing.T) {
 	assert.NotNil(t, env.repo.at("svc-1", clock(10, 40)).Requests)
 }
 
+func TestPollRequestCounts_AStackOnBothGatewaysKeepsTheProxyCountWhenTheTunnelMinuteIsSet(t *testing.T) {
+	env := newRequestEnv(t, proxyRoute, tunnelRoute)
+	env.now = clock(10, 39).Add(20 * time.Second)
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 10, Errors: 2})
+	env.now = clock(10, 42).Add(30 * time.Second)
+	env.sources.counts = map[string][]HostMinute{"z1": {tunnelHost("app.example.com", clock(10, 39), 56, 4)}}
+
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	row := env.repo.at("svc-1", clock(10, 39))
+	require.NotNil(t, row)
+	assert.EqualValues(t, 66, *row.Requests, "the tunnel's count is set beside the proxy's, not over it")
+	assert.EqualValues(t, 6, *row.Errors)
+}
+
+func TestPollRequestCounts_AFailedTunnelReadLeavesTheProxyCountOfTheMinute(t *testing.T) {
+	env := newRequestEnv(t, proxyRoute, tunnelRoute)
+	env.now = clock(10, 39).Add(20 * time.Second)
+	env.counts(t, outageMachine, routerCount{Router: "nexul-e1@file", Requests: 10})
+	env.now = clock(10, 42).Add(30 * time.Second)
+	env.sources.zoneErr = map[string]error{"z1": errors.New("cloudflare down")}
+
+	require.NoError(t, env.svc.pollRequestCounts(t.Context(), slog.Default()))
+
+	assert.EqualValues(t, 10, *env.repo.at("svc-1", clock(10, 39)).Requests, "one source counted it, so it is not missing")
+	other := env.repo.at("svc-1", clock(10, 38))
+	require.NotNil(t, other)
+	assert.Nil(t, other.Requests, "no source counted it")
+}
+
 func tunnelHost(host string, minute time.Time, requests, errs int64) HostMinute {
 	return HostMinute{Hostname: host, Minute: minute, Requests: requests, Errors: errs}
 }
@@ -408,7 +458,7 @@ func TestRequestWindow_PlacesMinutesAndKeepsGapsNull(t *testing.T) {
 		{StackID: "svc-1", Minute: now.Add(-3 * time.Minute), Requests: 0},
 		{StackID: "svc-1", Minute: now.Add(-2 * time.Hour), Requests: 99},
 	}))
-	require.NoError(t, env.repo.MarkMissing(t.Context(), []string{"svc-1"}, now.Add(-time.Minute)))
+	require.NoError(t, env.repo.MarkMissing(t.Context(), SourceProxy, []string{"svc-1"}, now.Add(-time.Minute)))
 
 	w, err := env.svc.RequestWindow(t.Context(), stack)
 	require.NoError(t, err)
