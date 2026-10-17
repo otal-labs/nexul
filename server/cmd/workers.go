@@ -37,6 +37,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Repo:      store.Runners,
 		Machines:  store.Machines,
 		Upgrades:  store.InstanceUpgrades,
+		Teardowns: store.Teardowns,
 		Envs:      runnerEnvLookupAdapter{deploy: svc.deploySvc},
 		GitTokens: svc.gitRouter,
 		Logger:    logger,

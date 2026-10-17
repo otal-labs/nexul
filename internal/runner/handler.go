@@ -59,6 +59,8 @@ type HandlerConfig struct {
 	// Upgrades is optional; nil means an upgrade_progress/upgrade_result frame and a disconnect while pending
 	// are logged but never persisted.
 	Upgrades UpgradeRepo
+	// Teardowns keeps the stack teardowns waiting for a machine's runner; nil means a teardown with no runner to take it is dropped.
+	Teardowns TeardownRepo
 	// Logger for lifecycle and failure logs. Defaults to slog.Default().
 	Logger *slog.Logger
 	// Logs relays the log frames a machine's runner sends to the log store; nil drops them.
@@ -83,8 +85,6 @@ type Handler struct {
 	mu      sync.Mutex
 	conns   map[string]*runnerConn
 	pending []DeployRequestedEvent
-	// teardowns are stack_teardown frames waiting for a runner on their machine, by machine name (teardown.go).
-	teardowns map[string][]Frame
 
 	// discoverMu/discoverWaiters correlate in-flight discover jobs to the goroutine waiting on their result.
 	discoverMu      sync.Mutex
@@ -158,7 +158,6 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		repo:            cfg.Repo,
 		cfg:             cfg,
 		conns:           make(map[string]*runnerConn),
-		teardowns:       make(map[string][]Frame),
 		discoverWaiters: make(map[string]chan Frame),
 		logSubs:         make(map[string]logSub),
 		streamWaiters:   make(map[string]*streamWaiter),

@@ -32,6 +32,7 @@ type Store struct {
 	Runners               *RunnersRepo
 	Machines              *MachinesRepo
 	InstanceUpgrades      *InstanceUpgradesRepo
+	Teardowns             *TeardownsRepo
 	Outbox                *OutboxRepo
 	ProcessedEvents       *ProcessedEventsRepo
 	DeadLetters           *DeadLettersRepo
@@ -110,6 +111,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Runners:               &RunnersRepo{db: db, w: w, q: q},
 		Machines:              &MachinesRepo{db: db, w: w, q: q},
 		InstanceUpgrades:      &InstanceUpgradesRepo{db: db, w: w, q: q},
+		Teardowns:             &TeardownsRepo{db: db, w: w, q: q},
 		Outbox:                &OutboxRepo{db: db, w: w, q: q},
 		ProcessedEvents:       &ProcessedEventsRepo{db: db, w: w, q: q},
 		DeadLetters:           &DeadLettersRepo{db: db, w: w, q: q},
