@@ -16,7 +16,7 @@ func TestMigration0122_AddsRequestMinutesToAnInstanceWithData(t *testing.T) {
     VALUES ('st-acme', 'acme-web', 'acme-web', 'box', 'compose', 1, 1)`)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db))
+	migrateUpTo(t, db, "0124")
 
 	var minutes, stacks int
 	require.NoError(t, db.QueryRow(`SELECT COUNT(*) FROM stack_request_minutes`).Scan(&minutes))

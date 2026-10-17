@@ -136,7 +136,7 @@ func (e *errorRateEnv) minutes(t *testing.T, window ...*[2]int64) {
 	for i, w := range window {
 		m := start.Add(time.Duration(i) * time.Minute)
 		if w == nil {
-			require.NoError(t, e.repo.MarkMissing(t.Context(), []string{"svc-1"}, m))
+			require.NoError(t, e.repo.MarkMissing(t.Context(), SourceProxy, []string{"svc-1"}, m))
 			continue
 		}
 		require.NoError(t, e.repo.Add(t.Context(), []RequestAdd{{StackID: "svc-1", Minute: m, Requests: w[0], Errors: w[1]}}))

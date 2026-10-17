@@ -73,15 +73,26 @@ type RequestMinute struct {
 	Errors   *int64
 }
 
+// RequestSource is who counted a minute: each source keeps its own count, and a minute reads as their sum.
+type RequestSource string
+
+const (
+	// SourceProxy is the machine's Traefik, whose counts Add sums in.
+	SourceProxy RequestSource = "proxy"
+	// SourceTunnel is Cloudflare, whose counts Set replaces.
+	SourceTunnel RequestSource = "tunnel"
+)
+
 // RequestRepo is the persistence contract for a stack's per-minute request counts.
 type RequestRepo interface {
-	// Add sums each entry into its minute, which replaces a missing one.
+	// Add sums each entry into the proxy's count of its minute, which replaces a missing one.
 	Add(ctx context.Context, adds []RequestAdd) error
-	// Set replaces each entry's minute with its counts, so reading the same minute again changes nothing.
+	// Set replaces the tunnel's count of each entry's minute, so reading the same minute again changes nothing.
 	Set(ctx context.Context, sets []RequestAdd) error
-	// MarkMissing stores the minute as missing for each stack that has no row for it yet.
-	MarkMissing(ctx context.Context, stackIDs []string, minute time.Time) error
-	// Since returns a stack's stored minutes from the given one on, oldest first.
+	// MarkMissing stores the source's count of the minute as missing for each stack that has none yet.
+	MarkMissing(ctx context.Context, source RequestSource, stackIDs []string, minute time.Time) error
+	// Since returns a stack's stored minutes from the given one on, oldest first, each the sum of its sources; a
+	// minute is missing only when every source's count of it is.
 	Since(ctx context.Context, stackID string, from time.Time) ([]RequestMinute, error)
 	// Prune drops every stack's minutes before the given time.
 	Prune(ctx context.Context, before time.Time) error
@@ -240,7 +251,7 @@ func (s *Service) pollRequestCounts(ctx context.Context, log *slog.Logger) error
 	if err != nil {
 		return fmt.Errorf("list routes: %w", err)
 	}
-	counted := map[string]bool{}
+	counted := map[RequestSource]map[string]bool{SourceProxy: {}, SourceTunnel: {}}
 	byZone := map[string][]RequestRoute{}
 	stackOf := map[string]string{}
 	for _, r := range routes {
@@ -251,19 +262,23 @@ func (s *Service) pollRequestCounts(ctx context.Context, log *slog.Logger) error
 		if stackID == "" {
 			continue
 		}
-		counted[stackID] = true
 		stackOf[r.ContainerID] = stackID
 		if r.Tunnel {
+			counted[SourceTunnel][stackID] = true
 			byZone[r.ZoneID] = append(byZone[r.ZoneID], r)
+			continue
 		}
+		counted[SourceProxy][stackID] = true
 	}
 	sums := s.zoneSums(ctx, log, byZone, stackOf, from, end)
 	if err := s.requests.repo.Set(ctx, addList(sums)); err != nil {
 		return fmt.Errorf("set request counts: %w", err)
 	}
-	for m := from; m.Before(end); m = m.Add(time.Minute) {
-		if err := s.requests.repo.MarkMissing(ctx, slices.Sorted(maps.Keys(counted)), m); err != nil {
-			return fmt.Errorf("mark missing request minutes: %w", err)
+	for source, stackIDs := range counted {
+		for m := from; m.Before(end); m = m.Add(time.Minute) {
+			if err := s.requests.repo.MarkMissing(ctx, source, slices.Sorted(maps.Keys(stackIDs)), m); err != nil {
+				return fmt.Errorf("mark missing %s request minutes: %w", source, err)
+			}
 		}
 	}
 	return nil

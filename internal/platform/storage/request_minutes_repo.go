@@ -22,7 +22,7 @@ type RequestMinutesRepo struct {
 func (r *RequestMinutesRepo) Add(ctx context.Context, adds []deploy.RequestAdd) error {
 	return r.write(ctx, "add", adds, func(q *sqlcgen.Queries, a deploy.RequestAdd) error {
 		return q.AddStackRequestMinute(ctx, sqlcgen.AddStackRequestMinuteParams{
-			StackID: a.StackID, Minute: a.Minute.Unix(),
+			StackID: a.StackID, Source: string(deploy.SourceProxy), Minute: a.Minute.Unix(),
 			Requests: sql.NullInt64{Int64: a.Requests, Valid: true}, Errors5xx: sql.NullInt64{Int64: a.Errors, Valid: true},
 		})
 	})
@@ -31,7 +31,7 @@ func (r *RequestMinutesRepo) Add(ctx context.Context, adds []deploy.RequestAdd) 
 func (r *RequestMinutesRepo) Set(ctx context.Context, sets []deploy.RequestAdd) error {
 	return r.write(ctx, "set", sets, func(q *sqlcgen.Queries, a deploy.RequestAdd) error {
 		return q.SetStackRequestMinute(ctx, sqlcgen.SetStackRequestMinuteParams{
-			StackID: a.StackID, Minute: a.Minute.Unix(),
+			StackID: a.StackID, Source: string(deploy.SourceTunnel), Minute: a.Minute.Unix(),
 			Requests: sql.NullInt64{Int64: a.Requests, Valid: true}, Errors5xx: sql.NullInt64{Int64: a.Errors, Valid: true},
 		})
 	})
@@ -52,14 +52,14 @@ func (r *RequestMinutesRepo) write(ctx context.Context, verb string, entries []d
 	})
 }
 
-func (r *RequestMinutesRepo) MarkMissing(ctx context.Context, stackIDs []string, minute time.Time) error {
+func (r *RequestMinutesRepo) MarkMissing(ctx context.Context, source deploy.RequestSource, stackIDs []string, minute time.Time) error {
 	if len(stackIDs) == 0 {
 		return nil
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		for _, id := range stackIDs {
-			err := q.MarkStackRequestMinuteMissing(ctx, sqlcgen.MarkStackRequestMinuteMissingParams{StackID: id, Minute: minute.Unix()})
+			err := q.MarkStackRequestMinuteMissing(ctx, sqlcgen.MarkStackRequestMinuteMissingParams{StackID: id, Source: string(source), Minute: minute.Unix()})
 			if err != nil {
 				return fmt.Errorf("mark request minute of stack %s missing: %w", id, classifyWriteErr(err))
 			}
@@ -76,8 +76,8 @@ func (r *RequestMinutesRepo) Since(ctx context.Context, stackID string, from tim
 	out := make([]deploy.RequestMinute, 0, len(rows))
 	for _, row := range rows {
 		m := deploy.RequestMinute{Minute: time.Unix(row.Minute, 0).UTC()}
-		if row.Requests.Valid {
-			m.Requests, m.Errors = &row.Requests.Int64, &row.Errors5xx.Int64
+		if row.CountedSources > 0 {
+			m.Requests, m.Errors = &row.Requests, &row.Errors5xx
 		}
 		out = append(out, m)
 	}
