@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,16 +17,97 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-func (h *Handler) waitingTeardowns(machine string) []Frame {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return append([]Frame(nil), h.teardowns[machine]...)
+// fakeTeardownRepo is an in-memory TeardownRepo; its rows outlive any handler built on it, like the table does.
+type fakeTeardownRepo struct {
+	mu                          sync.Mutex
+	rows                        map[string][]Frame
+	saveErr, listErr, deleteErr error
+	afterDelete                 func()
 }
 
-func (h *Handler) anyWaitingTeardowns() int {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return len(h.teardowns)
+func newFakeTeardownRepo() *fakeTeardownRepo { return &fakeTeardownRepo{rows: map[string][]Frame{}} }
+
+func (f *fakeTeardownRepo) Save(_ context.Context, machine string, fr Frame) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	f.rows[machine] = append(f.rows[machine], fr)
+	return nil
+}
+
+func (f *fakeTeardownRepo) List(_ context.Context, machine string) ([]Frame, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return append([]Frame(nil), f.rows[machine]...), nil
+}
+
+func (f *fakeTeardownRepo) Delete(_ context.Context, machine, slug string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
+	var kept []Frame
+	for _, fr := range f.rows[machine] {
+		if fr.StackSlug != slug {
+			kept = append(kept, fr)
+		}
+	}
+	f.rows[machine] = kept
+	if f.afterDelete != nil {
+		f.afterDelete()
+	}
+	return nil
+}
+
+func (f *fakeTeardownRepo) waiting(machine string) []Frame {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]Frame(nil), f.rows[machine]...)
+}
+
+func (f *fakeTeardownRepo) total() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, rows := range f.rows {
+		n += len(rows)
+	}
+	return n
+}
+
+func newTeardownHandler(repo *fakeRunnerRepo, store TeardownRepo) *Handler {
+	return newTestHandler(newFakeBus(), repo, func(c *HandlerConfig) { c.Teardowns = store })
+}
+
+// openConn is a connected runner on machine; the websocket.Conn is the runner's end, which reads what the handler sends.
+func openConn(t *testing.T, machine string) (*runnerConn, *websocket.Conn) {
+	t.Helper()
+	served, release := make(chan *websocket.Conn, 1), make(chan struct{})
+	srv := wsTestServer(t, func(_ context.Context, conn *websocket.Conn) {
+		served <- conn
+		<-release
+	})
+	t.Cleanup(func() { close(release) })
+	client, _, err := websocket.Dial(t.Context(), wsURL(srv), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.CloseNow() })
+	return &runnerConn{id: "r-open", name: "r-open", machine: machine, ws: <-served}, client
+}
+
+// closedConn is a connected runner whose socket is gone, so every send to it fails.
+func closedConn(t *testing.T, machine string) *runnerConn {
+	t.Helper()
+	srv := wsTestServer(t, func(context.Context, *websocket.Conn) {})
+	client, _, err := websocket.Dial(t.Context(), wsURL(srv), nil)
+	require.NoError(t, err)
+	require.NoError(t, client.CloseNow())
+	return &runnerConn{id: "r-gone", name: "r-gone", machine: machine, ws: client}
 }
 
 func stackDeleted(t *testing.T, h *Handler, e StackDeletedEvent) error {
@@ -41,7 +123,8 @@ func readTeardownFrame(t *testing.T, ctx context.Context, conn *websocket.Conn) 
 }
 
 func TestHandler_StackDeleted_ARejectedEventSendsNothing(t *testing.T) {
-	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+	store := newFakeTeardownRepo()
+	h := newTeardownHandler(newFakeRunnerRepo(), store)
 
 	t.Run("a payload that cannot be parsed is dead-lettered", func(t *testing.T) {
 		err := h.handleStackDeleted(t.Context(), eventbus.Event{Payload: []byte("{")})
@@ -49,15 +132,15 @@ func TestHandler_StackDeleted_ARejectedEventSendsNothing(t *testing.T) {
 	})
 	t.Run("an unmanaged stack's containers are the owner's and stay", func(t *testing.T) {
 		require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "shop", Strategy: "compose", Managed: false}))
-		assert.Zero(t, h.anyWaitingTeardowns(), "nothing waits for a runner either")
+		assert.Zero(t, store.total(), "nothing waits for a runner either")
 	})
 	t.Run("a stack with no machine has no runner to ask", func(t *testing.T) {
 		require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Slug: "shop", Strategy: "compose", Managed: true}))
-		assert.Zero(t, h.anyWaitingTeardowns())
+		assert.Zero(t, store.total())
 	})
 	t.Run("a slug docker would read as a flag is dropped, not retried", func(t *testing.T) {
 		require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "-f", Strategy: "run", Managed: true}))
-		assert.Zero(t, h.anyWaitingTeardowns())
+		assert.Zero(t, store.total())
 	})
 }
 
@@ -68,7 +151,8 @@ func TestHandler_StackDeleted_TheMachinesRunnerGetsOneTeardown(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			repo := newFakeRunnerRepo()
-			h := newTestHandler(newFakeBus(), repo)
+			store := newFakeTeardownRepo()
+			h := newTeardownHandler(repo, store)
 			srv := httptest.NewServer(h)
 			defer srv.Close()
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
@@ -89,28 +173,32 @@ func TestHandler_StackDeleted_TheMachinesRunnerGetsOneTeardown(t *testing.T) {
 			defer readCancel()
 			var stray Frame
 			assert.Error(t, wsjson.Read(readCtx, other, &stray), "a runner on another machine hears nothing")
-			assert.Zero(t, h.anyWaitingTeardowns())
+			assert.Zero(t, store.total())
 		})
 	}
 }
 
 func TestHandler_StackDeleted_AnOfflineMachineIsTornDownWhenItsRunnerConnects(t *testing.T) {
 	repo := newFakeRunnerRepo()
-	h := newTestHandler(newFakeBus(), repo)
+	store := newFakeTeardownRepo()
+	deleting := newTeardownHandler(repo, store)
+
+	require.NoError(t, stackDeleted(t, deleting, StackDeletedEvent{Machine: "host1", Slug: "edge", Strategy: "run", Managed: true}), "the delete does not wait for the runner")
+	require.NoError(t, stackDeleted(t, deleting, StackDeletedEvent{Machine: "host1", Slug: "shop", Strategy: "compose", Managed: true}))
+	require.Len(t, store.waiting("host1"), 2)
+
+	// A new handler on the same store is the server after a restart.
+	h := newTeardownHandler(repo, store)
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 
-	require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "edge", Strategy: "run", Managed: true}), "the delete does not wait for the runner")
-	require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "shop", Strategy: "compose", Managed: true}))
-	require.Len(t, h.waitingTeardowns("host1"), 2)
-
 	elsewhere, _, err := dialRunner(ctx, srv, repo.enrolled("r-2", "r-2", "host2"), "")
 	require.NoError(t, err)
 	defer func() { _ = elsewhere.CloseNow() }()
 	eventually(t, 2*time.Second, func() bool { return repo.connectedCount() == 1 })
-	require.Len(t, h.waitingTeardowns("host1"), 2, "another machine's runner does not take them")
+	require.Len(t, store.waiting("host1"), 2, "another machine's runner does not take them")
 
 	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", "host1"), "")
 	require.NoError(t, err)
@@ -118,7 +206,81 @@ func TestHandler_StackDeleted_AnOfflineMachineIsTornDownWhenItsRunnerConnects(t 
 
 	assert.Equal(t, Frame{Type: FrameStackTeardown, StackSlug: "edge", Strategy: "run"}, readTeardownFrame(t, ctx, conn))
 	assert.Equal(t, Frame{Type: FrameStackTeardown, StackSlug: "shop", Strategy: "compose"}, readTeardownFrame(t, ctx, conn), "in the order they were deleted")
-	eventually(t, time.Second, func() bool { return len(h.waitingTeardowns("host1")) == 0 })
+	eventually(t, time.Second, func() bool { return len(store.waiting("host1")) == 0 })
+}
+
+func TestHandler_StackDeleted_AFailedSendIsKeptForTheNextConnect(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	store := newFakeTeardownRepo()
+	h := newTeardownHandler(repo, store)
+	gone := closedConn(t, "host1")
+	h.conns[gone.id] = gone
+
+	require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "edge", Strategy: "run", Managed: true}))
+
+	assert.Equal(t, []Frame{{Type: FrameStackTeardown, StackSlug: "edge", Strategy: "run"}}, store.waiting("host1"))
+}
+
+func TestHandler_StackDeleted_AStoreErrorIsLoggedNotFatal(t *testing.T) {
+	store := newFakeTeardownRepo()
+	store.saveErr = errors.New("database is locked")
+	h := newTeardownHandler(newFakeRunnerRepo(), store)
+
+	require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host1", Slug: "edge", Strategy: "run", Managed: true}))
+	assert.Zero(t, store.total())
+
+	noStore := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+	require.NoError(t, stackDeleted(t, noStore, StackDeletedEvent{Machine: "host1", Slug: "edge", Strategy: "run", Managed: true}))
+}
+
+func TestHandler_FlushTeardowns_StopsAtTheFirstFailedSendAndKeepsTheRest(t *testing.T) {
+	store := newFakeTeardownRepo()
+	h := newTeardownHandler(newFakeRunnerRepo(), store)
+	for _, slug := range []string{"edge", "shop", "api"} {
+		require.NoError(t, store.Save(t.Context(), "host1", Frame{Type: FrameStackTeardown, StackSlug: slug, Strategy: "run"}))
+	}
+	c, runnersEnd := openConn(t, "host1")
+	store.afterDelete = func() { _ = c.ws.CloseNow() }
+
+	h.flushTeardowns(t.Context(), c)
+
+	assert.Equal(t, "edge", readTeardownFrame(t, t.Context(), runnersEnd).StackSlug)
+	waiting := store.waiting("host1")
+	require.Len(t, waiting, 2, "the one that was sent is dropped")
+	assert.Equal(t, []string{"shop", "api"}, []string{waiting[0].StackSlug, waiting[1].StackSlug})
+}
+
+func TestHandler_FlushTeardowns_AStoreErrorSendsNothingMore(t *testing.T) {
+	t.Run("a list that fails", func(t *testing.T) {
+		store := newFakeTeardownRepo()
+		store.listErr = errors.New("database is locked")
+		h := newTeardownHandler(newFakeRunnerRepo(), store)
+		h.flushTeardowns(t.Context(), closedConn(t, "host1"))
+	})
+	t.Run("a delete that fails stops before the next teardown", func(t *testing.T) {
+		repo := newFakeRunnerRepo()
+		store := newFakeTeardownRepo()
+		h := newTeardownHandler(repo, store)
+		srv := httptest.NewServer(h)
+		defer srv.Close()
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		defer cancel()
+		for _, slug := range []string{"edge", "shop"} {
+			require.NoError(t, store.Save(ctx, "host1", Frame{Type: FrameStackTeardown, StackSlug: slug, Strategy: "run"}))
+		}
+		store.deleteErr = errors.New("database is locked")
+
+		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", "host1"), "")
+		require.NoError(t, err)
+		defer func() { _ = conn.CloseNow() }()
+
+		assert.Equal(t, "edge", readTeardownFrame(t, ctx, conn).StackSlug)
+		readCtx, readCancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		defer readCancel()
+		var stray Frame
+		assert.Error(t, wsjson.Read(readCtx, conn, &stray), "the second teardown waits until the first is dropped")
+		assert.Len(t, store.waiting("host1"), 2)
+	})
 }
 
 func TestHandler_StackTeardownResult_AFailureIsLoggedNotFatal(t *testing.T) {

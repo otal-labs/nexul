@@ -15,18 +15,17 @@ is gone.
   repository and nothing Nexul created; removing it would delete someone else's workload on the strength of a button
   labelled for Nexul's own. The confirm says so. Attaching a repository makes the stack managed, and deleting it then
   removes its containers.
-- **An offline runner is caught up on connect.** The frame waits in memory per machine and is sent when a runner on that
-  machine connects, before queued deploys, so a slug reused in the meantime is cleared before it is deployed again. This is
-  the same shape as the deploy queue, and shares its ceiling: a server restart forgets what was waiting, and those
-  containers stay until removed on the machine. The confirm names the offline case; it does not promise past a restart.
+- **An offline runner is caught up on connect.** The frame waits in the `pending_stack_teardowns` table, one row per
+  machine and slug, and is sent when a runner on that machine connects, before queued deploys, so a slug reused in the
+  meantime is cleared before it is deployed again. A row is dropped once its send succeeds, and a failed send leaves it and
+  the rows after it for the next connect, so a server restart does not forget a deleted stack's containers.
 - **Personal runners refuse the frame** like every other machine job, and the runner validates the slug against the slug
   alphabet because it reaches Docker's argument list.
 
 A Cloudflare tunnel delete now removes its connections first (`DELETE .../connections`) and then the tunnel, so a connector
 that outlived its stack no longer blocks it.
 
-Rejected: persisting the pending teardowns in a table, which costs a migration and a sweeper for a case the deploy queue
-already accepts losing; running the teardown as a deploy job, which would borrow the runner's one-job slot and report a
-result for a deploy record that does not exist.
+Rejected: running the teardown as a deploy job, which would borrow the runner's one-job slot and report a result for a
+deploy record that does not exist.
 
 Decided: 2026-10-16

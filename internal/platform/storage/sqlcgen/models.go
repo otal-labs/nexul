@@ -825,6 +825,13 @@ type PairingUserDefault struct {
 	StartIn           string
 }
 
+type PendingStackTeardown struct {
+	Machine   string
+	Slug      string
+	Strategy  string
+	CreatedAt int64
+}
+
 type PermissionOverwrite struct {
 	ResourceType string
 	ResourceID   string

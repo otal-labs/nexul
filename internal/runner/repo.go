@@ -69,3 +69,13 @@ type UpgradeRepo interface {
 	// SetStatus updates status and error together and stamps updated_at; unknown id is apperrs.ErrNotFound.
 	SetStatus(ctx context.Context, id, status, errMsg string) error
 }
+
+// TeardownRepo keeps the stack teardowns waiting for a machine's runner, so a server restart does not forget them.
+type TeardownRepo interface {
+	// Save keeps a teardown for machine; saving a slug already waiting replaces its strategy.
+	Save(ctx context.Context, machine string, f Frame) error
+	// List returns machine's waiting teardowns, oldest first.
+	List(ctx context.Context, machine string) ([]Frame, error)
+	// Delete drops the teardown for machine's slug; one that is not waiting is not an error.
+	Delete(ctx context.Context, machine, slug string) error
+}
