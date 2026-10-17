@@ -31,6 +31,9 @@ SELECT * FROM dns_tunnels WHERE id = ?;
 -- name: ListTunnels :many
 SELECT * FROM dns_tunnels ORDER BY created_at;
 
+-- name: UpdateTunnelStatus :exec
+UPDATE dns_tunnels SET status = ? WHERE id = ?;
+
 -- name: DeleteTunnel :execrows
 DELETE FROM dns_tunnels WHERE id = ?;
 
