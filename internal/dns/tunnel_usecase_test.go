@@ -501,6 +501,122 @@ func TestService_ListTunnels_RepoError(t *testing.T) {
 	assert.ErrorIs(t, err, errBoom)
 }
 
+func TestService_ListTunnels_RefreshesStatuses(t *testing.T) {
+	tests := []struct {
+		name          string
+		stored        []Tunnel
+		live          []Tunnel
+		listErr       error
+		statusErr     error
+		wantStatus    map[string]string
+		wantStored    map[string]string
+		wantListCalls int
+	}{
+		{
+			name:          "provider unreachable returns the stored rows",
+			stored:        []Tunnel{{ID: "t1", AccountID: "a1", Status: "inactive"}},
+			live:          []Tunnel{{ID: "t1", Status: "healthy"}},
+			listErr:       errBoom,
+			wantStatus:    map[string]string{"t1": "inactive"},
+			wantStored:    map[string]string{"t1": "inactive"},
+			wantListCalls: 1,
+		},
+		{
+			name:          "a failed write still answers with the live status",
+			stored:        []Tunnel{{ID: "t1", AccountID: "a1", Status: "inactive"}},
+			live:          []Tunnel{{ID: "t1", Status: "healthy"}},
+			statusErr:     errBoom,
+			wantStatus:    map[string]string{"t1": "healthy"},
+			wantStored:    map[string]string{"t1": "inactive"},
+			wantListCalls: 1,
+		},
+		{
+			name:          "a tunnel the provider no longer lists keeps its stored status",
+			stored:        []Tunnel{{ID: "t1", AccountID: "a1", Status: "healthy"}},
+			wantStatus:    map[string]string{"t1": "healthy"},
+			wantStored:    map[string]string{"t1": "healthy"},
+			wantListCalls: 1,
+		},
+		{
+			name:          "live status is returned and stored",
+			stored:        []Tunnel{{ID: "t1", AccountID: "a1", Status: "inactive"}, {ID: "t2", AccountID: "a1", Status: "healthy"}},
+			live:          []Tunnel{{ID: "t1", Status: "healthy"}, {ID: "t2", Status: "down"}},
+			wantStatus:    map[string]string{"t1": "healthy", "t2": "down"},
+			wantStored:    map[string]string{"t1": "healthy", "t2": "down"},
+			wantListCalls: 1,
+		},
+		{
+			name: "one provider call per account, not per tunnel",
+			stored: []Tunnel{
+				{ID: "t1", AccountID: "a1", Status: "inactive"}, {ID: "t2", AccountID: "a1", Status: "inactive"},
+				{ID: "t3", AccountID: "a2", Status: "inactive"},
+			},
+			live:          []Tunnel{{ID: "t1", Status: "healthy"}, {ID: "t2", Status: "healthy"}, {ID: "t3", Status: "healthy"}},
+			wantStatus:    map[string]string{"t1": "healthy", "t2": "healthy", "t3": "healthy"},
+			wantStored:    map[string]string{"t1": "healthy", "t2": "healthy", "t3": "healthy"},
+			wantListCalls: 2,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := newFakeRepo()
+			for _, row := range tc.stored {
+				require.NoError(t, repo.SaveTunnel(ctx, row))
+			}
+			repo.statusErr = tc.statusErr
+			provider := newFakeTunnelProvider()
+			provider.listErr = tc.listErr
+			for _, row := range tc.live {
+				provider.tunnels[row.ID] = &Tunnel{ID: row.ID, Status: row.Status}
+			}
+			s := newTunnelService(repo, provider, nil)
+
+			got, err := s.ListTunnels(ctx)
+			require.NoError(t, err)
+
+			gotStatus := map[string]string{}
+			for _, row := range got {
+				gotStatus[row.ID] = row.Status
+			}
+			assert.Equal(t, tc.wantStatus, gotStatus)
+			gotStored := map[string]string{}
+			for id, row := range repo.tunnels {
+				gotStored[id] = row.Status
+			}
+			assert.Equal(t, tc.wantStored, gotStored)
+			assert.Equal(t, tc.wantListCalls, provider.listCalls)
+		})
+	}
+}
+
+func TestService_TunnelStatus_StoresTheLiveStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusErr  error
+		wantStored string
+	}{
+		{name: "stores the live status", wantStored: "healthy"},
+		{name: "a failed write still answers with the live status", statusErr: errBoom, wantStored: "inactive"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo := newFakeRepo()
+			require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Status: "inactive"}))
+			repo.statusErr = tc.statusErr
+			provider := newFakeTunnelProvider()
+			provider.tunnels["t1"] = &Tunnel{ID: "t1", Status: "healthy"}
+			s := newTunnelService(repo, provider, nil)
+
+			got, err := s.TunnelStatus(ctx, "t1")
+			require.NoError(t, err)
+			assert.Equal(t, "healthy", got.Status)
+			assert.Equal(t, tc.wantStored, repo.tunnels["t1"].Status)
+		})
+	}
+}
+
 func TestService_ProvisionTunnelAgent(t *testing.T) {
 	t.Run("provisions cloudflared with the tunnel token", func(t *testing.T) {
 		repo := newFakeRepo()

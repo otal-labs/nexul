@@ -20,6 +20,7 @@ type fakeRepo struct {
 	hostErr     error
 	tunnels     map[string]*Tunnel
 	tunnelErr   error
+	statusErr   error
 	gateways    map[string]*Gateway
 	gatewayErr  error
 	exposures   map[string]*Exposure
@@ -138,6 +139,20 @@ func (f *fakeRepo) ListTunnels(_ context.Context) ([]*Tunnel, error) {
 		out = append(out, &copied)
 	}
 	return out, nil
+}
+
+func (f *fakeRepo) UpdateTunnelStatus(_ context.Context, tunnelID, status string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.statusErr != nil {
+		return f.statusErr
+	}
+	t, ok := f.tunnels[tunnelID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	t.Status = status
+	return nil
 }
 
 func (f *fakeRepo) DeleteTunnel(_ context.Context, tunnelID string, evts ...eventbus.OutboxEvent) error {
@@ -508,6 +523,7 @@ type fakeTunnelProvider struct {
 	nextID      int
 	createErr   error
 	listErr     error
+	listCalls   int
 	getErr      error
 	deleteErr   error
 	routeErr    error
@@ -542,6 +558,7 @@ func (f *fakeTunnelProvider) CreateTunnel(_ context.Context, name string) (*Tunn
 func (f *fakeTunnelProvider) ListTunnels(_ context.Context) ([]Tunnel, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.listCalls++
 	if f.listErr != nil {
 		return nil, f.listErr
 	}

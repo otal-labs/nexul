@@ -148,13 +148,6 @@ The questions and round-answered notices reach the inbox once each on the web an
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
 
-## A tunnel reads "inactive" while it carries traffic
-
-`GET /api/dns/tunnels` kept `"status":"inactive"` for a tunnel serving about
-a request a second through its hostname (2026-10-16, a real install). The
-status looks fixed at creation; refresh it from Cloudflare's tunnel status
-when the list is read or when its cloudflared connects.
-
 ## A stack exposed through both a tunnel and a proxy gateway mixes its counts
 
 Request minutes are keyed by stack and minute. A tunnel poll replaces a

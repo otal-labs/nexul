@@ -114,6 +114,16 @@ func (r *DNSRepo) ListTunnels(ctx context.Context) ([]*dns.Tunnel, error) {
 	return toTunnels(rows), nil
 }
 
+func (r *DNSRepo) UpdateTunnelStatus(ctx context.Context, tunnelID, status string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).UpdateTunnelStatus(ctx, sqlcgen.UpdateTunnelStatusParams{Status: status, ID: tunnelID})
+		if err != nil {
+			return fmt.Errorf("update tunnel status %s: %w", tunnelID, err)
+		}
+		return nil
+	})
+}
+
 func (r *DNSRepo) DeleteTunnel(ctx context.Context, tunnelID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeleteTunnel(ctx, tunnelID)

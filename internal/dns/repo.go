@@ -26,6 +26,8 @@ type Repo interface {
 	GetTunnel(ctx context.Context, tunnelID string) (*Tunnel, error)
 	// ListTunnels returns every tunnel row, oldest first.
 	ListTunnels(ctx context.Context) ([]*Tunnel, error)
+	// UpdateTunnelStatus stores the connector status the provider reported, leaving every other column alone.
+	UpdateTunnelStatus(ctx context.Context, tunnelID, status string) error
 	// DeleteTunnel removes a tunnel row and its outbox events in one transaction.
 	DeleteTunnel(ctx context.Context, tunnelID string, evts ...eventbus.OutboxEvent) error
 

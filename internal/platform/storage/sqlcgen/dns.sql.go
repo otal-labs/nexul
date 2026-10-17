@@ -679,6 +679,20 @@ func (q *Queries) SaveTunnel(ctx context.Context, arg SaveTunnelParams) error {
 	return err
 }
 
+const updateTunnelStatus = `-- name: UpdateTunnelStatus :exec
+UPDATE dns_tunnels SET status = ? WHERE id = ?
+`
+
+type UpdateTunnelStatusParams struct {
+	Status string
+	ID     string
+}
+
+func (q *Queries) UpdateTunnelStatus(ctx context.Context, arg UpdateTunnelStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateTunnelStatus, arg.Status, arg.ID)
+	return err
+}
+
 const upsertServiceHostname = `-- name: UpsertServiceHostname :exec
 INSERT INTO dns_service_hostnames (service, hostname, zone_id, zone, record_id, type, content, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)

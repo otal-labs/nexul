@@ -60,6 +60,21 @@ func TestDNSRepo_TunnelUpsert(t *testing.T) {
 	assert.Len(t, tunnels, 1, "upsert replaces, never duplicates")
 }
 
+func TestDNSRepo_UpdateTunnelStatus_ChangesOnlyTheStatus(t *testing.T) {
+	store := openDNSStore(t)
+	repo := store.DNS
+	ctx := context.Background()
+
+	require.NoError(t, repo.SaveTunnel(ctx, dns.Tunnel{ID: "t1", Name: "one", Status: "inactive", Token: "cipher-token"}))
+	require.NoError(t, repo.UpdateTunnelStatus(ctx, "t1", "healthy"))
+
+	got, err := repo.GetTunnel(ctx, "t1")
+	require.NoError(t, err)
+	assert.Equal(t, "healthy", got.Status)
+	assert.Equal(t, "one", got.Name)
+	assert.Equal(t, "cipher-token", got.Token)
+}
+
 func TestDNSRepo_TunnelSaveWithOutbox(t *testing.T) {
 	store := openDNSStore(t)
 	repo := store.DNS

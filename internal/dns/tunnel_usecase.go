@@ -10,6 +10,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -117,7 +118,7 @@ func (s *Service) tunnelRecords(ctx context.Context, p DNSProvider, tunnelID str
 	return records, names, nil
 }
 
-// ListTunnels returns every locally-tracked tunnel, oldest first.
+// ListTunnels returns every locally-tracked tunnel, oldest first, with the connector status the provider reports now.
 func (s *Service) ListTunnels(ctx context.Context) ([]*Tunnel, error) {
 	if err := s.require(ctx, permissions.DNSRead); err != nil {
 		return nil, err
@@ -126,7 +127,56 @@ func (s *Service) ListTunnels(ctx context.Context) ([]*Tunnel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list tunnels: %w", err)
 	}
+	s.refreshTunnelStatuses(ctx, tunnels)
 	return tunnels, nil
+}
+
+// refreshTunnelStatuses overlays each row's status with its account's provider answer (one list call per account)
+// and stores what changed. An unreachable provider leaves that account's rows as stored: the list never fails on it.
+func (s *Service) refreshTunnelStatuses(ctx context.Context, tunnels []*Tunnel) {
+	byAccount := map[string][]*Tunnel{}
+	for _, t := range tunnels {
+		byAccount[t.AccountID] = append(byAccount[t.AccountID], t)
+	}
+	for account, rows := range byAccount {
+		live, err := s.liveTunnelStatuses(ctx, account)
+		if err != nil {
+			logging.FromCtx(ctx).Warn("tunnel statuses not refreshed", "account_id", account, "error", err)
+			continue
+		}
+		for _, t := range rows {
+			if status, ok := live[t.ID]; ok {
+				s.storeTunnelStatus(ctx, t, status)
+			}
+		}
+	}
+}
+
+func (s *Service) liveTunnelStatuses(ctx context.Context, account string) (map[string]string, error) {
+	p, err := s.tunnelProviderIn(ctx, account)
+	if err != nil {
+		return nil, err
+	}
+	listed, err := p.ListTunnels(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(listed))
+	for _, t := range listed {
+		out[t.ID] = t.Status
+	}
+	return out, nil
+}
+
+// storeTunnelStatus sets the row's status and persists it when it changed, so every reader of the repo sees it.
+func (s *Service) storeTunnelStatus(ctx context.Context, t *Tunnel, status string) {
+	if t.Status == status {
+		return
+	}
+	t.Status = status
+	if err := s.repo.UpdateTunnelStatus(ctx, t.ID, status); err != nil {
+		logging.FromCtx(ctx).Warn("tunnel status not stored", "tunnel_id", t.ID, "error", err)
+	}
 }
 
 // GetTunnel returns one locally-tracked tunnel.
@@ -418,7 +468,7 @@ func (s *Service) TunnelStatus(ctx context.Context, tunnelID string) (*Tunnel, e
 	if err != nil {
 		return nil, fmt.Errorf("get tunnel %s: %w", tunnelID, err)
 	}
-	t.Status = live.Status
+	s.storeTunnelStatus(ctx, t, live.Status)
 	t.Token = ""
 	return t, nil
 }
