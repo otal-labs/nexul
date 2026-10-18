@@ -60,7 +60,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Loading choices…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the run choices." />}
-      {play.builtin_key === "clarify" && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
+      {(play.builtin_key === "clarify" || play.builtin_key === "update-doc") && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
       {(canReadMemories === false || memories.data) && choices.data && links.data && readiness && (
         <PlayRunForm
           play={play}

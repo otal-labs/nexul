@@ -115,7 +115,7 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 	s := newTestStore(t)
 	got, err := s.Plays.List(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	require.Len(t, got, 9)
+	require.Len(t, got, 10)
 	byLabel := map[string]*plays.Play{}
 	for _, p := range got {
 		byLabel[p.Label] = p

@@ -199,7 +199,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesTheNineDefaultPlays(t *testing.T) {
+func TestSeedDefaults_CreatesTheTenDefaultPlays(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -208,7 +208,7 @@ func TestSeedDefaults_CreatesTheNineDefaultPlays(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 9)
+	require.Len(t, list, 10)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
@@ -226,6 +226,7 @@ func TestSeedDefaults_CreatesTheNineDefaultPlays(t *testing.T) {
 		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "never production"}},
 		{"Draft interview", TypeInterview, nil, []string{"`kind` `interview`", "stance is follow", "`trail_id`", "500 characters", "Never ask"}},
 		{"Clarify via AI", TypeDoc, nil, []string{"doc_get", "`questions`", "`anything_else_reply`", "`no_gaps`", "Never use your question tool"}},
+		{"Update doc via AI", TypeDoc, nil, []string{"doc_get", "Ask nothing", "`no_gaps`", "Open points"}},
 		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "known breaks", "doc_create", "Main folder", "Carry over", "Keeps", "Never ask"}},
 		{"Decisions check", TypeTicket, &done, []string{"`decisions_log`", "memory_update", "superseded by"}},
 		{"Investigate a crash", TypeStack, nil, []string{"stack_get", "`logs`", "Never deploy, restart, stop or edit", "nexul-triage"}},
@@ -428,7 +429,7 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 9)
+	assert.Len(t, list, 10)
 	assert.Len(t, repo.autoPlays, 2, "the decisions check's and the crash investigation's auto plays are seeded once")
 }
 

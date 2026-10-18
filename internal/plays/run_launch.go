@@ -280,12 +280,12 @@ func (r *Runner) checkoutPaths(ctx context.Context, trail *Trail) func(projectID
 	}
 }
 
-// prepareDoc locks a doc play's doc and, for a Clarify run, opens its round, which the agent posts to (ADR 0121).
+// prepareDoc locks a doc play's doc and, for a Clarify or Update doc run, opens its round, which the agent posts to (ADR 0121).
 func (r *Runner) prepareDoc(ctx context.Context, play *Play, trail *Trail) error {
 	if trail.TargetType != TargetDoc {
 		return nil
 	}
-	clarify := play.BuiltinKey == ClarifyKey && r.rounds != nil
+	clarify := (play.BuiltinKey == ClarifyKey || play.BuiltinKey == UpdateDocKey) && r.rounds != nil
 	tookLock := r.lockDoc(ctx, trail, clarify)
 	if !clarify {
 		return nil

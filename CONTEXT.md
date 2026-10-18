@@ -317,10 +317,10 @@ definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing and for a stack is the stack's own thread; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same nine, "Fix with AI" (ticket,
+new or existing, is seeded with the same ten, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
 "Test with AI" (ticket, testing stage), "Draft interview" (interview),
-"Clarify via AI" (doc), "Audit via AI" (interview), "Decisions check"
+"Clarify via AI" (doc), "Update doc via AI" (doc), "Audit via AI" (interview), "Decisions check"
 (ticket, done stage, with its auto play), and "Investigate a crash" (stack,
 with its auto play), as ordinary plays
 a member
@@ -425,7 +425,8 @@ wrote. Each press of "Clarify via AI" is one round: the agent reads the
 doc and the earlier rounds and asks a batch of questions, which anyone who
 can edit the doc answers, skips, or adds their own question to, whenever
 they like. The body keeps its author's words until a round finds no gaps
-left and writes the answers into it. Whoever runs plays closes it, and
+left and writes the answers into it, or "Update doc via AI" writes them in
+without asking more. Whoever runs plays closes it, and
 another round reopens it. The people answering see only the questions,
 never the agent behind them.
 _Avoid_: Wayfinder, questionnaire, review, interview (that is a project's rules for agents)
@@ -458,8 +459,8 @@ A doc set read-only for everyone as a guard against accidental edits: its
 title and body refuse every change, from people and agents alike, until it
 is unlocked. Locking and unlocking take `docs:lock`, a permission of its own
 apart from editing. Starting a doc play locks its doc, whatever the starter
-holds, and the doc stays locked after the run ends, except a Clarify round's
-lock, which comes off when its run ends. Archiving, cloning, and
+holds, and the doc stays locked after the run ends, except the lock of a
+Clarify or Update doc round, which comes off when its run ends. Archiving, cloning, and
 deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 

@@ -97,6 +97,23 @@ func TestRun_ClarifyPlay_EveryEndEndsTheRoundAndUnlocks(t *testing.T) {
 	}
 }
 
+// An Update doc run writes through a round of its own, so it opens and ends one the way a Clarify run does.
+func TestRun_UpdateDocPlay_OpensARoundAndUnlocksWhenItEnds(t *testing.T) {
+	f := newRunnerFixture()
+	f.plays.byID["play-update-doc"] = &Play{ID: "play-update-doc", WorkspaceID: workspaceID, Label: "Update doc via AI", Type: TypeDoc, Instructions: "Write the answers in.", Enabled: true, BuiltinKey: UpdateDocKey}
+	trail, obs := driveTurn(t, f, RunInput{PlayID: "play-update-doc", TargetType: TargetDoc, TargetID: docID, Via: ViaWeb})
+
+	round, _ := f.rounds.round(trail.ID)
+	assert.True(t, round.running && round.tookLock, "the round opens before the turn, recording the lock")
+
+	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-1")
+
+	_, ended := f.rounds.round(trail.ID)
+	assert.Equal(t, []string{trail.ID}, ended)
+	locked, _ := f.locks.state(docID)
+	assert.False(t, locked, "the lock this run took comes off")
+}
+
 func TestRun_ClarifyPlay_DocLockedBeforeTheRun_StaysLocked(t *testing.T) {
 	f := newRunnerFixture()
 	f.locks.locked[docID] = true

@@ -73,11 +73,19 @@ const (
 		"Before you call it done, check that every area above was either asked about or is already answered in the doc; anything you set aside in an earlier reply still needs asking, unless the developer's instructions dropped it.\n\n" +
 		"If the developer could turn the doc into tickets without asking its authors anything more, there are no gaps left: send `doc_update` with `no_gaps` and the whole new body. Keep the authors' headings and their own sentences wherever they still hold, weave each answer into the section it belongs to, add a section only where nothing fits, and never mention questions or rounds. Add only what an answer says: never invent details, figures, examples, or requirements the authors did not give. Only questions that were asked and skipped twice, and still matter, go under a short \"Open points\" section.\n\n" +
 		"Never mention AI, an agent, or yourself in anything the authors see. Reply to the developer with what you asked and why, or that the doc is complete and what changed, plus any technical questions for them."
+	updateDocInstructions = "Write the answers to this doc's questions into the doc, for the people who wrote it. Read it with `doc_get`: its body and its clarification, every round with its questions, answers, skipped questions, and \"Anything else?\" text. The instructions for this run, if any, win over everything below.\n\n" +
+		"Ask nothing: never send `questions` and never use your question tool. If no question has an answer and no round has \"Anything else?\" text, change nothing and reply that there is nothing to write yet.\n\n" +
+		"Otherwise send `doc_update` with `no_gaps` and the whole new body. Keep the authors' headings and their own sentences wherever they still hold, weave each answer and each \"Anything else?\" text into the section it belongs to, add a section only where nothing fits, and never mention questions or rounds. The body may already hold earlier answers: change only what a newer or changed answer says. Add only what an answer says: never invent details, figures, examples, or requirements the authors did not give. Questions skipped or still unanswered that still matter go under a short \"Open points\" section. If the last round has \"Anything else?\" text with no reply, send `anything_else_reply` with it: one plain line that says where the doc now covers it; never name a round number in it.\n\n" +
+		"Never mention AI, an agent, or yourself in anything the authors see. Reply to the developer with what changed in the doc and which points are still open, plus any technical questions for them."
 )
 
 // ClarifyKey is the built-in key of the Clarify via AI play, whose run opens and ends a round of the doc's
 // clarification (ADR 0121).
 const ClarifyKey = "clarify"
+
+// UpdateDocKey is the built-in key of the Update doc via AI play, whose run opens a round like Clarify's but only
+// writes the answers into the doc.
+const UpdateDocKey = "update-doc"
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
 type Service struct {
@@ -344,6 +352,9 @@ func Builtins() []Builtin {
 		{Key: ClarifyKey, Label: "Clarify via AI", Type: TypeDoc,
 			Description:  "Asks the doc's authors about the gaps in what they need, a round at a time, then writes the answers into the doc.",
 			Instructions: clarifyInstructions},
+		{Key: UpdateDocKey, Label: "Update doc via AI", Type: TypeDoc,
+			Description:  "Writes the answers to the doc's questions into the doc, in its authors' words, without asking more.",
+			Instructions: updateDocInstructions},
 		{Key: AuditKey, Label: "Audit via AI", Type: TypeInterview,
 			Description:  "Audits a predecessor's code, or this project's own, against the interview memory and writes the findings as a doc.",
 			Instructions: auditInstructions},

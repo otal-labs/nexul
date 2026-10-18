@@ -124,7 +124,7 @@ export const clarificationStatus = (c: Clarification, dev: boolean, locked: bool
   if (phase === "running") return { icon: null, label: "More questions coming", detail: "" };
   if (phase === "closed" && dev) return { icon: "done", label: "Closed", detail: `${rounds} · ${answeredCount(c)} answered` };
   if (phase === "closed") return { icon: "done", label: "All answered", detail: rounds };
-  if (phase === "noGaps" && dev) return { icon: "done", label: "No gaps left", detail: "Every answer is in the doc" };
+  if (phase === "noGaps" && dev) return { icon: "done", label: "Doc updated", detail: "Every answer is in the doc" };
   if (phase === "waiting") {
     const waitingRound = asked.filter((r) => r.questions.some(isPending)).at(-1);
     return { icon: "waiting", label: `${plural(waitingCount(c), "question")} waiting`, detail: `Round ${waitingRound ? roundNumber(c, waitingRound) : asked.length}` };

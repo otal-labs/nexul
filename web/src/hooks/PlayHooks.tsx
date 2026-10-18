@@ -126,12 +126,13 @@ export const useFetchApplicablePlays = (workspaceId: string, projectId: string, 
     enabled: workspaceId !== "" && projectId !== "" && (type !== "ticket" || stage !== undefined),
   });
 
-// The doc's seeded Clarify via AI and To tickets via AI plays, when the caller may run them on this project.
+// The doc's seeded Clarify via AI, Update doc via AI and To tickets via AI plays, when the caller may run them on this project.
 export const useDocBuiltinPlays = (projectId: string) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
   return {
     clarify: plays?.find((p) => p.builtin_key === "clarify"),
+    updateDoc: plays?.find((p) => p.builtin_key === "update-doc"),
     toTickets: plays?.find((p) => p.builtin_key === "to-tickets-via-ai"),
   };
 };
