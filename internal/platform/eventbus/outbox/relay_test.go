@@ -139,24 +139,6 @@ func TestRelay_Run_StopsOnContextCancel(t *testing.T) {
 	}
 }
 
-func TestRelay_Run_FlushErrorIsLoggedAndRetried(t *testing.T) {
-	db := migrated.DB(t)
-	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	insertRow(t, db, "e1", "t", 0, 1000)
-
-	require.NoError(t, db.Close())
-	pub := &fakePublisher{}
-	relay := outbox.NewRelay(s.Outbox, pub, outbox.RelayConfig{Interval: 5 * time.Millisecond, BatchSize: 10, Logger: testutil.DiscardLogger()})
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- relay.Run(ctx) }()
-
-	time.Sleep(30 * time.Millisecond)
-	cancel()
-	require.NoError(t, <-done)
-	assert.Empty(t, pub.topics())
-}
-
 // TestRelay_PublishWithID_UsesRowID is the ws-33 regression: the relay must
 // publish each pending row under the row's own ID, so a crash-redelivered
 // row keeps the same bus event ID as the first attempt and consumers can
@@ -238,13 +220,14 @@ type memStore struct {
 	mu    sync.Mutex
 	rows  []outbox.Entry
 	reads int
+	err   error
 }
 
 func (m *memStore) Unpublished(context.Context, int) ([]outbox.Entry, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.reads++
-	return slices.Clone(m.rows), nil
+	return slices.Clone(m.rows), m.err
 }
 
 func (m *memStore) readCount() int {
@@ -321,5 +304,24 @@ func TestRelay_Run_AFailedPublishIsRetriedAtTheFallbackInterval(t *testing.T) {
 		time.Sleep(time.Nanosecond)
 		synctest.Wait()
 		assert.Equal(t, []string{"chat.message.created"}, pub.topics(), "the fallback poll retries it")
+	})
+}
+
+func TestRelay_Run_AFailedReadIsRetriedAtTheFallbackInterval(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &memStore{err: errors.New("disk gone")}
+		pub := &fakePublisher{}
+		var commits wake.Broadcast
+		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Wake: commits.Next, Logger: testutil.DiscardLogger()})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go func() { _ = relay.Run(ctx) }()
+		synctest.Wait()
+		atStart := store.readCount()
+
+		time.Sleep(2 * fallbackInterval)
+		synctest.Wait()
+		assert.Equal(t, atStart+2, store.readCount(), "each fallback interval reads again")
+		assert.Empty(t, pub.topics())
 	})
 }

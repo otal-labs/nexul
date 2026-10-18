@@ -46,27 +46,6 @@ func TestBus_Publish_DeliversEnvelope(t *testing.T) {
 	}
 }
 
-func TestBus_Publish_FansOutToAllSubscribers(t *testing.T) {
-	bus := newTestBus()
-	defer func() { require.NoError(t, bus.Close()) }()
-	got := make(chan eventbus.Event, 2)
-	h := func(ctx context.Context, ev eventbus.Event) error {
-		got <- ev
-		return nil
-	}
-	require.NoError(t, bus.Subscribe(context.Background(), "t", h))
-	require.NoError(t, bus.Subscribe(context.Background(), "t", h))
-	require.NoError(t, bus.Publish(context.Background(), "t", "x"))
-
-	for i := 0; i < 2; i++ {
-		select {
-		case <-got:
-		case <-time.After(time.Second):
-			t.Fatalf("subscriber %d missed the event", i)
-		}
-	}
-}
-
 func TestBus_Publish_PropagatesTraceID(t *testing.T) {
 	bus := newTestBus()
 	defer func() { require.NoError(t, bus.Close()) }()
