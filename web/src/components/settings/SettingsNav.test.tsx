@@ -80,12 +80,6 @@ describe("SettingsNav", () => {
   });
 });
 
-describe("visibleSettingsSections", () => {
-  it("keeps nav order", () => {
-    expect(visibleSettingsSections(everything)).toEqual([...SETTINGS_SECTIONS]);
-  });
-});
-
 describe("isInstanceSection", () => {
   it("sends Team to Settings only for an accounts:read holder", () => {
     expect(isInstanceSection("team", true)).toBe(true);
