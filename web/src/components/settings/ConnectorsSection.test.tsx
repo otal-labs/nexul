@@ -101,7 +101,7 @@ describe("ConnectorsSection", () => {
     toastMocks.error.mockClear();
   });
 
-  it("lands on Not connected when nothing is connected, showing every registry connector", async () => {
+  it("lands on Not connected when nothing is connected, showing every registry connector and marking a not-yet-available one Coming soon without Connect", async () => {
     serve({ data: registryConnectors() });
     renderSection();
 
@@ -109,13 +109,8 @@ describe("ConnectorsSection", () => {
     expect(screen.getByText("Cloudflare")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /not connected/i })).toHaveAttribute("aria-checked", "true");
     expect(await screen.findByRole("button", { name: /^connect$/i })).toBeInTheDocument();
-  });
 
-  it("marks a not-yet-available connector Coming soon and offers no Connect", async () => {
-    serve({ data: registryConnectors() });
-    renderSection();
-
-    const row = (await screen.findByText("Cloudflare")).closest("li") as HTMLElement;
+    const row = screen.getByText("Cloudflare").closest("li") as HTMLElement;
     expect(row).toHaveTextContent("Coming soon");
     expect(within(row).queryByRole("button", { name: /connect/i })).not.toBeInTheDocument();
   });
@@ -233,37 +228,7 @@ describe("ConnectorsSection", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("renders a field form (not the OAuth Connect button) for a manual-credential connector", async () => {
-    serve({
-      data: [
-        connectorEntry({
-          connector: {
-            id: "livekit",
-            name: "LiveKit",
-            description: "Powers voice channels with screen share and camera",
-            category: "communication",
-            icon: "livekit",
-            manual: [
-              { key: "ws_url", label: "WebSocket URL", secret: false },
-              { key: "api_key", label: "API key", secret: false },
-              { key: "api_secret", label: "API secret", secret: true },
-            ],
-          },
-        }),
-      ],
-    });
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: /^connect$/i }));
-
-    expect(await screen.findByLabelText(/websocket url/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/api secret/i)).toHaveAttribute("type", "password");
-    // The OAuth start route must never fire for a manual connector.
-    expect(mocks.get).not.toHaveBeenCalledWith("/api/connectors/livekit/oauth/start");
-  });
-
-  it("submits the manual credential form and shows Connected on success", async () => {
+  it("opens a field form instead of the OAuth Connect for a manual-credential connector, then submits it and shows Connected on success", async () => {
     serve({
       data: [
         connectorEntry({
@@ -288,6 +253,9 @@ describe("ConnectorsSection", () => {
 
     await user.click(await screen.findByRole("button", { name: /^connect$/i }));
     const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/api secret/i)).toHaveAttribute("type", "password");
+    // The OAuth start route must never fire for a manual connector.
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/connectors/livekit/oauth/start");
     await user.type(within(dialog).getByLabelText(/websocket url/i), "wss://lk.example.com");
     await user.type(within(dialog).getByLabelText(/^api key$/i), "key1");
     await user.type(within(dialog).getByLabelText(/api secret/i), "secret1");
