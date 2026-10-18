@@ -743,9 +743,10 @@ func TestUpdateStatus(t *testing.T) {
 		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
 		require.NoError(t, err)
 		// Statuses are configurable columns: any configured status is a valid target, a status that does not exist is rejected.
-		_, err = s.UpdateStatus(context.Background(), created.ID, Status("nope"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+		for _, to := range []Status{"nope", ""} {
+			_, err = s.UpdateStatus(context.Background(), created.ID, to)
+			require.ErrorIs(t, err, apperrs.ErrInvalid, "status %q", to)
+		}
 	})
 	t.Run("repo error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -1249,27 +1250,6 @@ func TestUnlink_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.ErrorIs(t, tt.call(), tt.want)
-		})
-	}
-}
-
-func TestCanTransition(t *testing.T) {
-	tests := []struct {
-		name string
-		from Status
-		to   Status
-		want bool
-	}{
-		{"open to in_progress", StatusOpen, StatusInProgress, true},
-		{"open to done", StatusOpen, StatusDone, true},
-		{"open to closed", StatusOpen, StatusClosed, true},
-		{"closed to in_progress", StatusClosed, StatusInProgress, true},
-		{"open to open is a no-op", StatusOpen, StatusOpen, true},
-		{"empty target is not a transition", StatusOpen, "", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, CanTransition(tt.from, tt.to))
 		})
 	}
 }
