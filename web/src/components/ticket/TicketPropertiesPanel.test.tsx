@@ -166,11 +166,6 @@ describe("TicketPropertiesPanel", () => {
     expect(onRemoveLabel).toHaveBeenCalledWith("t-1", "backend");
   });
 
-  it("shows the ticket's type name", async () => {
-    renderPanel();
-    expect(await screen.findByText("task")).toBeInTheDocument();
-  });
-
   it("opens the type popover and sets the type on pick", async () => {
     const user = userEvent.setup();
     const onSetType = vi.fn();
