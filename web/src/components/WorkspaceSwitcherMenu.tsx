@@ -8,6 +8,7 @@ interface WorkspaceSwitcherMenuProps {
   onSelect: (workspaceId: string) => void;
   canCreateWorkspace: boolean;
   onCreate: () => void;
+  collapsed: boolean;
 }
 
 export const WorkspaceSwitcherMenu = ({
@@ -16,10 +17,11 @@ export const WorkspaceSwitcherMenu = ({
   onSelect,
   canCreateWorkspace,
   onCreate,
+  collapsed,
 }: WorkspaceSwitcherMenuProps) => {
   const { data: unread } = useFetchUnreadByWorkspace();
   return (
-    <SwitcherMenu createLabel="New workspace" onCreate={canCreateWorkspace ? onCreate : undefined}>
+    <SwitcherMenu createLabel="New workspace" onCreate={canCreateWorkspace ? onCreate : undefined} collapsed={collapsed}>
       {workspaces?.map((ws) => (
         <SwitcherMenuItem
           key={ws.id}
