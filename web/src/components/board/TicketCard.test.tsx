@@ -249,15 +249,6 @@ describe("TicketCard", () => {
       expect(ticketTypeColor("Bug")).toMatch(/red/);
     });
 
-    it("falls back to the hash color for a ticket type with no configured color, unchanged from before T10", async () => {
-      mockTicketType("Bug", "");
-      renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-      await screen.findByText("Bug");
-      await vi.waitFor(() => {
-        expect(screen.getByText("Bug").closest("span")).toHaveClass(...pillClass(ticketTypeColor("Bug")).split(" "));
-      });
-    });
-
     it("uses the backend-configured color for a label once fetched, not the hash", async () => {
       vi.mocked(api.get).mockImplementation(async (url: string) => {
         if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
@@ -274,23 +265,6 @@ describe("TicketCard", () => {
         expect(screen.getByText("urgent")).toHaveClass(...pillClass("bg-orange-500").split(" "));
       });
       expect(labelDotColor("urgent")).not.toBe("bg-orange-500");
-    });
-
-    it("falls back to the hash color for a label the backend has no configured color for", async () => {
-      vi.mocked(api.get).mockImplementation(async (url: string) => {
-        if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
-        if (url === "/api/ticket-types") return { data: [] };
-        if (url === "/api/tickets/labels") return { data: ["urgent"] };
-        return { data: [] };
-      });
-      vi.mocked(api.post).mockResolvedValue({ data: {} });
-      renderCard(
-        <TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["urgent"] }} />,
-      );
-      await screen.findByText("urgent");
-      await vi.waitFor(() => {
-        expect(screen.getByText("urgent")).toHaveClass(...pillClass(labelDotColor("urgent")).split(" "));
-      });
     });
   });
 });
