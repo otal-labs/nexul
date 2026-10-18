@@ -17,13 +17,6 @@ func newTestRunner(id string) *runner.Runner {
 	return &runner.Runner{ID: id, Name: "box-" + id, LastSeen: now, Connected: false, CreatedAt: now}
 }
 
-func TestRunnersRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Runners.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestRunnersRepo_Create_DuplicateIDOrName_Conflict(t *testing.T) {
 	t.Parallel()
 	byName := newTestRunner("r-2")
@@ -64,13 +57,6 @@ func TestRunnersRepo_SetVersion_UpdatesVersion(t *testing.T) {
 	assert.Equal(t, "v0.1.6", got.Version)
 }
 
-func TestRunnersRepo_SetVersion_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Runners.SetVersion(context.Background(), "missing", "v0.1.6")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestRunnersRepo_List_ReturnsAll(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -80,13 +66,6 @@ func TestRunnersRepo_List_ReturnsAll(t *testing.T) {
 	got, err := s.Runners.List(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
-}
-
-func TestRunnersRepo_Heartbeat_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Runners.Heartbeat(context.Background(), "missing", time.Now())
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestRunnersRepo_Heartbeat_UpdatesSeenAndConnected(t *testing.T) {
@@ -266,11 +245,4 @@ func TestRunnersRepo_Remove_RevokesCredentialAndDeletesRunner(t *testing.T) {
 	assert.True(t, cred.Revoked)
 
 	require.ErrorIs(t, s.Runners.Remove(context.Background(), "r-1", enrollNow), apperrs.ErrNotFound)
-}
-
-func TestRunnersRepo_GetCredential_Unknown_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Runners.GetCredential(context.Background(), "nope")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

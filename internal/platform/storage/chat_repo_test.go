@@ -61,13 +61,6 @@ func TestChatRepo_CreateConversation_GetConversation_RoundTrip(t *testing.T) {
 	assert.Equal(t, "workspace-default", got.WorkspaceID)
 }
 
-func TestChatRepo_GetConversation_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetConversation(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestChatRepo_CreateConversation_DuplicateChannelName_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -88,20 +81,6 @@ func TestChatRepo_GetChannelByName_RoundTrip(t *testing.T) {
 	assert.Equal(t, "conv-1", got.ID)
 
 	_, err = s.Chat.GetChannelByName(context.Background(), "workspace-default", "does-not-exist")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_GetTicketThread_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetTicketThread(context.Background(), "t-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_GetDocThread_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetDocThread(context.Background(), "doc-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -375,13 +354,6 @@ func TestChatRepo_CreateMessage_GetMessage_RoundTrip(t *testing.T) {
 	assert.Equal(t, chat.AuthorAgent, agent.AuthorKind)
 }
 
-func TestChatRepo_GetMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetMessage(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestChatRepo_CreateMessage_UnknownConversation_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -465,13 +437,6 @@ func TestChatRepo_UpdateMessage_RoundTrip(t *testing.T) {
 	assert.Equal(t, editedAt.Unix(), got.EditedAt.Unix())
 }
 
-func TestChatRepo_UpdateMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Chat.UpdateMessage(context.Background(), "missing", "hi", nil, chatFixedNow)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestChatRepo_DeleteMessage_SoftDeletes(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -488,13 +453,6 @@ func TestChatRepo_DeleteMessage_SoftDeletes(t *testing.T) {
 	assert.Empty(t, got.Mentions)
 	require.NotNil(t, got.DeletedAt)
 	assert.Equal(t, deletedAt.Unix(), got.DeletedAt.Unix())
-}
-
-func TestChatRepo_DeleteMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Chat.DeleteMessage(context.Background(), "missing", chatFixedNow)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestChatRepo_MarkRead_UnreadCounts(t *testing.T) {

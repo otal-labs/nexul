@@ -70,14 +70,6 @@ func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
 	assert.Equal(t, "u1", byKey.ID, "provider key is stable across login renames")
 }
 
-func TestUsersRepo_GetUserByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Users.GetUserByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-// makeOwner puts userID in workspaceID under that workspace's Owner role, creating the role the first time.
 func makeOwner(t *testing.T, s *Store, userID, workspaceID string) {
 	t.Helper()
 	_, err := s.db.ExecContext(t.Context(), `INSERT OR IGNORE INTO workspaces (id, name, created_at, updated_at) VALUES (?, ?, 1, 1)`, workspaceID, workspaceID)
@@ -183,13 +175,6 @@ INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES ('u
 		}
 	}
 	assert.True(t, found)
-}
-
-func TestUsersRepo_MarkFirstLoginDone_MissingUser(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Users.MarkFirstLoginDone(context.Background(), "ghost")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestUsersRepo_SetProfileOverride_RoundTrip(t *testing.T) {

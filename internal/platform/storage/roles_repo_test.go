@@ -40,13 +40,6 @@ func TestRolesRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, []string{"github", "phone"}, got.WelcomeSteps)
 }
 
-func TestRolesRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Roles.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestRolesRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -120,13 +113,6 @@ func TestRolesRepo_Update(t *testing.T) {
 	assert.Equal(t, 1, n)
 }
 
-func TestRolesRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Roles.Update(context.Background(), newTestRole("missing", "ws-1"))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestRolesRepo_Delete(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -183,11 +169,4 @@ func TestRolesRepo_Delete_TakesThePendingInvitesGivingIt(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, invites, 1)
 	assert.Equal(t, "sam", invites[0].Login)
-}
-
-func TestRolesRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Roles.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

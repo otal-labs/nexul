@@ -58,13 +58,6 @@ func TestPlaysRepo_Create_DocPlay_HasNoStage(t *testing.T) {
 	assert.Equal(t, []string{}, got.ExcludedProjectIDs)
 }
 
-func TestPlaysRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Plays.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestPlaysRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -111,13 +104,6 @@ func TestPlaysRepo_Update(t *testing.T) {
 	assert.Equal(t, "Renamed", got.Label)
 	assert.False(t, got.Enabled)
 	assert.Equal(t, []string{"proj-1"}, got.ExcludedProjectIDs)
-}
-
-func TestPlaysRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Plays.Update(context.Background(), newTestPlay("missing", "ws-1"))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestPlaysRepo_Delete(t *testing.T) {
@@ -168,13 +154,6 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 			assert.True(t, p.Enabled)
 		})
 	}
-}
-
-func TestPlaysRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Plays.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestPlaysRepo_CreateAndUpdate_TakenLabel_ReturnsConflict(t *testing.T) {

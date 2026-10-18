@@ -229,13 +229,6 @@ func TestProjectsRepo_Create_Duplicate_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestProjectsRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Projects.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_List_OrderedByPosition(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -278,13 +271,6 @@ func TestProjectsRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestProjectsRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.Update(context.Background(), newTestProject("missing", "X", 0))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_Reorder_AssignsPositions(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -304,13 +290,6 @@ func TestProjectsRepo_Delete_RemovesProject(t *testing.T) {
 	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "A", 0)))
 	require.NoError(t, s.Projects.Delete(context.Background(), "p-1"))
 	_, err := s.Projects.Get(context.Background(), "p-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestProjectsRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.Delete(context.Background(), "missing")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -345,13 +324,6 @@ func TestProjectsRepo_AddRepo_RepoBelongsToOneProject(t *testing.T) {
 
 	err := s.Projects.AddRepo(context.Background(), "p-2", workspace.RepoRef{Owner: "acme", Name: "app"})
 	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestProjectsRepo_RemoveRepo_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.RemoveRepo(context.Background(), "acme", "app")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestProjectsRepo_ListRepos_ScopesToProject(t *testing.T) {

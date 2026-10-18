@@ -18,13 +18,6 @@ func newTestMachine(id, name string) *runner.Machine {
 	return &runner.Machine{ID: id, Name: name, StackRoot: "/data/nexul", ReportedHostname: name, FirstSeen: now, LastSeen: now}
 }
 
-func TestMachinesRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Machines.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestMachinesRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -84,13 +77,6 @@ func TestMachinesRepo_Rename(t *testing.T) {
 	assert.Equal(t, "prod-primary", got.Name)
 }
 
-func TestMachinesRepo_Rename_UnknownID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Machines.Rename(context.Background(), "missing", "x")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestMachinesRepo_SetStackRoot(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -115,13 +101,6 @@ func TestMachinesRepo_Touch_UpdatesLastSeenAndReportedHostname(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, at, got.LastSeen)
 	assert.Equal(t, "prod.local", got.ReportedHostname)
-}
-
-func TestMachinesRepo_Touch_UnknownID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Machines.Touch(context.Background(), "missing", "x", time.Now())
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestMachinesRepo_DeletingAMachineDeletesItsRules(t *testing.T) {

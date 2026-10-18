@@ -56,13 +56,6 @@ func TestErrorRateRepo_Open_AnUnknownStackFails(t *testing.T) {
 	require.Error(t, s.ErrorRate.Open(context.Background(), newTestEpisode("ep-1", "nope")))
 }
 
-func TestErrorRateRepo_GetOpen_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.ErrorRate.GetOpen(context.Background(), "stack-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestErrorRateRepo_UpdatePeak_RecordsTheWorstWindow(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

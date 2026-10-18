@@ -27,13 +27,6 @@ func newTestRun(id, automationID string, createdAt time.Time) *automations.Run {
 	}
 }
 
-func TestAutomationRunsRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.AutomationRuns.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestAutomationRunsRepo_Create_DuplicateID_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

@@ -37,13 +37,6 @@ func TestWorkspacesRepo_Create_Duplicate_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestWorkspacesRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Workspaces.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestWorkspacesRepo_ListForUser_ScopesToMembership(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

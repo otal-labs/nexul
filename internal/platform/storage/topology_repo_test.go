@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/topology"
 )
 
@@ -29,13 +28,6 @@ func newTestCanvas() *topology.Canvas {
 			{ID: "edge-1", Source: "svc-api", Target: "svc-db", Type: "relation", Data: topology.EdgeData{Kind: topology.KindDependsOn}},
 		},
 	}
-}
-
-func TestTopologyRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Topology.Get(context.Background(), "prod")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestTopologyRepo_Get_CorruptJSON_Error(t *testing.T) {

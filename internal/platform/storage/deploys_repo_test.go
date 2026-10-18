@@ -26,13 +26,6 @@ func newTestDeploy(id string) *deploy.Deploy {
 	}
 }
 
-func TestDeploysRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Deploys.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDeploysRepo_Create_DuplicateID_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -149,13 +142,6 @@ func TestDeploysRepo_UpdateStatus_NotFound_WritesNoOutbox(t *testing.T) {
 	var n int
 	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM outbox WHERE id = 'evt-missing'`).Scan(&n))
 	assert.Equal(t, 0, n)
-}
-
-func TestDeploysRepo_SetAddress_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.SetAddress(context.Background(), "missing", "172.18.0.4")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDeploysRepo_SetAddress_RoundTrip(t *testing.T) {

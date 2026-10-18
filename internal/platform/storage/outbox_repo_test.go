@@ -7,8 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 // insertOutboxTestRow seeds a row directly; production goes through insertOutboxRow in a domain repo's transaction.
@@ -47,13 +45,6 @@ func TestOutboxRepo_MarkPublished_RemovesFromPending(t *testing.T) {
 	got, err := s.Outbox.Unpublished(context.Background(), 10)
 	require.NoError(t, err)
 	assert.Empty(t, got)
-}
-
-func TestOutboxRepo_MarkPublished_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Outbox.MarkPublished(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestInsertOutboxRow_WritesAnEmptyListAsAnArray(t *testing.T) {

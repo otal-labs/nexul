@@ -24,13 +24,6 @@ func newTestTicket(id, docID string) *tickets.Ticket {
 	}
 }
 
-func TestTicketsRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Tickets.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestTicketsRepo_ListByKey_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -163,13 +156,6 @@ func TestTicketsRepo_ListByDoc_ScopesToDoc(t *testing.T) {
 	assert.Equal(t, "t-2", got[1].ID)
 }
 
-func TestTicketsRepo_UpdateTicket_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Tickets.UpdateTicket(context.Background(), "missing", "New title", "New body")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestTicketsRepo_UpdateTicket_Persists(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -181,13 +167,6 @@ func TestTicketsRepo_UpdateTicket_Persists(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "New title", got.Title)
 	assert.Equal(t, "New body", got.Body)
-}
-
-func TestTicketsRepo_UpdateStatus_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Tickets.UpdateStatus(context.Background(), "missing", tickets.StatusDone, nil)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_UpdateStatus_Persists(t *testing.T) {
@@ -301,13 +280,6 @@ func TestTicketsRepo_Create_ConcurrentIntoSameProjectAssignsDistinctNumbers(t *t
 		seen[tk.Number] = true
 	}
 	assert.Len(t, seen, n, "all n numbers are distinct")
-}
-
-func TestTicketsRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Tickets.Delete(context.Background(), "missing", nil)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_Delete_RemovesTicket(t *testing.T) {

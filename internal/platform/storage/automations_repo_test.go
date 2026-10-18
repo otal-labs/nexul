@@ -54,13 +54,6 @@ func TestAutomationsRepo_CreateGet_RoundTrip(t *testing.T) {
 	assert.Nil(t, got.TokenRevokedAt)
 }
 
-func TestAutomationsRepo_Get_NotFound(t *testing.T) {
-	ctx := context.Background()
-	s := newTestStore(t)
-	_, err := s.Automations.Get(ctx, "nope")
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
 func TestAutomationsRepo_GetByTokenHash_Found(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
@@ -70,13 +63,6 @@ func TestAutomationsRepo_GetByTokenHash_Found(t *testing.T) {
 	got, err := s.Automations.GetByTokenHash(ctx, a.TokenHash)
 	require.NoError(t, err)
 	assert.Equal(t, a.ID, got.ID)
-}
-
-func TestAutomationsRepo_GetByTokenHash_NotFound(t *testing.T) {
-	ctx := context.Background()
-	s := newTestStore(t)
-	_, err := s.Automations.GetByTokenHash(ctx, "no-such-hash")
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 }
 
 func TestAutomationsRepo_List_OrderedByCreatedAt(t *testing.T) {

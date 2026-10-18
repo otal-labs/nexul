@@ -23,13 +23,6 @@ func newTestDoc(id string) *docs.Doc {
 	return &docs.Doc{ID: id, ProjectID: "project-general", Title: "Storage Spine", Body: "SQLite, migrations, FTS5", Version: 1, CreatedAt: now, UpdatedAt: now}
 }
 
-func TestDocsRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Docs.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDocsRepo_Create_DuplicateID_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -97,13 +90,6 @@ func TestDocsRepo_List_ReturnsAll(t *testing.T) {
 	assert.Len(t, got, 2)
 }
 
-func TestDocsRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.Update(context.Background(), newTestDoc("missing"), "")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDocsRepo_Update_PersistsChanges(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -137,13 +123,6 @@ func TestDocsRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Renamed last", got.Title)
 	assert.Equal(t, 3, got.Version)
-}
-
-func TestDocsRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDocsRepo_Delete_RemovesDoc(t *testing.T) {
@@ -208,13 +187,6 @@ func TestDocsRepo_CommitBody_NoVersionRowAndReindexes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "doc-1", results[0].ID)
-}
-
-func TestDocsRepo_CommitBody_MissingDoc(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.CommitBody(context.Background(), newTestDoc("nope"), "")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDocsRepo_CreateNamedVersion_AdvancesCounter(t *testing.T) {

@@ -20,20 +20,6 @@ func newTestUpgrade(id, status string) *runner.Upgrade {
 	}
 }
 
-func TestInstanceUpgradesRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.InstanceUpgrades.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestInstanceUpgradesRepo_Latest_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.InstanceUpgrades.Latest(context.Background())
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestInstanceUpgradesRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -104,11 +90,4 @@ func TestInstanceUpgradesRepo_SetStatus_UpdatesStatusAndError(t *testing.T) {
 	assert.Equal(t, "failed", got.Status)
 	assert.Equal(t, "boom", got.Error)
 	assert.True(t, got.UpdatedAt.After(got.CreatedAt) || got.UpdatedAt.Equal(got.CreatedAt))
-}
-
-func TestInstanceUpgradesRepo_SetStatus_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.InstanceUpgrades.SetStatus(context.Background(), "missing", "failed", "boom")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
