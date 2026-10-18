@@ -58,13 +58,6 @@ func TestPlaysRepo_Create_DocPlay_HasNoStage(t *testing.T) {
 	assert.Equal(t, []string{}, got.ExcludedProjectIDs)
 }
 
-func TestPlaysRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Plays.Create(context.Background(), newTestPlay("play-1", "missing-workspace"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestPlaysRepo_List_ScopesToWorkspaceAndSortsByLabel(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

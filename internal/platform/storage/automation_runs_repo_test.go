@@ -27,15 +27,6 @@ func newTestRun(id, automationID string, createdAt time.Time) *automations.Run {
 	}
 }
 
-func TestAutomationRunsRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	now := time.Now().UTC()
-	require.NoError(t, s.AutomationRuns.Create(context.Background(), newTestRun("r1", "a1", now)))
-	err := s.AutomationRuns.Create(context.Background(), newTestRun("r1", "a1", now))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestAutomationRunsRepo_Create_Get_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

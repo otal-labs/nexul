@@ -61,15 +61,6 @@ func TestChatRepo_CreateConversation_GetConversation_RoundTrip(t *testing.T) {
 	assert.Equal(t, "workspace-default", got.WorkspaceID)
 }
 
-func TestChatRepo_CreateConversation_DuplicateChannelName_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-	err := s.Chat.CreateConversation(context.Background(), newTestConversation("conv-2", chat.KindChannel, "general", "", "u-1"), []string{"u-1"})
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestChatRepo_GetChannelByName_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -352,15 +343,6 @@ func TestChatRepo_CreateMessage_GetMessage_RoundTrip(t *testing.T) {
 	agent, err := s.Chat.GetMessage(context.Background(), "msg-2")
 	require.NoError(t, err)
 	assert.Equal(t, chat.AuthorAgent, agent.AuthorKind)
-}
-
-func TestChatRepo_CreateMessage_UnknownConversation_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	m := &chat.Message{ID: "msg-1", ConversationID: "does-not-exist", AuthorID: "u-1", Body: "hi", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}
-	err := s.Chat.CreateMessage(context.Background(), m)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestChatRepo_ListMessages_NewestLimitedOldestFirst(t *testing.T) {

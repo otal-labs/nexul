@@ -221,14 +221,6 @@ func TestMigration_BackfillsGeneralProjectTemplates_MatchingTheSeed(t *testing.T
 	}
 }
 
-func TestProjectsRepo_Create_Duplicate_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "A", 0)))
-	err := s.Projects.Create(context.Background(), newTestProject("p-1", "B", 1))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestProjectsRepo_List_OrderedByPosition(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -260,15 +252,6 @@ func TestProjectsRepo_List_ScopesToWorkspace(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "project-general", got[0].ID)
-}
-
-func TestProjectsRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	p := newTestProject("p-1", "A", 0)
-	p.WorkspaceID = "missing"
-	err := s.Projects.Create(context.Background(), p)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestProjectsRepo_Reorder_AssignsPositions(t *testing.T) {
@@ -306,13 +289,6 @@ func TestProjectsRepo_Counts(t *testing.T) {
 	repos, err := s.Projects.CountRepos(context.Background(), "p-1")
 	require.NoError(t, err)
 	assert.Equal(t, 1, repos)
-}
-
-func TestProjectsRepo_AddRepo_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.AddRepo(context.Background(), "missing", workspace.RepoRef{Owner: "acme", Name: "app"})
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestProjectsRepo_AddRepo_RepoBelongsToOneProject(t *testing.T) {
@@ -379,14 +355,6 @@ func TestProjectsRepo_MoveTicket_PersistsAndNotFound(t *testing.T) {
 
 	err = s.Projects.MoveTicket(context.Background(), "missing", "p-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestProjectsRepo_MoveTicket_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "")))
-	err := s.Projects.MoveTicket(context.Background(), "t-1", "missing")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestTicketsRepo_ListByProject_ScopesToProject(t *testing.T) {

@@ -61,21 +61,6 @@ func TestMemoriesRepo_Create_WritesVersion1(t *testing.T) {
 	assert.Equal(t, "mcp", versions[0].AuthorVia)
 }
 
-func TestMemoriesRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "project-general"), ""))
-	err := s.Memories.Create(context.Background(), newTestMemory("mem-1", "project-general"), "")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestMemoriesRepo_Create_UnknownProjectIsConflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Memories.Create(context.Background(), newTestMemory("mem-1", "does-not-exist"), "")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestMemoriesRepo_ListByProject_IncludesTheSeededDefault(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

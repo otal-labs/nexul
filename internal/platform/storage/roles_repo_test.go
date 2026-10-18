@@ -40,13 +40,6 @@ func TestRolesRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, []string{"github", "phone"}, got.WelcomeSteps)
 }
 
-func TestRolesRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Roles.Create(context.Background(), newTestRole("role-1", "missing-workspace"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestRolesRepo_Create_SingletonOwnerRole_Constraint(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

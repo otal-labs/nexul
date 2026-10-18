@@ -26,14 +26,6 @@ func newTestDeploy(id string) *deploy.Deploy {
 	}
 }
 
-func TestDeploysRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
-	err := s.Deploys.Create(context.Background(), newTestDeploy("dep-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestDeploysRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

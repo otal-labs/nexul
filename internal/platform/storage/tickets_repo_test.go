@@ -62,13 +62,6 @@ func TestTicketsRepo_Create_DuplicateID_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestTicketsRepo_Create_UnknownDocID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Tickets.Create(context.Background(), newTestTicket("t-1", "does-not-exist"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestTicketsRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

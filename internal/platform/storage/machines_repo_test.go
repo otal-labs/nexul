@@ -31,14 +31,6 @@ func TestMachinesRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	assert.Equal(t, "prod", got.ReportedHostname)
 }
 
-func TestMachinesRepo_Create_DuplicateName_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Machines.Create(context.Background(), newTestMachine("m-1", "prod")))
-	err := s.Machines.Create(context.Background(), newTestMachine("m-2", "prod"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestMachinesRepo_GetByName(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

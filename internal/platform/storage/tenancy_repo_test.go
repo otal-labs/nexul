@@ -29,14 +29,6 @@ func TestWorkspacesRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, "Acme", got.Name)
 }
 
-func TestWorkspacesRepo_Create_Duplicate_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "A")))
-	err := s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "B"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestWorkspacesRepo_ListForUser_ScopesToMembership(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

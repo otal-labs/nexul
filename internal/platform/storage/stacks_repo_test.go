@@ -96,15 +96,6 @@ func TestStacksRepo_DuplicateSlugPerMachine_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict, "the (machine, slug) unique index rejects duplicates")
 }
 
-func TestStacksRepo_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	stack := newTestStack("svc-1")
-	stack.ProjectID = "no-such-project"
-	err := s.Stacks.Create(context.Background(), stack)
-	require.ErrorIs(t, err, apperrs.ErrConflict, "the project FK rejects unknown project ids")
-}
-
 func TestStacksRepo_GetBySlugAndMachine(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

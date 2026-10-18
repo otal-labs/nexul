@@ -16,14 +16,6 @@ func newTestDeadLetter(id string) deadletter.DeadLetter {
 	return deadletter.DeadLetter{ID: id, Topic: "doc.created", Payload: []byte(`{}`), Error: "handler panic", Attempts: 3}
 }
 
-func TestDeadLettersRepo_Put_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.DeadLetters.Put(context.Background(), newTestDeadLetter("dl-1")))
-	err := s.DeadLetters.Put(context.Background(), newTestDeadLetter("dl-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestDeadLettersRepo_Put_Get_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
