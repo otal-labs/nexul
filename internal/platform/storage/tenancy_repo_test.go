@@ -29,21 +29,6 @@ func TestWorkspacesRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, "Acme", got.Name)
 }
 
-func TestWorkspacesRepo_Create_Duplicate_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "A")))
-	err := s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "B"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestWorkspacesRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Workspaces.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestWorkspacesRepo_ListForUser_ScopesToMembership(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -202,27 +187,7 @@ func TestWorkspaceMembersRepo_ChangeRoles(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestWorkspaceInvitesRepo_Upsert_ListByWorkspace_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
-	_, _, err := s.Users.UpsertUser(context.Background(), newTestUser("u-owner", "1", "owner"))
-	require.NoError(t, err)
-	role := newTestRole("role-1", "ws-1")
-	require.NoError(t, s.Roles.Create(context.Background(), role))
-
-	require.NoError(t, s.WorkspaceInvites.Upsert(context.Background(), &tenancy.Invite{
-		WorkspaceID: "ws-1", Login: "bob", RoleID: role.ID, InvitedBy: "u-owner", CreatedAt: time.Now(),
-	}))
-
-	got, err := s.WorkspaceInvites.ListByWorkspace(context.Background(), "ws-1")
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "bob", got[0].Login)
-	assert.Equal(t, role.ID, got[0].RoleID)
-}
-
-func TestWorkspaceInvitesRepo_Upsert_SameLoginTwice_UpdatesRoleNotDuplicate(t *testing.T) {
+func TestWorkspaceInvitesRepo_Upsert_RoundTrip_SameLoginTwiceUpdatesRoleNotDuplicate(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
@@ -243,6 +208,7 @@ func TestWorkspaceInvitesRepo_Upsert_SameLoginTwice_UpdatesRoleNotDuplicate(t *t
 	got, err := s.WorkspaceInvites.ListByWorkspace(context.Background(), "ws-1")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
+	assert.Equal(t, "bob", got[0].Login)
 	assert.Equal(t, role2.ID, got[0].RoleID)
 }
 

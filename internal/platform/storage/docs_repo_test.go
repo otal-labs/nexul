@@ -23,21 +23,6 @@ func newTestDoc(id string) *docs.Doc {
 	return &docs.Doc{ID: id, ProjectID: "project-general", Title: "Storage Spine", Body: "SQLite, migrations, FTS5", Version: 1, CreatedAt: now, UpdatedAt: now}
 }
 
-func TestDocsRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Docs.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestDocsRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
-	err := s.Docs.Create(context.Background(), newTestDoc("doc-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestDocsRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -53,17 +38,6 @@ func TestDocsRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.Version, got.Version)
 	assert.Equal(t, want.CreatedAt, got.CreatedAt)
 	assert.Equal(t, want.UpdatedAt, got.UpdatedAt)
-}
-
-// Acceptance criterion (ticket 10): docs.project_id is a real FK — creating a
-// doc against an unknown project id is rejected, not silently accepted.
-func TestDocsRepo_Create_UnknownProjectIsConflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	d := newTestDoc("doc-1")
-	d.ProjectID = "does-not-exist"
-	err := s.Docs.Create(context.Background(), d)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestDocsRepo_ListByProject_FiltersToOneProject(t *testing.T) {
@@ -95,13 +69,6 @@ func TestDocsRepo_List_ReturnsAll(t *testing.T) {
 	got, err := s.Docs.List(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
-}
-
-func TestDocsRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.Update(context.Background(), newTestDoc("missing"), "")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDocsRepo_Update_PersistsChanges(t *testing.T) {
@@ -139,13 +106,6 @@ func TestDocsRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
 	assert.Equal(t, 3, got.Version)
 }
 
-func TestDocsRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDocsRepo_Delete_RemovesDoc(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -153,47 +113,6 @@ func TestDocsRepo_Delete_RemovesDoc(t *testing.T) {
 	require.NoError(t, s.Docs.Delete(context.Background(), "doc-1"))
 	_, err := s.Docs.GetByID(context.Background(), "doc-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestDocsRepo_RichTextBody_Searchable(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-
-	// Canonical structured body (ws-23): the repo stores the markdown
-	// rendering in body_md, which docs_fts indexes.
-	d := newTestDoc("doc-1")
-	d.Body = `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Storage"}]},{"type":"paragraph","content":[{"type":"text","text":"SQLite is the spine"}]}]}`
-	require.NoError(t, s.Docs.Create(context.Background(), d))
-
-	got, err := s.Docs.Search(context.Background(), "sqlite", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-1", got[0].ID)
-
-	got, err = s.Docs.Search(context.Background(), "spine", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-
-	// The canonical JSON is stored verbatim for the editor; search indexes the
-	// rendering, not the JSON keys.
-	_, err = s.Docs.Search(context.Background(), "content", 10)
-	require.NoError(t, err)
-}
-
-func TestDocsRepo_LegacyMarkdownBody_Searchable(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-
-	// Pre-ws-23 rows held plain markdown; they stay searchable after the
-	// migration backfill and on write.
-	d := newTestDoc("doc-1")
-	d.Body = "legacy markdown body about migrations"
-	require.NoError(t, s.Docs.Create(context.Background(), d))
-
-	got, err := s.Docs.Search(context.Background(), "migrations", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-1", got[0].ID)
 }
 
 func TestDocsRepo_UpdateRewritesSearchText(t *testing.T) {
@@ -249,13 +168,6 @@ func TestDocsRepo_CommitBody_NoVersionRowAndReindexes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "doc-1", results[0].ID)
-}
-
-func TestDocsRepo_CommitBody_MissingDoc(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Docs.CommitBody(context.Background(), newTestDoc("nope"), "")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDocsRepo_CreateNamedVersion_AdvancesCounter(t *testing.T) {

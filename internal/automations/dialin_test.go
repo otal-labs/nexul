@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // allowAllPerm grants every automation.* action — these tests exercise the
@@ -36,10 +36,7 @@ func (allowAllPerm) Require(context.Context, string, permissions.Action) error {
 
 func newTestStore(t *testing.T) (*sql.DB, *storage.Store) {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	t.Cleanup(func() { _ = db.Close() })
+	db := migrated.DB(t)
 	return db, storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 }
 
@@ -117,22 +114,6 @@ func dialAnnounce(t *testing.T, url string, announce automations.Frame) *websock
 	require.NoError(t, wsjson.Read(context.Background(), conn, &hello))
 	require.Equal(t, automations.FrameHello, hello.Type)
 	return conn
-}
-
-func TestDialinHandler_ServeHTTP_InvalidToken_Refuses(t *testing.T) {
-	setup := newDialinSetup(t)
-	resp, err := http.Get(setup.srv.URL + "/?token=bogus")
-	require.NoError(t, err)
-	defer func() { require.NoError(t, resp.Body.Close()) }()
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-}
-
-func TestDialinHandler_ServeHTTP_NoToken_Refuses(t *testing.T) {
-	setup := newDialinSetup(t)
-	resp, err := http.Get(setup.srv.URL + "/")
-	require.NoError(t, err)
-	defer func() { require.NoError(t, resp.Body.Close()) }()
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestDialinHandler_ServeHTTP_RevokedToken_Refuses(t *testing.T) {
@@ -239,18 +220,17 @@ func TestDialinHandler_DeliversSubscribedEvent_RunSuccess_AdvancesCursor(t *test
 
 func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
-	// left disabled
+	// left disabled until the event is seeded
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
 	setup.seedEvent(t, "ev-1", "ticket.created", `{}`, time.Now())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
-	defer cancel()
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
 	var f automations.Frame
-	err = wsjson.Read(ctx, conn, &f)
-	assert.Error(t, err, "a disabled automation must not receive delivery")
+	assert.Error(t, wsjson.Read(t.Context(), conn, &f), "switching it on drops the connection, and nothing was delivered before")
 }
 
 func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
@@ -272,10 +252,8 @@ func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wsjson.Write(t.Context(), conn, automations.Frame{Type: automations.FrameRunFinished, RunID: ev.RunID, Outcome: automations.OutcomeSuccess}))
 
-	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
-	defer cancel()
 	var f automations.Frame
-	assert.Error(t, wsjson.Read(ctx, conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
+	assert.Error(t, wsjson.Read(t.Context(), conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
 }
 
 func TestDialinHandler_DeliversOnlyItsOwnWorkspacesEvents(t *testing.T) {
@@ -337,13 +315,13 @@ func TestDialinHandler_UnsubscribedTopic_NoDelivery(t *testing.T) {
 	require.NoError(t, err)
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
-	setup.seedEvent(t, "ev-1", "doc.created", `{}`, time.Now())
+	now := time.Now()
+	setup.seedEvent(t, "ev-1", "doc.created", `{}`, now)
+	setup.seedEvent(t, "ev-2", "ticket.created", `{}`, now.Add(time.Second))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
-	defer cancel()
 	var f automations.Frame
-	err = wsjson.Read(ctx, conn, &f)
-	assert.Error(t, err, "an event on an unsubscribed topic must not be delivered")
+	require.NoError(t, wsjson.Read(t.Context(), conn, &f))
+	assert.Equal(t, "ev-2", f.EventID, "an event on an unsubscribed topic is skipped, the next subscribed one is delivered")
 }
 
 // TestDialinHandler_CrashMidRun_RedeliveredOnReconnect is the reconnect/
@@ -595,4 +573,16 @@ func TestDialinHandler_NewConnectionReplacesOld(t *testing.T) {
 	var f automations.Frame
 	err = wsjson.Read(ctx, conn1, &f)
 	require.Error(t, err, "the older connection must be replaced, not left dangling")
+}
+
+func TestDialinHandler_ServeHTTP_UnknownOrMissingToken_Refuses(t *testing.T) {
+	for name, query := range map[string]string{"an unknown token": "?token=bogus", "no token": ""} {
+		t.Run(name, func(t *testing.T) {
+			setup := newDialinSetup(t)
+			resp, err := http.Get(setup.srv.URL + "/" + query)
+			require.NoError(t, err)
+			defer func() { require.NoError(t, resp.Body.Close()) }()
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	}
 }

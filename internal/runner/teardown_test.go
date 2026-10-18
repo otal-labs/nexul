@@ -169,10 +169,8 @@ func TestHandler_StackDeleted_TheMachinesRunnerGetsOneTeardown(t *testing.T) {
 
 			got := readTeardownFrame(t, ctx, target)
 			assert.Equal(t, Frame{Type: FrameStackTeardown, StackSlug: "edge", Strategy: tc.strategy}, got)
-			readCtx, readCancel := context.WithTimeout(ctx, 200*time.Millisecond)
-			defer readCancel()
-			var stray Frame
-			assert.Error(t, wsjson.Read(readCtx, other, &stray), "a runner on another machine hears nothing")
+			require.NoError(t, stackDeleted(t, h, StackDeletedEvent{Machine: "host2", Slug: "marker", Strategy: tc.strategy, Managed: true}))
+			assert.Equal(t, "marker", readTeardownFrame(t, ctx, other).StackSlug, "a runner on another machine hears only its own machine's teardown")
 			assert.Zero(t, store.total())
 		})
 	}
@@ -258,27 +256,19 @@ func TestHandler_FlushTeardowns_AStoreErrorSendsNothingMore(t *testing.T) {
 		h.flushTeardowns(t.Context(), closedConn(t, "host1"))
 	})
 	t.Run("a delete that fails stops before the next teardown", func(t *testing.T) {
-		repo := newFakeRunnerRepo()
 		store := newFakeTeardownRepo()
-		h := newTeardownHandler(repo, store)
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-		defer cancel()
+		h := newTeardownHandler(newFakeRunnerRepo(), store)
 		for _, slug := range []string{"edge", "shop"} {
-			require.NoError(t, store.Save(ctx, "host1", Frame{Type: FrameStackTeardown, StackSlug: slug, Strategy: "run"}))
+			require.NoError(t, store.Save(t.Context(), "host1", Frame{Type: FrameStackTeardown, StackSlug: slug, Strategy: "run"}))
 		}
 		store.deleteErr = errors.New("database is locked")
+		c, runnersEnd := openConn(t, "host1")
 
-		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", "host1"), "")
-		require.NoError(t, err)
-		defer func() { _ = conn.CloseNow() }()
+		h.flushTeardowns(t.Context(), c)
+		require.NoError(t, h.sendFrame(t.Context(), c, Frame{Type: FrameStackTeardown, StackSlug: "marker", Strategy: "run"}))
 
-		assert.Equal(t, "edge", readTeardownFrame(t, ctx, conn).StackSlug)
-		readCtx, readCancel := context.WithTimeout(ctx, 200*time.Millisecond)
-		defer readCancel()
-		var stray Frame
-		assert.Error(t, wsjson.Read(readCtx, conn, &stray), "the second teardown waits until the first is dropped")
+		assert.Equal(t, "edge", readTeardownFrame(t, t.Context(), runnersEnd).StackSlug)
+		assert.Equal(t, "marker", readTeardownFrame(t, t.Context(), runnersEnd).StackSlug, "the second teardown waits until the first is dropped")
 		assert.Len(t, store.waiting("host1"), 2)
 	})
 }

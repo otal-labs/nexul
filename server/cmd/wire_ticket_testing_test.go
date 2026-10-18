@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -20,7 +21,7 @@ import (
 func TestIntegration_TicketTesting(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	s := storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 	seedMentionsUser(t, s, "u-alice")
 	aliceCtx := identity.WithActor(ctx, identity.Actor{ID: "u-alice"})
 	now := time.Now().UTC()

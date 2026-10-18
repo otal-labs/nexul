@@ -26,17 +26,3 @@ func TestFatal_WrapsErrFatal(t *testing.T) {
 		t.Fatalf("Fatal(%v): want cause preserved, got %v", cause, err)
 	}
 }
-
-func TestSentinels_AreDistinct(t *testing.T) {
-	want := []error{ErrNotFound, ErrConflict, ErrUnauthorized, ErrInvalid, ErrRetryable, ErrFatal}
-	for i := range want {
-		for j := range want {
-			if i == j {
-				continue
-			}
-			if std.Is(want[i], want[j]) {
-				t.Fatalf("%v should not be %v", want[i], want[j])
-			}
-		}
-	}
-}

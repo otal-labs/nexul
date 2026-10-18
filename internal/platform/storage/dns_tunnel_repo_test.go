@@ -15,7 +15,7 @@ import (
 )
 
 func TestDNSRepo_TunnelRoundTrip(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -43,7 +43,7 @@ func TestDNSRepo_TunnelRoundTrip(t *testing.T) {
 }
 
 func TestDNSRepo_TunnelUpsert(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -61,7 +61,7 @@ func TestDNSRepo_TunnelUpsert(t *testing.T) {
 }
 
 func TestDNSRepo_UpdateTunnelStatus_ChangesOnlyTheStatus(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -76,7 +76,7 @@ func TestDNSRepo_UpdateTunnelStatus_ChangesOnlyTheStatus(t *testing.T) {
 }
 
 func TestDNSRepo_TunnelSaveWithOutbox(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -95,7 +95,7 @@ func TestDNSRepo_TunnelSaveWithOutbox(t *testing.T) {
 }
 
 func TestDNSRepo_TunnelDelete(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -112,7 +112,7 @@ func TestDNSRepo_TunnelDelete(t *testing.T) {
 }
 
 func TestDNSRepo_AccessServiceTokenRoundTrip(t *testing.T) {
-	repo := openDNSStore(t).DNS
+	repo := newTestStore(t).DNS
 	ctx := t.Context()
 
 	_, err := repo.GetAccessServiceToken(ctx)

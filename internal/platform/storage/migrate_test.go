@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,8 +47,7 @@ func TestPending_FreshDB_ListsEveryEmbeddedVersion(t *testing.T) {
 }
 
 func TestPending_FullyMigratedDB_IsEmpty(t *testing.T) {
-	db := freshDB(t)
-	require.NoError(t, Migrate(db))
+	db := newTestDB(t)
 
 	pending, err := Pending(db)
 	require.NoError(t, err)
@@ -64,6 +64,11 @@ func TestMigrate_Twice_AppliesPrivateInvitationMigrationOnceAndPreservesActiveSt
 	var applied int
 	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM schema_migrations WHERE version = '0002_private_invitations'`).Scan(&applied))
 	assert.Equal(t, 1, applied, "schema_migrations is the idempotence guard for the SQLite ADD COLUMN in 0002")
+	files, err := fs.Glob(migrationFS, "migrations/*.sql")
+	require.NoError(t, err)
+	var recorded int
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM schema_migrations`).Scan(&recorded))
+	assert.Equal(t, len(files), recorded, "each embedded migration recorded exactly once")
 	var status string
 	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT account_status FROM users WHERE id = 'u-1'`).Scan(&status))
 	assert.Equal(t, "active", status)
@@ -85,8 +90,7 @@ func TestMigrateWithBackup_WritesABackupOnlyWhenMigrationsArePending(t *testing.
 }
 
 func TestBackup_FileOpensWithTheSameTables(t *testing.T) {
-	db := freshDB(t)
-	require.NoError(t, Migrate(db))
+	db := newTestDB(t)
 	dir := t.TempDir()
 
 	path, err := Backup(db, dir, "v0.2.0")

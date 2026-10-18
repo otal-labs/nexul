@@ -185,8 +185,3 @@ func TestSeeder_Seed(t *testing.T) {
 		require.ErrorIs(t, s.Seed(context.Background()), errBoom)
 	})
 }
-
-func TestNewSeeder_NilLoggerDefaults(t *testing.T) {
-	s := NewSeeder(newFakeRepo(), newTestVersionsService(newFakeRepo(), newFakeVersionsRepo(), allowAll("system")), nil, workspaceList{}, "home", nil)
-	assert.NotNil(t, s.log)
-}

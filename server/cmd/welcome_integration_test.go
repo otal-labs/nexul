@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -217,7 +218,7 @@ func TestWelcome_ProjectsLightsTheDotOnlyOnceGiven(t *testing.T) {
 // computer goes through the outbox to the welcome consumer, which writes welcome.progress_changed for its owner.
 func TestIntegration_ConfirmingAComputerPublishesTheProgressOfItsOwner(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	_, store, svc := routerOver(t, db)
 	f := permFixture{svc: svc, store: store, db: db}
 	ctx := context.Background()

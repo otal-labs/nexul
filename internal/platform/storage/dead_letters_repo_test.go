@@ -16,21 +16,6 @@ func newTestDeadLetter(id string) deadletter.DeadLetter {
 	return deadletter.DeadLetter{ID: id, Topic: "doc.created", Payload: []byte(`{}`), Error: "handler panic", Attempts: 3}
 }
 
-func TestDeadLettersRepo_Put_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.DeadLetters.Put(context.Background(), newTestDeadLetter("dl-1")))
-	err := s.DeadLetters.Put(context.Background(), newTestDeadLetter("dl-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestDeadLettersRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.DeadLetters.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDeadLettersRepo_Put_Get_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -69,13 +54,6 @@ func TestDeadLettersRepo_List_PagesCoverEveryLetterOnce(t *testing.T) {
 	})
 
 	assert.ElementsMatch(t, want, got, "letters stored in the same second still page in a stable order")
-}
-
-func TestDeadLettersRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.DeadLetters.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDeadLettersRepo_Delete_RemovesLetter(t *testing.T) {

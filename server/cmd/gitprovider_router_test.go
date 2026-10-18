@@ -26,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -279,7 +280,7 @@ func TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet(t *testing.T) {
 
 func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	_, err := db.Exec(`INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-globex', 'Globex', 'globex', 1, 1)`)
 	require.NoError(t, err)
@@ -423,7 +424,7 @@ func TestGitProviderRouter_RepoToken_MintsAFreshTokenForTheOneRepositoryWithCont
 // installation left the project's workspace, or that no project links, never reaches the branch deploy rules.
 func TestPushesRunnersMayClone_AnUnassignedInstallationQueuesNoBuild(t *testing.T) {
 	t.Parallel()
-	store := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	store := storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 	require.NoError(t, store.Projects.AddRepo(t.Context(), "project-general", workspace.RepoRef{Owner: "globex", Name: "api", FullName: "globex/api", ConnectorID: "github"}))
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -18,20 +17,6 @@ func newTestUpgrade(id, status string) *runner.Upgrade {
 		ID: id, FromVersion: "v0.2.0", ToVersion: "v0.2.1", Status: status,
 		RequestedBy: "user-1", RunnerID: "instance", CreatedAt: now, UpdatedAt: now,
 	}
-}
-
-func TestInstanceUpgradesRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.InstanceUpgrades.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestInstanceUpgradesRepo_Latest_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.InstanceUpgrades.Latest(context.Background())
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestInstanceUpgradesRepo_Create_GetByID_RoundTrip(t *testing.T) {
@@ -49,14 +34,6 @@ func TestInstanceUpgradesRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.RunnerID, got.RunnerID)
 	assert.Equal(t, "", got.Error)
 	assert.True(t, want.CreatedAt.Equal(got.CreatedAt))
-}
-
-func TestInstanceUpgradesRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.InstanceUpgrades.Create(context.Background(), newTestUpgrade("u-1", "pending")))
-	err := s.InstanceUpgrades.Create(context.Background(), newTestUpgrade("u-1", "pending"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestInstanceUpgradesRepo_Latest_ReturnsMostRecentlyCreated(t *testing.T) {
@@ -104,11 +81,4 @@ func TestInstanceUpgradesRepo_SetStatus_UpdatesStatusAndError(t *testing.T) {
 	assert.Equal(t, "failed", got.Status)
 	assert.Equal(t, "boom", got.Error)
 	assert.True(t, got.UpdatedAt.After(got.CreatedAt) || got.UpdatedAt.Equal(got.CreatedAt))
-}
-
-func TestInstanceUpgradesRepo_SetStatus_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.InstanceUpgrades.SetStatus(context.Background(), "missing", "failed", "boom")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

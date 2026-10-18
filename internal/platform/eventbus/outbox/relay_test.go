@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
@@ -75,8 +76,7 @@ func (f *fakePublisher) eventIDs() []string {
 }
 
 func TestRelay_Run_PublishesAndMarks(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "e1", "a.created", 0, 1000)
 	insertRow(t, db, "e2", "b.created", 0, 2000)
@@ -100,8 +100,7 @@ func TestRelay_Run_PublishesAndMarks(t *testing.T) {
 }
 
 func TestRelay_Run_RetriesAfterPublishFailure(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "e1", "a.created", 0, 1000)
 
@@ -124,8 +123,7 @@ func TestRelay_Run_RetriesAfterPublishFailure(t *testing.T) {
 }
 
 func TestRelay_Run_StopsOnContextCancel(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	pub := &fakePublisher{}
 	relay := outbox.NewRelay(storage.New(db, []byte("0123456789abcdef0123456789abcdef")).Outbox, pub, outbox.RelayConfig{Interval: time.Hour, Logger: testutil.DiscardLogger()})
 
@@ -141,32 +139,12 @@ func TestRelay_Run_StopsOnContextCancel(t *testing.T) {
 	}
 }
 
-func TestRelay_Run_FlushErrorIsLoggedAndRetried(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
-	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	insertRow(t, db, "e1", "t", 0, 1000)
-
-	require.NoError(t, db.Close())
-	pub := &fakePublisher{}
-	relay := outbox.NewRelay(s.Outbox, pub, outbox.RelayConfig{Interval: 5 * time.Millisecond, BatchSize: 10, Logger: testutil.DiscardLogger()})
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- relay.Run(ctx) }()
-
-	time.Sleep(30 * time.Millisecond)
-	cancel()
-	require.NoError(t, <-done)
-	assert.Empty(t, pub.topics())
-}
-
 // TestRelay_PublishWithID_UsesRowID is the ws-33 regression: the relay must
 // publish each pending row under the row's own ID, so a crash-redelivered
 // row keeps the same bus event ID as the first attempt and consumers can
 // dedupe it.
 func TestRelay_PublishWithID_UsesRowID(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "row-1", "a.created", 0, 1000)
 	insertRow(t, db, "row-2", "b.created", 0, 2000)
@@ -188,8 +166,7 @@ func TestRelay_PublishWithID_UsesRowID(t *testing.T) {
 // crash (row unmarked) the relay re-emits the same ID; a subscriber that
 // already processed it skips, a subscriber that had not yet processed it runs.
 func TestRelay_CrashRedelivery_DedupeEndToEnd(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	st := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	bus := inprocess.New(inprocess.Options{
@@ -243,13 +220,14 @@ type memStore struct {
 	mu    sync.Mutex
 	rows  []outbox.Entry
 	reads int
+	err   error
 }
 
 func (m *memStore) Unpublished(context.Context, int) ([]outbox.Entry, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.reads++
-	return slices.Clone(m.rows), nil
+	return slices.Clone(m.rows), m.err
 }
 
 func (m *memStore) readCount() int {
@@ -326,5 +304,24 @@ func TestRelay_Run_AFailedPublishIsRetriedAtTheFallbackInterval(t *testing.T) {
 		time.Sleep(time.Nanosecond)
 		synctest.Wait()
 		assert.Equal(t, []string{"chat.message.created"}, pub.topics(), "the fallback poll retries it")
+	})
+}
+
+func TestRelay_Run_AFailedReadIsRetriedAtTheFallbackInterval(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &memStore{err: errors.New("disk gone")}
+		pub := &fakePublisher{}
+		var commits wake.Broadcast
+		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Wake: commits.Next, Logger: testutil.DiscardLogger()})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go func() { _ = relay.Run(ctx) }()
+		synctest.Wait()
+		atStart := store.readCount()
+
+		time.Sleep(2 * fallbackInterval)
+		synctest.Wait()
+		assert.Equal(t, atStart+2, store.readCount(), "each fallback interval reads again")
+		assert.Empty(t, pub.topics())
 	})
 }

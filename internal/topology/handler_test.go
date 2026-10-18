@@ -57,14 +57,6 @@ func TestRoutes_AddNode_ThenGet(t *testing.T) {
 	assert.Empty(t, getCanvas(t, rec).Nodes, "another workspace has its own canvas")
 }
 
-func TestRoutes_AddExternalNode_RequiresLabel(t *testing.T) {
-	h := newHandler(t).Routes()
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/topology/nodes",
-		strings.NewReader(`{"id":"ext-cf","type":"external","position":{"x":0,"y":0},"data":{"name":"Cloudflare"}}`)))
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
 func TestRoutes_ServiceNodes_AreManagedFromStacks(t *testing.T) {
 	svc := NewService(newFakeRepo())
 	h := NewHandler(svc).Routes()
@@ -80,19 +72,25 @@ func TestRoutes_ServiceNodes_AreManagedFromStacks(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestRoutes_AddNode_Invalid(t *testing.T) {
-	h := newHandler(t).Routes()
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/topology/nodes",
-		strings.NewReader(`{"id":"","data":{}}`)))
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestRoutes_RemoveNode_Missing(t *testing.T) {
-	h := newHandler(t).Routes()
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/api/topology/nodes/nope", nil))
-	assert.Equal(t, http.StatusNotFound, rec.Code)
+func TestRoutes_NodeWrites_RefuseWhatCannotWork(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{"an external node without a label", http.MethodPost, "/api/topology/nodes", `{"id":"ext-cf","type":"external","position":{"x":0,"y":0},"data":{"name":"Cloudflare"}}`, http.StatusBadRequest},
+		{"a node without an id", http.MethodPost, "/api/topology/nodes", `{"id":"","data":{}}`, http.StatusBadRequest},
+		{"removing a node that does not exist", http.MethodDelete, "/api/topology/nodes/nope", "", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			newHandler(t).Routes().ServeHTTP(rec, httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body)))
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }
 
 func TestRoutes_AddEdge_ThenRemove(t *testing.T) {

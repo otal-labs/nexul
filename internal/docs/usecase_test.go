@@ -415,26 +415,6 @@ func (f fakeAccess) RequireProject(_ context.Context, _ string, action permissio
 }
 
 func TestCreate(t *testing.T) {
-	t.Run("empty title is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Create(testCtx(), "project-1", "  ", "body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Create(testCtx(), "  ", "title", "body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.createErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Create(testCtx(), "project-1", "title", "body")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.createErr)
-	})
 	t.Run("creates version 1 and enqueues doc.created", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -452,26 +432,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Get(testCtx(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing doc is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Get(testCtx(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.getErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Get(testCtx(), "doc-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.getErr)
-	})
 	t.Run("returns stored doc", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -484,34 +444,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Update(testCtx(), "", "title", "body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty title is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Update(testCtx(), "doc-1", " ", "body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing doc is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Update(testCtx(), "nope", "title", "body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(testCtx(), "project-1", "title", "body")
-		require.NoError(t, err)
-		repo.updateErr = errors.New("disk full")
-		_, err = s.Update(testCtx(), created.ID, "new title", "new body")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.updateErr)
-	})
 	t.Run("bumps version, records history, enqueues doc.updated", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -570,28 +502,6 @@ func (f *fakeLive) Reset(ctx context.Context, docID string, write func(context.C
 }
 
 func TestDelete(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.Delete(testCtx(), "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing doc is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.Delete(testCtx(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(testCtx(), "project-1", "title", "body")
-		require.NoError(t, err)
-		repo.deleteErr = errors.New("db down")
-		err = s.Delete(testCtx(), created.ID)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.deleteErr)
-	})
 	t.Run("removes doc", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -626,20 +536,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	t.Run("empty query is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Search(testCtx(), "  ", 10)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.searchErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Search(testCtx(), "sqlite", 10)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.searchErr)
-	})
 	t.Run("defaults limit when not given", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -653,24 +549,6 @@ func TestSearch(t *testing.T) {
 }
 
 func TestListVersionsAndGetVersion(t *testing.T) {
-	t.Run("empty doc id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListVersions(testCtx(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("version below 1 is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.GetVersion(testCtx(), "doc-1", 0)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing version is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.GetVersion(testCtx(), "doc-1", 9)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("lists versions newest first and fetches one", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -690,11 +568,73 @@ func TestListVersionsAndGetVersion(t *testing.T) {
 	})
 }
 
-func TestCreate_RequiresActor(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Create(context.Background(), "project-1", "title", "body")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
+func TestService_Refusals_ChangeNothing(t *testing.T) {
+	errDown := errors.New("db down")
+	readOnly := func(repo *fakeRepo) *Service { return newReadOnlyService(repo) }
+	tests := []struct {
+		name string
+		svc  func(repo *fakeRepo) *Service
+		seed func(repo *fakeRepo)
+		call func(s *Service, id string) error
+		want error
+	}{
+		{"create without a title", nil, nil, func(s *Service, _ string) error { _, err := s.Create(testCtx(), "project-1", "  ", "body"); return err }, apperrs.ErrInvalid},
+		{"create without a project", nil, nil, func(s *Service, _ string) error { _, err := s.Create(testCtx(), "  ", "title", "body"); return err }, apperrs.ErrInvalid},
+		{"create without an actor", nil, nil, func(s *Service, _ string) error {
+			_, err := s.Create(context.Background(), "project-1", "title", "body")
+			return err
+		}, apperrs.ErrUnauthorized},
+		{"create when the repo fails", nil, func(r *fakeRepo) { r.createErr = errDown }, func(s *Service, _ string) error {
+			_, err := s.Create(testCtx(), "project-1", "title", "body")
+			return err
+		}, errDown},
+		{"get without an id", nil, nil, func(s *Service, _ string) error { _, err := s.Get(testCtx(), " "); return err }, apperrs.ErrInvalid},
+		{"get a missing doc", nil, nil, func(s *Service, _ string) error { _, err := s.Get(testCtx(), "nope"); return err }, apperrs.ErrNotFound},
+		{"get when the repo fails", nil, func(r *fakeRepo) { r.getErr = errDown }, func(s *Service, id string) error { _, err := s.Get(testCtx(), id); return err }, errDown},
+		{"update without an id", nil, nil, func(s *Service, _ string) error { _, err := s.Update(testCtx(), "", "title", "body"); return err }, apperrs.ErrInvalid},
+		{"update without a title", nil, nil, func(s *Service, id string) error { _, err := s.Update(testCtx(), id, " ", "body"); return err }, apperrs.ErrInvalid},
+		{"update a missing doc", nil, nil, func(s *Service, _ string) error { _, err := s.Update(testCtx(), "nope", "title", "body"); return err }, apperrs.ErrNotFound},
+		{"update when the repo fails", nil, func(r *fakeRepo) { r.updateErr = errDown }, func(s *Service, id string) error {
+			_, err := s.Update(testCtx(), id, "new title", "new body")
+			return err
+		}, errDown},
+		{"delete without an id", nil, nil, func(s *Service, _ string) error { return s.Delete(testCtx(), "") }, apperrs.ErrInvalid},
+		{"delete a missing doc", nil, nil, func(s *Service, _ string) error { return s.Delete(testCtx(), "nope") }, apperrs.ErrNotFound},
+		{"delete when the repo fails", nil, func(r *fakeRepo) { r.deleteErr = errDown }, func(s *Service, id string) error { return s.Delete(testCtx(), id) }, errDown},
+		{"search for a blank query", nil, nil, func(s *Service, _ string) error { _, err := s.Search(testCtx(), "  ", 10); return err }, apperrs.ErrInvalid},
+		{"search when the repo fails", nil, func(r *fakeRepo) { r.searchErr = errDown }, func(s *Service, _ string) error { _, err := s.Search(testCtx(), "sqlite", 10); return err }, errDown},
+		{"list versions without a doc", nil, nil, func(s *Service, _ string) error { _, err := s.ListVersions(testCtx(), " "); return err }, apperrs.ErrInvalid},
+		{"get version zero", nil, nil, func(s *Service, id string) error { _, err := s.GetVersion(testCtx(), id, 0); return err }, apperrs.ErrInvalid},
+		{"get a missing version", nil, nil, func(s *Service, id string) error { _, err := s.GetVersion(testCtx(), id, 9); return err }, apperrs.ErrNotFound},
+		{"list a project's docs without a project", nil, nil, func(s *Service, _ string) error { _, err := s.ListByProject(testCtx(), " "); return err }, apperrs.ErrInvalid},
+		{"list a project's docs when the repo fails", nil, func(r *fakeRepo) { r.listErr = errDown }, func(s *Service, _ string) error { _, err := s.ListByProject(testCtx(), "project-1"); return err }, errDown},
+		{"commit without an id", nil, nil, func(s *Service, _ string) error { return s.CommitCollab(testCtx(), " ", "T", `{"type":"doc"}`) }, apperrs.ErrInvalid},
+		{"commit to a missing doc", nil, nil, func(s *Service, _ string) error { return s.CommitCollab(testCtx(), "nope", "T", `{"type":"doc"}`) }, apperrs.ErrNotFound},
+		{"commit when the repo fails", nil, func(r *fakeRepo) { r.commitErr = errDown }, func(s *Service, id string) error { return s.CommitCollab(testCtx(), id, "T", `{"type":"doc"}`) }, errDown},
+		{"name a version without a doc", nil, nil, func(s *Service, _ string) error { _, err := s.CreateNamedVersion(testCtx(), " ", "v1"); return err }, apperrs.ErrInvalid},
+		{"name a version without a name", nil, nil, func(s *Service, id string) error { _, err := s.CreateNamedVersion(testCtx(), id, "  "); return err }, apperrs.ErrInvalid},
+		{"name a version of a missing doc", nil, nil, func(s *Service, _ string) error { _, err := s.CreateNamedVersion(testCtx(), "nope", "v1"); return err }, apperrs.ErrNotFound},
+		{"name a version without an actor", nil, nil, func(s *Service, id string) error {
+			_, err := s.CreateNamedVersion(context.Background(), id, "v1")
+			return err
+		}, apperrs.ErrUnauthorized},
+		{"name a version without the edit bit", readOnly, nil, func(s *Service, id string) error { _, err := s.CreateNamedVersion(testCtx(), id, "v1"); return err }, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			created, err := newTestService(repo).Create(testCtx(), "project-1", "Spec", "**bold**")
+			require.NoError(t, err)
+			s := newTestService(repo)
+			if tt.svc != nil {
+				s = tt.svc(repo)
+			}
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			require.ErrorIs(t, tt.call(s, created.ID), tt.want)
+		})
+	}
 }
 
 func TestCreate_GrantErrorFails(t *testing.T) {
@@ -855,20 +795,6 @@ func TestList_Disclosure(t *testing.T) {
 }
 
 func TestListByProject(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListByProject(testCtx(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.listErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.ListByProject(testCtx(), "project-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.listErr)
-	})
 	t.Run("returns only docs in the given project", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -888,12 +814,13 @@ func TestListByProject(t *testing.T) {
 func TestSearch_FiltersUnreadable(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	openable, err := s.Create(testCtx(), "project-1", "Storage Spine", "SQLite")
+	_, err := s.Create(testCtx(), "project-1", "Storage Spine", "SQLite")
 	require.NoError(t, err)
-	hidden, err := s.Create(testCtx(), "project-1", "Top Secret", "SQLite")
+	_, err = s.Create(testCtx(), "project-1", "Top Secret", "SQLite")
 	require.NoError(t, err)
-	_ = openable
-	_ = hidden
+	found, err := s.Search(testCtx(), "sqlite", 10)
+	require.NoError(t, err)
+	require.Len(t, found, 2, "the same search finds both for someone who can read them")
 
 	deny := newDenyService(repo)
 	results, err := deny.Search(testCtx(), "sqlite", 10)
@@ -977,11 +904,6 @@ func TestCommitCollab(t *testing.T) {
 		require.NoError(t, err)
 		return d
 	}
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.CommitCollab(testCtx(), " ", "T", `{"type":"doc"}`)
-		require.ErrorIs(t, err, apperrs.ErrInvalid)
-	})
 	t.Run("empty title keeps the current title — commits carry it only from the client that renamed", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -991,19 +913,6 @@ func TestCommitCollab(t *testing.T) {
 		got, err := s.Get(testCtx(), created.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "Original title", got.Title)
-	})
-	t.Run("missing doc is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.CommitCollab(testCtx(), "nope", "T", `{"type":"doc"}`)
-		require.ErrorIs(t, err, apperrs.ErrNotFound)
-	})
-	t.Run("repo failure propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		d := newDoc(t, s, repo)
-		repo.commitErr = errors.New("db down")
-		err := s.CommitCollab(testCtx(), d.ID, "T", `{"type":"doc"}`)
-		require.ErrorIs(t, err, repo.commitErr)
 	})
 	t.Run("writes converged body without a version row and fires doc.updated", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -1033,33 +942,6 @@ func TestCreateNamedVersion(t *testing.T) {
 		require.NoError(t, err)
 		return d
 	}
-	t.Run("empty doc id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateNamedVersion(testCtx(), " ", "v1")
-		require.ErrorIs(t, err, apperrs.ErrInvalid)
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateNamedVersion(testCtx(), "doc-1", "  ")
-		require.ErrorIs(t, err, apperrs.ErrInvalid)
-	})
-	t.Run("missing doc is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateNamedVersion(testCtx(), "nope", "v1")
-		require.ErrorIs(t, err, apperrs.ErrNotFound)
-	})
-	t.Run("missing actor is unauthorized", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateNamedVersion(context.Background(), "doc-1", "v1")
-		require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-	})
-	t.Run("no edit bit is forbidden", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newReadOnlyService(repo)
-		d := seed(t, s, repo)
-		_, err := s.CreateNamedVersion(testCtx(), d.ID, "v1")
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
 	t.Run("captures current state with name author and timestamp", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)

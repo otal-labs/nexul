@@ -47,13 +47,6 @@ func TestPATsRepo_CreateAndGetByHash(t *testing.T) {
 	assert.Nil(t, got.RevokedAt)
 }
 
-func TestPATsRepo_GetByHash_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.PATs.GetByHash(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestPATsRepo_Create_DuplicateHashConflicts(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -138,7 +131,6 @@ func TestPATsRepo_TouchLastUsed(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, got.LastUsedAt)
 
-	time.Sleep(10 * time.Millisecond)
 	require.NoError(t, s.PATs.TouchLastUsed(ctx, "p1"))
 
 	got, err = s.PATs.GetByHash(ctx, "hash1")

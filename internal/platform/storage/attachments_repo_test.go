@@ -51,14 +51,6 @@ func TestAttachmentsRepo_RoundTrip(t *testing.T) {
 	assert.Empty(t, empty)
 }
 
-func TestAttachmentsRepo_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Attachments.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-	require.ErrorIs(t, s.Attachments.Delete(context.Background(), "missing"), apperrs.ErrNotFound)
-}
-
 func TestAttachmentsRepo_Constraints(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

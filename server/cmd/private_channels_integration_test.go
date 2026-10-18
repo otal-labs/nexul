@@ -18,6 +18,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // TestIntegration_PrivateChannel walks every read of a private channel through the wired services: its members and
@@ -189,7 +190,7 @@ func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
 // TestIntegration_ChannelRules: a role's Deny hides a channel from its holders everywhere, but not from the Owner.
 func TestIntegration_ChannelRules(t *testing.T) {
 	parallel(t)
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	svc, store := wiredOver(t, db)
 	f := seedPermFixture(t, db, svc, store)
 	s := f.svc

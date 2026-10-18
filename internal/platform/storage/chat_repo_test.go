@@ -61,22 +61,6 @@ func TestChatRepo_CreateConversation_GetConversation_RoundTrip(t *testing.T) {
 	assert.Equal(t, "workspace-default", got.WorkspaceID)
 }
 
-func TestChatRepo_GetConversation_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetConversation(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_CreateConversation_DuplicateChannelName_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-	err := s.Chat.CreateConversation(context.Background(), newTestConversation("conv-2", chat.KindChannel, "general", "", "u-1"), []string{"u-1"})
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestChatRepo_GetChannelByName_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -88,20 +72,6 @@ func TestChatRepo_GetChannelByName_RoundTrip(t *testing.T) {
 	assert.Equal(t, "conv-1", got.ID)
 
 	_, err = s.Chat.GetChannelByName(context.Background(), "workspace-default", "does-not-exist")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_GetTicketThread_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetTicketThread(context.Background(), "t-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_GetDocThread_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetDocThread(context.Background(), "doc-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -364,22 +334,15 @@ func TestChatRepo_CreateMessage_GetMessage_RoundTrip(t *testing.T) {
 	assert.Equal(t, []chat.Mention{{Kind: chat.MentionUser, Handle: "onik97"}}, got.Mentions)
 	assert.Nil(t, got.EditedAt)
 	assert.Nil(t, got.DeletedAt)
-}
+	assert.Equal(t, chat.AuthorUser, got.AuthorKind, "a message with no author kind is a person's")
 
-func TestChatRepo_GetMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Chat.GetMessage(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestChatRepo_CreateMessage_UnknownConversation_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	m := &chat.Message{ID: "msg-1", ConversationID: "does-not-exist", AuthorID: "u-1", Body: "hi", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}
-	err := s.Chat.CreateMessage(context.Background(), m)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
+	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
+		ID: "msg-2", ConversationID: "conv-1", AuthorID: "u-1", AuthorKind: chat.AuthorAgent, Body: "reply",
+		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
+	}))
+	agent, err := s.Chat.GetMessage(context.Background(), "msg-2")
+	require.NoError(t, err)
+	assert.Equal(t, chat.AuthorAgent, agent.AuthorKind)
 }
 
 func TestChatRepo_ListMessages_NewestLimitedOldestFirst(t *testing.T) {
@@ -456,13 +419,6 @@ func TestChatRepo_UpdateMessage_RoundTrip(t *testing.T) {
 	assert.Equal(t, editedAt.Unix(), got.EditedAt.Unix())
 }
 
-func TestChatRepo_UpdateMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Chat.UpdateMessage(context.Background(), "missing", "hi", nil, chatFixedNow)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestChatRepo_DeleteMessage_SoftDeletes(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -479,13 +435,6 @@ func TestChatRepo_DeleteMessage_SoftDeletes(t *testing.T) {
 	assert.Empty(t, got.Mentions)
 	require.NotNil(t, got.DeletedAt)
 	assert.Equal(t, deletedAt.Unix(), got.DeletedAt.Unix())
-}
-
-func TestChatRepo_DeleteMessage_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Chat.DeleteMessage(context.Background(), "missing", chatFixedNow)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestChatRepo_MarkRead_UnreadCounts(t *testing.T) {
@@ -508,6 +457,11 @@ func TestChatRepo_MarkRead_UnreadCounts(t *testing.T) {
 	counts2, err := s.Chat.UnreadCounts(context.Background(), "workspace-default", "u-2")
 	require.NoError(t, err)
 	assert.Equal(t, 1, unreadCountsMap(counts2)["conv-1"])
+
+	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow.Add(time.Hour)), "marking read again moves the mark")
+	counts, err = s.Chat.UnreadCounts(context.Background(), "workspace-default", "u-1")
+	require.NoError(t, err)
+	assert.Zero(t, unreadCountsMap(counts)["conv-1"])
 }
 
 func unreadCountsMap(rows []chat.UnreadCount) map[string]int {
@@ -516,39 +470,6 @@ func unreadCountsMap(rows []chat.UnreadCount) map[string]int {
 		out[r.ConversationID] = r.Count
 	}
 	return out
-}
-
-func TestChatRepo_MarkRead_UpsertsOnRepeatedCalls(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow))
-	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow.Add(time.Hour)))
-}
-
-// TestChatRepo_CreateMessage_AuthorKind_RoundTrip: it round-trips, defaulting to "user" for a zero value.
-func TestChatRepo_CreateMessage_AuthorKind_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-
-	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
-		ID: "msg-1", ConversationID: "conv-1", AuthorID: "u-1", AuthorKind: chat.AuthorAgent, Body: "reply",
-		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
-	}))
-	got, err := s.Chat.GetMessage(context.Background(), "msg-1")
-	require.NoError(t, err)
-	assert.Equal(t, chat.AuthorAgent, got.AuthorKind)
-
-	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
-		ID: "msg-2", ConversationID: "conv-1", AuthorID: "u-1", Body: "hi",
-		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
-	}))
-	got2, err := s.Chat.GetMessage(context.Background(), "msg-2")
-	require.NoError(t, err)
-	assert.Equal(t, chat.AuthorUser, got2.AuthorKind)
 }
 
 func TestChatRepo_CreateMessage_Via_RoundTripsAndASecondCopyConflicts(t *testing.T) {

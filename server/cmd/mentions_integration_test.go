@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -23,21 +21,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
-
-func mentionsTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "test.db")
-	copyMigratedDB(t, path)
-	db, err := storage.OpenDB(path)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return db
-}
 
 func seedMentionsUser(t *testing.T, s *storage.Store, id string) {
 	t.Helper()
@@ -49,7 +38,7 @@ func seedMentionsUser(t *testing.T, s *storage.Store, id string) {
 func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	seedMentionsUser(t, s, "u-alice")

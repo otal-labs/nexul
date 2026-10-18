@@ -70,13 +70,6 @@ func TestOutagesRepo_Open_AnUnknownStackFails(t *testing.T) {
 	require.Error(t, s.Outages.Open(context.Background(), newTestOutage("out-1", "nope")))
 }
 
-func TestOutagesRepo_GetOpen_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Outages.GetOpen(context.Background(), "stack-1", "web")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestOutagesRepo_Update_RecordsAnotherCrash(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

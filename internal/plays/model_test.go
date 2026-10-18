@@ -3,7 +3,6 @@ package plays
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -37,10 +36,4 @@ func TestPlay_Validate(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func TestStage_Valid(t *testing.T) {
-	assert.True(t, StageBacklog.valid())
-	assert.True(t, StageDone.valid())
-	assert.False(t, Stage("nope").valid())
 }

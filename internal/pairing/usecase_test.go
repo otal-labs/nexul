@@ -139,13 +139,6 @@ func TestService_ListComputers_StripsBearerToken(t *testing.T) {
 	assert.Empty(t, list[0].BearerToken)
 }
 
-func TestService_ListComputers_RequiresUser(t *testing.T) {
-	t.Parallel()
-	svc := newTestService(newFakeRepo(), &fakeExchanger{})
-	_, err := svc.ListComputers(context.Background(), "")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-}
-
 func TestService_DeleteComputer(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
@@ -177,13 +170,6 @@ func TestService_ActiveSessions_DecryptsAndSkipsExpired(t *testing.T) {
 	require.Len(t, sessions, 1, "expired computer skipped")
 	assert.Equal(t, live.ID, sessions[0].ID)
 	assert.Equal(t, "bearer-live", sessions[0].BearerToken, "token returned decrypted")
-}
-
-func TestService_ActiveSessions_RequiresUser(t *testing.T) {
-	t.Parallel()
-	svc := newTestService(newFakeRepo(), &fakeExchanger{})
-	_, err := svc.ActiveSessions(context.Background(), " ")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
 func TestService_OnComputersChanged_FiresOnPairRepairDelete(t *testing.T) {
@@ -714,13 +700,6 @@ func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {
 	})
 }
 
-func TestService_ResolveTarget_RequiresUser(t *testing.T) {
-	t.Parallel()
-	svc := newTestService(newFakeRepo(), &fakeExchanger{})
-	_, err := svc.ResolveTarget(context.Background(), "", "proj-1")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-}
-
 func TestService_ResolveTargetOverride_EmptyComputerFallsBackToResolveTarget(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
@@ -819,13 +798,6 @@ func TestService_ResolveTargetOverride_RefusesAComputerNotOwnedByTheCaller(t *te
 	assert.Equal(t, ReasonUnpaired, nc.Reason)
 }
 
-func TestService_ResolveTargetOverride_RequiresUser(t *testing.T) {
-	t.Parallel()
-	svc := newTestService(newFakeRepo(), &fakeExchanger{})
-	_, err := svc.ResolveTargetOverride(context.Background(), "", "proj-1", "c-1", "", "", nil)
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-}
-
 func TestService_SetDefaults_RejectsForeignComputer(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
@@ -890,6 +862,23 @@ func TestService_ResolvePersonRun_AT3ProjectTheComputerDoesNotList_IsRefusedAndN
 			link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
 			require.NoError(t, err)
 			assert.Empty(t, link.ComputerID, "an unchecked T3 project is never saved as the link")
+		})
+	}
+}
+
+func TestService_ReadsAndResolves_RequireAUser(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(newFakeRepo(), &fakeExchanger{})
+	ctx := context.Background()
+	calls := map[string]func() error{
+		"ListComputers":         func() error { _, err := svc.ListComputers(ctx, ""); return err },
+		"ActiveSessions":        func() error { _, err := svc.ActiveSessions(ctx, " "); return err },
+		"ResolveTarget":         func() error { _, err := svc.ResolveTarget(ctx, "", "proj-1"); return err },
+		"ResolveTargetOverride": func() error { _, err := svc.ResolveTargetOverride(ctx, "", "proj-1", "c-1", "", "", nil); return err },
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			require.ErrorIs(t, call(), apperrs.ErrUnauthorized)
 		})
 	}
 }

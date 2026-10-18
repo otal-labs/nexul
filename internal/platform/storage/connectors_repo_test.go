@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,33 +13,9 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func openConnectorsStore(t *testing.T) *Store {
-	t.Helper()
-	db, err := OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, Migrate(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return New(db, testEncKey)
-}
-
-// TestConnectorsRepo_GetCredentials_NeverConnected proves a connector that
-// was never connected returns a clean apperrs.ErrNotFound, not a zero value.
-func TestConnectorsRepo_GetCredentials_NeverConnected(t *testing.T) {
-	t.Parallel()
-	s := openConnectorsStore(t)
-	ctx := context.Background()
-
-	_, err := s.Connectors.GetCredentials(ctx, "github")
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound), "never-connected connector must be ErrNotFound")
-}
-
-// TestConnectorsRepo_SaveGetDelete_RoundTrip proves upsert + get round-trip
-// correctly, that the raw DB columns hold ciphertext (not the plaintext
-// tokens), that reconnecting overwrites rather than erroring, and that
-// delete actually removes the row (subsequent get is not-found again).
 func TestConnectorsRepo_SaveGetDelete_RoundTrip(t *testing.T) {
 	t.Parallel()
-	s := openConnectorsStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	c := connectors.Credentials{
@@ -114,7 +89,7 @@ func TestConnectorsRepo_SaveGetDelete_RoundTrip(t *testing.T) {
 // connector may only ever hand back an access token).
 func TestConnectorsRepo_SaveCredentials_NoRefreshToken(t *testing.T) {
 	t.Parallel()
-	s := openConnectorsStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	c := connectors.Credentials{
@@ -142,7 +117,7 @@ func TestConnectorsRepo_SaveCredentials_NoRefreshToken(t *testing.T) {
 // configured.
 func TestConnectorsRepo_ManualFields_RoundTripEncrypted(t *testing.T) {
 	t.Parallel()
-	s := openConnectorsStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	c := connectors.Credentials{

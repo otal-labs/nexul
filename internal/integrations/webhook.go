@@ -104,12 +104,6 @@ func signWebhook(secret string, payload []byte) string {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
-// VerifyWebhookSignature is the verification side of the outbound HMAC signing.
-func VerifyWebhookSignature(secret string, payload []byte, header string) bool {
-	want := signWebhook(secret, payload)
-	return hmac.Equal([]byte(header), []byte(want))
-}
-
 // redactEventPayload blanks deploy.requested's Env values (secrets), keeping keys; other topics pass through (R5).
 func redactEventPayload(topic string, payload json.RawMessage) (json.RawMessage, error) {
 	if topic != "deploy.requested" {

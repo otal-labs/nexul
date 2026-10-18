@@ -15,7 +15,7 @@ import (
 )
 
 func TestDNSRepo_GatewayRoundTrip(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -59,7 +59,7 @@ func TestDNSRepo_GatewayRoundTrip(t *testing.T) {
 }
 
 func TestDNSRepo_GatewayNetworkIsUnique(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -69,7 +69,7 @@ func TestDNSRepo_GatewayNetworkIsUnique(t *testing.T) {
 }
 
 func TestDNSRepo_GatewayDelete(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 
@@ -86,7 +86,7 @@ func TestDNSRepo_GatewayDelete(t *testing.T) {
 }
 
 func TestDNSRepo_ExposureRoundTrip(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 	require.NoError(t, repo.SaveGateway(ctx, dns.Gateway{ID: "g1", Kind: dns.GatewayTunnel, DockerNetwork: "net1"}))
@@ -130,7 +130,7 @@ func TestDNSRepo_ExposureRoundTrip(t *testing.T) {
 }
 
 func TestDNSRepo_ExposureDelete(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 	require.NoError(t, repo.SaveGateway(ctx, dns.Gateway{ID: "g1", Kind: dns.GatewayTunnel, DockerNetwork: "net1"}))

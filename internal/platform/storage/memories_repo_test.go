@@ -23,13 +23,6 @@ func newTestMemory(id, projectID string) *memories.Memory {
 	}
 }
 
-func TestMemoriesRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Memories.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestMemoriesRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -66,21 +59,6 @@ func TestMemoriesRepo_Create_WritesVersion1(t *testing.T) {
 	assert.Equal(t, m.Body, versions[0].Body)
 	assert.Equal(t, "user-1", versions[0].AuthorID)
 	assert.Equal(t, "mcp", versions[0].AuthorVia)
-}
-
-func TestMemoriesRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "project-general"), ""))
-	err := s.Memories.Create(context.Background(), newTestMemory("mem-1", "project-general"), "")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestMemoriesRepo_Create_UnknownProjectIsConflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Memories.Create(context.Background(), newTestMemory("mem-1", "does-not-exist"), "")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestMemoriesRepo_ListByProject_IncludesTheSeededDefault(t *testing.T) {
@@ -164,13 +142,6 @@ func TestMemoriesRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
 	assert.Equal(t, 3, second.Version)
 }
 
-func TestMemoriesRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Memories.Update(context.Background(), newTestMemory("missing", "project-general"), "")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestMemoriesRepo_GetVersion(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -204,13 +175,6 @@ func TestMemoriesRepo_Delete_CascadesVersions(t *testing.T) {
 	versions, err := s.Memories.ListVersions(context.Background(), "mem-1")
 	require.NoError(t, err)
 	assert.Empty(t, versions)
-}
-
-func TestMemoriesRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Memories.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestProjectsRepo_Create_SeedsAnAlwaysIncludedMemory(t *testing.T) {

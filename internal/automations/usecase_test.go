@@ -251,24 +251,6 @@ func TestService_AuthenticateToken(t *testing.T) {
 	})
 }
 
-func TestService_RevokeToken_DisconnectsLiveConnection(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
-	require.NoError(t, err)
-
-	conns := &fakeConnRegistry{}
-	s.SetConnectionRegistry(conns)
-
-	_, err = s.RevokeToken(context.Background(), "owner", created.ID)
-	require.NoError(t, err)
-
-	ids, reasons := conns.calledWith()
-	require.Len(t, ids, 1)
-	assert.Equal(t, created.ID, ids[0])
-	assert.Equal(t, "token revoked", reasons[0])
-}
-
 func TestService_SetEnabled_DisconnectsLiveConnectionEitherWay(t *testing.T) {
 	s := newTestService(newFakeRepo(), allowAll("owner"))
 	created, _, err := s.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
@@ -287,24 +269,6 @@ func TestService_SetEnabled_DisconnectsLiveConnectionEitherWay(t *testing.T) {
 	assert.Equal(t, []string{created.ID, created.ID}, ids, "each real switch drops the connection; a no-op does not")
 }
 
-func TestService_MintToken_DisconnectsLiveConnection(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
-	require.NoError(t, err)
-
-	conns := &fakeConnRegistry{}
-	s.SetConnectionRegistry(conns)
-
-	_, _, err = s.MintToken(context.Background(), "owner", created.ID)
-	require.NoError(t, err)
-
-	ids, reasons := conns.calledWith()
-	require.Len(t, ids, 1)
-	assert.Equal(t, created.ID, ids[0])
-	assert.Equal(t, "token rotated", reasons[0])
-}
-
 func TestService_RevokeToken_AlreadyRevoked_DoesNotDisconnectAgain(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
@@ -321,23 +285,6 @@ func TestService_RevokeToken_AlreadyRevoked_DoesNotDisconnectAgain(t *testing.T)
 
 	ids, _ := conns.calledWith()
 	assert.Len(t, ids, 1)
-}
-
-func TestService_Delete_DisconnectsLiveConnection(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
-	require.NoError(t, err)
-
-	conns := &fakeConnRegistry{}
-	s.SetConnectionRegistry(conns)
-
-	require.NoError(t, s.Delete(context.Background(), "owner", created.ID))
-
-	ids, reasons := conns.calledWith()
-	require.Len(t, ids, 1)
-	assert.Equal(t, created.ID, ids[0])
-	assert.Equal(t, "automation deleted", reasons[0])
 }
 
 func TestService_RevokeToken_NoConnectionRegistry_DoesNotPanic(t *testing.T) {
@@ -402,4 +349,31 @@ func TestService_WorkspaceScope(t *testing.T) {
 		_, _, err := s.Create(context.Background(), "owner", "ws-2", "x", []string{"tickets:read"})
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
+}
+
+func TestService_RevokeRotateAndDelete_DisconnectTheLiveConnection(t *testing.T) {
+	tests := []struct {
+		name   string
+		act    func(s *Service, id string) error
+		reason string
+	}{
+		{"revoking the token", func(s *Service, id string) error { _, err := s.RevokeToken(t.Context(), "owner", id); return err }, "token revoked"},
+		{"minting a new token", func(s *Service, id string) error { _, _, err := s.MintToken(t.Context(), "owner", id); return err }, "token rotated"},
+		{"deleting the automation", func(s *Service, id string) error { return s.Delete(t.Context(), "owner", id) }, "automation deleted"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newTestService(newFakeRepo(), allowAll("owner"))
+			created, _, err := s.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
+			require.NoError(t, err)
+			conns := &fakeConnRegistry{}
+			s.SetConnectionRegistry(conns)
+
+			require.NoError(t, tt.act(s, created.ID))
+
+			ids, reasons := conns.calledWith()
+			assert.Equal(t, []string{created.ID}, ids)
+			assert.Equal(t, []string{tt.reason}, reasons)
+		})
+	}
 }

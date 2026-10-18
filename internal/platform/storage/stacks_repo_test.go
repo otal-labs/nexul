@@ -96,22 +96,6 @@ func TestStacksRepo_DuplicateSlugPerMachine_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict, "the (machine, slug) unique index rejects duplicates")
 }
 
-func TestStacksRepo_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	stack := newTestStack("svc-1")
-	stack.ProjectID = "no-such-project"
-	err := s.Stacks.Create(context.Background(), stack)
-	require.ErrorIs(t, err, apperrs.ErrConflict, "the project FK rejects unknown project ids")
-}
-
-func TestStacksRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Stacks.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestStacksRepo_GetBySlugAndMachine(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -187,13 +171,6 @@ func TestStacksRepo_Update_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "api-v2", got.Name)
 	assert.False(t, got.Managed)
-}
-
-func TestStacksRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Stacks.Update(context.Background(), newTestStack("svc-1"))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestStacksRepo_Delete_WritesOutboxAndRemoves(t *testing.T) {

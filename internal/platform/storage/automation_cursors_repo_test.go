@@ -19,19 +19,6 @@ func TestAutomationCursorsRepo_Get_MissingRow_ReturnsNotOK(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestAutomationCursorsRepo_Set_Get_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	want := automations.Cursor{CreatedAt: time.Now().Truncate(time.Second).UTC(), ID: "ev-1"}
-	require.NoError(t, s.AutomationCursors.Set(context.Background(), "a1", want))
-
-	got, ok, err := s.AutomationCursors.Get(context.Background(), "a1")
-	require.NoError(t, err)
-	require.True(t, ok)
-	assert.Equal(t, want.CreatedAt, got.CreatedAt)
-	assert.Equal(t, want.ID, got.ID)
-}
-
 func TestAutomationCursorsRepo_Set_Overwrites(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

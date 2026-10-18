@@ -11,13 +11,8 @@ import (
 	"github.com/otal-labs/nexul/internal/integrations"
 )
 
-func newTestIntegrationsStore(t *testing.T) *Store {
-	t.Helper()
-	return newTestStore(t)
-}
-
 func TestIntegrationInstallsRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	repo := store.IntegrationInstalls
 
 	ctx := context.Background()
@@ -73,7 +68,7 @@ func TestIntegrationInstallsRepo(t *testing.T) {
 }
 
 func TestIntegrationTokensRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	installRepo := store.IntegrationInstalls
 	tokenRepo := store.IntegrationTokens
 
@@ -114,7 +109,7 @@ func TestIntegrationTokensRepo(t *testing.T) {
 }
 
 func TestIntegrationSubscriptionsRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	installRepo := store.IntegrationInstalls
 	subRepo := store.IntegrationSubs
 
@@ -159,7 +154,7 @@ func TestIntegrationSubscriptionsRepo(t *testing.T) {
 }
 
 func TestIntegrationDeliveriesRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	installRepo := store.IntegrationInstalls
 	deliveryRepo := store.IntegrationDeliveries
 
@@ -218,7 +213,7 @@ func TestIntegrationDeliveriesRepo(t *testing.T) {
 }
 
 func TestEventSchemasRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	repo := store.EventSchemas
 	ctx := context.Background()
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
@@ -242,7 +237,7 @@ func TestEventSchemasRepo(t *testing.T) {
 }
 
 func TestAuditRepo(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	repo := store.Audit
 	ctx := context.Background()
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
@@ -272,7 +267,7 @@ func TestAuditRepo(t *testing.T) {
 // TestAuditRepo_DeleteBefore_DeletesOneBoundedBatchOfOldRowsThroughTheSerializer: newer rows stay, a call deletes at
 // most limit rows, and the delete is a serialized write, so it commits through the serializer and wakes its waiters.
 func TestAuditRepo_DeleteBefore_DeletesOneBoundedBatchOfOldRowsThroughTheSerializer(t *testing.T) {
-	store := newTestIntegrationsStore(t)
+	store := newTestStore(t)
 	ctx := t.Context()
 	cutoff := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
 	for i, at := range []time.Time{cutoff.Add(-3 * time.Hour), cutoff.Add(-2 * time.Hour), cutoff.Add(-time.Hour), cutoff, cutoff.Add(time.Hour)} {

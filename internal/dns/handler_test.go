@@ -63,22 +63,12 @@ func TestHandler_CreateRecord(t *testing.T) {
 	assert.Equal(t, []string{TopicRecordChanged}, repo.topics(), "record_changed enqueued to outbox")
 }
 
-func TestHandler_CreateRecord_ValidationError(t *testing.T) {
-	rec := doJSON(t, newTestHandlerRoutes(), http.MethodPost, "/api/dns/zones/z1/records", RecordInput{Type: "SRV", Name: "x", Content: "y"})
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
 func TestHandler_DeleteRecord(t *testing.T) {
 	h, _, p := newTestHandler()
 	created, err := p.CreateRecord(context.Background(), "z1", RecordInput{Type: RecordA, Name: "api", Content: "1.2.3.4", TTL: 1})
 	require.NoError(t, err)
 	rec := doJSON(t, h.Routes(), http.MethodDelete, "/api/dns/zones/z1/records/"+created.ID, nil)
 	require.Equal(t, http.StatusOK, rec.Code)
-}
-
-func TestHandler_CheckPropagation_UnknownRecord(t *testing.T) {
-	rec := doJSON(t, newTestHandlerRoutes(), http.MethodGet, "/api/dns/zones/z1/records/ghost/propagation", nil)
-	require.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestHandler_CreateInstanceRecord(t *testing.T) {
@@ -88,13 +78,6 @@ func TestHandler_CreateInstanceRecord(t *testing.T) {
 	})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, []string{TopicRecordChanged}, repo.topics())
-}
-
-func TestHandler_CreateInstanceRecord_Mismatch(t *testing.T) {
-	rec := doJSON(t, newTestHandlerRoutes(), http.MethodPost, "/api/dns/instance-record", map[string]string{
-		"zone_id": "z1", "zone": "other.com", "type": "A", "target": "10.0.0.1",
-	})
-	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestHandler_ServiceHostnames(t *testing.T) {
@@ -187,9 +170,25 @@ func TestHandler_ServiceHostname_CRUD(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestHandler_ServiceHostname_MismatchSurfaced(t *testing.T) {
-	rec := doJSON(t, newTestHandlerRoutes(), http.MethodPost, "/api/dns/service-hostnames", ServiceHostnameInput{
-		Service: "api", Hostname: "api.other.com", ZoneID: "z1", Zone: "example.com", Type: RecordA, Target: "1.2.3.4",
-	})
-	require.Equal(t, http.StatusBadRequest, rec.Code)
+func TestHandler_Routes_RefuseWhatCannotWork(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   any
+		want   int
+	}{
+		{"a record type the provider has no use for", http.MethodPost, "/api/dns/zones/z1/records", RecordInput{Type: "SRV", Name: "x", Content: "y"}, http.StatusBadRequest},
+		{"propagation of a record that does not exist", http.MethodGet, "/api/dns/zones/z1/records/ghost/propagation", nil, http.StatusNotFound},
+		{"an instance record whose zone name does not match its id", http.MethodPost, "/api/dns/instance-record",
+			map[string]string{"zone_id": "z1", "zone": "other.com", "type": "A", "target": "10.0.0.1"}, http.StatusBadRequest},
+		{"a service hostname outside its zone", http.MethodPost, "/api/dns/service-hostnames",
+			ServiceHostnameInput{Service: "api", Hostname: "api.other.com", ZoneID: "z1", Zone: "example.com", Type: RecordA, Target: "1.2.3.4"}, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := doJSON(t, newTestHandlerRoutes(), tt.method, tt.path, tt.body)
+			require.Equal(t, tt.want, rec.Code)
+		})
+	}
 }
