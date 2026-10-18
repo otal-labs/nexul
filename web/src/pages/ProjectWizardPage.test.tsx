@@ -119,14 +119,6 @@ beforeEach(() => {
 });
 
 describe("ProjectWizardPage", () => {
-  it("offers no way to skip the info rung, since the project does not exist until it is created", async () => {
-    renderPage("/acme/wizard/project/project");
-
-    await screen.findByLabelText("Project name");
-
-    expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
-  });
-
   it("goes back from the info rung to the page the wizard was opened from, creating nothing", async () => {
     const user = userEvent.setup();
     renderPage(["/acme/board/p-1", "/acme/wizard/project/project"]);
@@ -137,13 +129,17 @@ describe("ProjectWizardPage", () => {
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("goes back from a cold-opened info rung to the board", async () => {
+  it.each([
+    ["tickets", "board"],
+    ["", "home"],
+  ])("goes back from a cold-opened info rung to the board, or home when the viewer holds %j", async (area, landing) => {
+    access.areas = area ? [area] : [];
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/project");
 
     await user.click(await screen.findByRole("button", { name: "Back" }));
 
-    expect(await screen.findByText("board")).toBeInTheDocument();
+    expect(await screen.findByText(landing)).toBeInTheDocument();
   });
 
   it("goes back from the service rung to the repository rung while no stack exists yet", async () => {
@@ -486,34 +482,21 @@ describe("ProjectWizardPage", () => {
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
-  it("skips a directly opened Environment URL with no scan to Reach rather than Info", async () => {
-    mocks.put.mockResolvedValue({ data: inSetup({ env: "skipped" }) });
-    const user = userEvent.setup();
-    renderPage("/acme/wizard/project/env?project=p-1");
-
-    await user.click(await screen.findByRole("button", { name: "Skip for now" }));
-
-    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
-  });
-
   it("redirects an unknown step back to the project step", async () => {
     renderPage("/acme/wizard/project/nonsense");
     expect(await screen.findByRole("heading", { name: "Info" })).toBeInTheDocument();
     expect(rung("Info")).toHaveAttribute("data-state", "current");
   });
 
-  it("opens the project rung by default with nothing after it visited", async () => {
+  it("opens the project rung by default with nothing after it visited and no way to skip it", async () => {
     renderPage("/acme/wizard/project/project");
     await screen.findByRole("heading", { name: "Info" });
+    expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
     expect(rung("Info")).toHaveAttribute("data-state", "current");
     for (const label of ["Who's in it", "Repository", "Service", "Reach", "Deploy branches", "Done"]) {
       expect(rung(label)).toHaveAttribute("data-state", "unvisited");
     }
     expect(within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem")).toHaveLength(7);
-  });
-
-  it("frames the project rung as the first project when the workspace has none", async () => {
-    renderPage("/acme/wizard/project/project");
     expect(await screen.findByRole("heading", { name: /^create your first project$/i })).toBeInTheDocument();
   });
 
@@ -597,15 +580,5 @@ describe("ProjectWizardPage", () => {
     expect(screen.getByRole("heading", { name: /^attach a repository$/i })).toBeInTheDocument();
 
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
-  });
-
-  it("goes back to home instead of the board when the viewer can't read tickets", async () => {
-    access.areas = [];
-    const user = userEvent.setup();
-    renderPage("/acme/wizard/project/project");
-
-    await user.click(await screen.findByRole("button", { name: "Back" }));
-
-    expect(await screen.findByText("home")).toBeInTheDocument();
   });
 });

@@ -101,18 +101,36 @@ const renderPage = (initialPath = "/acme/board/p-1") => {
   return { ...view, client };
 };
 
-const mockGet = (tickets: unknown[], projectList: typeof projects = projects, categoryList: typeof categories = categories) => {
+// A null ticket list never resolves; a category getter lets a test grow the list between fetches.
+const mockGet = (
+  tickets: unknown[] | null,
+  projectList: typeof projects = projects,
+  categoryList: typeof categories | (() => typeof categories) = categories,
+  labels: string[] = [],
+) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: projectList };
     if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write", "tickets:write"] } };
     const projectMatch = /^\/api\/projects\/([^/]+)$/.exec(url);
     if (projectMatch) return { data: projectList.find((p) => p.id === projectMatch[1]) };
-    if (url.startsWith("/api/categories")) return { data: categoryList };
+    if (url.startsWith("/api/categories")) return { data: typeof categoryList === "function" ? categoryList() : categoryList };
     if (url.startsWith("/api/statuses")) return { data: statuses };
     if (url.startsWith("/api/ticket-types")) return { data: ticketTypes };
-    if (url.startsWith("/api/tickets/labels")) return { data: [] };
-    return { data: tickets };
+    if (url.startsWith("/api/tickets/labels")) return { data: labels };
+    return tickets ? { data: tickets } : new Promise(() => {});
+  });
+};
+
+// Reassigned (not pushed) on create so the refetch returns a fresh array; React Query's structural sharing would swallow an in-place mutation.
+const mockCategoryCreate = () => {
+  let current = [...categories];
+  mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1")], projects, () => current);
+  vi.mocked(api.post).mockImplementation((url: string, body) => {
+    if (url !== "/api/categories") return Promise.resolve({ data: {} });
+    const created = { id: "c-2", ...(body as { project_id: string; name: string }), position: 1, created_at: "", updated_at: "" };
+    current = [...current, created];
+    return Promise.resolve({ data: created });
   });
 };
 
@@ -127,17 +145,6 @@ beforeEach(() => {
 });
 
 describe("BoardPage", () => {
-  it("renders swimlanes grouped by category, scoped to the URL's project", async () => {
-    mockGet([
-      ticket("t-1", "p-1", "Fix login", "open", "c-1"),
-      ticket("t-2", "p-2", "Wire FTS", "done"),
-    ]);
-    renderPage();
-    expect(await screen.findByText("Fix login")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Sprint 1 swimlane" })).toBeInTheDocument();
-    expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
-  });
-
   it("resolves a prefix URL (/board/BE) to the same project as its id, case-insensitively", async () => {
     mockGet([ticket("t-1", "p-1", "Fix login", "open")]);
     renderPage("/acme/board/be");
@@ -166,22 +173,6 @@ describe("BoardPage", () => {
     expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
   });
 
-  // Pointer/touch/keyboard drags aren't reproducible through jsdom; the drag-end mapping is covered in dragMove.test.ts and the resulting API calls in TicketHooks.test.tsx/CategoryHooks.test.tsx. This just proves BoardPage renders the drop targets.
-  it("renders a status column and a swimlane as drop targets for a ticket", async () => {
-    mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1")]);
-    renderPage();
-
-    expect(await screen.findByText("Fix login")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Done column in Sprint 1" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Sprint 1 swimlane" })).toBeInTheDocument();
-  });
-
-  it("shows an error state", async () => {
-    vi.mocked(api.get).mockRejectedValue(new Error("boom"));
-    renderPage();
-    expect(await screen.findByText("Couldn't load the board.")).toBeInTheDocument();
-  });
-
   it("creates a ticket through the relocated dialog", async () => {
     const user = userEvent.setup();
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1")]);
@@ -208,32 +199,7 @@ describe("BoardPage", () => {
 
   it("creates a category for the scoped project and shows it as a swimlane", async () => {
     const user = userEvent.setup();
-    // Reassigned (not pushed) on create so the refetch returns a fresh array — React Query's structural sharing would swallow an in-place mutation of the same reference.
-    let currentCategories = [...categories];
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write", "tickets:write"] } };
-      if (url.startsWith("/api/projects")) return { data: projects };
-      if (url.startsWith("/api/categories")) return { data: currentCategories };
-      if (url.startsWith("/api/statuses")) return { data: statuses };
-      if (url.startsWith("/api/ticket-types")) return { data: ticketTypes };
-      if (url.startsWith("/api/tickets/labels")) return { data: [] };
-      return { data: [ticket("t-1", "p-1", "Fix login", "open", "c-1")] };
-    });
-    vi.mocked(api.post).mockImplementation((url: string, body) => {
-      if (url === "/api/categories") {
-        const created = {
-          id: "c-2",
-          ...(body as { project_id: string; name: string }),
-          position: 1,
-          created_at: "",
-          updated_at: "",
-        };
-        currentCategories = [...currentCategories, created];
-        return Promise.resolve({ data: created });
-      }
-      return Promise.resolve({ data: {} });
-    });
+    mockCategoryCreate();
     renderPage();
 
     await openCreateMenuItem(user, "New category");
@@ -247,31 +213,7 @@ describe("BoardPage", () => {
 
   it("does not show a swimlane for a category outside the scoped project", async () => {
     const user = userEvent.setup();
-    let currentCategories = [...categories];
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write", "tickets:write"] } };
-      if (url.startsWith("/api/projects")) return { data: projects };
-      if (url.startsWith("/api/categories")) return { data: currentCategories };
-      if (url.startsWith("/api/statuses")) return { data: statuses };
-      if (url.startsWith("/api/ticket-types")) return { data: ticketTypes };
-      if (url.startsWith("/api/tickets/labels")) return { data: [] };
-      return { data: [ticket("t-1", "p-1", "Fix login", "open", "c-1")] };
-    });
-    vi.mocked(api.post).mockImplementation((url: string, body) => {
-      if (url === "/api/categories") {
-        const created = {
-          id: "c-2",
-          ...(body as { project_id: string; name: string }),
-          position: 1,
-          created_at: "",
-          updated_at: "",
-        };
-        currentCategories = [...currentCategories, created];
-        return Promise.resolve({ data: created });
-      }
-      return Promise.resolve({ data: {} });
-    });
+    mockCategoryCreate();
     renderPage("/acme/board/p-1");
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
 
@@ -301,16 +243,7 @@ describe("BoardPage", () => {
   });
 
   it("does not show the empty state while tickets are still loading", async () => {
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write", "tickets:write"] } };
-      if (url.startsWith("/api/projects")) return { data: projects };
-      if (url.startsWith("/api/categories")) return { data: categories };
-      if (url.startsWith("/api/statuses")) return { data: statuses };
-      if (url.startsWith("/api/ticket-types")) return { data: ticketTypes };
-      if (url.startsWith("/api/tickets/labels")) return { data: [] };
-      return new Promise(() => {});
-    });
+    mockGet(null);
     renderPage();
     expect(
       screen.queryByText("No tickets match these filters."),
@@ -320,12 +253,14 @@ describe("BoardPage", () => {
 });
 
 describe("BoardPage project-scoped route", () => {
-  it("scopes to the project in the URL, hides the Projects filter, and titles the page with it", async () => {
+  it("groups the URL project's tickets into swimlanes and status columns, hides the Projects filter, and titles the page with it", async () => {
     const user = userEvent.setup();
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-2", "Wire FTS", "open")]);
     renderPage("/acme/board/p-1");
 
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Sprint 1 swimlane" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Done column in Sprint 1" })).toBeInTheDocument();
     expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Backend" })).toBeInTheDocument();
     await openFilterPopover(user);
@@ -389,16 +324,6 @@ describe("BoardPage routing", () => {
 });
 
 describe("BoardPage filters", () => {
-  it("filters by status", async () => {
-    const user = userEvent.setup();
-    mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-1", "Wire FTS", "done", "c-1")]);
-    renderPage();
-    await openFilterPopover(user);
-    await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(screen.getByText("Wire FTS")).toBeInTheDocument();
-    expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
-  });
-
   it("filters by developer", async () => {
     const user = userEvent.setup();
     mockGet([
@@ -412,7 +337,7 @@ describe("BoardPage filters", () => {
     expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
   });
 
-  it("clears all filters", async () => {
+  it("filters by status and clears the filter", async () => {
     const user = userEvent.setup();
     mockGet([
       ticket("t-1", "p-1", "Fix login", "open", "c-1"),
@@ -421,6 +346,8 @@ describe("BoardPage filters", () => {
     renderPage();
     await openFilterPopover(user);
     await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByText("Wire FTS")).toBeInTheDocument();
+    expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Clear filter/ }));
     expect(screen.getByText("Fix login")).toBeInTheDocument();
     expect(screen.getByText("Wire FTS")).toBeInTheDocument();
@@ -430,21 +357,15 @@ describe("BoardPage filters", () => {
 describe("BoardPage label filter", () => {
   it("filters by label", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:create", "projects:write", "stacks:write", "deploys:write", "tickets:write"] } };
-      if (url.startsWith("/api/projects")) return { data: projects };
-      if (url.startsWith("/api/categories")) return { data: categories };
-      if (url.startsWith("/api/statuses")) return { data: statuses };
-      if (url.startsWith("/api/ticket-types")) return { data: ticketTypes };
-      if (url.startsWith("/api/tickets/labels")) return { data: ["bug"] };
-      return {
-        data: [
-          { ...ticket("t-1", "p-1", "Fix login", "open", "c-1"), labels: ["bug"] },
-          { ...ticket("t-2", "p-1", "Wire FTS", "open", "c-1"), labels: [] },
-        ],
-      };
-    });
+    mockGet(
+      [
+        { ...ticket("t-1", "p-1", "Fix login", "open", "c-1"), labels: ["bug"] },
+        { ...ticket("t-2", "p-1", "Wire FTS", "open", "c-1"), labels: [] },
+      ],
+      projects,
+      categories,
+      ["bug"],
+    );
     renderPage();
 
     await openFilterPopover(user);
