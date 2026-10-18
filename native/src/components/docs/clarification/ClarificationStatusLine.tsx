@@ -19,7 +19,7 @@ const StatusIcon = ({ icon }: { icon: ClarificationStatus["icon"] }) => (
   </>
 );
 
-// The clarification's state as one line under the heading; whoever may close it alone sees a running round and "No gaps left".
+// The clarification's state as one line under the heading; whoever may close it alone sees a running round and "Doc updated".
 export const ClarificationStatusLine = ({ clarification, locked }: ClarificationStatusLineProps) => {
   const { icon, label, detail } = clarificationStatus(clarification, clarification.can_close, locked);
   return (

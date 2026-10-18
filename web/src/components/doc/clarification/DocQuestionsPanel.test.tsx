@@ -55,7 +55,9 @@ const serve = (clarification: Clarification) =>
     if (url === "/api/docs/doc-1/clarification") return { data: clarification };
     if (url === "/api/docs/doc-1") return { data: shownDoc };
     if (url === "/api/workspaces/ws-1/plays/applicable") {
-      return { data: [play("pl-c", "clarify", "Clarify via AI"), play("pl-t", "to-tickets-via-ai", "To tickets via AI")] };
+      return {
+        data: [play("pl-c", "clarify", "Clarify via AI"), play("pl-u", "update-doc", "Update doc via AI"), play("pl-t", "to-tickets-via-ai", "To tickets via AI")],
+      };
     }
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
@@ -212,15 +214,21 @@ describe("DocQuestionsPanel", () => {
     expect(screen.getByText("· The doc is locked until it ends")).toBeInTheDocument();
   });
 
-  it("offers a developer Clarify via AI as the primary action once a round is answered", async () => {
+  it("offers a developer Update doc via AI only once no question waits, beside Clarify via AI for another round", async () => {
+    serve({ ...waiting, can_close: true });
+    const { unmount } = renderPanel(developer);
+    expect(await screen.findByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Update doc via AI/ })).not.toBeInTheDocument();
+    unmount();
+
     serve({ ...waiting, can_close: true, rounds: [round(1, [question("q1", 1, { selected: ["Email"] })])] });
     renderPanel(developer);
-
     expect(await screen.findByText("Round 1 answered")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Update doc via AI/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
   });
 
-  it("lets a developer close after no gaps, and flags answers changed since the doc was written", async () => {
+  it("lets a developer close after the doc is written, and offers to write again an answer changed since", async () => {
     const user = userEvent.setup();
     const noGaps: Clarification = {
       ...waiting,
@@ -231,8 +239,9 @@ describe("DocQuestionsPanel", () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ...noGaps, closed: true } });
     renderPanel(developer);
 
-    expect(await screen.findByText("No gaps left")).toBeInTheDocument();
+    expect(await screen.findByText("Doc updated")).toBeInTheDocument();
     expect(screen.getByText("1 answer changed since the doc was written")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Update doc via AI/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/clarification/close"));
     expect(await screen.findByRole("button", { name: /To tickets via AI/ })).toBeInTheDocument();

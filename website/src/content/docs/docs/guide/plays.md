@@ -35,11 +35,11 @@ While a run is going:
 
 When a run has ended, type into **Continue this run** to send the agent its next step on the same thread. The play's instructions are not sent again. If you keep working on the thread in T3 Code itself, the trail picks up those turns while you have Nexul open. If the thread is gone from T3 Code, the play starts again as a new run in the same place, with your message added to its instructions. When Nexul doesn't know where an older run ran, the run dialog opens on **Where to run** instead, with your message filled in.
 
-A doc play locks its doc when it starts, so nobody edits the doc under the agent, and the doc stays locked afterwards. Someone with the lock permission unlocks it. **Clarify via AI** is the exception: it unlocks the doc when its round ends.
+A doc play locks its doc when it starts, so nobody edits the doc under the agent, and the doc stays locked afterwards. Someone with the lock permission unlocks it. **Clarify via AI** and **Update doc via AI** are the exceptions: they unlock the doc when their run ends.
 
 ## The built-in plays
 
-Every workspace starts with nine. They are ordinary plays: rename, edit, or delete them.
+Every workspace starts with ten. They are ordinary plays: rename, edit, or delete them.
 
 | Play | Runs on | What it does |
 |---|---|---|
@@ -47,6 +47,7 @@ Every workspace starts with nine. They are ordinary plays: rename, edit, or dele
 | **Test with AI** | a ticket in a Testing column | Tests the ticket against its acceptance criteria, then passes or fails it. |
 | **To tickets via AI** | a doc | Splits the doc into tickets a developer could pick up on their own. |
 | **Clarify via AI** | a doc | Asks the doc's authors about what it leaves open, a round at a time. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
+| **Update doc via AI** | a doc | Writes the answers to the doc's questions into it, without asking more. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
 | **Interview** | a project's Interview page | Asks follow-ups and writes the project's rules for agents. See [Interview](/docs/guide/interview/). |
 | **Draft interview** | a project's Interview page | Drafts interview answers from the project's sources. |
 | **Audit via AI** | a project's Interview page | Checks code against the interview memory and writes the findings as a doc. |

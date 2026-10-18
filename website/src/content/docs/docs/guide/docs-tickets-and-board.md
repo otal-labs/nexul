@@ -39,7 +39,9 @@ When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the do
 3. Press **Clarify via AI** again for the next round. The agent reads the earlier rounds too.
 4. When a round finds no gaps, the agent writes the answers into the doc. Press **Close**, then **To tickets via AI** to cut it into work.
 
-The doc keeps its author's words until that last round. It's locked only while a round runs.
+Once no question is waiting, **Update doc via AI** shows beside **Clarify via AI**. It asks nothing more: it writes the answers so far into the doc, keeping the authors' words, and puts what's still open under **Open points**. It shows again if someone changes an answer after the doc was written.
+
+The doc keeps its author's words until one of those runs writes it. It's locked only while a round runs.
 
 On the [phone app](/docs/guide/phone-app/) the same **Doc | Questions** switch sits under the doc's title. Answer there the same way; someone who can only read the doc sees the questions and answers but can't change them. Tapping a notice about questions opens the doc on **Questions**; any other way in opens it on **Doc**.
 

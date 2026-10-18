@@ -28,4 +28,5 @@ Rejected:
 - No real lock, only a read-only page, which lets an edit made during the run
   be overwritten by the closing write.
 
-Decided 2026-10-04.
+Decided 2026-10-04. "Update doc via AI", which writes the answers in without
+asking more, runs on the same kind of round (2026-10-18).
