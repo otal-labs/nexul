@@ -60,7 +60,7 @@ type SourceRepo interface {
 	CountSources(ctx context.Context, projectID string) (int, error)
 	// InsertSource returns ErrConflict when the project already points at that kind and ref.
 	InsertSource(ctx context.Context, src *InterviewSource, evts ...eventbus.OutboxEvent) error
-	// UpdateSource stores the stance and label; ErrNotFound if the source is gone.
+	// UpdateSource stores the stance, label, and body; ErrNotFound if the source is gone.
 	UpdateSource(ctx context.Context, src *InterviewSource, evts ...eventbus.OutboxEvent) error
 	// DeleteSource returns ErrNotFound if there is no such source.
 	DeleteSource(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error

@@ -77,7 +77,7 @@ func (f *fakeRepo) UpdateSource(_ context.Context, src *InterviewSource, evts ..
 	defer f.mu.Unlock()
 	for _, s := range f.sources {
 		if s.ID == src.ID {
-			s.Stance, s.Label, s.UpdatedAt = src.Stance, src.Label, src.UpdatedAt
+			s.Stance, s.Label, s.Body, s.UpdatedAt = src.Stance, src.Label, src.Body, src.UpdatedAt
 			f.events = append(f.events, evts...)
 			return nil
 		}
@@ -353,39 +353,45 @@ func TestUpdateSource(t *testing.T) {
 	require.NoError(t, err)
 	text, err := s.AddSource(testCtx(), InterviewSource{ProjectID: "project-1", Kind: SourceText, Label: "Wiki", Body: "b", Stance: StanceFollow})
 	require.NoError(t, err)
-	question, label, bad := StanceQuestion, "Team wiki", "maybe"
+	question, label, bad, body, blank := StanceQuestion, "Team wiki", "maybe", "  New notes  ", " "
 
 	tests := []struct {
 		name    string
 		svc     *Service
 		id      string
-		stance  *string
-		label   *string
+		change  SourceChange
 		wantErr error
 	}{
-		{"nothing to change", s, path.ID, nil, nil, apperrs.ErrInvalid},
-		{"an unknown stance", s, path.ID, &bad, nil, apperrs.ErrInvalid},
-		{"a label on a path", s, path.ID, nil, &label, apperrs.ErrInvalid},
-		{"no id", s, " ", &question, nil, apperrs.ErrInvalid},
-		{"a missing source", s, "nope", &question, nil, apperrs.ErrNotFound},
-		{"without memories:write", newSourcesService(repo, fakeAccess{can: true, deny: map[string]bool{"project-1:memories:write": true}}), path.ID, &question, nil, apperrs.ErrForbidden},
+		{"nothing to change", s, path.ID, SourceChange{}, apperrs.ErrInvalid},
+		{"an unknown stance", s, path.ID, SourceChange{Stance: &bad}, apperrs.ErrInvalid},
+		{"a label on a path", s, path.ID, SourceChange{Label: &label}, apperrs.ErrInvalid},
+		{"a body on a path", s, path.ID, SourceChange{Body: &body}, apperrs.ErrInvalid},
+		{"an empty body", s, text.ID, SourceChange{Body: &blank}, apperrs.ErrInvalid},
+		{"an empty label", s, text.ID, SourceChange{Label: &blank}, apperrs.ErrInvalid},
+		{"no id", s, " ", SourceChange{Stance: &question}, apperrs.ErrInvalid},
+		{"a missing source", s, "nope", SourceChange{Stance: &question}, apperrs.ErrNotFound},
+		{"without memories:write", newSourcesService(repo, fakeAccess{can: true, deny: map[string]bool{"project-1:memories:write": true}}), path.ID, SourceChange{Stance: &question}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.svc.UpdateSource(testCtx(), tt.id, tt.stance, tt.label)
+			_, err := tt.svc.UpdateSource(testCtx(), tt.id, tt.change)
 			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 	assert.Empty(t, repo.eventsFor(TopicSourceChanged))
 
-	got, err := s.UpdateSource(testCtx(), path.ID, &question, nil)
+	got, err := s.UpdateSource(testCtx(), path.ID, SourceChange{Stance: &question})
 	require.NoError(t, err)
 	assert.Equal(t, StanceQuestion, got.Stance)
-	got, err = s.UpdateSource(testCtx(), text.ID, nil, &label)
+	got, err = s.UpdateSource(testCtx(), text.ID, SourceChange{Label: &label})
 	require.NoError(t, err)
 	assert.Equal(t, "Team wiki", got.Label)
 	assert.Equal(t, StanceFollow, got.Stance, "an omitted stance keeps its value")
-	assert.Len(t, repo.eventsFor(TopicSourceChanged), 2)
+	got, err = s.UpdateSource(testCtx(), text.ID, SourceChange{Body: &body})
+	require.NoError(t, err)
+	assert.Equal(t, "New notes", got.Body)
+	assert.Equal(t, "Team wiki", got.Label, "an omitted label keeps its value")
+	assert.Len(t, repo.eventsFor(TopicSourceChanged), 3)
 }
 
 func TestRemoveSource(t *testing.T) {

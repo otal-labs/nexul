@@ -48,7 +48,7 @@ type memoryUpdateIn struct {
 	Answers []answerIn `json:"answers,omitempty" jsonschema:"Interview memory only: answers to the Interview template's questions, each replacing that question's stored answer. Follow-up rounds are recorded by the run, not here."`
 
 	AddSources    []sourceIn       `json:"add_sources,omitempty" jsonschema:"Interview memory only: material to point the interview at, each with its stance. A doc, memory, or project must be one you can read in this workspace; at most 50 sources per project."`
-	UpdateSources []sourceChangeIn `json:"update_sources,omitempty" jsonschema:"Interview memory only: sources whose stance, or pasted text's label, to change, by id from memory_get."`
+	UpdateSources []sourceChangeIn `json:"update_sources,omitempty" jsonschema:"Interview memory only: sources whose stance, or pasted text's label or body, to change, by id from memory_get."`
 	RemoveSources []string         `json:"remove_sources,omitempty" jsonschema:"Interview memory only: ids of sources to take off the interview, from memory_get. Drafts made from them stay."`
 	Drafts        []draftIn        `json:"drafts,omitempty" jsonschema:"Interview memory only: draft answers to the template's questions, each replacing that question's earlier draft. A draft never counts as an answer; one equal to the stored answer is dropped."`
 	DismissDrafts []string         `json:"dismiss_drafts,omitempty" jsonschema:"Interview memory only: ids of drafts to delete, from memory_get."`
@@ -66,6 +66,7 @@ type sourceChangeIn struct {
 	ID     string  `json:"id" jsonschema:"The source's id, from memory_get."`
 	Stance *string `json:"stance,omitempty" jsonschema:"follow or question. Omit to keep the current stance."`
 	Label  *string `json:"label,omitempty" jsonschema:"Text sources only: a new label. Omit to keep the current one."`
+	Body   *string `json:"body,omitempty" jsonschema:"Text sources only: the new text, replacing the old. Omit to keep the current one."`
 }
 
 type draftIn struct {
@@ -370,7 +371,7 @@ func changeSources(ctx context.Context, s *Service, m *Memory, in memoryUpdateIn
 		}
 	}
 	for i, c := range in.UpdateSources {
-		if _, err := s.UpdateSource(ctx, c.ID, c.Stance, c.Label); err != nil {
+		if _, err := s.UpdateSource(ctx, c.ID, SourceChange{Stance: c.Stance, Label: c.Label, Body: c.Body}); err != nil {
 			return fmt.Errorf("changing source %d of %d (%s), the ones before it are changed: %w", i+1, len(in.UpdateSources), c.ID, err)
 		}
 	}

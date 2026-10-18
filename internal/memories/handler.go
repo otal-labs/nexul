@@ -325,18 +325,13 @@ func (h *Handler) addSource(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, src)
 }
 
-type sourceChangeRequest struct {
-	Stance *string `json:"stance"`
-	Label  *string `json:"label"`
-}
-
 func (h *Handler) updateSource(w http.ResponseWriter, r *http.Request) {
-	var req sourceChangeRequest
+	var req SourceChange
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	src, err := h.svc.UpdateSource(r.Context(), r.PathValue("id"), req.Stance, req.Label)
+	src, err := h.svc.UpdateSource(r.Context(), r.PathValue("id"), req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

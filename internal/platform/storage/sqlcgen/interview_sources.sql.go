@@ -205,12 +205,13 @@ func (q *Queries) ListInterviewSources(ctx context.Context, projectID string) ([
 }
 
 const updateInterviewSource = `-- name: UpdateInterviewSource :execrows
-UPDATE interview_sources SET stance = ?, label = ?, updated_at = ? WHERE id = ?
+UPDATE interview_sources SET stance = ?, label = ?, body = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateInterviewSourceParams struct {
 	Stance    string
 	Label     string
+	Body      string
 	UpdatedAt int64
 	ID        string
 }
@@ -219,6 +220,7 @@ func (q *Queries) UpdateInterviewSource(ctx context.Context, arg UpdateInterview
 	result, err := q.db.ExecContext(ctx, updateInterviewSource,
 		arg.Stance,
 		arg.Label,
+		arg.Body,
 		arg.UpdatedAt,
 		arg.ID,
 	)

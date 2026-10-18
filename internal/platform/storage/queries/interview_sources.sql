@@ -12,7 +12,7 @@ INSERT INTO interview_sources (id, workspace_id, project_id, kind, ref, label, b
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateInterviewSource :execrows
-UPDATE interview_sources SET stance = ?, label = ?, updated_at = ? WHERE id = ?;
+UPDATE interview_sources SET stance = ?, label = ?, body = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteInterviewSource :execrows
 DELETE FROM interview_sources WHERE id = ?;

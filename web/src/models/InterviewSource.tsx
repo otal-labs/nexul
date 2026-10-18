@@ -85,6 +85,13 @@ export const AddSourceFormSchema = z
 
 export type AddSourceFormData = z.infer<typeof AddSourceFormSchema>;
 
+export const EditTextSourceFormSchema = z.object({
+  label: z.string().trim().min(1, "Give the text a label"),
+  body: z.string().trim().min(1, "Paste some text").max(MAX_SOURCE_TEXT_CHARS, `Paste at most ${MAX_SOURCE_TEXT_CHARS.toLocaleString()} characters`),
+});
+
+export type EditTextSourceFormData = z.infer<typeof EditTextSourceFormSchema>;
+
 // What the add form preselects: follow for a doc, memory, text, markdown file, or folder (trailing "/"); question otherwise.
 export const defaultStance = (kind: SourceKind, path: string): SourceStance => {
   if (kind === "project") return "question";

@@ -1,6 +1,8 @@
-import { X } from "lucide-react";
+import { useState } from "react";
+import { Pencil, X } from "lucide-react";
 
 import { ActionButton } from "@/components/action/ActionButton";
+import { InterviewSourceEditForm } from "@/components/memory/InterviewSourceEditForm";
 import { InterviewSourceKindIcon } from "@/components/memory/InterviewSourceKindIcon";
 import { InterviewSourceStance } from "@/components/memory/InterviewSourceStance";
 import { useRemoveInterviewSource, useSetInterviewSourceStance } from "@/hooks/InterviewSourceHooks";
@@ -14,12 +16,20 @@ interface InterviewSourceRowProps {
   readOnly: boolean;
 }
 
-// One source as a hairline row: kind icon, name, stance, remove; a gone source keeps only Remove.
+// One source as a hairline row: kind icon, name, stance, edit for pasted text, remove; a gone source keeps only Remove.
 export const InterviewSourceRow = ({ source, change, readOnly }: InterviewSourceRowProps) => {
   const setStance = useSetInterviewSourceStance(source.project_id);
   const remove = useRemoveInterviewSource(source.project_id);
+  const [editing, setEditing] = useState(false);
   const name = sourceName(source);
   const named = isNamed(source);
+  if (editing) {
+    return (
+      <li className="border-b border-border">
+        <InterviewSourceEditForm source={source} onClose={() => setEditing(false)} />
+      </li>
+    );
+  }
   return (
     <li className="flex min-h-11 items-center gap-2.5 border-b border-border px-1.5 py-1.5">
       <InterviewSourceKindIcon kind={source.kind} name={source.label} />
@@ -55,6 +65,19 @@ export const InterviewSourceRow = ({ source, change, readOnly }: InterviewSource
         >
           Remove
         </ActionButton>
+      )}
+      {source.kind === "text" && (
+        <ActionButton
+          permission="memories:write"
+          projectId={source.project_id}
+          verb="edit sources"
+          icon={Pencil}
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground"
+          aria-label={`Edit ${name}`}
+          onClick={() => setEditing(true)}
+        />
       )}
       {!source.gone && (
         <ActionButton

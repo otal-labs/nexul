@@ -40,7 +40,7 @@ Give each a stance:
 - **Follow** means the team stands behind it. Drafting reads it to propose answers.
 - **Question** means it shows how something was done, not how it should be, such as a predecessor's code. The follow-up run asks you about it and never drafts from it.
 
-A project holds up to 50 sources. A source is read where it lives, never copied in.
+A project holds up to 50 sources. A source is read where it lives, never copied in. Pasted text lives in the source itself, so its row has an edit button that opens its label and text in place.
 
 ## Draft answers from sources
 
