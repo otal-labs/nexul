@@ -25,24 +25,6 @@ func statusRepo(s *Service) *fakeStatusRepo {
 }
 
 func TestCreateCategory(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateCategory(context.Background(), "  ", "Sprint 1", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateCategory(context.Background(), "p-1", "  ", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.CreateCategory(context.Background(), "p-1", "Sprint 1", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 	t.Run("creates with next position", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend"}
@@ -59,13 +41,6 @@ func TestCreateCategory(t *testing.T) {
 		_, err := s.CreateCategory(context.Background(), "p-1", "Sprint 1", "")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "db down")
-	})
-	t.Run("invalid color is invalid", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		_, err := s.CreateCategory(context.Background(), "p-1", "Sprint 1", colors.Color("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("empty color is valid", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
@@ -84,18 +59,6 @@ func TestCreateCategory(t *testing.T) {
 }
 
 func TestGetCategory(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetCategory(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing category is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetCategory(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("returns category", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -116,12 +79,6 @@ func TestListCategories(t *testing.T) {
 }
 
 func TestListCategoriesByProject(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.ListCategoriesByProject(context.Background(), "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("filters by project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -136,18 +93,6 @@ func TestListCategoriesByProject(t *testing.T) {
 }
 
 func TestRenameCategory(t *testing.T) {
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameCategory(context.Background(), "c-1", "  ", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing category is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameCategory(context.Background(), "nope", "Sprint 2", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("renames and keeps identity", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -156,19 +101,6 @@ func TestRenameCategory(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Sprint 2", c.Name)
 		assert.Equal(t, "c-1", c.ID)
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
-		_, err := s.RenameCategory(context.Background(), "c-1", "Sprint 2", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("invalid color is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameCategory(context.Background(), "c-1", "Sprint 2", colors.Color("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("sets and clears color", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
@@ -184,28 +116,6 @@ func TestRenameCategory(t *testing.T) {
 }
 
 func TestReorderCategories(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.ReorderCategories(context.Background(), " ", []string{"c-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("duplicate ids are invalid", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		err := s.ReorderCategories(context.Background(), "p-1", []string{"c-1", "c-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("every category must be listed", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
-		catRepo(s).cats["c-2"] = &Category{ID: "c-2", ProjectID: "p-1"}
-		err := s.ReorderCategories(context.Background(), "p-1", []string{"c-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("reorders", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -215,21 +125,9 @@ func TestReorderCategories(t *testing.T) {
 		assert.Equal(t, 0, catRepo(s).cats["c-2"].Position)
 		assert.Equal(t, 1, catRepo(s).cats["c-1"].Position)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		err := s.ReorderCategories(context.Background(), "p-1", []string{"c-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 }
 
 func TestDeleteCategory(t *testing.T) {
-	t.Run("missing category is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.DeleteCategory(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("deletes category", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -238,28 +136,9 @@ func TestDeleteCategory(t *testing.T) {
 		_, ok := catRepo(s).cats["c-1"]
 		assert.False(t, ok)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
-		err := s.DeleteCategory(context.Background(), "c-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 }
 
 func TestMoveTicketToCategory(t *testing.T) {
-	t.Run("empty ticket id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.MoveTicketToCategory(context.Background(), " ", "c-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing category is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.MoveTicketToCategory(context.Background(), "t-1", "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("moves ticket into category, naming the category and the ticket's project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		s.SetTicketProjects(fakeTicketProjects{"t-1": "p-1"})
@@ -269,15 +148,6 @@ func TestMoveTicketToCategory(t *testing.T) {
 		require.Len(t, catRepo(s).moved, 1)
 		assert.Equal(t, TicketCategoryChangedEvent{TicketID: "t-1", CategoryID: "c-1", ProjectID: "p-1"}, catRepo(s).moved[0].Payload)
 	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
-		catRepo(s).moveErr = apperrs.ErrNotFound
-		err := s.MoveTicketToCategory(context.Background(), "nope", "c-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("empty category uncategorizes", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -286,24 +156,6 @@ func TestMoveTicketToCategory(t *testing.T) {
 }
 
 func TestCreateTicketType(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateTicketType(context.Background(), "  ", "bug", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateTicketType(context.Background(), "p-1", "  ", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.CreateTicketType(context.Background(), "p-1", "bug", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 	t.Run("creates with next position", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend"}
@@ -321,12 +173,6 @@ func TestCreateTicketType(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "db down")
 	})
-	t.Run("invalid color is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateTicketType(context.Background(), "p-1", "bug", colors.Color("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("empty color is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		tt, err := s.CreateTicketType(context.Background(), "p-1", "bug", "")
@@ -342,12 +188,6 @@ func TestCreateTicketType(t *testing.T) {
 }
 
 func TestListTicketTypesByProject(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.ListTicketTypesByProject(context.Background(), "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("filters by project", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", ProjectID: "p-1", Name: "bug"}
@@ -360,18 +200,6 @@ func TestListTicketTypesByProject(t *testing.T) {
 }
 
 func TestRenameTicketType(t *testing.T) {
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameTicketType(context.Background(), "t-1", "  ", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing type is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameTicketType(context.Background(), "nope", "bug", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("renames and keeps identity", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", Name: "bug"}
@@ -379,13 +207,6 @@ func TestRenameTicketType(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "defect", tt.Name)
 		assert.Equal(t, "t-1", tt.ID)
-	})
-	t.Run("invalid color is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", Name: "bug"}
-		_, err := s.RenameTicketType(context.Background(), "t-1", "bug", colors.Color("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("sets and clears color", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
@@ -401,19 +222,6 @@ func TestRenameTicketType(t *testing.T) {
 }
 
 func TestSetTicketTypeTemplate(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
-		_, err := s.SetTicketTypeTemplate(context.Background(), "t-1", "## Why")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("missing type is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.SetTicketTypeTemplate(context.Background(), "nope", "## Why")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("replaces the template and keeps name and color", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", Name: "bug", Color: colors.Cyan, BodyTemplate: "## Old"}
@@ -433,15 +241,6 @@ func TestSetTicketTypeTemplate(t *testing.T) {
 }
 
 func TestDeleteTicketType(t *testing.T) {
-	t.Run("in-use type is conflict", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.ticketPro["t-1"] = "p-1"
-		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
-		typeRepo(s).count = 1
-		err := s.DeleteTicketType(context.Background(), "t-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
 	t.Run("deletes unused type", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
@@ -449,36 +248,9 @@ func TestDeleteTicketType(t *testing.T) {
 		_, ok := typeRepo(s).types["t-1"]
 		assert.False(t, ok)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
-		err := s.DeleteTicketType(context.Background(), "t-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 }
 
 func TestReorderTicketTypes(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.ReorderTicketTypes(context.Background(), " ", []string{"a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("duplicate ids are invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.ReorderTicketTypes(context.Background(), "p-1", []string{"a", "a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("every type must be listed", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		typeRepo(s).types["a"] = &TicketType{ID: "a", ProjectID: "p-1"}
-		typeRepo(s).types["b"] = &TicketType{ID: "b", ProjectID: "p-1"}
-		err := s.ReorderTicketTypes(context.Background(), "p-1", []string{"a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("reorders", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["a"] = &TicketType{ID: "a", ProjectID: "p-1"}
@@ -490,24 +262,6 @@ func TestReorderTicketTypes(t *testing.T) {
 }
 
 func TestCreateStatus(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateStatus(context.Background(), "  ", "Blocked", StatusKindProgress, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateStatus(context.Background(), "p-1", "  ", StatusKindProgress, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("invalid kind is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateStatus(context.Background(), "p-1", "Blocked", StatusKind("bogus"), "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("kind defaults to backlog", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		st, err := s.CreateStatus(context.Background(), "p-1", "Blocked", "", "")
@@ -524,18 +278,6 @@ func TestCreateStatus(t *testing.T) {
 		assert.Equal(t, "p-1", st.ProjectID)
 		assert.Equal(t, StatusKindProgress, st.Kind)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.CreateStatus(context.Background(), "p-1", "Blocked", StatusKindProgress, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("invalid icon is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.CreateStatus(context.Background(), "p-1", "Blocked", StatusKindProgress, StatusIcon("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("empty icon is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		st, err := s.CreateStatus(context.Background(), "p-1", "Blocked", StatusKindProgress, "")
@@ -551,12 +293,6 @@ func TestCreateStatus(t *testing.T) {
 }
 
 func TestListStatusesByProject(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.ListStatusesByProject(context.Background(), "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("filters by project", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1", ProjectID: "p-1", Name: "Blocked"}
@@ -569,25 +305,6 @@ func TestListStatusesByProject(t *testing.T) {
 }
 
 func TestRenameStatus(t *testing.T) {
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameStatus(context.Background(), "s-1", "  ", StatusKindProgress, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("invalid kind is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameStatus(context.Background(), "s-1", "Blocked", StatusKind("bogus"), "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("invalid icon is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1", Name: "Blocked", Kind: StatusKindProgress}
-		_, err := s.RenameStatus(context.Background(), "s-1", "Blocked", StatusKindProgress, StatusIcon("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("renames and keeps identity", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1", Name: "Blocked", Kind: StatusKindProgress}
@@ -600,35 +317,9 @@ func TestRenameStatus(t *testing.T) {
 		require.Len(t, statusRepo(s).updated, 1)
 		assert.Equal(t, StatusKindProgress, statusRepo(s).updated[0].Payload.(StatusEvent).PreviousKind, "the frame says the stage moved from progress")
 	})
-	t.Run("missing status is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.RenameStatus(context.Background(), "nope", "Blocked", StatusKindProgress, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 }
 
 func TestReorderStatuses(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.ReorderStatuses(context.Background(), " ", []string{"a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("duplicate ids are invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.ReorderStatuses(context.Background(), "p-1", []string{"a", "a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("every status must be listed", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		statusRepo(s).statuses["a"] = &Status{ID: "a", ProjectID: "p-1"}
-		statusRepo(s).statuses["b"] = &Status{ID: "b", ProjectID: "p-1"}
-		err := s.ReorderStatuses(context.Background(), "p-1", []string{"a"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("reorders", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		statusRepo(s).statuses["a"] = &Status{ID: "a", ProjectID: "p-1"}
@@ -640,15 +331,6 @@ func TestReorderStatuses(t *testing.T) {
 }
 
 func TestDeleteStatus(t *testing.T) {
-	t.Run("in-use status is conflict", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.ticketPro["t-1"] = "p-1"
-		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1"}
-		statusRepo(s).count = 1
-		err := s.DeleteStatus(context.Background(), "s-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
 	t.Run("deletes unused status", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1"}
@@ -656,34 +338,9 @@ func TestDeleteStatus(t *testing.T) {
 		_, ok := statusRepo(s).statuses["s-1"]
 		assert.False(t, ok)
 	})
-	t.Run("missing status is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.DeleteStatus(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1"}
-		err := s.DeleteStatus(context.Background(), "s-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 }
 
 func TestGetTicketType(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetTicketType(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing type is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetTicketType(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("returns a type", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		typeRepo(s).types["tt-1"] = &TicketType{ID: "tt-1", Name: "bug"}
@@ -694,18 +351,6 @@ func TestGetTicketType(t *testing.T) {
 }
 
 func TestGetStatus(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetStatus(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing status is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.GetStatus(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("returns a status", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1", Name: "Blocked", Kind: StatusKindProgress}
@@ -715,9 +360,135 @@ func TestGetStatus(t *testing.T) {
 	})
 }
 
-func TestDeleteTicketType_NotFound(t *testing.T) {
-	s, _, _ := newOwnerRepo(t, true)
-	err := s.DeleteTicketType(context.Background(), "nope")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+func TestCategoryTypeAndStatusUsecases_Refusals(t *testing.T) {
+	ctx := context.Background()
+	seedCats := func(s *Service, repo *fakeRepo) {
+		repo.projects["p-1"] = &Project{ID: "p-1"}
+		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
+		catRepo(s).cats["c-2"] = &Category{ID: "c-2", ProjectID: "p-1"}
+	}
+	seedTypes := func(s *Service, repo *fakeRepo) {
+		repo.projects["p-1"] = &Project{ID: "p-1"}
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", ProjectID: "p-1", Name: "bug"}
+		typeRepo(s).types["t-2"] = &TicketType{ID: "t-2", ProjectID: "p-1"}
+	}
+	seedStatuses := func(s *Service, repo *fakeRepo) {
+		repo.projects["p-1"] = &Project{ID: "p-1"}
+		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1", ProjectID: "p-1", Name: "Blocked", Kind: StatusKindProgress}
+		statusRepo(s).statuses["s-2"] = &Status{ID: "s-2", ProjectID: "p-1"}
+	}
+	bogusColor := colors.Color("bogus")
+	tests := []struct {
+		name  string
+		owner bool
+		seed  func(s *Service, repo *fakeRepo)
+		call  func(s *Service) error
+		want  error
+	}{
+		{"create a category without a project", true, nil, func(s *Service) error { _, err := s.CreateCategory(ctx, "  ", "Sprint 1", ""); return err }, apperrs.ErrInvalid},
+		{"create a category without a name", true, nil, func(s *Service) error { _, err := s.CreateCategory(ctx, "p-1", "  ", ""); return err }, apperrs.ErrInvalid},
+		{"create a category as a non-owner", false, nil, func(s *Service) error { _, err := s.CreateCategory(ctx, "p-1", "Sprint 1", ""); return err }, apperrs.ErrForbidden},
+		{"create a category with a bogus color", true, seedCats, func(s *Service) error { _, err := s.CreateCategory(ctx, "p-1", "Sprint 1", bogusColor); return err }, apperrs.ErrInvalid},
+		{"get a category without an id", true, nil, func(s *Service) error { _, err := s.GetCategory(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"get a missing category", true, nil, func(s *Service) error { _, err := s.GetCategory(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"list categories without a project", true, nil, func(s *Service) error { _, err := s.ListCategoriesByProject(ctx, "  "); return err }, apperrs.ErrInvalid},
+		{"rename a category without a name", true, nil, func(s *Service) error { _, err := s.RenameCategory(ctx, "c-1", "  ", ""); return err }, apperrs.ErrInvalid},
+		{"rename a missing category", true, nil, func(s *Service) error { _, err := s.RenameCategory(ctx, "nope", "Sprint 2", ""); return err }, apperrs.ErrNotFound},
+		{"rename a category as a non-owner", false, seedCats, func(s *Service) error { _, err := s.RenameCategory(ctx, "c-1", "Sprint 2", ""); return err }, apperrs.ErrForbidden},
+		{"rename a category with a bogus color", true, nil, func(s *Service) error { _, err := s.RenameCategory(ctx, "c-1", "Sprint 2", bogusColor); return err }, apperrs.ErrInvalid},
+		{"reorder categories without a project", true, nil, func(s *Service) error { return s.ReorderCategories(ctx, " ", []string{"c-1"}) }, apperrs.ErrInvalid},
+		{"reorder categories with duplicate ids", true, seedCats, func(s *Service) error { return s.ReorderCategories(ctx, "p-1", []string{"c-1", "c-1"}) }, apperrs.ErrInvalid},
+		{"reorder categories leaving one out", true, seedCats, func(s *Service) error { return s.ReorderCategories(ctx, "p-1", []string{"c-1"}) }, apperrs.ErrInvalid},
+		{"reorder categories as a non-owner", false, seedCats, func(s *Service) error { return s.ReorderCategories(ctx, "p-1", []string{"c-1", "c-2"}) }, apperrs.ErrForbidden},
+		{"delete a missing category", true, nil, func(s *Service) error { return s.DeleteCategory(ctx, "nope") }, apperrs.ErrNotFound},
+		{"delete a category as a non-owner", false, seedCats, func(s *Service) error { return s.DeleteCategory(ctx, "c-1") }, apperrs.ErrForbidden},
+		{"move a ticket without an id", true, nil, func(s *Service) error { return s.MoveTicketToCategory(ctx, " ", "c-1") }, apperrs.ErrInvalid},
+		{"move a ticket into a missing category", true, nil, func(s *Service) error { return s.MoveTicketToCategory(ctx, "t-1", "nope") }, apperrs.ErrNotFound},
+		{"move a missing ticket", true, func(s *Service, repo *fakeRepo) {
+			seedCats(s, repo)
+			catRepo(s).moveErr = apperrs.ErrNotFound
+		}, func(s *Service) error { return s.MoveTicketToCategory(ctx, "nope", "c-1") }, apperrs.ErrNotFound},
+
+		{"create a ticket type without a project", true, nil, func(s *Service) error { _, err := s.CreateTicketType(ctx, "  ", "bug", ""); return err }, apperrs.ErrInvalid},
+		{"create a ticket type without a name", true, nil, func(s *Service) error { _, err := s.CreateTicketType(ctx, "p-1", "  ", ""); return err }, apperrs.ErrInvalid},
+		{"create a ticket type as a non-owner", false, nil, func(s *Service) error { _, err := s.CreateTicketType(ctx, "p-1", "bug", ""); return err }, apperrs.ErrForbidden},
+		{"create a ticket type with a bogus color", true, nil, func(s *Service) error { _, err := s.CreateTicketType(ctx, "p-1", "bug", bogusColor); return err }, apperrs.ErrInvalid},
+		{"get a ticket type without an id", true, nil, func(s *Service) error { _, err := s.GetTicketType(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"get a missing ticket type", true, nil, func(s *Service) error { _, err := s.GetTicketType(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"list ticket types without a project", true, nil, func(s *Service) error { _, err := s.ListTicketTypesByProject(ctx, "  "); return err }, apperrs.ErrInvalid},
+		{"rename a ticket type without a name", true, nil, func(s *Service) error { _, err := s.RenameTicketType(ctx, "t-1", "  ", ""); return err }, apperrs.ErrInvalid},
+		{"rename a missing ticket type", true, nil, func(s *Service) error { _, err := s.RenameTicketType(ctx, "nope", "bug", ""); return err }, apperrs.ErrNotFound},
+		{"rename a ticket type with a bogus color", true, seedTypes, func(s *Service) error { _, err := s.RenameTicketType(ctx, "t-1", "bug", bogusColor); return err }, apperrs.ErrInvalid},
+		{"set a template as a non-owner", false, seedTypes, func(s *Service) error { _, err := s.SetTicketTypeTemplate(ctx, "t-1", "## Why"); return err }, apperrs.ErrForbidden},
+		{"set a template on a missing type", true, nil, func(s *Service) error { _, err := s.SetTicketTypeTemplate(ctx, "nope", "## Why"); return err }, apperrs.ErrNotFound},
+		{"delete a ticket type in use", true, func(s *Service, repo *fakeRepo) {
+			seedTypes(s, repo)
+			repo.ticketPro["t-1"] = "p-1"
+			typeRepo(s).count = 1
+		}, func(s *Service) error { return s.DeleteTicketType(ctx, "t-1") }, apperrs.ErrConflict},
+		{"delete a ticket type as a non-owner", false, seedTypes, func(s *Service) error { return s.DeleteTicketType(ctx, "t-1") }, apperrs.ErrForbidden},
+		{"delete a missing ticket type", true, nil, func(s *Service) error { return s.DeleteTicketType(ctx, "nope") }, apperrs.ErrNotFound},
+		{"reorder ticket types without a project", true, nil, func(s *Service) error { return s.ReorderTicketTypes(ctx, " ", []string{"t-1"}) }, apperrs.ErrInvalid},
+		{"reorder ticket types with duplicate ids", true, seedTypes, func(s *Service) error { return s.ReorderTicketTypes(ctx, "p-1", []string{"t-1", "t-1"}) }, apperrs.ErrInvalid},
+		{"reorder ticket types leaving one out", true, seedTypes, func(s *Service) error { return s.ReorderTicketTypes(ctx, "p-1", []string{"t-1"}) }, apperrs.ErrInvalid},
+
+		{"create a status without a project", true, nil, func(s *Service) error {
+			_, err := s.CreateStatus(ctx, "  ", "Blocked", StatusKindProgress, "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a status without a name", true, nil, func(s *Service) error {
+			_, err := s.CreateStatus(ctx, "p-1", "  ", StatusKindProgress, "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a status with a bogus kind", true, nil, func(s *Service) error {
+			_, err := s.CreateStatus(ctx, "p-1", "Blocked", StatusKind("bogus"), "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a status as a non-owner", false, nil, func(s *Service) error {
+			_, err := s.CreateStatus(ctx, "p-1", "Blocked", StatusKindProgress, "")
+			return err
+		}, apperrs.ErrForbidden},
+		{"create a status with a bogus icon", true, nil, func(s *Service) error {
+			_, err := s.CreateStatus(ctx, "p-1", "Blocked", StatusKindProgress, StatusIcon("bogus"))
+			return err
+		}, apperrs.ErrInvalid},
+		{"get a status without an id", true, nil, func(s *Service) error { _, err := s.GetStatus(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"get a missing status", true, nil, func(s *Service) error { _, err := s.GetStatus(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"list statuses without a project", true, nil, func(s *Service) error { _, err := s.ListStatusesByProject(ctx, "  "); return err }, apperrs.ErrInvalid},
+		{"rename a status without a name", true, nil, func(s *Service) error {
+			_, err := s.RenameStatus(ctx, "s-1", "  ", StatusKindProgress, "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"rename a status with a bogus kind", true, nil, func(s *Service) error {
+			_, err := s.RenameStatus(ctx, "s-1", "Blocked", StatusKind("bogus"), "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"rename a status with a bogus icon", true, seedStatuses, func(s *Service) error {
+			_, err := s.RenameStatus(ctx, "s-1", "Blocked", StatusKindProgress, StatusIcon("bogus"))
+			return err
+		}, apperrs.ErrInvalid},
+		{"rename a missing status", true, nil, func(s *Service) error {
+			_, err := s.RenameStatus(ctx, "nope", "Blocked", StatusKindProgress, "")
+			return err
+		}, apperrs.ErrNotFound},
+		{"reorder statuses without a project", true, nil, func(s *Service) error { return s.ReorderStatuses(ctx, " ", []string{"s-1"}) }, apperrs.ErrInvalid},
+		{"reorder statuses with duplicate ids", true, seedStatuses, func(s *Service) error { return s.ReorderStatuses(ctx, "p-1", []string{"s-1", "s-1"}) }, apperrs.ErrInvalid},
+		{"reorder statuses leaving one out", true, seedStatuses, func(s *Service) error { return s.ReorderStatuses(ctx, "p-1", []string{"s-1"}) }, apperrs.ErrInvalid},
+		{"delete a status in use", true, func(s *Service, repo *fakeRepo) {
+			seedStatuses(s, repo)
+			repo.ticketPro["t-1"] = "p-1"
+			statusRepo(s).count = 1
+		}, func(s *Service) error { return s.DeleteStatus(ctx, "s-1") }, apperrs.ErrConflict},
+		{"delete a missing status", true, nil, func(s *Service) error { return s.DeleteStatus(ctx, "nope") }, apperrs.ErrNotFound},
+		{"delete a status as a non-owner", false, seedStatuses, func(s *Service) error { return s.DeleteStatus(ctx, "s-1") }, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, repo, _ := newOwnerRepo(t, tt.owner)
+			if tt.seed != nil {
+				tt.seed(s, repo)
+			}
+			require.ErrorIs(t, tt.call(s), tt.want)
+		})
+	}
 }
