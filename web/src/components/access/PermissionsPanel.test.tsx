@@ -142,7 +142,7 @@ describe("PermissionsPanel", () => {
 
   it("opens a person's rules with their saved states and what applies under each Fallback", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /bob/ }));
+    await user.click(screen.getByRole("button", { name: /^bob/ }));
     expect(await screen.findByText("Person · holds Developer")).toBeInTheDocument();
     expect(control("Create and update docs").getByRole("radio", { name: "Deny" })).toBeChecked();
     expect(control("Read docs").getByRole("radio", { name: "Fallback" })).toBeChecked();
@@ -153,7 +153,7 @@ describe("PermissionsPanel", () => {
 
   it("locks Allow on a permission the giver doesn't hold, and leaves Deny open", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /lena/ }));
+    await user.click(screen.getByRole("button", { name: /^lena/ }));
     const locked = await screen.findByRole("radio", { name: "Allow: You can't allow a permission you don't hold" });
     expect(locked).toBeDisabled();
     expect(control("Delete docs").getByRole("radio", { name: "Deny" })).toBeEnabled();
@@ -161,9 +161,9 @@ describe("PermissionsPanel", () => {
 
   it("saves one request per person and state, and nothing else", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /bob/ }));
+    await user.click(screen.getByRole("button", { name: /^bob/ }));
     await user.click(await control("Create and update docs").findByRole("radio", { name: "Allow" }));
-    await user.click(screen.getByRole("button", { name: /lena/ }));
+    await user.click(screen.getByRole("button", { name: /^lena/ }));
     await user.click(await control("Read docs").findByRole("radio", { name: "Deny" }));
     await user.click(control("Delete docs").getByRole("radio", { name: "Deny" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -174,12 +174,14 @@ describe("PermissionsPanel", () => {
     expect(api.put).toHaveBeenCalledWith("/api/permissions", { doc_ids: ["doc-1"], user_ids: ["lena"], actions: ["docs:read", "docs:delete"], state: "deny" });
   });
 
-  it("removes a person by setting each of their rules to Fallback on Save", async () => {
+  it("removes a person on the second press of their remove button, setting each of their rules to Fallback on Save", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /bob/ }));
-    await user.click(await screen.findByRole("button", { name: "Remove from this doc" }));
+    await user.click(screen.getByRole("button", { name: /^bob/ }));
+    await user.click(await screen.findByRole("button", { name: "Remove bob" }));
+    expect(screen.getByRole("heading", { name: "bob" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm removing bob" }));
     expect(screen.getByText("Pick a role or person, or add one, to set rules on Pricing.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /bob/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^bob/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith("/api/permissions", { doc_ids: ["doc-1"], user_ids: ["bob"], actions: ["docs:write"], state: "fallback" }),
@@ -191,9 +193,9 @@ describe("PermissionsPanel", () => {
     await user.click(screen.getByRole("button", { name: "Add role or person" }));
     expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
     expect(screen.getByText("Add Ops to Storefront first")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /sam/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Owner/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /alice/ }));
+    expect(screen.queryByRole("button", { name: /^sam/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Owner/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^alice/ }));
     expect(await screen.findByRole("heading", { name: "alice" })).toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Roles and people with rules" })).getByText("alice")).toBeInTheDocument();
   });
@@ -203,7 +205,7 @@ describe("PermissionsPanel", () => {
     expect(await screen.findByText("in Storefront", { exact: false })).toHaveTextContent("folder Sales in Storefront");
     await user.click(screen.getByRole("button", { name: "Add role or person" }));
     expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /lena/ }));
+    await user.click(screen.getByRole("button", { name: /^lena/ }));
     expect(await control("Manage this folder's access").findByRole("radio", { name: "Fallback" })).toBeChecked();
     await user.click(control("Read docs").getByRole("radio", { name: "Deny" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -217,7 +219,7 @@ describe("PermissionsPanel", () => {
     expect(await screen.findByText("in Storefront", { exact: false })).toHaveTextContent("stack production in Storefront");
     await user.click(screen.getByRole("button", { name: "Add role or person" }));
     expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /lena/ }));
+    await user.click(screen.getByRole("button", { name: /^lena/ }));
     await user.click((await control("Read docs").findAllByRole("radio", { name: "Deny" }))[0]!);
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
@@ -228,7 +230,7 @@ describe("PermissionsPanel", () => {
   it("on a channel, sets who sees it and who posts in it, by role, and saves them for the channel", async () => {
     await openPanel({ type: "channel", id: "c-1", name: "#announce", workspaceId: "ws-1", projectId: "", folderId: "" });
     expect(await screen.findByText("#announce")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Client/ }));
+    await user.click(screen.getByRole("button", { name: /^Client/ }));
     expect(await control("Post in this channel").findByRole("radio", { name: "Deny" })).toBeChecked();
     expect(control("See this channel").getByRole("radio", { name: "Fallback" })).toBeChecked();
     expect(screen.getByText("Read by every member")).toBeInTheDocument();
@@ -242,7 +244,7 @@ describe("PermissionsPanel", () => {
 
   it("on a play, keeps Run's own state and says it can't run while See is denied, with See's source", async () => {
     await openPanel({ type: "play", id: "play-1", name: "Deploy prod", workspaceId: "ws-1", projectId: "", folderId: "" });
-    await user.click(await screen.findByRole("button", { name: /Client/ }));
+    await user.click(await screen.findByRole("button", { name: /^Client/ }));
     expect(await control("Run").findByRole("radio", { name: "Allow" })).toBeChecked();
     expect(control("See this play").getByRole("radio", { name: "Deny" })).toBeChecked();
     expect(screen.getAllByText("Can't run while See this play is denied · Denied on play Deploy prod for role Client")).toHaveLength(1);
@@ -250,7 +252,7 @@ describe("PermissionsPanel", () => {
 
   it("sets a role's rules, says what applies under each Fallback without them, and saves them for the role", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /Client/ }));
+    await user.click(screen.getByRole("button", { name: /^Client/ }));
     expect(await screen.findByText("Role")).toBeInTheDocument();
     expect(control("Read docs").getByRole("radio", { name: "Deny" })).toBeChecked();
     expect(screen.getAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not listed on project Storefront")).toHaveLength(3);
@@ -265,7 +267,7 @@ describe("PermissionsPanel", () => {
 
   it("selects a role a source sentence names", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /bob/ }));
+    await user.click(screen.getByRole("button", { name: /^bob/ }));
     const [link] = await screen.findAllByRole("button", { name: "Developer" });
     await user.click(link!);
     expect(await screen.findByRole("heading", { name: "Developer" })).toBeInTheDocument();
@@ -274,11 +276,11 @@ describe("PermissionsPanel", () => {
   it("checks a person's answers with the source of each, and a person outside the project once", async () => {
     await openPanel();
     await user.click(screen.getByRole("radio", { name: "Check access" }));
-    await user.click(await screen.findByRole("button", { name: /bob/ }));
+    await user.click(await screen.findByRole("button", { name: /^bob/ }));
     expect(await screen.findByRole("heading", { name: "What bob can do" })).toBeInTheDocument();
     expect(screen.getAllByText((_, el) => el?.textContent === "Denied on doc Pricing for bob").length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: /sam/ }));
+    await user.click(screen.getByRole("button", { name: /^sam/ }));
     expect(await screen.findAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not found: sam isn't in project Storefront")).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "Docs" })).not.toBeInTheDocument();
   });

@@ -135,7 +135,7 @@ A computer is yours alone until you share it: nobody else sees it, a workspace O
 - **Run agents** and **Run commands**: allowing either also lets them see it. A shared computer shows in their run dialog and project links, where it can't be picked yet.
 - **Read logs**: this runner's logs and its Docker containers' logs. It is off unless you allow it, and allowing it also lets them see the computer. They then read the Nexul app's own log, list the computer's containers and read each one's logs; the values of a container's own environment that are six characters or longer show as `••••` in what they read, which your own reads never do. A container's output can still show a secret the app derives or fetches by itself, so allow it only for people you would trust with that.
 
-Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the other three away too, and **Remove from this computer** takes the person off. **Check access** shows what each person can do on it.
+Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the other three away too, and the bin beside a person in the list, pressed twice, takes them off. **Check access** shows what each person can do on it.
 
 Read the warning at the top of the dialog before you share: agents and commands on your computer run as your own user there, so whoever you let run them can read what your account can, your SSH keys, git credentials and logins included.
 
