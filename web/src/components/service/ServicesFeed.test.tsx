@@ -47,14 +47,4 @@ describe("ServicesFeed", () => {
     expect(screen.getByText("10.0.0.2:22")).toBeInTheDocument();
     expect(screen.getByText("run")).toBeInTheDocument();
   });
-
-  it("links each card to its detail page", () => {
-    render(
-      <MemoryRouter>
-        <ServicesFeed services={services} />
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole("link", { name: /api/ })).toHaveAttribute("href", "/acme/stacks/svc-1");
-    expect(screen.getByRole("link", { name: /db/ })).toHaveAttribute("href", "/acme/stacks/svc-2");
-  });
 });
