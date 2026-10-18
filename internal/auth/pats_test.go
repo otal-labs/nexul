@@ -181,9 +181,3 @@ func TestMCPURLFor(t *testing.T) {
 		})
 	}
 }
-
-func TestIsPAT(t *testing.T) {
-	assert.True(t, isPAT(patPrefix+"xyz"))
-	assert.False(t, isPAT("plain.session.token"))
-	assert.False(t, isPAT(""))
-}

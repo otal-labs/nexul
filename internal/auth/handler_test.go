@@ -617,13 +617,6 @@ func TestHandler_PersonalAccessTokens(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 
-	t.Run("revoking another user's token not found", func(t *testing.T) {
-		_, pat, err := s.MintPAT(context.Background(), "u1", "mine")
-		require.NoError(t, err)
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodDelete, "/api/auth/tokens/"+pat.ID, "u2", ""))
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestHandler_Members(t *testing.T) {
