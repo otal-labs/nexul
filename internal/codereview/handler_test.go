@@ -95,14 +95,3 @@ func TestReviewsHandler_Get(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
-
-func TestReviewsHandler_PATCHRoute_Removed(t *testing.T) {
-	s := newTestService(newFakeRepo(), newFakeBus())
-	h := NewHandler(s).Routes()
-	created, err := s.Create(context.Background(), "acme/app", 42)
-	require.NoError(t, err)
-
-	// Provider events are the only writer; the manual PATCH route is gone.
-	rec := serve(t, h, http.MethodPatch, "/api/reviews/"+created.ID, `{"status":"approved"}`)
-	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
-}

@@ -382,30 +382,21 @@ func TestSearch_Errors(t *testing.T) {
 }
 
 func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
-	tickets := &fakeTicketSource{
-		tickets: map[string]Ticket{},
-		byKey:   map[string][]Ticket{"ERF-1": {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
+	for _, key := range []string{"ERF-1", "P1-12"} {
+		t.Run(key, func(t *testing.T) {
+			tickets := &fakeTicketSource{
+				tickets: map[string]Ticket{},
+				byKey:   map[string][]Ticket{key: {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
+			}
+			statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
+			svc := newTestService(t, tickets, nil, statuses, nil)
+
+			results, err := svc.Search(actorCtx("u-1"), key, "", 20)
+			require.NoError(t, err)
+			require.Len(t, results, 1)
+			assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true}, results[0])
+		})
 	}
-	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
-	svc := newTestService(t, tickets, nil, statuses, nil)
-
-	results, err := svc.Search(actorCtx("u-1"), "ERF-1", "", 20)
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true}, results[0])
-}
-
-func TestSearch_KeyMatch_PrefixWithDigit(t *testing.T) {
-	tickets := &fakeTicketSource{
-		tickets: map[string]Ticket{},
-		byKey:   map[string][]Ticket{"P1-12": {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
-	}
-	svc := newTestService(t, tickets, nil, nil, nil)
-
-	results, err := svc.Search(actorCtx("u-1"), "P1-12", "", 20)
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	assert.Equal(t, "t-1", results[0].ID)
 }
 
 func TestSearch_KeyMatch_WrongCaseFallsThroughToTitleSearch(t *testing.T) {
