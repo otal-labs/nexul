@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { mergeLiveStep, mergeLiveSteps, trailSummary, type ActivityEntry } from "@/models/Trail";

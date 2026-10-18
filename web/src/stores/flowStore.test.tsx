@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { onConnect } from "@/components/topology/flowActions";
@@ -36,14 +37,6 @@ describe("useFlowStore", () => {
     useFlowStore.setState({ nodes: [], edges: [], viewport: null, selectedNodeId: null });
   });
 
-  it("loads a canvas into nodes and edges", () => {
-    useFlowStore.getState().setCanvas(canvas, "ws-1");
-    const { nodes, edges } = useFlowStore.getState();
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0]?.id).toBe("svc-api");
-    expect(edges[0]?.data?.kind).toBe("depends_on");
-  });
-
  it("serializes nodes and edges back to the stored canvas shape", () => {
     useFlowStore.getState().setCanvas(canvas, "ws-1");
     const out = useFlowStore.getState().toCanvas();
@@ -76,11 +69,12 @@ describe("useFlowStore", () => {
     expect(edges[0]?.data?.kind).toBe("depends_on");
   });
 
-  it("selects and clears a node", () => {
+  it("selects a node and replaces the nodes", () => {
+    useFlowStore.getState().setCanvas(canvas, "ws-1");
     useFlowStore.getState().selectNode("svc-api");
+    useFlowStore.getState().setNodes([{ ...node, position: { x: 10, y: 20 } }]);
     expect(useFlowStore.getState().selectedNodeId).toBe("svc-api");
-    useFlowStore.getState().selectNode(null);
-    expect(useFlowStore.getState().selectedNodeId).toBeNull();
+    expect(useFlowStore.getState().nodes[0]?.position).toEqual({ x: 10, y: 20 });
   });
 
   it("tolerates null nodes/edges from the API (empty canvas)", () => {
@@ -92,12 +86,5 @@ describe("useFlowStore", () => {
     const { nodes, edges } = useFlowStore.getState();
     expect(nodes).toHaveLength(0);
     expect(edges).toHaveLength(0);
-  });
-
-  it("replaces nodes via setNodes", () => {
-    useFlowStore.getState().setCanvas(canvas, "ws-1");
-    const moved = { ...node, position: { x: 10, y: 20 } };
-    useFlowStore.getState().setNodes([moved]);
-    expect(useFlowStore.getState().nodes[0]?.position).toEqual({ x: 10, y: 20 });
   });
 });

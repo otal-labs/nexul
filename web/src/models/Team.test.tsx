@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { AccountStatus, EveryProject, roleHolders, type Team, type TeamMembership, type TeamPerson } from "@/models/Team";

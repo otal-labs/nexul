@@ -1,26 +1,35 @@
-import "@testing-library/jest-dom/vitest";
-import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
-import { useWorkspaceStore } from "@/stores/workspaceStore";
+// A pure-logic test opts out of jsdom with a node environment docblock and gets none of the DOM setup below.
+const hasDom = typeof document !== "undefined";
 
-// Whole-app imports and lazy dialogs can outlive the 1s default under load; 3s keeps genuine hangs visible.
-configure({ asyncUtilTimeout: 3000 });
+if (hasDom) {
+  await import("@testing-library/jest-dom/vitest");
+  const { cleanup, configure } = await import("@testing-library/react");
+  const { useWorkspaceStore } = await import("@/stores/workspaceStore");
 
-// Every test renders inside the workspace whose slug is "acme" unless it picks another.
-beforeEach(() => {
-  useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
-});
+  // Whole-app imports and lazy dialogs can outlive the 1s default under load; 3s keeps genuine hangs visible.
+  configure({ asyncUtilTimeout: 3000 });
 
-// Radix portals leave scroll locks and aria-hidden marks when unmounted mid-open; scrub after every test.
-afterEach(() => {
-  document.body.style.pointerEvents = "";
-  document.body.removeAttribute("data-scroll-locked");
-  for (const el of document.querySelectorAll("[data-aria-hidden]")) {
-    el.removeAttribute("aria-hidden");
-    el.removeAttribute("data-aria-hidden");
-  }
-});
+  // Every test renders inside the workspace whose slug is "acme" unless it picks another.
+  beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
+  });
+
+  // Radix portals leave scroll locks and aria-hidden marks when unmounted mid-open; scrub after every test.
+  afterEach(() => {
+    document.body.style.pointerEvents = "";
+    document.body.removeAttribute("data-scroll-locked");
+    for (const el of document.querySelectorAll("[data-aria-hidden]")) {
+      el.removeAttribute("aria-hidden");
+      el.removeAttribute("data-aria-hidden");
+    }
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+}
 
 class ResizeObserverStub {
   observe() {}
@@ -96,16 +105,12 @@ if (typeof document !== "undefined") {
   document.caretPositionFromPoint ??= () => null;
 }
 
-afterEach(() => {
-  cleanup();
-});
-
 // Radix Select needs pointer-capture APIs and scrollIntoView, neither of which jsdom implements.
-if (typeof Element.prototype.hasPointerCapture === "undefined") {
+if (hasDom && typeof Element.prototype.hasPointerCapture === "undefined") {
   Element.prototype.hasPointerCapture = () => false;
   Element.prototype.setPointerCapture = () => {};
   Element.prototype.releasePointerCapture = () => {};
 }
-if (typeof Element.prototype.scrollIntoView === "undefined") {
+if (hasDom && typeof Element.prototype.scrollIntoView === "undefined") {
   Element.prototype.scrollIntoView = () => {};
 }

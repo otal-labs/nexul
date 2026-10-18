@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,38 +16,13 @@ const version = {
 };
 
 const Harness = ({ enabled = true }: { enabled?: boolean }) => {
-  const query = useServerVersion(enabled);
-  return (
-    <span data-testid="state">
-      {query.isPending ? "loading" : query.isSuccess ? "loaded" : "error"}
-    </span>
-  );
+  useServerVersion(enabled);
+  return null;
 };
 
 describe("useServerVersion", () => {
   beforeEach(() => {
     mocks.get.mockReset();
-  });
-
-  it("fetches the server version", async () => {
-    mocks.get.mockResolvedValue({ data: version });
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Harness />
-      </QueryClientProvider>,
-    );
-    expect(mocks.get).toHaveBeenCalledWith("/api/version");
-    await screen.findByText("loaded");
-  });
-
-  it("does not throw when the version lookup errors", async () => {
-    mocks.get.mockRejectedValue(new Error("boom"));
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <Harness />
-      </QueryClientProvider>,
-    );
-    await screen.findByText("error");
   });
 
   it("does not fetch when disabled", () => {

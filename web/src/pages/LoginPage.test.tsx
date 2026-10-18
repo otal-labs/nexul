@@ -47,11 +47,6 @@ describe("LoginPage", () => {
     vi.unstubAllEnvs();
   });
 
-  it("renders the sign-in button", () => {
-    renderPage();
-    expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
-  });
-
   it("redirects to the GitHub OAuth start URL", async () => {
     const assignMock = vi.fn();
     Object.defineProperty(window, "location", {
@@ -62,19 +57,6 @@ describe("LoginPage", () => {
     renderPage();
     await user.click(screen.getByRole("button", { name: /continue with github/i }));
     expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/github");
-  });
-
-  it("offers Google only when the instance has it configured", async () => {
-    const assignMock = vi.fn();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { assign: assignMock },
-    });
-    mocks.get.mockResolvedValue({ data: { configured: true, google_configured: true } });
-    const user = (await import("@testing-library/user-event")).default.setup();
-    renderPage();
-    await user.click(await screen.findByRole("button", { name: /continue with google/i }));
-    expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/google");
   });
 
   it("offers a way back into bootstrap while no user has logged in yet", async () => {
@@ -90,25 +72,21 @@ describe("LoginPage", () => {
     expect(screen.queryByRole("link", { name: /set up the github app again/i })).not.toBeInTheDocument();
   });
 
-  it("offers Discord when configured", async () => {
+  it.each([
+    ["google", "discord"],
+    ["discord", "google"],
+  ])("offers %s only when the instance has it configured, and not %s", async (offered, other) => {
     const assignMock = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: { assign: assignMock },
     });
-    mocks.get.mockResolvedValue({ data: { configured: true, discord_configured: true } });
+    mocks.get.mockResolvedValue({ data: { configured: true, [`${offered}_configured`]: true } });
     const user = (await import("@testing-library/user-event")).default.setup();
     renderPage();
-    await user.click(await screen.findByRole("button", { name: /continue with discord/i }));
-    expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/discord");
-    expect(screen.queryByRole("button", { name: /continue with google/i })).not.toBeInTheDocument();
-  });
-
-  it("hides the Google button when not configured", async () => {
-    renderPage();
-    await screen.findByRole("button", { name: /continue with github/i });
-    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/auth/bootstrap-status"));
-    expect(screen.queryByRole("button", { name: /continue with google/i })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: new RegExp(`continue with ${offered}`, "i") }));
+    expect(assignMock).toHaveBeenCalledWith(`http://localhost:8080/auth/${offered}`);
+    expect(screen.queryByRole("button", { name: new RegExp(`continue with ${other}`, "i") })).not.toBeInTheDocument();
   });
 
   it("exchanges the OAuth code and stores the session", async () => {

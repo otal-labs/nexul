@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { buildSections, type InterviewAnswer } from "@/models/InterviewAnswer";

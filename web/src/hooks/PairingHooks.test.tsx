@@ -74,36 +74,15 @@ describe("useHarnessReadiness", () => {
     );
   });
 
-  it("maps unpaired", async () => {
-    mockRoutes({ resolve: { ok: false, reason: "unpaired" }, presence: {} });
+  it.each([
+    ["unpaired", "unpaired", "/settings/pairing"],
+    ["expired_token", "expired", "/settings/pairing"],
+    ["no_default", "no_harness_project", "/settings/pairing/projects"],
+    ["no_default_computer", "no_default_computer", "/settings/pairing/defaults"],
+  ])("maps the %s refusal to %s with a link to fix it", async (reason, state, to) => {
+    mockRoutes({ resolve: { ok: false, reason }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "unpaired", link: { to: "/settings/pairing" } }),
-    );
-  });
-
-  it("maps expired_token to expired", async () => {
-    mockRoutes({ resolve: { ok: false, reason: "expired_token" }, presence: {} });
-    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "expired", link: { to: "/settings/pairing" } }),
-    );
-  });
-
-  it("maps no_default to no_harness_project", async () => {
-    mockRoutes({ resolve: { ok: false, reason: "no_default" }, presence: {} });
-    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "no_harness_project", link: { to: "/settings/pairing/projects" } }),
-    );
-  });
-
-  it("maps no_default_computer", async () => {
-    mockRoutes({ resolve: { ok: false, reason: "no_default_computer" }, presence: {} });
-    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "no_default_computer", link: { to: "/settings/pairing/defaults" } }),
-    );
+    await waitFor(() => expect(result.current).toMatchObject({ state, link: { to } }));
   });
 
   it("passes project_id through to the resolve call when given", async () => {

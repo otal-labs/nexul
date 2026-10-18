@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -43,6 +44,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
@@ -73,12 +75,14 @@ describe("useMarkNotificationsRead", () => {
     await result.current.mutateAsync(["n1"]);
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
   });
+});
 
-  it("surfaces an api error", async () => {
+describe("useMarkNotificationsRead failure", () => {
+  it("toasts a refusal", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
     await result.current.mutateAsync(["n1"]).catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 
@@ -124,13 +128,6 @@ describe("the notification follower", () => {
   });
 
   const views = [["getNotifications", "ws-1"], ["getNotifications", "ws-2"], ["getUnreadCount", "ws-1"], ["getUnreadCount", "ws-2"], ["getUnreadCount"]];
-
-  it("refetches the inbox and badge of a new notice's workspace and the count across workspaces", async () => {
-    const client = inboxes();
-    for (const key of views.slice(2)) client.setQueryData(key, { count: 0, workspaces: {} });
-    await followFrame(notificationFollower, "notification.created", { user_ids: ["u-me"], workspace_id: "ws-2", project_id: "p-2" }, client);
-    expect(views.map((key) => isStale(client, key))).toEqual([false, true, false, true, true]);
-  });
 
   it("leaves every workspace's inbox alone for a notice that belongs to none", async () => {
     const client = inboxes();

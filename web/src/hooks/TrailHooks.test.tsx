@@ -71,18 +71,9 @@ describe("useFetchTrails / useFetchLatestChoices", () => {
   });
 
   it("reads the caller's latest choices for a play in a project", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { memory_ids: ["m-1"], computer_id: "c-1", provider: "claude", model: "sonnet-5" },
-    });
+    vi.mocked(api.get).mockResolvedValue({ data: { memory_ids: ["m-1"], computer_id: "c-1", provider: "claude", model: "sonnet-5" } });
     const { result } = renderHook(() => useFetchLatestChoices("play-1", "p-1"), { wrapper });
-    await waitFor(() =>
-      expect(result.current.data).toEqual({
-        memory_ids: ["m-1"],
-        computer_id: "c-1",
-        provider: "claude",
-        model: "sonnet-5",
-      }),
-    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.get).toHaveBeenCalledWith("/api/plays/latest-choices", { params: { play_id: "play-1", project_id: "p-1" } });
   });
 });

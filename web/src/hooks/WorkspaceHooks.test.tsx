@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { Location } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -99,15 +99,17 @@ beforeEach(() => {
 });
 
 describe("TicketPage", () => {
-  it("renders the ticket with its PREFIX-number id, status control, and reviews", async () => {
+  it("renders the ticket with its PREFIX-number id and moves its status from the status control", async () => {
     const user = userEvent.setup();
     mockTicket();
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticketData, status: "st-done" } });
     renderPage();
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(screen.getByText("BE-7")).toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Status: In progress" }));
-    expect(await screen.findByRole("button", { name: "Shipped" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Shipped" }));
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" });
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 
@@ -126,17 +128,6 @@ describe("TicketPage", () => {
     expect(await screen.findByText("acme/app#42")).toBeInTheDocument();
     expect(screen.getByText("approved")).toBeInTheDocument();
     expect(screen.getByText("by alice")).toBeInTheDocument();
-  });
-
-  it("transitions the ticket status", async () => {
-    const user = userEvent.setup();
-    mockTicket();
-    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticketData, status: "st-done" } });
-    renderPage();
-
-    await user.click(await screen.findByRole("button", { name: "Status: In progress" }));
-    await user.click(await screen.findByRole("button", { name: "Shipped" }));
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" });
   });
 
   it("resolves a /tickets/PREFIX-NUMBER url to the same ticket as its uuid url", async () => {

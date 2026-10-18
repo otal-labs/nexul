@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { Layout } from "@/Layout";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
-import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -202,12 +201,6 @@ describe("Layout", () => {
     expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
   });
 
-  it("links to the runners page", async () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    expect(await screen.findByRole("link", { name: /^Runners/ })).toBeInTheDocument();
-  });
-
   const hrefs = (region: HTMLElement | null) =>
     region ? within(region).queryAllByRole("link").map((link) => link.getAttribute("href")) : [];
   const workspaceTargets = () => hrefs(screen.queryByRole("group", { name: "Workspace" }));
@@ -278,21 +271,5 @@ describe("Layout", () => {
       expect(createButtons()).toEqual(create);
     });
     expect(screen.queryByRole("button", { name: "Workspace" }) !== null).toBe(workspace.length > 0);
-  });
-});
-
-describe("buildLiveURL", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("appends the session token to a configured ws url", () => {
-    vi.stubEnv("VITE_WS_URL", "ws://live:8080/ws/events");
-    expect(buildLiveURL("tok/1")).toBe("ws://live:8080/ws/events?token=tok%2F1");
-  });
-
-  it("defaults to the API origin when VITE_WS_URL is unset", () => {
-    vi.unstubAllEnvs();
-    expect(buildLiveURL("tok")).toBe("ws://localhost:8080/ws/events?token=tok");
   });
 });

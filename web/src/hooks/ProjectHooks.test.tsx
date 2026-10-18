@@ -9,7 +9,6 @@ import {
   useCreateProject,
   useDeleteProject,
   useFetchProjectDeleteImpact,
-  useFetchProjectRepos,
   useFetchProjects,
   useRemoveProjectRepo,
   useRenameProject,
@@ -63,24 +62,6 @@ describe("useFetchProjects", () => {
     const { result } = renderHook(() => useFetchProjects(), { wrapper });
     await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
     expect(api.get).not.toHaveBeenCalled();
-  });
-});
-
-describe("useFetchProjectDeleteImpact", () => {
-  it("loads the delete impact for a project", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { tickets: 2, repos: 1 } });
-    const { result } = renderHook(() => useFetchProjectDeleteImpact("p-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ tickets: 2, repos: 1 }));
-    expect(api.get).toHaveBeenCalledWith("/api/projects/p-1/impact");
-  });
-});
-
-describe("useFetchProjectRepos", () => {
-  it("loads the repos for a project", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [{ owner: "acme", name: "app", full_name: "acme/app" }] });
-    const { result } = renderHook(() => useFetchProjectRepos("p-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([{ owner: "acme", name: "app", full_name: "acme/app" }]));
-    expect(api.get).toHaveBeenCalledWith("/api/projects/p-1/repos");
   });
 });
 

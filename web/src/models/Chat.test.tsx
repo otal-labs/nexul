@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";

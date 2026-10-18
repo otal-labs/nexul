@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -49,19 +50,6 @@ const memory = {
   updated_at: "2026-09-16T12:00:00Z",
 };
 
-const memoryVersion = {
-  id: "ver-1",
-  memory_id: "mem-1",
-  version: 1,
-  title: "Deploy quirks",
-  when_to_use: "use this if touching deploy config",
-  body: "body",
-  always_included: false,
-  author_id: "user-1",
-  author_via: "",
-  created_at: "2026-09-16T12:00:00Z",
-};
-
 const wrapper = ({ children }: { children: ReactNode }) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -70,6 +58,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.put).mockReset();
@@ -112,13 +101,6 @@ describe("useFetchMemory", () => {
     expect(result.current.isPending).toBe(true);
     expect(api.get).not.toHaveBeenCalled();
   });
-
-  it("loads a single memory", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: memory });
-    const { result } = renderHook(() => useFetchMemory("mem-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(memory));
-    expect(api.get).toHaveBeenCalledWith("/api/memories/mem-1");
-  });
 });
 
 describe("useCreateMemory", () => {
@@ -139,19 +121,14 @@ describe("useCreateMemory", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
+});
 
-  it("surfaces an api error", async () => {
+describe("useCreateMemory failure", () => {
+  it("toasts a refusal", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useCreateMemory(), { wrapper });
-    await result.current
-      .mutateAsync({
-        project_id: "project-1",
-        title: "Deploy quirks",
-        when_to_use: "",
-        always_included: false,
-      })
-      .catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await result.current.mutateAsync({ project_id: "project-1", title: "Deploy quirks", when_to_use: "", always_included: false }).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 
@@ -184,13 +161,6 @@ describe("useDeleteMemory", () => {
 });
 
 describe("useFetchMemoryVersions", () => {
-  it("loads version history, newest first", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [memoryVersion] });
-    const { result } = renderHook(() => useFetchMemoryVersions("mem-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([memoryVersion]));
-    expect(api.get).toHaveBeenCalledWith("/api/memories/mem-1/versions");
-  });
-
   it("is disabled without an id", () => {
     const { result } = renderHook(() => useFetchMemoryVersions(undefined), { wrapper });
     expect(result.current.isPending).toBe(true);

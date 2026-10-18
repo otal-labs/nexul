@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { Location } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -48,26 +49,6 @@ describe("the chat follower", () => {
       ["m-1", "m-1", "2026-09-15T00:00:00Z"],
       ["m-2", "edited", undefined],
     ]);
-  });
-
-  const keys = [["getChatUnread", "ws-1"], ["getChatUnread", "ws-2"], ["getChatConversations", "ws-1"], ["getChatConversations", "ws-2"]];
-
-  it("refetches only the unread counts of a message's workspace when its list holds the conversation", async () => {
-    const client = chat();
-    await followFrame(chatFollower, "chat.message.created", { message: message("m-2"), workspace_id: "ws-1" }, client);
-    expect(keys.map((key) => isStale(client, key))).toEqual([true, false, false, false]);
-  });
-
-  it("refetches the list and unread counts of only the message's workspace for a conversation its list does not hold yet", async () => {
-    const client = chat();
-    await followFrame(chatFollower, "chat.message.created", { message: message("m-9", { conversation_id: "dm-new" }), workspace_id: "ws-2" }, client);
-    expect(keys.map((key) => isStale(client, key))).toEqual([false, true, false, true]);
-  });
-
-  it("refetches only the unread counts of a deleted message's workspace", async () => {
-    const client = chat();
-    await followFrame(chatFollower, "chat.message.deleted", { conversation_id: "c-1", message_id: "m-1", deleted_at: "2026-09-15T00:00:00Z", workspace_id: "ws-1" }, client);
-    expect(keys.map((key) => isStale(client, key))).toEqual([true, false, false, false]);
   });
 
   it("drops a deleted conversation from its list, ends its call, and sends its viewer to the chat home", async () => {

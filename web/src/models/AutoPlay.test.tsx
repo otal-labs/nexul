@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { newDraft, subjectOf, toSaveRequest } from "@/models/AutoPlay";

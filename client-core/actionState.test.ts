@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { actionState, machineAnswer, type ActionState, type EntityAnswer, type InstanceAccess } from "@nexul/client-core/actionState";

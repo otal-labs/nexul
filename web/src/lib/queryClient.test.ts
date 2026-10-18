@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { QueryObserver } from "@tanstack/react-query";
 import { AxiosError, AxiosHeaders } from "axios";
 import { afterAll, expect, it, vi } from "vitest";

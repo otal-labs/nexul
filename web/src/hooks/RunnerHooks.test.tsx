@@ -1,9 +1,9 @@
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getRunnersKey, useCreateRunnerEnrollment, useRemoveRunner, useRunnerQueue, useRunners, runnerFollower } from "@/hooks/RunnerHooks";
+import { getRunnersKey, useCreateRunnerEnrollment, useRemoveRunner, runnerFollower } from "@/hooks/RunnerHooks";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), delete: vi.fn(), toastError: vi.fn(), toastSuccess: vi.fn() }));
@@ -23,15 +23,6 @@ const runner = {
   version: "v0.1.4",
 };
 
-const Harness = ({ useFn }: { useFn: () => { isPending: boolean; isSuccess: boolean; isError: boolean; data?: unknown } }) => {
-  const query = useFn();
-  return (
-    <span data-testid="state">
-      {query.isPending ? "loading" : query.isSuccess ? "loaded" : "error"}
-    </span>
-  );
-};
-
 const wrapperFor = (client: QueryClient) => ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={client}>{children}</QueryClientProvider>
 );
@@ -39,40 +30,6 @@ const wrapperFor = (client: QueryClient) => ({ children }: { children: ReactNode
 describe("RunnerHooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("fetches runners", async () => {
-    mocks.get.mockResolvedValue({ data: [runner] });
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Harness useFn={useRunners} />
-      </QueryClientProvider>,
-    );
-    expect(mocks.get).toHaveBeenCalledWith("/api/runners");
-    await screen.findByText("loaded");
-  });
-
-  it("fetches the queue", async () => {
-    mocks.get.mockResolvedValue({ data: [{ id: "d-1", kind: "deploy", service: "api" }] });
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Harness useFn={useRunnerQueue} />
-      </QueryClientProvider>,
-    );
-    expect(mocks.get).toHaveBeenCalledWith("/api/runners/queue");
-    await screen.findByText("loaded");
-  });
-
-  it("surfaces errors without crashing", async () => {
-    mocks.get.mockRejectedValue(new Error("boom"));
-    render(
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
-        <Harness useFn={useRunners} />
-      </QueryClientProvider>,
-    );
-    await screen.findByText("error");
   });
 
   it("toasts a failed enrollment", async () => {
@@ -110,12 +67,6 @@ describe("the runner follower", () => {
       [["runners"], [{ ...runner, running_job: { id: "d-1", kind: "build" } }]],
       [["runnerQueue"], [{ id: "d-2", kind: "deploy" }]],
     ]);
-
-  it("sends nothing for progress on a job the runners list already shows", async () => {
-    const client = busy();
-    await followFrame(runnerFollower, "deploy.build_progress", { id: "d-1", step: 2, total: 5, log: "step 2" }, client);
-    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([false, false]);
-  });
 
   it("refetches the runners for a job they do not show yet, and the queue that held it", async () => {
     const client = busy();

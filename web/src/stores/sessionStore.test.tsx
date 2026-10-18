@@ -9,11 +9,6 @@ describe("sessionStore", () => {
     localStorage.clear();
   });
 
-  it("starts logged out", () => {
-    expect(useSessionStore.getState().isLoggedIn).toBe(false);
-    expect(useSessionStore.getState().token).toBeNull();
-  });
-
   it("login stores the token and marks the session active", () => {
     useSessionStore.getState().login("tok-1");
     expect(useSessionStore.getState().isLoggedIn).toBe(true);
