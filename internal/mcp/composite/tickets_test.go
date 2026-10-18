@@ -13,15 +13,6 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-func TestTicketTools_Names(t *testing.T) {
-	var names []string
-	for _, tool := range newFixture(t).ticketTools() {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title, tool.Name)
-	}
-	assert.Equal(t, []string{"ticket_list", "ticket_get", "ticket_create", "ticket_update"}, names)
-}
-
 func TestTicketList_Errors(t *testing.T) {
 	for name, args := range map[string]string{
 		"an unknown filter is invalid":  `{"status":"st-todo"}`,

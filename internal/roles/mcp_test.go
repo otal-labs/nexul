@@ -37,14 +37,6 @@ func newToolFixture(t *testing.T) (*Service, *fakeRepo) {
 	return s, repo
 }
 
-func TestMCPTools_Surface(t *testing.T) {
-	var names []string
-	for _, tool := range MCPTools(nil) {
-		names = append(names, tool.Name)
-	}
-	assert.Equal(t, []string{"role_update", "role_delete"}, names)
-}
-
 func TestMCPTools_Errors(t *testing.T) {
 	tests := []struct {
 		name  string

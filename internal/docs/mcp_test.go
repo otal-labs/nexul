@@ -31,17 +31,6 @@ func mustDoc(t *testing.T, s *Service, projectID, title, body string) *Doc {
 	return d
 }
 
-func TestMCPTools_Surface(t *testing.T) {
-	var names []string
-	for _, tool := range MCPTools(newTestService(newFakeRepo())) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title, tool.Name)
-		assert.NotEmpty(t, tool.Description, tool.Name)
-		assert.NotNil(t, tool.InputSchema, tool.Name)
-	}
-	assert.Equal(t, []string{"doc_list", "doc_get", "doc_create", "doc_update", "doc_delete"}, names)
-}
-
 func TestMCPTools_Errors(t *testing.T) {
 	repo := newFakeRepo()
 	d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")

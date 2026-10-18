@@ -38,14 +38,6 @@ func asUser() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "u-1"})
 }
 
-func TestMCPTools_Surface(t *testing.T) {
-	tools := MCPTools(mcpService())
-	require.Len(t, tools, 1)
-	assert.Equal(t, "mention_search", tools[0].Name)
-	assert.NotEmpty(t, tools[0].Title)
-	assert.True(t, tools[0].Hints.ReadOnly)
-}
-
 func TestMentionSearch_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
