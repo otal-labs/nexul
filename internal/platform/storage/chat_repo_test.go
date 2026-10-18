@@ -517,6 +517,11 @@ func TestChatRepo_MarkRead_UnreadCounts(t *testing.T) {
 	counts2, err := s.Chat.UnreadCounts(context.Background(), "workspace-default", "u-2")
 	require.NoError(t, err)
 	assert.Equal(t, 1, unreadCountsMap(counts2)["conv-1"])
+
+	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow.Add(time.Hour)), "marking read again moves the mark")
+	counts, err = s.Chat.UnreadCounts(context.Background(), "workspace-default", "u-1")
+	require.NoError(t, err)
+	assert.Zero(t, unreadCountsMap(counts)["conv-1"])
 }
 
 func unreadCountsMap(rows []chat.UnreadCount) map[string]int {
@@ -525,15 +530,6 @@ func unreadCountsMap(rows []chat.UnreadCount) map[string]int {
 		out[r.ConversationID] = r.Count
 	}
 	return out
-}
-
-func TestChatRepo_MarkRead_UpsertsOnRepeatedCalls(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow))
-	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow.Add(time.Hour)))
 }
 
 func TestChatRepo_CreateMessage_Via_RoundTripsAndASecondCopyConflicts(t *testing.T) {
