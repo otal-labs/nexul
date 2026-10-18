@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -22,6 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -125,11 +125,8 @@ type instance struct {
 // newInstance serves the runner routes and the runner socket over a real, migrated SQLite database.
 func newInstance(t *testing.T) *instance {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "nexul.db"))
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() }) // the process is done with it either way
-	require.NoError(t, storage.Migrate(db))
-	_, err = db.Exec(`INSERT INTO users (id, login, created_at, updated_at) VALUES ('admin', 'admin', 1, 1)`)
+	db := migrated.DB(t)
+	_, err := db.Exec(`INSERT INTO users (id, login, created_at, updated_at) VALUES ('admin', 'admin', 1, 1)`)
 	require.NoError(t, err)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	bus := &syncBus{handlers: map[string][]eventbus.Handler{}}

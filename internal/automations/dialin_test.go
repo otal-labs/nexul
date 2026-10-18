@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // allowAllPerm grants every automation.* action — these tests exercise the
@@ -36,10 +36,7 @@ func (allowAllPerm) Require(context.Context, string, permissions.Action) error {
 
 func newTestStore(t *testing.T) (*sql.DB, *storage.Store) {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	t.Cleanup(func() { _ = db.Close() })
+	db := migrated.DB(t)
 	return db, storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 }
 
