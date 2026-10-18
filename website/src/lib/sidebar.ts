@@ -21,7 +21,7 @@ export const guideGroups = [
 	{
 		label: 'Agents',
 		icon: Bot,
-		items: [guide('computer-setup'), guide('paired-computers'), guide('plays'), guide('interview'), guide('memories'), guide('mcp-server')],
+		items: [guide('computer-setup'), guide('paired-computers'), guide('plays'), guide('interview'), guide('memories'), guide('mcp-server'), guide('triage')],
 	},
 	{ label: 'Reference', icon: Code, items: [guide('api-and-tokens'), guide('desktop-app'), guide('phone-app')] },
 ];
