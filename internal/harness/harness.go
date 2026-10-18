@@ -415,8 +415,10 @@ type Attachment struct {
 type TurnPrompts struct {
 	Full        string
 	Incremental string
-	// Attachments belong to Full: they are the images its ticket, doc, and memory bodies refer to.
+	// Attachments go with Full: the images its ticket or doc body and its request message embed.
 	Attachments []Attachment
+	// IncrementalAttachments go with Incremental: the images its request message embeds.
+	IncrementalAttachments []Attachment
 	// Answer resolves the question still open on a reused session before the prompt is sent.
 	Answer *PendingAnswer
 }

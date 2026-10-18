@@ -480,7 +480,7 @@ func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harne
 	if err != nil {
 		return nil, err
 	}
-	text, images := prompts.Incremental, []harness.Attachment(nil)
+	text, images := prompts.Incremental, prompts.IncrementalAttachments
 	// T3 gives a new provider instance only a summary of the thread, as it gives an imported thread an excerpt.
 	if fresh || switched || w.imported() {
 		text, images = prompts.Full, prompts.Attachments

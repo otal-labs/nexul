@@ -33,9 +33,8 @@ type bodyImage struct {
 	attachment *harness.Attachment
 }
 
-// bodyImages reads each image markdown embeds once, attaching those takes accepts that fit the size caps.
-func bodyImages(ctx context.Context, markdown string, reader AttachmentReader, takes func(mime string) bool) []bodyImage {
-	budget := MaxTurnAttachmentBytes
+// bodyImages reads each image markdown embeds once, attaching those takes accepts that fit the size cap and what is left of budget.
+func bodyImages(ctx context.Context, markdown string, reader AttachmentReader, takes func(mime string) bool, budget *int) []bodyImage {
 	seen := map[string]bool{}
 	var images []bodyImage
 	for _, ref := range attachmentRefPattern.FindAllStringSubmatch(markdown, -1) {
@@ -53,11 +52,28 @@ func bodyImages(ctx context.Context, markdown string, reader AttachmentReader, t
 			continue
 		}
 		img := bodyImage{name: stored.Name, link: "/api/attachments/" + id}
-		if takes(stored.MIME) && len(stored.Bytes) <= MaxAttachmentBytes && len(stored.Bytes) <= budget {
-			budget -= len(stored.Bytes)
+		if takes(stored.MIME) && len(stored.Bytes) <= MaxAttachmentBytes && len(stored.Bytes) <= *budget {
+			*budget -= len(stored.Bytes)
 			img.attachment = &harness.Attachment{Name: stored.Name, MIME: stored.MIME, Bytes: stored.Bytes}
 		}
 		images = append(images, img)
 	}
 	return images
+}
+
+// nameAttached puts each attached image's name in place of its markdown, since the harness shows the file and cannot open the link.
+func nameAttached(markdown string, images []bodyImage) string {
+	names := map[string]string{}
+	for _, img := range images {
+		if img.attachment != nil {
+			names[img.link] = img.name
+		}
+	}
+	return attachmentRefPattern.ReplaceAllStringFunc(markdown, func(ref string) string {
+		name, ok := names["/api/attachments/"+attachmentRefPattern.FindStringSubmatch(ref)[2]]
+		if !ok {
+			return ref
+		}
+		return "[Attached image: " + name + "]"
+	})
 }

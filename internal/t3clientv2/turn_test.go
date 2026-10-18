@@ -316,17 +316,20 @@ func TestStartTurn_Images_OnlyWhatTheSentPromptRefersToAndT3Takes(t *testing.T) 
 		sessionID string
 		thread    map[string]any
 		images    []harness.Attachment
+		request   []harness.Attachment
 		uploaded  []string
 		note      string
 	}{
-		{"an unsupported type is left out and noted", "", nil, []harness.Attachment{svg, gif, bmp, webp},
+		{"an unsupported type is left out and noted", "", nil, []harness.Attachment{svg, gif, bmp, webp}, nil,
 			[]string{"loop.gif", "page.webp"}, "Not sent to T3 Code: logo.svg, scan.bmp. It takes only gif, jpeg, png and webp images."},
-		{"nothing supported means no upload", "", nil, []harness.Attachment{svg},
+		{"nothing supported means no upload", "", nil, []harness.Attachment{svg}, nil,
 			nil, "Not sent to T3 Code: logo.svg. It takes only gif, jpeg, png and webp images."},
-		{"a reused thread already holds them", "th-1", nil, []harness.Attachment{gif}, nil, ""},
-		{"an imported thread gets them with its full prompt", "th-1", map[string]any{"historyOrigin": "v1_import"}, []harness.Attachment{gif},
+		{"a reused thread already holds them", "th-1", nil, []harness.Attachment{gif}, nil, nil, ""},
+		{"a reused thread gets the new message's own images", "th-1", nil, []harness.Attachment{gif, webp}, []harness.Attachment{webp},
+			[]string{"page.webp"}, ""},
+		{"an imported thread gets them with its full prompt", "th-1", map[string]any{"historyOrigin": "v1_import"}, []harness.Attachment{gif}, nil,
 			[]string{"loop.gif"}, ""},
-		{"a thread on another provider instance gets them with its full prompt", "th-1", threadOn("codex", "gpt-6"), []harness.Attachment{gif},
+		{"a thread on another provider instance gets them with its full prompt", "th-1", threadOn("codex", "gpt-6"), []harness.Attachment{gif}, nil,
 			[]string{"loop.gif"}, ""},
 	}
 	for _, tt := range tests {
@@ -335,6 +338,7 @@ func TestStartTurn_Images_OnlyWhatTheSentPromptRefersToAndT3Takes(t *testing.T) 
 			f, h := newFake(t, 2)
 			prompts := testPrompts
 			prompts.Attachments = tt.images
+			prompts.IncrementalAttachments = tt.request
 			done := beginWith(t, h, laptop(f), tt.sessionID, prompts)
 			f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, tt.thread)))
 			commands := commandsUntil(t, f, "message.dispatch")

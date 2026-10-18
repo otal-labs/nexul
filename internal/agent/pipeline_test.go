@@ -959,6 +959,36 @@ func TestRunTurn_TicketImagesTheHarnessDoesNotTake_AreLinkedNotNamedAsAttached(t
 	assert.NotContains(t, got.Full, imagesLine, "the prompt never claims an image the agent did not get")
 }
 
+func TestRunTurn_RequestImages_AttachToBothPromptsInPlaceOfTheirLinks(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	var got harness.TurnPrompts
+	client := fourImageTypes{&harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		got = prompts
+		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
+	}}}
+	reader := newFakeAttachmentReader()
+	reader.items["png-1"] = StoredAttachment{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}
+	reader.items["svg-1"] = StoredAttachment{Name: "diagram.svg", MIME: "image/svg+xml", Bytes: []byte{2}}
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     harness.Registry{harness.KindT3Code: client},
+		Attachments:   reader,
+		Live:          &fakeLive{},
+	})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1",
+		RequestBody: "@Agent order these\n![image.png](/api/attachments/png-1)\n![diagram.svg](/api/attachments/svg-1)"})
+
+	want := []harness.Attachment{{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}}
+	assert.Equal(t, want, got.Attachments)
+	assert.Equal(t, want, got.IncrementalAttachments, "a reused session gets the message's images too")
+	for _, prompt := range []string{got.Full, got.Incremental} {
+		assert.Contains(t, prompt, "@Agent order these\n[Attached image: image.png]\n![diagram.svg](/api/attachments/svg-1)",
+			"an attached image is named, one the harness does not take keeps its link")
+	}
+}
+
 // --- interrupt -------------------------------------------------------------
 
 func TestInterrupt_NoActiveTurn_ReturnsNotFound(t *testing.T) {

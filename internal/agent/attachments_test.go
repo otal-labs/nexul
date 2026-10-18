@@ -54,7 +54,7 @@ func TestBodyImages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, bodyImages(t.Context(), tt.markdown, reader, anyImage))
+			assert.Equal(t, tt.want, bodyImages(t.Context(), tt.markdown, reader, anyImage, new(MaxTurnAttachmentBytes)))
 		})
 	}
 }
@@ -63,7 +63,7 @@ func TestBodyImages_ImageNamedTwice_IsReadAndAttachedOnce(t *testing.T) {
 	reader := newFakeAttachmentReader()
 	reader.items["img-1"] = StoredAttachment{Name: "shot.png", MIME: "image/png", Bytes: []byte("x")}
 
-	got := bodyImages(t.Context(), "![a](/api/attachments/img-1) and ![b](/api/attachments/img-1)", reader, anyImage)
+	got := bodyImages(t.Context(), "![a](/api/attachments/img-1) and ![b](/api/attachments/img-1)", reader, anyImage, new(MaxTurnAttachmentBytes))
 
 	require.Len(t, got, 1)
 	assert.Equal(t, 1, reader.calls["img-1"])
@@ -76,7 +76,7 @@ func TestBodyImages_OverTheTurnsTotal_LaterImagesAreLeftToTheirLinks(t *testing.
 		reader.items[id] = StoredAttachment{Name: id + ".png", MIME: "image/png", Bytes: full}
 	}
 
-	got := bodyImages(t.Context(), "![a](/api/attachments/img-1) ![b](/api/attachments/img-2) ![c](/api/attachments/img-3)", reader, anyImage)
+	got := bodyImages(t.Context(), "![a](/api/attachments/img-1) ![b](/api/attachments/img-2) ![c](/api/attachments/img-3)", reader, anyImage, new(MaxTurnAttachmentBytes))
 
 	require.Len(t, got, 3)
 	assert.NotNil(t, got[0].attachment)

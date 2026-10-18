@@ -299,7 +299,7 @@ func TestHarness_StartTurn_RecreatesGoneThreadAndRetriesOnce(t *testing.T) {
 	drain(t, result.Updates)
 }
 
-func TestHarness_StartTurn_AttachmentsRideWithTheFullPromptOnly(t *testing.T) {
+func TestHarness_StartTurn_ReusedThreadGetsOnlyTheRequestsAttachments(t *testing.T) {
 	fake := &fakeT3Client{
 		nextThreadID:      "thread-fresh",
 		startTurnFailOnce: true,
@@ -307,13 +307,14 @@ func TestHarness_StartTurn_AttachmentsRideWithTheFullPromptOnly(t *testing.T) {
 	}
 	b := harnessWithFake(fake)
 	prompts := testPrompts()
-	prompts.Attachments = []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}}}
+	prompts.Attachments = []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}}, {Name: "new.png", MIME: "image/png", Bytes: []byte{4}}}
+	prompts.IncrementalAttachments = prompts.Attachments[1:]
 
 	result, err := b.StartTurn(context.Background(), harness.Target{SessionID: "thread-gone"}, "title", prompts)
 	require.NoError(t, err)
 	assert.Equal(t, "thread-fresh", result.SessionID)
 	require.Len(t, fake.sentAttachments, 2)
-	assert.Empty(t, fake.sentAttachments[0], "the reused thread already holds them")
+	assert.Equal(t, prompts.IncrementalAttachments, fake.sentAttachments[0], "the reused thread already holds the others")
 	assert.Equal(t, prompts.Attachments, fake.sentAttachments[1], "the fresh replacement thread gets them with the full prompt")
 	drain(t, result.Updates)
 }
