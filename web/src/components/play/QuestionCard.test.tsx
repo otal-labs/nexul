@@ -69,6 +69,18 @@ describe("QuestionCard", () => {
     expect(screen.getByRole("textbox", { name: "Something else" })).toHaveValue("Ask Onik first");
   });
 
+  it("the next question starts at its first step, however far the card got through the one before", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<QuestionCard question={twoQuestions} onSubmit={vi.fn()} />);
+    await user.click(screen.getByRole("radio", { name: "Stop and wait" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
+
+    rerender(<QuestionCard question={openEnded} onSubmit={vi.fn()} />);
+    expect(screen.getByText("Question 1 of 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What name?" })).toBeInTheDocument();
+  });
+
   it("a question without options is a free-text field, and Enter in it sends", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
