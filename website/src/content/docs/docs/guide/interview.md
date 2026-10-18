@@ -7,28 +7,28 @@ sidebar:
 
 The interview is how you tell agents how a project works: its stack, how the code is organised, when tests are written, the style rules, the project's own words. You answer a list of questions, an agent asks about whatever is still unclear, then it writes the interview memory. Every agent turn in the project reads that memory before anything else.
 
-Open **Interview** under the project in the sidebar. The questions sit on the left and the memory on the right.
+Open **Interview** under the project in the sidebar. The page has three tabs: **Questions**, **Sources**, and **Memory**. The line above them shows the latest run and holds **Regenerate** and **Audit via AI**, whichever tab is open.
 
 ## Answer the questions
 
 1. Work down the questions. Each one opens on its own with any options to pick, and a recommended option already picked. **Next** saves your answer, **Skip** saves a skip. Click any earlier question to change it.
 2. Once every question is answered or skipped, press **Done**.
 3. The agent reads your answers and the code, then asks follow-ups about skipped questions, gaps, and anything the code contradicts. They appear on the page a round at a time, each with a recommended answer and a line on why it's asked. Answer them the same way.
-4. When nothing is left to ask, the agent writes the memory beside the questions.
+4. When nothing is left to ask, the agent writes the memory, on the **Memory** tab.
 
-The run happens on your paired computer, like any [play](/docs/guide/plays/). The line above the memory shows where it is: **Agent working**, **Agent asking**, **Memory ready**, or **Run failed**.
+The run happens on your paired computer, like any [play](/docs/guide/plays/). The line above the tabs shows where it is: **Agent working**, **Agent asking**, **Memory ready**, or **Run failed**.
 
 The agent records nothing from the code that you didn't confirm, and it writes rules, not a transcript of your answers.
 
 ## Change it later
 
-Change any answer, including a follow-up, and the line above the memory counts the answers that changed. Press **Regenerate the memory** to run it again; the agent changes only what your changed answers change and keeps every other rule. You can also edit the memory by hand like any [memory](/docs/guide/memories/).
+Change any answer, including a follow-up, and the line above the tabs counts the answers that changed. Press **Regenerate the memory** to run it again; the agent changes only what your changed answers change and keeps every other rule. You can also edit the memory by hand like any [memory](/docs/guide/memories/).
 
 The memory is capped at 8,000 characters, so keep it to rules. Deleting it keeps your answers, ready to write it again.
 
 ## Point it at sources
 
-If the rules already exist somewhere, add them as sources instead of typing them in. Open **Sources** above the questions and press **Add source**. A source is one of:
+If the rules already exist somewhere, add them as sources instead of typing them in. Open the **Sources** tab and press **Add source**. A source is one of:
 
 - a **Path**, a file or folder in the project's checkout, such as `docs/standards.md`;
 - a **Doc** or a **Memory** in the workspace;

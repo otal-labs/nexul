@@ -1,7 +1,9 @@
 import { InterviewChecklist } from "@/components/memory/InterviewChecklist";
-import { InterviewMemoryColumn } from "@/components/memory/InterviewMemoryColumn";
+import { InterviewMemorySection } from "@/components/memory/InterviewMemorySection";
+import { InterviewRunHeader } from "@/components/memory/InterviewRunHeader";
 import { InterviewSourcesSection } from "@/components/memory/InterviewSourcesSection";
 import { PageHeader } from "@/components/PageHeader";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { useInterviewPlays } from "@/hooks/InterviewSourceHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -12,28 +14,37 @@ interface ProjectInterviewProps {
   project: Project;
 }
 
-// The columns follow the content area, not the window: with the sidebar open at 1024px the memory drops under.
 export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
   const workspaceCrumb = useWorkspaceCrumb();
   const wsPath = useWorkspacePath();
   const { followUp, draft, audit } = useInterviewPlays(project.id);
   return (
-  <div className="space-y-10">
+  <div className="space-y-6">
     <PageHeader
       crumbs={[workspaceCrumb, { label: project.name, to: wsPath(boardPath(project)) }]}
       title="Interview"
       meta="Answer questions about how this project works. The agent asks about gaps, then writes the rules every agent turn here follows."
     />
-    <div className="@container space-y-6">
-      {(followUp || draft || audit) && <HarnessReadinessNote projectId={project.id} className="text-sm" />}
-      <div className="grid gap-12 @5xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] @5xl:items-start @5xl:gap-10">
-        <div className="min-w-0 space-y-6">
-          <InterviewSourcesSection projectId={project.id} />
-          <InterviewChecklist projectId={project.id} />
-        </div>
-        <InterviewMemoryColumn project={project} />
-      </div>
-    </div>
+    {(followUp || draft || audit) && <HarnessReadinessNote projectId={project.id} className="text-sm" />}
+    <InterviewRunHeader project={project} />
+    <PageTabs
+      label="Interview sections"
+      tabs={[
+        { value: "questions", label: "Questions" },
+        { value: "sources", label: "Sources" },
+        { value: "memory", label: "Memory" },
+      ]}
+    >
+      <PageTabsContent value="questions" className="max-w-3xl">
+        <InterviewChecklist projectId={project.id} />
+      </PageTabsContent>
+      <PageTabsContent value="sources" className="max-w-3xl">
+        <InterviewSourcesSection projectId={project.id} />
+      </PageTabsContent>
+      <PageTabsContent value="memory" className="max-w-3xl">
+        <InterviewMemorySection project={project} />
+      </PageTabsContent>
+    </PageTabs>
   </div>
   );
 };
