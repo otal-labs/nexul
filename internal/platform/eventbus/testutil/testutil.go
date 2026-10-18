@@ -3,38 +3,17 @@
 package testutil
 
 import (
-	"database/sql"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite"
-
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
-// NewDB opens an isolated on-disk SQLite DB in a per-test temp dir, closed via t.Cleanup.
-func NewDB(t testing.TB) *sql.DB {
-	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "test.db"))
-	if err != nil {
-		t.Fatalf("open test db: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-	return db
-}
-
-// testEncKey is a fixed 32-byte AES key for tests.
-var testEncKey = []byte("0123456789abcdef0123456789abcdef")
-
-// NewStore returns a storage.Store over a fresh migrated DB.
+// NewStore returns a storage.Store over a private copy of the migrated database.
 func NewStore(t testing.TB) *storage.Store {
-	db := NewDB(t)
-	if err := storage.Migrate(db); err != nil {
-		t.Fatalf("migrate test db: %v", err)
-	}
-	return storage.New(db, testEncKey)
+	return storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 }
 
 // DiscardLogger returns a slog logger that writes nowhere, for tests that

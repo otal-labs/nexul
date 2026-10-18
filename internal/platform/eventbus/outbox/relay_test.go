@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
@@ -75,8 +76,7 @@ func (f *fakePublisher) eventIDs() []string {
 }
 
 func TestRelay_Run_PublishesAndMarks(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "e1", "a.created", 0, 1000)
 	insertRow(t, db, "e2", "b.created", 0, 2000)
@@ -100,8 +100,7 @@ func TestRelay_Run_PublishesAndMarks(t *testing.T) {
 }
 
 func TestRelay_Run_RetriesAfterPublishFailure(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "e1", "a.created", 0, 1000)
 
@@ -124,8 +123,7 @@ func TestRelay_Run_RetriesAfterPublishFailure(t *testing.T) {
 }
 
 func TestRelay_Run_StopsOnContextCancel(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	pub := &fakePublisher{}
 	relay := outbox.NewRelay(storage.New(db, []byte("0123456789abcdef0123456789abcdef")).Outbox, pub, outbox.RelayConfig{Interval: time.Hour, Logger: testutil.DiscardLogger()})
 
@@ -142,8 +140,7 @@ func TestRelay_Run_StopsOnContextCancel(t *testing.T) {
 }
 
 func TestRelay_Run_FlushErrorIsLoggedAndRetried(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "e1", "t", 0, 1000)
 
@@ -165,8 +162,7 @@ func TestRelay_Run_FlushErrorIsLoggedAndRetried(t *testing.T) {
 // row keeps the same bus event ID as the first attempt and consumers can
 // dedupe it.
 func TestRelay_PublishWithID_UsesRowID(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	insertRow(t, db, "row-1", "a.created", 0, 1000)
 	insertRow(t, db, "row-2", "b.created", 0, 2000)
@@ -188,8 +184,7 @@ func TestRelay_PublishWithID_UsesRowID(t *testing.T) {
 // crash (row unmarked) the relay re-emits the same ID; a subscriber that
 // already processed it skips, a subscriber that had not yet processed it runs.
 func TestRelay_CrashRedelivery_DedupeEndToEnd(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	st := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	bus := inprocess.New(inprocess.Options{

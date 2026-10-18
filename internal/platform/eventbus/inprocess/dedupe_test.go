@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/processed"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 func newDedupeStore(t *testing.T) processed.Storer {
@@ -57,8 +58,7 @@ func TestDedupe_FailedHandlerIsNotRecorded(t *testing.T) {
 }
 
 func TestDedupe_StoreError_ReturnsWrappedError(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef")).ProcessedEvents
 	require.NoError(t, db.Close())
 	mw := NewDedupe(store)
