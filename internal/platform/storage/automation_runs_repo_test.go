@@ -75,19 +75,11 @@ func TestAutomationRunsRepo_ListByAutomation_FiltersAndOrdersNewestFirst(t *test
 	require.Len(t, got, 2)
 	assert.Equal(t, "r2", got[0].ID, "newest first")
 	assert.Equal(t, "r1", got[1].ID)
-}
 
-func TestAutomationRunsRepo_ListByAutomation_RespectsLimit(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	base := time.Now().UTC()
-	for i, id := range []string{"r1", "r2", "r3"} {
-		require.NoError(t, s.AutomationRuns.Create(context.Background(), newTestRun(id, "a1", base.Add(time.Duration(i)*time.Minute))))
-	}
-
-	got, err := s.AutomationRuns.ListByAutomation(context.Background(), "a1", 2)
+	capped, err := s.AutomationRuns.ListByAutomation(context.Background(), "a1", 1)
 	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	require.Len(t, capped, 1, "the limit caps the page")
+	assert.Equal(t, "r2", capped[0].ID)
 }
 
 func TestAutomationRunsRepo_ListByAutomation_UnknownAutomation_ReturnsEmpty(t *testing.T) {

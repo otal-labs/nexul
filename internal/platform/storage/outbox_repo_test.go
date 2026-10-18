@@ -31,18 +31,11 @@ func TestOutboxRepo_Pending_ReturnsUnpublishedInOrder(t *testing.T) {
 	assert.Equal(t, "doc.created", got[0].Topic)
 	assert.Equal(t, []byte(`{"a":1}`), got[0].Payload)
 	assert.Equal(t, "evt-2", got[1].ID)
-}
 
-func TestOutboxRepo_Pending_RespectsLimit(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	for _, id := range []string{"evt-1", "evt-2", "evt-3"} {
-		insertOutboxTestRow(t, s, id, "doc.created", []byte(`{}`))
-	}
-
-	got, err := s.Outbox.Unpublished(context.Background(), 2)
+	first, err := s.Outbox.Unpublished(context.Background(), 1)
 	require.NoError(t, err)
-	require.Len(t, got, 2)
+	require.Len(t, first, 1, "the limit caps the page")
+	assert.Equal(t, "evt-1", first[0].ID)
 }
 
 func TestOutboxRepo_MarkPublished_RemovesFromPending(t *testing.T) {

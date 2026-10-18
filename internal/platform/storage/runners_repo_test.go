@@ -24,12 +24,18 @@ func TestRunnersRepo_GetByID_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestRunnersRepo_Create_DuplicateID_Conflict(t *testing.T) {
+func TestRunnersRepo_Create_DuplicateIDOrName_Conflict(t *testing.T) {
 	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
-	err := s.Runners.Create(context.Background(), newTestRunner("r-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
+	byName := newTestRunner("r-2")
+	byName.Name = "box-r-1"
+	for name, dup := range map[string]*runner.Runner{"the same id": newTestRunner("r-1"), "the same name": byName} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
+			require.ErrorIs(t, s.Runners.Create(context.Background(), dup), apperrs.ErrConflict)
+		})
+	}
 }
 
 func TestRunnersRepo_Create_GetByID_RoundTrip(t *testing.T) {
@@ -122,15 +128,6 @@ func TestRunnersRepo_SetConnected_CancelledContext_LeavesRowUntouched(t *testing
 	got, err := s.Runners.GetByID(context.Background(), "r-1")
 	require.NoError(t, err)
 	assert.True(t, got.Connected, "a cancelled ctx must not reach the database; this is why the handler detaches it")
-}
-
-func TestRunnersRepo_Create_DuplicateName_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
-	other := newTestRunner("r-2")
-	other.Name = "box-r-1"
-	require.ErrorIs(t, s.Runners.Create(context.Background(), other), apperrs.ErrConflict)
 }
 
 func TestRunnersRepo_GetByName(t *testing.T) {

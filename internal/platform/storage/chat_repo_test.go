@@ -364,6 +364,15 @@ func TestChatRepo_CreateMessage_GetMessage_RoundTrip(t *testing.T) {
 	assert.Equal(t, []chat.Mention{{Kind: chat.MentionUser, Handle: "onik97"}}, got.Mentions)
 	assert.Nil(t, got.EditedAt)
 	assert.Nil(t, got.DeletedAt)
+	assert.Equal(t, chat.AuthorUser, got.AuthorKind, "a message with no author kind is a person's")
+
+	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
+		ID: "msg-2", ConversationID: "conv-1", AuthorID: "u-1", AuthorKind: chat.AuthorAgent, Body: "reply",
+		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
+	}))
+	agent, err := s.Chat.GetMessage(context.Background(), "msg-2")
+	require.NoError(t, err)
+	assert.Equal(t, chat.AuthorAgent, agent.AuthorKind)
 }
 
 func TestChatRepo_GetMessage_NotFound(t *testing.T) {
@@ -525,30 +534,6 @@ func TestChatRepo_MarkRead_UpsertsOnRepeatedCalls(t *testing.T) {
 	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
 	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow))
 	require.NoError(t, s.Chat.MarkRead(context.Background(), "conv-1", "u-1", chatFixedNow.Add(time.Hour)))
-}
-
-// TestChatRepo_CreateMessage_AuthorKind_RoundTrip: it round-trips, defaulting to "user" for a zero value.
-func TestChatRepo_CreateMessage_AuthorKind_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedChatUser(t, s, "u-1")
-	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
-
-	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
-		ID: "msg-1", ConversationID: "conv-1", AuthorID: "u-1", AuthorKind: chat.AuthorAgent, Body: "reply",
-		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
-	}))
-	got, err := s.Chat.GetMessage(context.Background(), "msg-1")
-	require.NoError(t, err)
-	assert.Equal(t, chat.AuthorAgent, got.AuthorKind)
-
-	require.NoError(t, s.Chat.CreateMessage(context.Background(), &chat.Message{
-		ID: "msg-2", ConversationID: "conv-1", AuthorID: "u-1", Body: "hi",
-		CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
-	}))
-	got2, err := s.Chat.GetMessage(context.Background(), "msg-2")
-	require.NoError(t, err)
-	assert.Equal(t, chat.AuthorUser, got2.AuthorKind)
 }
 
 func TestChatRepo_CreateMessage_Via_RoundTripsAndASecondCopyConflicts(t *testing.T) {

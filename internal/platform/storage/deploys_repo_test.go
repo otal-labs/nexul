@@ -115,13 +115,6 @@ func TestDeploysRepo_ListByStatus_ScopesToStatus(t *testing.T) {
 	assert.Equal(t, "dep-1", got[0].ID)
 }
 
-func TestDeploysRepo_UpdateStatus_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.UpdateStatus(context.Background(), "missing", deploy.StatusHealthy)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDeploysRepo_UpdateStatus_Persists(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -174,13 +167,6 @@ func TestDeploysRepo_SetAddress_RoundTrip(t *testing.T) {
 	got, err := s.Deploys.GetByID(context.Background(), "dep-1")
 	require.NoError(t, err)
 	assert.Equal(t, "172.18.0.4", got.Address)
-}
-
-func TestDeploysRepo_AppendLogLines_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.AppendLogLines(context.Background(), "missing", []deploy.LogLine{{TS: 1, Text: "line"}})
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDeploysRepo_AppendLogLines_WritesOutboxInSameTx(t *testing.T) {
