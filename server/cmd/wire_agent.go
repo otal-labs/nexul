@@ -156,7 +156,8 @@ func ticketKey(prefix string, number int, id string) string {
 // agentDocReader adapts docs to the agent's DocReader seam: turn context needs the title, project, and
 // the body as markdown (ADR 0026); ctx already carries the mentioning user's actor, so docs:read is checked.
 type agentDocReader struct {
-	svc *docs.Service
+	svc  *docs.Service
+	repo *storage.DocsRepo
 }
 
 func (a agentDocReader) Get(ctx context.Context, id string) (agent.Doc, error) {
@@ -169,6 +170,16 @@ func (a agentDocReader) Get(ctx context.Context, id string) (agent.Doc, error) {
 		return agent.Doc{}, err
 	}
 	return agent.Doc{ProjectID: d.ProjectID, Title: d.Title, BodyMarkdown: md}, nil
+}
+
+// Clarified reads the rounds unredacted: settling a thread is the server's call, not any one person's read.
+func (a agentDocReader) Clarified(ctx context.Context, id string) (bool, error) {
+	rounds, err := a.repo.ListClarificationRounds(ctx, id)
+	if err != nil || len(rounds) == 0 {
+		return false, err
+	}
+	newest := rounds[len(rounds)-1]
+	return newest.NoGapsAt != nil || newest.ClosedAt != nil, nil
 }
 
 // agentUserReader adapts auth users to agent's UserReader seam: context lines render a login, not an id.

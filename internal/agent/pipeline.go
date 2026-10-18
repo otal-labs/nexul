@@ -165,6 +165,8 @@ type Doc struct {
 // DocReader is the agent pipeline's seam onto docs (ADR 0017).
 type DocReader interface {
 	Get(ctx context.Context, id string) (Doc, error)
+	// Clarified is true once the doc's newest clarification round found no gaps left or was closed.
+	Clarified(ctx context.Context, id string) (bool, error)
 }
 
 // UserReader resolves a user id to a display label for context lines (ADR 0017 seam onto auth/users).
@@ -225,7 +227,7 @@ type Service struct {
 
 	mu     sync.Mutex
 	active map[string][]*activeTurn // conversationID -> its in-flight turns, oldest first, for Interrupt and Answer
-	ended  map[string]endedTurn     // ticketID -> its thread's last turn, until that thread is settled
+	ended  map[string]endedTurn     // ticket or doc id -> its thread's last turn, until that thread is settled
 	// following holds the conversations a catch-up was started on, until its turn ends (ADR 0127).
 	following map[string]bool
 	follower  ThreadFollower

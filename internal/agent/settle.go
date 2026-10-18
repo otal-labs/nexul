@@ -19,17 +19,33 @@ type endedTurn struct {
 	turn           activeTurn
 }
 
-// endTurn clears this turn from the live ones, then settles the ticket's harness session if the ticket is done.
+// endTurn clears this turn from the live ones, then settles its thread if the ticket is done or the doc clarified.
 // ponytail: last turns live in memory, so a restart forgets them; persist the computer per conversation if that matters.
 func (s *Service) endTurn(ctx context.Context, conv Conversation, turn *activeTurn) {
 	s.clearActive(conv.ID, turn)
-	if !conv.IsTicketThread || conv.TicketID == "" || s.tickets == nil || turn.target.SessionID == "" {
+	if turn.target.SessionID == "" {
 		return
 	}
+	if conv.IsTicketThread && conv.TicketID != "" && s.tickets != nil {
+		s.remember(conv.TicketID, conv.ID, turn)
+		s.settleWhenDone(ctx, conv.TicketID, s.ticketDone)
+		return
+	}
+	if conv.IsDocThread && conv.DocID != "" && s.docs != nil {
+		s.remember(conv.DocID, conv.ID, turn)
+		s.settleWhenDone(ctx, conv.DocID, s.docs.Clarified)
+	}
+}
+
+func (s *Service) remember(targetID, conversationID string, turn *activeTurn) {
 	s.mu.Lock()
-	s.ended[conv.TicketID] = endedTurn{conversationID: conv.ID, turn: *turn}
-	s.mu.Unlock()
-	s.settleTicket(ctx, conv.TicketID)
+	defer s.mu.Unlock()
+	s.ended[targetID] = endedTurn{conversationID: conversationID, turn: *turn}
+}
+
+func (s *Service) ticketDone(ctx context.Context, id string) (bool, error) {
+	t, err := s.tickets.Get(ctx, id)
+	return err == nil && t.Done, err
 }
 
 // ticketMoved is the slice of ticket.status_changed the settle reads, declared here so agent never imports tickets.
@@ -48,34 +64,57 @@ func (s *Service) HandleTicketStatusChanged(ctx context.Context, ev eventbus.Eve
 	if m.Ticket.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("%s missing ticket id", ev.Topic))
 	}
-	s.settleTicket(ctx, m.Ticket.ID)
+	s.settleWhenDone(ctx, m.Ticket.ID, s.ticketDone)
 	return nil
 }
 
-// settleTicket is best effort: a refusal (an old harness, an open question) only logs, and settling twice is harmless.
-func (s *Service) settleTicket(ctx context.Context, ticketID string) {
+// clarificationClosed is the slice of doc.clarification.closed the settle reads, declared so agent never imports docs.
+type clarificationClosed struct {
+	Doc struct {
+		ID string `json:"id"`
+	} `json:"doc"`
+}
+
+// HandleClarificationClosed is the doc.clarification.closed subscription: a clarification closed after its last turn settles it.
+func (s *Service) HandleClarificationClosed(ctx context.Context, ev eventbus.Event) error {
+	var c clarificationClosed
+	if err := json.Unmarshal(ev.Payload, &c); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if c.Doc.ID == "" {
+		return apperrs.Fatal(fmt.Errorf("%s missing doc id", ev.Topic))
+	}
+	if s.docs == nil {
+		return nil
+	}
+	s.settleWhenDone(ctx, c.Doc.ID, s.docs.Clarified)
+	return nil
+}
+
+// settleWhenDone settles a ticket's or doc's thread once done says so and no turn runs; best effort, twice is harmless.
+func (s *Service) settleWhenDone(ctx context.Context, targetID string, done func(context.Context, string) (bool, error)) {
 	s.mu.Lock()
-	e, ok := s.ended[ticketID]
+	e, ok := s.ended[targetID]
 	running := len(s.active[e.conversationID]) > 0
 	s.mu.Unlock()
 	if !ok || running {
 		return
 	}
-	t, err := s.tickets.Get(ctx, ticketID)
+	isDone, err := done(ctx, targetID)
 	if err != nil {
-		s.log.Warn("agent: read ticket for settle failed", "ticket", ticketID, "error", err)
+		s.log.Warn("agent: read thread target for settle failed", "target", targetID, "error", err)
 		return
 	}
-	if !t.Done {
+	if !isDone {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
 	if err := e.turn.client.Settle(ctx, e.turn.target); err != nil {
-		s.log.Warn("agent: settle harness session failed", "ticket", ticketID, "session", e.turn.target.SessionID, "error", err)
+		s.log.Warn("agent: settle harness session failed", "target", targetID, "session", e.turn.target.SessionID, "error", err)
 		return
 	}
 	s.mu.Lock()
-	delete(s.ended, ticketID)
+	delete(s.ended, targetID)
 	s.mu.Unlock()
 }

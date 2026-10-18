@@ -45,6 +45,10 @@ func TestIntegration_Clarification(t *testing.T) {
 	c, err := s.Clarification(as(uDev), f.doc)
 	require.NoError(t, err)
 	qid := c.Rounds[0].Questions[0].ID
+	agentDocs := agentDocReader{svc: s, repo: f.store.Docs}
+	clarified, err := agentDocs.Clarified(ctx, f.doc)
+	require.NoError(t, err)
+	assert.False(t, clarified, "a round of questions keeps the doc's thread active")
 
 	t.Run("refusals", func(t *testing.T) {
 		for name, tc := range map[string]struct {
@@ -105,6 +109,9 @@ func TestIntegration_Clarification(t *testing.T) {
 		written, err := s.WriteNoGaps(as(uDev), f.doc, "Rewritten")
 		require.NoError(t, err)
 		assert.True(t, written.Locked)
+		clarified, err := agentDocs.Clarified(ctx, f.doc)
+		require.NoError(t, err)
+		assert.True(t, clarified, "no gaps left settles the doc's thread")
 		require.NoError(t, s.EndRound(ctx, f.doc, "trail-2"))
 	})
 
