@@ -139,6 +139,13 @@ type InterviewSource struct {
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
+// SourceChange is a patch to a source: a nil field keeps its value; Label and Body apply to pasted text only.
+type SourceChange struct {
+	Stance *string `json:"stance"`
+	Label  *string `json:"label"`
+	Body   *string `json:"body"`
+}
+
 // InterviewDraft is an answer a drafting run proposes for a template question; it never counts as an answer.
 type InterviewDraft struct {
 	ID          string    `json:"id"`

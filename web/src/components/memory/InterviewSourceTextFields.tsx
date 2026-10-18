@@ -1,15 +1,16 @@
-import { useState, type DragEvent } from "react";
+import { useId, useState, type DragEvent } from "react";
 import { Upload } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 
 import { Textarea } from "@/components/ui/textarea";
 import { FormInput } from "@/components/FormInput";
-import { isReadableTextFile, type AddSourceFormData } from "@/models/InterviewSource";
+import { isReadableTextFile, type EditTextSourceFormData } from "@/models/InterviewSource";
 
 // Pasted text: a label and the text; a dropped or chosen text or markdown file is read here as if pasted, anything else refused.
 export const InterviewSourceTextFields = () => {
-  const { control, register, setValue, getValues, formState } = useFormContext<AddSourceFormData>();
+  const { control, register, setValue, getValues, formState } = useFormContext<EditTextSourceFormData>();
   const [refused, setRefused] = useState("");
+  const bodyId = useId();
   const bodyError = formState.errors.body?.message;
 
   const take = async (file: File | undefined) => {
@@ -32,11 +33,11 @@ export const InterviewSourceTextFields = () => {
     <div className="space-y-3" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <FormInput control={control} name="label" label="Label" placeholder="Handover notes" />
       <div className="space-y-2">
-        <label htmlFor="source-body" className="text-sm font-medium">
+        <label htmlFor={bodyId} className="text-sm font-medium">
           Text
         </label>
         <Textarea
-          id="source-body"
+          id={bodyId}
           rows={5}
           aria-invalid={bodyError !== undefined}
           className="field-sizing-content max-h-64 min-h-24 resize-none"

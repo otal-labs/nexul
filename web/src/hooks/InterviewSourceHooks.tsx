@@ -8,7 +8,7 @@ import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHoo
 import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { AUDIT_KEY, DRAFT_INTERVIEW_KEY } from "@/models/Play";
-import type { AddInterviewSourceInput, InterviewDraft, InterviewSource, SourceStance } from "@/models/InterviewSource";
+import type { AddInterviewSourceInput, EditTextSourceFormData, InterviewDraft, InterviewSource, SourceStance } from "@/models/InterviewSource";
 import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getInterviewSourcesKey = "getInterviewSources";
@@ -38,6 +38,19 @@ export const useAddInterviewSource = () => {
     onSuccess: async (source) => {
       await client.invalidateQueries({ queryKey: [getInterviewSourcesKey, source.project_id] });
       toast.success("Source added");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useEditTextSource = (projectId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("memories:write", async ({ id, ...change }: { id: string } & EditTextSourceFormData) =>
+      (await api.patch<InterviewSource>(`/api/memories/interview-sources/${id}`, change)).data),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getInterviewSourcesKey, projectId] });
+      toast.success("Source saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

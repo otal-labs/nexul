@@ -58,7 +58,7 @@ func (r *MemoriesRepo) InsertSource(ctx context.Context, src *memories.Interview
 func (r *MemoriesRepo) UpdateSource(ctx context.Context, src *memories.InterviewSource, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateInterviewSource(ctx, sqlcgen.UpdateInterviewSourceParams{
-			Stance: src.Stance, Label: src.Label, UpdatedAt: src.UpdatedAt.Unix(), ID: src.ID,
+			Stance: src.Stance, Label: src.Label, Body: src.Body, UpdatedAt: src.UpdatedAt.Unix(), ID: src.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update interview source %s: %w", src.ID, err)

@@ -83,14 +83,14 @@ func (s *Service) AddSource(ctx context.Context, src InterviewSource) (*Intervie
 	return &src, nil
 }
 
-// UpdateSource changes a source's stance or pasted text's label, a nil field kept; memories:write on its project.
-func (s *Service) UpdateSource(ctx context.Context, id string, stance, label *string) (*InterviewSource, error) {
+// UpdateSource changes a source's stance or pasted text's label and body; memories:write on its project.
+func (s *Service) UpdateSource(ctx context.Context, id string, change SourceChange) (*InterviewSource, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return nil, fmt.Errorf("%w: source id is required", apperrs.ErrInvalid)
 	}
-	if stance == nil && label == nil {
-		return nil, fmt.Errorf("%w: send a stance or a label to change", apperrs.ErrInvalid)
+	if change.Stance == nil && change.Label == nil && change.Body == nil {
+		return nil, fmt.Errorf("%w: send a stance, a label, or a body to change", apperrs.ErrInvalid)
 	}
 	actorID, err := requireActor(ctx)
 	if err != nil {
@@ -100,19 +100,8 @@ func (s *Service) UpdateSource(ctx context.Context, id string, stance, label *st
 	if err != nil {
 		return nil, err
 	}
-	if stance != nil {
-		if err := checkStance(*stance); err != nil {
-			return nil, err
-		}
-		src.Stance = *stance
-	}
-	if label != nil {
-		if src.Kind != SourceText {
-			return nil, fmt.Errorf("%w: only pasted text has a label to change; a %s shows its own name", apperrs.ErrInvalid, src.Kind)
-		}
-		if src.Label, err = checkLabel(*label); err != nil {
-			return nil, err
-		}
+	if err := applySourceChange(src, change); err != nil {
+		return nil, err
 	}
 	src.UpdatedAt = s.now().UTC()
 	if err := s.repo.UpdateSource(ctx, src, sourceEvent(TopicSourceChanged, src, actorID, src.UpdatedAt)); err != nil {
@@ -122,6 +111,28 @@ func (s *Service) UpdateSource(ctx context.Context, id string, stance, label *st
 		return nil, err
 	}
 	return src, nil
+}
+
+func applySourceChange(src *InterviewSource, change SourceChange) error {
+	if change.Stance != nil {
+		if err := checkStance(*change.Stance); err != nil {
+			return err
+		}
+		src.Stance = *change.Stance
+	}
+	if src.Kind != SourceText {
+		if change.Label != nil || change.Body != nil {
+			return fmt.Errorf("%w: only pasted text has a label and body to change; a %s is edited where it lives", apperrs.ErrInvalid, src.Kind)
+		}
+		return nil
+	}
+	if change.Label != nil {
+		src.Label = *change.Label
+	}
+	if change.Body != nil {
+		src.Body = *change.Body
+	}
+	return normalizeText(src)
 }
 
 // RemoveSource takes a source off its project's interview; drafts made from it stay. Requires memories:write.
