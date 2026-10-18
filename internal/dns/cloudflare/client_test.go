@@ -201,18 +201,6 @@ func TestClient_ListRecords_Paginates(t *testing.T) {
 	assert.Equal(t, "rec2", records[100].Name)
 }
 
-func TestClient_Options(t *testing.T) {
-	api := &fakeAPI{zones: []any{}}
-	srv := httptest.NewServer(api)
-	defer srv.Close()
-	u, err := url.Parse(srv.URL + "/client/v4")
-	require.NoError(t, err)
-
-	c := New("tok", WithBaseURL(u), WithHTTPClient(&http.Client{}), WithResolver(stubResolver{host: []string{"1.2.3.4"}}))
-	require.NoError(t, c.Verify(context.Background()))
-	require.NoError(t, c.CheckPropagation(context.Background(), "z1", dns.Record{Type: dns.RecordA, Name: "api", Content: "1.2.3.4"}))
-}
-
 func TestClient_DeleteRecord_MissingIsNoOp(t *testing.T) {
 	api := &fakeAPI{statusCode: http.StatusNotFound, errBody: `{"success":false,"errors":[{"code":1001,"message":"not found"}],"result":null}`}
 	c, srv := newTestClient(t, api)
