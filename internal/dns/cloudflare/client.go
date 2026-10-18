@@ -46,15 +46,6 @@ func WithBaseURL(u *url.URL) Option {
 	}
 }
 
-// WithResolver overrides the DNS resolver used by CheckPropagation (tests).
-func WithResolver(r dnsResolver) Option {
-	return func(c *Client) {
-		if r != nil {
-			c.resolve = r
-		}
-	}
-}
-
 // WithAccountID pins the account for tunnel operations; absent, resolves the first account the token can read.
 func WithAccountID(accountID string) Option {
 	return func(c *Client) {
