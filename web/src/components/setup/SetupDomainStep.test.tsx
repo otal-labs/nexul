@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SetupDomainStep } from "@/components/setup/SetupDomainStep";
 
@@ -55,6 +55,10 @@ const choosePath = async (user: User, label: RegExp) => {
 };
 
 describe("SetupDomainStep", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.post.mockReset();
@@ -174,6 +178,7 @@ describe("SetupDomainStep", () => {
     });
 
     it("polls until the domain points here, deploys Traefik, then finishes while the certificate is issued", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
       let answers: string[] = [];
       let release: (value: unknown) => void = () => {};
       mocks.get.mockImplementation(async (url: string) => {
@@ -185,7 +190,7 @@ describe("SetupDomainStep", () => {
       mocks.post.mockResolvedValue({ data: { service_id: "svc-9" } });
       mocks.put.mockImplementation(() => new Promise((resolve) => (release = resolve)));
       renderStep();
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       await choosePath(user, /reverse proxy/i);
 
       await user.type(await screen.findByLabelText(/^domain$/i), "deploy.example.com");
@@ -195,13 +200,12 @@ describe("SetupDomainStep", () => {
       expect(await screen.findByText(/doesn.t resolve yet/i)).toBeInTheDocument();
 
       answers = ["203.0.113.10"];
-      await vi.waitFor(
-        () =>
-          expect(mocks.post).toHaveBeenCalledWith("/api/dns/instance-proxy", {
-            domain: "deploy.example.com",
-            email: "ops@example.com",
-          }),
-        { timeout: 8000 },
+      await act(() => vi.advanceTimersByTimeAsync(5000));
+      await vi.waitFor(() =>
+        expect(mocks.post).toHaveBeenCalledWith("/api/dns/instance-proxy", {
+          domain: "deploy.example.com",
+          email: "ops@example.com",
+        }),
       );
       await vi.waitFor(() =>
         expect(mocks.put).toHaveBeenCalledWith("/api/setup/instance-url", { url: "https://deploy.example.com" }),
@@ -209,6 +213,6 @@ describe("SetupDomainStep", () => {
       expect(await screen.findByText(/let's encrypt can take a couple of minutes/i)).toBeInTheDocument();
       expect(mocks.post).toHaveBeenCalledTimes(1);
       release({ data: { instance_url: "https://deploy.example.com" } });
-    }, 15000);
+    });
   });
 });
