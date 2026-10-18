@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -207,12 +208,17 @@ func (f *fakeTargets) ResolveTargetOverride(_ context.Context, _, _, computerID,
 }
 
 type fakeDocs struct {
-	doc Doc
-	err error
+	doc       Doc
+	err       error
+	clarified atomic.Bool
 }
 
 func (f *fakeDocs) Get(_ context.Context, _ string) (Doc, error) {
 	return f.doc, f.err
+}
+
+func (f *fakeDocs) Clarified(context.Context, string) (bool, error) {
+	return f.clarified.Load(), nil
 }
 
 type fakeTickets struct {
