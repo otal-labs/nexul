@@ -50,8 +50,8 @@ beforeEach(() => {
 });
 
 describe("PlaysRailSection", () => {
-  it("lists the plays that apply to the ticket's stage", async () => {
-    mockApi([play]);
+  it("lists the plays that apply to the ticket's stage, and a play its own rule lets the member run without plays:run in the workspace", async () => {
+    mockApi([play], []);
     renderSection();
     expect(await screen.findByRole("heading", { name: "Plays" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /Fix with AI/ })).toBeInTheDocument();
@@ -63,12 +63,6 @@ describe("PlaysRailSection", () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", expect.anything()));
     expect(screen.queryByRole("heading", { name: "Plays" })).not.toBeInTheDocument();
     expect(screen.queryByText("No plays for this stage.")).not.toBeInTheDocument();
-  });
-
-  it("lists a play its own rule lets the member run, without plays:run in the workspace", async () => {
-    mockApi([play], []);
-    renderSection();
-    expect(await screen.findByRole("button", { name: /Fix with AI/ })).toBeInTheDocument();
   });
 
   it("stays hidden for a play the member cannot run", async () => {
