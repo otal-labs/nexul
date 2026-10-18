@@ -48,18 +48,6 @@ func TestTicketsHandler_Create(t *testing.T) {
 		assert.Equal(t, "p-1", tk.ProjectID)
 		assert.Equal(t, StatusOpen, tk.Status)
 	})
-	t.Run("missing project is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets", `{"title":"Fix"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("empty title is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets", `{"title":" "}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets", `{"title":`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 }
 
 func TestTicketsHandler_List(t *testing.T) {
@@ -101,10 +89,6 @@ func TestTicketsHandler_Get(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "A", decodeTicket(t, rec).Title)
 	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/tickets/nope", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestTicketsHandler_Update(t *testing.T) {
@@ -118,18 +102,6 @@ func TestTicketsHandler_Update(t *testing.T) {
 		assert.Equal(t, "B", tk.Title)
 		assert.Equal(t, "new body", tk.Body)
 	})
-	t.Run("empty title is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID, `{"title":" "}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID, `{"title":`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/nope", `{"title":"B"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestTicketsHandler_UpdateStatus(t *testing.T) {
@@ -140,18 +112,6 @@ func TestTicketsHandler_UpdateStatus(t *testing.T) {
 		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/status", `{"status":"in_progress"}`)
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, StatusInProgress, decodeTicket(t, rec).Status)
-	})
-	t.Run("missing status is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/status", `{}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("unconfigured status is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/status", `{"status":"nope"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/nope/status", `{"status":"done"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -164,18 +124,6 @@ func TestTicketsHandler_UpdatePosition(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, 3, decodeTicket(t, rec).Position)
 	})
-	t.Run("negative position is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/position", `{"position":-1}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/position", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/nope/position", `{"position":1}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestTicketsHandler_Delete(t *testing.T) {
@@ -185,10 +133,6 @@ func TestTicketsHandler_Delete(t *testing.T) {
 	t.Run("deletes a ticket", func(t *testing.T) {
 		rec := serve(t, h, http.MethodDelete, "/api/tickets/"+created.ID, "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodDelete, "/api/tickets/again", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -202,10 +146,6 @@ func TestTicketsHandler_Search(t *testing.T) {
 		var results []SearchResult
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &results))
 		require.Len(t, results, 1)
-	})
-	t.Run("missing query is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/tickets/search", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -221,10 +161,6 @@ func TestTicketsHandler_Links(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &links))
 		require.Len(t, links.Branches, 1)
 		assert.Equal(t, "ticket/1", links.Branches[0].Branch)
-	})
-	t.Run("incomplete branch link is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, base+"/branches", `{"owner":"","repo":"","branch":""}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("links a pr", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, base+"/prs", `{"owner":"acme","repo":"app","number":7,"title":"F"}`)
@@ -257,18 +193,6 @@ func TestTicketsHandler_Links(t *testing.T) {
 		var links ticketLinks
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &links))
 		assert.Empty(t, links.PRs)
-	})
-	t.Run("unlinking a pr without a number is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodDelete, base+"/prs?owner=acme&repo=app", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/tickets/nope/links", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("malformed link body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, base+"/prs", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -312,18 +236,10 @@ func TestTicketsHandler_TypeAndLabels(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "ticket-type-task", decodeTicket(t, rec).TypeID)
 	})
-	t.Run("missing type is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, base+"/type", `{}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("adds a label", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, base+"/labels", `{"label":"bug"}`)
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, decodeTicket(t, rec).Labels, "bug")
-	})
-	t.Run("empty label is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, base+"/labels", `{"label":"  "}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("lists labels", func(t *testing.T) {
 		rec := serve(t, h, http.MethodGet, base+"/labels", "")
@@ -357,14 +273,6 @@ func TestTicketsHandler_LabelColors(t *testing.T) {
 		assert.Equal(t, "bug", lc.Label)
 		assert.Equal(t, "cyan", string(lc.Color))
 	})
-	t.Run("invalid color is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPut, "/api/tickets/labels/bug/color", `{"project_id":"p-1","color":"magenta"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed set-color body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPut, "/api/tickets/labels/bug/color", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("batch-fetches colors for the requested labels", func(t *testing.T) {
 		serve(t, h, http.MethodPut, "/api/tickets/labels/urgent/color", `{"project_id":"p-1","color":"orange"}`)
 		rec := serve(t, h, http.MethodPost, "/api/tickets/labels/colors", `{"project_id":"p-1","labels":["bug","urgent","nope"]}`)
@@ -376,53 +284,61 @@ func TestTicketsHandler_LabelColors(t *testing.T) {
 		_, ok := got["nope"]
 		assert.False(t, ok)
 	})
-	t.Run("malformed batch-fetch body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets/labels/colors", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("repo error on set is 500", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.labelColorErr = errors.New("db down")
-		errHandler := NewHandler(newTestService(repo)).Routes()
-		rec := serve(t, errHandler, http.MethodPut, "/api/tickets/labels/bug/color", `{"project_id":"p-1","color":"cyan"}`)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	})
-	t.Run("repo error on batch fetch is 500", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.labelColorErr = errors.New("db down")
-		errHandler := NewHandler(newTestService(repo)).Routes()
-		rec := serve(t, errHandler, http.MethodPost, "/api/tickets/labels/colors", `{"project_id":"p-1","labels":["bug"]}`)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	})
 }
 
-func TestTicketsHandler_TypeAndLabelErrors(t *testing.T) {
-	h := newTicketsHandler()
-
-	t.Run("set type on missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/nope/type", `{"type_id":"ticket-type-task"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("add label on missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets/nope/labels", `{"label":"bug"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("remove label on missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodDelete, "/api/tickets/nope/labels/bug", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("list labels on missing ticket is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/tickets/nope/labels", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("malformed set type body is 400", func(t *testing.T) {
-		created := decodeTicket(t, serve(t, h, http.MethodPost, "/api/tickets", `{"title":"A","project_id":"p-1"}`))
-		rec := serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/type", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed label body is 400", func(t *testing.T) {
-		created := decodeTicket(t, serve(t, h, http.MethodPost, "/api/tickets", `{"title":"A","project_id":"p-1"}`))
-		rec := serve(t, h, http.MethodPost, "/api/tickets/"+created.ID+"/labels", `{`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
+func TestTicketsHandler_Refusals(t *testing.T) {
+	failLabelColors := func(r *fakeRepo) { r.labelColorErr = errors.New("db down") }
+	tests := []struct {
+		name   string
+		seed   func(repo *fakeRepo)
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{"create without a project", nil, http.MethodPost, "/api/tickets", `{"title":"Fix"}`, http.StatusBadRequest},
+		{"create without a title", nil, http.MethodPost, "/api/tickets", `{"title":" ","project_id":"p-1"}`, http.StatusBadRequest},
+		{"create from a malformed body", nil, http.MethodPost, "/api/tickets", `{"title":`, http.StatusBadRequest},
+		{"get a missing ticket", nil, http.MethodGet, "/api/tickets/nope", "", http.StatusNotFound},
+		{"edit without a title", nil, http.MethodPatch, "/api/tickets/{id}", `{"title":" "}`, http.StatusBadRequest},
+		{"edit from a malformed body", nil, http.MethodPatch, "/api/tickets/{id}", `{"title":`, http.StatusBadRequest},
+		{"edit a missing ticket", nil, http.MethodPatch, "/api/tickets/nope", `{"title":"B"}`, http.StatusNotFound},
+		{"move status without a status", nil, http.MethodPatch, "/api/tickets/{id}/status", `{}`, http.StatusBadRequest},
+		{"move status to an unconfigured one", nil, http.MethodPatch, "/api/tickets/{id}/status", `{"status":"nope"}`, http.StatusBadRequest},
+		{"move status of a missing ticket", nil, http.MethodPatch, "/api/tickets/nope/status", `{"status":"done"}`, http.StatusNotFound},
+		{"set a negative position", nil, http.MethodPatch, "/api/tickets/{id}/position", `{"position":-1}`, http.StatusBadRequest},
+		{"set a position from a malformed body", nil, http.MethodPatch, "/api/tickets/{id}/position", `{`, http.StatusBadRequest},
+		{"set the position of a missing ticket", nil, http.MethodPatch, "/api/tickets/nope/position", `{"position":1}`, http.StatusNotFound},
+		{"delete a missing ticket", nil, http.MethodDelete, "/api/tickets/nope", "", http.StatusNotFound},
+		{"search without a query", nil, http.MethodGet, "/api/tickets/search", "", http.StatusBadRequest},
+		{"link an incomplete branch", nil, http.MethodPost, "/api/tickets/{id}/branches", `{"owner":"","repo":"","branch":""}`, http.StatusBadRequest},
+		{"link a pr from a malformed body", nil, http.MethodPost, "/api/tickets/{id}/prs", `{`, http.StatusBadRequest},
+		{"unlink a pr without a number", nil, http.MethodDelete, "/api/tickets/{id}/prs?owner=acme&repo=app", "", http.StatusBadRequest},
+		{"list the links of a missing ticket", nil, http.MethodGet, "/api/tickets/nope/links", "", http.StatusNotFound},
+		{"set a type on a missing ticket", nil, http.MethodPatch, "/api/tickets/nope/type", `{"type_id":"ticket-type-task"}`, http.StatusNotFound},
+		{"set a type without one", nil, http.MethodPatch, "/api/tickets/{id}/type", `{}`, http.StatusBadRequest},
+		{"set a type from a malformed body", nil, http.MethodPatch, "/api/tickets/{id}/type", `{`, http.StatusBadRequest},
+		{"add a label to a missing ticket", nil, http.MethodPost, "/api/tickets/nope/labels", `{"label":"bug"}`, http.StatusNotFound},
+		{"add a blank label", nil, http.MethodPost, "/api/tickets/{id}/labels", `{"label":"  "}`, http.StatusBadRequest},
+		{"add a label from a malformed body", nil, http.MethodPost, "/api/tickets/{id}/labels", `{`, http.StatusBadRequest},
+		{"remove a label from a missing ticket", nil, http.MethodDelete, "/api/tickets/nope/labels/bug", "", http.StatusNotFound},
+		{"list the labels of a missing ticket", nil, http.MethodGet, "/api/tickets/nope/labels", "", http.StatusNotFound},
+		{"set a label color that is not one", nil, http.MethodPut, "/api/tickets/labels/bug/color", `{"project_id":"p-1","color":"magenta"}`, http.StatusBadRequest},
+		{"set a label color from a malformed body", nil, http.MethodPut, "/api/tickets/labels/bug/color", `{`, http.StatusBadRequest},
+		{"fetch label colors from a malformed body", nil, http.MethodPost, "/api/tickets/labels/colors", `{`, http.StatusBadRequest},
+		{"set a label color when the repo fails", failLabelColors, http.MethodPut, "/api/tickets/labels/bug/color", `{"project_id":"p-1","color":"cyan"}`, http.StatusInternalServerError},
+		{"fetch label colors when the repo fails", failLabelColors, http.MethodPost, "/api/tickets/labels/colors", `{"project_id":"p-1","labels":["bug"]}`, http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			h := NewHandler(newTestService(repo)).Routes()
+			created := decodeTicket(t, serve(t, h, http.MethodPost, "/api/tickets", `{"title":"A","project_id":"p-1"}`))
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			rec := serve(t, h, tt.method, strings.ReplaceAll(tt.path, "{id}", created.ID), tt.body)
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

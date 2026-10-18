@@ -779,9 +779,6 @@ func (s *Service) transition(ctx context.Context, id string, to Status, actor Ac
 	if current.Status == to {
 		return current, nil
 	}
-	if !CanTransition(current.Status, to) {
-		return nil, fmt.Errorf("%w: cannot move ticket from %s to %s", apperrs.ErrInvalid, current.Status, to)
-	}
 	exists, err := s.statuses.Exists(ctx, string(to))
 	if err != nil {
 		return nil, fmt.Errorf("check status %s: %w", to, err)

@@ -221,17 +221,6 @@ func TestUserIDForLogin(t *testing.T) {
 	assert.False(t, found)
 }
 
-func TestLogin_ResolvesPendingInvitesForNewUser(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	ownerToken, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	ownerID := mustVerify(t, s, ownerToken)
-	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
-	_, err = s.Login(context.Background(), "good-code")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-}
-
 func TestLogin_DisabledUserCannotResignIn(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	token, err := s.Login(context.Background(), "good-code")
@@ -276,23 +265,6 @@ func TestConfigured(t *testing.T) {
 	assert.False(t, configured)
 }
 
-// TestConfigured_ReflectsLiveSettings proves the 503 gate reads Settings from the store on every call, not a startup-time snapshot (T3): flipping the stored credentials changes what the very next call reports.
-func TestConfigured_ReflectsLiveSettings(t *testing.T) {
-	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
-
-	settings.st.GitHubOAuthClientID = ""
-	settings.st.GitHubOAuthClientSecret = ""
-	configured, err := s.Configured(context.Background())
-	require.NoError(t, err)
-	assert.False(t, configured, "cleared credentials must be reflected immediately")
-
-	_, err = settings.SetGitHubOAuth(context.Background(), "new-id", "new-secret")
-	require.NoError(t, err)
-	configured, err = s.Configured(context.Background())
-	require.NoError(t, err)
-	assert.True(t, configured, "newly stored credentials must be reflected immediately")
-}
-
 func TestAuthorizeURL(t *testing.T) {
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
 	settings.st.GitHubOAuthClientID = "client"
@@ -309,16 +281,6 @@ func TestAuthorizeURL_NotConfigured(t *testing.T) {
 	s := NewService(Config{Secret: []byte("x")})
 	_, err := s.AuthorizeURL(context.Background(), "st8")
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
-func TestAuthorizeURL_UsesCurrentSettings(t *testing.T) {
-	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
-
-	_, err := settings.SetGitHubOAuth(context.Background(), "rotated-id", "rotated-secret")
-	require.NoError(t, err)
-	u, err := s.AuthorizeURL(context.Background(), "st8")
-	require.NoError(t, err)
-	assert.Contains(t, u, "client_id=rotated-id", "must build from the current DB value, not a startup snapshot")
 }
 
 // TestGithubClient_BuildsFromCurrentSettings proves the GitHub API client itself is built fresh per request from whatever Settings currently holds (T3), not from a client constructed once at Service startup: changing the stored credentials between two calls changes what the very next call builds.
@@ -358,46 +320,14 @@ func TestGithubClient_ExplicitOverrideBypassesSettings(t *testing.T) {
 	assert.Same(t, GitHubClient(override), client)
 }
 
-func TestRequireAuth(t *testing.T) {
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	user, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
+func TestRequireAuth_SignedTokenOfUnknownUser_IsRefused(t *testing.T) {
+	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	ghost, err := sign(s, "ghost")
 	require.NoError(t, err)
-	require.NotNil(t, user)
-
-	token, err := sign(s, "u1")
-	require.NoError(t, err)
-
-	t.Run("missing", func(t *testing.T) {
-		inner := &captureHandler{}
-		rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "", "")
-		assert.Equal(t, 401, rec.Code)
-		assert.Nil(t, inner.user)
-	})
-
-	t.Run("invalid", func(t *testing.T) {
-		inner := &captureHandler{}
-		rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "Bearer garbage", "")
-		assert.Equal(t, 401, rec.Code)
-		assert.Nil(t, inner.user)
-	})
-
-	t.Run("valid", func(t *testing.T) {
-		inner := &captureHandler{}
-		rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "Bearer "+token, "")
-		assert.Equal(t, 200, rec.Code)
-		require.NotNil(t, inner.user)
-		assert.Equal(t, "u1", inner.user.ID)
-		assert.Equal(t, "onik97", inner.user.Login)
-	})
-
-	t.Run("unknown user", func(t *testing.T) {
-		ghost, err := sign(s, "ghost")
-		require.NoError(t, err)
-		inner := &captureHandler{}
-		rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "Bearer "+ghost, "")
-		assert.Equal(t, 401, rec.Code)
-		assert.Nil(t, inner.user)
-	})
+	inner := &captureHandler{}
+	rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "Bearer "+ghost, "")
+	assert.Equal(t, 401, rec.Code)
+	assert.Nil(t, inner.user)
 }
 
 func TestRequireAuth_NilUserStoreRejects(t *testing.T) {

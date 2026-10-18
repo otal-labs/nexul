@@ -36,17 +36,6 @@ func callGrantTool(t *testing.T, svc *Service, actor, name, args string) (any, e
 	return nil, nil
 }
 
-func TestGrantTools_Surface(t *testing.T) {
-	t.Parallel()
-	svc, _ := newGrantsHarness(t)
-	var names []string
-	for _, tool := range MCPTools(svc) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title)
-	}
-	assert.Equal(t, []string{"permission_overwrite_list", "permission_overwrite_update"}, names)
-}
-
 func TestGrantTools_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

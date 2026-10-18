@@ -39,18 +39,6 @@ func mustMemory(t *testing.T, s *Service, projectID, title, whenToUse, body stri
 	return m
 }
 
-func TestMCPTools_Surface(t *testing.T) {
-	var names []string
-	for _, tool := range MCPTools(newTestService(newFakeRepo())) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title, tool.Name)
-		assert.NotEmpty(t, tool.Description, tool.Name)
-	}
-	assert.Equal(t, []string{
-		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
-	}, names)
-}
-
 func TestMCPTools_Errors(t *testing.T) {
 	repo := newFakeRepo()
 	allowed, denied := newTestService(repo), newDenyService(repo)

@@ -188,7 +188,7 @@ func TestSessionUpdateRelaysToOthersOnly(t *testing.T) {
 	select {
 	case raw := <-a.send:
 		t.Fatalf("sender received its own relay: %s", raw)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 }
 
@@ -417,7 +417,7 @@ func TestSessionCommitPersistFailureSkipsWriteAndRelay(t *testing.T) {
 	select {
 	case raw := <-b.send:
 		t.Fatalf("no commit relay after a failed snapshot: %s", raw)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 }
 

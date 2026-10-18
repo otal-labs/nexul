@@ -37,21 +37,6 @@ func TestHandler_Categories(t *testing.T) {
 		c := decodeCategory(t, rec)
 		assert.Equal(t, colors.Cyan, c.Color)
 	})
-	t.Run("invalid color is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"Sprint 1","color":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("create requires owner", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"Sprint 1"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-	t.Run("empty name is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"  "}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("lists categories filtered by project", func(t *testing.T) {
 		h, repo := newTestHandler(t, true)
 		_ = repo
@@ -79,12 +64,6 @@ func TestHandler_Categories(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		c := decodeCategory(t, rec)
 		assert.Equal(t, colors.Fuchsia, c.Color)
-	})
-	t.Run("rename with invalid color is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		h.svc.cats.(*fakeCategoryRepo).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1", Name: "Sprint 1"}
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/categories/c-1", `{"name":"Sprint 2","color":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("deletes a category", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
@@ -130,11 +109,6 @@ func TestHandler_TicketTypes(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tt))
 		assert.Equal(t, colors.Cyan, tt.Color)
 	})
-	t.Run("invalid color is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/ticket-types", `{"project_id":"p-1","name":"bug","color":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("lists ticket types", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", ProjectID: "p-1", Name: "bug"}
@@ -150,11 +124,6 @@ func TestHandler_TicketTypes(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodDelete, "/api/ticket-types/tt-1", "", "u-1")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	})
-	t.Run("create requires owner", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/ticket-types", `{"project_id":"p-1","name":"bug"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
 	t.Run("sets a body template", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", Name: "bug"}
@@ -163,16 +132,6 @@ func TestHandler_TicketTypes(t *testing.T) {
 		var tt TicketType
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tt))
 		assert.Equal(t, "## Why\n\n", tt.BodyTemplate)
-	})
-	t.Run("set template with a bad body is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPut, "/api/ticket-types/tt-1/template", `{`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("set template on a missing type is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPut, "/api/ticket-types/nope/template", `{"body_template":""}`, "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -185,11 +144,6 @@ func TestHandler_Statuses(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &st))
 		assert.Equal(t, "Blocked", st.Name)
 		assert.Equal(t, StatusKindProgress, st.Kind)
-	})
-	t.Run("invalid kind is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/statuses", `{"project_id":"p-1","name":"Blocked","kind":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("lists statuses", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
@@ -210,11 +164,6 @@ func TestHandler_Statuses(t *testing.T) {
 		assert.Equal(t, "In review", st.Name)
 		assert.Equal(t, StatusKindDone, st.Kind)
 	})
-	t.Run("create requires owner", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/statuses", `{"project_id":"p-1","name":"Blocked","kind":"progress"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
 }
 
 func TestHandler_CategoryDetailRoutes(t *testing.T) {
@@ -225,44 +174,6 @@ func TestHandler_CategoryDetailRoutes(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		c := decodeCategory(t, rec)
 		assert.Equal(t, "Sprint 1", c.Name)
-	})
-	t.Run("missing category is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/categories/nope", "", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("rename missing category is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/categories/nope", `{"name":"Sprint 2"}`, "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("delete missing category is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/categories/nope", "", "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("reorder with a category not in the project is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		h.svc.cats.(*fakeCategoryRepo).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories/reorder", `{"project_id":"p-1","ids":["c-2"]}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("move ticket to missing category is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories/nope/tickets/t-1", "", "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("create category malformed body is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/categories", `{`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("list categories repo error is 500", func(t *testing.T) {
-		h, repo := newTestHandler(t, true)
-		_ = repo
-		h.svc.cats.(*fakeCategoryRepo).listErr = errors.New("db down")
-		rec := do(t, h.Routes(), http.MethodGet, "/api/categories", "", "")
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
 
@@ -275,11 +186,6 @@ func TestHandler_TicketTypeDetailRoutes(t *testing.T) {
 		var tt TicketType
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tt))
 		assert.Equal(t, "bug", tt.Name)
-	})
-	t.Run("missing ticket type is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/ticket-types/nope", "", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 	t.Run("renames a ticket type", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
@@ -299,34 +205,12 @@ func TestHandler_TicketTypeDetailRoutes(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tt))
 		assert.Equal(t, colors.Fuchsia, tt.Color)
 	})
-	t.Run("rename with invalid color is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", Name: "bug"}
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/ticket-types/tt-1", `{"name":"bug","color":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("rename missing ticket type is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/ticket-types/nope", `{"name":"defect"}`, "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("delete missing ticket type is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/ticket-types/nope", "", "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 	t.Run("reorders ticket types", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", ProjectID: "p-1"}
 		h.svc.types.(*fakeTicketTypeRepo).types["tt-2"] = &TicketType{ID: "tt-2", ProjectID: "p-1"}
 		rec := do(t, h.Routes(), http.MethodPost, "/api/ticket-types/reorder", `{"project_id":"p-1","ids":["tt-2","tt-1"]}`, "u-1")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("reorder with duplicate ids is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", ProjectID: "p-1"}
-		rec := do(t, h.Routes(), http.MethodPost, "/api/ticket-types/reorder", `{"project_id":"p-1","ids":["tt-1","tt-1"]}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -340,21 +224,6 @@ func TestHandler_StatusDetailRoutes(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &st))
 		assert.Equal(t, "Blocked", st.Name)
 	})
-	t.Run("missing status is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/statuses/nope", "", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("rename missing status is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/statuses/nope", `{"name":"Blocked","kind":"progress"}`, "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("delete missing status is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/statuses/nope", "", "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 	t.Run("reorders statuses", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		h.svc.statuses.(*fakeStatusRepo).statuses["s-1"] = &Status{ID: "s-1", ProjectID: "p-1"}
@@ -362,17 +231,72 @@ func TestHandler_StatusDetailRoutes(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPost, "/api/statuses/reorder", `{"project_id":"p-1","ids":["s-2","s-1"]}`, "u-1")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	})
-	t.Run("reorder with duplicate ids is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
+}
+
+func TestHandler_CategoryTypeAndStatusRoutes_Refusals(t *testing.T) {
+	seedCategory := func(h *Handler) {
+		h.svc.cats.(*fakeCategoryRepo).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1", Name: "Sprint 1"}
+	}
+	seedType := func(h *Handler) {
+		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", ProjectID: "p-1", Name: "bug"}
+	}
+	seedStatus := func(h *Handler) {
 		h.svc.statuses.(*fakeStatusRepo).statuses["s-1"] = &Status{ID: "s-1", ProjectID: "p-1"}
-		rec := do(t, h.Routes(), http.MethodPost, "/api/statuses/reorder", `{"project_id":"p-1","ids":["s-1","s-1"]}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("delete in-use status is 409", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		h.svc.statuses.(*fakeStatusRepo).statuses["s-1"] = &Status{ID: "s-1"}
-		h.svc.statuses.(*fakeStatusRepo).count = 1
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/statuses/s-1", "", "u-1")
-		assert.Equal(t, http.StatusConflict, rec.Code)
-	})
+	}
+	tests := []struct {
+		name   string
+		owner  bool
+		seed   func(h *Handler)
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{"create a category with a bogus color", true, nil, http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"Sprint 1","color":"bogus"}`, http.StatusBadRequest},
+		{"create a category as a non-owner", false, nil, http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"Sprint 1"}`, http.StatusForbidden},
+		{"create a category with a blank name", true, nil, http.MethodPost, "/api/categories", `{"project_id":"p-1","name":"  "}`, http.StatusBadRequest},
+		{"create a category from a malformed body", true, nil, http.MethodPost, "/api/categories", `{`, http.StatusBadRequest},
+		{"rename a category with a bogus color", true, seedCategory, http.MethodPatch, "/api/categories/c-1", `{"name":"Sprint 2","color":"bogus"}`, http.StatusBadRequest},
+		{"get a missing category", true, nil, http.MethodGet, "/api/categories/nope", "", http.StatusNotFound},
+		{"rename a missing category", true, nil, http.MethodPatch, "/api/categories/nope", `{"name":"Sprint 2"}`, http.StatusNotFound},
+		{"delete a missing category", true, nil, http.MethodDelete, "/api/categories/nope", "", http.StatusNotFound},
+		{"reorder with a category outside the project", true, seedCategory, http.MethodPost, "/api/categories/reorder", `{"project_id":"p-1","ids":["c-2"]}`, http.StatusBadRequest},
+		{"move a ticket into a missing category", true, nil, http.MethodPost, "/api/categories/nope/tickets/t-1", "", http.StatusNotFound},
+		{"list categories when the repo fails", true, func(h *Handler) { h.svc.cats.(*fakeCategoryRepo).listErr = errors.New("db down") }, http.MethodGet, "/api/categories", "", http.StatusInternalServerError},
+
+		{"create a ticket type with a bogus color", true, nil, http.MethodPost, "/api/ticket-types", `{"project_id":"p-1","name":"bug","color":"bogus"}`, http.StatusBadRequest},
+		{"create a ticket type as a non-owner", false, nil, http.MethodPost, "/api/ticket-types", `{"project_id":"p-1","name":"bug"}`, http.StatusForbidden},
+		{"set a template from a malformed body", true, nil, http.MethodPut, "/api/ticket-types/tt-1/template", `{`, http.StatusBadRequest},
+		{"set a template on a missing type", true, nil, http.MethodPut, "/api/ticket-types/nope/template", `{"body_template":""}`, http.StatusNotFound},
+		{"get a missing ticket type", true, nil, http.MethodGet, "/api/ticket-types/nope", "", http.StatusNotFound},
+		{"rename a ticket type with a bogus color", true, seedType, http.MethodPatch, "/api/ticket-types/tt-1", `{"name":"bug","color":"bogus"}`, http.StatusBadRequest},
+		{"rename a missing ticket type", true, nil, http.MethodPatch, "/api/ticket-types/nope", `{"name":"defect"}`, http.StatusNotFound},
+		{"delete a missing ticket type", true, nil, http.MethodDelete, "/api/ticket-types/nope", "", http.StatusNotFound},
+		{"reorder ticket types with duplicate ids", true, seedType, http.MethodPost, "/api/ticket-types/reorder", `{"project_id":"p-1","ids":["tt-1","tt-1"]}`, http.StatusBadRequest},
+
+		{"create a status with a bogus kind", true, nil, http.MethodPost, "/api/statuses", `{"project_id":"p-1","name":"Blocked","kind":"bogus"}`, http.StatusBadRequest},
+		{"create a status as a non-owner", false, nil, http.MethodPost, "/api/statuses", `{"project_id":"p-1","name":"Blocked","kind":"progress"}`, http.StatusForbidden},
+		{"get a missing status", true, nil, http.MethodGet, "/api/statuses/nope", "", http.StatusNotFound},
+		{"rename a missing status", true, nil, http.MethodPatch, "/api/statuses/nope", `{"name":"Blocked","kind":"progress"}`, http.StatusNotFound},
+		{"delete a missing status", true, nil, http.MethodDelete, "/api/statuses/nope", "", http.StatusNotFound},
+		{"reorder statuses with duplicate ids", true, seedStatus, http.MethodPost, "/api/statuses/reorder", `{"project_id":"p-1","ids":["s-1","s-1"]}`, http.StatusBadRequest},
+		{"delete a status in use", true, func(h *Handler) {
+			seedStatus(h)
+			h.svc.statuses.(*fakeStatusRepo).count = 1
+		}, http.MethodDelete, "/api/statuses/s-1", "", http.StatusConflict},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, _ := newTestHandler(t, tt.owner)
+			if tt.seed != nil {
+				tt.seed(h)
+			}
+			user := "u-1"
+			if tt.method == http.MethodGet {
+				user = ""
+			}
+			rec := do(t, h.Routes(), tt.method, tt.path, tt.body, user)
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

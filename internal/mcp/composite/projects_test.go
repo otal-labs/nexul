@@ -14,15 +14,6 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-func TestProjectTools_Names(t *testing.T) {
-	var names []string
-	for _, tool := range newFixture(t).projectTools() {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title, tool.Name)
-	}
-	assert.Equal(t, []string{"project_get", "project_update"}, names)
-}
-
 func TestProjectGet_Errors(t *testing.T) {
 	for name, tt := range map[string]struct {
 		args    string

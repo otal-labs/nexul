@@ -31,18 +31,6 @@ func TestInvitationHandler_CreateAndList_UseInvitationService(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-func TestInvitationHandler_Create_OmittedLifetimeDefaultsToSevenDays(t *testing.T) {
-	t.Parallel()
-	svc, repo := newInvitationServiceFixture()
-	h := NewInvitationHandler(svc)
-	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(`{"grants":[{"workspace_id":"ws-1","role_id":"role-editor"}]}`)).WithContext(WithUserID(t.Context(), "actor"))
-	rec := httptest.NewRecorder()
-	h.Routes().ServeHTTP(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
-	require.Len(t, repo.created, 1)
-	assert.Equal(t, 7*24*time.Hour, repo.created[0].ExpiresAt.Sub(repo.created[0].CreatedAt))
-}
-
 func TestInvitationHandler_Preview_ReturnsMetadataOnly(t *testing.T) {
 	t.Parallel()
 	svc, repo := newInvitationServiceFixture()

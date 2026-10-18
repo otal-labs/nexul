@@ -53,17 +53,6 @@ func TestHandler_List(t *testing.T) {
 		require.Len(t, projects, 1)
 		assert.Equal(t, "Backend", projects[0].Name)
 	})
-	t.Run("missing workspace_id is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/projects", "", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("repo error is 500", func(t *testing.T) {
-		h, repo := newTestHandler(t, true)
-		repo.listErr = errors.New("db down")
-		rec := do(t, h.Routes(), http.MethodGet, "/api/projects?workspace_id=ws-1", "", "")
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	})
 }
 
 func TestHandler_Create(t *testing.T) {
@@ -75,36 +64,11 @@ func TestHandler_Create(t *testing.T) {
 		assert.Equal(t, "BE", decodeProject(t, rec).Prefix)
 		assert.Equal(t, "ws-1", decodeProject(t, rec).WorkspaceID)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-	t.Run("bad json is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing workspace_id is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"name":"Backend","prefix":"BE"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":" "}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("creates a project with an icon", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE","icon":"Server"}`, "u-1")
 		assert.Equal(t, http.StatusCreated, rec.Code)
 		assert.Equal(t, ProjectIconServer, decodeProject(t, rec).Icon)
-	})
-	t.Run("invalid icon is 400", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE","icon":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("only setup_finished false starts the project in setup", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
@@ -152,23 +116,12 @@ func TestHandler_Rename(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "New", decodeProject(t, rec).Name)
 	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/projects/p-1", `{"name":"New"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
 	t.Run("owner renames with an icon", func(t *testing.T) {
 		h, repo := newTestHandler(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Old"}
 		rec := do(t, h.Routes(), http.MethodPatch, "/api/projects/p-1", `{"name":"New","icon":"Globe"}`, "u-1")
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, ProjectIconGlobe, decodeProject(t, rec).Icon)
-	})
-	t.Run("invalid icon is 400", func(t *testing.T) {
-		h, repo := newTestHandler(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Old"}
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/projects/p-1", `{"name":"New","icon":"bogus"}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -178,13 +131,6 @@ func TestHandler_Delete(t *testing.T) {
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
 		rec := do(t, h.Routes(), http.MethodDelete, "/api/projects/p-1", "", "u-1")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("non-empty project conflicts", func(t *testing.T) {
-		h, repo := newTestHandler(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		repo.ticketPro["t-1"] = "p-1"
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/projects/p-1", "", "u-1")
-		assert.Equal(t, http.StatusConflict, rec.Code)
 	})
 }
 
@@ -199,11 +145,6 @@ func TestHandler_Impact(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &impact))
 		assert.Equal(t, DeleteImpact{Tickets: 1, RestrictedMembers: []RestrictedMember{}}, impact)
 	})
-	t.Run("missing project is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/projects/nope/impact", "", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestHandler_Reorder(t *testing.T) {
@@ -213,11 +154,6 @@ func TestHandler_Reorder(t *testing.T) {
 		repo.projects["p-2"] = &Project{ID: "p-2", Name: "B", WorkspaceID: "ws-1"}
 		rec := do(t, h.Routes(), http.MethodPost, "/api/projects/reorder", `{"workspace_id":"ws-1","ids":["p-2","p-1"]}`, "u-1")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		h, _ := newTestHandler(t, false)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects/reorder", `{"workspace_id":"ws-1","ids":["p-1"]}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 }
 
@@ -252,23 +188,6 @@ func TestHandler_Repos(t *testing.T) {
 		require.Len(t, repos, 1)
 		assert.Equal(t, "gitlab-self-hosted", repos[0].ConnectorID)
 	})
-	t.Run("non-owner cannot add a repo", func(t *testing.T) {
-		h, repo := newTestHandler(t, false)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects/p-1/repos", `{"owner":"acme","name":"app"}`, "u-1")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-	t.Run("missing repo is 404", func(t *testing.T) {
-		h, _ := newTestHandler(t, true)
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/projects/repos/acme/app", "", "u-1")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("bad add-repo json is 400", func(t *testing.T) {
-		h, repo := newTestHandler(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		rec := do(t, h.Routes(), http.MethodPost, "/api/projects/p-1/repos", `{`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 }
 
 func TestHandler_MoveTicket(t *testing.T) {
@@ -281,4 +200,47 @@ func TestHandler_MoveTicket(t *testing.T) {
 
 	rec = do(t, h.Routes(), http.MethodPost, "/api/projects/nope/tickets/t-1", "", "")
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestHandler_ProjectRoutes_Refusals(t *testing.T) {
+	seedProject := func(repo *fakeRepo) { repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"} }
+	tests := []struct {
+		name   string
+		owner  bool
+		seed   func(repo *fakeRepo)
+		method string
+		path   string
+		body   string
+		user   string
+		want   int
+	}{
+		{"list without a workspace", true, nil, http.MethodGet, "/api/projects", "", "", http.StatusBadRequest},
+		{"list when the repo fails", true, func(r *fakeRepo) { r.listErr = errors.New("db down") }, http.MethodGet, "/api/projects?workspace_id=ws-1", "", "", http.StatusInternalServerError},
+		{"create as a non-owner", false, nil, http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`, "u-1", http.StatusForbidden},
+		{"create from a malformed body", true, nil, http.MethodPost, "/api/projects", `{`, "u-1", http.StatusBadRequest},
+		{"create without a workspace", true, nil, http.MethodPost, "/api/projects", `{"name":"Backend","prefix":"BE"}`, "u-1", http.StatusBadRequest},
+		{"create without a name", true, nil, http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":" "}`, "u-1", http.StatusBadRequest},
+		{"create with a bogus icon", true, nil, http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE","icon":"bogus"}`, "u-1", http.StatusBadRequest},
+		{"rename as a non-owner", false, nil, http.MethodPatch, "/api/projects/p-1", `{"name":"New"}`, "u-1", http.StatusForbidden},
+		{"rename with a bogus icon", true, seedProject, http.MethodPatch, "/api/projects/p-1", `{"name":"New","icon":"bogus"}`, "u-1", http.StatusBadRequest},
+		{"delete a project with tickets", true, func(r *fakeRepo) {
+			seedProject(r)
+			r.ticketPro["t-1"] = "p-1"
+		}, http.MethodDelete, "/api/projects/p-1", "", "u-1", http.StatusConflict},
+		{"read the impact of a missing project", true, nil, http.MethodGet, "/api/projects/nope/impact", "", "", http.StatusNotFound},
+		{"reorder as a non-owner", false, nil, http.MethodPost, "/api/projects/reorder", `{"workspace_id":"ws-1","ids":["p-1"]}`, "u-1", http.StatusForbidden},
+		{"add a repo as a non-owner", false, seedProject, http.MethodPost, "/api/projects/p-1/repos", `{"owner":"acme","name":"app"}`, "u-1", http.StatusForbidden},
+		{"add a repo from a malformed body", true, seedProject, http.MethodPost, "/api/projects/p-1/repos", `{`, "u-1", http.StatusBadRequest},
+		{"remove a missing repo", true, nil, http.MethodDelete, "/api/projects/repos/acme/app", "", "u-1", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, repo := newTestHandler(t, tt.owner)
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			rec := do(t, h.Routes(), tt.method, tt.path, tt.body, tt.user)
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

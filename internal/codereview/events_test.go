@@ -129,66 +129,43 @@ func TestHandlePRReviewSubmitted(t *testing.T) {
 	})
 }
 
-func TestHandlePRMerged(t *testing.T) {
-	t.Run("marks the pr review merged", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		require.NoError(t, HandlePROpened(context.Background(), s, openedEvent(7)))
-		require.NoError(t, HandlePRMerged(context.Background(), s, openedEvent(7)))
+func TestHandlePRMergedAndClosed(t *testing.T) {
+	tests := []struct {
+		name   string
+		handle func(context.Context, *Service, eventbus.Event) error
+		want   Status
+	}{
+		{"merged", HandlePRMerged, StatusMerged},
+		{"closed", HandlePRClosed, StatusClosed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name+" moves the pr review", func(t *testing.T) {
+			s := newTestService(newFakeRepo(), newFakeBus())
+			require.NoError(t, HandlePROpened(context.Background(), s, openedEvent(7)))
+			require.NoError(t, tt.handle(context.Background(), s, openedEvent(7)))
 
-		rs, err := s.ListByPR(context.Background(), "acme/app", 7)
-		require.NoError(t, err)
-		require.Len(t, rs, 1)
-		assert.Equal(t, StatusMerged, rs[0].Status)
-	})
-	t.Run("unknown pr is a no-op", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		require.NoError(t, HandlePRMerged(context.Background(), s, openedEvent(999)))
-	})
-	t.Run("fatal on bad payload", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		err := HandlePRMerged(context.Background(), s, eventbus.Event{Payload: json.RawMessage("{")})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrFatal))
-	})
-	t.Run("retryable on repo error", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.listPRErr = errors.New("db down")
-		s := newTestService(repo, newFakeBus())
-		err := HandlePRMerged(context.Background(), s, openedEvent(7))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrRetryable))
-	})
-}
-
-func TestHandlePRClosed(t *testing.T) {
-	t.Run("unmerged close moves the review to closed", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		require.NoError(t, HandlePROpened(context.Background(), s, openedEvent(7)))
-		require.NoError(t, HandlePRClosed(context.Background(), s, openedEvent(7)))
-
-		rs, err := s.ListByPR(context.Background(), "acme/app", 7)
-		require.NoError(t, err)
-		require.Len(t, rs, 1)
-		assert.Equal(t, StatusClosed, rs[0].Status)
-	})
-	t.Run("unknown pr is a no-op", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		require.NoError(t, HandlePRClosed(context.Background(), s, openedEvent(999)))
-	})
-	t.Run("fatal on bad payload", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		err := HandlePRClosed(context.Background(), s, eventbus.Event{Payload: json.RawMessage("{")})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrFatal))
-	})
-	t.Run("retryable on repo error", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.listPRErr = errors.New("db down")
-		s := newTestService(repo, newFakeBus())
-		err := HandlePRClosed(context.Background(), s, openedEvent(7))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrRetryable))
-	})
+			rs, err := s.ListByPR(context.Background(), "acme/app", 7)
+			require.NoError(t, err)
+			require.Len(t, rs, 1)
+			assert.Equal(t, tt.want, rs[0].Status)
+		})
+		t.Run(tt.name+" for an unknown pr is a no-op", func(t *testing.T) {
+			s := newTestService(newFakeRepo(), newFakeBus())
+			require.NoError(t, tt.handle(context.Background(), s, openedEvent(999)))
+		})
+		t.Run(tt.name+" is fatal on a bad payload", func(t *testing.T) {
+			s := newTestService(newFakeRepo(), newFakeBus())
+			err := tt.handle(context.Background(), s, eventbus.Event{Payload: json.RawMessage("{")})
+			require.ErrorIs(t, err, apperrs.ErrFatal)
+		})
+		t.Run(tt.name+" is retryable on a repo error", func(t *testing.T) {
+			repo := newFakeRepo()
+			repo.listPRErr = errors.New("db down")
+			s := newTestService(repo, newFakeBus())
+			err := tt.handle(context.Background(), s, openedEvent(7))
+			require.ErrorIs(t, err, apperrs.ErrRetryable)
+		})
+	}
 }
 
 func itoa(n int) string {

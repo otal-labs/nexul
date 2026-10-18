@@ -14,24 +14,6 @@ import (
 )
 
 func TestSetType(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetType(context.Background(), "", "t-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty type id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetType(context.Background(), "t-1", "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetType(context.Background(), "nope", "t-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("sets the type in place", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -45,24 +27,6 @@ func TestSetType(t *testing.T) {
 }
 
 func TestAddLabel(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.AddLabel(context.Background(), "", "bug")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty label is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.AddLabel(context.Background(), "t-1", "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.AddLabel(context.Background(), "nope", "bug")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("adds a label", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -88,12 +52,6 @@ func TestRemoveLabel(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, got.Labels, "bug")
 		assert.Contains(t, got.Labels, "urgent")
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.RemoveLabel(context.Background(), "nope", "bug")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
 }
 
@@ -124,30 +82,6 @@ func TestListAllLabels(t *testing.T) {
 }
 
 func TestSetLabelColor(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetLabelColor(context.Background(), "  ", "bug", colors.Cyan)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty label is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetLabelColor(context.Background(), "p-1", "  ", colors.Cyan)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("invalid color is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetLabelColor(context.Background(), "p-1", "bug", colors.Color("magenta"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty color is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetLabelColor(context.Background(), "p-1", "bug", colors.Color(""))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("sets the color for a never-before-seen label", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
 		got, err := s.SetLabelColor(context.Background(), "p-1", "bug", colors.Cyan)
@@ -164,23 +98,9 @@ func TestSetLabelColor(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, colors.Emerald, got.Color)
 	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.labelColorErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.SetLabelColor(context.Background(), "p-1", "bug", colors.Cyan)
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "db down")
-	})
 }
 
 func TestLabelColors(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.LabelColors(context.Background(), " ", []string{"bug"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("returns colors for the requested labels, keyed by label", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -201,14 +121,6 @@ func TestLabelColors(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.labelColorErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.LabelColors(context.Background(), "p-1", []string{"bug"})
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "db down")
-	})
 }
 
 func TestUpdateStatus_ConfiguredOnly(t *testing.T) {
@@ -224,40 +136,49 @@ func TestUpdateStatus_ConfiguredOnly(t *testing.T) {
 	})
 }
 
-func TestLabelErrorPaths(t *testing.T) {
-	t.Run("empty label is invalid on remove", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.RemoveLabel(context.Background(), "t-1", "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("list labels for missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListLabels(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("empty id on list labels is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListLabels(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("remove label for missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.RemoveLabel(context.Background(), "nope", "bug")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("add label repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.statusErr = errors.New("db down")
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "t", "", "", "")
-		require.NoError(t, err)
-		_ = created
-		// Force a repo error via a broken status store on a subsequent op.
-		_, err = s.SetType(context.Background(), created.ID, "bug")
-		require.NoError(t, err)
-	})
+func TestLabelRefusals(t *testing.T) {
+	ctx := context.Background()
+	errDown := errors.New("db down")
+	tests := []struct {
+		name string
+		seed func(repo *fakeRepo)
+		call func(s *Service) error
+		want error
+	}{
+		{"set a type without a ticket", nil, func(s *Service) error { _, err := s.SetType(ctx, "", "t-1"); return err }, apperrs.ErrInvalid},
+		{"set a blank type", nil, func(s *Service) error { _, err := s.SetType(ctx, "t-1", "  "); return err }, apperrs.ErrInvalid},
+		{"set a type on a missing ticket", nil, func(s *Service) error { _, err := s.SetType(ctx, "nope", "t-1"); return err }, apperrs.ErrNotFound},
+		{"add a label without a ticket", nil, func(s *Service) error { _, err := s.AddLabel(ctx, "", "bug"); return err }, apperrs.ErrInvalid},
+		{"add a blank label", nil, func(s *Service) error { _, err := s.AddLabel(ctx, "t-1", "  "); return err }, apperrs.ErrInvalid},
+		{"add a label to a missing ticket", nil, func(s *Service) error { _, err := s.AddLabel(ctx, "nope", "bug"); return err }, apperrs.ErrNotFound},
+		{"remove a blank label", nil, func(s *Service) error { _, err := s.RemoveLabel(ctx, "t-1", "  "); return err }, apperrs.ErrInvalid},
+		{"remove a label from a missing ticket", nil, func(s *Service) error { _, err := s.RemoveLabel(ctx, "nope", "bug"); return err }, apperrs.ErrNotFound},
+		{"list the labels of a blank ticket", nil, func(s *Service) error { _, err := s.ListLabels(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"list the labels of a missing ticket", nil, func(s *Service) error { _, err := s.ListLabels(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"color a label without a project", nil, func(s *Service) error { _, err := s.SetLabelColor(ctx, "  ", "bug", colors.Cyan); return err }, apperrs.ErrInvalid},
+		{"color a blank label", nil, func(s *Service) error { _, err := s.SetLabelColor(ctx, "p-1", "  ", colors.Cyan); return err }, apperrs.ErrInvalid},
+		{"color a label with a color that is not one", nil, func(s *Service) error {
+			_, err := s.SetLabelColor(ctx, "p-1", "bug", colors.Color("magenta"))
+			return err
+		}, apperrs.ErrInvalid},
+		{"color a label with no color", nil, func(s *Service) error { _, err := s.SetLabelColor(ctx, "p-1", "bug", colors.Color("")); return err }, apperrs.ErrInvalid},
+		{"color a label when the repo fails", func(r *fakeRepo) { r.labelColorErr = errDown }, func(s *Service) error {
+			_, err := s.SetLabelColor(ctx, "p-1", "bug", colors.Cyan)
+			return err
+		}, errDown},
+		{"read label colors without a project", nil, func(s *Service) error { _, err := s.LabelColors(ctx, " ", []string{"bug"}); return err }, apperrs.ErrInvalid},
+		{"read label colors when the repo fails", func(r *fakeRepo) { r.labelColorErr = errDown }, func(s *Service) error {
+			_, err := s.LabelColors(ctx, "p-1", []string{"bug"})
+			return err
+		}, errDown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			require.ErrorIs(t, tt.call(newTestService(repo)), tt.want)
+		})
+	}
 }

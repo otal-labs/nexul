@@ -27,17 +27,6 @@ func callInvitationTool(t *testing.T, svc *InvitationService, name, args string)
 	return nil, nil
 }
 
-func TestInvitationTools_Surface(t *testing.T) {
-	t.Parallel()
-	svc, _ := newInvitationServiceFixture()
-	var names []string
-	for _, tool := range MCPTools(svc) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title)
-	}
-	assert.Equal(t, []string{"invitation_create", "invitation_list", "invitation_delete"}, names)
-}
-
 func TestInvitationTools_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	forbidden := fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)

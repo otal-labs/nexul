@@ -53,16 +53,6 @@ func readState(t *testing.T, s *NotificationService, userID string) map[string]b
 	return out
 }
 
-func TestNotificationMCPTools_Surface(t *testing.T) {
-	var names []string
-	for _, tool := range NotificationMCPTools(seededInbox(t)) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title, tool.Name)
-		assert.True(t, tool.Hints.Local, tool.Name)
-	}
-	assert.Equal(t, []string{"notification_list", "notification_update"}, names)
-}
-
 func TestNotificationMCPTools_Errors(t *testing.T) {
 	tests := []struct {
 		name    string

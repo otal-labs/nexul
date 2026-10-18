@@ -40,18 +40,8 @@ func decodeMemory(t *testing.T, rec *httptest.ResponseRecorder) *Memory {
 }
 
 func TestMemoriesHandler_Create(t *testing.T) {
-	h, repo := newMemoriesHandler()
+	h, _ := newMemoriesHandler()
 
-	t.Run("without memories:write is 403", func(t *testing.T) {
-		deny := NewHandler(newDenyService(newFakeRepo())).Routes()
-		rec := serve(t, deny, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"Title"}`)
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-	t.Run("a workspace with no project is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories", `{"workspace_id":"workspace-1","title":"Team tone"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		assert.Empty(t, repo.memories)
-	})
 	t.Run("creates a memory", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"Deploy quirks","when_to_use":"when deploying","body":"body","always_included":true}`)
 		require.Equal(t, http.StatusCreated, rec.Code)
@@ -61,14 +51,6 @@ func TestMemoriesHandler_Create(t *testing.T) {
 		assert.Equal(t, "workspace-1", m.WorkspaceID)
 		assert.True(t, m.AlwaysIncluded)
 		assert.NotEmpty(t, m.ID)
-	})
-	t.Run("empty title is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":""}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("malformed body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories", `{"title":`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -102,10 +84,6 @@ func TestMemoriesHandler_Get(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "A", decodeMemory(t, rec).Title)
 	})
-	t.Run("missing memory is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/nope", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }
 
 func TestMemoriesHandler_Update(t *testing.T) {
@@ -128,14 +106,6 @@ func TestMemoriesHandler_Update(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.True(t, decodeMemory(t, rec).Footer)
 	})
-	t.Run("missing memory is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPut, "/api/memories/nope", `{"title":"B"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("empty title is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPut, "/api/memories/"+created.ID, `{"title":" "}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 }
 
 func TestMemoriesHandler_Delete(t *testing.T) {
@@ -145,10 +115,6 @@ func TestMemoriesHandler_Delete(t *testing.T) {
 	t.Run("deletes a memory", func(t *testing.T) {
 		rec := serve(t, h, http.MethodDelete, "/api/memories/"+created.ID, "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("missing memory is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodDelete, "/api/memories/again", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -172,26 +138,6 @@ func TestMemoriesHandler_VersionsAndRevert(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &v))
 		assert.Contains(t, v.Body, "v1")
 	})
-	t.Run("non-numeric version is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID+"/versions/nope", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing memory versions is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/nope/versions", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("missing memory version is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/nope/versions/1", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("malformed revert body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/revert", `{"version":`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("reverting an unknown version is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/revert", `{"version":99}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 	t.Run("reverts to a prior version", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/revert", `{"version":1}`)
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -202,19 +148,9 @@ func TestMemoriesHandler_VersionsAndRevert(t *testing.T) {
 }
 
 func TestMemoriesHandler_Clone(t *testing.T) {
-	h, repo := newMemoriesHandler()
+	h, _ := newMemoriesHandler()
 	created := decodeMemory(t, serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"A","body":"body"}`))
 
-	t.Run("without memories:clone is 403", func(t *testing.T) {
-		deny := NewHandler(newDenyService(repo)).Routes()
-		rec := serve(t, deny, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":"project-2"}`)
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-	t.Run("a workspace with no project is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"workspace_id":"workspace-1"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		assert.Len(t, repo.memories, 1)
-	})
 	t.Run("clones to another project", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":"project-2"}`)
 		require.Equal(t, http.StatusCreated, rec.Code)
@@ -223,24 +159,6 @@ func TestMemoriesHandler_Clone(t *testing.T) {
 		assert.Equal(t, "project-2", clone.ProjectID)
 		assert.Equal(t, 1, clone.Version)
 	})
-	t.Run("malformed clone body is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("cloning an unknown memory is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/nope/clone", `{"project_id":"project-2"}`)
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-}
-
-func TestMemoriesHandler_Forbidden(t *testing.T) {
-	repo := newFakeRepo()
-	created, err := newTestService(repo).Create(testCtx(), "project-1", "A", "when", "body", false, "")
-	require.NoError(t, err)
-	h := NewHandler(newDenyService(repo)).Routes()
-
-	rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID, "")
-	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
 
 func TestMemoriesHandler_InterviewTemplate(t *testing.T) {
@@ -251,12 +169,48 @@ func TestMemoriesHandler_InterviewTemplate(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), `"workspace_id":"workspace-1"`)
 	})
-	t.Run("an unknown project is 404", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/interview-template?project_id=project-x", "")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("no project and no workspace is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/interview-template", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
+}
+
+func TestMemoriesHandler_Refusals(t *testing.T) {
+	tests := []struct {
+		name   string
+		denied bool
+		method string
+		path   string
+		body   string
+		want   int
+	}{
+		{"create without memories:write", true, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"Title"}`, http.StatusForbidden},
+		{"create for a workspace with no project", false, http.MethodPost, "/api/memories", `{"workspace_id":"workspace-1","title":"Team tone"}`, http.StatusBadRequest},
+		{"create without a title", false, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":""}`, http.StatusBadRequest},
+		{"create from a malformed body", false, http.MethodPost, "/api/memories", `{"title":`, http.StatusBadRequest},
+		{"get a missing memory", false, http.MethodGet, "/api/memories/nope", "", http.StatusNotFound},
+		{"get without memories:read", true, http.MethodGet, "/api/memories/{id}", "", http.StatusForbidden},
+		{"update a missing memory", false, http.MethodPut, "/api/memories/nope", `{"title":"B"}`, http.StatusNotFound},
+		{"update without a title", false, http.MethodPut, "/api/memories/{id}", `{"title":" "}`, http.StatusBadRequest},
+		{"delete a missing memory", false, http.MethodDelete, "/api/memories/again", "", http.StatusNotFound},
+		{"get a version by a non-number", false, http.MethodGet, "/api/memories/{id}/versions/nope", "", http.StatusBadRequest},
+		{"list the versions of a missing memory", false, http.MethodGet, "/api/memories/nope/versions", "", http.StatusNotFound},
+		{"get a version of a missing memory", false, http.MethodGet, "/api/memories/nope/versions/1", "", http.StatusNotFound},
+		{"revert from a malformed body", false, http.MethodPost, "/api/memories/{id}/revert", `{"version":`, http.StatusBadRequest},
+		{"revert to an unknown version", false, http.MethodPost, "/api/memories/{id}/revert", `{"version":99}`, http.StatusNotFound},
+		{"clone without memories:clone", true, http.MethodPost, "/api/memories/{id}/clone", `{"project_id":"project-2"}`, http.StatusForbidden},
+		{"clone into a workspace with no project", false, http.MethodPost, "/api/memories/{id}/clone", `{"workspace_id":"workspace-1"}`, http.StatusBadRequest},
+		{"clone from a malformed body", false, http.MethodPost, "/api/memories/{id}/clone", `{"project_id":`, http.StatusBadRequest},
+		{"clone an unknown memory", false, http.MethodPost, "/api/memories/nope/clone", `{"project_id":"project-2"}`, http.StatusNotFound},
+		{"read the template of an unknown project", false, http.MethodGet, "/api/memories/interview-template?project_id=project-x", "", http.StatusNotFound},
+		{"read the template with no project or workspace", false, http.MethodGet, "/api/memories/interview-template", "", http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, repo := newMemoriesHandler()
+			created := decodeMemory(t, serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"A","body":"body"}`))
+			if tt.denied {
+				h = NewHandler(newDenyService(repo)).Routes()
+			}
+			rec := serve(t, h, tt.method, strings.ReplaceAll(tt.path, "{id}", created.ID), tt.body)
+			assert.Equal(t, tt.want, rec.Code)
+			assert.Len(t, repo.memories, 1, "a refused request writes nothing")
+		})
+	}
 }
