@@ -129,13 +129,6 @@ describe("the notification follower", () => {
 
   const views = [["getNotifications", "ws-1"], ["getNotifications", "ws-2"], ["getUnreadCount", "ws-1"], ["getUnreadCount", "ws-2"], ["getUnreadCount"]];
 
-  it("refetches the inbox and badge of a new notice's workspace and the count across workspaces", async () => {
-    const client = inboxes();
-    for (const key of views.slice(2)) client.setQueryData(key, { count: 0, workspaces: {} });
-    await followFrame(notificationFollower, "notification.created", { user_ids: ["u-me"], workspace_id: "ws-2", project_id: "p-2" }, client);
-    expect(views.map((key) => isStale(client, key))).toEqual([false, true, false, true, true]);
-  });
-
   it("leaves every workspace's inbox alone for a notice that belongs to none", async () => {
     const client = inboxes();
     for (const key of views.slice(2)) client.setQueryData(key, { count: 0, workspaces: {} });

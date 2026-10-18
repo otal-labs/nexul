@@ -1361,6 +1361,10 @@ Rules:
 
 - **Vitest** (v8 coverage provider) + **React Testing Library** +
   **@testing-library/user-event**. Config in `web/vitest.config.ts`.
+- Every file runs in jsdom, which is most of a small test's cost. A test that
+  touches no DOM, storage or `window` (models, utils, followers, pure stores)
+  starts its file with `// @vitest-environment node`; `src/test/setup.ts`
+  skips its DOM setup there.
 
 ### Query priority (RTL)
 

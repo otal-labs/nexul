@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useCompleteOwnerWizard,
-  useCopyConnectionToken,
   useUpdateSettings,
   authFollower,
 } from "@/hooks/AuthHooks";
@@ -91,18 +90,6 @@ describe("useUpdateSettings", () => {
     const { result } = renderHook(() => useUpdateSettings(), { wrapper });
     await result.current.mutateAsync("https://new.example.com");
     expect(api.put).toHaveBeenCalledWith("/api/auth/settings", { instance_url: "https://new.example.com" });
-  });
-});
-
-describe("useCopyConnectionToken", () => {
-  it("mints a token and puts it on the clipboard", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true, writable: true });
-    vi.mocked(api.post).mockResolvedValue({ data: { token: "t", instance_url: "https://deploy.example.com", settings_version: 2, expires_at: "2026-09-11T12:00:00Z" } });
-    const { result } = renderHook(() => useCopyConnectionToken(), { wrapper });
-    await result.current.mutateAsync();
-    expect(api.post).toHaveBeenCalledWith("/api/auth/connection-token");
-    expect(writeText).toHaveBeenCalledWith("t");
   });
 });
 

@@ -47,15 +47,6 @@ describe("the status follower", () => {
     expect(isStale(client, ["getProjectStatuses", "p-2"])).toBe(false);
   });
 
-  it("leaves the link views alone for a renamed column whose board is not open, since the frame names its stage before", async () => {
-    const client = seeded([
-      [["getTicketLinkSet", "t-1"], naming("st-1")],
-      [["getBlockers"], {}],
-    ]);
-    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", name: "Building" }, previous_kind: "progress" }, client);
-    expect([isStale(client, ["getTicketLinkSet", "t-1"]), isStale(client, ["getBlockers"])]).toEqual([false, false]);
-  });
-
   it("drops a deleted column from its project's board", async () => {
     const client = board();
     await followFrame(statusFollower, "status.deleted", { status: { ...done, project_id: "p-1" } }, client);

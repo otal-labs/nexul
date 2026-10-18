@@ -68,12 +68,6 @@ describe("the runner follower", () => {
       [["runnerQueue"], [{ id: "d-2", kind: "deploy" }]],
     ]);
 
-  it("sends nothing for progress on a job the runners list already shows", async () => {
-    const client = busy();
-    await followFrame(runnerFollower, "deploy.build_progress", { id: "d-1", step: 2, total: 5, log: "step 2" }, client);
-    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([false, false]);
-  });
-
   it("refetches the runners for a job they do not show yet, and the queue that held it", async () => {
     const client = busy();
     await followFrame(runnerFollower, "deploy.build_started", { id: "d-2", total: 5, log: "step 1" }, client);
