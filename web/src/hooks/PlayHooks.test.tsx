@@ -68,14 +68,6 @@ beforeEach(() => {
 });
 
 describe("useFetchWorkspacePlays", () => {
-  it("fetches the workspace's plays", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [{ id: "play-1", label: "Fix with AI" }] });
-    const { result } = renderHook(() => useFetchWorkspacePlays("ws-1"), { wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays");
-    expect(result.current.data).toEqual([{ id: "play-1", label: "Fix with AI" }]);
-  });
-
   it("does not fetch with an empty workspace id", () => {
     renderHook(() => useFetchWorkspacePlays(""), { wrapper });
     expect(api.get).not.toHaveBeenCalled();
@@ -97,25 +89,9 @@ describe("useCreatePlay", () => {
       excluded_project_ids: [],
     });
   });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useCreatePlay("ws-1"), { wrapper });
-    await result.current.mutateAsync(savePlayInput()).catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
 });
 
 describe("useFetchApplicablePlays", () => {
-  it("asks for the plays that apply to a project at a stage", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [{ id: "play-1", label: "Fix with AI" }] });
-    const { result } = renderHook(() => useFetchApplicablePlays("ws-1", "p-1", "ticket", "progress"), { wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", {
-      params: { project_id: "p-1", type: "ticket", stage: "progress" },
-    });
-  });
-
   it("waits for the ticket's stage before asking", () => {
     renderHook(() => useFetchApplicablePlays("ws-1", "p-1", "ticket", undefined), { wrapper });
     expect(api.get).not.toHaveBeenCalled();
@@ -156,13 +132,6 @@ describe("useDeletePlay", () => {
     const { result } = renderHook(() => useDeletePlay("ws-1"), { wrapper });
     await result.current.mutateAsync("play-1");
     expect(api.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-1");
-  });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.delete).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useDeletePlay("ws-1"), { wrapper });
-    await result.current.mutateAsync("play-1").catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

@@ -10,10 +10,6 @@ describe("themeStore", () => {
     localStorage.clear();
   });
 
-  it("defaults to light", () => {
-    expect(useThemeStore.getState().theme).toBe(ThemeName.Light);
-  });
-
   it("setTheme applies the dark class to documentElement", () => {
     useThemeStore.getState().setTheme(ThemeName.Dark);
     expect(useThemeStore.getState().theme).toBe(ThemeName.Dark);

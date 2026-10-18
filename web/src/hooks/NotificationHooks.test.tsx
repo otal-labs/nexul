@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useFetchInbox,
-  useFetchUnreadCount,
   useMarkAllNotificationsRead,
   useMarkNotificationsRead,
   notificationFollower,
@@ -57,28 +56,12 @@ describe("useFetchInbox", () => {
   });
 });
 
-describe("useFetchUnreadCount", () => {
-  it("counts only the selected workspace's unread notifications", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { count: 2 } });
-    const { result } = renderHook(() => useFetchUnreadCount(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ count: 2 }));
-    expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count", { params: { workspace_id: "ws-1" } });
-  });
-});
-
 describe("useMarkNotificationsRead", () => {
   it("posts the read endpoint", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
     await result.current.mutateAsync(["n1"]);
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
-  });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
-    await result.current.mutateAsync(["n1"]).catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

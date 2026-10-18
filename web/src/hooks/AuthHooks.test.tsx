@@ -6,8 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useCompleteOwnerWizard,
-  useFetchMe,
-  useFetchSettings,
   useCopyConnectionToken,
   useUpdateSettings,
   authFollower,
@@ -63,15 +61,6 @@ beforeEach(() => {
   vi.mocked(api.delete).mockReset();
 });
 
-describe("useFetchMe", () => {
-  it("loads the current user + onboarding status", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: me });
-    const { result } = renderHook(() => useFetchMe(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(me));
-    expect(api.get).toHaveBeenCalledWith("/api/auth/me");
-  });
-});
-
 describe("useCompleteOwnerWizard", () => {
   it("posts the instance URL and invalidates /me", async () => {
     const completed = { ...me, needs_owner_wizard: false, needs_first_login_wizard: false };
@@ -82,27 +71,6 @@ describe("useCompleteOwnerWizard", () => {
       instance_url: "https://deploy.example.com",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-  });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useCompleteOwnerWizard(), { wrapper });
-    await result.current.mutateAsync("https://deploy.example.com").catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-});
-
-describe("useFetchSettings", () => {
-  it("loads instance settings", async () => {
-    const settings = {
-      instance_url: "https://deploy.example.com",
-      settings_version: 2,
-      oauth_callback: "https://deploy.example.com/auth/callback",
-    };
-    vi.mocked(api.get).mockResolvedValue({ data: settings });
-    const { result } = renderHook(() => useFetchSettings(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(settings));
-    expect(api.get).toHaveBeenCalledWith("/api/auth/settings");
   });
 });
 

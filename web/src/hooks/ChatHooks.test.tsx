@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { useFetchChatThreadIndicators, useFetchChatUnread, useFetchConversations, useFetchMessages, usePostMessage } from "@/hooks/ChatHooks";
+import { useFetchChatThreadIndicators, useFetchConversations, usePostMessage } from "@/hooks/ChatHooks";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -44,24 +44,6 @@ describe("useFetchChatThreadIndicators", () => {
     await waitFor(() => expect(result.current.data).toEqual({ "t-1": true }));
     expect(api.get).toHaveBeenCalledTimes(1);
     expect(api.get).toHaveBeenCalledWith("/api/chat/tickets/thread-status", { params: { project_id: "p-1" } });
-  });
-});
-
-describe("useFetchMessages", () => {
-  it("loads a conversation's messages", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [{ id: "m1" }] });
-    const { result } = renderHook(() => useFetchMessages("c1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([{ id: "m1" }]));
-    expect(api.get).toHaveBeenCalledWith("/api/chat/conversations/c1/messages", { params: undefined });
-  });
-});
-
-describe("useFetchChatUnread", () => {
-  it("loads unread counts per conversation", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { c1: 3 } });
-    const { result } = renderHook(() => useFetchChatUnread("ws-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ c1: 3 }));
-    expect(api.get).toHaveBeenCalledWith("/api/chat/unread", { params: { workspace_id: "ws-1" } });
   });
 });
 

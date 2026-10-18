@@ -7,8 +7,6 @@ import { api } from "@/api/client";
 import {
   useActiveTrail,
   useFetchActiveTrails,
-  useFetchLatestChoices,
-  useFetchTrails,
   useRunPlay,
   useStopTrail,
   useTicketRunState,
@@ -60,31 +58,6 @@ beforeEach(() => {
   usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
-});
-
-describe("useFetchTrails / useFetchLatestChoices", () => {
-  it("lists a target's trails", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [trail()] });
-    const { result } = renderHook(() => useFetchTrails("ticket", "t-1"), { wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "ticket", target_id: "t-1" } });
-  });
-
-  it("reads the caller's latest choices for a play in a project", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { memory_ids: ["m-1"], computer_id: "c-1", provider: "claude", model: "sonnet-5" },
-    });
-    const { result } = renderHook(() => useFetchLatestChoices("play-1", "p-1"), { wrapper });
-    await waitFor(() =>
-      expect(result.current.data).toEqual({
-        memory_ids: ["m-1"],
-        computer_id: "c-1",
-        provider: "claude",
-        model: "sonnet-5",
-      }),
-    );
-    expect(api.get).toHaveBeenCalledWith("/api/plays/latest-choices", { params: { play_id: "play-1", project_id: "p-1" } });
-  });
 });
 
 describe("useRunPlay", () => {

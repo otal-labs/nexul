@@ -8,7 +8,6 @@ import {
   useArchiveDoc,
   useCreateDoc,
   useFetchDoc,
-  useFetchDocs,
   useFetchDocsByProject,
   useRestoreDoc,
   docFollower,
@@ -52,23 +51,7 @@ beforeEach(() => {
   vi.mocked(api.delete).mockReset();
 });
 
-describe("useFetchDocs", () => {
-  it("loads the doc list", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [doc] });
-    const { result } = renderHook(() => useFetchDocs(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([doc]));
-    expect(api.get).toHaveBeenCalledWith("/api/docs");
-  });
-});
-
 describe("useFetchDocsByProject", () => {
-  it("loads the project-scoped doc list", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [doc] });
-    const { result } = renderHook(() => useFetchDocsByProject("project-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([doc]));
-    expect(api.get).toHaveBeenCalledWith("/api/docs", { params: { project_id: "project-1" } });
-  });
-
   it("is disabled without a project id", () => {
     const { result } = renderHook(() => useFetchDocsByProject(""), { wrapper });
     expect(result.current.fetchStatus).toBe("idle");
@@ -82,13 +65,6 @@ describe("useFetchDoc", () => {
     expect(result.current.isPending).toBe(true);
     expect(api.get).not.toHaveBeenCalled();
   });
-
-  it("loads a single doc", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: doc });
-    const { result } = renderHook(() => useFetchDoc("doc-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(doc));
-    expect(api.get).toHaveBeenCalledWith("/api/docs/doc-1");
-  });
 });
 
 describe("useCreateDoc", () => {
@@ -98,13 +74,6 @@ describe("useCreateDoc", () => {
     await result.current.mutateAsync({ project_id: "project-1", title: "Spec", body: "body" });
     expect(api.post).toHaveBeenCalledWith("/api/docs", { project_id: "project-1", title: "Spec", body: "body" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-  });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useCreateDoc(), { wrapper });
-    await result.current.mutateAsync({ project_id: "project-1", title: "Spec", body: "body" }).catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

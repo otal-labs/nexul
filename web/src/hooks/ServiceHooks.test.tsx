@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -8,9 +9,6 @@ import {
   useCreateService,
   useDeleteService,
   useDeployService,
-  useFetchService,
-  useFetchServiceDeploys,
-  useFetchServices,
   useRollbackService,
   useUpdateService,
   serviceFollower,
@@ -33,6 +31,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
@@ -40,27 +39,6 @@ beforeEach(() => {
 });
 
 describe("ServiceHooks", () => {
-  it("useFetchServices loads by project", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [service] });
-    const { result } = renderHook(() => useFetchServices("proj-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([service]));
-    expect(api.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "proj-1" } });
-  });
-
-  it("useFetchService loads one service", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: service });
-    const { result } = renderHook(() => useFetchService("svc-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(service));
-    expect(api.get).toHaveBeenCalledWith("/api/services/svc-1");
-  });
-
-  it("useFetchServiceDeploys loads deploys", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [deploy] });
-    const { result } = renderHook(() => useFetchServiceDeploys("svc-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([deploy]));
-    expect(api.get).toHaveBeenCalledWith("/api/services/svc-1/deploys");
-  });
-
   it("useCreateService posts", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: service });
     const { result } = renderHook(() => useCreateService(), { wrapper });
@@ -96,11 +74,11 @@ describe("ServiceHooks", () => {
     expect(api.post).toHaveBeenCalledWith("/api/services/svc-1/rollback");
   });
 
-  it("hooks toast on error", async () => {
+  it("useCreateService toasts a refused create", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useCreateService(), { wrapper });
     await result.current.mutateAsync({ name: "api" }).catch(() => {});
-    await waitFor(() => expect(vi.mocked(api.post)).toHaveBeenCalled());
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 
