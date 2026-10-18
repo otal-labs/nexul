@@ -77,7 +77,7 @@ func TestStackMoment_QueuesOnTheComputerWhoeverPickedItRunsOn(t *testing.T) {
 	assert.Equal(t, []any{alice, plays.TrailStarting, project}, []any{trails[0].StarterID, trails[0].State, trails[0].ProjectID})
 	assert.Equal(t, "c-1", r.LastChoice().ComputerID, "it starts on the computer the auto play names")
 	assert.Equal(t, plays.QueueStarted, r.stackQueue(t, "st-1")[0].Status)
-	blocks := strings.Join(r.LastPlayBlocks(), "\n")
+	blocks := strings.Join(r.LastPlayBlocks(t.Context()), "\n")
 	assert.Contains(t, blocks, `Stack "acme-web" (stack id st-1)`)
 	assert.Contains(t, blocks, "Service: api. Outage id o-1")
 }
@@ -298,7 +298,7 @@ func TestStackMoment_ErrorRateCrossedQueuesARunThatNamesOnlyTheStack(t *testing.
 	assert.Equal(t, []any{plays.QueueQueued, alice, plays.RunOnComputer, "c-1", "", "", plays.MomentStackErrorRateCrossed, project},
 		[]any{it.Status, it.PersonID, it.RunOn, it.ComputerID, it.Service, it.OutageID, it.Moment, it.ProjectID})
 	r.dispatch(t)
-	blocks := strings.Join(r.LastPlayBlocks(), "\n")
+	blocks := strings.Join(r.LastPlayBlocks(t.Context()), "\n")
 	assert.Contains(t, blocks, `Stack "acme-web" (stack id st-1)`)
 	assert.NotContains(t, blocks, "Service:", "an error rate belongs to the stack, not to a service")
 }

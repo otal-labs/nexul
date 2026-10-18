@@ -51,13 +51,13 @@ func TestAppendCappedLog_AlreadyAtCap_DiscardsChunk(t *testing.T) {
 func TestRunsService_ListByAutomation_NoPermission_ReturnsForbidden(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil))
 	_, err := svc.ListByAutomation(context.Background(), "u1", "a1", 10)
-	require.Error(t, err)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
 func TestRunsService_ListByAutomation_EmptyActor_ReturnsUnauthorized(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
 	_, err := svc.ListByAutomation(context.Background(), "", "a1", 10)
-	require.Error(t, err)
+	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
 func TestRunsService_ListByAutomation_ReturnsOnlyMatchingAutomation(t *testing.T) {
@@ -75,13 +75,13 @@ func TestRunsService_ListByAutomation_ReturnsOnlyMatchingAutomation(t *testing.T
 func TestRunsService_Get_NoPermission_ReturnsForbidden(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil))
 	_, err := svc.Get(context.Background(), "u1", "a1", "r1")
-	require.Error(t, err)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
 func TestRunsService_Get_UnknownRun_ReturnsNotFound(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
 	_, err := svc.Get(context.Background(), "u1", "a1", "missing")
-	require.Error(t, err)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestRunsService_Get_WrongAutomation_ReturnsNotFound(t *testing.T) {

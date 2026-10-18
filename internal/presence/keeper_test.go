@@ -103,6 +103,8 @@ func (s *sessionsFunc) list(context.Context, string) ([]pairing.Computer, error)
 	return append([]pairing.Computer(nil), s.computers...), nil
 }
 
+const testLinger = 20 * time.Millisecond
+
 func newTestKeeper(sessions *sessionsFunc, t3 *fakeT3) *Keeper {
 	return New(Config{Sessions: sessions.list, Harnesses: harnesstest.Registry(&harnesstest.Client{HoldFn: t3.hold}), Linger: 20 * time.Millisecond})
 }
@@ -128,66 +130,80 @@ func TestKeeper_ConnectsOnFirstBrowserSocket(t *testing.T) {
 }
 
 func TestKeeper_LastDisconnectClosesAfterLinger(t *testing.T) {
-	t.Parallel()
-	sessions := &sessionsFunc{}
-	sessions.set(computer("c1"))
-	t3 := newFakeT3()
-	k := newTestKeeper(sessions, t3)
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		k := newTestKeeper(sessions, t3)
 
-	k.Connected("u1")
-	k.Connected("u1") // second tab
-	waitDial(t, t3, "c1")
+		k.Connected("u1")
+		k.Connected("u1") // second tab
+		waitDial(t, t3, "c1")
 
-	k.Disconnected("u1")
-	conn := t3.conn("c1")
-	require.NotNil(t, conn)
-	select {
-	case <-conn.done:
-		t.Fatal("connection closed while one browser socket remained")
-	case <-time.After(60 * time.Millisecond):
-	}
+		k.Disconnected("u1")
+		conn := t3.conn("c1")
+		require.NotNil(t, conn)
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		select {
+		case <-conn.done:
+			t.Fatal("connection closed while one browser socket remained")
+		default:
+		}
 
-	k.Disconnected("u1")
-	select {
-	case <-conn.done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("connection not closed after last disconnect + linger")
-	}
+		k.Disconnected("u1")
+		time.Sleep(testLinger)
+		synctest.Wait()
+		select {
+		case <-conn.done:
+		default:
+			t.Fatal("connection not closed after last disconnect + linger")
+		}
+	})
 }
 
 func TestKeeper_ReconnectWithinLingerKeepsConnection(t *testing.T) {
-	t.Parallel()
-	sessions := &sessionsFunc{}
-	sessions.set(computer("c1"))
-	t3 := newFakeT3()
-	k := newTestKeeper(sessions, t3)
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		k := newTestKeeper(sessions, t3)
 
-	k.Connected("u1")
-	waitDial(t, t3, "c1")
-	conn := t3.conn("c1")
+		k.Connected("u1")
+		waitDial(t, t3, "c1")
+		conn := t3.conn("c1")
 
-	k.Disconnected("u1")
-	k.Connected("u1") // page refresh inside the linger window
-	time.Sleep(80 * time.Millisecond)
-	select {
-	case <-conn.done:
-		t.Fatal("connection dropped across a page refresh")
-	default:
-	}
-	assert.Equal(t, 1, t3.dialCount("c1"), "no redial across a refresh")
+		k.Disconnected("u1")
+		k.Connected("u1") // page refresh inside the linger window
+		time.Sleep(4 * testLinger)
+		synctest.Wait()
+		select {
+		case <-conn.done:
+			t.Fatal("connection dropped across a page refresh")
+		default:
+		}
+		assert.Equal(t, 1, t3.dialCount("c1"), "no redial across a refresh")
+
+		k.Disconnected("u1")
+		time.Sleep(testLinger)
+	})
 }
 
 func TestKeeper_RedialsWhenServerDrops(t *testing.T) {
-	t.Parallel()
-	sessions := &sessionsFunc{}
-	sessions.set(computer("c1"))
-	t3 := newFakeT3()
-	k := newTestKeeper(sessions, t3)
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		k := newTestKeeper(sessions, t3)
 
-	k.Connected("u1")
-	waitDial(t, t3, "c1")
-	t3.conn("c1").dropServerSide()
-	waitDial(t, t3, "c1") // redial after backoff
+		k.Connected("u1")
+		waitDial(t, t3, "c1")
+		t3.conn("c1").dropServerSide()
+		waitDial(t, t3, "c1") // redial after backoff
+
+		k.Disconnected("u1")
+		time.Sleep(testLinger)
+	})
 }
 
 func TestKeeper_RefreshPicksUpNewComputerAndDropsDeleted(t *testing.T) {
@@ -259,72 +275,81 @@ func TestKeeper_RefreshAfterAMoveToTheRunner_HoldsTheComputerOnItsNewSession(t *
 }
 
 func TestKeeper_RejectedSession_ReadsRejectedWithoutRedialingUntilRepaired(t *testing.T) {
-	t.Parallel()
-	sessions := &sessionsFunc{}
-	sessions.set(computer("c1"))
-	t3 := newFakeT3()
-	t3.mu.Lock()
-	t3.dialErrs["c1"] = harness.ErrSessionRejected
-	t3.mu.Unlock()
-	k := newTestKeeper(sessions, t3)
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		t3.mu.Lock()
+		t3.dialErrs["c1"] = harness.ErrSessionRejected
+		t3.mu.Unlock()
+		k := newTestKeeper(sessions, t3)
 
-	k.Connected("u1")
-	waitDial(t, t3, "c1")
-	time.Sleep(80 * time.Millisecond)
-	assert.Equal(t, 1, t3.dialCount("c1"), "no redial after a rejected session")
-	assert.Equal(t, map[string]string{"c1": StateRejected}, k.Status("u1"))
+		k.Connected("u1")
+		waitDial(t, t3, "c1")
+		time.Sleep(10 * time.Minute)
+		synctest.Wait()
+		assert.Equal(t, 1, t3.dialCount("c1"), "no redial after a rejected session")
+		assert.Equal(t, map[string]string{"c1": StateRejected}, k.Status("u1"))
 
-	k.Refresh("u1")
-	time.Sleep(80 * time.Millisecond)
-	assert.Equal(t, 1, t3.dialCount("c1"), "the same rejected session is not dialed again")
+		k.Refresh("u1")
+		synctest.Wait()
+		assert.Equal(t, 1, t3.dialCount("c1"), "the same rejected session is not dialed again")
 
-	t3.mu.Lock()
-	delete(t3.dialErrs, "c1")
-	t3.mu.Unlock()
-	repaired := computer("c1")
-	repaired.BearerToken = "tok-repaired"
-	sessions.set(repaired)
-	k.Refresh("u1")
-	waitDial(t, t3, "c1")
+		t3.mu.Lock()
+		delete(t3.dialErrs, "c1")
+		t3.mu.Unlock()
+		repaired := computer("c1")
+		repaired.BearerToken = "tok-repaired"
+		sessions.set(repaired)
+		k.Refresh("u1")
+		waitDial(t, t3, "c1")
+
+		k.Disconnected("u1")
+		time.Sleep(testLinger)
+	})
 }
 
 func TestKeeper_RefreshWhileOfflineIsNoop(t *testing.T) {
-	t.Parallel()
-	sessions := &sessionsFunc{}
-	sessions.set(computer("c1"))
-	t3 := newFakeT3()
-	k := newTestKeeper(sessions, t3)
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		k := newTestKeeper(sessions, t3)
 
-	k.Refresh("u1")
-	select {
-	case id := <-t3.dialed:
-		t.Fatalf("dialed %s for an offline user", id)
-	case <-time.After(60 * time.Millisecond):
-	}
+		k.Refresh("u1")
+		synctest.Wait()
+		select {
+		case id := <-t3.dialed:
+			t.Fatalf("dialed %s for an offline user", id)
+		default:
+		}
+	})
 }
 
 func TestKeeper_OnlineFollowsFirstSocketAndLingerEnd(t *testing.T) {
-	t.Parallel()
-	k := New(Config{Sessions: (&sessionsFunc{}).list, Linger: 300 * time.Millisecond})
-	changed := make(chan string, 8)
-	k.SetOnlineChanged(func(userID string) { changed <- userID })
+	synctest.Test(t, func(t *testing.T) {
+		k := New(Config{Sessions: (&sessionsFunc{}).list, Linger: 300 * time.Millisecond})
+		changed := make(chan string, 8)
+		k.SetOnlineChanged(func(userID string) { changed <- userID })
 
-	k.Connected("u1")
-	require.Equal(t, "u1", <-changed, "first socket announces the user online")
-	k.Connected("u1") // second tab
-	k.Disconnected("u1")
-	assert.Empty(t, changed, "a second tab or one of two closing is not a presence change")
-	assert.Equal(t, map[string]bool{"u1": true}, k.Online())
+		k.Connected("u1")
+		require.Equal(t, "u1", <-changed, "first socket announces the user online")
+		k.Connected("u1") // second tab
+		k.Disconnected("u1")
+		synctest.Wait()
+		assert.Empty(t, changed, "a second tab or one of two closing is not a presence change")
+		assert.Equal(t, map[string]bool{"u1": true}, k.Online())
 
-	k.Disconnected("u1")
-	assert.True(t, k.Online()["u1"], "online through the linger window, so a refresh never reads as offline")
-	select {
-	case id := <-changed:
-		assert.Equal(t, "u1", id)
-	case <-time.After(2 * time.Second):
-		t.Fatal("going offline after the linger window was not announced")
-	}
-	assert.Empty(t, k.Online())
+		k.Disconnected("u1")
+		time.Sleep(299 * time.Millisecond)
+		synctest.Wait()
+		assert.True(t, k.Online()["u1"], "online through the linger window, so a refresh never reads as offline")
+		time.Sleep(time.Millisecond)
+		synctest.Wait()
+		require.Len(t, changed, 1, "going offline after the linger window was announced")
+		assert.Equal(t, "u1", <-changed)
+		assert.Empty(t, k.Online())
+	})
 }
 
 // dialLevels records the level of every failed-dial log line.

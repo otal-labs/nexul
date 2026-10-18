@@ -11,7 +11,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/eventcatalog"
 	"github.com/otal-labs/nexul/internal/integrations"
-	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // TestPublishCatalog_OnAnInstanceSeededWithHandWrittenSchemas_AddsOneVersionPerChangedTopicOnce boots an instance
@@ -22,7 +22,7 @@ func TestPublishCatalog_OnAnInstanceSeededWithHandWrittenSchemas_AddsOneVersionP
 	require.NoError(t, err)
 	var handWritten map[string]string
 	require.NoError(t, json.Unmarshal(raw, &handWritten))
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 	for topic, text := range handWritten {
 		require.NoError(t, store.EventSchemas.Publish(t.Context(), integrations.SchemaEntry{Topic: topic, Version: 1, Schema: text, CreatedAt: time.Now().UTC()}))
 	}

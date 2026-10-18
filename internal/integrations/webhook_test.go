@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -313,17 +314,14 @@ func TestRelayRun(t *testing.T) {
 			Interval: 5 * time.Millisecond, BackoffInitial: time.Millisecond, BackoffMax: time.Millisecond,
 			MaxAttempts: 2, Logger: testDiscardLogger(),
 		})
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan error, 1)
-		go func() { done <- relay.Run(ctx) }()
-		time.Sleep(30 * time.Millisecond)
-		cancel()
-		select {
-		case err := <-done:
-			require.NoError(t, err)
-		case <-time.After(time.Second):
-			t.Fatal("Run did not return after cancel")
-		}
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error, 1)
+			go func() { done <- relay.Run(ctx) }()
+			time.Sleep(30 * time.Millisecond)
+			cancel()
+			require.NoError(t, <-done)
+		})
 	})
 
 	t.Run("flush delivers and returns nil", func(t *testing.T) {

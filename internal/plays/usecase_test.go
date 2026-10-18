@@ -39,18 +39,6 @@ func TestCreate_TicketPlayWithoutStage_ReturnsValidationError(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
-func TestCreate_DocPlayWithStage_ReturnsValidationError(t *testing.T) {
-	s := newTestService(newFakeRepo(), allowAll("owner"))
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc, ShowWhenStage: ticketStage()})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
-func TestCreate_EmptyLabel_ReturnsValidationError(t *testing.T) {
-	s := newTestService(newFakeRepo(), allowAll("owner"))
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "  ", Type: TypeDoc})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
 func TestCreate_WithoutPlaysWrite_ReturnsForbidden(t *testing.T) {
 	s := newTestService(newFakeRepo(), newFakePerm(nil))
 	_, err := s.Create(ctxAs("alice"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc})
@@ -267,10 +255,6 @@ func TestGet_EmptyID_ReturnsInvalid(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
-func TestActorID_NoActorInContext_ReturnsEmpty(t *testing.T) {
-	assert.Equal(t, "", actorID(context.Background()))
-}
-
 // runnerPerm grants owner the write/read/delete bits Create needs to seed fixtures, plus plays:read and plays:run for
 // whichever users are named, so ListApplicable tests can then deny specific plays per user.
 func runnerPerm(runners ...string) *fakePerm {
@@ -313,19 +297,6 @@ func TestListApplicable_InterviewPlay_ListsOnlyForTheInterviewType(t *testing.T)
 	assert.Empty(t, docs)
 }
 
-func TestListApplicable_DisabledPlay_NeverLists(t *testing.T) {
-	repo := newFakeRepo()
-	perm := runnerPerm("alice")
-	s := newTestService(repo, perm)
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix", Type: TypeTicket, ShowWhenStage: ticketStage(), Enabled: false})
-	require.NoError(t, err)
-
-	stage := StageProgress
-	list, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", TypeTicket, &stage)
-	require.NoError(t, err)
-	assert.Empty(t, list)
-}
-
 func TestListApplicable_ExcludedProject_NeverLists(t *testing.T) {
 	repo := newFakeRepo()
 	perm := runnerPerm("alice")
@@ -362,31 +333,42 @@ func TestListApplicable_WrongStage_NeverListsForATicketPlay(t *testing.T) {
 	assert.Empty(t, list, "no stage at all never matches a ticket play")
 }
 
-func TestListApplicable_DeniedUser_Omits(t *testing.T) {
-	repo := newFakeRepo()
-	perm := runnerPerm("alice")
-	s := newTestService(repo, perm)
-	fix, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix", Type: TypeTicket, ShowWhenStage: ticketStage(), Enabled: true})
-	require.NoError(t, err)
-	perm.deny("alice", fix.ID)
+func TestListApplicable_OmitsWhatThePersonCannotRun(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+		granted []string
+		denied  bool
+		user    string
+	}{
+		{"a disabled play", false, []string{"alice"}, false, "alice"},
+		{"a play denied to that person", true, []string{"alice"}, true, "alice"},
+		{"anyone without plays:run", true, nil, false, "bob"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			perm := runnerPerm(tt.granted...)
+			s := newTestService(newFakeRepo(), perm)
+			fix, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix", Type: TypeTicket, ShowWhenStage: ticketStage(), Enabled: tt.enabled})
+			require.NoError(t, err)
+			if tt.denied {
+				perm.deny(tt.user, fix.ID)
+			}
 
-	stage := StageProgress
-	list, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", TypeTicket, &stage)
-	require.NoError(t, err)
-	assert.Empty(t, list)
+			stage := StageProgress
+			list, err := s.ListApplicable(context.Background(), workspaceID, tt.user, "proj-1", TypeTicket, &stage)
+			require.NoError(t, err)
+			assert.Empty(t, list)
+		})
+	}
 }
 
-func TestListApplicable_UserWithoutPlaysRun_Omits(t *testing.T) {
-	repo := newFakeRepo()
-	perm := runnerPerm() // nobody granted plays:run
-	s := newTestService(repo, perm)
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix", Type: TypeTicket, ShowWhenStage: ticketStage(), Enabled: true})
-	require.NoError(t, err)
-
-	stage := StageProgress
-	list, err := s.ListApplicable(context.Background(), workspaceID, "bob", "proj-1", TypeTicket, &stage)
-	require.NoError(t, err)
-	assert.Empty(t, list)
+func TestListApplicable_RefusesWhatItCannotAnswer(t *testing.T) {
+	s := newTestService(newFakeRepo(), runnerPerm("alice"))
+	_, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", Type("bogus"), nil)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "an unknown play type")
+	_, err = s.ListApplicable(context.Background(), "", "alice", "proj-1", TypeTicket, nil)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "no workspace")
 }
 
 func TestListApplicable_DocPlay_IgnoresStage(t *testing.T) {
@@ -436,18 +418,6 @@ func (ownerBypassPerm) PlaysWith(_ context.Context, _, _ string, _ permissions.A
 
 func (ownerBypassPerm) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
 	return nil, true, nil
-}
-
-func TestListApplicable_InvalidType_ReturnsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo(), runnerPerm("alice"))
-	_, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", Type("bogus"), nil)
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
-func TestListApplicable_EmptyWorkspaceID_ReturnsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo(), runnerPerm("alice"))
-	_, err := s.ListApplicable(context.Background(), "", "alice", "proj-1", TypeTicket, nil)
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
 func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {

@@ -1,4 +1,4 @@
-// Package migrated hands tests a copy of one fully migrated database, so a test skips replaying every migration.
+// Package migrated hands tests a copy of one migrated database built per test binary, because replaying every migration per test costs seconds under -race.
 package migrated
 
 import (
@@ -67,4 +67,9 @@ func DB(t testing.TB) *sql.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	return db
+}
+
+// Store is DB wrapped in the repositories, with a fixed test key.
+func Store(t testing.TB) *storage.Store {
+	return storage.New(DB(t), []byte("0123456789abcdef0123456789abcdef"))
 }

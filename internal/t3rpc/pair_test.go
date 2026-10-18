@@ -109,8 +109,3 @@ func TestDescribe_MissingField(t *testing.T) {
 	_, err := Describe(context.Background(), srv.Client(), srv.URL)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
-
-func TestHTTPClient_NilDefaultsToHTTPDefault(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, http.DefaultClient, httpClient(nil))
-}

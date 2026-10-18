@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -19,21 +18,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
-	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // openStore returns a migrated real-SQLite store on a temp file.
-func openStore(t *testing.T) *storage.Store {
-	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	require.NoError(t, storagetest.SeedGeneralProject(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-}
+func openStore(t *testing.T) *storage.Store { return migrated.Store(t) }
 
 func newService(t *testing.T, store *storage.Store) *deploy.Service {
 	t.Helper()

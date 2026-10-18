@@ -197,13 +197,6 @@ func TestHandler_ProjectLink_ForeignComputerRejected(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestHandler_NoIdentity_Unauthorized(t *testing.T) {
-	t.Parallel()
-	h, _, _ := newTestHandler()
-	rec := doRequest(h.Routes(), http.MethodGet, "/api/pairing/computers", "", nil)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
 func TestHandler_Resolve_Success(t *testing.T) {
 	t.Parallel()
 	h, _, _ := newTestHandler()
@@ -337,13 +330,6 @@ func TestHandler_Resolve_OnlyLeaksCallersOwnPairing(t *testing.T) {
 	assert.Equal(t, string(ReasonUnpaired), body["reason"])
 }
 
-func TestHandler_Resolve_NoIdentity_Unauthorized(t *testing.T) {
-	t.Parallel()
-	h, _, _ := newTestHandler()
-	rec := doRequest(h.Routes(), http.MethodGet, "/api/pairing/resolve", "", nil)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
 func TestHandler_ComputerTunnel_CreateStatusAndToken(t *testing.T) {
 	t.Parallel()
 	tunnels := &fakeTunnels{status: "inactive"}
@@ -395,6 +381,18 @@ func TestHandler_ComputerTunnel_Errors(t *testing.T) {
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 			assert.Equal(t, tt.wantReason, body["reason"])
 			assert.NotEmpty(t, body["message"])
+		})
+	}
+}
+
+func TestHandler_NoIdentity_Unauthorized(t *testing.T) {
+	t.Parallel()
+	for _, path := range []string{"/api/pairing/computers", "/api/pairing/resolve"} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			h, _, _ := newTestHandler()
+			rec := doRequest(h.Routes(), http.MethodGet, path, "", nil)
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		})
 	}
 }

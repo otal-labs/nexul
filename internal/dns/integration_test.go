@@ -3,7 +3,6 @@ package dns_test
 import (
 	"context"
 	"encoding/json"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,17 +12,10 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
-// openStore returns a migrated real-SQLite store on a temp file.
-func openStore(t *testing.T) *storage.Store {
-	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-}
+func openStore(t *testing.T) *storage.Store { return migrated.Store(t) }
 
 type recvBus struct {
 	ch chan string

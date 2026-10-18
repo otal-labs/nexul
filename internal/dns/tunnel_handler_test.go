@@ -31,12 +31,6 @@ func TestHandler_CreateTunnel(t *testing.T) {
 	require.NoError(t, err, "tunnel stored")
 }
 
-func TestHandler_CreateTunnel_InvalidName(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels", map[string]string{"name": " "})
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
 func TestHandler_ListTunnels(t *testing.T) {
 	h, repo, _, _ := newTunnelTestHandler()
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one", CreatedAt: time.Now()}))
@@ -81,12 +75,6 @@ func TestHandler_TunnelStatus(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "enc")
 }
 
-func TestHandler_GetTunnel_Missing(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodGet, "/api/dns/tunnels/nope", nil)
-	require.Equal(t, http.StatusNotFound, rec.Code)
-}
-
 func TestHandler_RouteTunnelHostname(t *testing.T) {
 	h, repo, _, _ := newTunnelTestHandler()
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
@@ -99,14 +87,6 @@ func TestHandler_RouteTunnelHostname(t *testing.T) {
 	assert.Equal(t, "app.example.com", got.Hostname)
 }
 
-func TestHandler_RouteTunnelHostname_MissingTunnel(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/ghost/route", map[string]any{
-		"hostname": "app.example.com", "zone_id": "z1", "zone": "example.com", "service": "http://localhost:80",
-	})
-	require.Equal(t, http.StatusNotFound, rec.Code)
-}
-
 func TestHandler_RotateTunnelCredentials(t *testing.T) {
 	h, repo, _, _ := newTunnelTestHandler()
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
@@ -115,32 +95,6 @@ func TestHandler_RotateTunnelCredentials(t *testing.T) {
 	stored, err := repo.GetTunnel(context.Background(), "t1")
 	require.NoError(t, err)
 	assert.NotContains(t, stored.Token, "rotated-token-t1")
-}
-
-func TestHandler_RotateTunnelCredentials_Missing(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/ghost/rotate", nil)
-	require.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestHandler_ProvisionTunnelAgent_MissingTunnel(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/ghost/agent", map[string]any{
-		"target": "10.0.0.1",
-	})
-	require.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestHandler_ProvisionTunnelAgent_InvalidBody(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/t1/agent", "not-an-object")
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestHandler_ProvisionReverseProxy_InvalidBody(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/reverse-proxy", "not-an-object")
-	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestHandler_DeleteTunnel(t *testing.T) {
@@ -161,12 +115,6 @@ func TestHandler_DeleteTunnel_RefusedWhileInUse(t *testing.T) {
 	require.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "app.example.com")
 	assert.Contains(t, rec.Body.String(), "gateway on network web")
-}
-
-func TestHandler_DeleteTunnel_Missing(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
-	rec := doJSON(t, h.Routes(), http.MethodDelete, "/api/dns/tunnels/nope", nil)
-	require.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestHandler_ProvisionTunnelAgent(t *testing.T) {
@@ -192,4 +140,31 @@ func TestHandler_ProvisionReverseProxy(t *testing.T) {
 	var got AgentProvisioned
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Equal(t, "svc-1", got.ServiceID)
+}
+
+func TestHandler_TunnelRoutes_RefuseWhatCannotWork(t *testing.T) {
+	route := map[string]any{"hostname": "app.example.com", "zone_id": "z1", "zone": "example.com", "service": "http://localhost:80"}
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   any
+		want   int
+	}{
+		{"a blank tunnel name", http.MethodPost, "/api/dns/tunnels", map[string]string{"name": " "}, http.StatusBadRequest},
+		{"reading a tunnel that does not exist", http.MethodGet, "/api/dns/tunnels/nope", nil, http.StatusNotFound},
+		{"routing a hostname to a tunnel that does not exist", http.MethodPost, "/api/dns/tunnels/ghost/route", route, http.StatusNotFound},
+		{"rotating a tunnel that does not exist", http.MethodPost, "/api/dns/tunnels/ghost/rotate", nil, http.StatusNotFound},
+		{"provisioning an agent on a tunnel that does not exist", http.MethodPost, "/api/dns/tunnels/ghost/agent", map[string]any{"target": "10.0.0.1"}, http.StatusNotFound},
+		{"an agent request that is not an object", http.MethodPost, "/api/dns/tunnels/t1/agent", "not-an-object", http.StatusBadRequest},
+		{"a reverse proxy request that is not an object", http.MethodPost, "/api/dns/reverse-proxy", "not-an-object", http.StatusBadRequest},
+		{"deleting a tunnel that does not exist", http.MethodDelete, "/api/dns/tunnels/nope", nil, http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, _, _, _ := newTunnelTestHandler()
+			rec := doJSON(t, h.Routes(), tt.method, tt.path, tt.body)
+			require.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

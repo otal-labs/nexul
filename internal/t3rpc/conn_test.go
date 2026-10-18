@@ -33,17 +33,17 @@ func connectFake(t *testing.T, f *t3rpctest.Server) *Conn {
 
 func TestConnect_HandshakeMintsTicketAndCallsGetConfig(t *testing.T) {
 	t.Parallel()
-	f := t3rpctest.New(t)
-	connectFake(t, f)
-	assert.Equal(t, int32(1), f.ConfigCalls.Load())
-}
-
-func TestConnect_AcceptsAlternateTicketFieldName(t *testing.T) {
-	t.Parallel()
-	f := t3rpctest.New(t)
-	f.TicketField = "wsTicket"
-	connectFake(t, f)
-	assert.Equal(t, int32(1), f.ConfigCalls.Load())
+	for name, field := range map[string]string{"the default ticket field": "", "the alternate ticket field name": "wsTicket"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			if field != "" {
+				f.TicketField = field
+			}
+			connectFake(t, f)
+			assert.Equal(t, int32(1), f.ConfigCalls.Load())
+		})
+	}
 }
 
 func TestConnect_RejectedBearer_IsARejectedSessionNotANexulSignOut(t *testing.T) {
@@ -202,9 +202,9 @@ func TestConn_Keepalive_PingsThroughAnIdleCutAndEndsWhenUnanswered(t *testing.T)
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f := t3rpctest.New(t)
-			f.IdleDrop = 500 * time.Millisecond
+			f.IdleDrop = 200 * time.Millisecond
 			f.IgnorePings = tt.ignorePings
-			c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second, PingEvery: 50 * time.Millisecond})
+			c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second, PingEvery: 20 * time.Millisecond})
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = c.Close() })
 

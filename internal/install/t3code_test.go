@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -189,6 +190,7 @@ func TestInstallComputer_AT3CodeThatCannotBeStartedStopsBeforeTheCodeIsSpent(t *
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			th := newTestHost(t)
+			th.HealthTimeout = 20 * time.Millisecond
 			th.sudoFromAlice(t)
 			t3Nothing(t, th)
 			th.exec.onRun = func(line string) {
