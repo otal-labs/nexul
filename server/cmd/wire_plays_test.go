@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -36,7 +37,7 @@ func (allowTickets) Require(context.Context, string, permissions.Action) error {
 func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	_, err := db.Exec(`UPDATE projects SET prefix = 'GEN' WHERE id = 'project-general'`)
 	require.NoError(t, err)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
@@ -119,7 +120,7 @@ func TestPlaysMomentTopics_ArePublished(t *testing.T) {
 func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	s := storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 	seedMentionsUser(t, s, "alice")
 	now := time.Now().UTC()
 	blocker := &tickets.Ticket{ID: "t-blocker", ProjectID: "project-general", Number: 1, Title: "first", Status: "open", TypeID: "ticket-type-task", CreatedAt: now, UpdatedAt: now}

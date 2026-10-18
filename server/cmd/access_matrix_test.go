@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 var updateAccessMatrix = flag.Bool("update-access-matrix", false, "rewrite the access matrix golden file from the list parity fixture")
@@ -150,7 +151,7 @@ func marshalMatrix(t *testing.T, rows []matrixRow) []byte {
 // change to the evaluator that moves an answer shows up as a diff of the golden file.
 func TestAccessMatrix_OfTheListParityFixture(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	svc, store := wiredOver(t, db)
 	withListParityRows(t, seedPermFixture(t, db, svc, store))
 	rows := accessMatrix(t, svc, db)

@@ -23,6 +23,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -109,7 +110,7 @@ func newPersonViewFixture(t *testing.T) personViewFixture {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
-	store := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	store := storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 	cfg := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {ConnectorID: "github", ClientID: "Iv1.acme", PrivateKey: pemKey, BaseURL: srv.URL, AppSlug: "nexul-acme"}}}
 	connector := &fakeGitTokenResolver{tokens: map[string]string{"github": "tok-connector"}}
 	scope := &githubInstallationScope{appConfigs: cfg, projects: store.Projects}

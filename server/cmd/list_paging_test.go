@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -243,7 +244,7 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 // deployment following them, an instance stack and a deleted stack's deploy, and notices in every state an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	svc, store := wiredOver(t, db)
 	f := withListParityRows(t, seedPermFixture(t, db, svc, store))
 	withMachineM1(t, f, "role-reader")

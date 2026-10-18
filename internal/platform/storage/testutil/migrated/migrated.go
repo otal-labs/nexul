@@ -1,6 +1,8 @@
-package main
+// Package migrated hands tests a copy of one fully migrated database, so a test skips replaying every migration.
+package migrated
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,8 +14,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 )
 
-// migratedDB is a migrated database seeded with the general project, built once per test binary.
-var migratedDB = sync.OnceValues(func() ([]byte, error) {
+// image is a migrated database seeded with the general project, built once per test binary.
+var image = sync.OnceValues(func() ([]byte, error) {
 	dir, err := os.MkdirTemp("", "nexul-migrated-")
 	if err != nil {
 		return nil, err
@@ -48,10 +50,21 @@ var migratedDB = sync.OnceValues(func() ([]byte, error) {
 	return os.ReadFile(out)
 })
 
-// copyMigratedDB writes migratedDB to path, so a fixture skips parsing every migration again.
-func copyMigratedDB(t *testing.T, path string) {
+// Copy writes the migrated database to path.
+func Copy(t testing.TB, path string) {
 	t.Helper()
-	b, err := migratedDB()
+	b, err := image()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, b, 0o600))
+}
+
+// DB opens a private copy of the migrated database, closed when the test ends.
+func DB(t testing.TB) *sql.DB {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "test.db")
+	Copy(t, path)
+	db, err := storage.OpenDB(path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	return db
 }

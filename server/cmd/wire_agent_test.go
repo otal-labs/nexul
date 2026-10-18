@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -16,7 +17,7 @@ import (
 func TestIntegration_AgentTicketReader_KeyAndMarkdownBody(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	_, err := db.Exec(`UPDATE projects SET prefix = 'GEN' WHERE id = 'project-general'`)
 	require.NoError(t, err)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
@@ -38,7 +39,7 @@ func TestIntegration_AgentTicketReader_KeyAndMarkdownBody(t *testing.T) {
 func TestIntegration_AgentTicketReader_DoneReadsTheColumnStage(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
 	ticketsSvc.SetGate(allowTickets{})

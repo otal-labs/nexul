@@ -13,6 +13,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // postsChannel is the one rule that makes a channel announcements-only: its Writers post, and every other role is denied.
@@ -29,7 +30,7 @@ func postsChannel(t *testing.T, f permFixture, channelID string) {
 // Reader still reads the channel, and the Owner posts whatever the rules say.
 func TestChannelRules_OnlyTheRolePosts(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	h, store, svc := routerOver(t, db)
 	f := seedPermFixture(t, db, svc, store)
 	postsChannel(t, f, f.channel.ID)
@@ -163,7 +164,7 @@ func TestChannelRules_ThePanelAndTheAccessGridAgree(t *testing.T) {
 // "Stopped: <creator> can't post in #<channel>"; a creator who may post again starts it again.
 func TestChannelRules_ABotStopsWithItsCreator(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	h, store, svc := routerOver(t, db)
 	f := seedPermFixture(t, db, svc, store)
 	ctx := context.Background()

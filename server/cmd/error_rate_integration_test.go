@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -47,7 +48,7 @@ func switchErrorRate(t *testing.T, f permFixture, rule deploy.ErrorRateRule, cra
 // episode, and the stack's readers are told, the crash ticket is filed, and the stack read shows the episode.
 func TestErrorRate_AWindowOverTheRuleNotifiesWatchersAndFilesTheCrashTicket(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	bus := inprocess.New(inprocess.Options{Logger: logger, DedupeStore: store.ProcessedEvents, DeadLetterStore: store.DeadLetters})
