@@ -50,75 +50,45 @@ func TestAutomationEventLogRepo_After_EmptyTopics_ReturnsNil(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-func TestAutomationEventLogRepo_After_ZeroCursor_ReturnsFromBeginning(t *testing.T) {
+func TestAutomationEventLogRepo_After(t *testing.T) {
 	t.Parallel()
-	s := newTestStore(t)
 	base := time.Now().UTC()
-	insertOutboxTestRowAt(t, s, "e1", "ticket.created", []byte(`{"n":1}`), base)
-	insertOutboxTestRowAt(t, s, "e2", "ticket.created", []byte(`{"n":2}`), base.Add(time.Minute))
-
-	got, err := s.AutomationEventLog.After(context.Background(), []string{"ticket.created"}, automations.Cursor{}, 10)
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-	assert.Equal(t, "e1", got[0].ID)
-	assert.Equal(t, "e2", got[1].ID)
-}
-
-func TestAutomationEventLogRepo_After_FiltersByTopic(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	base := time.Now().UTC()
-	insertOutboxTestRowAt(t, s, "e1", "ticket.created", []byte(`{}`), base)
-	insertOutboxTestRowAt(t, s, "e2", "doc.created", []byte(`{}`), base.Add(time.Minute))
-
-	got, err := s.AutomationEventLog.After(context.Background(), []string{"ticket.created"}, automations.Cursor{}, 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "e1", got[0].ID)
-}
-
-func TestAutomationEventLogRepo_After_ExcludesUpToAndIncludingCursor(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	base := time.Now().UTC()
-	insertOutboxTestRowAt(t, s, "e1", "ticket.created", []byte(`{}`), base)
-	insertOutboxTestRowAt(t, s, "e2", "ticket.created", []byte(`{}`), base.Add(time.Minute))
-	insertOutboxTestRowAt(t, s, "e3", "ticket.created", []byte(`{}`), base.Add(2*time.Minute))
-
-	cursor := automations.Cursor{CreatedAt: base.Add(time.Minute), ID: "e2"}
-	got, err := s.AutomationEventLog.After(context.Background(), []string{"ticket.created"}, cursor, 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "e3", got[0].ID)
-}
-
-func TestAutomationEventLogRepo_After_SameSecond_TiebreaksByID(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	same := time.Now().UTC()
-	// Same created_at second, ids in reverse insertion order — the tiebreak
-	// must be by id, not insertion order (practices/go.md, the tiebreaker rule).
-	insertOutboxTestRowAt(t, s, "b", "ticket.created", []byte(`{}`), same)
-	insertOutboxTestRowAt(t, s, "a", "ticket.created", []byte(`{}`), same)
-
-	cursor := automations.Cursor{CreatedAt: same, ID: "a"}
-	got, err := s.AutomationEventLog.After(context.Background(), []string{"ticket.created"}, cursor, 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "b", got[0].ID)
-}
-
-func TestAutomationEventLogRepo_After_RespectsLimit(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	base := time.Now().UTC()
-	for i, id := range []string{"e1", "e2", "e3"} {
-		insertOutboxTestRowAt(t, s, id, "ticket.created", []byte(`{}`), base.Add(time.Duration(i)*time.Minute))
+	minute := func(n int) time.Time { return base.Add(time.Duration(n) * time.Minute) }
+	type row struct {
+		id, topic string
+		at        time.Time
 	}
-
-	got, err := s.AutomationEventLog.After(context.Background(), []string{"ticket.created"}, automations.Cursor{}, 2)
-	require.NoError(t, err)
-	assert.Len(t, got, 2)
+	tests := []struct {
+		name   string
+		rows   []row
+		topics []string
+		cursor automations.Cursor
+		limit  int
+		want   []string
+	}{
+		{"the zero cursor reads from the beginning", []row{{"e1", "ticket.created", minute(0)}, {"e2", "ticket.created", minute(1)}}, []string{"ticket.created"}, automations.Cursor{}, 10, []string{"e1", "e2"}},
+		{"only the subscribed topics", []row{{"e1", "ticket.created", minute(0)}, {"e2", "doc.created", minute(1)}}, []string{"ticket.created"}, automations.Cursor{}, 10, []string{"e1"}},
+		{"nothing up to and including the cursor", []row{{"e1", "ticket.created", minute(0)}, {"e2", "ticket.created", minute(1)}, {"e3", "ticket.created", minute(2)}}, []string{"ticket.created"}, automations.Cursor{CreatedAt: minute(1), ID: "e2"}, 10, []string{"e3"}},
+		// ids in reverse insertion order: the tiebreak inside one second is the id, not the insertion order
+		{"rows of the cursor's second tiebreak by id", []row{{"b", "ticket.created", minute(0)}, {"a", "ticket.created", minute(0)}}, []string{"ticket.created"}, automations.Cursor{CreatedAt: minute(0), ID: "a"}, 10, []string{"b"}},
+		{"the limit caps the page", []row{{"e1", "ticket.created", minute(0)}, {"e2", "ticket.created", minute(1)}, {"e3", "ticket.created", minute(2)}}, []string{"ticket.created"}, automations.Cursor{}, 2, []string{"e1", "e2"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			for _, r := range tt.rows {
+				insertOutboxTestRowAt(t, s, r.id, r.topic, []byte(`{}`), r.at)
+			}
+			got, err := s.AutomationEventLog.After(t.Context(), tt.topics, tt.cursor, tt.limit)
+			require.NoError(t, err)
+			ids := make([]string, 0, len(got))
+			for _, e := range got {
+				ids = append(ids, e.ID)
+			}
+			assert.Equal(t, tt.want, ids)
+		})
+	}
 }
 
 func TestAutomationEventLogRepo_After_IncludesUnpublishedRows(t *testing.T) {

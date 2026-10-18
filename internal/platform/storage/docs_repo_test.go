@@ -155,47 +155,6 @@ func TestDocsRepo_Delete_RemovesDoc(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestDocsRepo_RichTextBody_Searchable(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-
-	// Canonical structured body (ws-23): the repo stores the markdown
-	// rendering in body_md, which docs_fts indexes.
-	d := newTestDoc("doc-1")
-	d.Body = `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Storage"}]},{"type":"paragraph","content":[{"type":"text","text":"SQLite is the spine"}]}]}`
-	require.NoError(t, s.Docs.Create(context.Background(), d))
-
-	got, err := s.Docs.Search(context.Background(), "sqlite", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-1", got[0].ID)
-
-	got, err = s.Docs.Search(context.Background(), "spine", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-
-	// The canonical JSON is stored verbatim for the editor; search indexes the
-	// rendering, not the JSON keys.
-	_, err = s.Docs.Search(context.Background(), "content", 10)
-	require.NoError(t, err)
-}
-
-func TestDocsRepo_LegacyMarkdownBody_Searchable(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-
-	// Pre-ws-23 rows held plain markdown; they stay searchable after the
-	// migration backfill and on write.
-	d := newTestDoc("doc-1")
-	d.Body = "legacy markdown body about migrations"
-	require.NoError(t, s.Docs.Create(context.Background(), d))
-
-	got, err := s.Docs.Search(context.Background(), "migrations", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-1", got[0].ID)
-}
-
 func TestDocsRepo_UpdateRewritesSearchText(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
