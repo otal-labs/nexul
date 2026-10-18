@@ -61,6 +61,11 @@ export const RepositorySearchField = ({ onSelect, excludeId, busyId, label = "Se
           Type at least {REPOSITORY_SEARCH_MIN_LENGTH} letters to search your repositories.
         </p>
       )}
+      {!searching && openRow && (
+        <ul className="divide-y divide-border border-y border-border">
+          <li>{openRow.row}</li>
+        </ul>
+      )}
       {refusal && <ConnectGitHubPrompt state={refusal} />}
       {searching && error && !refusal && <ErrorDisplay error={error} title="Couldn't load repositories." />}
       {repos?.length === 0 && (

@@ -8,7 +8,8 @@ interface WizardOpenRepositoryRowProps {
   repo: Repo;
   scan: ScanResult;
   attaching: boolean;
-  onAttach: () => void;
+  // Only while the project is set up, where leaving with the repository attached ends setup.
+  onAttach?: (() => void) | undefined;
   // Absent when the scan found nothing to deploy; the manual Dockerfile path below takes over.
   onDeploy?: (() => void) | undefined;
 }
@@ -32,9 +33,11 @@ export const WizardOpenRepositoryRow = ({ repo, scan, attaching, onAttach, onDep
         </span>
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onAttach} loading={attaching}>
-          Attach without deploying
-        </Button>
+        {onAttach && (
+          <Button type="button" variant="ghost" size="sm" onClick={onAttach} loading={attaching}>
+            Attach without deploying
+          </Button>
+        )}
         {onDeploy && (
           <Button type="button" size="sm" onClick={onDeploy}>
             Deploy it

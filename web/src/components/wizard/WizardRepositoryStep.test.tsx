@@ -155,6 +155,32 @@ describe("WizardRepositoryStep", () => {
     expect(onLeaveEarly).not.toHaveBeenCalled();
   });
 
+  it("shows the repository already picked when the step is come back to, without searching again", async () => {
+    const { setRepository, setScanResult } = useProjectWizardStore.getState();
+    setRepository(repos[0]!);
+    setScanResult({ default_branch: "main", candidates: [{ kind: "dockerfile", path: "Dockerfile", name: "api", services: [] }], env_keys: [] });
+    const onDone = renderStep(vi.fn(), vi.fn());
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("onik97/api")).toBeInTheDocument();
+    expect(repositoryRequests()).toHaveLength(0);
+    expect(mocks.post).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Deploy it" }));
+    expect(onDone).toHaveBeenCalled();
+  });
+
+  it("comes back to a repository with nothing to deploy still offering the Dockerfile path, and no attach outside setup", async () => {
+    const { setRepository, setScanResult } = useProjectWizardStore.getState();
+    setRepository(repos[1]!);
+    setScanResult({ default_branch: "main", candidates: [], env_keys: [] });
+    renderStep();
+
+    expect(await screen.findByText("onik97/worker")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue manually" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Attach without deploying" })).not.toBeInTheDocument();
+  });
+
   it("says the list is the person's own GitHub view and links the App's install page", async () => {
     mocks.get.mockImplementation(async (url: string) => ({
       data: url === "/api/connectors/github/app-config" ? { configured: true, app_slug: "nexul-acme" } : { repositories: repos },
