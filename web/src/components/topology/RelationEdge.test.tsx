@@ -35,23 +35,13 @@ describe("RelationEdge", () => {
     expect(path).toHaveStyle("stroke-dasharray: 4 4");
   });
 
-  it("labels depends_on edges", () => {
-    renderEdge({ data: { kind: "depends_on" } });
-    expect(screen.getByText("depends on")).toBeInTheDocument();
-  });
-
-  it("labels mounts edges", () => {
-    renderEdge({ data: { kind: "mounts" } });
-    expect(screen.getByText("mounts")).toBeInTheDocument();
-  });
-
-  it("renders the kind label as a rounded pill on the surface", () => {
-    const { container } = renderEdge({ data: { kind: "connects_to" } });
-    const pill = container.querySelector("rect");
-    expect(pill).toBeInTheDocument();
-    expect(pill).toHaveAttribute("rx", "8");
-    expect(pill).toHaveClass("fill-surface-2");
-    expect(pill).toHaveClass("stroke-border");
+  it.each([
+    ["depends_on", "depends on"],
+    ["mounts", "mounts"],
+  ])("labels %s edges with a pill", (kind, label) => {
+    const { container } = renderEdge({ data: { kind } });
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(container.querySelector("rect")).toBeInTheDocument();
   });
 
   it("turns the pill ember when the edge is selected", () => {

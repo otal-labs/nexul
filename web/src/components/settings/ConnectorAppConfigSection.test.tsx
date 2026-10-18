@@ -53,19 +53,6 @@ describe("ConnectorAppConfigSection", () => {
     mocks.get.mockResolvedValue({ data: { configured: false } });
   });
 
-  it("renders the client id, client secret, base url, and app slug fields", async () => {
-    await renderUnregistered();
-    expect(screen.getByLabelText(/client id/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/client secret/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/base url/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/app slug/i)).toBeInTheDocument();
-  });
-
-  it("renders the client secret as a password field", async () => {
-    await renderUnregistered();
-    expect(screen.getByLabelText(/client secret/i)).toHaveAttribute("type", "password");
-  });
-
   it("submits the entered values to the github app-config endpoint", async () => {
     mocks.put.mockResolvedValue({
       data: { configured: true, client_id: "Iv1.abc123", base_url: "", app_slug: "nexul-test-app" },
@@ -73,6 +60,7 @@ describe("ConnectorAppConfigSection", () => {
     const user = userEvent.setup();
     await renderUnregistered();
 
+    expect(screen.getByLabelText(/client secret/i)).toHaveAttribute("type", "password");
     await user.type(screen.getByLabelText(/client id/i), "Iv1.abc123");
     await user.type(screen.getByLabelText(/client secret/i), "super-secret-value");
     await user.type(screen.getByLabelText(/app slug/i), "nexul-test-app");

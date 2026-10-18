@@ -40,40 +40,20 @@ const renderNode = (overrides: Partial<Props> = {}, selected = false) =>
   );
 
 describe("ServiceNode", () => {
-  it("renders the service name and url", () => {
-    renderNode();
+  it("renders the name, url, status badge, replicas, volume and the runner and strategy row", () => {
+    renderNode({ data: { ...baseData, status: ServiceStatus.Failed, volume: "/data/pg", target: "instance", strategy: "run" } });
     expect(screen.getByText("api-gateway")).toBeInTheDocument();
-    expect(screen.getByText("https://api.example.com")).toBeInTheDocument();
-  });
-
-  it("renders the status badge", () => {
-    renderNode({ data: { ...baseData, status: ServiceStatus.Failed } });
+    expect(screen.getByRole("link")).toHaveTextContent("https://api.example.com");
     expect(screen.getByText(ServiceStatus.Failed)).toBeInTheDocument();
-  });
-
-  it("renders the replicas footer when present", () => {
-    renderNode();
     expect(screen.getByText("3 replicas")).toBeInTheDocument();
-  });
-
-  it("omits the replicas footer when absent", () => {
-    renderNode({ data: { ...baseData, replicas: undefined } });
-    expect(screen.queryByText(/replicas/)).not.toBeInTheDocument();
-  });
-
-  it("renders the volume footer when present", () => {
-    renderNode({ data: { ...baseData, volume: "/data/pg" } });
     expect(screen.getByText("/data/pg")).toBeInTheDocument();
-  });
-
-  it("shows the runner and strategy row when wired in", () => {
-    renderNode({ data: { ...baseData, target: "instance", strategy: "run" } });
     expect(screen.getByText("instance · run")).toBeInTheDocument();
   });
 
-  it("does not render a url link when absent", () => {
-    renderNode({ data: { ...baseData, url: undefined } });
+  it("omits the url link and the replicas footer when the service has neither", () => {
+    renderNode({ data: { ...baseData, url: undefined, replicas: undefined } });
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByText(/replicas/)).not.toBeInTheDocument();
   });
 
   it("applies the selection ring when selected", () => {
