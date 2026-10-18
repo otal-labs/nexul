@@ -35,12 +35,14 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
-  const { projectId, attachStackId, testsLocation, testsRepo } = useProjectWizardStore(
+  const { projectId, attachStackId, testsLocation, testsRepo, repository, scanResult } = useProjectWizardStore(
     useShallow((s) => ({
       projectId: s.projectId,
       attachStackId: s.attachStackId,
       testsLocation: s.testsLocation,
       testsRepo: s.testsRepo,
+      repository: s.repository,
+      scanResult: s.scanResult,
     })),
   );
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
@@ -48,7 +50,8 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const addRepo = useAddProjectRepo();
   const asksTests = !!projectId && !attachStackId;
   const separateTestsRepo = testsLocation === TestsLocation.Separate ? testsRepo : null;
-  const [picked, setPicked] = useState<Repo | null>(null);
+  // Coming back to the step opens the repository already picked, with its scan.
+  const [picked, setPicked] = useState<Repo | null>(repository);
   const [dockerfilePath, setDockerfilePath] = useState("Dockerfile");
 
   // The answer is saved on every way out, so it lands whichever way the step is left; a failed save is toasted.
@@ -89,7 +92,7 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     await onLeaveEarly?.("done");
   };
 
-  const scanned = !!onLeaveEarly && picked && scanRepository.data;
+  const scanned = picked && (scanRepository.data ?? (picked.id === repository?.id ? scanResult : null));
   const openRow = scanned && {
     id: picked.id,
     row: (
@@ -97,7 +100,7 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
         repo={picked}
         scan={scanned}
         attaching={addRepo.isPending || saveTestsAnswer.isPending}
-        onAttach={() => void attachWithoutDeploying().catch(() => undefined)}
+        onAttach={onLeaveEarly && (() => void attachWithoutDeploying().catch(() => undefined))}
         onDeploy={scanned.candidates.length > 0 ? () => void advance().catch(() => undefined) : undefined}
       />
     ),
@@ -117,7 +120,7 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     scanRepository.isError &&
     (scanRepository.error as { response?: { status?: number } })?.response?.status === 404;
   const installUrl = notInstalled ? parseInstallUrl(errorMessage(scanRepository.error)) : undefined;
-  const nothingFound = scanRepository.isSuccess && scanRepository.data.candidates.length === 0;
+  const nothingFound = !!scanned && scanned.candidates.length === 0;
 
   return (
     <div className="space-y-4">
