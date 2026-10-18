@@ -220,18 +220,17 @@ func TestDialinHandler_DeliversSubscribedEvent_RunSuccess_AdvancesCursor(t *test
 
 func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
-	// left disabled
+	// left disabled until the event is seeded
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
 	setup.seedEvent(t, "ev-1", "ticket.created", `{}`, time.Now())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
-	defer cancel()
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
 	var f automations.Frame
-	err = wsjson.Read(ctx, conn, &f)
-	assert.Error(t, err, "a disabled automation must not receive delivery")
+	assert.Error(t, wsjson.Read(t.Context(), conn, &f), "switching it on drops the connection, and nothing was delivered before")
 }
 
 func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
@@ -253,10 +252,8 @@ func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wsjson.Write(t.Context(), conn, automations.Frame{Type: automations.FrameRunFinished, RunID: ev.RunID, Outcome: automations.OutcomeSuccess}))
 
-	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
-	defer cancel()
 	var f automations.Frame
-	assert.Error(t, wsjson.Read(ctx, conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
+	assert.Error(t, wsjson.Read(t.Context(), conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
 }
 
 func TestDialinHandler_DeliversOnlyItsOwnWorkspacesEvents(t *testing.T) {
@@ -318,13 +315,13 @@ func TestDialinHandler_UnsubscribedTopic_NoDelivery(t *testing.T) {
 	require.NoError(t, err)
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
-	setup.seedEvent(t, "ev-1", "doc.created", `{}`, time.Now())
+	now := time.Now()
+	setup.seedEvent(t, "ev-1", "doc.created", `{}`, now)
+	setup.seedEvent(t, "ev-2", "ticket.created", `{}`, now.Add(time.Second))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
-	defer cancel()
 	var f automations.Frame
-	err = wsjson.Read(ctx, conn, &f)
-	assert.Error(t, err, "an event on an unsubscribed topic must not be delivered")
+	require.NoError(t, wsjson.Read(t.Context(), conn, &f))
+	assert.Equal(t, "ev-2", f.EventID, "an event on an unsubscribed topic is skipped, the next subscribed one is delivered")
 }
 
 // TestDialinHandler_CrashMidRun_RedeliveredOnReconnect is the reconnect/

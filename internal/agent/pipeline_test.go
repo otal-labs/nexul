@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -382,12 +383,13 @@ func TestHandleMessageCreated_IgnoresNonUserAuthors(t *testing.T) {
 			Live:          &fakeLive{},
 		})
 		ev := messageCreatedEventKind(t, "conv-1", "user-1", kind, "@Agent needs a paired T3 Code computer", true)
-		require.NoError(t, svc.HandleMessageCreated(context.Background(), ev))
-		time.Sleep(20 * time.Millisecond)
-		replies, systemPosts := conv.snapshot()
-		assert.Empty(t, replies, "author_kind %q must not trigger a turn", kind)
-		assert.Empty(t, systemPosts, "author_kind %q must not trigger a turn", kind)
-		_ = client
+		synctest.Test(t, func(t *testing.T) {
+			require.NoError(t, svc.HandleMessageCreated(context.Background(), ev))
+			synctest.Wait()
+			replies, systemPosts := conv.snapshot()
+			assert.Empty(t, replies, "author_kind %q must not trigger a turn", kind)
+			assert.Empty(t, systemPosts, "author_kind %q must not trigger a turn", kind)
+		})
 	}
 }
 
@@ -400,11 +402,13 @@ func TestHandleMessageCreated_IgnoresNonMentionMessages(t *testing.T) {
 		Harnesses:     registryOf(client),
 		Live:          &fakeLive{},
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "just chatting", false)))
-	time.Sleep(20 * time.Millisecond)
-	replies, systemPosts := conv.snapshot()
-	assert.Empty(t, replies)
-	assert.Empty(t, systemPosts)
+	synctest.Test(t, func(t *testing.T) {
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "just chatting", false)))
+		synctest.Wait()
+		replies, systemPosts := conv.snapshot()
+		assert.Empty(t, replies)
+		assert.Empty(t, systemPosts)
+	})
 }
 
 func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
