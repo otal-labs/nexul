@@ -33,17 +33,17 @@ func connectFake(t *testing.T, f *t3rpctest.Server) *Conn {
 
 func TestConnect_HandshakeMintsTicketAndCallsGetConfig(t *testing.T) {
 	t.Parallel()
-	f := t3rpctest.New(t)
-	connectFake(t, f)
-	assert.Equal(t, int32(1), f.ConfigCalls.Load())
-}
-
-func TestConnect_AcceptsAlternateTicketFieldName(t *testing.T) {
-	t.Parallel()
-	f := t3rpctest.New(t)
-	f.TicketField = "wsTicket"
-	connectFake(t, f)
-	assert.Equal(t, int32(1), f.ConfigCalls.Load())
+	for name, field := range map[string]string{"the default ticket field": "", "the alternate ticket field name": "wsTicket"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			if field != "" {
+				f.TicketField = field
+			}
+			connectFake(t, f)
+			assert.Equal(t, int32(1), f.ConfigCalls.Load())
+		})
+	}
 }
 
 func TestConnect_RejectedBearer_IsARejectedSessionNotANexulSignOut(t *testing.T) {

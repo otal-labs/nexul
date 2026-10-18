@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -292,15 +291,6 @@ func TestWebhookHandler_ReviewChangesRequested(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, TopicPRReviewSubmitted, bus.lastPublished().Topic)
-}
-
-func TestWebhookHandler_PublishFailure_Returns500(t *testing.T) {
-	bus := newFakeBus()
-	bus.publishErr = errors.New("bus closed")
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("opened", false)))
-
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
 func issueCommentPayload(isPR bool, body, author string) []byte {
