@@ -22,6 +22,7 @@ import (
 // catalog action on every doc, folder, play, project, stack and channel answers as the check does, and so does each line
 // of an explanation.
 func TestExplain_AnswersWhatTheCheckAnswers(t *testing.T) {
+	t.Parallel()
 	f := listParityFixture(t)
 	postsChannel(t, f, f.channel.ID)
 	require.NoError(t, f.svc.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{UserIDs: []string{uReader}},
@@ -98,6 +99,7 @@ func accessHTTP(t *testing.T, f permFixture, user, path string) (int, string) {
 // TestExplain_AnotherPersonTakesTheManagePermission: explaining someone else without the entity's manage permission
 // is refused with what refused it, over HTTP and MCP alike, and a doc the caller can't read is not found.
 func TestExplain_AnotherPersonTakesTheManagePermission(t *testing.T) {
+	t.Parallel()
 	f := listParityFixture(t)
 	listTool := tool(t, access.MCPTools(f.svc.accessSvc), "permission_overwrite_list")
 	explainOverMCP := func(user, args string) (any, error) {
@@ -127,6 +129,7 @@ func TestExplain_AnotherPersonTakesTheManagePermission(t *testing.T) {
 // TestDocEdit_ForbiddenNamesTheRuleThatDeniedIt: an edit refused by a doc's rule says so over HTTP and MCP, and an
 // edit by someone outside the workspace is not found with nothing more.
 func TestDocEdit_ForbiddenNamesTheRuleThatDeniedIt(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	require.NoError(t, f.store.Access.Set(context.Background(), "doc", f.doc, uEditor, nil, grant("docs:write")))
 	routes := docs.NewHandler(f.svc.docsSvc).Routes()

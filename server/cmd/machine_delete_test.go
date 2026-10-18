@@ -22,6 +22,7 @@ func machineCount(t *testing.T, c privacyCast, id string) int {
 // found, someone who sees it and manages it but is denied Delete gets forbidden, and a stack aimed at it names itself in
 // a conflict, over HTTP and over host_delete. The machine is still there after each.
 func TestMachineDelete_RefusalsLeaveTheMachine(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedEdgeAndCore(t, db)
 
@@ -52,6 +53,7 @@ INSERT INTO stacks (id, name, slug, machine, strategy, created_at, updated_at) V
 // machine over HTTP, the instance Owner another over host_delete; the machine's rules go with it, and the one
 // machine.deleted frame reaches the people who saw it (the instance Owner and the person its rule named) and nobody else.
 func TestMachineDelete_FreeMachineGoesForEveryoneWhoSawIt(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedEdgeAndCore(t, db)
 

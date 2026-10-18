@@ -14,6 +14,7 @@ import (
 // A wizard-made project names its service and the environment keys it detected; a member who may open the project but
 // not read its stacks gets the step marks and nothing that names the service, on every read the gateway offers.
 func TestIntegration_ProjectSetup_ServiceIsShownOnlyToReadersOfStacks(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	keys := []string{"STRIPE_SECRET_KEY"}
 	_, err := f.svc.workspaceSvc.ChangeSetup(as(uOwner), pGeneral, workspace.SetupChange{

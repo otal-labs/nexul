@@ -149,6 +149,7 @@ func marshalMatrix(t *testing.T, rows []matrixRow) []byte {
 // TestAccessMatrix_OfTheListParityFixture pins what every member holds on everything in the list parity fixture, so a
 // change to the evaluator that moves an answer shows up as a diff of the golden file.
 func TestAccessMatrix_OfTheListParityFixture(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
 	withListParityRows(t, seedPermFixture(t, db, svc, store))
@@ -177,6 +178,7 @@ func TestAccessMatrix_OfTheListParityFixture(t *testing.T) {
 // temporary copy of its own, to NEXUL_ACCESS_MATRIX_OUT (the copy's path plus .matrix.json by default). Run it on the
 // base and the head of a change and diff the two files; before the switch every diff is empty.
 func TestAccessMatrix_OfACopy(t *testing.T) {
+	t.Parallel()
 	source := os.Getenv("NEXUL_ACCESS_MATRIX_DB")
 	if source == "" {
 		t.Skip("NEXUL_ACCESS_MATRIX_DB names no database copy")

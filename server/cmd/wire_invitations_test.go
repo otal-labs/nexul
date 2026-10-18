@@ -16,6 +16,7 @@ type fixedInstanceURL string
 func (u fixedInstanceURL) InstanceURL(context.Context) string { return string(u) }
 
 func TestMapInvitationAcceptance_NamesEveryRoleOfAGrant(t *testing.T) {
+	t.Parallel()
 	svc := tenancy.NewInvitationService(nil, fixedInstanceURL("https://nexul.example.com/"))
 	invitation := &tenancy.Invitation{ID: "inv-1", Grants: []*tenancy.InvitationGrant{{
 		WorkspaceID: "ws-1", WorkspaceName: "Acme", RoleID: "r-dev", RoleName: "Developer",

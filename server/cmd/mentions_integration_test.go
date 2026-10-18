@@ -23,7 +23,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
-	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -32,10 +31,10 @@ import (
 
 func mentionsTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
+	path := filepath.Join(t.TempDir(), "test.db")
+	copyMigratedDB(t, path)
+	db, err := storage.OpenDB(path)
 	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	require.NoError(t, testutil.SeedGeneralProject(db))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	return db
 }
@@ -48,6 +47,7 @@ func seedMentionsUser(t *testing.T, s *storage.Store, id string) {
 
 // TestIntegration_MentionsOverRealStorage covers ticket/doc chip resolution over real SQLite, access-aware.
 func TestIntegration_MentionsOverRealStorage(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	db := mentionsTestDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
@@ -212,6 +212,7 @@ func seedMentionPeople(t *testing.T, store *storage.Store) {
 // TestMentionSearch_FindsWorkspacePeople guards the doc and ticket @ picker finding the workspace's people, as the
 // new-DM dialog does, by login and by display name, and never someone outside the workspace.
 func TestMentionSearch_FindsWorkspacePeople(t *testing.T) {
+	t.Parallel()
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
 	routes := mentions.NewHandler(svc.mentionsSvc).Routes()
@@ -286,6 +287,7 @@ func personMentionBody(userIDs ...string) string {
 // TestPersonMentions_NotifyOnceAndOnlyReaders saves a doc and a ticket the way the editor does and checks the inbox:
 // a newly mentioned reader is told once, never the author, never someone who cannot read it, never a non-member.
 func TestPersonMentions_NotifyOnceAndOnlyReaders(t *testing.T) {
+	t.Parallel()
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
 	onik := as("u-onik")

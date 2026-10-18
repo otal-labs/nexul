@@ -23,6 +23,7 @@ import (
 // TestIntegration_PrivateChannel walks every read of a private channel through the wired services: its members and
 // the Owner read it, and to anyone else it is not found, in lists, messages, files, the voice call, and live frames.
 func TestIntegration_PrivateChannel(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	room, err := s.chatSvc.CreatePrivateChannel(as(uWriter), "workspace-default", uWriter, "leads", chat.KindChannel, []string{uReader})
@@ -93,6 +94,7 @@ func TestIntegration_PrivateChannel(t *testing.T) {
 // TestIntegration_SwitchingPrivateReachesEveryOpenSidebar: the switch's frame reaches the people it removed, whose
 // sidebars drop the channel, and switching back reaches everyone, with the history readable again.
 func TestIntegration_SwitchingPrivateReachesEveryOpenSidebar(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	audience := liveAudience{access: s.accessSvc, tickets: s.ticketsSvc, chat: s.chatSvc, deploy: s.deploySvc}
@@ -126,6 +128,7 @@ func TestIntegration_SwitchingPrivateReachesEveryOpenSidebar(t *testing.T) {
 // TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall delivers the real membership events as the relay would:
 // whoever loses the call is disconnected and cannot rejoin, and the Owner, who reads every private channel, stays.
 func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	var disconnected []string
@@ -185,6 +188,7 @@ func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
 
 // TestIntegration_ChannelRules: a role's Deny hides a channel from its holders everywhere, but not from the Owner.
 func TestIntegration_ChannelRules(t *testing.T) {
+	parallel(t)
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
 	f := seedPermFixture(t, db, svc, store)

@@ -49,6 +49,7 @@ func repoJSONFixture(owner, name, defaultBranch string) string {
 }
 
 func TestPersonView_Repos(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"installations":[{"id":10}]}`) // test server: write errors are irrelevant
@@ -66,6 +67,7 @@ func TestPersonView_Repos(t *testing.T) {
 }
 
 func TestPersonView_Repos_Cache(t *testing.T) {
+	t.Parallel()
 	newScanner := func(t *testing.T, walks *atomic.Int32, failFirst bool) repository.GitHubView {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
@@ -106,6 +108,7 @@ func TestPersonView_Repos_Cache(t *testing.T) {
 }
 
 func TestPersonView_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"message":"Bad credentials"}`, http.StatusUnauthorized)
@@ -122,6 +125,7 @@ func TestPersonView_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
 }
 
 func TestPersonView_GetTree(t *testing.T) {
+	t.Parallel()
 	t.Run("empty ref resolves and reports the default branch", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/repos/acme/app", func(w http.ResponseWriter, r *http.Request) {
@@ -196,6 +200,7 @@ func TestPersonView_GetTree(t *testing.T) {
 }
 
 func TestPersonView_GetFile(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/repos/acme/app/contents/Dockerfile", func(w http.ResponseWriter, r *http.Request) {

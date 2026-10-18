@@ -21,6 +21,7 @@ const uDev = "u-dev"
 // TestIntegration_Clarification walks a doc's clarification through the wired services: who sees, answers, posts,
 // and closes it, and how a round's run holds the doc's lock.
 func TestIntegration_Clarification(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	ctx := context.Background()

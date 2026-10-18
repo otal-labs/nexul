@@ -23,6 +23,7 @@ import (
 // TestStackWatching_AnOutageNotifiesTheWatchersWhoReadTheStack: with the real wiring, a service going down and coming
 // back reaches everyone who reads the stack and has not opted out, and no one who has lost the read by a rule.
 func TestStackWatching_AnOutageNotifiesTheWatchersWhoReadTheStack(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -82,6 +83,7 @@ func TestStackWatching_AnOutageNotifiesTheWatchersWhoReadTheStack(t *testing.T) 
 // TestStackWatching_CanStackFollowsTheRulesWhereTheyLive: a branch deployment answers through its base stack's rules, and
 // a stack outside every project, which no workspace's members read, answers no to everyone.
 func TestStackWatching_CanStackFollowsTheRulesWhereTheyLive(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 	now := time.Now()

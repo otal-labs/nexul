@@ -22,6 +22,7 @@ import (
 // TestOutages_TheRunnersContainerEventsReachDeploy: a machine runner's die on the bus opens the outage of the stack that
 // owns the container, the stack read shows it, and a start followed by a snapshot of the container running ends it.
 func TestOutages_TheRunnersContainerEventsReachDeploy(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -66,6 +67,7 @@ func outboxCount(t *testing.T, db *sql.DB, topic string) int {
 
 // TestOutages_FramesReachWhoReadsTheStack: both outage frames reach the people who can load the stack and no one else.
 func TestOutages_FramesReachWhoReadsTheStack(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
 	for _, topic := range []string{deploy.TopicContainerStopped, deploy.TopicContainerRecovered} {
@@ -78,6 +80,7 @@ func TestOutages_FramesReachWhoReadsTheStack(t *testing.T) {
 }
 
 func TestOutages_TheOutageTopicsArePushedAndScopedLikeTheStacks(t *testing.T) {
+	t.Parallel()
 	for _, topic := range []string{deploy.TopicContainerStopped, deploy.TopicContainerRecovered} {
 		assert.Contains(t, livePushTopics, topic)
 		assert.Contains(t, liveRules, topic)

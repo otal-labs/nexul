@@ -26,6 +26,7 @@ import (
 // of the stack whose exposure the router is named for, the stack's requests route shows them to whoever reads the
 // stack, and a router no exposure labelled adds nothing.
 func TestRequestCounts_AProxyGatewaysRouterCountsReachTheStacksPage(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

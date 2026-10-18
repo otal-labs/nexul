@@ -16,6 +16,7 @@ import (
 // TestIntegration_TicketKeysAreUniquePerWorkspace walks two workspaces that both have a WEB project through the
 // wired use-cases the HTTP gateway and MCP tools call (ADR 0089).
 func TestIntegration_TicketKeysAreUniquePerWorkspace(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	owner := as(uOwner)
 

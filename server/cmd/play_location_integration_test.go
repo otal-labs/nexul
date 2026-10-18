@@ -43,6 +43,7 @@ func (p *pausedPlayTurn) RunTurn(ctx context.Context, req agent.TurnRequest) {
 }
 
 func TestIntegration_PlayLocation_SettingsChangedBeforeRunTurn_UsesConfirmedTarget(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"changed", "unlinked", "computer removed"} {
 		t.Run(change, func(t *testing.T) {
 			ctx := as(uOwner)
@@ -114,6 +115,7 @@ func newPlayLocationFixture(t *testing.T, client *harnesstest.Client, session ha
 }
 
 func TestIntegration_PlayLocation_FailedChangeReopened_RetryLeavesTheOldThread(t *testing.T) {
+	t.Parallel()
 	rpc := t3rpctest.New(t)
 	rpc.Protocol = 2
 	h := t3clientv2.NewHarness(t3rpc.Options{HTTPClient: rpc.Client(), RPCTimeout: 5 * time.Second})
@@ -197,6 +199,7 @@ func (r *recordingTurns) last() harness.Target {
 }
 
 func TestIntegration_PlayLocation_LinkChangedWhileARunWaits_TheAnswerGoesToTheRunsThread(t *testing.T) {
+	t.Parallel()
 	ctx := as(uOwner)
 	turns := &recordingTurns{threadID: "thread-checkout-a", ask: true}
 	f, svc, runner, turn := newPlayLocationFixture(t, turns.client(), harness.Session{ServerURL: "https://example.com", BearerToken: "test-token"})
@@ -222,6 +225,7 @@ func TestIntegration_PlayLocation_LinkChangedWhileARunWaits_TheAnswerGoesToTheRu
 }
 
 func TestIntegration_PlayLocation_ChangeBackToTheSameLocation_KeepsTheThread(t *testing.T) {
+	t.Parallel()
 	ctx := as(uOwner)
 	turns := &recordingTurns{threadID: "thread-checkout-a"}
 	f, _, runner, turn := newPlayLocationFixture(t, turns.client(), harness.Session{ServerURL: "https://example.com", BearerToken: "test-token"})

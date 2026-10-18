@@ -13,6 +13,7 @@ import (
 
 // TestAutomationScope_EveryPublishedTopicHasARule keeps a new topic from silently reaching no automation.
 func TestAutomationScope_EveryPublishedTopicHasARule(t *testing.T) {
+	t.Parallel()
 	for _, topic := range eventcatalog.AllTopics() {
 		_, ok := scopeRules[topic]
 		assert.True(t, ok, "topic %s has no workspace rule for automations", topic)
@@ -20,6 +21,7 @@ func TestAutomationScope_EveryPublishedTopicHasARule(t *testing.T) {
 }
 
 func TestAutomationScope_Workspaces(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	_, err := db.Exec(`
 INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-b', 'B', 'b', 1, 1);

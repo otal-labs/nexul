@@ -46,6 +46,7 @@ func switchErrorRate(t *testing.T, f permFixture, rule deploy.ErrorRateRule, cra
 // stack with no hostname, accepted once one is routed; five stored minutes at 20% 5xx make the once-a-minute loop open an
 // episode, and the stack's readers are told, the crash ticket is filed, and the stack read shows the episode.
 func TestErrorRate_AWindowOverTheRuleNotifiesWatchersAndFilesTheCrashTicket(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -119,6 +120,7 @@ func TestErrorRate_AWindowOverTheRuleNotifiesWatchersAndFilesTheCrashTicket(t *t
 
 // TestErrorRate_FramesReachWhoReadsTheStack: both frames reach the people who can load the stack and no one else.
 func TestErrorRate_FramesReachWhoReadsTheStack(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
 	for _, topic := range []string{deploy.TopicErrorRateCrossed, deploy.TopicErrorRateRecovered} {
@@ -131,6 +133,7 @@ func TestErrorRate_FramesReachWhoReadsTheStack(t *testing.T) {
 }
 
 func TestErrorRate_TheTopicsArePushedAndScopedLikeTheStacks(t *testing.T) {
+	t.Parallel()
 	for _, topic := range []string{deploy.TopicErrorRateCrossed, deploy.TopicErrorRateRecovered} {
 		assert.Contains(t, livePushTopics, topic)
 		assert.Contains(t, liveRules, topic)

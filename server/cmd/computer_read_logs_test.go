@@ -21,6 +21,7 @@ import (
 )
 
 func TestComputerRules_ReadLogsIsOffByDefaultImpliesSeeAndGoesWithIt(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:see"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -65,6 +66,7 @@ func dialRunnerLogs(ctx context.Context, srv *httptest.Server, computerID, token
 // the owner's rule gives Read logs reads both over HTTP, MCP and the sockets, masked; See alone, no rule, and a role
 // holding every bit reach nothing, and nothing of theirs reaches the computer.
 func TestComputerReadLogs_OwnerOrAShareThatAllowsIt(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)
@@ -162,6 +164,7 @@ func TestComputerReadLogs_OwnerOrAShareThatAllowsIt(t *testing.T) {
 }
 
 func TestComputerReadLogs_ARunnerLogNeedsNoDockerButTheContainersDo(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)

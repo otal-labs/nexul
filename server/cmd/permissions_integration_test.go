@@ -267,6 +267,7 @@ ON CONFLICT DO NOTHING`, projectID, wsDefault)
 // TestIntegration_PermissionTable walks each domain's reads, lists, and creates as every kind of caller, through the
 // wired use-cases the HTTP gateway and MCP tools both call.
 func TestIntegration_PermissionTable(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	withMachineM1(t, f, "role-reader", "role-steward")
 	s := f.svc
@@ -576,6 +577,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 // TestIntegration_GrantsNeverExceedTheGiver is ADR 0088's escalation rule: someone who may edit roles, members, or
 // invitations in a workspace hands out only what they hold there, and only the Owner holds everything.
 func TestIntegration_GrantsNeverExceedTheGiver(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	ctx := context.Background()
@@ -623,6 +625,7 @@ func TestIntegration_GrantsNeverExceedTheGiver(t *testing.T) {
 // TestIntegration_FirstUserReachesEveryFormerAdminCapability: the owner wizard makes the first user the default
 // workspace's Owner, and nothing else is needed for every instance-level permission.
 func TestIntegration_FirstUserReachesEveryFormerAdminCapability(t *testing.T) {
+	parallel(t)
 	svc, store := newWired(t)
 	ctx := context.Background()
 	first, err := store.Users.CreateFirstUser(ctx, &auth.Identity{UserID: "u-first", Provider: auth.ProviderGitHub, ProviderUserID: "1", Login: "first"})

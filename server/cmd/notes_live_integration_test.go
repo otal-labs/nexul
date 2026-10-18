@@ -21,6 +21,7 @@ import (
 
 // TestIntegration_LiveNote edits one note's file live through the wired notes hub, from joining to deleting the note.
 func TestIntegration_LiveNote(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	thread, err := f.store.Chat.GetTicketThread(context.Background(), f.ticket.ID)

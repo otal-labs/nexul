@@ -13,6 +13,7 @@ import (
 
 // TestRoleSet_EveryEvaluatorAgrees: the grid, roles' check, the invitation SQL and the owner list answer from the union.
 func TestRoleSet_EveryEvaluatorAgrees(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
 	seedPermFixture(t, db, svc, store)

@@ -19,6 +19,7 @@ import (
 // TestIntegration_Note walks a note through the wired services: who may leave one and where, what message_list and an
 // agent turn read back, and that its file goes only with its message, taking the images it points at.
 func TestIntegration_Note(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	thread, err := f.store.Chat.GetTicketThread(context.Background(), f.ticket.ID)

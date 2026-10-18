@@ -94,6 +94,7 @@ func dialContainerLogs(ctx context.Context, srv *httptest.Server, computerID, to
 // HTTP, MCP and the logs socket; the workspace Owner and a role holding every bit get not found on every path, and none
 // of their calls reaches her computer. Once her runner reports no Docker, nothing reaches it for her either.
 func TestComputerContainers_OnlyTheOwnerSeesThem(t *testing.T) {
+	t.Parallel()
 	c, _ := newPrivacyCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)

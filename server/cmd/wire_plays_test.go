@@ -34,6 +34,7 @@ func (allowTickets) Require(context.Context, string, permissions.Action) error {
 
 // TestIntegration_PlaysLinkReader_OneHop names a bug's origin by its key, never the origin's own origin, and its blockers.
 func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	db := mentionsTestDB(t)
 	_, err := db.Exec(`UPDATE projects SET prefix = 'GEN' WHERE id = 'project-general'`)
@@ -63,6 +64,7 @@ func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 }
 
 func TestPlaysInterviewAnswers_RoundsLandInOrderAsStoredAnswers(t *testing.T) {
+	t.Parallel()
 	svc, store := newWired(t)
 	ctx := t.Context()
 	require.NoError(t, store.Projects.Create(ctx, &workspace.Project{ID: "p-web", WorkspaceID: "workspace-default", Name: "Web", Prefix: "WEB"}))
@@ -89,6 +91,7 @@ func TestPlaysInterviewAnswers_RoundsLandInOrderAsStoredAnswers(t *testing.T) {
 // TestProjectTargets_ListsWhatTheCallerReads: the board's batch reads by project list the project's tickets or docs
 // through their own use-cases, so a caller who cannot read them is refused rather than handed the ids.
 func TestProjectTargets_ListsWhatTheCallerReads(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	p := projectTargets{tickets: f.svc.ticketsSvc, docs: f.svc.docsSvc}
 
@@ -108,11 +111,13 @@ func TestProjectTargets_ListsWhatTheCallerReads(t *testing.T) {
 // TestPlaysMomentTopics_ArePublished keeps the auto play matcher subscribed to topics that exist; plays names them
 // as strings, since it never imports tickets or docs.
 func TestPlaysMomentTopics_ArePublished(t *testing.T) {
+	t.Parallel()
 	assert.Subset(t, eventcatalog.AllTopics(), plays.MomentTopics)
 }
 
 // TestIntegration_PlaysFacts_ReadsWhatConditionsCompare names a ticket's type, stage, people by user id, and its links.
 func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	seedMentionsUser(t, s, "alice")

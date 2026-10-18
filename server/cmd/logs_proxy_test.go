@@ -36,6 +36,7 @@ func newLogsMux(t *testing.T, upstream string) *httptest.Server {
 }
 
 func TestLogsProxy_ForwardsPathAndQueryUnchanged(t *testing.T) {
+	t.Parallel()
 	var gotURI, gotHost string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotURI, gotHost = r.RequestURI, r.Host
@@ -54,6 +55,7 @@ func TestLogsProxy_ForwardsPathAndQueryUnchanged(t *testing.T) {
 }
 
 func TestLogsProxy_StreamsBeforeUpstreamFinishes(t *testing.T) {
+	t.Parallel()
 	release := make(chan struct{})
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "first\n")
@@ -80,6 +82,7 @@ func TestLogsProxy_StreamsBeforeUpstreamFinishes(t *testing.T) {
 }
 
 func TestLogsProxy_UpgradesWebSocket(t *testing.T) {
+	t.Parallel()
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
@@ -105,6 +108,7 @@ func TestLogsProxy_UpgradesWebSocket(t *testing.T) {
 }
 
 func TestLogsProxy_UpstreamDown_Returns502(t *testing.T) {
+	t.Parallel()
 	upstream := httptest.NewServer(http.NotFoundHandler())
 	down := upstream.URL
 	upstream.Close()
@@ -117,6 +121,7 @@ func TestLogsProxy_UpstreamDown_Returns502(t *testing.T) {
 }
 
 func TestLogsProxy_Unset_NoRouteAndNoSPAFallback(t *testing.T) {
+	t.Parallel()
 	srv := newLogsMux(t, "")
 
 	spa, err := http.Get(srv.URL + "/tickets")

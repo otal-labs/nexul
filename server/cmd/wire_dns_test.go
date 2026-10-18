@@ -10,6 +10,7 @@ import (
 )
 
 func TestInstanceOrigin(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		addr string
@@ -30,6 +31,7 @@ func TestInstanceOrigin(t *testing.T) {
 // TestExposureTargetFor_ContainerName is the regression for the live 502 on a compose stack: a container not
 // reported yet was routed by the stack slug (nexul-xprem), a name nothing answers to on the stack's network.
 func TestExposureTargetFor_ContainerName(t *testing.T) {
+	t.Parallel()
 	compose := &deploy.Stack{ID: "s1", Slug: "nexul-xprem", Strategy: deploy.StrategyCompose, Machine: "prod"}
 	run := &deploy.Stack{ID: "s2", Slug: "api", Strategy: deploy.StrategyRun, DockerNetwork: "api_default"}
 	tests := []struct {
@@ -50,6 +52,7 @@ func TestExposureTargetFor_ContainerName(t *testing.T) {
 }
 
 func TestRunningTargets(t *testing.T) {
+	t.Parallel()
 	stack := &deploy.Stack{ID: "s1", Slug: "shop", Strategy: deploy.StrategyCompose, Machine: "m1"}
 	containers := []*deploy.Container{{ID: "c-web", Name: "web"}, {ID: "c-db", Name: "db"}}
 	web := deploy.ObservedService{Name: "web", ContainerName: "shop-web-7", Status: "running", Networks: []deploy.Network{{Name: "edge"}}}

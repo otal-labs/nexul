@@ -77,6 +77,7 @@ func listsHidden(t *testing.T, raw []byte) bool {
 // agents' play lists for its holders, and its link and its queued runs are not found, over HTTP and MCP; a rule naming a
 // person shows it to them, and the Owner sees it whatever the rules.
 func TestPlays_SeeHidesItEverywhere(t *testing.T) {
+	t.Parallel()
 	f, runner := playSeeFixture(t)
 	s := f.svc
 	defs := plays.NewHandler(s.playsSvc).Routes()
@@ -147,6 +148,7 @@ func TestPlays_SeeHidesItEverywhere(t *testing.T) {
 // TestPlays_TheStarterReadsTheirRun: a run's starter reads it, and its live frames, with See on its play denied; anyone
 // else reads it only when they can see the play.
 func TestPlays_TheStarterReadsTheirRun(t *testing.T) {
+	t.Parallel()
 	f, runner := playSeeFixture(t)
 	ctx := context.Background()
 	for id, starter := range map[string]string{"tr-reader": uReader, "tr-writer": uWriter} {
@@ -218,6 +220,7 @@ func hiddenCanRun(t *testing.T, raw []byte) *bool {
 // TestPlays_CanRunFollowsThePlaysOwnRules: a play's own Run allow lets someone whose roles hold no plays:run run it,
 // and its Run deny leaves it seen but not runnable, in the plays list, the run menus and play_list alike.
 func TestPlays_CanRunFollowsThePlaysOwnRules(t *testing.T) {
+	t.Parallel()
 	f, _ := playSeeFixture(t)
 	s := f.svc
 	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "play", []string{hiddenPlay}, access.Targets{UserIDs: []string{uWriter}},
@@ -254,6 +257,7 @@ func pageItems(t *testing.T, a *access.Service, tl mcptool.Tool, user, args stri
 // TestPlays_RunExplainsTheSeeItNeeds: the reader's role is denied See on the play while it holds Run; the panel's Run
 // answer stays allowed by the role and requires See with See's sentence, and pressing the play is still not found.
 func TestPlays_RunExplainsTheSeeItNeeds(t *testing.T) {
+	t.Parallel()
 	f, runner := playSeeFixture(t)
 	explainRun := func(t *testing.T, target string) access.Answer {
 		t.Helper()

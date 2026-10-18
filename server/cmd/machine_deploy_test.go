@@ -104,6 +104,7 @@ func stacksNamed(t *testing.T, f permFixture, name string) int {
 // machine they hold no Deploy to on. Typing the machine's name into stack_create refuses one they see, hides one they
 // don't, and rejects a name no machine bears, and the gateway's POST does the same, leaving no stack behind.
 func TestMachines_StackCreateRefusesAMachineYouCantDeployTo(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	create := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_create")
 
@@ -138,6 +139,7 @@ func TestMachines_StackCreateRefusesAMachineYouCantDeployTo(t *testing.T) {
 // names exist by typing them. A machine they don't see and a name no machine bears answer with the same status and the
 // same body, naming only what they typed, over HTTP and over stack_create.
 func TestMachines_AHiddenMachineTypedByNameAnswersAsAnUnknownName(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	create := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_create")
 
@@ -162,6 +164,7 @@ func TestMachines_AHiddenMachineTypedByNameAnswersAsAnUnknownName(t *testing.T) 
 // TestMachines_MovingAStackNeedsDeployToOnTheNewMachine: an update that changes a stack's machine takes Deploy to on the
 // machine it moves to, while an edit that leaves the machine alone does not.
 func TestMachines_MovingAStackNeedsDeployToOnTheNewMachine(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	update := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_update")
 	_, err := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_create").Call(as(uShipper), stackOn("m1"))
@@ -192,6 +195,7 @@ func deploysOf(t *testing.T, f permFixture, stackID string) int {
 // TestMachines_TakenOffStopsTheNextDeploy: a stack made on a machine is redeployed by its maker, over HTTP and MCP, until
 // the Owner denies Deploy to or takes them off the machine, and the very next deploy is refused, no job recorded.
 func TestMachines_TakenOffStopsTheNextDeploy(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	stack, _, err := f.svc.deploySvc.CreateStackWithOptions(as(uShipper), deploy.Stack{ProjectID: pGeneral, Name: "api", Machine: "m1", Strategy: deploy.StrategyRun, DockerNetwork: "edge"}, nil, deploy.CreateStackOptions{})
 	require.NoError(t, err)
@@ -226,6 +230,7 @@ func TestMachines_TakenOffStopsTheNextDeploy(t *testing.T) {
 // TestMachines_APushDeployStillRuns: a push to a branch with a deploy rule creates the branch deployment and deploys it on
 // a machine no member sees, and so does a plain deploy with no one signed in: the server's own deploys pass as the server.
 func TestMachines_APushDeployStillRuns(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	ctx := context.Background()
 	now := time.Now()
@@ -251,6 +256,7 @@ func TestMachines_APushDeployStillRuns(t *testing.T) {
 // takes dns:write and Deploy to on that machine; either alone is refused, and a machine not seen is not found, on the
 // gateway and on the proxy step the DNS page runs.
 func TestMachines_AGatewayTakesDeployToAndDNSWrite(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	gateway := func(network, machine string) dns.CreateGatewayInput {
 		return dns.CreateGatewayInput{Kind: dns.GatewayProxy, DockerNetwork: network, ZoneID: "zone-1", Zone: "example.com", ServerAddress: "203.0.113.9", Target: machine}
@@ -281,6 +287,7 @@ func TestMachines_AGatewayTakesDeployToAndDNSWrite(t *testing.T) {
 // sees its machine and reads DNS, on a read, in both lists and on its live frame, and a deploy of it needs Deploy to
 // and dns:write beside the stack's own bits.
 func TestMachines_AnInstanceStackIsNotFoundWithoutSeeAndDNSRead(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	ctx := context.Background()
 	now := time.Now()
@@ -326,6 +333,7 @@ func TestMachines_AnInstanceStackIsNotFoundWithoutSeeAndDNSRead(t *testing.T) {
 // TestMachines_ThePickerListsWhereYouMayDeploy: the machines offered for a stack are those the caller holds Deploy to on,
 // not those merely seen, and the instance Owner is offered all of them.
 func TestMachines_ThePickerListsWhereYouMayDeploy(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	f.svc.deploySvc.SetMachineLookup(deployMachineLookupAdapter{machines: f.store.Machines})
 	offered := func(user string) []string {

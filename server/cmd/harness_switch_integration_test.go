@@ -45,6 +45,7 @@ func countSwitched(t *testing.T, s *storage.Store) int {
 }
 
 func TestIntegration_FreshPairOnProtocol2_StoresTheNewKindWithOneToken(t *testing.T) {
+	t.Parallel()
 	f := t3rpctest.New(t)
 	f.Protocol = 2
 	svc, s := pairingOverRegistry(t, f)
@@ -61,6 +62,7 @@ func TestIntegration_FreshPairOnProtocol2_StoresTheNewKindWithOneToken(t *testin
 }
 
 func TestIntegration_Protocol1ComputerAfterTheUpdate_SwitchesOnItsFirstCallWithOneEvent(t *testing.T) {
+	t.Parallel()
 	f := t3rpctest.New(t)
 	f.Protocol = 2
 	svc, s := pairingOverRegistry(t, f)

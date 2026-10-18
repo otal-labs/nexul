@@ -101,6 +101,7 @@ func (f templateFixture) setInstance(t *testing.T, kind, key, body string) {
 }
 
 func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
+	t.Parallel()
 	f := newTemplateFixture(t)
 
 	t.Run("an unedited workspace follows the instance live, an edited one keeps its own", func(t *testing.T) {
@@ -187,6 +188,7 @@ func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
 }
 
 func TestIntegration_TemplatesClone(t *testing.T) {
+	t.Parallel()
 	f := newTemplateFixture(t)
 	wsB, pB := f.newWorkspace(t, "Beta", "BET")
 	atB := templates.Location{Scope: templates.ScopeWorkspace, WorkspaceID: wsB.ID}
@@ -281,6 +283,7 @@ func TestIntegration_TemplatesClone(t *testing.T) {
 }
 
 func TestIntegration_TemplatesBitGatesTheInstance(t *testing.T) {
+	parallel(t)
 	f := newTemplateFixture(t)
 	for user, want := range map[string]string{uOwner: ok, uTemplater: ok, uSteward: forbidden, uPlain: forbidden} {
 		_, err := f.tpl.Update(as(user), memories.TemplateKind, "", templates.Instance, "## By "+user)
@@ -294,6 +297,7 @@ func TestIntegration_TemplatesBitGatesTheInstance(t *testing.T) {
 // reads the workspace Interview template the way Settings does, with no project named, and saves an edit; someone
 // holding neither it nor memories:read is still refused.
 func TestIntegration_TemplateEditorOpensEditsAndSavesItFromSettings(t *testing.T) {
+	t.Parallel()
 	f := newTemplateFixture(t)
 	now := time.Now()
 	ctx := context.Background()
@@ -354,6 +358,7 @@ func ticksOf(byName map[string]*roles.Role) map[string][]string {
 // TestIntegration_TemplateRoles: a new workspace copies every template role beside Owner, as the instance holds it at
 // creation, and nothing that happens to the templates afterwards reaches it or any workspace that existed before.
 func TestIntegration_TemplateRoles(t *testing.T) {
+	t.Parallel()
 	f := newTemplateFixture(t)
 	existingNames, existing := workspaceRoles(t, f.svc, wsDefault)
 
@@ -429,6 +434,7 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 // TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles: the owner wizard binding the pre-seeded default
 // workspace seeds the template roles there too, beside the Owner role it creates.
 func TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles(t *testing.T) {
+	t.Parallel()
 	svc, store := wiredOver(t, mentionsTestDB(t))
 	seedMentionsUser(t, store, uOwner)
 

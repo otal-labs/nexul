@@ -37,6 +37,7 @@ import (
 // random values of the domain types handlers write, alone and wrapped the way handlers wrap them, must encode
 // identically through jsonx and through the old copy-every-value normalizer kept below as the reference.
 func TestJSONParity_HTTPBodiesMatchTheCopyEverythingEncoder(t *testing.T) {
+	t.Parallel()
 	types := []any{
 		tickets.Ticket{}, tickets.LinkSet{}, tickets.LinkedTicket{}, tickets.TestReport{}, tickets.SearchResult{},
 		docs.Doc{}, docs.DocListItem{}, docs.Folder{}, docs.Watchers{}, docs.ClarificationRound{}, docs.DocVersion{},

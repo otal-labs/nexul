@@ -16,6 +16,7 @@ import (
 )
 
 func TestDeployProjectStore_LinkRepo(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
@@ -36,6 +37,7 @@ func TestDeployProjectStore_LinkRepo(t *testing.T) {
 }
 
 func TestDeployProjectStore_IsTestsRepo(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)

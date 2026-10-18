@@ -26,6 +26,7 @@ const (
 // TestIntegration_BotsFollowTheirConversationsGate asks each conversation kind, through the wired services, who may
 // see and add its bots: botwebhook bits are not enough without reading the conversation the way chat does.
 func TestIntegration_BotsFollowTheirConversationsGate(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	ctx := context.Background()
@@ -82,6 +83,7 @@ func TestIntegration_BotsFollowTheirConversationsGate(t *testing.T) {
 
 // TestIntegration_BotLiveFrames reach whoever lists the conversation's bots, and nobody else.
 func TestIntegration_BotLiveFrames(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	audience := liveAudience{access: s.accessSvc, tickets: s.ticketsSvc, chat: s.chatSvc, deploy: s.deploySvc}

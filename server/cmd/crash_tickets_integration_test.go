@@ -66,6 +66,7 @@ func threadBodies(t *testing.T, f permFixture, ticketID string) []string {
 // consumers: nothing while the switch is off, one ticket for the first crash, comments for a repeat and a recovery, and
 // a fresh ticket once the earlier one is done.
 func TestCrashTickets_ASwitchedOnStackFilesOneTicketAndCommentsOnTheRest(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withMachineM1(t, f)
 	d := f.svc.deploySvc
@@ -118,6 +119,7 @@ func TestCrashTickets_ASwitchedOnStackFilesOneTicketAndCommentsOnTheRest(t *test
 
 // A bug type needs a found-in, which a crash cannot name, so the ticket is filed with its origin marked unknown.
 func TestCrashTickets_ABugDefaultTypeIsFiledWithAnUnknownOrigin(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withMachineM1(t, f)
 	_, err := f.db.Exec(`UPDATE ticket_types SET position = -1 WHERE id = 'ticket-type-bug'`)
@@ -138,6 +140,7 @@ func TestCrashTickets_ABugDefaultTypeIsFiledWithAnUnknownOrigin(t *testing.T) {
 }
 
 func TestCrashTickets_AnInstanceStackCannotSwitchThemOnAndFilesNothing(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withMachineM1(t, f)
 	stack, err := f.svc.deploySvc.GetStack(as(uOwner), f.infra)

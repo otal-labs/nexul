@@ -44,6 +44,7 @@ func enrollmentCast(t *testing.T) privacyCast {
 // machine and gives the person who made the code a rule with See, Deploy to, Manage and Delete, so the machine they
 // added is not one they lose sight of; the instance Owner needs no rule and a member who may not add machines gets none.
 func TestEnrollment_ANewMachineGivesItsAdderEveryAction(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 
 	_, status, body := mintRunnerCode(t, c, c.alice, "fresh-runner", "fresh-box")
@@ -71,6 +72,7 @@ func TestEnrollment_ANewMachineGivesItsAdderEveryAction(t *testing.T) {
 // TestEnrollment_AnExistingMachineTakesManage: a code for a runner on a machine that exists takes Manage on it, not just
 // seeing it, and a machine the person can't see is not found; neither adds a machine, so Add machines doesn't help.
 func TestEnrollment_AnExistingMachineTakesManage(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	_, err := c.db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
 VALUES ('machine', 'm-edge', 'person', 'u-alice', '["machines:see"]', '[]', 1, 1)`)
@@ -99,6 +101,7 @@ VALUES ('machine', 'm-edge', 'person', 'u-alice', '["machines:see"]', '[]', 1, 1
 // TestEnrollment_ACodeCantLandOnAMachineTakenSince: a code made for a machine name nobody had is refused once someone
 // else's machine bears that name, so it can't put a runner on a machine its maker doesn't manage; nothing is enrolled.
 func TestEnrollment_ACodeCantLandOnAMachineTakenSince(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	code, status, body := mintRunnerCode(t, c, c.everyBits, "late-runner", "late-box")
 	require.Equal(t, http.StatusCreated, status, body)
@@ -126,6 +129,7 @@ VALUES ('machine', 'm-late', 'person', 'u-carol', '["machines:see"]', '[]', 1, 1
 // TestEnrollment_ACodeOfSomeoneWhoCanNoLongerAddMachinesIsRefused: a code reads its maker's rights when it is used, so
 // taking Add machines from them stops a code they made earlier from creating a machine.
 func TestEnrollment_ACodeOfSomeoneWhoCanNoLongerAddMachinesIsRefused(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	code, status, body := mintRunnerCode(t, c, c.everyBits, "gone-runner", "gone-box")
 	require.Equal(t, http.StatusCreated, status, body)
@@ -153,6 +157,7 @@ func openCodes(t *testing.T, c privacyCast, token string) []map[string]any {
 // or its hash, a stranger sees nothing and finds nothing to revoke, and once the maker revokes it the installer's
 // request is refused like any unknown code and a second revoke is not found.
 func TestEnrollmentCodes_AMakerRevokesTheirCodeAndItEnrollsNothing(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	code, status, body := mintRunnerCode(t, c, c.everyBits, "fresh-runner", "fresh-box")
 	require.Equal(t, http.StatusCreated, status, body)
@@ -184,6 +189,7 @@ func TestEnrollmentCodes_AMakerRevokesTheirCodeAndItEnrollsNothing(t *testing.T)
 // TestEnrollmentCodes_WhoManagesTheMachineOrOwnsTheInstanceSeesAnotherPersonsCode: a code names a machine, so someone
 // who manages that machine, and the instance Owner, may revoke it too; seeing the machine is not enough.
 func TestEnrollmentCodes_WhoManagesTheMachineOrOwnsTheInstanceSeesAnotherPersonsCode(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	_, err := c.db.Exec(`UPDATE permission_overwrites SET allow = '["machines:see","machines:write"]' WHERE resource_id = 'm-edge' AND user_id = 'u-carol'`)
 	require.NoError(t, err)
@@ -207,6 +213,7 @@ VALUES ('machine', 'm-edge', 'person', 'u-alice', '["machines:see"]', '[]', 1, 1
 // TestEnrollmentCodes_AComputersCodeIsItsOwnersAloneEvenFromTheInstanceOwner: the code that adds a person's computer is
 // listed and revoked by that person only, so no one else learns they are adding a computer.
 func TestEnrollmentCodes_AComputersCodeIsItsOwnersAloneEvenFromTheInstanceOwner(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	computerID, _ := addComputer(t, c, c.alice, "Alice Laptop")
 
@@ -225,6 +232,7 @@ func TestEnrollmentCodes_AComputersCodeIsItsOwnersAloneEvenFromTheInstanceOwner(
 // TestEnrollmentCodes_AgentsListAndRevokeThroughTheHostTools: host_create returns the code's id, machine_list shows the
 // open code without the code itself, and host_delete with code_id revokes it.
 func TestEnrollmentCodes_AgentsListAndRevokeThroughTheHostTools(t *testing.T) {
+	t.Parallel()
 	c := enrollmentCast(t)
 	created := callTool(t, c.h, c.everyBits, "host_create", `{"kind":"runner","name":"agent-runner","machine":"agent-box"}`)
 	assert.Contains(t, created, `\"id\"`)

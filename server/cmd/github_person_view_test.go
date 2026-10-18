@@ -127,6 +127,7 @@ func newPersonViewFixture(t *testing.T) personViewFixture {
 }
 
 func TestDiscovery_ListsOnlyThePersonsOwnRepositoriesEvenWithAnotherAccountLinkedToTheirWorkspace(t *testing.T) {
+	t.Parallel()
 	f := newPersonViewFixture(t)
 	_, err := f.store.GitHubInstallations.AssignInstallation(t.Context(), repository.Assignment{AccountID: 22, AccountLogin: "bob", WorkspaceID: "workspace-default"})
 	require.NoError(t, err)
@@ -148,6 +149,7 @@ func TestDiscovery_ListsOnlyThePersonsOwnRepositoriesEvenWithAnotherAccountLinke
 }
 
 func TestDiscovery_WithoutAPersonTokenReadsNothingAndNeverTheConnector(t *testing.T) {
+	t.Parallel()
 	f := newPersonViewFixture(t)
 	_, err := f.repos.ListRepos(as("carol"), "workspace-default", "", false)
 	require.ErrorIs(t, err, auth.ErrGitHubNotConnected)
@@ -160,6 +162,7 @@ func TestDiscovery_WithoutAPersonTokenReadsNothingAndNeverTheConnector(t *testin
 }
 
 func TestAttach_LinksOnlyWhatTheAttacherCanOpenAndBackgroundWorkStaysOnAttachedRepositories(t *testing.T) {
+	t.Parallel()
 	f := newPersonViewFixture(t)
 	bobsRepo := workspace.RepoRef{Owner: "bob", Name: "secret", FullName: "bob/secret", ConnectorID: "github"}
 

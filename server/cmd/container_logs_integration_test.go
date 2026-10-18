@@ -87,6 +87,7 @@ func asUser(userID string, next http.Handler) http.Handler {
 }
 
 func TestIntegration_ContainerLogs(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()

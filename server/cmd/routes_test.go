@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegisterOpenAPIRoutes_IncludesMountedRoutes(t *testing.T) {
+	t.Parallel()
 	child := httpx.NewServeMux()
 	child.HandleFunc("GET /api/new-route", func(http.ResponseWriter, *http.Request) {})
 	apiMux := httpx.NewServeMux()
@@ -31,6 +32,7 @@ func TestRegisterOpenAPIRoutes_IncludesMountedRoutes(t *testing.T) {
 }
 
 func TestMountGateway_RequiresTrackedAPIRoutes(t *testing.T) {
+	t.Parallel()
 	require.Panics(t, func() {
 		mountGateway(httpx.NewServeMux(), "/api/untracked", http.NewServeMux())
 	})
