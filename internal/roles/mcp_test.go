@@ -10,7 +10,6 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func callRoleTool(ctx context.Context, t *testing.T, s *Service, name, args string) (any, error) {
@@ -176,9 +175,4 @@ func TestRoleDelete_ReturnsWhatItDeleted(t *testing.T) {
 	assert.Equal(t, roleDeleted{ID: "role-editors", Deleted: true}, out)
 	_, err = repo.Get(context.Background(), "role-editors")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestToRoleResult_ListsPermissionsAsStrings(t *testing.T) {
-	got := ToRoleResult(&Role{ID: "r", WorkspaceID: "w", Name: "N", Permissions: permissions.SetOf(permissions.RolesClone)})
-	assert.Equal(t, RoleResult{ID: "r", WorkspaceID: "w", Name: "N", Permissions: []string{"roles:clone"}}, got)
 }

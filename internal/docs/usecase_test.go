@@ -888,12 +888,13 @@ func TestListByProject(t *testing.T) {
 func TestSearch_FiltersUnreadable(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	openable, err := s.Create(testCtx(), "project-1", "Storage Spine", "SQLite")
+	_, err := s.Create(testCtx(), "project-1", "Storage Spine", "SQLite")
 	require.NoError(t, err)
-	hidden, err := s.Create(testCtx(), "project-1", "Top Secret", "SQLite")
+	_, err = s.Create(testCtx(), "project-1", "Top Secret", "SQLite")
 	require.NoError(t, err)
-	_ = openable
-	_ = hidden
+	found, err := s.Search(testCtx(), "sqlite", 10)
+	require.NoError(t, err)
+	require.Len(t, found, 2, "the same search finds both for someone who can read them")
 
 	deny := newDenyService(repo)
 	results, err := deny.Search(testCtx(), "sqlite", 10)

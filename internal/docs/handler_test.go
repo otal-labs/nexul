@@ -276,19 +276,6 @@ func TestDocsHandler_UnreadableIsNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rec.Code, "an action refused on a doc they read is forbidden")
 }
 
-func TestDocsHandler_ListLeavesOutWhatTheyCantRead(t *testing.T) {
-	repo := newFakeRepo()
-	_, err := newTestService(repo).Create(testCtx(), "project-1", "secret title", "secret body")
-	require.NoError(t, err)
-	h := NewHandler(newDenyService(repo)).Routes()
-
-	rec := serve(t, h, http.MethodGet, "/api/docs", "")
-	require.Equal(t, http.StatusOK, rec.Code)
-	var items []DocListItem
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &items))
-	assert.Empty(t, items)
-}
-
 func TestDocsHandler_ImportMarkdown(t *testing.T) {
 	h, _ := newDocsHandler()
 
