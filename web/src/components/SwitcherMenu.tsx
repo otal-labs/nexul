@@ -15,10 +15,17 @@ interface SwitcherMenuProps {
   onCreate?: (() => void) | undefined;
   // What creating needs; given, the row is locked or hidden by it instead of by the caller leaving onCreate out.
   createGate?: ActionGate | undefined;
+  // On the collapsed rail it opens beside the rail rather than down over the icons under it.
+  collapsed: boolean;
 }
 
-export const SwitcherMenu = ({ children, createLabel, onCreate, createGate }: SwitcherMenuProps) => (
-  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-[max(var(--radix-popover-trigger-width),12rem)] p-1">
+export const SwitcherMenu = ({ children, createLabel, onCreate, createGate, collapsed }: SwitcherMenuProps) => (
+  <PopoverContent
+    side={collapsed ? "right" : "bottom"}
+    align="start"
+    sideOffset={collapsed ? 8 : 6}
+    className="w-[max(var(--radix-popover-trigger-width),14rem)] p-1"
+  >
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
       // Centres the plus over the 28px tiles above, so the label starts where their names do.

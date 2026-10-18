@@ -17,13 +17,13 @@ interface TargetChoiceProps {
 const TargetChoice = ({ target, blocked, onPick, onBlocked }: TargetChoiceProps) => (
   <>
     {!blocked && (
-      <button type="button" onClick={onPick} className={cn(menuItemClass, "w-full")}>
+      <button type="button" onClick={onPick} className={menuItemClass}>
         <TargetMark target={target} className="size-5" />
         <span className="min-w-0 flex-1 truncate">{target.name}</span>
       </button>
     )}
     {blocked && (
-      <div aria-disabled="true" className={cn(menuItemClass, "w-full cursor-default hover:bg-transparent")}>
+      <div aria-disabled="true" className={cn(menuItemClass, "cursor-default hover:bg-transparent")}>
         <TargetMark target={target} className="size-5 opacity-50" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-muted-foreground">{target.name}</span>

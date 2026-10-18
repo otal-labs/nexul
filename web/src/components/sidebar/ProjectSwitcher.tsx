@@ -77,6 +77,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
         onSettings={handleSettings}
         onPermissions={handlePermissions}
         onCreate={handleCreate}
+        collapsed={collapsed}
       />
     </Popover>
   );

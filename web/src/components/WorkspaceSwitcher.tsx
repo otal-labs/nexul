@@ -54,6 +54,7 @@ export const WorkspaceSwitcher = ({ collapsed }: WorkspaceSwitcherProps) => {
         onSelect={handleSelect}
         canCreateWorkspace={canCreateWorkspace}
         onCreate={handleCreate}
+        collapsed={collapsed}
       />
     </Popover>
   );
