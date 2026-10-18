@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, errorMessage } from "@/api/client";
 import {
   useCreateTicket,
+  useFetchTicketsByDoc,
   useUpdateTicket,
   useUpdateTicketPosition,
   useUpdateTicketStatus,
@@ -52,6 +53,15 @@ beforeEach(() => {
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.delete).mockReset();
+});
+
+describe("useFetchTicketsByDoc", () => {
+  it("scopes by doc", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [ticket] });
+    const { result } = renderHook(() => useFetchTicketsByDoc("doc-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([ticket]));
+    expect(api.get).toHaveBeenCalledWith("/api/tickets", { params: { doc_id: "doc-1" } });
+  });
 });
 
 describe("useCreateTicket", () => {

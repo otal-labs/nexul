@@ -52,6 +52,13 @@ beforeEach(() => {
 });
 
 describe("useFetchDocsByProject", () => {
+  it("loads the project-scoped doc list", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [doc] });
+    const { result } = renderHook(() => useFetchDocsByProject("project-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([doc]));
+    expect(api.get).toHaveBeenCalledWith("/api/docs", { params: { project_id: "project-1" } });
+  });
+
   it("is disabled without a project id", () => {
     const { result } = renderHook(() => useFetchDocsByProject(""), { wrapper });
     expect(result.current.fetchStatus).toBe("idle");

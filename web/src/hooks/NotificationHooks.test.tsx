@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useFetchInbox,
+  useFetchUnreadCount,
   useMarkAllNotificationsRead,
   useMarkNotificationsRead,
   notificationFollower,
@@ -53,6 +54,15 @@ describe("useFetchInbox", () => {
     const { result } = renderHook(() => useFetchInbox(), { wrapper });
     await waitFor(() => expect(result.current.data?.map((e) => e.key)).toEqual(["doc:doc-1"]));
     expect(api.get).toHaveBeenCalledWith("/api/notifications", { params: { workspace_id: "ws-1" } });
+  });
+});
+
+describe("useFetchUnreadCount", () => {
+  it("counts only the selected workspace's unread notifications", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { count: 2 } });
+    const { result } = renderHook(() => useFetchUnreadCount(), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual({ count: 2 }));
+    expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count", { params: { workspace_id: "ws-1" } });
   });
 });
 

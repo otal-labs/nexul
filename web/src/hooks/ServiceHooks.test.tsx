@@ -9,6 +9,7 @@ import {
   useCreateService,
   useDeleteService,
   useDeployService,
+  useFetchServices,
   useRollbackService,
   useUpdateService,
   serviceFollower,
@@ -39,6 +40,13 @@ beforeEach(() => {
 });
 
 describe("ServiceHooks", () => {
+  it("useFetchServices loads by project", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [service] });
+    const { result } = renderHook(() => useFetchServices("proj-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([service]));
+    expect(api.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "proj-1" } });
+  });
+
   it("useCreateService posts", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: service });
     const { result } = renderHook(() => useCreateService(), { wrapper });

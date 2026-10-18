@@ -17,10 +17,6 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 
 beforeEach(() => {
   jest.mocked(api.get).mockReset();
-});
-
-
-beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 

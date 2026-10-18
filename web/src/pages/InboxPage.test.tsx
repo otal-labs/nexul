@@ -156,7 +156,7 @@ describe("InboxPage", () => {
     expect(within(list).getByRole("button", { name: /Spec.*\d+d ago/ })).toBeInTheDocument();
   });
 
-  it("marks an unread notification read and loads its source when selected", async () => {
+  it("opens an already read notification without marking it read again", async () => {
     mockApi();
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
@@ -248,10 +248,7 @@ describe("InboxPage", () => {
   });
 
   it("shows the empty state when there are no notifications", async () => {
-    vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === "/api/notifications") return Promise.resolve({ data: [] });
-      return Promise.resolve({ data: [] });
-    });
+    vi.mocked(api.get).mockResolvedValue({ data: [] });
     renderPage();
     expect(await screen.findByText("No notifications")).toBeInTheDocument();
   });

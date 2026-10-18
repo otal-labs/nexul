@@ -64,6 +64,13 @@ beforeEach(() => {
 });
 
 describe("useFetchMemories", () => {
+  it("loads the workspace's memory list", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [memory] });
+    const { result } = renderHook(() => useFetchMemories("ws-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([memory]));
+    expect(api.get).toHaveBeenCalledWith("/api/memories", { params: { workspace_id: "ws-1" } });
+  });
+
   it("is disabled without a workspace id", () => {
     const { result } = renderHook(() => useFetchMemories(""), { wrapper });
     expect(result.current.fetchStatus).toBe("idle");
@@ -72,6 +79,13 @@ describe("useFetchMemories", () => {
 });
 
 describe("useFetchMemoriesByProject", () => {
+  it("loads the project-scoped memory list", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [memory] });
+    const { result } = renderHook(() => useFetchMemoriesByProject("project-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([memory]));
+    expect(api.get).toHaveBeenCalledWith("/api/memories", { params: { project_id: "project-1" } });
+  });
+
   it("is disabled without a project id", () => {
     const { result } = renderHook(() => useFetchMemoriesByProject(""), { wrapper });
     expect(result.current.fetchStatus).toBe("idle");

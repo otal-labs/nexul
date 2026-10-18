@@ -171,15 +171,6 @@ describe("StackPage", () => {
     expect(screen.queryByRole("heading", { name: "Requests" })).not.toBeInTheDocument();
   });
 
-  it("renders the stack header with the strategy and runner facts", async () => {
-    renderPage();
-    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
-    expect(screen.getByText("compose")).toBeInTheDocument();
-    expect(screen.getByText("instance")).toBeInTheDocument();
-    expect(screen.getByText("No deploys yet")).toBeInTheDocument();
-    expect(screen.getByText("api", { selector: "header span.font-mono" })).toBeInTheDocument();
-  });
-
   it("an instance stack with no project has Topology as its parent crumb and offers no repository to attach", async () => {
     const gateway = { ...stack, project_id: "", name: "cloudflared-instance", slug: "cloudflared-instance", managed: false };
     mocks.get.mockImplementation((url: string) => {
@@ -193,9 +184,14 @@ describe("StackPage", () => {
     expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 
-  it("lists the stack sections and lands on the overview", async () => {
+  it("shows the header with the strategy and runner facts, lists the sections and lands on the overview", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "api" });
+    expect(screen.getByText("compose")).toBeInTheDocument();
+    expect(screen.getByText("instance")).toBeInTheDocument();
+    expect(screen.getByText("No deploys yet")).toBeInTheDocument();
+    expect(screen.getByText("api", { selector: "header span.font-mono" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Stack sections" });
     expect(nav).toHaveTextContent("Overview");
     expect(nav).toHaveTextContent("Branch deploys");
@@ -388,12 +384,6 @@ describe("StackPage", () => {
     });
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-  });
-
-  it("does not offer an attach-repository action for a managed stack", async () => {
-    renderPage();
-    await screen.findByRole("heading", { name: "api" });
-    expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 
   it("offers to attach a repository for an unmanaged stack, linking with the stack id", async () => {

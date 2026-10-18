@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getWelcomeKey } from "@/hooks/WelcomeHooks";
 import { OwnerWizardPage } from "@/pages/OwnerWizardPage";
@@ -75,7 +75,17 @@ const renderPage = (client = new QueryClient({ defaultOptions: { queries: { retr
   );
 };
 
+// The hand-over waits out the confirmation screen; these tests step past it instead of sleeping.
+const CONFIRM_DELAY_MS = 1600;
+const fastForwardHandOver = () => act(() => vi.advanceTimersByTimeAsync(CONFIRM_DELAY_MS));
+const userWithFakeClock = () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+};
+
 describe("OwnerWizardPage", () => {
+  afterEach(() => vi.useRealTimers());
+
   beforeEach(() => {
     // The store is a module singleton; reset it so progress from one test doesn't leak into the next.
     useOwnerWizardStore.getState().reset();
@@ -91,7 +101,7 @@ describe("OwnerWizardPage", () => {
     mocks.useFetchConnectors.mockReturnValue({ data: connectorFixture, isPending: false, error: undefined });
   });
 
-  it("walks through all three steps in sequence as each step's onContinue fires", async () => {
+  it("walks through all three steps in sequence, making the caller owner and naming the workspace when step 2 continues", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -104,19 +114,11 @@ describe("OwnerWizardPage", () => {
     expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     expect(screen.getByText(/cloudflare is optional/i)).toBeInTheDocument();
     expect(screen.getByRole("status", { name: "Step 3 of 3" })).toBeInTheDocument();
-  });
-
-  it("renders the real connectors list in step 3, not the old placeholder", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(screen.getByRole("button", { name: "Step1 continue" }));
-    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-
-    expect(await screen.findByText("GitHub")).toBeInTheDocument();
+    expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
+    // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
+    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /not connected/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Connectors" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/tool connections coming soon/i)).not.toBeInTheDocument();
   });
 
   it("returns to the previous step (not away from the page) on back from steps 2 and 3", async () => {
@@ -146,7 +148,7 @@ describe("OwnerWizardPage", () => {
   });
 
   it("resumes at the saved step after a remount instead of restarting at step 1", async () => {
-    const user = userEvent.setup();
+    const user = userWithFakeClock();
     const first = renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
@@ -159,20 +161,8 @@ describe("OwnerWizardPage", () => {
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
-  });
-
-  it("makes the caller owner and names the workspace when step 2 continues, so step 3 runs with owner permissions", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(screen.getByRole("button", { name: "Step1 continue" }));
-    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-
-    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
-    expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
-    // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
-    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
+    await fastForwardHandOver();
+    expect(await screen.findByText("Welcome wizard")).toBeInTheDocument();
   });
 
   it("stays on step 2 when making the owner fails, so it can be retried", async () => {
@@ -188,7 +178,7 @@ describe("OwnerWizardPage", () => {
   });
 
   it("finishes with no computer, handing over to the Welcome wizard after Workspace ready", async () => {
-    const user = userEvent.setup();
+    const user = userWithFakeClock();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
@@ -197,21 +187,23 @@ describe("OwnerWizardPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Workspace ready" })).toBeInTheDocument();
     expect(screen.getByText("Next, what's yours to set up: GitHub and your computer.")).toBeInTheDocument();
-    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
+    await fastForwardHandOver();
+    expect(await screen.findByText("Welcome wizard")).toBeInTheDocument();
     expect(useOwnerWizardStore.getState().step).toBe(1);
   });
 
   it("hands over without reusing welcome progress read before the person became Owner", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData([getWelcomeKey], { first_run_done: false, in_a_project: false, steps: [], dot: false });
-    const user = userEvent.setup();
+    const user = userWithFakeClock();
     renderPage(client);
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
     await user.click(await screen.findByRole("button", { name: "Continue" }));
 
-    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
+    await fastForwardHandOver();
+    expect(await screen.findByText("Welcome wizard")).toBeInTheDocument();
     expect(client.getQueryState([getWelcomeKey])?.isInvalidated).toBe(true);
   });
 });

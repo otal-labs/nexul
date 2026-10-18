@@ -80,6 +80,8 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
   );
 };
 
+const manageable = { "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] } };
+
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   usePinnedDocStore.setState({ pinned: {} });
@@ -99,8 +101,11 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
-  it("says the project has no docs instead of asking to pick one", async () => {
-    renderPage("/acme/docs", ["docs:read"], { "/api/docs": [] });
+  it.each([
+    ["the project has no docs", { "/api/docs": [] }],
+    ["the viewer can open no doc, so the server shows them no folder", { "/api/docs": [], "/api/docs/folders": [] }],
+  ])("says there is nothing to open, instead of asking to pick a doc, when %s", async (_, overrides) => {
+    renderPage("/acme/docs", ["docs:read"], overrides);
 
     expect(await screen.findByText("Nothing to open yet")).toBeInTheDocument();
     expect(screen.queryByText("Select a doc")).not.toBeInTheDocument();
@@ -160,39 +165,26 @@ describe("DocsPage", () => {
 
   it("opens the row menu at the pointer on a right-click, with Permissions… for whoever may manage the doc's access", async () => {
     const user = userEvent.setup();
-    renderPage("/acme/docs", ["docs:read", "docs:delete"], {
-      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
-    });
+    renderPage("/acme/docs", ["docs:read", "docs:delete"], manageable);
 
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByRole("link", { name: /Rollback plan/ }) });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Pin", "Permissions…", "Delete"]);
   });
 
-  it("offers Permissions… on a folder's right-click menu for whoever may manage the folder's access", async () => {
+  it.each([
+    ["a writer", ["docs:read", "docs:write"], ["New doc", "Rename", "Permissions…", "Delete"], false],
+    ["a reader", ["docs:read"], ["Permissions…"], true],
+  ])("offers %s who manages a folder's access Permissions… on its right-click menu", async (_, permissions, items, needsAccessRead) => {
     const user = userEvent.setup();
-    renderPage("/acme/docs", ["docs:read", "docs:write"], {
-      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
-    });
+    renderPage("/acme/docs", permissions, manageable);
 
+    // A reader's folder has no menu until the access read lands.
+    if (needsAccessRead) await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", expect.anything()));
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["New doc", "Rename", "Permissions…", "Delete"]);
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(items);
     expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } });
-  });
-
-  it("opens a folder's menu holding only Permissions… for a reader who manages the folder's access", async () => {
-    const user = userEvent.setup();
-    renderPage("/acme/docs", ["docs:read"], {
-      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
-    });
-
-    await vi.waitFor(() =>
-      expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } }),
-    );
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
-    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Permissions…"]);
   });
 
   it("keeps the browser's own menu on a folder for a reader who can't manage its access", async () => {
@@ -251,12 +243,6 @@ describe("DocsPage", () => {
 
     expect(await within(await screen.findByRole("region", { name: "Main" })).findByText("No docs")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
-  });
-
-  it("says so when the viewer can open no doc, so the server shows them no folder", async () => {
-    renderPage("/acme/docs", ["docs:read"], { "/api/docs": [], "/api/docs/folders": [] });
-
-    expect(await screen.findByText("Nothing to open yet")).toBeInTheDocument();
   });
 
   it("moves a doc to another folder from its row menu", async () => {

@@ -9,6 +9,7 @@ import {
   uploadAttachment,
   useAttachmentBlob,
   useDeleteAttachment,
+  useFetchAttachments,
   useUploadAttachment,
 } from "@/hooks/AttachmentHooks";
 import type { Attachment } from "@/models/Attachment";
@@ -41,6 +42,15 @@ beforeEach(() => {
   vi.mocked(api.delete).mockReset();
   globalThis.URL.createObjectURL = vi.fn(() => "blob:shot");
   globalThis.URL.revokeObjectURL = vi.fn();
+});
+
+describe("useFetchAttachments", () => {
+  it("lists by owner", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [attachment] });
+    const { result } = renderHook(() => useFetchAttachments({ ticket_id: "t-1" }), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([attachment]));
+    expect(api.get).toHaveBeenCalledWith("/api/attachments", { params: { ticket_id: "t-1" } });
+  });
 });
 
 describe("uploadAttachment", () => {
