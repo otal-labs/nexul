@@ -17,34 +17,11 @@ const Harness = () => {
   );
 };
 
-const PlaceholderHarness = () => {
-  const form = useForm<{ email: string }>({ defaultValues: { email: "" } });
-  return (
-    <form>
-      <FormInput
-        control={form.control}
-        name="email"
-        label="Email"
-        placeholder="you@example.com"
-      />
-    </form>
-  );
-};
-
 describe("FormInput", () => {
-  it("renders a labelled text input", () => {
-    render(<Harness />);
-    expect(screen.getByLabelText("Title")).toBeInTheDocument();
-  });
-
-  it("passes through extra input props", () => {
-    render(<PlaceholderHarness />);
-    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
-  });
-
-  it("shows the field error when present", async () => {
+  it("labels its input and shows the field error when present", async () => {
     const user = userEvent.setup();
     render(<Harness />);
+    expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Trigger" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Title is required");

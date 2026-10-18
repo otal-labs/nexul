@@ -17,13 +17,11 @@ describe("QueueRow", () => {
     expect(screen.getByText("build")).toBeInTheDocument();
   });
 
-  it("shows a queue position chip when position is provided", () => {
-    render(<QueueRow job={{ id: "d-3", kind: "deploy", service: "web" }} position={2} />);
+  it("shows a queue position chip only when a position is given", () => {
+    const { rerender } = render(<QueueRow job={{ id: "d-3", kind: "deploy", service: "web" }} position={2} />);
     expect(screen.getByText("#2")).toBeInTheDocument();
-  });
 
-  it("omits the position chip when no position is given", () => {
-    render(<QueueRow job={{ id: "d-4", kind: "deploy", service: "web" }} />);
-    expect(screen.queryByLabelText(/Queue position/)).not.toBeInTheDocument();
+    rerender(<QueueRow job={{ id: "d-3", kind: "deploy", service: "web" }} />);
+    expect(screen.queryByText("#2")).not.toBeInTheDocument();
   });
 });

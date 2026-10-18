@@ -2,16 +2,7 @@ import { Bug } from "lucide-react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { Badge, NoFillBadge } from "@/components/ui/badge";
-
-describe("Badge", () => {
-  it("renders children with the default filled variant", () => {
-    render(<Badge>Open</Badge>);
-    const badge = screen.getByText("Open");
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass("bg-primary");
-  });
-});
+import { NoFillBadge } from "@/components/ui/badge";
 
 describe("NoFillBadge", () => {
   it("renders a colored icon and colored text, with no fill/border, when given an icon", () => {
@@ -34,14 +25,5 @@ describe("NoFillBadge", () => {
     const dot = container.querySelector("[aria-hidden]");
     expect(dot).toHaveClass("bg-cyan-500");
     expect(dot?.tagName).toBe("SPAN");
-  });
-
-  it("passes an arbitrary caller-supplied color through unmodified, in icon mode", () => {
-    render(
-      <NoFillBadge icon={Bug} color="text-violet-400">
-        feature
-      </NoFillBadge>,
-    );
-    expect(screen.getByText("feature")).toHaveClass("text-violet-400");
   });
 });

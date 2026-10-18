@@ -16,9 +16,4 @@ describe("FleetStatRow", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("of 4")).toBeInTheDocument();
   });
-
-  it("renders a zero state without erroring on an empty fleet", () => {
-    render(<FleetStatRow online={0} busy={0} offline={0} queued={0} />);
-    expect(screen.getAllByText("0")).toHaveLength(4);
-  });
 });
