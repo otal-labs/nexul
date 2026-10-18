@@ -399,8 +399,9 @@ func SetOfStrings(values []string) Set {
 	return SetOf(actions...)
 }
 
-// CreatorGrant is what a document creator receives: reading, editing, locking, and deleting it, plus the right to share it.
-var CreatorGrant = SetOf(DocsRead, DocsWrite, DocsDelete, DocsLock, PermissionsWrite)
+// CreatorGrant is what a document creator receives: reading, editing, and deleting it, plus the right to share it;
+// locking it comes only from their roles.
+var CreatorGrant = SetOf(DocsRead, DocsWrite, DocsDelete, PermissionsWrite)
 
 // Has reports whether the set includes action.
 func (s Set) Has(action Action) bool {

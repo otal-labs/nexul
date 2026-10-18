@@ -35,3 +35,7 @@ Rejected: unlocking the doc when the run ends, which the owner declined; locking
 the trail note already covers.
 
 Amends ADR 0057, whose declared verbs gain `docs:lock`. Decided 2026-10-02.
+
+Amended 2026-10-18: a doc's creator no longer receives `docs:lock` with the creator grant, because a role without Lock
+should mean its holders cannot lock, and the grant was quietly overriding it on every doc they made. Creators lock
+through their roles like everyone else; migration 0126 takes `docs:lock` out of existing creator grants.
