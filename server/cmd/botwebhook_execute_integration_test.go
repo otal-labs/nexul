@@ -116,6 +116,7 @@ func assertNoToken(t *testing.T, f permFixture, logs string, tokens ...string) {
 // bot with the name and avatar it showed and its embeds without their color, one audit row as the bot, one
 // chat.message.created, and the bot's counters bumped; wait=true answers with the message.
 func TestIntegration_BotPostsBecomeMessages(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 	var logs bytes.Buffer
@@ -190,6 +191,7 @@ func TestIntegration_BotPostsBecomeMessages(t *testing.T) {
 // TestIntegration_BotDeletedMidPost_WritesNothing: a bot deleted between its URL check and its post leaves no message,
 // no audit row, and no count, since the post's writes share one transaction.
 func TestIntegration_BotDeletedMidPost_WritesNothing(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 	b, err := f.svc.botwebhookSvc.Create(as(uOwner), f.channel.ID, "CI", "")
@@ -215,6 +217,7 @@ func TestIntegration_BotDeletedMidPost_WritesNothing(t *testing.T) {
 // TestIntegration_BotRefusedURLsAnswerAlike: a wrong id, a wrong token, a regenerated token, a deleted bot, and the
 // token from before a restore all answer the same 404 body, while the current token posts at once.
 func TestIntegration_BotRefusedURLsAnswerAlike(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	var logs bytes.Buffer
 	routes := botRoutes(f, &logs)
@@ -259,6 +262,7 @@ func TestIntegration_BotRefusedURLsAnswerAlike(t *testing.T) {
 // TestIntegration_BotMentions: a bot's @handles mention the members the sender allowed, a handle it did not allow or
 // nobody holds stays plain text, and @Agent never becomes the mention that starts a turn.
 func TestIntegration_BotMentions(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 	routes := botRoutes(f, &bytes.Buffer{})
@@ -297,6 +301,7 @@ func TestIntegration_BotMentions(t *testing.T) {
 // TestIntegration_BotAvatarFollowsConversationReaders: anyone who reads the bot's conversation sees its avatar, with
 // no botwebhook permission; nobody else does, and a bot without one answers 404.
 func TestIntegration_BotAvatarFollowsConversationReaders(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	routes := botwebhook.NewHandler(f.svc.botwebhookSvc).Routes()
 	withAvatar, err := f.svc.botwebhookSvc.Create(as(uOwner), f.channel.ID, "CI", pngAvatar)
@@ -327,6 +332,7 @@ func TestIntegration_BotAvatarFollowsConversationReaders(t *testing.T) {
 // TestIntegration_BotMediaFollowsConversationReaders reads the posted message through chat's own read rule: a DM's
 // image reaches only its participants and only for a URL the message shows, and the wired guard never dials loopback.
 func TestIntegration_BotMediaFollowsConversationReaders(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	var hits atomic.Int32
 	host := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

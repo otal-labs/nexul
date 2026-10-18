@@ -26,6 +26,7 @@ func newDNSWireStore(t *testing.T) *storage.Store {
 
 // A fresh instance has no project, and its gateway stack needs none.
 func TestDNSProvisioner_RetryUpdatesTheStack(t *testing.T) {
+	t.Parallel()
 	s := newDNSWireStore(t)
 	deploySvc := deploy.NewService(s.Deploys, s.Stacks, s.Services, deployProjectStore{projects: s.Projects})
 	prov := dnsProvisioner{deploy: deploySvc}
@@ -50,6 +51,7 @@ func TestDNSProvisioner_RetryUpdatesTheStack(t *testing.T) {
 }
 
 func TestDNSInstancePlacement(t *testing.T) {
+	t.Parallel()
 	t.Run("no instance runner is invalid", func(t *testing.T) {
 		s := newDNSWireStore(t)
 		_, err := dnsInstancePlacement{runners: s.Runners, machines: s.Machines}.InstanceMachine(t.Context())

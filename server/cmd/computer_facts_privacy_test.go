@@ -17,6 +17,7 @@ import (
 // that announces a change reaches only alice and carries no fact. Holders of Read computer activity join this test
 // with the permission (ticket 15).
 func TestComputerFacts_NeverReachAnotherUser(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	id, _ := addComputer(t, c, c.alice, "Alice laptop")
 	report, err := json.Marshal(map[string]any{

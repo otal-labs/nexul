@@ -46,6 +46,7 @@ func writingRoutes(t *testing.T) []string {
 }
 
 func TestRoutePermissions_NameEveryWritingRouteAndOnlyCatalogActions(t *testing.T) {
+	t.Parallel()
 	routes := writingRoutes(t)
 	require.Greater(t, len(routes), 200, "the route table came from the real router")
 	catalog := map[string]bool{"none": true}
@@ -82,6 +83,7 @@ func renderRoutePermissions(t *testing.T) []byte {
 
 // TestRoutePermissionsFile_MatchesTheRoutes fails when the clients' copy is stale, the way sqlc diff does.
 func TestRoutePermissionsFile_MatchesTheRoutes(t *testing.T) {
+	t.Parallel()
 	want := renderRoutePermissions(t)
 	if *updateRoutePermissions {
 		require.NoError(t, os.WriteFile(routePermissionsFile, want, 0o644))

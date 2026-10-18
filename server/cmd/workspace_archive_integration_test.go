@@ -95,6 +95,7 @@ func (f archiveFixture) seenBy(t *testing.T, userID string) seen {
 
 // TestIntegration_ArchivedWorkspace_LeavesEverySurfaceAndRestoreBringsItBack: archiving takes a workspace off its members' surfaces and restoring returns all of it.
 func TestIntegration_ArchivedWorkspace_LeavesEverySurfaceAndRestoreBringsItBack(t *testing.T) {
+	t.Parallel()
 	f := newArchiveFixture(t)
 	everything := seen{true, true, true, true, true, true, true, true}
 	require.Equal(t, everything, f.seenBy(t, uReader), "before the archive the reader finds Acme everywhere")
@@ -163,6 +164,7 @@ func workspaceIDs(t *testing.T, f archiveFixture, userID string) []string {
 }
 
 func TestIntegration_ArchiveIsRefusedWithoutWorkspacesDeleteAndForTheInstancesOwnWorkspace(t *testing.T) {
+	t.Parallel()
 	f := newArchiveFixture(t)
 
 	now := time.Now()
@@ -184,6 +186,7 @@ func TestIntegration_ArchiveIsRefusedWithoutWorkspacesDeleteAndForTheInstancesOw
 }
 
 func TestArchiveRoutes_ArchivingTakesTheWorkspaceOutOfTheListAndRestoreBringsItBack(t *testing.T) {
+	t.Parallel()
 	h, store, svc := newRouter(t)
 	_, token := signedInOwner(t, store, svc)
 	ids := func(path string) []string {
@@ -218,6 +221,7 @@ func TestArchiveRoutes_ArchivingTakesTheWorkspaceOutOfTheListAndRestoreBringsItB
 
 // Guards refusals that predate the archive work: a pressed play and a bot URL start nothing while archived.
 func TestIntegration_ArchivedWorkspace_RefusesWhatPeopleAndSendersStartThere(t *testing.T) {
+	t.Parallel()
 	f := newArchiveFixture(t)
 	channel, err := f.svc.chatSvc.CreateChannel(as(uClerk), f.acme.ID, uClerk, "alerts")
 	require.NoError(t, err)

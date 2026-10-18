@@ -78,6 +78,7 @@ VALUES ('r-laptop', 'computer-ab12cd34', 1, 1, 1, 'v1', '', 'u-alice', 'c-laptop
 // TestRunners_ListNeverShowsAPersonalRunner: seeing a machine opens its deploy runners, never a person's computer, even
 // for someone holding every bit with a rule on the machine or the instance Owner's bypass.
 func TestRunners_ListNeverShowsAPersonalRunner(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedRunners(t, db)
 	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
@@ -142,6 +143,7 @@ func callToolResult(t *testing.T, h http.Handler, token, tool, args string) stri
 // TestComputers_AnotherPersonsComputerIsNotFound: alice's computer answers not found, never forbidden, to the
 // workspace Owner and to a role holding every bit, over HTTP and MCP, and nothing they try changes it.
 func TestComputers_AnotherPersonsComputerIsNotFound(t *testing.T) {
+	t.Parallel()
 	c, _ := newPrivacyCast(t)
 	id, _ := addComputer(t, c, c.alice, "Alice laptop")
 
@@ -181,6 +183,7 @@ func TestComputers_AnotherPersonsComputerIsNotFound(t *testing.T) {
 // alice's computer, which the row then shows and names after the hostname; no machine appears for it, and a second
 // code minted for the same computer enrolls nothing.
 func TestAddComputer_ThroughTheRouter_EnrollsItsRunnerOnNoMachine(t *testing.T) {
+	t.Parallel()
 	c, _ := newPrivacyCast(t)
 	id, token := addComputer(t, c, c.alice, "")
 	rec := callAPI(t, c.h, http.MethodPost, "/api/pairing/computers/enrollments", c.alice, `{"id":"`+id+`"}`)
@@ -211,6 +214,7 @@ func TestAddComputer_ThroughTheRouter_EnrollsItsRunnerOnNoMachine(t *testing.T) 
 // TestLiveAudience_PersonalRunnerChangesReachOnlyTheOwner: a personal runner's frame reaches its owner's sockets
 // only, never the workspace Owner's or a role holding every bit, and no integration or automation hears it.
 func TestLiveAudience_PersonalRunnerChangesReachOnlyTheOwner(t *testing.T) {
+	t.Parallel()
 	c, _ := newPrivacyCast(t)
 	a := liveAudience{access: c.svc.accessSvc}
 	raw, err := json.Marshal(runner.PersonalChangedEvent{RunnerID: "r-laptop", ComputerID: "c-laptop", UserID: "u-alice", State: runner.PersonalConnected, MembersOnly: true})
@@ -225,6 +229,7 @@ func TestLiveAudience_PersonalRunnerChangesReachOnlyTheOwner(t *testing.T) {
 // TestRunners_RemoveNeverReachesAPersonalRunner: runners:delete removes deploy runners; a person's computer runner
 // is not found to it, over HTTP and MCP, and stays enrolled.
 func TestRunners_RemoveNeverReachesAPersonalRunner(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedRunners(t, db)
 

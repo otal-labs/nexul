@@ -52,6 +52,7 @@ func sendCollab(t *testing.T, conn *websocket.Conn, m collab.ClientMsg) {
 // session: a commit the editor sent before hearing of the write must not overwrite it, and a later joiner must start
 // from the written body rather than replay the session's older state.
 func TestCollabReset_ServerWriteWinsOverLiveSession(t *testing.T) {
+	t.Parallel()
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
 	doc, err := svc.docsSvc.Create(as("u-onik"), "project-general", "Plan", paragraphBody("first draft"))

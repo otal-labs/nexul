@@ -62,6 +62,7 @@ func storedEnv(t *testing.T, f permFixture, stackID string) map[string]string {
 
 // TestStackEnvironment_AReadersReadsCarryNoSecretValue: a reader's stack, list and branch deployments carry keys only, overrides included.
 func TestStackEnvironment_AReadersReadsCarryNoSecretValue(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withStackEnvironment(t, f)
 	routes := stackRoutes(f)
@@ -91,6 +92,7 @@ func TestStackEnvironment_AReadersReadsCarryNoSecretValue(t *testing.T) {
 
 // TestStackEnvironment_AWriterRevealsAndEditsTheValues: a writer is sent the values and can send the body back with one changed.
 func TestStackEnvironment_AWriterRevealsAndEditsTheValues(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withStackEnvironment(t, f)
 	routes := stackRoutes(f)
@@ -115,6 +117,7 @@ func TestStackEnvironment_AWriterRevealsAndEditsTheValues(t *testing.T) {
 
 // TestStackEnvironment_RemovingAKeyOrBlankingAValueSticks: an edit replaces the env as sent, so a key left out is gone.
 func TestStackEnvironment_RemovingAKeyOrBlankingAValueSticks(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withStackEnvironment(t, f)
 	routes := stackRoutes(f)
@@ -133,6 +136,7 @@ func TestStackEnvironment_RemovingAKeyOrBlankingAValueSticks(t *testing.T) {
 
 // TestStackEnvironment_AStackRuleTurnsWhoSeesTheValues: a rule on one stack decides who is sent its values, in the read and the list.
 func TestStackEnvironment_AStackRuleTurnsWhoSeesTheValues(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withStackEnvironment(t, f)
 	routes := stackRoutes(f)

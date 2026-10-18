@@ -65,6 +65,7 @@ func saveComputer(t *testing.T, f permFixture, id string, tunnel bool, confirmed
 
 // TestWelcome_EachStepIsDoneWhileWhatItSetsUpExists reads each step's done rule from the real tables the seams read.
 func TestWelcome_EachStepIsDoneWhileWhatItSetsUpExists(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	tests := []struct {
 		name  string
@@ -119,6 +120,7 @@ func TestWelcome_EachStepIsDoneWhileWhatItSetsUpExists(t *testing.T) {
 // TestWelcome_InAProjectAnswersAsTheProjectCheckDoes holds the one-statement seam to RequireProject's own answer for
 // every kind of member: an Owner, roles a project lists, a role none lists, no role, and a person denied by name.
 func TestWelcome_InAProjectAnswersAsTheProjectCheckDoes(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	unlistedMembers(t, f)
@@ -150,6 +152,7 @@ func lastOutboxPayload(t *testing.T, f permFixture, topic string) eventbus.Event
 // TestWelcome_AGivenStepComesBackAfterASkip: a skip lasts until the step is given again, through a tick a role they
 // hold gains or a role given to them, each read from the event the real save writes.
 func TestWelcome_AGivenStepComesBackAfterASkip(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	t.Run("a role they hold gains the tick", func(t *testing.T) {
 		f := newPermFixture(t)
@@ -189,6 +192,7 @@ func TestWelcome_AGivenStepComesBackAfterASkip(t *testing.T) {
 // TestWelcome_ProjectsLightsTheDotOnlyOnceGiven: a person in no project isn't nagged for what they can't do alone,
 // until a role they hold is given the step.
 func TestWelcome_ProjectsLightsTheDotOnlyOnceGiven(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	f := newPermFixture(t)
 	withNewcomer(t, f)
@@ -212,6 +216,7 @@ func TestWelcome_ProjectsLightsTheDotOnlyOnceGiven(t *testing.T) {
 // TestIntegration_ConfirmingAComputerPublishesTheProgressOfItsOwner runs the wired server: pairing and confirming a
 // computer goes through the outbox to the welcome consumer, which writes welcome.progress_changed for its owner.
 func TestIntegration_ConfirmingAComputerPublishesTheProgressOfItsOwner(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	_, store, svc := routerOver(t, db)
 	f := permFixture{svc: svc, store: store, db: db}

@@ -36,6 +36,7 @@ func topologyFixture(t *testing.T) permFixture {
 }
 
 func TestTopologyScope_AWorkspaceSeesItsServicesAndTheGatewaysRoutingToThem(t *testing.T) {
+	t.Parallel()
 	f := topologyFixture(t)
 	scope := topologyScope{stacks: f.store.Stacks, services: f.store.Services, dns: f.store.DNS}
 
@@ -49,6 +50,7 @@ func TestTopologyScope_AWorkspaceSeesItsServicesAndTheGatewaysRoutingToThem(t *t
 }
 
 func TestTopologyLiveHandler_ARegistryChangePushesEachWorkspaceItsOwnCanvas(t *testing.T) {
+	t.Parallel()
 	f := topologyFixture(t)
 	topo := f.svc.topoSvc
 	for _, id := range []string{"c-web", "c-other"} {
@@ -82,6 +84,7 @@ func TestTopologyLiveHandler_ARegistryChangePushesEachWorkspaceItsOwnCanvas(t *t
 }
 
 func TestLiveAudience_ATopologyFrameReachesItsWorkspacesReaders(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc}
 	raw, err := json.Marshal(topologyFrame{WorkspaceID: "workspace-default"})

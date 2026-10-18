@@ -82,6 +82,7 @@ func requireEnrollsNothing(t *testing.T, c privacyCast, token string) {
 // credential and tells the runner to uninstall, and a command minted for a computer removed before its install
 // enrolls nothing.
 func TestRemoveComputer_RevokesItsRunner(t *testing.T) {
+	t.Parallel()
 	c, _ := newPrivacyCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)
@@ -141,6 +142,7 @@ func requireTellsNothing(t *testing.T, c privacyCast, db *sql.DB, since int64, r
 // her computer's runner and voids her unused command, and learns nothing about either; reactivating her brings no
 // runner back, and her computer's row stays for her to add it again.
 func TestAccountDisabled_RevokesTheirPersonalRunners(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)
@@ -169,6 +171,7 @@ func TestAccountDisabled_RevokesTheirPersonalRunners(t *testing.T) {
 // TestAccountRemoved_RevokesTheirPersonalRunners: removing alice's account over MCP retires her computer's runner and
 // voids her unused command; the tool's answer and what it wrote name neither.
 func TestAccountRemoved_RevokesTheirPersonalRunners(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	srv := httptest.NewServer(c.h)
 	t.Cleanup(srv.Close)

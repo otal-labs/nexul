@@ -102,6 +102,7 @@ func callAPI(t *testing.T, h http.Handler, method, path, token, body string) *ht
 // TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod walks the real route table: a GET is never audited, and a
 // non-GET route is audited unless it is one of the read-only routes, each of which must still exist.
 func TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newRouter(t)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/openapi.json", nil))
@@ -133,6 +134,7 @@ func TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod(t *testing.T) {
 }
 
 func TestAuditLog_ThroughTheRouter_AGetWritesNothingAndAPatchWritesOneRow(t *testing.T) {
+	t.Parallel()
 	h, store, svc := newRouter(t)
 	userID, token := signedInOwner(t, store, svc)
 
@@ -168,6 +170,7 @@ func callTool(t *testing.T, h http.Handler, token, tool, args string) string {
 }
 
 func TestMCP_ThroughTheRouter_AChangingToolCallIsAuditedAndAReadIsNot(t *testing.T) {
+	t.Parallel()
 	h, store, svc := newRouter(t)
 	userID, token := signedInOwner(t, store, svc)
 

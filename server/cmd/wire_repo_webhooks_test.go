@@ -78,6 +78,7 @@ func newTestRepoWebhooks(host *fakeHookHost, instanceURL string) repoWebhooks {
 }
 
 func TestRepoWebhooksCatchUp(t *testing.T) {
+	t.Parallel()
 	merged := &gitprovider.PR{Number: 1, State: gitprovider.PRStateClosed, Merged: true}
 	closed := &gitprovider.PR{Number: 2, State: gitprovider.PRStateClosed}
 	open := &gitprovider.PR{Number: 3, State: gitprovider.PRStateOpen}
@@ -128,6 +129,7 @@ func TestRepoWebhooksCatchUp(t *testing.T) {
 }
 
 func TestRepoWebhooksEnsure(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		instanceURL string
@@ -160,6 +162,7 @@ func TestRepoWebhooksEnsure(t *testing.T) {
 }
 
 func TestRepoWebhooksRemove_DeletesOnlyThisInstancesHook(t *testing.T) {
+	t.Parallel()
 	host := &fakeHookHost{hooks: []gitprovider.Webhook{
 		{ID: "7", URL: testHookURL},
 		{ID: "8", URL: "https://staging.example/hooks/github"},
@@ -186,6 +189,7 @@ func (f fakeProjectRepos) RemoveRepo(context.Context, string, string) error {
 }
 
 func TestHookedProjects_AddRepo_WebhookFailureStillAttaches(t *testing.T) {
+	t.Parallel()
 	host := &fakeHookHost{listErr: errors.New("forbidden")}
 	p := hookedProjects{Repo: fakeProjectRepos{calls: &host.calls}, hooks: newTestRepoWebhooks(host, "https://nexul.example")}
 
@@ -194,6 +198,7 @@ func TestHookedProjects_AddRepo_WebhookFailureStillAttaches(t *testing.T) {
 }
 
 func TestHookedProjects_AddRepo_CatchesUpAfterRegistering(t *testing.T) {
+	t.Parallel()
 	host := &fakeHookHost{prs: map[int]*gitprovider.PR{4: {Number: 4, State: gitprovider.PRStateClosed, Merged: true}}}
 	hooks := newTestRepoWebhooks(host, "https://nexul.example")
 	hooks.openPRs = func(context.Context, string, string) ([]int, error) { return []int{4}, nil }
@@ -205,6 +210,7 @@ func TestHookedProjects_AddRepo_CatchesUpAfterRegistering(t *testing.T) {
 }
 
 func TestHookedProjects_AddRepo_FailedAttachRegistersNothing(t *testing.T) {
+	t.Parallel()
 	host := &fakeHookHost{}
 	p := hookedProjects{Repo: fakeProjectRepos{addErr: errors.New("conflict"), calls: &host.calls}, hooks: newTestRepoWebhooks(host, "https://nexul.example")}
 
@@ -213,6 +219,7 @@ func TestHookedProjects_AddRepo_FailedAttachRegistersNothing(t *testing.T) {
 }
 
 func TestHookedProjects_RemoveRepo_DeletesTheHookBeforeDetaching(t *testing.T) {
+	t.Parallel()
 	host := &fakeHookHost{hooks: []gitprovider.Webhook{{ID: "7", URL: testHookURL}}}
 	p := hookedProjects{Repo: fakeProjectRepos{calls: &host.calls}, hooks: newTestRepoWebhooks(host, "https://nexul.example")}
 

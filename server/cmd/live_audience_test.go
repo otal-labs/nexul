@@ -36,12 +36,14 @@ const liveTopicsFile = "../../web/src/hooks/liveTopics.generated.json"
 // TestLiveRules_MatchWhatIsPushed fails when a topic is bridged to the browser without saying who may receive it,
 // since a topic with no rule silently reaches nobody, and when a rule names a topic nothing pushes.
 func TestLiveRules_MatchWhatIsPushed(t *testing.T) {
+	t.Parallel()
 	direct := []string{topicPresenceChanged, topicTopologyCanvas, agent.TopicAgentStream, plays.TopicPlayRun}
 	assert.ElementsMatch(t, append(slices.Clone(livePushTopics), direct...), slices.Collect(maps.Keys(liveRules)))
 }
 
 // TestLiveTopicsFile_MatchesTheRules fails when the generated topic list is stale, the way sqlc diff does.
 func TestLiveTopicsFile_MatchesTheRules(t *testing.T) {
+	t.Parallel()
 	want, err := json.MarshalIndent(slices.Sorted(maps.Keys(liveRules)), "", "  ")
 	require.NoError(t, err)
 	want = append(want, '\n')
@@ -56,6 +58,7 @@ func TestLiveTopicsFile_MatchesTheRules(t *testing.T) {
 // TestLiveAudience_FramesFollowTheEntitysRead pushes real payloads through the wired audience: a frame reaches the
 // people who could load its entity and nobody else.
 func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
 	stack, err := f.store.Stacks.GetByID(t.Context(), f.stack)
@@ -94,6 +97,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 // TestLiveAudience_GrantFramesReachWhoManagesTheRules: a rule change on a doc or play reaches the person it names and
 // whoever may change that entity's rules, so an open permissions panel follows it, and nobody else.
 func TestLiveAudience_GrantFramesReachWhoManagesTheRules(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
@@ -122,6 +126,7 @@ func TestLiveAudience_GrantFramesReachWhoManagesTheRules(t *testing.T) {
 // readers of the memory's own project, not someone who reads memories in another workspace, and a frame from before
 // it named its project reaches nobody.
 func TestLiveAudience_MemoryDeletedStaysInItsProject(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
@@ -144,6 +149,7 @@ func TestLiveAudience_MemoryDeletedStaysInItsProject(t *testing.T) {
 // TestLiveAudience_PlayFramesReachWhoSeesThePlay: a play reaches whoever can see it, through a role's plays:read or a
 // rule on that play, never a member who can't.
 func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
@@ -178,6 +184,7 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 // TestLiveAudience_AutoPlayFramesReachTheirReaders: an auto play reaches whoever holds autoplays:read in its workspace
 // and can see its play, not a play reader without it, and a frame naming no workspace reaches nobody.
 func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
@@ -215,6 +222,7 @@ func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
 // TestLiveAudience_InstanceAndDeletedTicketFrames: the upgrade card follows instance:read, held in any workspace,
 // a deleted ticket's title reaches only readers of its project's tickets, and a new notice only its recipients.
 func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc}
 	cases := []struct {
@@ -239,6 +247,7 @@ func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
 // TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations: a link or detach reaches who may create
 // projects in the workspace, whose installations card names it, and nobody outside the workspace.
 func TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()

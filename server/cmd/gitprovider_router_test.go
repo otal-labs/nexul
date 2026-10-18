@@ -91,6 +91,7 @@ func (f *fakeAppConfigStore) SetPrivateKey(_ context.Context, connectorID, key s
 
 // TestGitProviderRouter_ResolvesCorrectConnectorPerRepo proves the router never shares one global client across repos.
 func TestGitProviderRouter_ResolvesCorrectConnectorPerRepo(t *testing.T) {
+	t.Parallel()
 	tokens := &fakeGitTokenResolver{tokens: map[string]string{
 		"github": "token-public",
 		"gitlab": "token-acme-gitlab",
@@ -144,6 +145,7 @@ func equalStrings(a, b []string) bool {
 }
 
 func TestGitProviderRouter_BadBaseURLFailsClearly(t *testing.T) {
+	t.Parallel()
 	router := gitProviderRouter{
 		workspace: &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{
 			"acme/widgets": {Owner: "acme", Name: "widgets", FullName: "acme/widgets", ConnectorID: "github"},
@@ -159,6 +161,7 @@ func TestGitProviderRouter_BadBaseURLFailsClearly(t *testing.T) {
 }
 
 func TestGitProviderRouter_NoTokenFailsOnlyThatRepo(t *testing.T) {
+	t.Parallel()
 	router := gitProviderRouter{
 		workspace: &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{
 			"acme/broken":  {Owner: "acme", Name: "broken", FullName: "acme/broken", ConnectorID: "github"},
@@ -187,6 +190,7 @@ func TestGitProviderRouter_NoTokenFailsOnlyThatRepo(t *testing.T) {
 }
 
 func TestGitProviderRouter_RepoNotLinkedFailsClearly(t *testing.T) {
+	t.Parallel()
 	router := gitProviderRouter{
 		workspace:  &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{}},
 		connectors: &fakeGitTokenResolver{},
@@ -202,6 +206,7 @@ func TestGitProviderRouter_RepoNotLinkedFailsClearly(t *testing.T) {
 }
 
 func TestGitProviderRouter_UnrecognizedConnectorFailsClearly(t *testing.T) {
+	t.Parallel()
 	router := gitProviderRouter{
 		workspace: &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{
 			"acme/widgets": {Owner: "acme", Name: "widgets", FullName: "acme/widgets", ConnectorID: "bitbucket"},
@@ -220,6 +225,7 @@ func TestGitProviderRouter_UnrecognizedConnectorFailsClearly(t *testing.T) {
 
 // TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet: reads and clones use the installation token only with a key.
 func TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet(t *testing.T) {
+	t.Parallel()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
@@ -272,6 +278,7 @@ func TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet(t *testing.T) {
 }
 
 func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	_, err := db.Exec(`INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-globex', 'Globex', 'globex', 1, 1)`)
@@ -338,6 +345,7 @@ func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t 
 }
 
 func TestRepositoryScan_ReadsWithThePersonsOwnTokenAfterValidatingTheName(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"../../repos/globex/private-api", "../api", ".", "..", "api/other", `api\other`, "%2e%2e%2frepos%2fglobex%2fprivate-api", "api%2fother", "api%5cother", "api%252fother"} {
 		t.Run(name, func(t *testing.T) {
 			var paths, treeTokens []string
@@ -367,6 +375,7 @@ func TestRepositoryScan_ReadsWithThePersonsOwnTokenAfterValidatingTheName(t *tes
 // TestGitProviderRouter_RepoToken_MintsAFreshTokenForTheOneRepositoryWithContentsRead: a runner never gets the
 // installation-wide token the server reads with, nor one another clone was handed.
 func TestGitProviderRouter_RepoToken_MintsAFreshTokenForTheOneRepositoryWithContentsRead(t *testing.T) {
+	t.Parallel()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
@@ -413,6 +422,7 @@ func TestGitProviderRouter_RepoToken_MintsAFreshTokenForTheOneRepositoryWithCont
 // TestPushesRunnersMayClone_AnUnassignedInstallationQueuesNoBuild: a push GitHub still delivers for a repository whose
 // installation left the project's workspace, or that no project links, never reaches the branch deploy rules.
 func TestPushesRunnersMayClone_AnUnassignedInstallationQueuesNoBuild(t *testing.T) {
+	t.Parallel()
 	store := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	require.NoError(t, store.Projects.AddRepo(t.Context(), "project-general", workspace.RepoRef{Owner: "globex", Name: "api", FullName: "globex/api", ConnectorID: "github"}))
 	key, err := rsa.GenerateKey(rand.Reader, 2048)

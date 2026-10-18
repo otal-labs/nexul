@@ -60,6 +60,7 @@ func (c sharingCast) held(t *testing.T, userID string) (permissions.Set, error) 
 
 // Carol's role holds every catalog bit, so computer_activity:read too once it is built.
 func TestComputerRules_OwnerOrEveryBitRoleWithoutARuleGetsNotFound(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:run_commands"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -103,6 +104,7 @@ func TestComputerRules_OwnerOrEveryBitRoleWithoutARuleGetsNotFound(t *testing.T)
 }
 
 func TestComputerRules_ANamedPersonHoldsExactlyWhatIsGranted(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave","u-bob"],"actions":["computers:run_commands"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -148,6 +150,7 @@ func TestComputerRules_ANamedPersonHoldsExactlyWhatIsGranted(t *testing.T) {
 }
 
 func TestComputerRules_OnlyTheOwnerWrites(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:see"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -178,6 +181,7 @@ func TestComputerRules_OnlyTheOwnerWrites(t *testing.T) {
 }
 
 func TestComputerRules_TargetsAreNamedPeopleOnly(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	for name, write := range map[string]string{
 		"a role":              `"role_ids":["role-member"],"actions":["computers:see"],"state":"allow"`,
@@ -202,6 +206,7 @@ func TestComputerRules_TargetsAreNamedPeopleOnly(t *testing.T) {
 
 // The second check runs under the same memo as the first, so only a fresh read sees the revoke.
 func TestComputerRules_RevokeIsImmediate(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:run_agents"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -219,6 +224,7 @@ func TestComputerRules_RevokeIsImmediate(t *testing.T) {
 }
 
 func TestComputerRules_EndWhenNoWorkspaceIsSharedOrAnAccountIsDisabled(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave","u-carol"],"actions":["computers:see"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)
@@ -258,6 +264,7 @@ func TestComputerRules_EndWhenNoWorkspaceIsSharedOrAnAccountIsDisabled(t *testin
 }
 
 func TestComputerRules_EventsReachOnlyTheOwnerAndTheGrantee(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:run_commands"],"state":"allow"`)
 	require.Equal(t, http.StatusNoContent, code, body)

@@ -59,6 +59,7 @@ func invitationSignIn(t *testing.T, h http.Handler, token, code string) *url.URL
 // an account signed in and an account coming back through the provider are both refused, and the link then admits the
 // new person it was made for.
 func TestIntegration_Invitation_TurnsExistingAccountsAwayAndStillAdmitsSomeoneNew(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	_, err := f.store.Settings.Set(ctx, "https://nexul.example.com")

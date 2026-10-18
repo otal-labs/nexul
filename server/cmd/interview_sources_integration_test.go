@@ -20,6 +20,7 @@ import (
 
 // TestIntegration_DocSourceFollowsTheReadersAccess checks a doc source through the wired lookup and access gate.
 func TestIntegration_DocSourceFollowsTheReadersAccess(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	ctx, mem := t.Context(), f.svc.memoriesSvc
 	const uMemo = "u-memo"
@@ -55,6 +56,7 @@ func TestIntegration_DocSourceFollowsTheReadersAccess(t *testing.T) {
 // seams name the project source and its link, the start clears the stale suggestion, and the drafts the run writes land
 // with its trail, an equal one dropped and one citing a source under question refused.
 func TestIntegration_DraftingRunThroughTheWiredSeams(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx, mem, owner := t.Context(), f.svc.memoriesSvc, as(uOwner)
 	require.NoError(t, f.store.Projects.Create(ctx, &workspace.Project{ID: "p-standards", WorkspaceID: wsDefault, Name: "Standards", Prefix: "STD"}))

@@ -43,6 +43,7 @@ func (p *routesPushed) got() []string {
 // TestProxyRoutes_ARunnerConnectingGetsItsMachinesProxyRoutes: the connect event names a machine by id, and the proxy
 // gateways on it, only, are sent their routes again.
 func TestProxyRoutes_ARunnerConnectingGetsItsMachinesProxyRoutes(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

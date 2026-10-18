@@ -23,6 +23,7 @@ import (
 // role and ends the setup, and every member's access follows in the same commit: the waiting member is in, the hidden
 // channel is gone for its role, and the one frame the save sends reaches every member and nobody else.
 func TestIntegration_AccessGrid(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	s := f.svc
 	ctx := context.Background()
@@ -94,6 +95,7 @@ func TestIntegration_AccessGrid(t *testing.T) {
 // TestIntegration_AccessGrid_ChannelRuleFrames: a channel rule written one at a time reaches its role's holders and
 // whoever manages it with channels:write, the Owner included, and nobody else.
 func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-plain"}}, readChannels, access.StateDeny))
@@ -121,6 +123,7 @@ func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
 // TestIntegration_MachineRuleFrames: a machine's rule written by the instance Owner reaches the Owner, the person it
 // names and the holders of the role it names, and nobody else, and is stored and sent as one rule per target.
 func TestIntegration_MachineRuleFrames(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	_, err := f.db.Exec(`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) VALUES ('mach-1', 'atlas', '/data/nexul', '', 1, 1)`)

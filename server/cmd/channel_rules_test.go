@@ -28,6 +28,7 @@ func postsChannel(t *testing.T, f permFixture, channelID string) {
 // rule's sentence, through the HTTP gateway, MCP, a bot each of them made, and an automation each of them made; the
 // Reader still reads the channel, and the Owner posts whatever the rules say.
 func TestChannelRules_OnlyTheRolePosts(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	h, store, svc := routerOver(t, db)
 	f := seedPermFixture(t, db, svc, store)
@@ -119,6 +120,7 @@ func TestChannelRules_OnlyTheRolePosts(t *testing.T) {
 // TestChannelRules_ThePanelAndTheAccessGridAgree: a role hidden on the channel's panel shows hidden on the Access page's
 // grid, a grid save shows on the panel, and the grid moves only channels:read, leaving a posting rule as it was.
 func TestChannelRules_ThePanelAndTheAccessGridAgree(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	a := f.svc.accessSvc
 	hidden := func() []string {
@@ -160,6 +162,7 @@ func TestChannelRules_ThePanelAndTheAccessGridAgree(t *testing.T) {
 // with no role, or gone from the workspace, its creator stops it, and both the bot's row and the sender's 403 say
 // "Stopped: <creator> can't post in #<channel>"; a creator who may post again starts it again.
 func TestChannelRules_ABotStopsWithItsCreator(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	h, store, svc := routerOver(t, db)
 	f := seedPermFixture(t, db, svc, store)

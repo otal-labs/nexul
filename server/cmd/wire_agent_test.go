@@ -14,6 +14,7 @@ import (
 // TestIntegration_AgentTicketReader_KeyAndMarkdownBody names the ticket by its key and hands over its editor body as
 // markdown, the only shape the pipeline finds embedded images in.
 func TestIntegration_AgentTicketReader_KeyAndMarkdownBody(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	db := mentionsTestDB(t)
 	_, err := db.Exec(`UPDATE projects SET prefix = 'GEN' WHERE id = 'project-general'`)
@@ -35,6 +36,7 @@ func TestIntegration_AgentTicketReader_KeyAndMarkdownBody(t *testing.T) {
 
 // TestIntegration_AgentTicketReader_DoneReadsTheColumnStage reads done from the column's stage, never its name.
 func TestIntegration_AgentTicketReader_DoneReadsTheColumnStage(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	db := mentionsTestDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))

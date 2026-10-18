@@ -29,6 +29,7 @@ VALUES ('machine', 'm-edge', 'person', 'u-carol', '["machines:see"]', '[]', 1, 1
 // forbidden, whatever they hold: out of the lists, 404 on every route that names it or its runners, a tool error over MCP,
 // and no live frame for its runners. The instance Owner sees both and the person on edge sees edge alone.
 func TestMachines_NotOnTheMachineIsNotFound(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedEdgeAndCore(t, db)
 	people := []struct {

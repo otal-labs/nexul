@@ -63,6 +63,7 @@ func seedHost(t *testing.T, db *sql.DB, id, name, machine string) {
 // doesn't see its hosts, over HTTP and MCP, and a host on a machine Nexul doesn't know is the instance Owner's alone.
 // Having automations:read in a workspace, which is all they used to need, lists nothing.
 func TestAutomationHosts_NotOnTheMachineIsNotListed(t *testing.T) {
+	t.Parallel()
 	c := newHostsCast(t)
 	seedHost(t, c.db, "h-edge", "jobs-edge", "edge-box")
 	seedHost(t, c.db, "h-core", "jobs-core", "core-box")
@@ -94,6 +95,7 @@ func TestAutomationHosts_NotOnTheMachineIsNotListed(t *testing.T) {
 // host both take Manage on its machine; a machine the person can't see answers as no such machine or host, and a host
 // on a machine Nexul doesn't know yet, or none named, is the instance Owner's.
 func TestAutomationHosts_AddingAndRemovingTakeManageOnTheMachine(t *testing.T) {
+	t.Parallel()
 	c := newHostsCast(t)
 	people := []struct {
 		name, user, token                                 string
@@ -125,6 +127,7 @@ func TestAutomationHosts_AddingAndRemovingTakeManageOnTheMachine(t *testing.T) {
 // TestAutomationHosts_AMachineYouCantSeeIsNeverNamed: asking about a machine nobody has and one the person can't see
 // answers the same way, so trying names finds out nothing; over MCP too.
 func TestAutomationHosts_AMachineYouCantSeeIsNeverNamed(t *testing.T) {
+	t.Parallel()
 	c := newHostsCast(t)
 	seedHost(t, c.db, "h-core", "jobs-core", "core-box")
 
@@ -160,6 +163,7 @@ func automationOn(t *testing.T, c hostsCast, name string) string {
 // machine beside automations:write in its workspace; a machine the person can't see is no host at all, and the
 // bundled instance host stays open. Over HTTP and MCP.
 func TestAutomations_SetHostRefusesAMachineYouCantDeployTo(t *testing.T) {
+	t.Parallel()
 	c := newHostsCast(t)
 	seedHost(t, c.db, "h-edge", "jobs-edge", "edge-box")
 	seedHost(t, c.db, "h-core", "jobs-core", "core-box")
@@ -223,6 +227,7 @@ func codeOf(t *testing.T, rec *httptest.ResponseRecorder) string {
 // made while its maker managed the machine is refused once they don't, and one made by the instance Owner for a
 // machine Nexul doesn't know lands wherever the host says it is.
 func TestAutomationHosts_ACodeIsCheckedAgainWhenItIsUsed(t *testing.T) {
+	t.Parallel()
 	c := newHostsCast(t)
 
 	code := codeOf(t, callAPI(t, c.h, http.MethodPost, "/api/automation-hosts/enrollments", c.manager, `{"name":"jobs-late","machine":"edge-box"}`))

@@ -30,6 +30,7 @@ func deployAnswer(t *testing.T, f permFixture, userID, stackID string) access.An
 
 // Explain and a deploy start must refuse and allow together, so the buttons never disagree with the click.
 func TestMachines_ExplainRefusesADeployWithoutDeployToOnTheStacksMachine(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	seenOnly, hidden, deployable := newStackOn(t, f, "m2"), newStackOn(t, f, "m3"), newStackOn(t, f, "m1")
 	start := func(stackID string) int {
@@ -75,6 +76,7 @@ func roleDeployAnswer(t *testing.T, f permFixture, roleID, stackID string) acces
 
 // The per-role panel must agree with a holder's own answer on the stack's machine.
 func TestMachines_ExplainRoleAgreesWithAHoldersAnswerOnTheStacksMachine(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	stacks := map[string]*deploy.Stack{"m1": newStackOn(t, f, "m1"), "m2": newStackOn(t, f, "m2"), "m3": newStackOn(t, f, "m3")}
 	check := func(machine string, allowed bool, sentence string) {
@@ -100,6 +102,7 @@ func TestMachines_ExplainRoleAgreesWithAHoldersAnswerOnTheStacksMachine(t *testi
 
 // Cancel takes the same Deploy to as a start, so its button locks with the stack's other deploy actions.
 func TestMachines_CancellingADeployTakesDeployToOnItsMachine(t *testing.T) {
+	t.Parallel()
 	f := machinesFixture(t)
 	stack := newStackOn(t, f, "m2")
 	d, err := f.svc.deploySvc.Deploy(as(uOwner), deploy.DeployRequest{StackID: stack.ID, Image: "api:1"})

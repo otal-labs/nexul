@@ -48,6 +48,7 @@ func status(t *testing.T, routes http.Handler, user, method, path, body string) 
 // DNS and gateways over HTTP, and their role read on GitHub over MCP; they manage DNS, read GitHub alone, and
 // connect or disconnect nothing.
 func TestInstanceAreas_BobManagesDNSButNotConnectors(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	permissionRoutes := access.NewHandler(s.accessSvc).Routes()
@@ -114,6 +115,7 @@ func TestInstanceAreas_BobManagesDNSButNotConnectors(t *testing.T) {
 // TestInstanceAreas_OnlyTheInstanceOwnerWrites: holding every instance bit, or owning another workspace, writes no
 // instance area's rules, over HTTP or MCP, nor reads as the instance Owner on /api/auth/me; the instance Owner does.
 func TestInstanceAreas_OnlyTheInstanceOwnerWrites(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withOtherWorkspaceOwner(t, f)
 	s := f.svc
@@ -151,6 +153,7 @@ func TestInstanceAreas_OnlyTheInstanceOwnerWrites(t *testing.T) {
 // TestInstanceAreas_TheInstanceOwnerIsNeverDenied: rules denying every area to the Owner role and to the instance Owner
 // by name take nothing from them.
 func TestInstanceAreas_TheInstanceOwnerIsNeverDenied(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	for _, area := range s.accessSvc.InstanceAreas() {
@@ -175,6 +178,7 @@ func TestInstanceAreas_TheInstanceOwnerIsNeverDenied(t *testing.T) {
 // TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea: owning a second workspace hands over no instance area, over HTTP,
 // MCP and /api/auth/me, while its workspace actions stay; a rule naming one area gives that area's actions and no other.
 func TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withOtherWorkspaceOwner(t, f)
 	s := f.svc
@@ -218,6 +222,7 @@ func TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea(t *testing.T) {
 // TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea: owning a workspace is not holding its instance areas,
 // so its Owner can't put dns:write on a role, add it to one, or give themselves a role carrying it; the instance Owner can.
 func TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withOtherWorkspaceOwner(t, f)
 	s := f.svc
@@ -255,6 +260,7 @@ func TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea(t *testing.T) {
 // TestInvitations_AnotherWorkspacesOwnerCannotInviteIntoAnInstanceArea: an invitation giving a role that carries
 // dns:write is refused to the Owner of the workspace it lands in, who doesn't hold DNS, and allowed to the instance Owner.
 func TestInvitations_AnotherWorkspacesOwnerCannotInviteIntoAnInstanceArea(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withOtherWorkspaceOwner(t, f)
 	s := f.svc

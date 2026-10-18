@@ -13,6 +13,7 @@ import (
 // each machine, so a client shows Manage controls to the instance Owner and Manage holders alone, and a Deny on Manage
 // takes the entry away from a person who still sees the machine.
 func TestMachines_ListNamesWhatTheViewerHolds(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedEdgeAndCore(t, db)
 	_, err := db.Exec(`UPDATE permission_overwrites SET deny = '["machines:write"]' WHERE resource_id = 'm-edge' AND user_id = 'u-carol'`)
@@ -66,6 +67,7 @@ func TestMachines_ListNamesWhatTheViewerHolds(t *testing.T) {
 
 // A Manage holder who cannot list Team or Roles still reads a name on every rule target.
 func TestMachineRules_NameEachTarget(t *testing.T) {
+	t.Parallel()
 	c, db := newPrivacyCast(t)
 	seedEdgeAndCore(t, db)
 	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at) VALUES

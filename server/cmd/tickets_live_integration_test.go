@@ -17,6 +17,7 @@ import (
 
 // TestIntegration_LiveTicket edits one ticket's title and body live through the wired tickets hub.
 func TestIntegration_LiveTicket(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	ticketID := f.ticket.ID

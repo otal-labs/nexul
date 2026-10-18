@@ -46,6 +46,7 @@ func readAll(t *testing.T, svc *coreServices, userIDs ...string) {
 // TestDocWatchers_ChangesNotifyOnlyWatchers saves docs the way the editor and agents do and checks the inbox: a doc's
 // creator and editors watch it, anyone who can read it may watch or stop, and only watchers hear about an edit.
 func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
+	t.Parallel()
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
 	seedSecondWriter(t, store)
@@ -130,6 +131,7 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 // TestDocWatchers_WatchingTakesReadingTheDoc checks watching is gated where the doc lives: neither a member who cannot
 // read docs nor someone outside the workspace learns anything about it.
 func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
+	parallel(t)
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
 	plan, err := svc.docsSvc.Create(as("u-onik"), "project-general", "Launch plan", "")

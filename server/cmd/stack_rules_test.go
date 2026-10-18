@@ -76,6 +76,7 @@ func deployOverHTTP(t *testing.T, f permFixture, user, body string) (int, string
 // a Developer without Frontend is refused with the rule that refused it, over HTTP, MCP and a branch's deploy, while a
 // Developer who is also Frontend deploys, Allow winning between their roles.
 func TestStackRules_OnlyTheRoleDeploys(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withDeployRoles(t, f)
 	write := []permissions.Action{permissions.DeploysWrite}
@@ -116,6 +117,7 @@ func TestStackRules_OnlyTheRoleDeploys(t *testing.T) {
 // TestStackRules_ADeniedStackLeavesTheListAndFrames: a role's Deny of stacks:read hides the stack from its holders on
 // every path, its deploys and branch deployment included, though the role reads deploys, while the Owner keeps it.
 func TestStackRules_ADeniedStackLeavesTheListAndFrames(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withDeployRoles(t, f)
 	ctx := context.Background()
@@ -163,6 +165,7 @@ func TestStackRules_ADeniedStackLeavesTheListAndFrames(t *testing.T) {
 
 // TestStackRules_FramesReachWhomTheyName: a stack rule's frame reaches whom it names and who manages the stack.
 func TestStackRules_FramesReachWhomTheyName(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withDeployRoles(t, f)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
@@ -178,6 +181,7 @@ func TestStackRules_FramesReachWhomTheyName(t *testing.T) {
 // TestStackRules_ExplainAndHoldWhatYouGive: explain covers a stack's actions, and nobody allows on a stack what they
 // don't hold there.
 func TestStackRules_ExplainAndHoldWhatYouGive(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	withDeployRoles(t, f)
 	a := f.svc.accessSvc

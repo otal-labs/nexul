@@ -29,6 +29,7 @@ import (
 // agents cannot, a crash queues a run as the person who picked it, and a crash after the share is taken away is
 // "didn't run" with the reason.
 func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRightGoes(t *testing.T) {
+	t.Parallel()
 	c := newSharingCast(t)
 	ctx := t.Context()
 	_, err := c.db.Exec(`UPDATE roles SET permissions = '["plays:read","plays:run","autoplays:read","autoplays:write"]' WHERE id = 'role-member'`)
@@ -80,13 +81,25 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 
 	code, body = c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:see"],"state":"fallback"`)
 	require.Equal(t, 204, code, body)
-	items[0].Status = plays.QueueCancelled
-	require.NoError(t, c.store.PlayQueue.MoveQueueItem(ctx, items[0], plays.QueueQueued), "the waiting run is out of the way for the next crash")
+	// The live wiring's dispatcher may be mid-pass on the run; once it lets go the run is queued again or gone.
+	require.Eventually(t, func() bool {
+		it, err := c.store.PlayQueue.GetQueueItem(ctx, items[0].ID)
+		require.NoError(t, err)
+		if it.Status == plays.QueueDispatching {
+			return false
+		}
+		if it.Status != plays.QueueQueued {
+			return true
+		}
+		it.Status = plays.QueueCancelled
+		return c.store.PlayQueue.MoveQueueItem(ctx, it, plays.QueueQueued) == nil
+	}, 5*time.Second, 10*time.Millisecond, "the waiting run is out of the way for the next crash")
+	first := items[0].ID
 	crash()
 	items, err = c.store.PlayQueue.ListQueueByTarget(ctx, plays.TargetStack, "stack-shop")
 	require.NoError(t, err)
 	require.Len(t, items, 2)
-	didnt := slices.IndexFunc(items, func(it *plays.QueueItem) bool { return it.Status == plays.QueueDidntRun })
+	didnt := slices.IndexFunc(items, func(it *plays.QueueItem) bool { return it.ID != first && it.Status == plays.QueueDidntRun })
 	require.GreaterOrEqual(t, didnt, 0, "the second crash did not run")
 	assert.Contains(t, items[didnt].Reason, "may not run agents on the computer picked for it")
 }
@@ -94,6 +107,7 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 // TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt: a container dying on a machine opens the outage,
 // whose event is the moment a switched-on stack auto play queues its run for, naming the service and the outage.
 func TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt(t *testing.T) {
+	t.Parallel()
 	db := mentionsTestDB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -139,6 +153,7 @@ func TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt(t *testing
 // TestStackPlays_TheRunnerReadsAStackAsWhoRunsIt: facts need no actor, the target read is the person's own, and a
 // run's frames reach whoever can load the stack.
 func TestStackPlays_TheRunnerReadsAStackAsWhoRunsIt(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 

@@ -15,6 +15,7 @@ import (
 // TestIntegration_DeletingAHeldRole_UpdatesEachHolder: a role frame names no holder, so deleting a role people hold
 // also sends a member update per holder in the same commit, which reaches whoever has Team open.
 func TestIntegration_DeletingAHeldRole_UpdatesEachHolder(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 

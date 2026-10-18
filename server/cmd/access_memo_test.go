@@ -26,7 +26,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
-	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
@@ -64,8 +63,18 @@ func withTestMemo(ctx context.Context) context.Context {
 
 // useTestMemoOf points as() at the access service a fixture has just wired.
 func useTestMemoOf(t *testing.T, a *access.Service) {
+	if testMemo.mode == "" {
+		return
+	}
 	testMemo.access, testMemo.shared = a, a.NewMemo()
 	t.Cleanup(func() { testMemo.access, testMemo.shared = nil, nil })
+}
+
+// parallel runs t beside the package's other tests, except while the memo suite below replays it under testMemo.
+func parallel(t *testing.T) {
+	if testMemo.mode == "" {
+		t.Parallel()
+	}
 }
 
 // TestIntegration_PermissionSuitesAnswerTheSameWithAMemo runs the permission suites again with memoised access: a
@@ -110,6 +119,7 @@ func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 // to the next frame after each kind of change: a role's permissions, a membership, a workspace-wide overwrite, a
 // project's rule listing someone, and a doc's own overwrite.
 func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -159,6 +169,7 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 // TestAccessMemo_ConcurrentRequestsShareNothing runs many people's requests at once, each on its own memo, beside the
 // live audience's shared one, and every answer must be the one that person gets alone; -race watches the memos.
 func TestAccessMemo_ConcurrentRequestsShareNothing(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -220,11 +231,7 @@ func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.
 func countedDB(t *testing.T) (*sql.DB, *testutil.Statements) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "counted.db")
-	plain, err := storage.OpenDB(path)
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(plain))
-	require.NoError(t, testutil.SeedGeneralProject(plain))
-	require.NoError(t, plain.Close())
+	copyMigratedDB(t, path)
 	// The pragmas storage.OpenDB opens with.
 	inner, err := sqlite.NewConnector(path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_txlock=immediate")
 	require.NoError(t, err)
@@ -310,6 +317,7 @@ func addPlays(t *testing.T, f permFixture, n int) {
 // the run menus, play_list, a play's queued runs and a ticket's trails no statement more than none do, at a few plays or
 // many, since the play rules reaching a person come in one read.
 func TestStatements_PlayRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	runnerOf := func(f permFixture) *plays.Runner {
 		return plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Queue: f.store.PlayQueue, Perm: f.svc.accessSvc})
 	}
@@ -366,6 +374,7 @@ SELECT 'play', p.id, 'person', ?, '["plays:run"]', '["plays:write"]', 1, 1 FROM 
 // TestStatements_ListsCostTheSameAtAnyLength pins each list path's statements as independent of how many rows it
 // checks: the same count with a few rows as with many, where checking each row used to read the access layers again.
 func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture, ticketIDs []string) error{
 		"docs list": func(ctx context.Context, f permFixture, _ []string) error {
 			_, err := f.svc.docsSvc.ListByProject(ctx, pGeneral)
@@ -427,6 +436,7 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 // TestStatements_TicketSearchFetchesOnlyEachResult: a search costs its results' own fetches and nothing per row
 // for access, whose layers are read once for the lot.
 func TestStatements_TicketSearchFetchesOnlyEachResult(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) (search, perTicket int64) {
 		f, st := newCountedFixture(t)
 		grow(t, f, n)
@@ -449,6 +459,7 @@ func TestStatements_TicketSearchFetchesOnlyEachResult(t *testing.T) {
 // TestStatements_LiveFramesCostOneReadPerPersonOnceWarm: after the first frame, an agent stream's frame costs each
 // connected person the conversation's own read and no access read, until something commits.
 func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	withRulesOnEveryChannel(t, db)
 	audience := memoizedAudience(f.svc)
@@ -486,6 +497,7 @@ UNION ALL SELECT 'channel', c.id, 'person', NULL, 'u-reader', '["channels:read"]
 
 // TestStatements_ChannelRulesCostTheSameAtAnyLength: rules on every channel cost a chat list no statement at any length.
 func TestStatements_ChannelRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"chat conversation list": func(ctx context.Context, f permFixture) error {
 			_, err := f.svc.chatSvc.ListConversations(ctx, wsDefault, uReader)
@@ -519,6 +531,7 @@ func TestStatements_ChannelRulesCostTheSameAtAnyLength(t *testing.T) {
 // TestStatements_AccessGridCostsTheSameAtAnyLength: the Access page's read and its Finish, which takes every role off
 // every project and hides every public channel from a role, cost the same statements at 3 projects as at 30.
 func TestStatements_AccessGridCostsTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) map[string]int64 {
 		f, st, db := newCountedFixtureDB(t)
 		grow(t, f, n)
@@ -549,6 +562,7 @@ func TestStatements_AccessGridCostsTheSameAtAnyLength(t *testing.T) {
 // TestStatements_RoleRulesCostTheSameAtAnyLength: rules for roles on every doc cost a doc list, a doc_list page and a
 // doc's read no statement more than no rules at all, at a few docs or many, since they come back with the person's own.
 func TestStatements_RoleRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"docs list": func(ctx context.Context, f permFixture) error {
 			_, err := f.svc.docsSvc.ListByProject(ctx, pGeneral)
@@ -587,6 +601,7 @@ SELECT 'doc', d.id, 'role', r.id, '["docs:write"]', '["docs:delete"]', 1, 1 FROM
 
 // TestStatements_FolderRulesCostTheSameAtAnyLength: rules on every doc's folder cost the doc paths no statement at any length.
 func TestStatements_FolderRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"docs list": func(ctx context.Context, f permFixture) error {
 			_, err := f.svc.docsSvc.ListByProject(ctx, pGeneral)
@@ -638,6 +653,7 @@ UNION ALL SELECT 'folder', f.id, 'person', NULL, ?, '["docs:read","docs:thread"]
 // lists, the topology canvas's stacks, a stack's and a deploy's read and a stack's frame no statement more than none, at
 // a few stacks or many: a list reads the stacks with rules in one statement, a single check the one stack's.
 func TestStatements_StackRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"stack_list": func(ctx context.Context, f permFixture) error {
 			_, err := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_list").Call(ctx, json.RawMessage(`{}`))
@@ -707,6 +723,7 @@ UNION ALL SELECT 'stack', s.id, 'person', NULL, ?, '["stacks:read","deploys:read
 // project list, its people, ticket_list, doc_list, a ticket's read and a live frame no statement more than the fixture's
 // listing alone, at a few projects or many, since every member's project rules come in one read with the workspace's.
 func TestStatements_ProjectRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"project list": func(ctx context.Context, f permFixture) error {
 			_, err := f.svc.workspaceSvc.List(ctx, wsDefault)
@@ -773,6 +790,7 @@ ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO U
 // read that project's rules for the person and their roles and no other's, so rules naming them on every project cost
 // the same rows and statements at a few projects as at many.
 func TestRows_ASingleCheckReadsOnlyItsProjectsRules(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture) error{
 		"a project check": func(ctx context.Context, f permFixture) error {
 			return f.svc.accessSvc.RequireProject(ctx, pGeneral, permissions.TicketsRead)
@@ -811,6 +829,7 @@ ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO U
 
 // TestStatements_RoleSetCostsOneReadAtAnySize: one role or three cost one statement, and a check the same either way.
 func TestStatements_RoleSetCostsOneReadAtAnySize(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	cost := func() (roles, check int64) {
 		st.Reset()
@@ -835,6 +854,7 @@ func TestStatements_RoleSetCostsOneReadAtAnySize(t *testing.T) {
 // TestStatements_InstanceAreaRulesCostNothingOnMe: rules on every instance area, for each person's roles and for them
 // by name, cost /api/auth/me no statement more than none, at a few areas or many, since they come back in one read.
 func TestStatements_InstanceAreaRulesCostNothingOnMe(t *testing.T) {
+	t.Parallel()
 	cost := func(connectorCount int, rules bool) map[string]int64 {
 		f, st, db := newCountedFixtureDB(t)
 		areas := []permissions.InstanceArea{}
@@ -872,6 +892,7 @@ UNION ALL SELECT 'instance_area', ?, 'person', NULL, user_id, ?, '[]', 1, 1 FROM
 // TestStatements_WelcomeProgressCostsTheSameForAnyPage: account_list reads a page's Welcome wizard progress with one
 // statement per seam, whether the page holds one person or fifty.
 func TestStatements_WelcomeProgressCostsTheSameForAnyPage(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) int64 {
 		f, st := newCountedFixture(t)
 		ctx := context.Background()
@@ -900,6 +921,7 @@ func TestStatements_WelcomeProgressCostsTheSameForAnyPage(t *testing.T) {
 // TestStatements_TeamListCostsTheSameForAnyNumberOfPeople: the Team list reads every person's Welcome wizard progress
 // and the invitation they joined by in a fixed number of statements, whether it holds a few people or forty.
 func TestStatements_TeamListCostsTheSameForAnyNumberOfPeople(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) int64 {
 		f, st, db := newCountedFixtureDB(t)
 		ctx := context.Background()
@@ -935,6 +957,7 @@ func TestStatements_TeamListCostsTheSameForAnyNumberOfPeople(t *testing.T) {
 // the machines a person sees, and a machine's four answers, for the instance Owner and for another member, no
 // statement more than none, at a few machines or many: the rules reaching a person come in one read by type.
 func TestStatements_MachineRulesCostTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	paths := map[string]func(ctx context.Context, f permFixture, user string) error{
 		"a machine check": func(ctx context.Context, f permFixture, _ string) error {
 			return f.svc.accessSvc.RequireMachine(ctx, "mach-1", permissions.MachinesSee)
@@ -979,6 +1002,7 @@ UNION ALL SELECT 'machine', m.id, 'person', NULL, ?, '["machines:see","machines:
 
 // TestStatements_ExplainCostsTheSameForAnyNumberOfActions: explain reads once however many actions it answers, never once per action.
 func TestStatements_ExplainCostsTheSameForAnyNumberOfActions(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	now := time.Now().UTC()
 	const play = "play-explained"
@@ -1029,6 +1053,7 @@ VALUES ('%[1]s', '%[2]s', 'role', 'role-reader', NULL, '%[3]s', '[]', 1, 1), ('%
 // instance Owner and for people who see them through rules: the machines a person sees come in one read and filter the
 // lists in SQL, never a check per machine.
 func TestStatements_MachineListCostsTheSameAtAnyLength(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) map[string]int64 {
 		f, st, db := newCountedFixtureDB(t)
 		svc := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(f.svc.accessSvc)
@@ -1069,6 +1094,7 @@ UNION ALL SELECT 'machine', 'mach-' || i, 'role', NULL, 'role-reader', '["machin
 // TestStatements_InvitationProjectsCostOneReadForAnyNumberOfRoles: the projects an invitation's roles let in come back
 // in one statement, whether the link gives one role or many, each listed on two projects.
 func TestStatements_InvitationProjectsCostOneReadForAnyNumberOfRoles(t *testing.T) {
+	t.Parallel()
 	cost := func(n int) (int64, int) {
 		f, st, db := newCountedFixtureDB(t)
 		for _, insert := range []string{

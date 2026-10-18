@@ -62,6 +62,7 @@ func callPage(t *testing.T, a *access.Service, tl mcptool.Tool, user, args strin
 // TestRows_MessageListReadsOnlyItsPage: a page of 50 from a 20,000-message conversation hands back about 50 rows, where
 // paging in memory read the whole history, and the page query walks the live-message index without sorting.
 func TestRows_MessageListReadsOnlyItsPage(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 20000)
 		INSERT INTO messages (id, conversation_id, author_id, body, created_at, updated_at, deleted_at)
@@ -87,6 +88,7 @@ func TestRows_MessageListReadsOnlyItsPage(t *testing.T) {
 // hands back about its own rows and a count, where paging in memory read every row or the first thousand; a reader's
 // doc_list filters by their access in the same query.
 func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	for _, stmt := range []string{
 		`INSERT INTO tickets (id, title, body, status, project_id, created_at, updated_at, number, position)
@@ -134,6 +136,7 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 // TestRows_DocListReadsNoneOfTheReadersDocRules: a reader's doc rules, thousands in the listed project and thousands
 // in another, cost doc_list no statement and no row handed back, since the page decides them in SQL.
 func TestRows_DocListReadsNoneOfTheReadersDocRules(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	now := time.Now()
 	require.NoError(t, f.store.Projects.Create(t.Context(), &workspace.Project{ID: "p-far", Name: "Far", Prefix: "FAR", WorkspaceID: wsDefault, CreatedAt: now, UpdatedAt: now}))
@@ -166,6 +169,7 @@ func TestRows_DocListReadsNoneOfTheReadersDocRules(t *testing.T) {
 // them gets the machine list, the runner list and machine_list back with about those rows, where listing every machine
 // and dropping the unseen ones in Go read all 3,000.
 func TestRows_MachineListsReadOnlyTheMachinesTheCallerSees(t *testing.T) {
+	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	for _, insert := range []string{
 		`INSERT INTO machines (id, name, stack_root, reported_hostname, first_seen, last_seen) SELECT printf('mach-%05d', i), printf('box-%05d', i), '/data/nexul', '', 1, 1 FROM n`,
@@ -401,6 +405,7 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 // TestListTools_ShowWhatTheRowByRowCheckShowed holds each list tool, now filtered in SQL, to what the path it replaced
 // showed each viewer: the use-cases that still check row by row, or the per-row rule the adapter applied.
 func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
+	t.Parallel()
 	f := listParityFixture(t)
 	s := f.svc
 	ticketList := tool(t, composite.TicketTools(s.ticketsSvc, s.workspaceSvc, s.reviewSvc), "ticket_list")

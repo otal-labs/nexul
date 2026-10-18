@@ -18,6 +18,7 @@ import (
 // names the instance and what each role means but no project, and after the provider round trip the acceptance names
 // the projects whose rules let any of the grant's roles in, in their list order.
 func TestIntegration_InvitePage_NamesProjectsOnlyAfterSignIn(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := t.Context()
 	_, err := f.store.Settings.Set(ctx, "https://nexul.example.com")

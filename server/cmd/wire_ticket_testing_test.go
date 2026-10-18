@@ -18,6 +18,7 @@ import (
 
 // TestIntegration_TicketTesting runs Fail then Pass over real storage: both results land in the ticket's thread.
 func TestIntegration_TicketTesting(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	seedMentionsUser(t, s, "u-alice")

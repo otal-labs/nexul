@@ -37,6 +37,7 @@ func (d *countingDialer) DialComputer(ctx context.Context, computerID string) (n
 }
 
 func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
+	t.Parallel()
 	t3 := t3rpctest.New(t)
 	db := mentionsTestDB(t)
 	router, store, svc := routerOver(t, db)

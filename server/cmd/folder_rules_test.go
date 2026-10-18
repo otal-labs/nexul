@@ -19,6 +19,7 @@ import (
 
 // TestFolderRules_MovingADocChangesWhatReachesIt: a folder's Deny follows a doc in and out within one memo, on every read.
 func TestFolderRules_MovingADocChangesWhatReachesIt(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	folder, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, "Sales")
@@ -69,6 +70,7 @@ func TestFolderRules_MovingADocChangesWhatReachesIt(t *testing.T) {
 
 // TestFolderRules_GoWithTheirProject: deleting a project deletes the rules on its folders.
 func TestFolderRules_GoWithTheirProject(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	ctx := context.Background()
 	now := time.Now()
@@ -83,6 +85,7 @@ func TestFolderRules_GoWithTheirProject(t *testing.T) {
 
 // TestFolderRules_FramesReachWhomTheyName: a folder rule's frame reaches whom it names and who manages the folder.
 func TestFolderRules_FramesReachWhomTheyName(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	folder, err := f.svc.docsSvc.CreateFolder(as(uOwner), pGeneral, "Sales")
 	require.NoError(t, err)

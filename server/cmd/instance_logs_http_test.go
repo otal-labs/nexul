@@ -52,6 +52,7 @@ func logsService(allow bool, store *url.URL) *runner.Service {
 }
 
 func TestInstanceLogsHandler(t *testing.T) {
+	t.Parallel()
 	get := func(svc *runner.Service, query string) *httptest.ResponseRecorder {
 		req := withActor(httptest.NewRequest(http.MethodGet, "/api/instance/logs?"+query, nil), "user-1")
 		rec := httptest.NewRecorder()

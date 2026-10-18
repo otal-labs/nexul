@@ -81,6 +81,7 @@ func listClientInGeneral(t *testing.T, f permFixture, in bool) {
 }
 
 func TestIntegration_NotInAProject(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -176,6 +177,7 @@ func TestIntegration_NotInAProject(t *testing.T) {
 // Notices and trails on a project they are not in vanish from reads and come back once they are listed; the rows are
 // kept.
 func TestIntegration_NotInAProject_NoticesAndTrailsFollowAccess(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -210,6 +212,7 @@ func TestIntegration_NotInAProject_NoticesAndTrailsFollowAccess(t *testing.T) {
 
 // A live ticket frame stops reaching a socket the moment its person leaves the project's list.
 func TestIntegration_NotInAProject_LiveFramesFollowAccess(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	listedClient(t, f)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
@@ -233,6 +236,7 @@ func TestIntegration_NotInAProject_LiveFramesFollowAccess(t *testing.T) {
 
 // A project's rules are written by whoever manages its access, judged by what each write gives, and go with it.
 func TestIntegration_ProjectRules_GrantingAndCleanup(t *testing.T) {
+	parallel(t)
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -279,6 +283,7 @@ func TestIntegration_ProjectRules_GrantingAndCleanup(t *testing.T) {
 
 // A mention chip of a ticket or doc in a project the reader is not in still shows what it points at, locked.
 func TestIntegration_NotInAProject_PillsShowTheirContentLocked(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	s := f.svc
@@ -304,6 +309,7 @@ func TestIntegration_NotInAProject_PillsShowTheirContentLocked(t *testing.T) {
 // A member holding no role still has what membership alone gives: People, public channels, DMs, the inbox, and a DM
 // with an Owner; nothing in a project.
 func TestIntegration_NoRole_ReadsWhatMembershipGivesAndNoProject(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	unlistedMembers(t, f)
 	s := f.svc
@@ -343,6 +349,7 @@ func conversationIDs(cs []*chat.Conversation) []string {
 
 // A project's creator, and each role they hold but the Owner's, is listed in it in the same write, over HTTP and MCP.
 func TestIntegration_ProjectCreate_ListsTheCreatorAndTheirRoles(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
 	ctx := context.Background()
@@ -381,6 +388,7 @@ func TestIntegration_ProjectCreate_ListsTheCreatorAndTheirRoles(t *testing.T) {
 // TestIntegration_MeReadsEachProjectFromItsOwnList: /me lists only the projects someone is in, with what they hold in
 // each, and keeps project-area actions out of permissions, the shape a Restricted member read before the switch.
 func TestIntegration_MeReadsEachProjectFromItsOwnList(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 
@@ -404,6 +412,7 @@ func TestIntegration_MeReadsEachProjectFromItsOwnList(t *testing.T) {
 // TestIntegration_MeShowsLockedActionsWhileARoleOfTheirsHasTheSwitchOn: /me follows the switch an Owner sets on a role,
 // through the real role gate, and the Owner role never carries it.
 func TestIntegration_MeShowsLockedActionsWhileARoleOfTheirsHasTheSwitchOn(t *testing.T) {
+	t.Parallel()
 	f := newPermFixture(t)
 	listedClient(t, f)
 	show := func(user string) bool {
