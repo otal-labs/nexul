@@ -643,25 +643,121 @@ func newTestServiceWithDocAccess(repo *fakeRepo, access DocAccess) *Service {
 	return s
 }
 
+func TestService_Refusals(t *testing.T) {
+	ctx := context.Background()
+	withDocs := func(repo *fakeRepo) *Service {
+		return newTestServiceWithDocAccess(repo, newFakeDocAccess("u-1:"))
+	}
+	noDocs := func(repo *fakeRepo) *Service {
+		return newTestServiceWithDocAccess(repo, newFakeDocAccess())
+	}
+	tests := []struct {
+		name string
+		svc  func(repo *fakeRepo) *Service
+		call func(s *Service, c *Conversation, m *Message) error
+		want error
+	}{
+		{"create a channel without a workspace", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateChannel(ctx, "", "u-1", "eng")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a channel without a creator", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateChannel(ctx, "w-1", "", "eng")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a channel without a name", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateChannel(ctx, "w-1", "u-1", "  ")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a channel whose name differs only in case", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateChannel(ctx, "w-1", "u-2", "ENG")
+			return err
+		}, apperrs.ErrConflict},
+		{"create a voice channel without a name", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateVoiceChannel(ctx, "w-1", "u-1", "  ")
+			return err
+		}, apperrs.ErrInvalid},
+		{"create a DM without a workspace", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.CreateDM(ctx, "", "u-1", []string{"u-2"})
+			return err
+		}, apperrs.ErrInvalid},
+		{"open a ticket thread without a ticket", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.GetOrCreateTicketThread(ctx, "w-1", "", "u-1")
+			return err
+		}, apperrs.ErrInvalid},
+		{"open a doc thread without a doc", withDocs, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.GetOrCreateDocThread(ctx, "w-1", "", "u-1")
+			return err
+		}, apperrs.ErrInvalid},
+		{"open a doc thread with no doc access wired", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.GetOrCreateDocThread(ctx, "w-1", "doc-1", "u-1")
+			return err
+		}, apperrs.ErrForbidden},
+		{"open a doc thread without docs:thread", noDocs, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.GetOrCreateDocThread(ctx, "w-1", "doc-1", "u-1")
+			return err
+		}, apperrs.ErrForbidden},
+		{"list conversations without a workspace", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.ListConversations(ctx, "", "u-1")
+			return err
+		}, apperrs.ErrInvalid},
+		{"post without a conversation", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.PostMessage(ctx, "", "u-1", "hi")
+			return err
+		}, apperrs.ErrInvalid},
+		{"post a blank body", nil, func(s *Service, c *Conversation, _ *Message) error {
+			_, err := s.PostMessage(ctx, c.ID, "u-1", "   ")
+			return err
+		}, apperrs.ErrInvalid},
+		{"post to a missing conversation", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.PostMessage(ctx, "missing", "u-1", "hi")
+			return err
+		}, apperrs.ErrNotFound},
+		{"edit without a message", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.EditMessage(ctx, "", "u-1", "hi")
+			return err
+		}, apperrs.ErrInvalid},
+		{"edit a missing message", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.EditMessage(ctx, "missing", "u-1", "hi")
+			return err
+		}, apperrs.ErrNotFound},
+		{"edit someone else's message", nil, func(s *Service, _ *Conversation, m *Message) error {
+			_, err := s.EditMessage(ctx, m.ID, "u-2", "nope")
+			return err
+		}, apperrs.ErrForbidden},
+		{"edit a deleted message", nil, func(s *Service, _ *Conversation, m *Message) error {
+			if err := s.DeleteMessage(ctx, m.ID, "u-1"); err != nil {
+				return err
+			}
+			_, err := s.EditMessage(ctx, m.ID, "u-1", "edited")
+			return err
+		}, apperrs.ErrInvalid},
+		{"delete without a message", nil, func(s *Service, _ *Conversation, _ *Message) error { return s.DeleteMessage(ctx, "", "u-1") }, apperrs.ErrInvalid},
+		{"delete a missing message", nil, func(s *Service, _ *Conversation, _ *Message) error { return s.DeleteMessage(ctx, "missing", "u-1") }, apperrs.ErrNotFound},
+		{"delete someone else's message", nil, func(s *Service, _ *Conversation, m *Message) error { return s.DeleteMessage(ctx, m.ID, "u-2") }, apperrs.ErrForbidden},
+		{"mark read without a conversation", nil, func(s *Service, _ *Conversation, _ *Message) error { return s.MarkRead(ctx, "", "u-1") }, apperrs.ErrInvalid},
+		{"count unread without a workspace", nil, func(s *Service, _ *Conversation, _ *Message) error {
+			_, err := s.UnreadCounts(ctx, "", "u-1")
+			return err
+		}, apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			s := newTestService(repo)
+			if tt.svc != nil {
+				s = tt.svc(repo)
+			}
+			c, err := s.CreateChannel(ctx, "w-1", "u-1", "eng")
+			require.NoError(t, err)
+			m, err := s.PostMessage(ctx, c.ID, "u-1", "hi")
+			require.NoError(t, err)
+			require.ErrorIs(t, tt.call(s, c, m), tt.want)
+		})
+	}
+}
+
 func TestCreateChannel(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateChannel(context.Background(), "", "u-1", "eng")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty creator id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateChannel(context.Background(), "w-1", "", "eng")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateChannel(context.Background(), "w-1", "u-1", "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("creates a channel with its typed case and adds the creator as a participant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -676,24 +772,9 @@ func TestCreateChannel(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, c.ID, e.Conversation.ID)
 	})
-	t.Run("duplicate channel name in the workspace is a conflict regardless of case", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		_, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
-		require.NoError(t, err)
-		_, err = s.CreateChannel(context.Background(), "w-1", "u-2", "ENG")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
 }
 
 func TestCreateVoiceChannel(t *testing.T) {
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateVoiceChannel(context.Background(), "w-1", "u-1", "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("creates a voice channel with its typed case and adds the creator as a participant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -743,12 +824,6 @@ func TestEnsureGeneralChannel(t *testing.T) {
 }
 
 func TestCreateDM(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.CreateDM(context.Background(), "", "u-1", []string{"u-2"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("just the creator makes a self-DM (notes to self)", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -771,12 +846,6 @@ func TestCreateDM(t *testing.T) {
 }
 
 func TestGetOrCreateTicketThread(t *testing.T) {
-	t.Run("empty ticket id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.GetOrCreateTicketThread(context.Background(), "w-1", "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("creates the thread on first use", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -869,24 +938,6 @@ func TestGetOrCreateThread_LosingTheCreateRace_ReturnsTheWinnersThread(t *testin
 }
 
 func TestGetOrCreateDocThread(t *testing.T) {
-	t.Run("empty doc id is invalid", func(t *testing.T) {
-		s := newTestServiceWithDocAccess(newFakeRepo(), newFakeDocAccess("u-1:"))
-		_, err := s.GetOrCreateDocThread(context.Background(), "w-1", "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("no wired DocAccess denies, even the creator", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.GetOrCreateDocThread(context.Background(), "w-1", "doc-1", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("caller without docs:thread is forbidden, not an empty result", func(t *testing.T) {
-		s := newTestServiceWithDocAccess(newFakeRepo(), newFakeDocAccess())
-		_, err := s.GetOrCreateDocThread(context.Background(), "w-1", "doc-1", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 	t.Run("creates the thread on first use", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestServiceWithDocAccess(repo, newFakeDocAccess("u-1:doc-1"))
@@ -1147,12 +1198,6 @@ func TestPostMessage_DocThread(t *testing.T) {
 }
 
 func TestListConversations(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListConversations(context.Background(), "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("returns channels plus the user's own DMs", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -1198,27 +1243,6 @@ func TestListConversations(t *testing.T) {
 }
 
 func TestPostMessage(t *testing.T) {
-	t.Run("empty conversation id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.PostMessage(context.Background(), "", "u-1", "hi")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty body is invalid", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		c, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
-		require.NoError(t, err)
-		_, err = s.PostMessage(context.Background(), c.ID, "u-1", "   ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("posting to a nonexistent conversation is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.PostMessage(context.Background(), "missing", "u-1", "hi")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("posts and parses mentions, enqueueing chat.message.created", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -1243,36 +1267,6 @@ func TestEditMessage(t *testing.T) {
 		require.NoError(t, err)
 		return repo, s, c
 	}
-	t.Run("empty message id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.EditMessage(context.Background(), "", "u-1", "hi")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing message is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.EditMessage(context.Background(), "missing", "u-1", "hi")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("only the author may edit", func(t *testing.T) {
-		repo, s, c := setup(t)
-		m, err := s.PostMessage(context.Background(), c.ID, "u-1", "hi")
-		require.NoError(t, err)
-		_, err = s.EditMessage(context.Background(), m.ID, "u-2", "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-		_ = repo
-	})
-	t.Run("cannot edit a deleted message", func(t *testing.T) {
-		_, s, c := setup(t)
-		m, err := s.PostMessage(context.Background(), c.ID, "u-1", "hi")
-		require.NoError(t, err)
-		require.NoError(t, s.DeleteMessage(context.Background(), m.ID, "u-1"))
-		_, err = s.EditMessage(context.Background(), m.ID, "u-1", "edited")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("updates the body, re-parses mentions, and stamps edited_at", func(t *testing.T) {
 		repo, s, c := setup(t)
 		m, err := s.PostMessage(context.Background(), c.ID, "u-1", "hi")
@@ -1344,29 +1338,6 @@ func TestReact(t *testing.T) {
 }
 
 func TestDeleteMessage(t *testing.T) {
-	t.Run("empty message id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.DeleteMessage(context.Background(), "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing message is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.DeleteMessage(context.Background(), "missing", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("only the author may delete", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		c, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
-		require.NoError(t, err)
-		m, err := s.PostMessage(context.Background(), c.ID, "u-1", "hi")
-		require.NoError(t, err)
-		err = s.DeleteMessage(context.Background(), m.ID, "u-2")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
 	t.Run("deleting twice is a no-op", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -1399,12 +1370,6 @@ func TestDeleteMessage(t *testing.T) {
 }
 
 func TestMarkRead(t *testing.T) {
-	t.Run("empty conversation id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.MarkRead(context.Background(), "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("advances the read cursor", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -1694,12 +1659,6 @@ func TestPostAgentMessage_HandoffsWithLongReplies_CutTheLongestRepliesOnceNoStep
 }
 
 func TestUnreadCounts(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.UnreadCounts(context.Background(), "", "u-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("counts messages since the read cursor, excluding own and deleted messages", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
