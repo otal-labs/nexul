@@ -49,7 +49,7 @@ export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) =>
         <TabsList
           variant="line"
           aria-label={label}
-          className="relative isolate w-full justify-start overflow-x-auto scrollbar-none border-b border-border p-0"
+          className="relative isolate w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border p-0"
         >
           <TabUnderline />
           {visible.map((tab) => (

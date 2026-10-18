@@ -56,7 +56,7 @@ const renderPage = (entry = "/acme/projects/BE/interview", client = new QueryCli
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/acme/projects/:projectId/interview" element={<InterviewPage />} />
+          <Route path="/acme/projects/:projectId/interview/:tab?" element={<InterviewPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -189,7 +189,6 @@ describe("InterviewPage", () => {
     expect(screen.getByRole("button", { name: /How is the code organised\?/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Layers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("1 answered · 1 skipped");
-    expect(screen.getByText("No memory yet")).toBeInTheDocument();
     // Asked by project, so a member in it can read the questions.
     expect(api.get).toHaveBeenCalledWith("/api/memories/interview-template", { params: { project_id: "p-1" } });
   });
@@ -268,14 +267,18 @@ describe("InterviewPage", () => {
     expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
   });
 
-  it("shows an existing memory beside unanswered questions, with Regenerate", async () => {
+  it("keeps Regenerate above the questions and shows an existing memory on its own tab", async () => {
+    const user = userEvent.setup();
     mockApi({ memories: [interview], plays: [interviewPlay] });
     renderPage();
 
     expect(await screen.findByText("An earlier interview wrote this memory. Answer these and the agent updates it.")).toBeInTheDocument();
-    expect(screen.getByText("## Stack")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("0 of 2 answered");
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
+    expect(screen.queryByText("## Stack")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Memory" }));
+    expect(await screen.findByText("## Stack")).toBeInTheDocument();
   });
 
   it("offers Audit via AI only once the memory exists", async () => {
@@ -295,7 +298,7 @@ describe("InterviewPage", () => {
   it("treats the empty memory a drafting run creates as no memory yet", async () => {
     const auditPlay: ListedPlay = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
     mockApi({ memories: [{ ...interview, body: emptyDocJson }], plays: [auditPlay, interviewPlay] });
-    renderPage();
+    renderPage("/acme/projects/BE/interview/memory");
 
     expect(await screen.findByText("No memory yet")).toBeInTheDocument();
     expect(screen.getByText("Not generated yet")).toBeInTheDocument();
