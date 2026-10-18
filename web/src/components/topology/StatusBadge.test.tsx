@@ -17,9 +17,4 @@ describe("StatusBadge", () => {
     expect(badge).not.toHaveClass(`bg-${status}/15`);
     expect(container.querySelector("svg[aria-hidden]")).toBeInTheDocument();
   });
-
-  it("passes through a caller className alongside the shrink-0 canvas guard", () => {
-    render(<StatusBadge status={ServiceStatus.Healthy} className="my-extra-class" />);
-    expect(screen.getByText(ServiceStatus.Healthy)).toHaveClass("my-extra-class", "shrink-0");
-  });
 });

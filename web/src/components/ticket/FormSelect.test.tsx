@@ -46,14 +46,6 @@ const Wrapper = ({
 };
 
 describe("FormSelect", () => {
-  it("renders the label and, once opened, every option", async () => {
-    const user = userEvent.setup();
-    render(<Wrapper onSubmit={() => {}} />);
-    await user.click(screen.getByRole("combobox", { name: "Project" }));
-    expect(await screen.findByRole("option", { name: "Backend" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Frontend" })).toBeInTheDocument();
-  });
-
   it("renders a placeholder option when provided", async () => {
     const user = userEvent.setup();
     render(<Wrapper onSubmit={() => {}} placeholder="Uncategorized" />);
@@ -61,13 +53,14 @@ describe("FormSelect", () => {
     expect(await screen.findByRole("option", { name: "Uncategorized" })).toBeInTheDocument();
   });
 
-  it("submits the selected value", async () => {
+  it("lists every option under its label and submits the selected value", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<Wrapper onSubmit={onSubmit} />);
 
     await user.click(screen.getByRole("combobox", { name: "Project" }));
-    await user.click(await screen.findByRole("option", { name: "Frontend" }));
+    expect(await screen.findByRole("option", { name: "Backend" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Frontend" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ project_id: "p-2" }), expect.anything());

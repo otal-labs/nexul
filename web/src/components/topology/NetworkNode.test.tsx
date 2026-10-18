@@ -23,26 +23,22 @@ const makeProps = (overrides: Partial<Props> = {}): Props => ({
   ...overrides,
 });
 
-const renderNode = (overrides: Partial<Props> = {}, selected = false) =>
-  render(
-    <ReactFlowProvider>
-      <NetworkNode {...makeProps(overrides)} selected={selected} />
-    </ReactFlowProvider>,
-  );
-
 describe("NetworkNode", () => {
-  it("renders the network name", () => {
-    renderNode();
+  it("names the network, marks it as a network, and carries the selection", () => {
+    const { container, rerender } = render(
+      <ReactFlowProvider>
+        <NetworkNode {...makeProps()} />
+      </ReactFlowProvider>,
+    );
     expect(screen.getByText("app-net")).toBeInTheDocument();
-  });
-
-  it("marks the node as a network", () => {
-    renderNode();
     expect(screen.getByText("network")).toBeInTheDocument();
-  });
+    expect(container.firstElementChild).toHaveAttribute("data-selected", "false");
 
-  it("applies the selection ring when selected", () => {
-    const { container } = renderNode({}, true);
+    rerender(
+      <ReactFlowProvider>
+        <NetworkNode {...makeProps()} selected />
+      </ReactFlowProvider>,
+    );
     expect(container.firstElementChild).toHaveAttribute("data-selected", "true");
   });
 });
