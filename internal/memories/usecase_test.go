@@ -293,38 +293,53 @@ func testCtx() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
 }
 
-func TestCreate_RequiresMemoriesWrite(t *testing.T) {
-	deny := newDenyService(newFakeRepo())
-	_, err := deny.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-}
-
-func TestCreate_NoProject_IsInvalid(t *testing.T) {
+func TestService_Refusals_ChangeNothing(t *testing.T) {
 	repo := newFakeRepo()
-	_, err := newTestService(repo).Create(testCtx(), " ", "Team tone", "when", "body", false, "")
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Empty(t, repo.memories, "a memory always names a project")
-}
-
-func TestCreate_EmptyTitle_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Create(testCtx(), "project-1", " ", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestCreate_NoActor_IsUnauthorized(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Create(context.Background(), "project-1", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
-}
-
-func TestCreate_UnknownProject_PropagatesLookupError(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Create(testCtx(), "missing-project", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	m, err := newTestService(repo).Create(testCtx(), "project-1", "Title", "when", "body", false, "")
+	require.NoError(t, err)
+	ok, deny := newTestService(repo), newDenyService(repo)
+	outside := newTestServiceWith(repo, fakeAccess{can: true, outside: map[string]bool{"workspace-1": true}})
+	noGate := NewService(repo, nil, fakeProjects{workspaces: testProjects}, nil)
+	ctx := testCtx()
+	tests := []struct {
+		name string
+		call func() error
+		want error
+	}{
+		{"create without memories:write", func() error { _, err := deny.Create(ctx, "project-1", "T", "w", "b", false, ""); return err }, apperrs.ErrForbidden},
+		{"create with no access gate fails closed", func() error { _, err := noGate.Create(ctx, "project-1", "T", "w", "b", false, ""); return err }, apperrs.ErrForbidden},
+		{"create with no project", func() error { _, err := ok.Create(ctx, " ", "T", "w", "b", false, ""); return err }, apperrs.ErrInvalid},
+		{"create with no title", func() error { _, err := ok.Create(ctx, "project-1", " ", "w", "b", false, ""); return err }, apperrs.ErrInvalid},
+		{"create with no actor", func() error {
+			_, err := ok.Create(context.Background(), "project-1", "T", "w", "b", false, "")
+			return err
+		}, apperrs.ErrUnauthorized},
+		{"create in an unknown project", func() error { _, err := ok.Create(ctx, "missing-project", "T", "w", "b", false, ""); return err }, apperrs.ErrNotFound},
+		{"get with no id", func() error { _, err := ok.Get(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"get a missing memory", func() error { _, err := ok.Get(ctx, "missing"); return err }, apperrs.ErrNotFound},
+		{"get without memories:read", func() error { _, err := deny.Get(ctx, m.ID); return err }, apperrs.ErrForbidden},
+		{"list with no workspace", func() error { _, err := ok.List(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"list a workspace the caller is outside", func() error { _, err := outside.List(ctx, "workspace-1"); return err }, apperrs.ErrNotFound},
+		{"list a project with no id", func() error { _, err := ok.ListForProject(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"list a project without memories:read", func() error { _, err := deny.ListForProject(ctx, "project-1"); return err }, apperrs.ErrForbidden},
+		{"update with no id", func() error { _, err := ok.Update(ctx, " ", "T", "w", "b", false, ""); return err }, apperrs.ErrInvalid},
+		{"update with no title", func() error { _, err := ok.Update(ctx, m.ID, " ", "w", "b", false, ""); return err }, apperrs.ErrInvalid},
+		{"update a missing memory", func() error { _, err := ok.Update(ctx, "missing", "T", "w", "b", false, ""); return err }, apperrs.ErrNotFound},
+		{"update without memories:write", func() error { _, err := deny.Update(ctx, m.ID, "New", "w", "b", false, ""); return err }, apperrs.ErrForbidden},
+		{"delete with no id", func() error { return ok.Delete(ctx, " ") }, apperrs.ErrInvalid},
+		{"delete a missing memory", func() error { return ok.Delete(ctx, "missing") }, apperrs.ErrNotFound},
+		{"delete without memories:delete", func() error { return deny.Delete(ctx, m.ID) }, apperrs.ErrForbidden},
+		{"list versions without memories:read", func() error { _, err := deny.ListVersions(ctx, m.ID); return err }, apperrs.ErrForbidden},
+		{"get version zero", func() error { _, err := ok.GetVersion(ctx, m.ID, 0); return err }, apperrs.ErrInvalid},
+		{"revert with only memories:read", func() error { _, err := deny.Revert(ctx, m.ID, 1, ""); return err }, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.ErrorIs(t, tt.call(), tt.want)
+		})
+	}
+	assert.Len(t, repo.memories, 1, "a refused call writes nothing")
+	assert.Equal(t, 1, repo.memories[m.ID].Version)
 }
 
 func TestCreate_CapsWhenToUse_AndPublishesCreated(t *testing.T) {
@@ -340,45 +355,6 @@ func TestCreate_CapsWhenToUse_AndPublishesCreated(t *testing.T) {
 	assert.True(t, m.AlwaysIncluded)
 	assert.Equal(t, "user-1", m.CreatedBy)
 	require.Len(t, repo.eventsFor(TopicCreated), 1)
-}
-
-func TestGet_EmptyID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Get(testCtx(), " ")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestGet_MissingMemory_PropagatesNotFound(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Get(testCtx(), "missing")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
-func TestGet_RequiresMemoriesRead(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	deny := newDenyService(repo)
-	_, err = deny.Get(testCtx(), m.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-}
-
-func TestList_EmptyWorkspaceID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.List(testCtx(), " ")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestList_OutsideTheWorkspace_IsNotFound(t *testing.T) {
-	s := newTestServiceWith(newFakeRepo(), fakeAccess{can: true, outside: map[string]bool{"workspace-1": true}})
-	_, err := s.List(testCtx(), "workspace-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestList_LeavesOutProjectsTheCallerCannotRead(t *testing.T) {
@@ -408,20 +384,6 @@ func TestList_ReturnsWorkspaceMemories(t *testing.T) {
 	require.Len(t, got, 1)
 }
 
-func TestListForProject_EmptyProjectID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.ListForProject(testCtx(), " ")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestListForProject_RequiresMemoriesRead(t *testing.T) {
-	deny := newDenyService(newFakeRepo())
-	_, err := deny.ListForProject(testCtx(), "project-1")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-}
-
 func TestListMemoryItems_NoProject_ReturnsNone(t *testing.T) {
 	repo := newFakeRepo()
 	_, err := newTestService(repo).Create(testCtx(), "project-1", "Deploy quirks", "when to use", "body", false, "")
@@ -445,39 +407,6 @@ func TestListMemoryItems_NoActorInContext_ReturnsTheProjectsItems(t *testing.T) 
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "Deploy quirks", items[0].Title)
-}
-
-func TestUpdate_EmptyID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Update(testCtx(), " ", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestUpdate_EmptyTitle_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Update(testCtx(), "id", " ", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestUpdate_MissingMemory_PropagatesNotFound(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Update(testCtx(), "missing", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
-func TestUpdate_RequiresMemoriesWrite(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	deny := newDenyService(repo)
-	_, err = deny.Update(testCtx(), m.ID, "New title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 }
 
 func TestUpdate_ReplacesFields_AndPublishesUpdated(t *testing.T) {
@@ -519,32 +448,6 @@ func TestUpdateWithFooter_SpecialKinds_NeverFooters(t *testing.T) {
 	got, err := s.UpdateWithFooter(testCtx(), log.ID, log.Title, log.WhenToUse, "x", false, &footer, "")
 	require.NoError(t, err)
 	assert.False(t, got.Footer)
-}
-
-func TestDelete_EmptyID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	err := s.Delete(testCtx(), " ")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestDelete_MissingMemory_PropagatesNotFound(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	err := s.Delete(testCtx(), "missing")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
-func TestDelete_RequiresMemoriesDelete(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	deny := newDenyService(repo)
-	err = deny.Delete(testCtx(), m.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 }
 
 func TestDelete_RemovesMemory_AndPublishesDeleted(t *testing.T) {
@@ -623,44 +526,6 @@ func TestUpdate_ViaMCP_TagsVersion(t *testing.T) {
 	v, err := s.GetVersion(testCtx(), m.ID, 2)
 	require.NoError(t, err)
 	assert.Equal(t, "mcp", v.AuthorVia)
-}
-
-func TestListVersions_RequiresMemoriesRead(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	deny := newDenyService(repo)
-	_, err = deny.ListVersions(testCtx(), m.ID)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-}
-
-func TestGetVersion_NegativeVersion_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.GetVersion(testCtx(), "id", 0)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestRevert_RequiresMemoriesWrite_NotJustRead(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	deny := newDenyService(repo)
-	_, err = deny.Revert(testCtx(), m.ID, 1, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-}
-
-func TestCan_NilAccessGate_FailsClosed(t *testing.T) {
-	s := NewService(newFakeRepo(), nil, fakeProjects{workspaces: testProjects}, nil)
-	_, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 }
 
 func TestClone_MissingMemoriesClone_NamesThatPermission(t *testing.T) {
