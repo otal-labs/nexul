@@ -75,51 +75,31 @@ describe("useConfirmationDialog", () => {
     expect(await screen.findByText("false")).toBeInTheDocument();
   });
 
-  it("uses the message as the heading when no title is provided", async () => {
+  it("uses the message as the heading when no title is provided, and confirms destructively by default", async () => {
     const user = userEvent.setup();
     renderWithRoot(<ConfirmationHarness />);
 
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(screen.getByRole("heading", { name: "Delete this service?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm" }).className).toContain("bg-destructive");
     await user.keyboard("{Escape}");
   });
 
-  it("renders the title with the message as description when a title is provided", async () => {
+  it("renders the title with the message as description and the custom labels when provided", async () => {
     const user = userEvent.setup();
     renderWithRoot(
-      <ConfirmationHarnessWithOptions options={{ message: "Delete?", title: "Delete service" }} />,
+      <ConfirmationHarnessWithOptions
+        options={{ message: "Delete?", title: "Delete service", confirmLabel: "Delete it", cancelLabel: "Keep it" }}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(screen.getByRole("heading", { name: "Delete service" })).toBeInTheDocument();
     expect(screen.getByText("Delete?")).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-  });
-
-  it("renders custom labels when provided", async () => {
-    const user = userEvent.setup();
-    renderWithRoot(
-      <ConfirmationHarnessWithOptions
-        options={{ message: "Delete?", confirmLabel: "Delete it", cancelLabel: "Keep it" }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Ask" }));
-
     expect(screen.getByRole("button", { name: "Delete it" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Keep it" })).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-  });
-
-  it("defaults the confirm button to the destructive variant", async () => {
-    const user = userEvent.setup();
-    renderWithRoot(<ConfirmationHarness />);
-
-    await user.click(screen.getByRole("button", { name: "Ask" }));
-
-    expect(screen.getByRole("button", { name: "Confirm" }).className).toContain("bg-destructive");
     await user.keyboard("{Escape}");
   });
 
