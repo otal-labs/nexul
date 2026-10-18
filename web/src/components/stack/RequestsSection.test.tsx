@@ -57,12 +57,6 @@ describe("RequestsSection", () => {
     expect(mocks.get).toHaveBeenCalledWith("/api/stacks/stack-1/requests");
   });
 
-  it("says there is no 5xx when there were none", async () => {
-    mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => 4)) });
-    renderSection();
-    expect(await screen.findByText("No 5xx")).toBeInTheDocument();
-  });
-
   it("names when the data stopped once five minutes are missing, and keeps the earlier bars", async () => {
     const requests = [...Array.from({ length: 55 }, () => 2), ...Array.from({ length: 5 }, () => null)];
     mocks.get.mockResolvedValue({ data: hour(requests) });
@@ -88,10 +82,11 @@ describe("RequestsSection", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("states the error-rate rule in the footer", async () => {
+  it("says there is no 5xx when there were none, and states the error-rate rule in the footer", async () => {
     mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => 4)) });
     renderSection({ ...stack, error_rate: { enabled: true, percent: 2.5, minutes: 10, min_requests: 1000 } });
     expect(await screen.findByText("Alert when 5xx above 2.5% for 10 minutes, with at least 1,000 requests.")).toBeInTheDocument();
+    expect(screen.getByText("No 5xx")).toBeInTheDocument();
   });
 
   it("says nothing is counted while the rule is off, and where to turn it on", async () => {
