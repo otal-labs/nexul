@@ -171,7 +171,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 
 	threadID := target.SessionID
 	usedStored := threadID != ""
-	prompt, attachments := prompts.Incremental, []harness.Attachment(nil)
+	prompt, attachments := prompts.Incremental, prompts.IncrementalAttachments
 	if threadID == "" {
 		threadID, err = h.createThread(ctx, client, target, title)
 		if err != nil {

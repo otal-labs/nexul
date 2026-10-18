@@ -34,7 +34,9 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   and message ids, as gif, jpeg, png or webp data URLs, and `message.dispatch` carries the references T3 returns.
   Any other type is left out with a note, since T3's providers take only those four, and the prompt lists it by link
   rather than as attached (ADR 0111). A refused upload fails the turn before anything is sent, because the prompt
-  points at images the agent would not see. An incremental prompt carries none: the thread already holds them.
+  points at images the agent would not see. An incremental prompt carries only the images its request message embeds: the thread already holds the rest.
+  A request image that is attached appears in the prompt as `[Attached image: <name>]` in place of its markdown,
+  since T3 shows the file and cannot open a Nexul link; one left out keeps its link for `attachment_get`.
 - **The end.** The turn is done at its run's first `waiting`, or at `completed` if `waiting` was missed. T3 persists
   a finished provider turn as `waiting` and moves it to `completed` once its checkpoint is captured; the reply is
   final at `waiting`, and the checkpoint is T3's own rollback bookkeeping, which can lag or stall. `interrupted`,

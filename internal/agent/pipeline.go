@@ -568,14 +568,16 @@ func (s *Service) buildTurnPrompts(ctx context.Context, client harness.Client, c
 	if req.Play != nil {
 		all, others = nil, nil
 	}
-	images := s.targetImages(actorCtx, client, target)
-	in.Target = targetSection(target, images)
+	targetImgs, requestImgs := s.turnImages(actorCtx, client, target, req.RequestBody)
+	in.Target = targetSection(target, targetImgs)
+	in.RequestBody = nameAttached(req.RequestBody, requestImgs)
 	incremental := in
 	incremental.ContextMessages = others
 	in.ContextMessages = all
 	in.Intro = s.template(ctx, TemplateIntro, DefaultIntro)
 	in.Footer = s.template(ctx, TemplateFooter, DefaultFooter)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(images), Answer: req.Answer}, sentThrough, nil
+	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(slices.Concat(targetImgs, requestImgs)),
+		IncrementalAttachments: attached(requestImgs), Answer: req.Answer}, sentThrough, nil
 }
 
 // contextMessages resolves history; others drops the Agent's own replies and the messages relayed from the harness,
@@ -633,16 +635,22 @@ func (s *Service) markSent(ctx context.Context, conversationID string, through t
 	}
 }
 
-// targetImages reads the images the ticket or doc body embeds, attaching those client sends its agent.
-func (s *Service) targetImages(ctx context.Context, client harness.Client, target *threadTarget) []bodyImage {
-	if target == nil || s.attachments == nil {
-		return nil
+// turnImages reads the images the request and the ticket or doc body embed, attaching those client sends its agent;
+// the request's are read first, so they keep their place within the turn's total.
+func (s *Service) turnImages(ctx context.Context, client harness.Client, target *threadTarget, request string) (targetImgs, requestImgs []bodyImage) {
+	if s.attachments == nil {
+		return nil, nil
 	}
 	takes := func(string) bool { return true }
 	if t, ok := client.(harness.ImageTaker); ok {
 		takes = t.TakesImage
 	}
-	return bodyImages(ctx, target.body, s.attachments, takes)
+	budget := MaxTurnAttachmentBytes
+	requestImgs = bodyImages(ctx, request, s.attachments, takes, &budget)
+	if target != nil {
+		targetImgs = bodyImages(ctx, target.body, s.attachments, takes, &budget)
+	}
+	return targetImgs, requestImgs
 }
 
 func attached(images []bodyImage) []harness.Attachment {
