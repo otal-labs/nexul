@@ -124,18 +124,6 @@ func TestWebhookHandler_ClosedWithoutMerge_PublishesPRClosed(t *testing.T) {
 	assert.Equal(t, 7, got.PR.Number)
 }
 
-func TestWebhookHandler_OtherPRAction_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("synchronize", false)))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-	env := envelopeFrom(t, bus)
-	assert.Equal(t, "synchronize", env.Action)
-}
-
 func TestWebhookHandler_UnknownEventType_PublishesEnvelope(t *testing.T) {
 	bus := newFakeBus()
 	h := NewWebhookHandler("shhh", bus)
@@ -199,27 +187,6 @@ func TestWebhookHandler_PushDeleted_PublishesBranchDeleted(t *testing.T) {
 	assert.Equal(t, "acme", got.Owner)
 	assert.Equal(t, "app", got.Repo)
 	assert.Equal(t, "feature/discord", got.Branch)
-}
-
-func TestWebhookHandler_PushTag_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "push", pushEventPayload("refs/tags/v1.0.0", "before123", "after456", false)))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
-func TestWebhookHandler_PushMissingRepository_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	payload, _ := json.Marshal(map[string]any{"ref": "refs/heads/main"})
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "push", payload))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
 }
 
 func TestWebhookHandler_Ping_PublishesEnvelope(t *testing.T) {
@@ -327,36 +294,6 @@ func TestWebhookHandler_ReviewChangesRequested(t *testing.T) {
 	assert.Equal(t, TopicPRReviewSubmitted, bus.lastPublished().Topic)
 }
 
-func TestWebhookHandler_ReviewNonSubmittedAction_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request_review", reviewEventPayload("dismissed", "dismissed", "alice")))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
-func TestWebhookHandler_ReviewInvalidSignature_Rejected(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "wrong-secret", "pull_request_review", reviewEventPayload("submitted", "approved", "alice")))
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	assert.Empty(t, bus.published)
-}
-
-func TestWebhookHandler_ReviewMissingReviewPayload_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	payload, _ := json.Marshal(map[string]any{"action": "submitted", "repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"}})
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request_review", payload))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
 func TestWebhookHandler_PublishFailure_Returns500(t *testing.T) {
 	bus := newFakeBus()
 	bus.publishErr = errors.New("bus closed")
@@ -403,27 +340,6 @@ func TestWebhookHandler_IssueCommentOnPR_PublishesPRComment(t *testing.T) {
 	assert.Equal(t, "onik97", got.Comment.Author)
 }
 
-func TestWebhookHandler_IssueCommentOnPlainIssue_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "issue_comment", issueCommentPayload(false, "nice catch", "onik97")))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
-func TestWebhookHandler_IssueCommentMissingIssuePayload_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	payload, _ := json.Marshal(map[string]any{"action": "created", "repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"}})
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "issue_comment", payload))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
 func reviewCommentPayload(body, author string) []byte {
 	payload, _ := json.Marshal(map[string]any{
 		"action": "created",
@@ -459,24 +375,35 @@ func TestWebhookHandler_ReviewComment_PublishesPRComment(t *testing.T) {
 	assert.Equal(t, "bob", got.Comment.Author)
 }
 
-func TestWebhookHandler_ReviewCommentMissingPullRequestPayload_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	payload, _ := json.Marshal(map[string]any{"action": "created", "repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"}})
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request_review_comment", payload))
+func TestWebhookHandler_EventsWithoutADomainEvent_PublishOnlyTheEnvelope(t *testing.T) {
+	repoOnly := func(action string) []byte {
+		payload, _ := json.Marshal(map[string]any{"action": action, "repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"}})
+		return payload
+	}
+	noRepo, _ := json.Marshal(map[string]any{"ref": "refs/heads/main"})
+	tests := []struct {
+		name    string
+		event   string
+		payload []byte
+	}{
+		{"a pull request action nothing listens for", "pull_request", prEventPayload("synchronize", false)},
+		{"a pull request event without its pull request", "pull_request", repoOnly("opened")},
+		{"a pushed tag", "push", pushEventPayload("refs/tags/v1.0.0", "before123", "after456", false)},
+		{"a push without its repository", "push", noRepo},
+		{"a review that is not submitted", "pull_request_review", reviewEventPayload("dismissed", "dismissed", "alice")},
+		{"a review event without its review", "pull_request_review", repoOnly("submitted")},
+		{"a comment on a plain issue", "issue_comment", issueCommentPayload(false, "nice catch", "onik97")},
+		{"an issue comment without its issue", "issue_comment", repoOnly("created")},
+		{"a review comment without its pull request", "pull_request_review_comment", repoOnly("created")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bus := newFakeBus()
+			rec := serveWebhook(t, NewWebhookHandler("shhh", bus), signedWebhookRequest(t, "shhh", tt.event, tt.payload))
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
-}
-
-func TestWebhookHandler_MissingPullRequestPayload_PublishesOnlyEnvelope(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	payload, _ := json.Marshal(map[string]any{"action": "opened", "repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"}})
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", payload))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Len(t, bus.published, 1)
-	assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			require.Len(t, bus.published, 1)
+			assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
+		})
+	}
 }

@@ -116,22 +116,6 @@ func dialAnnounce(t *testing.T, url string, announce automations.Frame) *websock
 	return conn
 }
 
-func TestDialinHandler_ServeHTTP_InvalidToken_Refuses(t *testing.T) {
-	setup := newDialinSetup(t)
-	resp, err := http.Get(setup.srv.URL + "/?token=bogus")
-	require.NoError(t, err)
-	defer func() { require.NoError(t, resp.Body.Close()) }()
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-}
-
-func TestDialinHandler_ServeHTTP_NoToken_Refuses(t *testing.T) {
-	setup := newDialinSetup(t)
-	resp, err := http.Get(setup.srv.URL + "/")
-	require.NoError(t, err)
-	defer func() { require.NoError(t, resp.Body.Close()) }()
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-}
-
 func TestDialinHandler_ServeHTTP_RevokedToken_Refuses(t *testing.T) {
 	setup := newDialinSetup(t)
 	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
@@ -592,4 +576,16 @@ func TestDialinHandler_NewConnectionReplacesOld(t *testing.T) {
 	var f automations.Frame
 	err = wsjson.Read(ctx, conn1, &f)
 	require.Error(t, err, "the older connection must be replaced, not left dangling")
+}
+
+func TestDialinHandler_ServeHTTP_UnknownOrMissingToken_Refuses(t *testing.T) {
+	for name, query := range map[string]string{"an unknown token": "?token=bogus", "no token": ""} {
+		t.Run(name, func(t *testing.T) {
+			setup := newDialinSetup(t)
+			resp, err := http.Get(setup.srv.URL + "/" + query)
+			require.NoError(t, err)
+			defer func() { require.NoError(t, resp.Body.Close()) }()
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	}
 }

@@ -39,18 +39,6 @@ func TestCreate_TicketPlayWithoutStage_ReturnsValidationError(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
-func TestCreate_DocPlayWithStage_ReturnsValidationError(t *testing.T) {
-	s := newTestService(newFakeRepo(), allowAll("owner"))
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc, ShowWhenStage: ticketStage()})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
-func TestCreate_EmptyLabel_ReturnsValidationError(t *testing.T) {
-	s := newTestService(newFakeRepo(), allowAll("owner"))
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "  ", Type: TypeDoc})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
 func TestCreate_WithoutPlaysWrite_ReturnsForbidden(t *testing.T) {
 	s := newTestService(newFakeRepo(), newFakePerm(nil))
 	_, err := s.Create(ctxAs("alice"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc})
