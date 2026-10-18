@@ -35,6 +35,37 @@ func do(t *testing.T, h http.Handler, method, path, body, userID string) *httpte
 	return rec
 }
 
+func TestHandler_WorkspaceRoutes_Refusals(t *testing.T) {
+	tests := []struct {
+		name   string
+		seed   func(repo *fakeRepo)
+		method string
+		path   string
+		body   string
+		user   string
+		want   int
+	}{
+		{"create without a signed-in user", nil, http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "", http.StatusBadRequest},
+		{"create from a malformed body", nil, http.MethodPost, "/api/workspaces", `{`, "u-1", http.StatusBadRequest},
+		{"create without a name", nil, http.MethodPost, "/api/workspaces", `{"name":" "}`, "u-1", http.StatusBadRequest},
+		{"create when the repo fails", func(r *fakeRepo) { r.createErr = errors.New("db down") }, http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "u-1", http.StatusInternalServerError},
+		{"list without a signed-in user", nil, http.MethodGet, "/api/workspaces", "", "", http.StatusBadRequest},
+		{"list when the repo fails", func(r *fakeRepo) { r.listErr = errors.New("db down") }, http.MethodGet, "/api/workspaces", "", "u-1", http.StatusInternalServerError},
+		{"read me without a signed-in user", nil, http.MethodGet, "/api/workspaces/ws-1/me", "", "", http.StatusBadRequest},
+		{"read me as a non-member", nil, http.MethodGet, "/api/workspaces/ws-1/me", "", "u-nobody", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, repo := newTestHandler(t)
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			rec := do(t, h.Routes(), tt.method, tt.path, tt.body, tt.user)
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
+}
+
 func TestHandler_Create(t *testing.T) {
 	t.Run("creates a workspace", func(t *testing.T) {
 		h, _ := newTestHandler(t)
@@ -43,27 +74,6 @@ func TestHandler_Create(t *testing.T) {
 		var w Workspace
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &w))
 		assert.Equal(t, "Acme", w.Name)
-	})
-	t.Run("no user in context is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("bad json is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":" "}`, "u-1")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("repo error is 500", func(t *testing.T) {
-		h, repo := newTestHandler(t)
-		repo.createErr = errors.New("db down")
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "u-1")
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
 
@@ -79,17 +89,6 @@ func TestHandler_List(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &workspaces))
 		require.Len(t, workspaces, 1)
 		assert.Equal(t, "Acme", workspaces[0].Name)
-	})
-	t.Run("no user in context is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces", "", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("repo error is 500", func(t *testing.T) {
-		h, repo := newTestHandler(t)
-		repo.listErr = errors.New("db down")
-		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces", "", "u-1")
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
 
@@ -134,16 +133,6 @@ func TestHandler_Me(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces/"+w.ID+"/me", "", "u-1")
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.NotContains(t, rec.Body.String(), `"permissions":null`)
-	})
-	t.Run("no user in context is invalid", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("non-member is not found", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "u-nobody")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
