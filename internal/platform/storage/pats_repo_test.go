@@ -138,7 +138,6 @@ func TestPATsRepo_TouchLastUsed(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, got.LastUsedAt)
 
-	time.Sleep(10 * time.Millisecond)
 	require.NoError(t, s.PATs.TouchLastUsed(ctx, "p1"))
 
 	got, err = s.PATs.GetByHash(ctx, "hash1")
