@@ -99,7 +99,7 @@ describe("MachinePeopleRow", () => {
     await user.click(screen.getByRole("button", { name: /People on this machine/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("edge-box")).toBeInTheDocument();
-    expect(await within(dialog).findByRole("button", { name: /Ops in Globex/ })).toBeInTheDocument();
+    expect(await within(dialog).findByRole("button", { name: /^Ops in Globex/ })).toBeInTheDocument();
   });
 
   it("names a rule's targets from the rules list when the viewer can't list Team, never by id", async () => {
@@ -114,9 +114,9 @@ describe("MachinePeopleRow", () => {
 
     await user.click(screen.getByRole("button", { name: /People on this machine/ }));
     const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByRole("button", { name: /DevOps/ })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: /bob/ })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: /Someone/ })).toBeInTheDocument();
+    expect(await within(dialog).findByRole("button", { name: /^DevOps/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^bob/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^Someone/ })).toBeInTheDocument();
     expect(within(dialog).queryByText(/01a13b1e/)).not.toBeInTheDocument();
   });
 
@@ -126,11 +126,11 @@ describe("MachinePeopleRow", () => {
 
     await user.click(await screen.findByRole("button", { name: "Add role or person" }));
     expect(screen.queryByRole("button", { name: /Owner in Acme/ })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: /Ops in Globex/ }));
+    await user.click(await screen.findByRole("button", { name: /^Ops in Globex/ }));
     await user.click(await control("See this machine").findByRole("radio", { name: "Allow" }));
 
     await user.click(screen.getByRole("button", { name: "Add role or person" }));
-    await user.click(await screen.findByRole("button", { name: /bob/ }));
+    await user.click(await screen.findByRole("button", { name: /^bob/ }));
     await screen.findByRole("heading", { name: "bob" });
     for (const label of ["Deploy to this machine", "Manage this machine", "Delete this machine"]) {
       await user.click(control(label).getByRole("radio", { name: "Allow" }));

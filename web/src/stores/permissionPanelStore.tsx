@@ -28,7 +28,7 @@ export const createPermissionPanelStore = (target: string | null = null) =>
     pick: (next) => set({ target: next }),
     check: (checked) => set({ checked }),
     add: (next) => set((s) => ({ added: s.added.includes(next) ? s.added : [...s.added, next], target: next, mode: "rules" })),
-    drop: (gone) => set((s) => ({ added: s.added.filter((t) => t !== gone), target: null })),
+    drop: (gone) => set((s) => ({ added: s.added.filter((t) => t !== gone), target: s.target === gone ? null : s.target })),
   }));
 
 // The panel's Rules | Check access sits in the dialog's header and the view in its body, two trees that share this.

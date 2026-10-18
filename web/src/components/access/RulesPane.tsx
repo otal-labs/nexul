@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -12,7 +11,7 @@ import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionExplanation, PermissionInfo } from "@/models/Permission";
-import { entityWord, groupActions, parseTarget, permissionLabel, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
+import { groupActions, parseTarget, permissionLabel, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 // The role behind a person's answers, read from the sources that name one.
 const heldRole = (explanation: PermissionExplanation | undefined) =>
@@ -51,8 +50,7 @@ const RulesFor = ({ targetKey }: { targetKey: string }) => {
   const { targetOf } = usePanelTargets(targetScope(entity));
   const { data: catalog } = useFetchPermissionCatalog();
   const { data: explanation, error, isPending } = useFetchExplanation(entity.type, entity.id, explainTargetOf(targetKey));
-  const { actions, clear } = usePermissionRules();
-  const drop = usePermissionPanelStore((s) => s.drop);
+  const { actions } = usePermissionRules();
   const target = targetOf(targetKey);
   const role = heldRole(explanation);
   const roleLine = role ? `holds ${role}` : "holds no role";
@@ -62,24 +60,7 @@ const RulesFor = ({ targetKey }: { targetKey: string }) => {
 
   return (
     <div className="min-w-0 flex-1 space-y-5">
-      <PanelPaneHeader
-        target={target}
-        title={target.name}
-        line={line}
-        action={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => {
-              clear(targetKey);
-              drop(targetKey);
-            }}
-          >
-            Remove from this {entityWord(entity.type)}
-          </Button>
-        }
-      />
+      <PanelPaneHeader target={target} title={target.name} line={line} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {explanation &&

@@ -135,10 +135,10 @@ describe("PlayRow", () => {
 
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
     await user.click(await screen.findByRole("menuitem", { name: "Permissions…" }));
-    await user.click(await screen.findByRole("button", { name: /bob/ }));
+    await user.click(await screen.findByRole("button", { name: /^bob/ }));
     const run = await screen.findByRole("radiogroup", { name: "Run" });
     expect(within(run).getByRole("radio", { name: "Deny" })).toBeChecked();
-    expect(screen.getByRole("button", { name: "Remove from this play" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove bob" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
   });
 });

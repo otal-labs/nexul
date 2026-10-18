@@ -17,9 +17,14 @@ export const PanelTargetColumn = () => {
   const target = usePermissionPanelStore((s) => s.target);
   const checked = usePermissionPanelStore((s) => s.checked);
   const pick = usePermissionPanelStore((s) => s.pick);
+  const drop = usePermissionPanelStore((s) => s.drop);
   const check = usePermissionPanelStore((s) => s.check);
   const { people, targetOf } = usePanelTargets(targetScope(entity));
-  const { listed, roles, people: listedPeople, ruleCount } = usePermissionRules();
+  const { listed, roles, people: listedPeople, ruleCount, clear } = usePermissionRules();
+  const remove = (key: string) => {
+    clear(key);
+    drop(key);
+  };
 
   return (
     <nav
@@ -38,7 +43,7 @@ export const PanelTargetColumn = () => {
       {mode === "rules" && roles.length > 0 && (
         <ul className={listClass}>
           {roles.map((key) => (
-            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} />
+            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} onRemove={() => remove(key)} />
           ))}
         </ul>
       )}
@@ -47,7 +52,7 @@ export const PanelTargetColumn = () => {
       {mode === "rules" && listedPeople.length > 0 && (
         <ul className={listClass}>
           {listedPeople.map((key) => (
-            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} />
+            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} onRemove={() => remove(key)} />
           ))}
         </ul>
       )}

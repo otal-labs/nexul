@@ -56,7 +56,7 @@ export const areaEntity = (area: InstanceArea): PanelEntity => ({
 
 export const areaName = (area: InstanceArea) => area.label.charAt(0).toUpperCase() + area.label.slice(1);
 
-// The entity in a sentence: "Remove from this doc", "On instance area DNS and gateways".
+// The entity in a sentence: "folder Sales", "On instance area DNS and gateways".
 export const entityWord = (type: PanelEntity["type"]) => (type === "instance_area" ? "instance area" : type);
 
 export interface PanelGroup {
