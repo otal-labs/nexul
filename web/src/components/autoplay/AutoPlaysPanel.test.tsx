@@ -108,11 +108,14 @@ beforeEach(() => {
 
 describe("a play's auto plays", () => {
   it("lists each as a sentence, switches it at once and puts it back when the save is refused, and sets the daily cap", async () => {
+    const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
+    autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
     const { user, dialog } = await openAutoPlays();
-    const row = await within(dialog).findByRole("button", { name: /becomes unblocked/ });
+    const rows = await within(dialog).findAllByRole("button", { name: /becomes unblocked/ });
     await waitFor(() =>
-      expect(row).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High if Type is Bug, else Normal, runs on Developer"),
+      expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High if Type is Bug, else Normal, runs on Developer"),
     );
+    expect(rows[1]).toHaveTextContent("→ High if Type is Bug or 1 more, else Low, runs on Developer");
 
     let refuse: (error: Error) => void = () => {};
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));
@@ -132,56 +135,33 @@ describe("a play's auto plays", () => {
     await close(user, dialog);
   });
 
-  it("names the priority rule's first condition and how many more it has", async () => {
-    const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
-    autoPlays = [autoPlay({ priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
+  it("asks before dropping a composer's edit, on Cancel and on leaving for Play, and asks nothing when clean", async () => {
     const { user, dialog } = await openAutoPlays();
-    const row = await within(dialog).findByRole("button", { name: /becomes unblocked/ });
-    await waitFor(() => expect(row).toHaveTextContent("→ High if Type is Bug or 1 more, else Low, runs on Developer"));
-    await close(user, dialog);
-  });
-
-  it("opens one in place of the list, and Cancel with an edit asks before going back", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
-    await pickOption(user, "Moment", "Ticket is created");
+    const edit = async () => {
+      await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+      await pickOption(user, "Moment", "Ticket is created");
+    };
+    const prompt = () => screen.findByRole("dialog", { name: "Discard changes?" });
+    await edit();
 
     await user.click(footer(dialog, "Cancel"));
-    const prompt = await screen.findByRole("dialog", { name: "Discard changes?" });
-    await user.click(within(prompt).getByRole("button", { name: "Cancel" }));
+    await user.click(within(await prompt()).getByRole("button", { name: "Cancel" }));
     expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
 
     await user.click(footer(dialog, "Cancel"));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
+    await user.click(within(await prompt()).getByRole("button", { name: "Discard changes" }));
     expect(await within(dialog).findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "Edit Fix with AI" })).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
-    await close(user, dialog);
-  });
 
-  it("keeps the composer's edits when switching to Play is cancelled", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
-    await pickOption(user, "Moment", "Ticket is created");
-
+    await edit();
     await user.click(within(dialog).getByRole("tab", { name: "Play" }));
-    const prompt = await screen.findByRole("dialog", { name: "Discard changes?" });
-    await user.click(within(prompt).getByRole("button", { name: "Cancel" }));
-
+    await user.click(within(await prompt()).getByRole("button", { name: "Cancel" }));
     expect(within(dialog).getByRole("tab", { name: "Auto plays" })).toHaveAttribute("aria-selected", "true");
     expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
-    await user.click(within(dialog).getByRole("button", { name: "Auto plays" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
-    await close(user, dialog);
-  });
-
-  it("drops the composer's edits and shows Play when switching is confirmed, and asks nothing when clean", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
-    await pickOption(user, "Moment", "Ticket is created");
 
     await user.click(within(dialog).getByRole("tab", { name: "Play" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
+    await user.click(within(await prompt()).getByRole("button", { name: "Discard changes" }));
     await waitFor(() => expect(within(dialog).getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true"));
     expect(within(dialog).queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument();
 
