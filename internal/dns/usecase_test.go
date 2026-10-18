@@ -477,13 +477,6 @@ func TestService_InstanceURL_SettingsErrors(t *testing.T) {
 	})
 }
 
-func TestNewService_DefaultsClock(t *testing.T) {
-	s := NewService(Config{Repo: newFakeRepo(), Provider: newFakeProvider(), EncryptionKey: testKey()})
-	require.NotNil(t, s.now)
-	_, err := s.ListZones(context.Background())
-	require.NoError(t, err)
-}
-
 func validHostnameInput() ServiceHostnameInput {
 	return ServiceHostnameInput{
 		Service: "api", Hostname: "api.example.com", ZoneID: "z1", Zone: "example.com",

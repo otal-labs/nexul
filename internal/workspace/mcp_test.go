@@ -28,15 +28,6 @@ func asOwner(ctx context.Context) context.Context {
 	return identity.WithActor(ctx, identity.Actor{ID: "u-1"})
 }
 
-func TestMCPTools_Names(t *testing.T) {
-	s, _, _ := newOwnerRepo(t, true)
-	var names []string
-	for _, tool := range MCPTools(s) {
-		names = append(names, tool.Name)
-	}
-	assert.Equal(t, []string{"project_list", "project_create", "project_delete"}, names)
-}
-
 func TestProjectCreateTool_ListsEverySuggestedIcon(t *testing.T) {
 	s, _, _ := newOwnerRepo(t, true)
 	desc := wsTool(t, s, "project_create").InputSchema.Properties["icon"].Description

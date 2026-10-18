@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/t3rpc"
 	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
@@ -39,7 +40,7 @@ func (d *countingDialer) DialComputer(ctx context.Context, computerID string) (n
 func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 	t.Parallel()
 	t3 := t3rpctest.New(t)
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	router, store, svc := routerOver(t, db)
 	srv := httptest.NewServer(router)
 	t.Cleanup(srv.Close)

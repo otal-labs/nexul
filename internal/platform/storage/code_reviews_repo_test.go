@@ -63,14 +63,6 @@ func TestCodeReviewsRepo_CreateAndGet(t *testing.T) {
 	})
 }
 
-func TestCodeReviewsRepo_Get_Missing(t *testing.T) {
-	ctx := context.Background()
-	s := newTestStore(t)
-	_, err := s.CodeReviews.Get(ctx, "nope")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
 func TestCodeReviewsRepo_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)

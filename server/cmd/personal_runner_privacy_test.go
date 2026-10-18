@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -33,7 +34,7 @@ type privacyCast struct {
 
 func newPrivacyCast(t *testing.T) (privacyCast, *sql.DB) {
 	t.Helper()
-	return privacyCastOver(t, mentionsTestDB(t))
+	return privacyCastOver(t, migrated.DB(t))
 }
 
 // privacyCastOver is newPrivacyCast over db, for a test that counts the statements it runs.

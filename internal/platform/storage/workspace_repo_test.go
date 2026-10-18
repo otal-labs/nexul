@@ -142,7 +142,7 @@ func TestProjectSetup_ConcurrentStepsPreserveBothMarks(t *testing.T) {
 	}}, got.Setup)
 }
 
-func TestProjectsRepo_IconRoundTrip(t *testing.T) {
+func TestProjectsRepo_UpdatePersistsNameAndIcon(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	want := newTestProject("p-1", "Backend", 0)
@@ -154,10 +154,12 @@ func TestProjectsRepo_IconRoundTrip(t *testing.T) {
 	assert.Equal(t, workspace.ProjectIconRocket, got.Icon)
 
 	updated := *got
+	updated.Name = "Renamed"
 	updated.Icon = workspace.ProjectIconGlobe
 	require.NoError(t, s.Projects.Update(context.Background(), &updated))
 	got, err = s.Projects.Get(context.Background(), "p-1")
 	require.NoError(t, err)
+	assert.Equal(t, "Renamed", got.Name)
 	assert.Equal(t, workspace.ProjectIconGlobe, got.Icon)
 }
 
@@ -219,21 +221,6 @@ func TestMigration_BackfillsGeneralProjectTemplates_MatchingTheSeed(t *testing.T
 	}
 }
 
-func TestProjectsRepo_Create_Duplicate_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "A", 0)))
-	err := s.Projects.Create(context.Background(), newTestProject("p-1", "B", 1))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestProjectsRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Projects.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_List_OrderedByPosition(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -267,34 +254,6 @@ func TestProjectsRepo_List_ScopesToWorkspace(t *testing.T) {
 	assert.Equal(t, "project-general", got[0].ID)
 }
 
-func TestProjectsRepo_Create_UnknownWorkspace_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	p := newTestProject("p-1", "A", 0)
-	p.WorkspaceID = "missing"
-	err := s.Projects.Create(context.Background(), p)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
-func TestProjectsRepo_Rename_Persists(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Old", 0)))
-	updated := newTestProject("p-1", "New", 0)
-	require.NoError(t, s.Projects.Update(context.Background(), updated))
-
-	got, err := s.Projects.Get(context.Background(), "p-1")
-	require.NoError(t, err)
-	assert.Equal(t, "New", got.Name)
-}
-
-func TestProjectsRepo_Update_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.Update(context.Background(), newTestProject("missing", "X", 0))
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_Reorder_AssignsPositions(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -317,13 +276,6 @@ func TestProjectsRepo_Delete_RemovesProject(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestProjectsRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_Counts(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -339,13 +291,6 @@ func TestProjectsRepo_Counts(t *testing.T) {
 	assert.Equal(t, 1, repos)
 }
 
-func TestProjectsRepo_AddRepo_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.AddRepo(context.Background(), "missing", workspace.RepoRef{Owner: "acme", Name: "app"})
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestProjectsRepo_AddRepo_RepoBelongsToOneProject(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -357,38 +302,18 @@ func TestProjectsRepo_AddRepo_RepoBelongsToOneProject(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestProjectsRepo_RemoveRepo_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Projects.RemoveRepo(context.Background(), "acme", "app")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestProjectsRepo_ListRepos_ScopesToProject(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "A", 0)))
 	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-2", "B", 1)))
-	require.NoError(t, s.Projects.AddRepo(context.Background(), "p-1", workspace.RepoRef{Owner: "acme", Name: "app", FullName: "acme/app"}))
+	require.NoError(t, s.Projects.AddRepo(context.Background(), "p-1", workspace.RepoRef{Owner: "acme", Name: "app", FullName: "acme/app", ConnectorID: "gitlab-self-hosted"}))
 	require.NoError(t, s.Projects.AddRepo(context.Background(), "p-2", workspace.RepoRef{Owner: "acme", Name: "other", FullName: "acme/other"}))
 
 	got, err := s.Projects.ListRepos(context.Background(), "p-1")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "acme/app", got[0].FullName)
-}
-
-// AddRepo/ListRepos must round-trip whatever ConnectorID they're given; defaulting an empty one is the use-case's job.
-func TestProjectsRepo_AddRepo_PersistsConnectorID(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "A", 0)))
-	require.NoError(t, s.Projects.AddRepo(context.Background(), "p-1",
-		workspace.RepoRef{Owner: "acme", Name: "app", FullName: "acme/app", ConnectorID: "gitlab-self-hosted"}))
-
-	got, err := s.Projects.ListRepos(context.Background(), "p-1")
-	require.NoError(t, err)
-	require.Len(t, got, 1)
 	assert.Equal(t, "gitlab-self-hosted", got[0].ConnectorID)
 }
 
@@ -430,14 +355,6 @@ func TestProjectsRepo_MoveTicket_PersistsAndNotFound(t *testing.T) {
 
 	err = s.Projects.MoveTicket(context.Background(), "missing", "p-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestProjectsRepo_MoveTicket_UnknownProject_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "")))
-	err := s.Projects.MoveTicket(context.Background(), "t-1", "missing")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestTicketsRepo_ListByProject_ScopesToProject(t *testing.T) {

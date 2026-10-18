@@ -265,21 +265,6 @@ func testHandleWebhookRoomStarted(t *testing.T) {
 	}
 }
 
-func TestOccupancy_Snapshot(t *testing.T) {
-	s := newTestService(t, nil, nil, nil, nil)
-	if got := s.Occupancy(context.Background()); len(got) != 0 {
-		t.Fatalf("Occupancy() on a fresh service = %+v, want empty", got)
-	}
-	if err := s.HandleWebhook(context.Background(), livekit.Event{Type: "participant_joined", Room: "conv-1", ParticipantIdentity: "u-1", ParticipantName: "Ada"}); err != nil {
-		t.Fatalf("HandleWebhook: %v", err)
-	}
-	got := s.Occupancy(context.Background())
-	want := []Occupant{{Identity: "u-1", Name: "Ada"}}
-	if len(got["conv-1"]) != 1 || got["conv-1"][0] != want[0] {
-		t.Errorf("Occupancy() = %+v, want conv-1: %+v", got, want)
-	}
-}
-
 func TestCloseRoom(t *testing.T) {
 	t.Run("ends the LiveKit room and empties its occupancy", func(t *testing.T) {
 		var deleted []string

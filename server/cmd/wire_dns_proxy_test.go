@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,16 +11,13 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
 func newDNSWireStore(t *testing.T) *storage.Store {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	return storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
 }
 
 // A fresh instance has no project, and its gateway stack needs none.

@@ -6,10 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -23,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
@@ -39,49 +37,7 @@ type rig struct {
 	clock time.Time
 }
 
-// migrated is one migrated database's bytes per test binary; replaying every migration per test costs seconds under -race.
-var migrated struct {
-	once sync.Once
-	data []byte
-	err  error
-}
-
-func migratedTemplate() ([]byte, error) {
-	migrated.once.Do(func() {
-		dir, err := os.MkdirTemp("", "nexul-plays-template-")
-		if err != nil {
-			migrated.err = err
-			return
-		}
-		defer func() { migrated.err = errors.Join(migrated.err, os.RemoveAll(dir)) }()
-		path := filepath.Join(dir, "template.db")
-		db, err := storage.OpenDB(path)
-		if err != nil {
-			migrated.err = err
-			return
-		}
-		migrated.err = errors.Join(storage.Migrate(db), storagetest.SeedGeneralProject(db))
-		// A truncating checkpoint folds the WAL into the main file, so the bytes are the whole database.
-		_, err = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-		migrated.err = errors.Join(migrated.err, err, db.Close())
-		if migrated.err == nil {
-			migrated.data, migrated.err = os.ReadFile(path)
-		}
-	})
-	return migrated.data, migrated.err
-}
-
-func openStore(t *testing.T) *storage.Store {
-	t.Helper()
-	data, err := migratedTemplate()
-	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "test.db")
-	require.NoError(t, os.WriteFile(path, data, 0o600))
-	db, err := storage.OpenDB(path)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-}
+func openStore(t *testing.T) *storage.Store { return migrated.Store(t) }
 
 // newRig runs on a clock the test moves; newRigOn takes another, such as synctest's.
 func newRig(t *testing.T, store *storage.Store) *rig {

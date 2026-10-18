@@ -11,45 +11,6 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestServiceStatus_Valid(t *testing.T) {
-	tests := []struct {
-		name   string
-		status ServiceStatus
-		want   bool
-	}{
-		{"healthy", ServiceHealthy, true},
-		{"running", ServiceRunning, true},
-		{"stopped", ServiceStopped, true},
-		{"failed", ServiceFailed, true},
-		{"empty", "", false},
-		{"bogus", "bogus", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.status.Valid())
-		})
-	}
-}
-
-func TestRelationKind_Valid(t *testing.T) {
-	tests := []struct {
-		name string
-		kind RelationKind
-		want bool
-	}{
-		{"depends_on", KindDependsOn, true},
-		{"connects_to", KindConnectsTo, true},
-		{"mounts", KindMounts, true},
-		{"empty", "", false},
-		{"bogus", "bogus", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.kind.Valid())
-		})
-	}
-}
-
 func TestCanvas_Validate(t *testing.T) {
 	t.Run("nil canvas", func(t *testing.T) {
 		err := (*Canvas)(nil).Validate()

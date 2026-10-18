@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 func newDeadLetterStore(t *testing.T) deadletter.Storer {
@@ -85,8 +86,7 @@ func TestDeadLetter_SuccessIsNotDeadLettered(t *testing.T) {
 }
 
 func TestDeadLetter_PersistFailure_ReturnsError(t *testing.T) {
-	db := testutil.NewDB(t)
-	require.NoError(t, storage.Migrate(db))
+	db := migrated.DB(t)
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef")).DeadLetters
 	require.NoError(t, db.Close())
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))

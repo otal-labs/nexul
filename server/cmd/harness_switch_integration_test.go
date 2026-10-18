@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/t3rpc"
 	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
@@ -21,7 +22,7 @@ var switchTestKey = []byte("0123456789abcdef0123456789abcdef")
 // pairingOverRegistry wires pairing to the production harness registry against a fake T3 Code, on real SQLite.
 func pairingOverRegistry(t *testing.T, f *t3rpctest.Server) (*pairing.Service, *storage.Store) {
 	t.Helper()
-	s := storage.New(mentionsTestDB(t), switchTestKey)
+	s := storage.New(migrated.DB(t), switchTestKey)
 	seedMentionsUser(t, s, "u1")
 	var svc *pairing.Service
 	harnesses := harnessRegistry(t3rpc.Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second}, func(ctx context.Context, sess harness.Session, to harness.Kind) error {

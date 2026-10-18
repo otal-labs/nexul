@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/deploy"
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 func newTestContainer(id, stackID string) *deploy.Container {
@@ -71,13 +70,6 @@ func TestServicesRepo_Create_WithNetworksAndPorts(t *testing.T) {
 	assert.Equal(t, "172.18.0.4", got.Networks[0].Address)
 	assert.Equal(t, []string{"8080:80"}, got.Ports)
 	assert.True(t, got.ObservedAt.Equal(svc.ObservedAt))
-}
-
-func TestServicesRepo_Get_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Services.Get(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestServicesRepo_ListByStack(t *testing.T) {

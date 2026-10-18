@@ -12,9 +12,9 @@ import (
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/integrations"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
-	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 // allowAutomationPerm grants every automation.* action to userID, standing in for the access domain's Require.
@@ -40,7 +40,7 @@ func fellThroughUserAuth(next http.Handler) http.Handler {
 // tickets:read-scoped endpoint and is refused a tickets:write one it wasn't
 // granted.
 func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
@@ -81,7 +81,7 @@ func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 }
 
 func TestRequireAutomation_SwitchedOff_CannotQueuePlays(t *testing.T) {
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 	a, raw, err := svc.Create(t.Context(), "creator-1", "ws-1", "fixer", []string{"plays:run"})
@@ -110,7 +110,7 @@ func TestRequireAutomation_SwitchedOff_CannotQueuePlays(t *testing.T) {
 }
 
 func TestCreate_ScopesUseTheIntegrationsVocabulary(t *testing.T) {
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 

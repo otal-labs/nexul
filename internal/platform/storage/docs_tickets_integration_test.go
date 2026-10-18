@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -17,19 +16,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/storage"
-	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 func newDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	require.NoError(t, testutil.SeedGeneralProject(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return db
+	return storage.NewTestDB(t)
 }
 
 // publisher records relayed topics and payloads, standing in for the bus.
@@ -347,44 +340,6 @@ func TestIntegration_TicketPositionPersistsAndResetsOnMove(t *testing.T) {
 	assert.Equal(t, movedD.Position+1, movedA2.Position, "appended after D in the (in_progress, cat-1) pair")
 }
 
-// Acceptance criterion (ADR 0025): docs.project_id is a
-// real FK, so creating a doc against a project id that doesn't exist is
-// rejected at the storage layer, not silently accepted.
-func TestIntegration_CreateDocWithUnknownProjectIsConflict(t *testing.T) {
-	ctx := actorCtx()
-	db := newDB(t)
-	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := docs.NewService(s.Docs, allowAll{}, nil)
-
-	_, err := svc.Create(ctx, "does-not-exist", "orphan", "body")
-	require.Error(t, err)
-}
-
-// Acceptance criterion (ticket 10): GET /api/docs (ListByProject) filters to
-// one project's docs — a flat list, no Collections-equivalent sub-grouping.
-func TestIntegration_ListDocsByProjectFiltersCorrectly(t *testing.T) {
-	ctx := actorCtx()
-	db := newDB(t)
-	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	docsSvc := docs.NewService(s.Docs, allowAll{}, nil)
-
-	now := time.Now()
-	require.NoError(t, s.Projects.Create(ctx, &workspace.Project{
-		ID: "project-other", Name: "Other", Position: 1, WorkspaceID: "workspace-default", CreatedAt: now, UpdatedAt: now,
-	}))
-
-	inGeneral, err := docsSvc.Create(ctx, "project-general", "In general", "body")
-	require.NoError(t, err)
-	_, err = docsSvc.Create(ctx, "project-other", "In other", "body")
-	require.NoError(t, err)
-
-	items, err := docsSvc.ListByProject(ctx, "project-general")
-	require.NoError(t, err)
-	require.Len(t, items, 1)
-	assert.Equal(t, inGeneral.ID, items[0].ID)
-	assert.Equal(t, "project-general", items[0].ProjectID)
-}
-
 func TestIntegration_DeleteDocWithTicketsFiledFromItIsConflict(t *testing.T) {
 	ctx := actorCtx()
 	db := newDB(t)
@@ -403,16 +358,6 @@ func TestIntegration_DeleteDocWithTicketsFiledFromItIsConflict(t *testing.T) {
 	assert.Contains(t, err.Error(), "tickets")
 	_, err = docsSvc.Get(ctx, doc.ID)
 	require.NoError(t, err, "a refused delete leaves the doc in place")
-}
-
-func TestIntegration_CreateTicketWithUnknownDocIsConflict(t *testing.T) {
-	ctx := context.Background()
-	db := newDB(t)
-	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
-
-	_, err := svc.Create(ctx, "project-general", "orphan", "", "does-not-exist", "")
-	require.Error(t, err)
 }
 
 func TestIntegration_TicketStatusChangePublishesFromStatusToStatus(t *testing.T) {

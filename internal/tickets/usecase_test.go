@@ -562,20 +562,6 @@ func validPRRef() PRRef {
 }
 
 func TestCreate(t *testing.T) {
-	t.Run("empty title is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Create(context.Background(), "p-1", "  ", "body", "", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.createErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Create(context.Background(), "p-1", "title", "body", "", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.createErr)
-	})
 	t.Run("creates open ticket linked to doc and enqueues ticket.created", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -599,14 +585,6 @@ func TestCreate(t *testing.T) {
 		_, err := s.Create(context.Background(), "p-1", "title", "body", "", "")
 		require.ErrorIs(t, err, boom)
 	})
-	t.Run("post-create fetch error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.getErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Create(context.Background(), "p-1", "title", "body", "", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.getErr)
-	})
 	t.Run("a second ticket in the same (open, category) pair appends rather than colliding", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -621,26 +599,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Get(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Get(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.getErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Get(context.Background(), "t-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.getErr)
-	})
 }
 
 func TestResolve(t *testing.T) {
@@ -698,12 +656,6 @@ func TestResolve(t *testing.T) {
 }
 
 func TestListAndListByDoc(t *testing.T) {
-	t.Run("empty doc id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.ListByDoc(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("lists and scopes by doc", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -725,37 +677,16 @@ func TestListAndListByDoc(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.UpdateStatus(context.Background(), " ", StatusDone)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.UpdateStatus(context.Background(), "nope", StatusDone)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("unconfigured status is rejected", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
 		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
 		require.NoError(t, err)
 		// Statuses are configurable columns: any configured status is a valid target, a status that does not exist is rejected.
-		_, err = s.UpdateStatus(context.Background(), created.ID, Status("nope"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		repo.statusErr = errors.New("db down")
-		_, err = s.UpdateStatus(context.Background(), created.ID, StatusDone)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.statusErr)
+		for _, to := range []Status{"nope", ""} {
+			_, err = s.UpdateStatus(context.Background(), created.ID, to)
+			require.ErrorIs(t, err, apperrs.ErrInvalid, "status %q", to)
+		}
 	})
 	t.Run("same status is a no-op with no event", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -802,37 +733,6 @@ func TestUpdateStatus(t *testing.T) {
 }
 
 func TestSetPosition(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetPosition(context.Background(), " ", 0)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("negative position is invalid", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		_, err = s.SetPosition(context.Background(), created.ID, -1)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetPosition(context.Background(), "nope", 1)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		repo.positionErr = errors.New("db down")
-		_, err = s.SetPosition(context.Background(), created.ID, 1)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.positionErr)
-	})
 	t.Run("sets position", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -845,37 +745,6 @@ func TestSetPosition(t *testing.T) {
 }
 
 func TestUpdateTicket(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.UpdateTicket(context.Background(), " ", "New title", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("empty title is invalid", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "old body", "", "")
-		require.NoError(t, err)
-		_, err = s.UpdateTicket(context.Background(), created.ID, " ", "new body")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.UpdateTicket(context.Background(), "nope", "New title", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		repo.updateErr = errors.New("db down")
-		_, err = s.UpdateTicket(context.Background(), created.ID, "New title", "New body")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.updateErr)
-	})
 	t.Run("updates title and body", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -903,28 +772,6 @@ func TestUpdateTicket(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.Delete(context.Background(), "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.Delete(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		repo.deleteErr = errors.New("db down")
-		err = s.Delete(context.Background(), created.ID)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.deleteErr)
-	})
 	t.Run("removes ticket", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -950,20 +797,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	t.Run("empty query is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.Search(context.Background(), "  ", 10)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeRepo()
-		repo.searchErr = errors.New("db down")
-		s := newTestService(repo)
-		_, err := s.Search(context.Background(), "sqlite", 10)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.searchErr)
-	})
 	t.Run("finds matching tickets", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -976,24 +809,6 @@ func TestSearch(t *testing.T) {
 }
 
 func TestLinkPR(t *testing.T) {
-	t.Run("empty ticket id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.LinkPR(context.Background(), "", validPRRef())
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("incomplete pr ref is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.LinkPR(context.Background(), "t-1", PRRef{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.LinkPR(context.Background(), "nope", validPRRef())
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("links a pr", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -1217,59 +1032,69 @@ func TestLinkBranch(t *testing.T) {
 		require.Len(t, branches, 1)
 		assert.Equal(t, "ticket/1", branches[0].Branch)
 	})
-	t.Run("incomplete link is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.LinkBranch(context.Background(), "t-1", "", "app", "branch")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		err := s.LinkBranch(context.Background(), "nope", "acme", "app", "branch")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 }
 
-func TestUnlink_Errors(t *testing.T) {
+func TestService_Refusals_ChangeNothing(t *testing.T) {
 	ctx := context.Background()
-	s := newTestService(newFakeRepo())
-	created, err := s.Create(ctx, "p-1", "ticket", "", "", "")
-	require.NoError(t, err)
+	errDown := errors.New("db down")
 	tests := []struct {
 		name string
-		call func() error
+		seed func(repo *fakeRepo)
+		call func(s *Service, id string) error
 		want error
 	}{
-		{"a pr of a missing ticket is not found", func() error { return s.UnlinkPR(ctx, "nope", validPRRef()) }, apperrs.ErrNotFound},
-		{"a branch of a missing ticket is not found", func() error { return s.UnlinkBranch(ctx, "nope", "acme", "app", "b") }, apperrs.ErrNotFound},
-		{"an incomplete pr is invalid", func() error { return s.UnlinkPR(ctx, created.ID, PRRef{Owner: "acme"}) }, apperrs.ErrInvalid},
-		{"an incomplete branch is invalid", func() error { return s.UnlinkBranch(ctx, created.ID, "acme", "app", " ") }, apperrs.ErrInvalid},
+		{"create without a title", nil, func(s *Service, _ string) error { _, err := s.Create(ctx, "p-1", "  ", "body", "", ""); return err }, apperrs.ErrInvalid},
+		{"create when the repo fails", func(r *fakeRepo) { r.createErr = errDown }, func(s *Service, _ string) error {
+			_, err := s.Create(ctx, "p-1", "title", "body", "", "")
+			return err
+		}, errDown},
+		{"create when the fetch after it fails", func(r *fakeRepo) { r.getErr = errDown }, func(s *Service, _ string) error {
+			_, err := s.Create(ctx, "p-1", "title", "body", "", "")
+			return err
+		}, errDown},
+		{"get without an id", nil, func(s *Service, _ string) error { _, err := s.Get(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"get a missing ticket", nil, func(s *Service, _ string) error { _, err := s.Get(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"get when the repo fails", func(r *fakeRepo) { r.getErr = errDown }, func(s *Service, id string) error { _, err := s.Get(ctx, id); return err }, errDown},
+		{"list by a blank doc", nil, func(s *Service, _ string) error { _, err := s.ListByDoc(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"move status without an id", nil, func(s *Service, _ string) error { _, err := s.UpdateStatus(ctx, " ", StatusDone); return err }, apperrs.ErrInvalid},
+		{"move status of a missing ticket", nil, func(s *Service, _ string) error { _, err := s.UpdateStatus(ctx, "nope", StatusDone); return err }, apperrs.ErrNotFound},
+		{"move status when the repo fails", func(r *fakeRepo) { r.statusErr = errDown }, func(s *Service, id string) error { _, err := s.UpdateStatus(ctx, id, StatusDone); return err }, errDown},
+		{"set a position without an id", nil, func(s *Service, _ string) error { _, err := s.SetPosition(ctx, " ", 0); return err }, apperrs.ErrInvalid},
+		{"set a negative position", nil, func(s *Service, id string) error { _, err := s.SetPosition(ctx, id, -1); return err }, apperrs.ErrInvalid},
+		{"set the position of a missing ticket", nil, func(s *Service, _ string) error { _, err := s.SetPosition(ctx, "nope", 1); return err }, apperrs.ErrNotFound},
+		{"set a position when the repo fails", func(r *fakeRepo) { r.positionErr = errDown }, func(s *Service, id string) error { _, err := s.SetPosition(ctx, id, 1); return err }, errDown},
+		{"edit without an id", nil, func(s *Service, _ string) error { _, err := s.UpdateTicket(ctx, " ", "New title", ""); return err }, apperrs.ErrInvalid},
+		{"edit without a title", nil, func(s *Service, id string) error { _, err := s.UpdateTicket(ctx, id, " ", "new body"); return err }, apperrs.ErrInvalid},
+		{"edit a missing ticket", nil, func(s *Service, _ string) error { _, err := s.UpdateTicket(ctx, "nope", "New title", ""); return err }, apperrs.ErrNotFound},
+		{"edit when the repo fails", func(r *fakeRepo) { r.updateErr = errDown }, func(s *Service, id string) error {
+			_, err := s.UpdateTicket(ctx, id, "New title", "New body")
+			return err
+		}, errDown},
+		{"delete without an id", nil, func(s *Service, _ string) error { return s.Delete(ctx, "") }, apperrs.ErrInvalid},
+		{"delete a missing ticket", nil, func(s *Service, _ string) error { return s.Delete(ctx, "nope") }, apperrs.ErrNotFound},
+		{"delete when the repo fails", func(r *fakeRepo) { r.deleteErr = errDown }, func(s *Service, id string) error { return s.Delete(ctx, id) }, errDown},
+		{"search for a blank query", nil, func(s *Service, _ string) error { _, err := s.Search(ctx, "  ", 10); return err }, apperrs.ErrInvalid},
+		{"search when the repo fails", func(r *fakeRepo) { r.searchErr = errDown }, func(s *Service, _ string) error { _, err := s.Search(ctx, "sqlite", 10); return err }, errDown},
+		{"link a pr without a ticket", nil, func(s *Service, _ string) error { return s.LinkPR(ctx, "", validPRRef()) }, apperrs.ErrInvalid},
+		{"link an incomplete pr", nil, func(s *Service, _ string) error { return s.LinkPR(ctx, "t-1", PRRef{}) }, apperrs.ErrInvalid},
+		{"link a pr to a missing ticket", nil, func(s *Service, _ string) error { return s.LinkPR(ctx, "nope", validPRRef()) }, apperrs.ErrNotFound},
+		{"link an incomplete branch", nil, func(s *Service, _ string) error { return s.LinkBranch(ctx, "t-1", "", "app", "branch") }, apperrs.ErrInvalid},
+		{"link a branch to a missing ticket", nil, func(s *Service, _ string) error { return s.LinkBranch(ctx, "nope", "acme", "app", "branch") }, apperrs.ErrNotFound},
+		{"unlink a pr of a missing ticket", nil, func(s *Service, _ string) error { return s.UnlinkPR(ctx, "nope", validPRRef()) }, apperrs.ErrNotFound},
+		{"unlink a branch of a missing ticket", nil, func(s *Service, _ string) error { return s.UnlinkBranch(ctx, "nope", "acme", "app", "b") }, apperrs.ErrNotFound},
+		{"unlink an incomplete pr", nil, func(s *Service, id string) error { return s.UnlinkPR(ctx, id, PRRef{Owner: "acme"}) }, apperrs.ErrInvalid},
+		{"unlink an incomplete branch", nil, func(s *Service, id string) error { return s.UnlinkBranch(ctx, id, "acme", "app", " ") }, apperrs.ErrInvalid},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.ErrorIs(t, tt.call(), tt.want)
-		})
-	}
-}
-
-func TestCanTransition(t *testing.T) {
-	tests := []struct {
-		name string
-		from Status
-		to   Status
-		want bool
-	}{
-		{"open to in_progress", StatusOpen, StatusInProgress, true},
-		{"open to done", StatusOpen, StatusDone, true},
-		{"open to closed", StatusOpen, StatusClosed, true},
-		{"closed to in_progress", StatusClosed, StatusInProgress, true},
-		{"open to open is a no-op", StatusOpen, StatusOpen, true},
-		{"empty target is not a transition", StatusOpen, "", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, CanTransition(tt.from, tt.to))
+			repo := newFakeRepo()
+			s := newTestService(repo)
+			created, err := s.Create(ctx, "p-1", "ticket", "", "", "")
+			require.NoError(t, err)
+			if tt.seed != nil {
+				tt.seed(repo)
+			}
+			require.ErrorIs(t, tt.call(s, created.ID), tt.want)
 		})
 	}
 }

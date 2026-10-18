@@ -773,83 +773,47 @@ func TestHandler_Disconnect_UpgradeStatus(t *testing.T) {
 }
 
 // TestHandler_sendUpdateIfNeeded covers the best-effort update push on connect: a release-build server tells a
-// runner reporting an older real version to fetch and swap itself, and stays silent otherwise.
+// runner reporting an older real version to fetch and swap itself, and stays silent otherwise. A job queued before
+// the runner connects is the next frame on a silent connect, so silence is read off the order, never a wait.
 func TestHandler_sendUpdateIfNeeded(t *testing.T) {
-	t.Run("sends an update frame when the runner reports a different version", func(t *testing.T) {
-		withVersion(t, "v0.2.0")
-		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		repo := newFakeRunnerRepo()
-		h := newTestHandler(newFakeBus(), repo)
-		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
-		srv := httptest.NewServer(h)
-		defer srv.Close()
+	tests := []struct {
+		name       string
+		query      string
+		wantUpdate bool
+	}{
+		{"sends an update frame when the runner reports a different version", "?version=v0.1.5&os=linux&arch=amd64", true},
+		{"stays silent when the runner reports dev", "?version=dev&os=linux&arch=amd64", false},
+		{"stays silent when the runner already reports the server's own version", "?version=v0.2.0&os=linux&arch=amd64", false},
+		{"stays silent for an unsupported os/arch target", "?version=v0.1.5&os=plan9&arch=amd64", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withVersion(t, "v0.2.0")
+			gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
+			repo := newFakeRunnerRepo()
+			h := newTestHandler(newFakeBus(), repo)
+			h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
+			require.NoError(t, h.handleRequest(t.Context(), eventbus.Event{Payload: mustJSON(t, DeployRequestedEvent{ID: "d-1", Kind: RequestDeploy, Service: "api", Image: "img:v1"})}))
+			srv := httptest.NewServer(h)
+			defer srv.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=linux&arch=amd64")
-		require.NoError(t, err)
-		closeBeforeCleanup(t, conn, repo)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), tt.query)
+			require.NoError(t, err)
+			closeBeforeCleanup(t, conn, repo)
 
-		frame := readFrame(t, conn, 2*time.Second)
-		assert.Equal(t, FrameUpdate, frame.Type)
-		assert.Equal(t, "v0.2.0", frame.Version)
-		assert.Equal(t, "https://app.example.com/api/runners/download/linux-amd64?version=v0.2.0", frame.URL)
-		assert.Equal(t, "deadbeef", frame.Sha256)
-	})
-
-	t.Run("stays silent when the runner reports dev", func(t *testing.T) {
-		withVersion(t, "v0.2.0")
-		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		repo := newFakeRunnerRepo()
-		h := newTestHandler(newFakeBus(), repo)
-		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=dev&os=linux&arch=amd64")
-		require.NoError(t, err)
-		closeBeforeCleanup(t, conn, repo)
-
-		assertNoFrame(t, conn, 300*time.Millisecond)
-	})
-
-	t.Run("stays silent when the runner already reports the server's own version", func(t *testing.T) {
-		withVersion(t, "v0.2.0")
-		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		repo := newFakeRunnerRepo()
-		h := newTestHandler(newFakeBus(), repo)
-		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.2.0&os=linux&arch=amd64")
-		require.NoError(t, err)
-		closeBeforeCleanup(t, conn, repo)
-
-		assertNoFrame(t, conn, 300*time.Millisecond)
-	})
-
-	t.Run("stays silent for an unsupported os/arch target", func(t *testing.T) {
-		withVersion(t, "v0.2.0")
-		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		repo := newFakeRunnerRepo()
-		h := newTestHandler(newFakeBus(), repo)
-		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=plan9&arch=amd64")
-		require.NoError(t, err)
-		closeBeforeCleanup(t, conn, repo)
-
-		assertNoFrame(t, conn, 300*time.Millisecond)
-	})
+			frame := readFrame(t, conn, 2*time.Second)
+			if !tt.wantUpdate {
+				assert.Equal(t, FrameAssignDeploy, frame.Type, "the queued job is the first thing a silent connect sends")
+				return
+			}
+			assert.Equal(t, FrameUpdate, frame.Type)
+			assert.Equal(t, "v0.2.0", frame.Version)
+			assert.Equal(t, "https://app.example.com/api/runners/download/linux-amd64?version=v0.2.0", frame.URL)
+			assert.Equal(t, "deadbeef", frame.Sha256)
+		})
+	}
 }
 
 // closeBeforeCleanup closes conn and waits for the handler to let go of it before earlier cleanups run, so restoring
@@ -871,14 +835,6 @@ func readFrame(t *testing.T, conn *websocket.Conn, wait time.Duration) *Frame {
 	frame, err := ParseFrame(data)
 	require.NoError(t, err)
 	return frame
-}
-
-func assertNoFrame(t *testing.T, conn *websocket.Conn, wait time.Duration) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), wait)
-	defer cancel()
-	_, _, err := conn.Read(ctx)
-	require.Error(t, err, "expected no frame to arrive")
 }
 
 func mustJSON(t *testing.T, v any) []byte {

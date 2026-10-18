@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,54 +12,40 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestHTTPGitHubClient_Exchange_NotConfigured(t *testing.T) {
-	c := NewHTTPGitHubClient("", "", http.DefaultClient)
-	_, err := c.Exchange(context.Background(), "code")
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestHTTPGitHubClient_Exchange_ErrorResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"error":"bad_verification_code"}`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.tokenURL = srv.URL
-	_, err := c.Exchange(context.Background(), "code")
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
-}
-
-func TestHTTPGitHubClient_Exchange_EmptyToken(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.tokenURL = srv.URL
-	_, err := c.Exchange(context.Background(), "code")
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
-}
-
-func TestHTTPGitHubClient_Exchange_NetworkError(t *testing.T) {
-	c := NewHTTPGitHubClient("id", "secret", http.DefaultClient)
-	c.tokenURL = "http://127.0.0.1:1/token"
-	_, err := c.Exchange(context.Background(), "code")
-	assert.True(t, errors.Is(err, apperrs.ErrRetryable))
-}
-
-func TestHTTPGitHubClient_Exchange_InvalidJSON(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`not json`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.tokenURL = srv.URL
-	_, err := c.Exchange(context.Background(), "code")
-	assert.True(t, errors.Is(err, apperrs.ErrRetryable))
+func TestHTTPGitHubClient_Exchange_Failures(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want error
+	}{
+		{"an error response", `{"error":"bad_verification_code"}`, apperrs.ErrUnauthorized},
+		{"an empty token", `{}`, apperrs.ErrUnauthorized},
+		{"a body that is not json", `not json`, apperrs.ErrRetryable},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer srv.Close()
+			c := NewHTTPGitHubClient("id", "secret", srv.Client())
+			c.tokenURL = srv.URL
+			_, err := c.Exchange(context.Background(), "code")
+			assert.ErrorIs(t, err, tt.want)
+		})
+	}
+	t.Run("a client with no credentials", func(t *testing.T) {
+		_, err := NewHTTPGitHubClient("", "", http.DefaultClient).Exchange(context.Background(), "code")
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("a server that cannot be reached", func(t *testing.T) {
+		c := NewHTTPGitHubClient("id", "secret", http.DefaultClient)
+		c.tokenURL = "http://127.0.0.1:1/token"
+		_, err := c.Exchange(context.Background(), "code")
+		assert.ErrorIs(t, err, apperrs.ErrRetryable)
+	})
 }
 
 func TestHTTPGitHubClient_Exchange_ReturnsAccessToken(t *testing.T) {
@@ -93,45 +78,33 @@ func TestHTTPGitHubClient_FetchUser_Success(t *testing.T) {
 	assert.Equal(t, "https://avatar/x", gh.AvatarURL)
 }
 
-func TestHTTPGitHubClient_FetchUser_EmptyUser(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.userURL = srv.URL
-	_, err := c.FetchUser(context.Background(), "at")
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
-}
-
-func TestHTTPGitHubClient_FetchUser_MissingLogin(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":42}`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.userURL = srv.URL
-	_, err := c.FetchUser(context.Background(), "at")
-	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
-}
-
-func TestHTTPGitHubClient_FetchUser_NetworkError(t *testing.T) {
-	c := NewHTTPGitHubClient("id", "secret", http.DefaultClient)
-	c.userURL = "http://127.0.0.1:1/user"
-	_, err := c.FetchUser(context.Background(), "at")
-	assert.True(t, errors.Is(err, apperrs.ErrRetryable))
-}
-
-func TestHTTPGitHubClient_FetchUser_InvalidJSON(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`nope`))
-	}))
-	defer srv.Close()
-	c := NewHTTPGitHubClient("id", "secret", srv.Client())
-	c.userURL = srv.URL
-	_, err := c.FetchUser(context.Background(), "at")
-	assert.True(t, errors.Is(err, apperrs.ErrRetryable))
+func TestHTTPGitHubClient_FetchUser_Failures(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want error
+	}{
+		{"an empty user", `{}`, apperrs.ErrUnauthorized},
+		{"a user with no login", `{"id":42}`, apperrs.ErrUnauthorized},
+		{"a body that is not json", `nope`, apperrs.ErrRetryable},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer srv.Close()
+			c := NewHTTPGitHubClient("id", "secret", srv.Client())
+			c.userURL = srv.URL
+			_, err := c.FetchUser(context.Background(), "at")
+			assert.ErrorIs(t, err, tt.want)
+		})
+	}
+	t.Run("a server that cannot be reached", func(t *testing.T) {
+		c := NewHTTPGitHubClient("id", "secret", http.DefaultClient)
+		c.userURL = "http://127.0.0.1:1/user"
+		_, err := c.FetchUser(context.Background(), "at")
+		assert.ErrorIs(t, err, apperrs.ErrRetryable)
+	})
 }

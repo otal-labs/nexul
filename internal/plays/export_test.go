@@ -29,7 +29,7 @@ func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID,
 		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:   &fakeFacts{byID: map[string]Facts{}},
 		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
-		turns:   &idleTurns{},
+		turns:   &idleTurns{started: make(chan struct{})},
 		shares:  &fakeComputers{owners: map[string]string{}, held: map[string]permissions.Set{}},
 	}
 	q.Runner = NewRunner(RunnerConfig{
@@ -67,13 +67,16 @@ func (q *QueueRig) ShareComputer(computerID, userID string, actions ...permissio
 	q.shares.held[computerID+"/"+userID] = permissions.SetOf(actions...)
 }
 
-// LastPlayBlocks are the context blocks the last started run was handed, one per line.
-func (q *QueueRig) LastPlayBlocks() []string {
-	q.turns.mu.Lock()
-	defer q.turns.mu.Unlock()
-	if q.turns.last.Play == nil {
+// LastPlayBlocks waits for the first started run, which a detached goroutine hands its request to, then returns the
+// context blocks the last one was handed, one per line; nil when ctx ends first.
+func (q *QueueRig) LastPlayBlocks(ctx context.Context) []string {
+	select {
+	case <-q.turns.started:
+	case <-ctx.Done():
 		return nil
 	}
+	q.turns.mu.Lock()
+	defer q.turns.mu.Unlock()
 	return q.turns.last.Play.Blocks
 }
 
@@ -294,14 +297,17 @@ func (h *switchableHarness) Link(userID, projectID string) [2]string {
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.
 // It keeps the last request it was given.
 type idleTurns struct {
-	mu   sync.Mutex
-	last agent.TurnRequest
+	mu      sync.Mutex
+	last    agent.TurnRequest
+	started chan struct{}
+	once    sync.Once
 }
 
 func (t *idleTurns) RunTurn(_ context.Context, req agent.TurnRequest) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	t.last = req
+	t.mu.Unlock()
+	t.once.Do(func() { close(t.started) })
 }
 
 func (*idleTurns) Interrupt(context.Context, string) error { return nil }

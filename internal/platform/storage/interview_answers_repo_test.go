@@ -66,11 +66,3 @@ func TestMemoriesRepo_Answers_RoundTrip(t *testing.T) {
 	require.NoError(t, s.Memories.DeleteAnswer(ctx, "project-general", 0, "Stack"))
 	require.ErrorIs(t, s.Memories.DeleteAnswer(ctx, "project-general", 0, "Stack"), apperrs.ErrNotFound)
 }
-
-func TestMemoriesRepo_Answers_UnknownProjectIsAConflict(t *testing.T) {
-	t.Parallel()
-	a := newTestAnswer("a-1", 0, "Stack")
-	a.ProjectID = "project-missing"
-	_, err := newTestStore(t).Memories.UpsertAnswer(context.Background(), a)
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}

@@ -29,6 +29,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -171,7 +172,7 @@ type permFixture struct {
 // newWired wires the real composition root over a fresh database, before anyone has signed in.
 func newWired(t *testing.T) (*coreServices, *storage.Store) {
 	t.Helper()
-	return wiredOver(t, mentionsTestDB(t))
+	return wiredOver(t, migrated.DB(t))
 }
 
 // wiredOver wires the composition root over db, already migrated and seeded with the general project.
@@ -189,7 +190,7 @@ func wiredOver(t *testing.T, db *sql.DB) (*coreServices, *storage.Store) {
 
 func newPermFixture(t *testing.T) permFixture {
 	t.Helper()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	svc, store := wiredOver(t, db)
 	return seedPermFixture(t, db, svc, store)
 }

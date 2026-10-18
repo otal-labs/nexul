@@ -8,13 +8,14 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
 // TestRoleSet_EveryEvaluatorAgrees: the grid, roles' check, the invitation SQL and the owner list answer from the union.
 func TestRoleSet_EveryEvaluatorAgrees(t *testing.T) {
 	t.Parallel()
-	db := mentionsTestDB(t)
+	db := migrated.DB(t)
 	svc, store := wiredOver(t, db)
 	seedPermFixture(t, db, svc, store)
 	// In SQL, since every writer still gives one role.

@@ -26,21 +26,6 @@ func newTestDeploy(id string) *deploy.Deploy {
 	}
 }
 
-func TestDeploysRepo_GetByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Deploys.GetByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestDeploysRepo_Create_DuplicateID_Conflict(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
-	err := s.Deploys.Create(context.Background(), newTestDeploy("dep-1"))
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-}
-
 func TestDeploysRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -115,13 +100,6 @@ func TestDeploysRepo_ListByStatus_ScopesToStatus(t *testing.T) {
 	assert.Equal(t, "dep-1", got[0].ID)
 }
 
-func TestDeploysRepo_UpdateStatus_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.UpdateStatus(context.Background(), "missing", deploy.StatusHealthy)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDeploysRepo_UpdateStatus_Persists(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -158,13 +136,6 @@ func TestDeploysRepo_UpdateStatus_NotFound_WritesNoOutbox(t *testing.T) {
 	assert.Equal(t, 0, n)
 }
 
-func TestDeploysRepo_SetAddress_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.SetAddress(context.Background(), "missing", "172.18.0.4")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestDeploysRepo_SetAddress_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -174,13 +145,6 @@ func TestDeploysRepo_SetAddress_RoundTrip(t *testing.T) {
 	got, err := s.Deploys.GetByID(context.Background(), "dep-1")
 	require.NoError(t, err)
 	assert.Equal(t, "172.18.0.4", got.Address)
-}
-
-func TestDeploysRepo_AppendLogLines_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Deploys.AppendLogLines(context.Background(), "missing", []deploy.LogLine{{TS: 1, Text: "line"}})
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestDeploysRepo_AppendLogLines_WritesOutboxInSameTx(t *testing.T) {

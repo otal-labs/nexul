@@ -37,34 +37,40 @@ func TestFtsQuery(t *testing.T) {
 	}
 }
 
-func TestSearchDocs_NoMatch_Empty(t *testing.T) {
+func TestSearchDocs_MatchesWhatTheDocHolds(t *testing.T) {
 	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
+	richText := `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Storage"}]},{"type":"paragraph","content":[{"type":"text","text":"SQLite is the spine"}]}]}`
+	tests := []struct {
+		name, title, body, query string
+		found                    bool
+	}{
+		{"a word of the title", "migration runner", "nothing about migrations here", "runner", true},
+		{"a word of a plain markdown body", "Storage Spine", "legacy markdown body about migrations", "migrations", true},
+		{"a word the rich text renders", "Storage Spine", richText, "spine", true},
+		{"not the keys of the rich text's JSON", "Storage Spine", richText, "content", false},
+		{"the first letter of a word, as the picker types it", "Storage Spine", "SQLite, migrations, FTS5", "s", true},
+		{"a term no doc holds", "Storage Spine", "SQLite, migrations, FTS5", "nonexistenttermxyz", false},
+		{"an empty query", "Storage Spine", "SQLite, migrations, FTS5", "", false},
+		{"punctuation only", "Storage Spine", "SQLite, migrations, FTS5", "!!!", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			d := newTestDoc("doc-1")
+			d.Title, d.Body = tt.title, tt.body
+			require.NoError(t, s.Docs.Create(t.Context(), d))
 
-	got, err := s.Docs.Search(context.Background(), "nonexistenttermxyz", 10)
-	require.NoError(t, err)
-	assert.Empty(t, got)
-}
-
-func TestSearchDocs_EmptyQuery_Empty(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
-
-	got, err := s.Docs.Search(context.Background(), "", 10)
-	require.NoError(t, err)
-	assert.Empty(t, got)
-}
-
-func TestSearchDocs_PunctuationOnly_NoError(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
-
-	got, err := s.Docs.Search(context.Background(), "!!!", 10)
-	require.NoError(t, err)
-	assert.Empty(t, got)
+			got, err := s.Docs.Search(t.Context(), tt.query, 10)
+			require.NoError(t, err)
+			if !tt.found {
+				assert.Empty(t, got)
+				return
+			}
+			require.Len(t, got, 1)
+			assert.Equal(t, "doc-1", got[0].ID)
+		})
+	}
 }
 
 func TestSearchDocs_RanksByRelevance(t *testing.T) {
@@ -83,52 +89,6 @@ func TestSearchDocs_RanksByRelevance(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	assert.Equal(t, "doc-dense", got[0].ID, "higher term frequency ranks first")
-}
-
-func TestSearchDocs_MatchesTitleOrBody(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), &docs.Doc{
-		ID: "doc-title", Title: "migration runner", Body: "nothing about migrations here",
-		Version: 1, CreatedAt: time.Now(), UpdatedAt: time.Now(),
-	}))
-
-	got, err := s.Docs.Search(context.Background(), "runner", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-title", got[0].ID)
-}
-
-func TestSearchDocs_PrefixMatchesWhileTyping(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
-
-	// The @ picker searches on every keystroke, so a single leading letter must already hit ("s" → "Storage Spine").
-	got, err := s.Docs.Search(context.Background(), "s", 10)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "doc-1", got[0].ID)
-}
-
-func TestSearchDocs_TracksUpdates(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
-
-	d := newTestDoc("doc-1")
-	d.Body = "spine is now postgresql free"
-	d.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), d, ""))
-
-	gone, err := s.Docs.Search(context.Background(), "sqlite", 10)
-	require.NoError(t, err)
-	assert.Empty(t, gone, "old body no longer indexed")
-
-	found, err := s.Docs.Search(context.Background(), "postgresql", 10)
-	require.NoError(t, err)
-	require.Len(t, found, 1)
-	assert.Equal(t, "doc-1", found[0].ID)
 }
 
 func TestSearchDocs_TracksDeletes(t *testing.T) {

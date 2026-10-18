@@ -27,32 +27,18 @@ func TestCategoriesRepo_RoundTrip(t *testing.T) {
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-1", "Backend", 0)))
 
 	want := newTestCategory("c-1", "p-1", "Sprint 1", 0)
+	want.Color = colors.Cyan
 	require.NoError(t, s.Categories.Create(ctx, want))
 
 	got, err := s.Categories.Get(ctx, "c-1")
 	require.NoError(t, err)
 	assert.Equal(t, "Sprint 1", got.Name)
 	assert.Equal(t, "p-1", got.ProjectID)
-	assert.Equal(t, colors.Color(""), got.Color)
+	assert.Equal(t, colors.Cyan, got.Color)
 
 	cats, err := s.Categories.ListByProject(ctx, "p-1")
 	require.NoError(t, err)
 	require.Len(t, cats, 1)
-}
-
-func TestCategoriesRepo_ColorRoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := context.Background()
-	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-1", "Backend", 0)))
-
-	want := newTestCategory("c-1", "p-1", "Sprint 1", 0)
-	want.Color = colors.Cyan
-	require.NoError(t, s.Categories.Create(ctx, want))
-
-	got, err := s.Categories.Get(ctx, "c-1")
-	require.NoError(t, err)
-	assert.Equal(t, colors.Cyan, got.Color)
 
 	updated := *got
 	updated.Color = colors.Emerald
@@ -167,7 +153,7 @@ func TestTicketTypesRepo_RoundTrip(t *testing.T) {
 	require.Len(t, types, 4, "seeded task/bug/feature + our type")
 }
 
-func TestTicketTypesRepo_DeleteInUseConflict(t *testing.T) {
+func TestTicketTypesRepo_CountTickets(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := context.Background()

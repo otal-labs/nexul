@@ -68,14 +68,6 @@ func jsonList(ts []*Ticket) []ticketJSON {
 	return out
 }
 
-// CanTransition allows any status pair; a same-status move is a no-op, not an error.
-func CanTransition(from, to Status) bool {
-	if from == to {
-		return true
-	}
-	return to != ""
-}
-
 // PRRef mirrors the git provider's PR reference so the composition root can adapt without a direct import.
 type PRRef struct {
 	Owner  string `json:"owner"`

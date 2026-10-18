@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,22 +11,13 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func openConnectorAppConfigStore(t *testing.T) *Store {
-	t.Helper()
-	db, err := OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, Migrate(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return New(db, testEncKey)
-}
-
 // TestConnectorAppConfigRepo_GetAppConfig_NeverSet proves a connector whose
 // app config has never been set returns a clean not-configured state (zero
 // AppConfig, Configured() == false), not an error — this is a settings knob,
 // not a connection with a missing-vs-present error distinction.
 func TestConnectorAppConfigRepo_GetAppConfig_NeverSet(t *testing.T) {
 	t.Parallel()
-	s := openConnectorAppConfigStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	got, err := s.ConnectorAppConfig.GetAppConfig(ctx, "github")
@@ -45,7 +35,7 @@ func TestConnectorAppConfigRepo_GetAppConfig_NeverSet(t *testing.T) {
 // auth_repo_test.go's TestSettingsRepo_SetGitHubOAuth_RoundTrip).
 func TestConnectorAppConfigRepo_SetGet_RoundTrip(t *testing.T) {
 	t.Parallel()
-	s := openConnectorAppConfigStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	const clientID = "Iv1.app-client-id"
@@ -105,7 +95,7 @@ func TestConnectorAppConfigRepo_SetGet_RoundTrip(t *testing.T) {
 // into gitlab's, or vice versa) — generic to any connector.
 func TestConnectorAppConfigRepo_SetGet_MultipleConnectorsIndependent(t *testing.T) {
 	t.Parallel()
-	s := openConnectorAppConfigStore(t)
+	s := newTestStore(t)
 	ctx := context.Background()
 
 	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{
@@ -122,7 +112,7 @@ func TestConnectorAppConfigRepo_SetGet_MultipleConnectorsIndependent(t *testing.
 }
 
 func TestConnectorAppConfig_PrivateKeyIsEncryptedAtRestKeptByAnEditAndDroppedForAnotherApp(t *testing.T) {
-	s := openConnectorAppConfigStore(t)
+	s := newTestStore(t)
 	ctx := t.Context()
 	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{ConnectorID: "github", ClientID: "Iv1.acme", ClientSecret: "s3cret"}))
 	require.NoError(t, s.ConnectorAppConfig.SetPrivateKey(ctx, "github", "-----BEGIN RSA PRIVATE KEY-----"))

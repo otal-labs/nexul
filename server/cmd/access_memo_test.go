@@ -27,6 +27,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -231,7 +232,7 @@ func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.
 func countedDB(t *testing.T) (*sql.DB, *testutil.Statements) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "counted.db")
-	copyMigratedDB(t, path)
+	migrated.Copy(t, path)
 	// The pragmas storage.OpenDB opens with.
 	inner, err := sqlite.NewConnector(path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_txlock=immediate")
 	require.NoError(t, err)

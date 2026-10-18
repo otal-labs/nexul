@@ -21,6 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/config"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
@@ -45,7 +46,7 @@ var readOnlyRoutes = []string{
 // newRouter wires the server the way serve does, over a fresh database, and returns its real handler.
 func newRouter(t *testing.T) (http.Handler, *storage.Store, *coreServices) {
 	t.Helper()
-	return routerOver(t, mentionsTestDB(t))
+	return routerOver(t, migrated.DB(t))
 }
 
 // routerOver is newRouter over db, for a test that writes rows no use-case writes yet.

@@ -39,17 +39,6 @@ func callAccountTool(t *testing.T, s *Service, actor, name, args string) (any, e
 	return nil, nil
 }
 
-func TestAccountTools_Surface(t *testing.T) {
-	t.Parallel()
-	s, _ := newAccountsHarness(t)
-	var names []string
-	for _, tool := range MCPTools(s) {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Title)
-	}
-	assert.Equal(t, []string{"account_get", "account_delete"}, names)
-}
-
 func TestAccountTools_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

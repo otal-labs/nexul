@@ -46,27 +46,6 @@ func TestHandler_Create(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
 		assert.Equal(t, "Editors", r.Name)
 	})
-	t.Run("no user in context is invalid", func(t *testing.T) {
-		h, repo, members := newTestHandler(t)
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"Editors"}`, "")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("bad json is invalid", func(t *testing.T) {
-		h, _, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/roles", `{`, "u-owner")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("actor without roles:write is forbidden", func(t *testing.T) {
-		h, repo, members := newTestHandler(t)
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-		editors := &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors"}
-		require.NoError(t, repo.Create(context.Background(), editors))
-		members.roleIDs[memberKey("ws-1", "u-plain")] = "role-editors"
-
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"More"}`, "u-plain")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
 }
 
 func TestHandler_List(t *testing.T) {
@@ -81,13 +60,6 @@ func TestHandler_List(t *testing.T) {
 		require.Len(t, got, 1)
 		assert.Equal(t, "Owner", got[0].Name)
 	})
-	t.Run("someone outside the workspace gets not found, for the list and for one role", func(t *testing.T) {
-		h, repo, members := newTestHandler(t)
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-
-		assert.Equal(t, http.StatusNotFound, do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/roles", "", "u-outsider").Code)
-		assert.Equal(t, http.StatusNotFound, do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/roles/role-owner", "", "u-outsider").Code)
-	})
 }
 
 func TestHandler_Get(t *testing.T) {
@@ -100,11 +72,6 @@ func TestHandler_Get(t *testing.T) {
 		var r Role
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
 		assert.Equal(t, "Owner", r.Name)
-	})
-	t.Run("missing role is not found", func(t *testing.T) {
-		h, _, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/roles/missing", "", "u-owner")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -181,12 +148,6 @@ func TestHandler_Update(t *testing.T) {
 		assert.Equal(t, http.StatusOK, code)
 		assert.Empty(t, stored.Description)
 	})
-	t.Run("owner role can't be renamed", func(t *testing.T) {
-		h, repo, members := newTestHandler(t)
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/roles/role-owner", `{"name":"Not Owner"}`, "u-owner")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 }
 
 func TestHandler_Delete(t *testing.T) {
@@ -198,12 +159,6 @@ func TestHandler_Delete(t *testing.T) {
 
 		rec := do(t, h.Routes(), http.MethodDelete, "/api/workspaces/ws-1/roles/role-editors", "", "u-owner")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-	})
-	t.Run("owner role can't be deleted", func(t *testing.T) {
-		h, repo, members := newTestHandler(t)
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-		rec := do(t, h.Routes(), http.MethodDelete, "/api/workspaces/ws-1/roles/role-owner", "", "u-owner")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -229,20 +184,50 @@ func TestHandler_Clone(t *testing.T) {
 		assert.Equal(t, "Editors", r.Name)
 		assert.Equal(t, setFromActions([]string{"docs:read", "roles:clone"}), r.Permissions)
 	})
-	t.Run("bad json is invalid", func(t *testing.T) {
-		rec := do(t, seed(t, true), http.MethodPost, path, `{`, "u-owner")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("same workspace is invalid", func(t *testing.T) {
-		rec := do(t, seed(t, true), http.MethodPost, path, `{"workspace_id":"ws-1"}`, "u-owner")
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("missing role is not found", func(t *testing.T) {
-		rec := do(t, seed(t, true), http.MethodPost, "/api/workspaces/ws-1/roles/missing/clone", `{"workspace_id":"ws-2"}`, "u-owner")
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
-	t.Run("not a member of the target is forbidden", func(t *testing.T) {
-		rec := do(t, seed(t, false), http.MethodPost, path, `{"workspace_id":"ws-2"}`, "u-owner")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
+}
+
+func TestHandler_Refusals(t *testing.T) {
+	const clonePath = "/api/workspaces/ws-1/roles/role-editors/clone"
+	seedWorkspace := func(t *testing.T, repo *fakeRepo, members *fakeMemberGate) {
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+	}
+	seedEditors := func(t *testing.T, repo *fakeRepo, members *fakeMemberGate) {
+		seedWorkspace(t, repo, members)
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors"}))
+	}
+	tests := []struct {
+		name   string
+		seed   func(t *testing.T, repo *fakeRepo, members *fakeMemberGate)
+		method string
+		path   string
+		body   string
+		user   string
+		want   int
+	}{
+		{"create without a signed-in user", seedWorkspace, http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"Editors"}`, "", http.StatusBadRequest},
+		{"create from a malformed body", nil, http.MethodPost, "/api/workspaces/ws-1/roles", `{`, "u-owner", http.StatusBadRequest},
+		{"create without roles:write", func(t *testing.T, repo *fakeRepo, members *fakeMemberGate) {
+			seedEditors(t, repo, members)
+			members.roleIDs[memberKey("ws-1", "u-plain")] = "role-editors"
+		}, http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"More"}`, "u-plain", http.StatusForbidden},
+		{"list as an outsider", seedWorkspace, http.MethodGet, "/api/workspaces/ws-1/roles", "", "u-outsider", http.StatusNotFound},
+		{"get a role as an outsider", seedWorkspace, http.MethodGet, "/api/workspaces/ws-1/roles/role-owner", "", "u-outsider", http.StatusNotFound},
+		{"get a missing role", nil, http.MethodGet, "/api/workspaces/ws-1/roles/missing", "", "u-owner", http.StatusNotFound},
+		{"rename the Owner role", seedWorkspace, http.MethodPatch, "/api/workspaces/ws-1/roles/role-owner", `{"name":"Not Owner"}`, "u-owner", http.StatusBadRequest},
+		{"delete the Owner role", seedWorkspace, http.MethodDelete, "/api/workspaces/ws-1/roles/role-owner", "", "u-owner", http.StatusBadRequest},
+		{"clone from a malformed body", seedEditors, http.MethodPost, clonePath, `{`, "u-owner", http.StatusBadRequest},
+		{"clone into the same workspace", seedEditors, http.MethodPost, clonePath, `{"workspace_id":"ws-1"}`, "u-owner", http.StatusBadRequest},
+		{"clone a missing role", seedEditors, http.MethodPost, "/api/workspaces/ws-1/roles/missing/clone", `{"workspace_id":"ws-2"}`, "u-owner", http.StatusNotFound},
+		{"clone into a workspace the caller is not in", seedEditors, http.MethodPost, clonePath, `{"workspace_id":"ws-2"}`, "u-owner", http.StatusForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, repo, members := newTestHandler(t)
+			if tt.seed != nil {
+				tt.seed(t, repo, members)
+			}
+			rec := do(t, h.Routes(), tt.method, tt.path, tt.body, tt.user)
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -435,7 +436,7 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 // workspace seeds the template roles there too, beside the Owner role it creates.
 func TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles(t *testing.T) {
 	t.Parallel()
-	svc, store := wiredOver(t, mentionsTestDB(t))
+	svc, store := wiredOver(t, migrated.DB(t))
 	seedMentionsUser(t, store, uOwner)
 
 	require.NoError(t, svc.tenancySvc.BindDefaultWorkspaceOwner(context.Background(), uOwner))

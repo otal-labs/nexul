@@ -3,7 +3,9 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,24 +14,20 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// migrateBefore applies every embedded migration older than version, leaving the database as a binary from
-// before version would have.
+// migrateBefore hands the calling test a database as a binary from before version would have left it.
 func migrateBefore(t *testing.T, version string) *sql.DB {
 	t.Helper()
-	db, err := OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	require.NoError(t, ensureMigrationsTable(db))
+	snapshots, err := migrationSnapshots()
+	require.NoError(t, err, "build migration snapshots")
 	versions, err := embeddedVersions()
 	require.NoError(t, err)
-	for _, v := range versions {
-		if v >= version {
-			break
-		}
-		script, err := migrationFS.ReadFile("migrations/" + v + ".sql")
-		require.NoError(t, err)
-		require.NoError(t, applyMigration(db, v, string(script)))
-	}
+	data, err := os.ReadFile(snapshots[sort.SearchStrings(versions, version)])
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "test.db")
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	db, err := OpenDB(path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	return db
 }
 

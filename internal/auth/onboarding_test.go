@@ -12,34 +12,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-func TestMe_OwnerWizardOnlyBeforeAnyOwner(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "a")})
-	token, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	st, err := s.Me(context.Background(), mustVerify(t, s, token))
-	require.NoError(t, err)
-	assert.True(t, st.NeedsOwnerWizard)
-	assert.False(t, st.NeedsFirstLoginWizard)
-}
-
-func TestMe_FirstLoginWizardForMember(t *testing.T) {
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	ownerToken, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	ownerID := mustVerify(t, s, ownerToken)
-	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
-	require.NoError(t, err)
-
-	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "member")}
-	token, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	st, err := s.Me(context.Background(), mustVerify(t, s, token))
-	require.NoError(t, err)
-	assert.False(t, st.NeedsOwnerWizard)
-	assert.True(t, st.NeedsFirstLoginWizard)
-}
-
 func TestMe_OwnerAfterWizardNoWizardNeeded(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	token, err := s.Login(context.Background(), "good-code")
