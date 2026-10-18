@@ -17,8 +17,11 @@ interface QuestionCardProps {
   className?: string;
 }
 
+// A new question remounts the steps, so a step index left over from a longer one never points past its end.
+export const QuestionCard = (props: QuestionCardProps) => <QuestionSteps key={props.question.request_id} {...props} />;
+
 // A stepped questionnaire: one question at a time, number keys pick, Enter confirms, the last step sends.
-export const QuestionCard = ({ question, answer, onSubmit, pending = false, className }: QuestionCardProps) => {
+const QuestionSteps = ({ question, answer, onSubmit, pending = false, className }: QuestionCardProps) => {
   const [index, setIndex] = useState(0);
   const [drafts, setDrafts] = useState<QuestionAnswers>({});
   const items = question.questions;
