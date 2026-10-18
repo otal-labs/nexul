@@ -559,7 +559,7 @@ func TestHasTicketThreads_ChecksTheBoardsTicketsInOneCall(t *testing.T) {
 	var checks int
 	s.SetThreadGate(countingThreads{fakeThreads{hiddenTickets: []string{"t-3"}}, &checks})
 
-	marks, err := s.HasTicketThreads(as("u-1"), append(ids, "t-no-thread"))
+	marks, err := s.HasTicketThreads(as("u-1"), append(ids, "t-no-thread", "", "  "))
 
 	require.NoError(t, err)
 	assert.Len(t, marks, 29)

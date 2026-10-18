@@ -796,21 +796,76 @@ func TestGetOrCreateTicketThread(t *testing.T) {
 		assert.Equal(t, first.ID, second.ID)
 		assert.Len(t, repo.eventsFor(TopicConversationCreated), 1)
 	})
-	t.Run("a losing race re-fetches the winner's thread instead of erroring", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		// Simulate a concurrent winner: the row exists by the time our create lands, so the fake's own duplicate-ticket-id check trips ErrConflict, same as the real unique index would.
-		existing, err := s.GetOrCreateTicketThread(context.Background(), "w-1", "t-1", "u-1")
-		require.NoError(t, err)
-		repo.createConversationErr = nil // conflict comes from the duplicate ticket_id check, not a forced repo error
-		got, err := s.createConversation(context.Background(), &Conversation{WorkspaceID: "w-1", Kind: KindTicketThread, TicketID: "t-1", CreatedBy: "u-2"}, []string{"u-2"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-		refetched, err := s.GetOrCreateTicketThread(context.Background(), "w-1", "t-1", "u-2")
-		require.NoError(t, err)
-		assert.Equal(t, existing.ID, refetched.ID)
-		assert.Nil(t, got)
-	})
+}
+
+// racedRepo misses the first thread lookup, as a create that loses a race to another caller does.
+type racedRepo struct {
+	*fakeRepo
+	blind bool
+}
+
+func (r *racedRepo) miss() bool {
+	was := r.blind
+	r.blind = false
+	return was
+}
+
+func (r *racedRepo) GetTicketThread(ctx context.Context, id string) (*Conversation, error) {
+	if r.miss() {
+		return nil, apperrs.ErrNotFound
+	}
+	return r.fakeRepo.GetTicketThread(ctx, id)
+}
+
+func (r *racedRepo) GetDocThread(ctx context.Context, id string) (*Conversation, error) {
+	if r.miss() {
+		return nil, apperrs.ErrNotFound
+	}
+	return r.fakeRepo.GetDocThread(ctx, id)
+}
+
+func (r *racedRepo) GetInterviewThread(ctx context.Context, id string) (*Conversation, error) {
+	if r.miss() {
+		return nil, apperrs.ErrNotFound
+	}
+	return r.fakeRepo.GetInterviewThread(ctx, id)
+}
+
+func (r *racedRepo) GetStackThread(ctx context.Context, id string) (*Conversation, error) {
+	if r.miss() {
+		return nil, apperrs.ErrNotFound
+	}
+	return r.fakeRepo.GetStackThread(ctx, id)
+}
+
+func TestGetOrCreateThread_LosingTheCreateRace_ReturnsTheWinnersThread(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name string
+		get  func(s *Service) (*Conversation, error)
+	}{
+		{"ticket", func(s *Service) (*Conversation, error) { return s.GetOrCreateTicketThread(ctx, "w-1", "t-1", "u-2") }},
+		{"doc", func(s *Service) (*Conversation, error) { return s.GetOrCreateDocThread(ctx, "w-1", "doc-1", "u-2") }},
+		{"interview", func(s *Service) (*Conversation, error) { return s.GetOrCreateInterviewThread(ctx, "w-1", "p-1", "u-2") }},
+		{"stack", func(s *Service) (*Conversation, error) {
+			return s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-2")
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &racedRepo{fakeRepo: newFakeRepo()}
+			s := newTestServiceWithDocAccess(repo.fakeRepo, newFakeDocAccess("u-1:doc-1", "u-2:doc-1"))
+			winner, err := tt.get(s)
+			require.NoError(t, err)
+
+			s.repo = repo
+			repo.blind = true
+			got, err := tt.get(s)
+			require.NoError(t, err)
+			assert.Equal(t, winner.ID, got.ID)
+			assert.Len(t, repo.eventsFor(TopicConversationCreated), 1)
+		})
+	}
 }
 
 func TestGetOrCreateDocThread(t *testing.T) {
@@ -854,19 +909,6 @@ func TestGetOrCreateDocThread(t *testing.T) {
 		assert.Equal(t, first.ID, again.ID)
 		require.Len(t, repo.eventsFor(TopicConversationCreated), 2)
 	})
-	t.Run("a losing race re-fetches the winner's thread instead of erroring", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestServiceWithDocAccess(repo, newFakeDocAccess("u-1:doc-1", "u-2:doc-1"))
-		existing, err := s.GetOrCreateDocThread(context.Background(), "w-1", "doc-1", "u-1")
-		require.NoError(t, err)
-		got, err := s.createConversation(context.Background(), &Conversation{WorkspaceID: "w-1", Kind: KindDocThread, DocID: "doc-1", CreatedBy: "u-2"}, []string{"u-2"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-		refetched, err := s.GetOrCreateDocThread(context.Background(), "w-1", "doc-1", "u-2")
-		require.NoError(t, err)
-		assert.Equal(t, existing.ID, refetched.ID)
-		assert.Nil(t, got)
-	})
 }
 
 func TestGetOrCreateInterviewThread(t *testing.T) {
@@ -899,17 +941,6 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEqual(t, first.ID, other.ID)
 		assert.Len(t, repo.eventsFor(TopicConversationCreated), 2)
-	})
-	t.Run("a losing race re-fetches the winner's thread instead of erroring", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		existing, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
-		require.NoError(t, err)
-		_, err = s.createConversation(context.Background(), &Conversation{WorkspaceID: "w-1", Kind: KindInterviewThread, ProjectID: "p-1", CreatedBy: "u-2"}, []string{"u-2"})
-		require.ErrorIs(t, err, apperrs.ErrConflict)
-		refetched, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-2")
-		require.NoError(t, err)
-		assert.Equal(t, existing.ID, refetched.ID)
 	})
 	t.Run("a create failure other than a conflict surfaces", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -949,16 +980,6 @@ func TestGetOrCreateStackThread(t *testing.T) {
 		interview, err := s.GetOrCreateInterviewThread(ctx, "w-1", "p-1", "u-1")
 		require.NoError(t, err)
 		assert.NotEqual(t, first.ID, interview.ID, "a stack thread in a project does not take the project's interview thread")
-	})
-	t.Run("a losing race re-fetches the winner's thread", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		existing, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-1")
-		require.NoError(t, err)
-		_, err = s.createConversation(ctx, &Conversation{WorkspaceID: "w-1", Kind: KindStackThread, ProjectID: "p-1", StackID: "st-1", CreatedBy: "u-2"}, []string{"u-2"})
-		require.ErrorIs(t, err, apperrs.ErrConflict)
-		refetched, err := s.GetOrCreateStackThread(ctx, "w-1", "p-1", "st-1", "u-2")
-		require.NoError(t, err)
-		assert.Equal(t, existing.ID, refetched.ID)
 	})
 	t.Run("a create failure other than a conflict surfaces", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -1123,17 +1144,6 @@ func TestPostMessage_DocThread(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "hi", m.Body)
 	})
-}
-
-func TestHasTicketThreads(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	_, err := s.GetOrCreateTicketThread(context.Background(), "w-1", "t-1", "u-1")
-	require.NoError(t, err)
-	out, err := s.HasTicketThreads(context.Background(), []string{"t-1", "t-2", "", "  "})
-	require.NoError(t, err)
-	assert.True(t, out["t-1"])
-	assert.False(t, out["t-2"])
 }
 
 func TestListConversations(t *testing.T) {
