@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 )
 
 type ownerGate struct{}
@@ -46,7 +47,7 @@ func newSvc(store *storage.Store) *integrations.Service {
 func TestEndToEndWebhookDelivery(t *testing.T) {
 	ctx := context.Background()
 
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 
 	bus := inprocess.New(inprocess.Options{
 		Logger:           testutil.DiscardLogger(),
@@ -107,7 +108,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 func TestEndToEndDeployEnvRedaction(t *testing.T) {
 	ctx := context.Background()
 
-	store := testutil.NewStore(t)
+	store := migrated.Store(t)
 
 	var body []byte
 	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
