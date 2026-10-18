@@ -15,16 +15,6 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestHandler_NotConfigured(t *testing.T) {
-	s := NewService(Config{Secret: []byte("x")})
-	h := NewHandler(s).Routes()
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/github", nil))
-	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Contains(t, rec.Body.String(), "not configured")
-}
-
 // TestHandler_GithubGateReflectsLiveSettings proves the /auth/github 503 gate reads Settings.Configured() from the store on every request (T3), not a startup-time snapshot: clearing the stored credentials mid-session flips the very next request to 503, and restoring them flips it back, no restart involved.
 func TestHandler_GithubGateReflectsLiveSettings(t *testing.T) {
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
