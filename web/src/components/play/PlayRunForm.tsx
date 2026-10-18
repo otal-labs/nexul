@@ -8,6 +8,7 @@ import { RunWhereSection, type RunWhere } from "@/components/play/RunWhereSectio
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useFetchHarnessProjects } from "@/hooks/PairingHooks";
 import { useRunPlay } from "@/hooks/TrailHooks";
 import { useConfirmBlockedRun } from "@/hooks/useConfirmBlockedRun";
 import type { Memory } from "@/models/Memory";
@@ -60,7 +61,9 @@ export const PlayRunForm = ({
       : { ...resolvedHarness, computer_id: seedWhere.computer_id },
   );
   const asking = !linked || changing || isNeedsLocationRefusal(runPlay.error);
-  const whereMissing = asking && (where.computer_id === "" || where.harness_project_id === "");
+  // Shares RunWhereSection's cache, so this adds no request.
+  const projectsLoading = useFetchHarnessProjects(asking ? where.computer_id : "").isLoading;
+  const whereUnready = asking && (where.computer_id === "" || where.harness_project_id === "" || projectsLoading);
 
   // Another computer has its own providers, so the model goes back to that computer's defaults.
   const pickWhere = useCallback((next: RunWhere) => {
@@ -147,7 +150,7 @@ export const PlayRunForm = ({
         <Button variant="ghost" onClick={onDone}>
           Cancel
         </Button>
-        <Button onClick={() => void submit()} loading={runPlay.isPending} disabled={whereMissing}>
+        <Button onClick={() => void submit()} loading={runPlay.isPending} disabled={whereUnready}>
           Run {play.label}
         </Button>
       </DialogFooter>

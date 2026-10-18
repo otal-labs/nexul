@@ -6,16 +6,16 @@ import { describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 
-const Harness = ({ computerId }: { computerId: string }) => {
-  const form = useForm<{ fallback_project_id: string }>({ defaultValues: { fallback_project_id: "" } });
+const Harness = ({ computerId, saved = "" }: { computerId: string; saved?: string }) => {
+  const form = useForm<{ fallback_project_id: string }>({ defaultValues: { fallback_project_id: saved } });
   return <HarnessProjectField control={form.control} name="fallback_project_id" label="Fallback T3 project" computerId={computerId} />;
 };
 
-const renderField = (computerId: string) => {
+const renderField = (computerId: string, saved = "") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <Harness computerId={computerId} />
+      <Harness computerId={computerId} saved={saved} />
     </QueryClientProvider>,
   );
 };
@@ -35,6 +35,13 @@ describe("HarnessProjectField", () => {
     renderField("comp-1");
     expect(await screen.findByText(/paste the project id/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. proj_abc123")).toBeInTheDocument();
+  });
+
+  it("shows only a loader while the registry loads, never the saved id", () => {
+    vi.spyOn(api, "get").mockReturnValueOnce(new Promise(() => {}));
+    renderField("comp-1", "proj-1");
+    expect(screen.getByText("Loading projects")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("proj-1")).not.toBeInTheDocument();
   });
 
   it("prompts for a computer before loading anything", () => {
