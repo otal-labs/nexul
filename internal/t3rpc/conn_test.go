@@ -202,9 +202,9 @@ func TestConn_Keepalive_PingsThroughAnIdleCutAndEndsWhenUnanswered(t *testing.T)
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f := t3rpctest.New(t)
-			f.IdleDrop = 500 * time.Millisecond
+			f.IdleDrop = 200 * time.Millisecond
 			f.IgnorePings = tt.ignorePings
-			c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second, PingEvery: 50 * time.Millisecond})
+			c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second, PingEvery: 20 * time.Millisecond})
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = c.Close() })
 
