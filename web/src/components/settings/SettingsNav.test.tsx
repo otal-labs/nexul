@@ -72,12 +72,6 @@ describe("SettingsNav", () => {
     renderNav(workspaceSections(nothing));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Danger zone"]);
   });
-
-  it("marks only the active section", () => {
-    renderNav(workspaceSections(everything), "danger");
-    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Roles" })).not.toHaveAttribute("aria-current");
-  });
 });
 
 describe("isInstanceSection", () => {

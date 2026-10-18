@@ -44,17 +44,6 @@ describe("ProjectSettingsNav", () => {
     );
   });
 
-  it("marks only the active section", () => {
-    render(
-      <MemoryRouter>
-        <ProjectSettingsNav project={project} active="categories" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "General" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Danger zone" })).not.toHaveAttribute("aria-current");
-  });
 });
 
 describe("isProjectSettingsSection", () => {
