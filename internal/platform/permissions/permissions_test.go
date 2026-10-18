@@ -180,10 +180,11 @@ func TestParseRuleAction_AlsoTakesWhatOnlyARuleHolds(t *testing.T) {
 }
 
 func TestSet_HasWithWithout(t *testing.T) {
-	t.Run("creator grant covers docs and sharing, nothing workspace-wide", func(t *testing.T) {
-		for _, a := range []Action{DocsRead, DocsWrite, DocsDelete, DocsLock, PermissionsWrite} {
+	t.Run("creator grant covers docs and sharing, no lock, nothing workspace-wide", func(t *testing.T) {
+		for _, a := range []Action{DocsRead, DocsWrite, DocsDelete, PermissionsWrite} {
 			assert.True(t, CreatorGrant.Has(a))
 		}
+		assert.False(t, CreatorGrant.Has(DocsLock), "locking comes from the creator's roles")
 		assert.False(t, CreatorGrant.Has(MembersWrite))
 		assert.False(t, CreatorGrant.Has(RolesWrite))
 		assert.False(t, CreatorGrant.Has("permissions:read"))

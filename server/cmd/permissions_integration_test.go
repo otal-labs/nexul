@@ -649,3 +649,19 @@ func TestIntegration_FirstUserReachesEveryFormerAdminCapability(t *testing.T) {
 	_, err = svc.tenancySvc.Create(as(first.ID), first.ID, "Second")
 	require.NoError(t, err)
 }
+
+// TestIntegration_ACreatorLocksTheirDocOnlyThroughTheirRoles has a member whose role edits docs but holds no Lock make a
+// doc: they can edit it and are refused locking it, and the Owner still locks it.
+func TestIntegration_ACreatorLocksTheirDocOnlyThroughTheirRoles(t *testing.T) {
+	parallel(t)
+	f := newPermFixture(t)
+	doc, err := f.svc.docsSvc.Create(as(uEditor), pGeneral, "Standup notes", "")
+	require.NoError(t, err)
+
+	_, err = f.svc.docsSvc.Lock(as(uEditor), doc.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = f.svc.docsSvc.Lock(as(uOwner), doc.ID)
+	require.NoError(t, err)
+	_, err = f.svc.docsSvc.Unlock(as(uEditor), doc.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+}
