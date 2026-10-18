@@ -177,6 +177,9 @@ func withTitle(title string) func(*Ticket) {
 - Never write to a live or shared database from a test. Tests use a
   temporary SQLite file; data is copied in, never symlinked, and never
   written back out.
+- A test that needs a migrated database takes a private copy from
+  `internal/platform/storage/testutil/migrated`, which migrates once per test
+  binary; replaying every migration per test costs seconds under `-race`.
 - Use `t.Cleanup` for teardown, not `defer` (cleanup runs even after
   `t.Fatal`).
 
