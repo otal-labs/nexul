@@ -76,14 +76,10 @@ beforeEach(() => {
 });
 
 describe("KanbanColumn", () => {
-  it("renders the column name and ticket count", () => {
-    renderColumn();
-    expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-  });
-
-  it("renders a card per ticket", () => {
+  it("names the column, counts its tickets and shows a card for each", () => {
     renderColumn({ tickets: [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "open")] });
+    expect(screen.getByText("Open")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Fix login")).toBeInTheDocument();
     expect(screen.getByText("Wire FTS")).toBeInTheDocument();
   });
@@ -98,11 +94,6 @@ describe("KanbanColumn", () => {
     renderColumn();
     await user.click(screen.getByText("Fix login"));
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
-  });
-
-  it("registers as a drop target scoped to the lane and column", () => {
-    renderColumn();
-    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).toBeInTheDocument();
   });
 
   it("calls onAddTicket with this column's status id when the + button is clicked", async () => {

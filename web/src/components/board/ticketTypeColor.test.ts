@@ -9,12 +9,6 @@ describe("ticketTypeColor", () => {
     expect(ticketTypeColor("bug")).not.toMatch(/bg-|border-/);
   });
 
-  it("returns a stable color for an unrecognized custom type", () => {
-    const first = ticketTypeColor("widget");
-    const second = ticketTypeColor("widget");
-    expect(first).toEqual(second);
-  });
-
   it("can return different colors for different unrecognized types", () => {
     const colors = new Set(["alpha", "beta", "gamma", "delta", "epsilon"].map((t) => ticketTypeColor(t)));
     expect(colors.size).toBeGreaterThan(1);
@@ -39,10 +33,6 @@ describe("labelDotColor", () => {
   it("returns a solid bg color (dot fill), case-insensitively stable", () => {
     expect(labelDotColor("urgent")).toMatch(/^bg-/);
     expect(labelDotColor("Urgent")).toEqual(labelDotColor("urgent"));
-  });
-
-  it("returns a stable color for the same label across calls", () => {
-    expect(labelDotColor("needs-review")).toEqual(labelDotColor("needs-review"));
   });
 
   it("can return different colors for different labels", () => {

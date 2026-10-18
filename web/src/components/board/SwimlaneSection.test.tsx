@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -152,22 +152,13 @@ describe("SwimlaneSection", () => {
     expect(screen.getByRole("button", { name: "Sprint 1 0/1 tickets" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("renders the lane label and ticket count", () => {
-    renderSection();
-    expect(screen.getByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.getByText("0/1 tickets")).toBeInTheDocument();
-  });
-
-  it("renders one column per status", () => {
-    renderSection();
-    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Done column in Sprint 1" })).toBeInTheDocument();
-  });
-
-  it("splits lane tickets across columns by status", () => {
+  it("splits lane tickets across one column per status", () => {
     renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "done")]) });
-    expect(screen.getByText("Fix login")).toBeInTheDocument();
-    expect(screen.getByText("Wire FTS")).toBeInTheDocument();
+    const open = screen.getByRole("region", { name: "Open column in Sprint 1" });
+    const done = screen.getByRole("region", { name: "Done column in Sprint 1" });
+    expect(within(open).getByText("Fix login")).toBeInTheDocument();
+    expect(within(open).queryByText("Wire FTS")).not.toBeInTheDocument();
+    expect(within(done).getByText("Wire FTS")).toBeInTheDocument();
   });
 
   it("renders tickets within a column sorted by position, not input order", () => {

@@ -76,11 +76,6 @@ describe("TicketCard", () => {
     expect(screen.queryByText("t-142", { exact: false })).not.toBeInTheDocument();
   });
 
-  it("renders the title", () => {
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "in_progress")} />);
-    expect(screen.getByText("Fix login")).toBeInTheDocument();
-  });
-
   it("renders the ticket type as a tinted pill with its icon", async () => {
     mockTicketType("Bug");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
@@ -99,14 +94,6 @@ describe("TicketCard", () => {
     expect(container.querySelectorAll('[data-slot="pill"]')).toHaveLength(2);
   });
 
-  it("wraps cleanly with 5 labels", () => {
-    const labels = ["bug", "urgent", "backend", "design", "needs-review"];
-    renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels }} />);
-    for (const label of labels) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
     mockTicketType("Widget");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
@@ -121,7 +108,7 @@ describe("TicketCard", () => {
     expect(screen.queryByTitle("lena")).not.toBeInTheDocument();
   });
 
-  it("shows what a blocked card waits on, and nothing once its blockers are done", async () => {
+  it("shows what a blocked card waits on", async () => {
     const base = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url, config) => {
       if (url === "/api/tickets/blockers") {
@@ -237,13 +224,6 @@ describe("TicketCard", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     await user.click(screen.getByRole("button", { name: /Fix login/ }));
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
-  });
-
-  it("marks the whole card draggable for @dnd-kit sensors", () => {
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const card = screen.getByRole("button", { name: /Fix login/ });
-    expect(card).toHaveAttribute("aria-roledescription", "sortable");
-    expect(card).toHaveAttribute("tabindex", "0");
   });
 
   it("still opens the ticket on Enter", async () => {

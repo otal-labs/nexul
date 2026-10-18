@@ -4,14 +4,11 @@ import { describe, expect, it } from "vitest";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 
 describe("NoDataDisplay", () => {
-  it("renders a status region with the default message", () => {
-    render(<NoDataDisplay />);
-    expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByText("Nothing here yet")).toBeInTheDocument();
-  });
+  it("renders a status region with the default message, or a custom one", () => {
+    const { rerender } = render(<NoDataDisplay />);
+    expect(screen.getByRole("status")).toHaveTextContent("Nothing here yet");
 
-  it("renders a custom message", () => {
-    render(<NoDataDisplay message="No tickets yet" />);
-    expect(screen.getByText("No tickets yet")).toBeInTheDocument();
+    rerender(<NoDataDisplay message="No tickets yet" />);
+    expect(screen.getByRole("status")).toHaveTextContent("No tickets yet");
   });
 });
