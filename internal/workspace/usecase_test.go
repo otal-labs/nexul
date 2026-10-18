@@ -661,12 +661,6 @@ func newOwnerRepo(t *testing.T, allow bool) (*Service, *fakeRepo, *fakeGate) {
 }
 
 func TestCreate(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "  ", "Backend", "BE", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("unknown workspace is not found", func(t *testing.T) {
 		repo := newFakeRepo()
 		owner := &fakeGate{allow: true}
@@ -683,32 +677,6 @@ func TestCreate(t *testing.T) {
 		_, err := s.Create(context.Background(), "ws-1", "Backend", "BE", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, wsGate.err)
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "ws-1", "   ", "BE", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.Create(context.Background(), "ws-1", "Backend", "BE", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("owner gate error propagates", func(t *testing.T) {
-		s, _, owner := newOwnerRepo(t, true)
-		owner.err = errors.New("db down")
-		_, err := s.Create(context.Background(), "ws-1", "Backend", "BE", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, owner.err)
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.createErr = errors.New("db down")
-		_, err := s.Create(context.Background(), "ws-1", "Backend", "BE", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.createErr)
 	})
 	t.Run("creates with the next position", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
@@ -755,19 +723,6 @@ func TestCreate(t *testing.T) {
 			assert.Equal(t, tt.want, p.Prefix)
 		})
 	}
-	t.Run("rejects a prefix already used by another project", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", Prefix: "BE", WorkspaceID: "ws-1"}
-		_, err := s.Create(context.Background(), "ws-1", "Frontend", "be", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("invalid icon is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "ws-1", "Frontend", "FE", ProjectIcon("bogus"))
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("empty icon is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		p, err := s.Create(context.Background(), "ws-1", "Frontend", "FE", "")
@@ -783,41 +738,9 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Get(context.Background(), "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Get(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.getErr = errors.New("db down")
-		_, err := s.Get(context.Background(), "p-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.getErr)
-	})
 }
 
 func TestList(t *testing.T) {
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.List(context.Background(), "  ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.listErr = errors.New("db down")
-		_, err := s.List(context.Background(), "ws-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.listErr)
-	})
 	t.Run("lists a workspace's projects", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", WorkspaceID: "ws-1"}
@@ -876,24 +799,6 @@ func (g onlyGate) CallerProjectsIn(context.Context, string, permissions.Action) 
 }
 
 func TestRename(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.Rename(context.Background(), "p-1", "New name", nil)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("empty name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Rename(context.Background(), "p-1", " ", nil)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Rename(context.Background(), "nope", "New name", nil)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("renames a project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Old", Position: 0}
@@ -901,14 +806,6 @@ func TestRename(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "New name", p.Name)
 		assert.Equal(t, wsFixedNow, p.UpdatedAt)
-	})
-	t.Run("invalid icon is invalid", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Old"}
-		bogus := ProjectIcon("bogus")
-		_, err := s.Rename(context.Background(), "p-1", "New name", &bogus)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("sets and clears icon", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
@@ -933,25 +830,6 @@ func TestRename(t *testing.T) {
 }
 
 func TestSetPrefix(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		_, err := s.SetPrefix(context.Background(), "p-1", "GEN")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("invalid format prefix is rejected", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "General", WorkspaceID: "ws-1"}
-		_, err := s.SetPrefix(context.Background(), "p-1", "1gen")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.SetPrefix(context.Background(), "nope", "GEN")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("setting the same prefix again is a no-op instead of a conflict", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "General", WorkspaceID: "ws-1", Prefix: "GEN"}
@@ -976,14 +854,6 @@ func TestSetPrefix(t *testing.T) {
 		assert.True(t, errors.Is(err, apperrs.ErrConflict))
 		assert.Equal(t, "BE", repo.projects["p-1"].Prefix)
 	})
-	t.Run("rejects a prefix already used by another project in the same workspace", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "General", WorkspaceID: "ws-1"}
-		repo.projects["p-2"] = &Project{ID: "p-2", Name: "Backend", Prefix: "BE", WorkspaceID: "ws-1"}
-		_, err := s.SetPrefix(context.Background(), "p-1", "be")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("duplicate prefix in another workspace is allowed", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "General", WorkspaceID: "ws-1"}
@@ -995,18 +865,6 @@ func TestSetPrefix(t *testing.T) {
 }
 
 func TestReorder(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		err := s.Reorder(context.Background(), "ws-1", []string{"p-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("empty workspace id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.Reorder(context.Background(), "  ", []string{"p-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	tests := []struct {
 		name    string
 		ids     []string
@@ -1065,12 +923,6 @@ func TestReorder(t *testing.T) {
 }
 
 func TestDeleteImpact(t *testing.T) {
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.DeleteImpact(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("counts tickets, repos and services", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1082,45 +934,9 @@ func TestDeleteImpact(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, DeleteImpact{Tickets: 2, Repos: 1, Services: 1, RestrictedMembers: []RestrictedMember{}}, impact)
 	})
-	t.Run("count error propagates", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		repo.countErr = errors.New("db down")
-		_, err := s.DeleteImpact(context.Background(), "p-1")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.countErr)
-	})
 }
 
 func TestDelete(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		err := s.Delete(context.Background(), "p-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.Delete(context.Background(), "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("project with tickets is refused", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		repo.ticketPro["t-1"] = "p-1"
-		err := s.Delete(context.Background(), "p-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
-	t.Run("project with repos is refused", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app"}}
-		err := s.Delete(context.Background(), "p-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
 	t.Run("project with services is refused", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1140,32 +956,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestAddRepo(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
-		err := s.AddRepo(context.Background(), "p-1", "acme", "app", "", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("empty owner or name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.AddRepo(context.Background(), "p-1", "  ", "app", "", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.AddRepo(context.Background(), "nope", "acme", "app", "", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		repo.repoErr = errors.New("db down")
-		err := s.AddRepo(context.Background(), "p-1", "acme", "app", "", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.repoErr)
-	})
 	t.Run("associates a repo with a project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1196,26 +986,6 @@ func TestAddRepo(t *testing.T) {
 }
 
 func TestRemoveRepo(t *testing.T) {
-	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, false)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		require.NoError(t, repo.AddRepo(context.Background(), "p-1", RepoRef{Owner: "acme", Name: "app"}))
-		err := s.RemoveRepo(context.Background(), "acme", "app")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("empty owner or name is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.RemoveRepo(context.Background(), "", "app")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing repo is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.RemoveRepo(context.Background(), "acme", "app")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("dissociates a repo", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1228,12 +998,6 @@ func TestRemoveRepo(t *testing.T) {
 }
 
 func TestListRepos(t *testing.T) {
-	t.Run("empty project id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.ListRepos(context.Background(), " ")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 	t.Run("lists repos for a project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1245,25 +1009,6 @@ func TestListRepos(t *testing.T) {
 }
 
 func TestMoveTicket(t *testing.T) {
-	t.Run("empty ticket id is invalid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.MoveTicket(context.Background(), " ", "p-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project is not found", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		err := s.MoveTicket(context.Background(), "t-1", "nope")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		err := s.MoveTicket(context.Background(), "nope", "p-1")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
 	t.Run("moves a ticket into a project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
@@ -1271,4 +1016,101 @@ func TestMoveTicket(t *testing.T) {
 		require.NoError(t, s.MoveTicket(context.Background(), "t-1", "p-1"))
 		assert.Equal(t, "p-1", repo.ticketPro["t-1"])
 	})
+}
+
+func TestProjectUsecases_Refusals(t *testing.T) {
+	ctx := context.Background()
+	errDown := errors.New("db down")
+	seedProject := func(_ *Service, repo *fakeRepo, _ *fakeGate) {
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A", WorkspaceID: "ws-1"}
+	}
+	tests := []struct {
+		name  string
+		owner bool
+		seed  func(s *Service, repo *fakeRepo, owner *fakeGate)
+		call  func(s *Service) error
+		want  error
+	}{
+		{"create without a workspace", true, nil, func(s *Service) error { _, err := s.Create(ctx, "  ", "Backend", "BE", ""); return err }, apperrs.ErrInvalid},
+		{"create without a name", true, nil, func(s *Service) error { _, err := s.Create(ctx, "ws-1", "   ", "BE", ""); return err }, apperrs.ErrInvalid},
+		{"create as a non-owner", false, nil, func(s *Service) error { _, err := s.Create(ctx, "ws-1", "Backend", "BE", ""); return err }, apperrs.ErrForbidden},
+		{"create when the owner gate fails", true, func(_ *Service, _ *fakeRepo, owner *fakeGate) { owner.err = errDown }, func(s *Service) error {
+			_, err := s.Create(ctx, "ws-1", "Backend", "BE", "")
+			return err
+		}, errDown},
+		{"create when the repo fails", true, func(_ *Service, repo *fakeRepo, _ *fakeGate) { repo.createErr = errDown }, func(s *Service) error {
+			_, err := s.Create(ctx, "ws-1", "Backend", "BE", "")
+			return err
+		}, errDown},
+		{"create with a prefix another project uses", true, func(_ *Service, repo *fakeRepo, _ *fakeGate) {
+			repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", Prefix: "BE", WorkspaceID: "ws-1"}
+		}, func(s *Service) error { _, err := s.Create(ctx, "ws-1", "Frontend", "be", ""); return err }, apperrs.ErrInvalid},
+		{"create with a bogus icon", true, nil, func(s *Service) error {
+			_, err := s.Create(ctx, "ws-1", "Frontend", "FE", ProjectIcon("bogus"))
+			return err
+		}, apperrs.ErrInvalid},
+		{"get without an id", true, nil, func(s *Service) error { _, err := s.Get(ctx, "  "); return err }, apperrs.ErrInvalid},
+		{"get a missing project", true, nil, func(s *Service) error { _, err := s.Get(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"get when the repo fails", true, func(_ *Service, repo *fakeRepo, _ *fakeGate) { repo.getErr = errDown }, func(s *Service) error { _, err := s.Get(ctx, "p-1"); return err }, errDown},
+		{"list without a workspace", true, nil, func(s *Service) error { _, err := s.List(ctx, "  "); return err }, apperrs.ErrInvalid},
+		{"list when the repo fails", true, func(_ *Service, repo *fakeRepo, _ *fakeGate) { repo.listErr = errDown }, func(s *Service) error { _, err := s.List(ctx, "ws-1"); return err }, errDown},
+		{"rename as a non-owner", false, nil, func(s *Service) error { _, err := s.Rename(ctx, "p-1", "New name", nil); return err }, apperrs.ErrForbidden},
+		{"rename without a name", true, nil, func(s *Service) error { _, err := s.Rename(ctx, "p-1", " ", nil); return err }, apperrs.ErrInvalid},
+		{"rename a missing project", true, nil, func(s *Service) error { _, err := s.Rename(ctx, "nope", "New name", nil); return err }, apperrs.ErrNotFound},
+		{"rename with a bogus icon", true, seedProject, func(s *Service) error {
+			bogus := ProjectIcon("bogus")
+			_, err := s.Rename(ctx, "p-1", "New name", &bogus)
+			return err
+		}, apperrs.ErrInvalid},
+		{"set a prefix as a non-owner", false, nil, func(s *Service) error { _, err := s.SetPrefix(ctx, "p-1", "GEN"); return err }, apperrs.ErrForbidden},
+		{"set a prefix of the wrong shape", true, seedProject, func(s *Service) error { _, err := s.SetPrefix(ctx, "p-1", "1gen"); return err }, apperrs.ErrInvalid},
+		{"set a prefix on a missing project", true, nil, func(s *Service) error { _, err := s.SetPrefix(ctx, "nope", "GEN"); return err }, apperrs.ErrNotFound},
+		{"set a prefix another project in the workspace uses", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.projects["p-2"] = &Project{ID: "p-2", Name: "Backend", Prefix: "BE", WorkspaceID: "ws-1"}
+		}, func(s *Service) error { _, err := s.SetPrefix(ctx, "p-1", "be"); return err }, apperrs.ErrInvalid},
+		{"reorder as a non-owner", false, nil, func(s *Service) error { return s.Reorder(ctx, "ws-1", []string{"p-1"}) }, apperrs.ErrForbidden},
+		{"reorder without a workspace", true, nil, func(s *Service) error { return s.Reorder(ctx, "  ", []string{"p-1"}) }, apperrs.ErrInvalid},
+		{"delete impact of a missing project", true, nil, func(s *Service) error { _, err := s.DeleteImpact(ctx, "nope"); return err }, apperrs.ErrNotFound},
+		{"delete impact when counting fails", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.countErr = errDown
+		}, func(s *Service) error { _, err := s.DeleteImpact(ctx, "p-1"); return err }, errDown},
+		{"delete as a non-owner", false, nil, func(s *Service) error { return s.Delete(ctx, "p-1") }, apperrs.ErrForbidden},
+		{"delete a missing project", true, nil, func(s *Service) error { return s.Delete(ctx, "nope") }, apperrs.ErrNotFound},
+		{"delete a project with tickets", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.ticketPro["t-1"] = "p-1"
+		}, func(s *Service) error { return s.Delete(ctx, "p-1") }, apperrs.ErrConflict},
+		{"delete a project with repos", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app"}}
+		}, func(s *Service) error { return s.Delete(ctx, "p-1") }, apperrs.ErrConflict},
+		{"add a repo as a non-owner", false, nil, func(s *Service) error { return s.AddRepo(ctx, "p-1", "acme", "app", "", "") }, apperrs.ErrForbidden},
+		{"add a repo without an owner", true, nil, func(s *Service) error { return s.AddRepo(ctx, "p-1", "  ", "app", "", "") }, apperrs.ErrInvalid},
+		{"add a repo to a missing project", true, nil, func(s *Service) error { return s.AddRepo(ctx, "nope", "acme", "app", "", "") }, apperrs.ErrNotFound},
+		{"add a repo when the repo fails", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.repoErr = errDown
+		}, func(s *Service) error { return s.AddRepo(ctx, "p-1", "acme", "app", "", "") }, errDown},
+		{"remove a repo as a non-owner", false, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app"}}
+		}, func(s *Service) error { return s.RemoveRepo(ctx, "acme", "app") }, apperrs.ErrForbidden},
+		{"remove a repo without an owner", true, nil, func(s *Service) error { return s.RemoveRepo(ctx, "", "app") }, apperrs.ErrInvalid},
+		{"remove a missing repo", true, nil, func(s *Service) error { return s.RemoveRepo(ctx, "acme", "app") }, apperrs.ErrNotFound},
+		{"list repos without a project", true, nil, func(s *Service) error { _, err := s.ListRepos(ctx, " "); return err }, apperrs.ErrInvalid},
+		{"move a ticket without an id", true, nil, func(s *Service) error { return s.MoveTicket(ctx, " ", "p-1") }, apperrs.ErrInvalid},
+		{"move a ticket into a missing project", true, nil, func(s *Service) error { return s.MoveTicket(ctx, "t-1", "nope") }, apperrs.ErrNotFound},
+		{"move a missing ticket", true, seedProject, func(s *Service) error { return s.MoveTicket(ctx, "nope", "p-1") }, apperrs.ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, repo, owner := newOwnerRepo(t, tt.owner)
+			if tt.seed != nil {
+				tt.seed(s, repo, owner)
+			}
+			require.ErrorIs(t, tt.call(s), tt.want)
+		})
+	}
 }
