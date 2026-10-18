@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, errorMessage } from "@/api/client";
 import {
   useCreateTicket,
+  useFetchTicket,
+  useFetchTickets,
   useFetchTicketsByDoc,
   useUpdateTicket,
   useUpdateTicketPosition,
@@ -49,10 +51,25 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.delete).mockReset();
+});
+
+describe("ticket reads", () => {
+  it("loads the list and a single ticket", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [ticket] });
+    const list = renderHook(() => useFetchTickets(), { wrapper });
+    await waitFor(() => expect(list.result.current.data).toEqual([ticket]));
+    expect(api.get).toHaveBeenCalledWith("/api/tickets");
+
+    vi.mocked(api.get).mockResolvedValue({ data: ticket });
+    const one = renderHook(() => useFetchTicket("t-1"), { wrapper });
+    await waitFor(() => expect(one.result.current.data).toEqual(ticket));
+    expect(api.get).toHaveBeenCalledWith("/api/tickets/t-1");
+  });
 });
 
 describe("useFetchTicketsByDoc", () => {
@@ -77,6 +94,20 @@ describe("useCreateTicket", () => {
       developer: "onik97",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+describe("ticket write failures", () => {
+  it("toasts a refused create and a refused move", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    vi.mocked(api.patch).mockRejectedValue(new Error("boom"));
+    const create = renderHook(() => useCreateTicket(), { wrapper });
+    await create.result.current.mutateAsync({ title: "x", body: "", project_id: "p-1" }).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+
+    const move = renderHook(() => useUpdateTicketPosition(), { wrapper });
+    await move.result.current.mutateAsync({ id: "t-1", position: 3 }).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(2));
   });
 });
 

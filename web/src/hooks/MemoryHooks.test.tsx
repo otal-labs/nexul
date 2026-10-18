@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -57,6 +58,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.put).mockReset();
@@ -118,6 +120,15 @@ describe("useCreateMemory", () => {
       always_included: false,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+describe("useCreateMemory failure", () => {
+  it("toasts a refusal", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useCreateMemory(), { wrapper });
+    await result.current.mutateAsync({ project_id: "project-1", title: "Deploy quirks", when_to_use: "", always_included: false }).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { projectTokenFromPath, SaveProjectFormSchema, switchProjectPath, type Project } from "@/models/Project";

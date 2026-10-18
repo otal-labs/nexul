@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -61,6 +62,7 @@ const savePlayInput = (overrides: Partial<SavePlayFormData> = {}): SavePlayFormD
 });
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
@@ -88,6 +90,20 @@ describe("useCreatePlay", () => {
       show_when_stage: null,
       excluded_project_ids: [],
     });
+  });
+});
+
+describe("play write failures", () => {
+  it("toasts a refused create and a refused delete", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    vi.mocked(api.delete).mockRejectedValue(new Error("boom"));
+    const create = renderHook(() => useCreatePlay("ws-1"), { wrapper });
+    await create.result.current.mutateAsync(savePlayInput()).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+
+    const remove = renderHook(() => useDeletePlay("ws-1"), { wrapper });
+    await remove.result.current.mutateAsync("play-1").catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(2));
   });
 });
 

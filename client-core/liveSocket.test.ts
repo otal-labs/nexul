@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LiveEventsClient, parseFrame, type LiveSocket } from "@nexul/client-core/liveSocket";

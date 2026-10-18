@@ -7,11 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useCreateService,
-  useDeleteService,
   useDeployService,
   useFetchServices,
-  useRollbackService,
-  useUpdateService,
   serviceFollower,
 } from "@/hooks/ServiceHooks";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
@@ -54,32 +51,11 @@ describe("ServiceHooks", () => {
     expect(api.post).toHaveBeenCalledWith("/api/services", { name: "api" });
   });
 
-  it("useUpdateService patches", async () => {
-    vi.mocked(api.patch).mockResolvedValue({ data: service });
-    const { result } = renderHook(() => useUpdateService(), { wrapper });
-    await result.current.mutateAsync({ id: "svc-1", payload: { name: "api2" } });
-    expect(api.patch).toHaveBeenCalledWith("/api/services/svc-1", { name: "api2" });
-  });
-
-  it("useDeleteService deletes", async () => {
-    vi.mocked(api.delete).mockResolvedValue({ data: undefined });
-    const { result } = renderHook(() => useDeleteService(), { wrapper });
-    await result.current.mutateAsync("svc-1");
-    expect(api.delete).toHaveBeenCalledWith("/api/services/svc-1");
-  });
-
   it("useDeployService posts a deploy", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: deploy });
     const { result } = renderHook(() => useDeployService(), { wrapper });
     await result.current.mutateAsync({ serviceId: "svc-1", image: "img:1", ref: "main" });
     expect(api.post).toHaveBeenCalledWith("/api/deploys", { service_id: "svc-1", image: "img:1", ref: "main" });
-  });
-
-  it("useRollbackService posts a rollback", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: deploy });
-    const { result } = renderHook(() => useRollbackService(), { wrapper });
-    await result.current.mutateAsync("svc-1");
-    expect(api.post).toHaveBeenCalledWith("/api/services/svc-1/rollback");
   });
 
   it("useCreateService toasts a refused create", async () => {

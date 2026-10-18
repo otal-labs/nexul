@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { GATEWAY_HEADER_H, GATEWAY_ROW_H } from "@/components/topology/GatewayNode";

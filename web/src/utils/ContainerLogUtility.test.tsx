@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { MAX_LOG_LINES, type ContainerLogLine, type ContainerLogWireLine } from "@/models/ContainerLog";

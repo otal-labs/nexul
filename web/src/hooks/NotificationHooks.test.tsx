@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -43,6 +44,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
@@ -72,6 +74,15 @@ describe("useMarkNotificationsRead", () => {
     const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
     await result.current.mutateAsync(["n1"]);
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
+  });
+});
+
+describe("useMarkNotificationsRead failure", () => {
+  it("toasts a refusal", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
+    await result.current.mutateAsync(["n1"]).catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 

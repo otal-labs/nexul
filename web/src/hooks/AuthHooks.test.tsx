@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -54,6 +55,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.put).mockReset();
@@ -71,6 +73,15 @@ describe("useCompleteOwnerWizard", () => {
       instance_url: "https://deploy.example.com",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+describe("useCompleteOwnerWizard failure", () => {
+  it("toasts a refusal", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    const { result } = renderHook(() => useCompleteOwnerWizard(), { wrapper });
+    await result.current.mutateAsync("https://deploy.example.com").catch(() => {});
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 

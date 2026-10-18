@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { daysAgo, formatCalendarTime, formatDiscordTimestamp, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
