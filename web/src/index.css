@@ -1490,6 +1490,8 @@ a.mention-chip:hover {
   color: #fff;
   white-space: nowrap;
   user-select: none;
+  /* The chip sits over the line above, so the text under it stays readable. */
+  opacity: 0.55;
 }
 
 /* LiveKit components ship their own dark-only default theme (--lk-*, all values hardcoded hex — see
