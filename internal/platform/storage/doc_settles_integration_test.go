@@ -1,7 +1,6 @@
 package storage_test
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -87,11 +86,9 @@ func TestDocSettles_Integration_AWindowClosesWithoutAnEventForAGoneOrArchivedDoc
 }
 
 func TestDocSettles_Integration_AWindowDueWhileTheServerWasDownSettlesAfterARestart(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "test.db")
-	db, err := storage.OpenDB(path)
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
-	require.NoError(t, testutil.SeedGeneralProject(db))
+	db := newDB(t)
+	var path string
+	require.NoError(t, db.QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path))
 	d, err := docs.NewService(storage.New(db, []byte("0123456789abcdef0123456789abcdef")).Docs, allowAll{}, nil).
 		Create(actorCtx(), testutil.GeneralProjectID, "Spec", "draft")
 	require.NoError(t, err)

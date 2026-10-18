@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,17 +15,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-func openDNSStore(t *testing.T) *Store {
-	t.Helper()
-	db, err := OpenDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
-	require.NoError(t, Migrate(db))
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	return New(db, testEncKey)
-}
-
 func TestDNSRepo_ServiceHostnameLifecycle(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 	now := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
@@ -69,7 +59,7 @@ func TestDNSRepo_ServiceHostnameLifecycle(t *testing.T) {
 }
 
 func TestDNSRepo_RecordChangedWritesOutboxRow(t *testing.T) {
-	store := openDNSStore(t)
+	store := newTestStore(t)
 	repo := store.DNS
 	ctx := context.Background()
 	payload := dns.RecordChangedEvent{ZoneID: "z1", RecordID: "r1", Action: "deleted"}

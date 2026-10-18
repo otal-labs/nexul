@@ -64,6 +64,62 @@ func migratedTemplate(t *testing.T) string {
 	return templatePath
 }
 
+var (
+	snapshotsDir = filepath.Join(os.TempDir(), fmt.Sprintf("nexul-storage-snapshots-%d", os.Getpid()))
+
+	// migrationSnapshots holds the database as it stands before each embedded migration (index i) and after the last
+	// (index len), built in one pass so a migration test copies a file instead of replaying its predecessors.
+	migrationSnapshots = sync.OnceValues(func() ([]string, error) {
+		if err := os.MkdirAll(snapshotsDir, 0o700); err != nil {
+			return nil, err
+		}
+		versions, err := embeddedVersions()
+		if err != nil {
+			return nil, err
+		}
+		db, err := OpenDB(filepath.Join(snapshotsDir, "chain.db"))
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = db.Close() }()
+		if err := ensureMigrationsTable(db); err != nil {
+			return nil, err
+		}
+		snapshot := func(i int) (string, error) {
+			// A truncating checkpoint folds the WAL into the main file so the copy is complete on its own.
+			if _, err := db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+				return "", err
+			}
+			data, err := os.ReadFile(filepath.Join(snapshotsDir, "chain.db"))
+			if err != nil {
+				return "", err
+			}
+			path := filepath.Join(snapshotsDir, fmt.Sprintf("%d.db", i))
+			return path, os.WriteFile(path, data, 0o600)
+		}
+		paths := make([]string, 0, len(versions)+1)
+		for i, v := range versions {
+			path, err := snapshot(i)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, path)
+			script, err := migrationFS.ReadFile("migrations/" + v + ".sql")
+			if err != nil {
+				return nil, err
+			}
+			if err := applyMigration(db, v, string(script)); err != nil {
+				return nil, err
+			}
+		}
+		path, err := snapshot(len(versions))
+		if err != nil {
+			return nil, err
+		}
+		return append(paths, path), nil
+	})
+)
+
 func newTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	data, err := os.ReadFile(migratedTemplate(t))
@@ -151,5 +207,6 @@ func TestMain(m *testing.M) {
 			_, _ = fmt.Fprintln(os.Stderr, "remove template db:", err) // best-effort diagnostic; exit code carries the real result
 		}
 	}
+	_ = os.RemoveAll(snapshotsDir)
 	os.Exit(code)
 }
