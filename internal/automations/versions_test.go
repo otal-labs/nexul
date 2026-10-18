@@ -358,32 +358,33 @@ func TestVersionsService_Diff_RepoFailures(t *testing.T) {
 	})
 }
 
-func TestVersionsService_List_RepoFailure(t *testing.T) {
-	autoRepo := newFakeRepo()
-	seedAutomation(t, autoRepo, "a1")
-	repo := newErroringVersionsRepo()
-	repo.listErr = errBoom
-	s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-	_, err := s.List(context.Background(), "owner", "a1")
-	require.ErrorIs(t, err, errBoom)
-}
-
-func TestVersionsService_Push_RepoFailure(t *testing.T) {
-	autoRepo := newFakeRepo()
-	seedAutomation(t, autoRepo, "a1")
-	repo := newErroringVersionsRepo()
-	repo.replacePendingErr = errBoom
-	s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-	_, err := s.Push(context.Background(), "owner", "a1", "code", "")
-	require.ErrorIs(t, err, errBoom)
-}
-
-func TestVersionsService_Activate_RepoFailure(t *testing.T) {
-	autoRepo := newFakeRepo()
-	seedAutomation(t, autoRepo, "a1")
-	repo := newErroringVersionsRepo()
-	repo.activateErr = errBoom
-	s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-	_, err := s.Activate(context.Background(), "owner", "a1", "v1")
-	require.ErrorIs(t, err, errBoom)
+func TestVersionsService_RepoFailure_ComesBackToTheCaller(t *testing.T) {
+	tests := []struct {
+		name string
+		fail func(*erroringVersionsRepo)
+		call func(*VersionsService) error
+	}{
+		{"listing", func(r *erroringVersionsRepo) { r.listErr = errBoom }, func(s *VersionsService) error {
+			_, err := s.List(context.Background(), "owner", "a1")
+			return err
+		}},
+		{"pushing", func(r *erroringVersionsRepo) { r.replacePendingErr = errBoom }, func(s *VersionsService) error {
+			_, err := s.Push(context.Background(), "owner", "a1", "code", "")
+			return err
+		}},
+		{"activating", func(r *erroringVersionsRepo) { r.activateErr = errBoom }, func(s *VersionsService) error {
+			_, err := s.Activate(context.Background(), "owner", "a1", "v1")
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			autoRepo := newFakeRepo()
+			seedAutomation(t, autoRepo, "a1")
+			repo := newErroringVersionsRepo()
+			tt.fail(repo)
+			s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
+			require.ErrorIs(t, tt.call(s), errBoom)
+		})
+	}
 }
