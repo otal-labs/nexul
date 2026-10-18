@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseEnv, formatEnv } from "@/lib/env";
 import { isUpgradeInProgress } from "@/models/InstanceUpgrade";
-import { ServiceFormSchema } from "@/models/Service";
 import { cardPerson, LinkPRFormSchema, parseTicketKey, reporterLabel, type Ticket } from "@/models/Ticket";
 
 describe("isUpgradeInProgress", () => {
@@ -41,26 +40,6 @@ describe("ticket people", () => {
     expect(cardPerson(t, "testing")).toEqual({ role: "tester", login: "qa" });
     expect(cardPerson(t, "review")).toEqual({ role: "developer", login: "dev" });
     expect(cardPerson(t, undefined)).toEqual({ role: "developer", login: "dev" });
-  });
-});
-
-describe("ServiceFormSchema", () => {
-  const base = {
-    name: "api",
-    target: "h:22",
-    compose_dir: "",
-    docker_network: "",
-    health_url: "http://h/health",
-    env: "",
-    image: "",
-    ref: "",
-  };
-
-  it("requires the field its strategy deploys with", () => {
-    expect(ServiceFormSchema.safeParse({ ...base, strategy: "compose", compose_dir: "/srv/api" }).success).toBe(true);
-    expect(ServiceFormSchema.safeParse({ ...base, strategy: "run", docker_network: "net" }).success).toBe(true);
-    expect(ServiceFormSchema.safeParse({ ...base, strategy: "compose" }).success).toBe(false);
-    expect(ServiceFormSchema.safeParse({ ...base, strategy: "run" }).success).toBe(false);
   });
 });
 

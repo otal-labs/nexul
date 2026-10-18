@@ -6,8 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
-  useCreateService,
-  useDeployService,
   useFetchServices,
   serviceFollower,
 } from "@/hooks/ServiceHooks";
@@ -42,27 +40,6 @@ describe("ServiceHooks", () => {
     const { result } = renderHook(() => useFetchServices("proj-1"), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual([service]));
     expect(api.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "proj-1" } });
-  });
-
-  it("useCreateService posts", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: service });
-    const { result } = renderHook(() => useCreateService(), { wrapper });
-    await result.current.mutateAsync({ name: "api" });
-    expect(api.post).toHaveBeenCalledWith("/api/services", { name: "api" });
-  });
-
-  it("useDeployService posts a deploy", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: deploy });
-    const { result } = renderHook(() => useDeployService(), { wrapper });
-    await result.current.mutateAsync({ serviceId: "svc-1", image: "img:1", ref: "main" });
-    expect(api.post).toHaveBeenCalledWith("/api/deploys", { service_id: "svc-1", image: "img:1", ref: "main" });
-  });
-
-  it("useCreateService toasts a refused create", async () => {
-    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useCreateService(), { wrapper });
-    await result.current.mutateAsync({ name: "api" }).catch(() => {});
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 

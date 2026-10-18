@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export const DeployStrategy = {
   Compose: "compose",
   Run: "run",
@@ -90,50 +88,3 @@ export interface Deploy {
 // Newest deploy by creation time; the API's order is not part of its contract.
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>
   deploys?.reduce<Deploy | undefined>((best, d) => (!best || d.created_at > best.created_at ? d : best), undefined);
-
-export const ServiceFormSchema = z
-  .object({
-    name: z.string().trim().min(1, "Service name is required"),
-    target: z.string().trim().min(1, "Machine is required"),
-    strategy: z.enum([DeployStrategy.Compose, DeployStrategy.Run]),
-    compose_dir: z.string().trim(),
-    docker_network: z.string().trim(),
-    health_url: z.string().trim().min(1, "Health check URL is required"),
-    env: z.string(),
-    // Optional first-deploy inputs (image or ref to build).
-    image: z.string().trim(),
-    ref: z.string().trim(),
-    // The repo the runner clones and builds from; required before a ref deploy can trigger.
-    build_repo_owner: z.string().trim().optional(),
-    build_repo_name: z.string().trim().optional(),
-    build_branch: z.string().trim().optional(),
-    build_dockerfile: z.string().trim().optional(),
-    build_compose_path: z.string().trim().optional(),
-  })
-  .superRefine((val, ctx) => {
-    if (val.strategy === DeployStrategy.Compose && !val.compose_dir) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["compose_dir"], message: "Compose directory is required for the compose strategy" });
-    }
-    if (val.strategy === DeployStrategy.Run && !val.docker_network) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["docker_network"], message: "Docker network is required for the run strategy" });
-    }
-  });
-
-export type ServiceFormData = z.infer<typeof ServiceFormSchema>;
-
-export const emptyServiceForm = (): ServiceFormData => ({
-  name: "",
-  target: "",
-  strategy: "compose",
-  compose_dir: "",
-  docker_network: "",
-  health_url: "",
-  env: "",
-  image: "",
-  ref: "",
-  build_repo_owner: "",
-  build_repo_name: "",
-  build_branch: "",
-  build_dockerfile: "",
-  build_compose_path: "",
-});
