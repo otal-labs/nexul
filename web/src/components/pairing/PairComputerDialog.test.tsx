@@ -141,10 +141,17 @@ describe("PairComputerDialog for a computer still pairing through its tunnel", (
     expect(screen.getByText('& "$HOME\\.t3\\bin\\t3.cmd" pair')).toBeInTheDocument();
   });
 
-  it("pairs over the hostname with a pasted pairing link, sending only its token and never its LAN address", async () => {
+  it("pairs over the hostname with a pasted pairing link, sending only its token and never its LAN address, and refuses a link with no token", async () => {
     const user = userEvent.setup();
     const client = renderDialog(created);
     await reachPairStep(user, client);
+
+    await user.click(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://192.168.1.107:3773/pair");
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+    expect(await screen.findByText(/that link has no token/i)).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText(/pairing link/i));
 
     mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z" } });
     await user.click(screen.getByLabelText(/pairing link/i));
@@ -155,20 +162,7 @@ describe("PairComputerDialog for a computer still pairing through its tunnel", (
     await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "2WY3GB2XL8SU" }));
   });
 
-  it("refuses a link that carries no token, naming what to do", async () => {
-    const user = userEvent.setup();
-    const client = renderDialog(created);
-    await reachPairStep(user, client);
-
-    await user.click(screen.getByLabelText(/pairing link/i));
-    await user.paste("http://192.168.1.107:3773/pair");
-    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
-
-    expect(await screen.findByText(/that link has no token/i)).toBeInTheDocument();
-    expect(mocks.post).not.toHaveBeenCalled();
-  });
-
-  it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
+  it("shows a refused token on the token field, an unreachable harness on the URL field, and any other failure under the form", async () => {
     const user = userEvent.setup();
     const client = renderDialog(created);
     await reachPairStep(user, client);
@@ -186,17 +180,9 @@ describe("PairComputerDialog for a computer still pairing through its tunnel", (
     expect(await screen.findByText(unreachable)).toBeInTheDocument();
     expect(screen.getByLabelText(/t3 server url/i)).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText(/is paired/i)).not.toBeInTheDocument();
-  });
-
-  it("shows a failure with no field under the form", async () => {
-    const user = userEvent.setup();
-    const client = renderDialog(created);
-    await reachPairStep(user, client);
 
     mocks.post.mockRejectedValueOnce(apiError({ message: "internal error", code: "INTERNAL" }));
-    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
-
     expect(await screen.findByRole("alert")).toHaveTextContent("internal error");
   });
 });

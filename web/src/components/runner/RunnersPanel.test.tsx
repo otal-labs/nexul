@@ -71,7 +71,7 @@ describe("RunnersPanel", () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/runners") return Promise.resolve({ data: [onlineRunner, idleRunner] });
       if (url === "/api/machines") return Promise.resolve({ data: [machine] });
-      if (url === "/api/runners/queue") return Promise.resolve({ data: [{ id: "d-1", kind: "deploy", service: "web" }] });
+      if (url === "/api/runners/queue") return Promise.resolve({ data: [{ id: "d-1", kind: "deploy", service: "web" }, { id: "d-2", kind: "build" }] });
       if (url === "/api/runners/latest-version") return Promise.resolve({ data: { version: "v0.1.4" } });
       return Promise.resolve({ data: [] });
     });
@@ -92,10 +92,11 @@ describe("RunnersPanel", () => {
     );
     expect(screen.getByRole("button", { name: /add a runner to this machine/i })).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Fleet health summary")).toBeInTheDocument();
-    expect(screen.getByText("Online")).toBeInTheDocument();
-    expect(screen.getByText("Queued")).toBeInTheDocument();
-    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fleet health summary")).toHaveTextContent("Online1of 2Busy1Offline1Queued2");
+    expect(screen.getByLabelText("Queue position 1")).toHaveTextContent("#1");
+    expect(screen.getByText("d-2")).toBeInTheDocument();
+    expect(screen.getByText("build")).toBeInTheDocument();
+    expect(screen.getByLabelText("Queue position 2")).toHaveTextContent("#2");
   });
 
   it("falls back to a flat runner list before any machine exists", async () => {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { fromBase64, toBase64 } from "@/lib/collab/binary";

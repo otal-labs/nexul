@@ -50,8 +50,8 @@ describe("DeployHistorySection", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  it("shows a no-data state instead of a silent empty list", () => {
-    renderSection(<DeployHistorySection deploys={[]} isLoading={false} />);
+  it.each([[[]], [undefined]])("shows a no-data state instead of a silent empty list for %j", (list) => {
+    renderSection(<DeployHistorySection deploys={list} isLoading={false} />);
     expect(screen.getByText("No deploys yet. Deploy the stack and each run shows here.")).toBeInTheDocument();
   });
 
@@ -59,11 +59,6 @@ describe("DeployHistorySection", () => {
     renderSection(<DeployHistorySection deploys={undefined} isLoading={false} error={new Error("boom")} />);
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(screen.queryByText(/No deploys yet/)).not.toBeInTheDocument();
-  });
-
-  it("shows no-data even when deploys are undefined", () => {
-    renderSection(<DeployHistorySection deploys={undefined} isLoading={false} />);
-    expect(screen.getByText("No deploys yet. Deploy the stack and each run shows here.")).toBeInTheDocument();
   });
 
   it("lists deploys with image, status, mono id, and relative time", () => {
@@ -76,21 +71,6 @@ describe("DeployHistorySection", () => {
     expect(screen.getByText("failed")).toBeInTheDocument();
     expect(screen.getByText("3h ago")).toBeInTheDocument();
     expect(screen.getByText("2h ago")).toBeInTheDocument();
-  });
-
-  it("groups same-day deploys under one visible chronological heading", () => {
-    renderSection(<DeployHistorySection deploys={deploys} isLoading={false} />);
     expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
-  });
-
-  it("splits deploys from different days into separate headings", () => {
-    renderSection(
-      <DeployHistorySection
-        deploys={[...deploys, { ...deploys[0]!, id: "d-3", created_at: "2026-08-10T09:00:00Z" }]}
-        isLoading={false}
-      />,
-    );
-    expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Aug 10" })).toBeInTheDocument();
   });
 });

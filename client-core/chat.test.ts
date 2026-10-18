@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { applyReaction, conversationLabel, isContinuation, splitMessageBody, upsertMessage, type ChatMessage, type Conversation } from "@nexul/client-core/chat";

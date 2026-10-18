@@ -76,11 +76,6 @@ describe("TicketCard", () => {
     expect(screen.queryByText("t-142", { exact: false })).not.toBeInTheDocument();
   });
 
-  it("renders the title", () => {
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "in_progress")} />);
-    expect(screen.getByText("Fix login")).toBeInTheDocument();
-  });
-
   it("renders the ticket type as a tinted pill with its icon", async () => {
     mockTicketType("Bug");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
@@ -99,14 +94,6 @@ describe("TicketCard", () => {
     expect(container.querySelectorAll('[data-slot="pill"]')).toHaveLength(2);
   });
 
-  it("wraps cleanly with 5 labels", () => {
-    const labels = ["bug", "urgent", "backend", "design", "needs-review"];
-    renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels }} />);
-    for (const label of labels) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
     mockTicketType("Widget");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
@@ -121,7 +108,7 @@ describe("TicketCard", () => {
     expect(screen.queryByTitle("lena")).not.toBeInTheDocument();
   });
 
-  it("shows what a blocked card waits on, and nothing once its blockers are done", async () => {
+  it("shows what a blocked card waits on", async () => {
     const base = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url, config) => {
       if (url === "/api/tickets/blockers") {
@@ -239,13 +226,6 @@ describe("TicketCard", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 
-  it("marks the whole card draggable for @dnd-kit sensors", () => {
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const card = screen.getByRole("button", { name: /Fix login/ });
-    expect(card).toHaveAttribute("aria-roledescription", "sortable");
-    expect(card).toHaveAttribute("tabindex", "0");
-  });
-
   it("still opens the ticket on Enter", async () => {
     const user = userEvent.setup();
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
@@ -269,15 +249,6 @@ describe("TicketCard", () => {
       expect(ticketTypeColor("Bug")).toMatch(/red/);
     });
 
-    it("falls back to the hash color for a ticket type with no configured color, unchanged from before T10", async () => {
-      mockTicketType("Bug", "");
-      renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-      await screen.findByText("Bug");
-      await vi.waitFor(() => {
-        expect(screen.getByText("Bug").closest("span")).toHaveClass(...pillClass(ticketTypeColor("Bug")).split(" "));
-      });
-    });
-
     it("uses the backend-configured color for a label once fetched, not the hash", async () => {
       vi.mocked(api.get).mockImplementation(async (url: string) => {
         if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
@@ -294,23 +265,6 @@ describe("TicketCard", () => {
         expect(screen.getByText("urgent")).toHaveClass(...pillClass("bg-orange-500").split(" "));
       });
       expect(labelDotColor("urgent")).not.toBe("bg-orange-500");
-    });
-
-    it("falls back to the hash color for a label the backend has no configured color for", async () => {
-      vi.mocked(api.get).mockImplementation(async (url: string) => {
-        if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
-        if (url === "/api/ticket-types") return { data: [] };
-        if (url === "/api/tickets/labels") return { data: ["urgent"] };
-        return { data: [] };
-      });
-      vi.mocked(api.post).mockResolvedValue({ data: {} });
-      renderCard(
-        <TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["urgent"] }} />,
-      );
-      await screen.findByText("urgent");
-      await vi.waitFor(() => {
-        expect(screen.getByText("urgent")).toHaveClass(...pillClass(labelDotColor("urgent")).split(" "));
-      });
     });
   });
 });

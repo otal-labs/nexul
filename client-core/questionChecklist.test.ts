@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { answerLine, followOpenKey, openRow, type ChecklistRow } from "@nexul/client-core/questionChecklist";

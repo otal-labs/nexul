@@ -6,7 +6,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 3);
 
 const savedWidths = () => JSON.parse(localStorage.getItem("thread-pane") ?? "{}").state?.widths;
-const width = (ticketId: string) => useThreadPaneStore.getState().widths[ticketId]?.width;
 
 describe("threadPaneStore", () => {
   beforeEach(() => {
@@ -17,10 +16,6 @@ describe("threadPaneStore", () => {
   });
 
   afterEach(() => vi.useRealTimers());
-
-  it("has no width for a ticket until one is chosen, so the pane keeps its share of the page", () => {
-    expect(width("t1")).toBeUndefined();
-  });
 
   it("keeps a dated width per ticket, clamped and saved to the browser, and reset clears only that ticket", () => {
     useThreadPaneStore.getState().setWidth("t1", THREAD_PANE_MIN - 100);

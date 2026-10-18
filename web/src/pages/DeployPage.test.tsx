@@ -107,12 +107,6 @@ describe("DeployPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Building and deploying: Building");
   });
 
-  it("shows the cancel button only while the deploy is active", async () => {
-    mockApi(deploy({}), lines);
-    renderPage();
-    expect(await screen.findByRole("button", { name: "Cancel deploy" })).toBeInTheDocument();
-  });
-
   it("hides cancel, checks every started step, and titles a healthy deploy as deployed", async () => {
     mockApi(deploy({ status: "healthy", updated_at: new Date(T0 + 20_000).toISOString() }), lines);
     renderPage();

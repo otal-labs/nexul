@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { lightsDot, showsDot, type WelcomeStepProgress } from "@nexul/client-core/welcome";

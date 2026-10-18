@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 
 import { statusFollower } from "@/hooks/StatusHooks";
@@ -44,15 +45,6 @@ describe("the status follower", () => {
     await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", kind: "done" }, previous_kind: "progress" }, client);
     expect([["getProjectStatuses", "p-1"], ["getTicketLinkSet", "t-1"], ["getBlockers"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
     expect(isStale(client, ["getProjectStatuses", "p-2"])).toBe(false);
-  });
-
-  it("leaves the link views alone for a renamed column whose board is not open, since the frame names its stage before", async () => {
-    const client = seeded([
-      [["getTicketLinkSet", "t-1"], naming("st-1")],
-      [["getBlockers"], {}],
-    ]);
-    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", name: "Building" }, previous_kind: "progress" }, client);
-    expect([isStale(client, ["getTicketLinkSet", "t-1"]), isStale(client, ["getBlockers"])]).toEqual([false, false]);
   });
 
   it("drops a deleted column from its project's board", async () => {

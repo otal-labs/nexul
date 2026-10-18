@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DnsSetupStepper } from "@/components/dns/DnsSetupStepper";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -53,6 +53,10 @@ const choosePath = async (user: ReturnType<typeof userEvent.setup>, label: RegEx
 };
 
 describe("DnsSetupStepper", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
     mocks.get.mockReset();
@@ -91,6 +95,7 @@ describe("DnsSetupStepper", () => {
   });
 
   it("deploys the tunnel first, waits for cloudflared to connect, then routes the hostname and unlocks Go live", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let tunnelStatus = "inactive";
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
@@ -107,7 +112,7 @@ describe("DnsSetupStepper", () => {
       return { data: {} };
     });
     renderStepper();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await choosePath(user, /cloudflare tunnel/i);
 
     expect(step(/deploy the tunnel/i)).toHaveAttribute("data-state", "active");
@@ -125,7 +130,8 @@ describe("DnsSetupStepper", () => {
 
     // cloudflared reports in; the next poll flips the rung.
     tunnelStatus = "healthy";
-    expect(await screen.findByLabelText(/subdomain/i, {}, { timeout: 6000 })).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    expect(await screen.findByLabelText(/subdomain/i)).toBeInTheDocument();
     expect(step(/deploy the tunnel/i)).toHaveAttribute("data-state", "done");
     expect(step(/point your hostname/i)).toHaveAttribute("data-state", "active");
 
@@ -145,7 +151,7 @@ describe("DnsSetupStepper", () => {
       expect.objectContaining({ hostname: "app.example.com", zone_id: "z1", service: "" }),
     );
     expect(step(/go live/i)).toHaveAttribute("data-state", "active");
-  }, 15000);
+  });
 
   it("shows the failed deploy with a retry instead of unlocking the hostname rung", async () => {
     mocks.get.mockImplementation(async (url: string) => {

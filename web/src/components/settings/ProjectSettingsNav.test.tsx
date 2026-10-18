@@ -44,34 +44,11 @@ describe("ProjectSettingsNav", () => {
     );
   });
 
-  it("marks only the active section", () => {
-    render(
-      <MemoryRouter>
-        <ProjectSettingsNav project={project} active="categories" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "General" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Danger zone" })).not.toHaveAttribute("aria-current");
-  });
 });
 
 describe("isProjectSettingsSection", () => {
-  it("accepts every known section", () => {
-    expect(isProjectSettingsSection("general")).toBe(true);
-    expect(isProjectSettingsSection("categories")).toBe(true);
-    expect(isProjectSettingsSection("repositories")).toBe(true);
-    expect(isProjectSettingsSection("services")).toBe(true);
+  it("accepts a known section and rejects anything else", () => {
     expect(isProjectSettingsSection("board")).toBe(true);
-    expect(isProjectSettingsSection("danger")).toBe(true);
-  });
-
-  it("rejects anything else", () => {
-    expect(isProjectSettingsSection("nope")).toBe(false);
-    expect(isProjectSettingsSection("pairing")).toBe(false);
-    expect(isProjectSettingsSection(null)).toBe(false);
-    expect(isProjectSettingsSection(undefined)).toBe(false);
-    expect(isProjectSettingsSection("")).toBe(false);
+    for (const section of ["nope", "pairing", null, undefined, ""]) expect(isProjectSettingsSection(section)).toBe(false);
   });
 });

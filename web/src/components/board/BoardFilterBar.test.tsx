@@ -105,12 +105,6 @@ beforeEach(() => {
 });
 
 describe("BoardFilterBar", () => {
-  it("says nothing about projects when there's nothing to say — no filter applied is just the default", async () => {
-    renderFilterBar();
-    await screen.findByRole("button", { name: /^Filter/ });
-    expect(screen.queryByText("Showing all projects")).not.toBeInTheDocument();
-  });
-
   it("renders the create menu next to the filter trigger", async () => {
     renderFilterBar();
     expect(await screen.findByRole("button", { name: "Create" })).toBeInTheDocument();
@@ -136,15 +130,6 @@ describe("BoardFilterBar", () => {
     await openFilterPopover(user);
     expect(screen.queryByText("Projects")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Filter by Backend" })).not.toBeInTheDocument();
-  });
-
-  it("toggles a project filter", async () => {
-    const user = userEvent.setup();
-    const onToggleProject = vi.fn();
-    renderFilterBar({ onToggleProject });
-    await openFilterPopover(user);
-    await user.click(await screen.findByRole("button", { name: "Filter by Backend" }));
-    expect(onToggleProject).toHaveBeenCalledWith("p-1");
   });
 
   it("shows active filters and clears them", async () => {
@@ -238,9 +223,10 @@ describe("BoardFilterBar", () => {
 });
 
 describe("BoardFilterBar interactions", () => {
-  it("toggles category, label, type, and status chips", async () => {
+  it("toggles project, category, uncategorized, label, type, status and developer chips", async () => {
     const user = userEvent.setup();
     mockReferenceData({ labels: ["bug"] });
+    const onToggleProject = vi.fn();
     const onToggleCategory = vi.fn();
     const onToggleLabel = vi.fn();
     const onSelectType = vi.fn();
@@ -248,6 +234,7 @@ describe("BoardFilterBar interactions", () => {
     const onToggleDeveloper = vi.fn();
     renderFilterBar({
       developers: ["alice"],
+      onToggleProject,
       onToggleCategory,
       onToggleLabel,
       onSelectType,
@@ -255,8 +242,12 @@ describe("BoardFilterBar interactions", () => {
       onToggleDeveloper,
     });
     await openFilterPopover(user);
-    await user.click(await screen.findByRole("button", { name: "Sprint 1" }));
+    await user.click(await screen.findByRole("button", { name: "Filter by Backend" }));
+    expect(onToggleProject).toHaveBeenCalledWith("p-1");
+    await user.click(screen.getByRole("button", { name: "Sprint 1" }));
     expect(onToggleCategory).toHaveBeenCalledWith("c-1");
+    await user.click(screen.getByRole("button", { name: "Uncategorized" }));
+    expect(onToggleCategory).toHaveBeenCalledWith("uncategorized");
     await user.click(screen.getByRole("button", { name: "bug" }));
     expect(onToggleLabel).toHaveBeenCalledWith("bug");
     await user.click(screen.getByRole("button", { name: "task" }));
@@ -267,17 +258,6 @@ describe("BoardFilterBar interactions", () => {
     expect(onToggleDeveloper).toHaveBeenCalledWith("alice");
   });
 
-  it("toggles the Uncategorized chip", async () => {
-    const user = userEvent.setup();
-    const onToggleCategory = vi.fn();
-    renderFilterBar({ onToggleCategory });
-    await openFilterPopover(user);
-    await user.click(await screen.findByRole("button", { name: "Uncategorized" }));
-    expect(onToggleCategory).toHaveBeenCalledWith("uncategorized");
-  });
-});
-
-describe("BoardFilterBar all/clear toggles", () => {
   it("toggles the active category chip off", async () => {
     const user = userEvent.setup();
     const onToggleCategory = vi.fn();

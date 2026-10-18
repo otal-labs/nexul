@@ -3,22 +3,11 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
-import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
+import { useFetchDocsByProject } from "@/hooks/DocHooks";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn() },
 }));
-
-const doc = {
-  id: "doc-1",
-  project_id: "proj-1",
-  title: "Spec",
-  body: '{"type":"doc","content":[]}',
-  version: 3,
-  archived: false,
-  created_at: "2026-08-01T00:00:00Z",
-  updated_at: "2026-08-02T00:00:00Z",
-};
 
 const docListItem = {
   id: "doc-1",
@@ -50,14 +39,5 @@ describe("useFetchDocsByProject", () => {
     const { result } = await renderHook(() => useFetchDocsByProject(undefined), { wrapper });
     expect(result.current.isPending).toBe(true);
     expect(api.get).not.toHaveBeenCalled();
-  });
-});
-
-describe("useFetchDoc", () => {
-  test("loads one doc", async () => {
-    jest.mocked(api.get).mockResolvedValue(doc);
-    const { result } = await renderHook(() => useFetchDoc("doc-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(doc));
-    expect(api.get).toHaveBeenCalledWith("/api/docs/doc-1");
   });
 });

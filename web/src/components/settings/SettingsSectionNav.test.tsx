@@ -22,6 +22,7 @@ describe("SettingsSectionNav", () => {
     );
     expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["First", "A", "B", "Second", "C"]);
     expect(screen.getByRole("link", { name: "B" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "A" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "C" })).toHaveAttribute("href", "/x/c");
   });
 

@@ -8,10 +8,6 @@ describe("listPaneStore", () => {
     useListPaneStore.getState().reset();
   });
 
-  it("starts at the default width", () => {
-    expect(useListPaneStore.getState().width).toBe(LIST_PANE_DEFAULT);
-  });
-
   it("clamps a width below the minimum and above the maximum", () => {
     useListPaneStore.getState().setWidth(LIST_PANE_MIN - 100);
     expect(useListPaneStore.getState().width).toBe(LIST_PANE_MIN);

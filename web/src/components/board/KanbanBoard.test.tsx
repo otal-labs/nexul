@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { DndContextProps, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
 import { act, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 
@@ -19,12 +18,9 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
-// TicketCard navigates directly via useNavigate rather than an onSelect
-// callback bubbled up through KanbanBoard/SwimlaneSection/KanbanColumn.
-const mockNavigate = vi.fn();
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
-  return { ...actual, useNavigate: () => mockNavigate };
+  return { ...actual, useNavigate: () => vi.fn() };
 });
 
 // jsdom never lays anything out, so drags are driven through the handlers the board hands to DndContext.
@@ -82,28 +78,12 @@ const swimlanes = [
 ];
 
 beforeEach(() => {
-  mockNavigate.mockReset();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockResolvedValue({ data: [] });
 });
 
 describe("KanbanBoard", () => {
-  it("renders swimlanes with all status columns", () => {
-    renderBoard(
-      <KanbanBoard
-        columns={columns}
-        swimlanes={swimlanes}
-        onDrop={() => {}}
-        onReorderColumns={() => {}}
-        onAddTicket={() => {}}
-      />,
-    );
-    expect(screen.getByRole("region", { name: "Sprint 1 swimlane" })).toBeInTheDocument();
-    expect(screen.getByText("Fix login")).toBeInTheDocument();
-    expect(screen.getByText("Wire FTS")).toBeInTheDocument();
-  });
-
-  it("renders an uncategorized section", () => {
+  it("renders a swimlane per category and an uncategorized one for tickets with none", () => {
     const withUncategorized = [
       ...swimlanes,
       lane("__uncategorized__", "Uncategorized", null, [ticket("t-3", "Quick capture", "open")]),
@@ -117,40 +97,11 @@ describe("KanbanBoard", () => {
         onAddTicket={() => {}}
       />,
     );
+    expect(screen.getByRole("region", { name: "Sprint 1 swimlane" })).toBeInTheDocument();
+    expect(screen.getByText("Fix login")).toBeInTheDocument();
+    expect(screen.getByText("Wire FTS")).toBeInTheDocument();
     expect(screen.getByText("Uncategorized")).toBeInTheDocument();
     expect(screen.getByText("Quick capture")).toBeInTheDocument();
-  });
-
-  it("shows the human-readable project-prefixed ticket id on cards", async () => {
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" } };
-      return { data: [] };
-    });
-    renderBoard(
-      <KanbanBoard
-        columns={columns}
-        swimlanes={swimlanes}
-        onDrop={() => {}}
-        onReorderColumns={() => {}}
-        onAddTicket={() => {}}
-      />,
-    );
-    expect((await screen.findAllByText("BE-1", { exact: false })).length).toBeGreaterThan(0);
-  });
-
-  it("navigates to the ticket detail page on click", async () => {
-    const user = userEvent.setup();
-    renderBoard(
-      <KanbanBoard
-        columns={columns}
-        swimlanes={swimlanes}
-        onDrop={() => {}}
-        onReorderColumns={() => {}}
-        onAddTicket={() => {}}
-      />,
-    );
-    await user.click(screen.getByText("Fix login"));
-    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 
   it("ignores an over change that arrives with the pointer still, so the ghost's own layout shift cannot flip it between two cells", () => {

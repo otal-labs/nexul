@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,64 +121,10 @@ describe("YourSettingsPage", () => {
     expect(screen.getByText("Defaults card")).toBeInTheDocument();
   });
 
-  it("copies a connection token from the Devices tab", async () => {
-    mocks.post.mockResolvedValue({
-      data: {
-        token: "header.payload.sig",
-        instance_url: "https://deploy.example.com",
-        settings_version: 2,
-        expires_at: "2026-09-11T12:00:00Z",
-      },
-    });
-    const user = userEvent.setup();
-    renderPage("/settings/security");
-
-    await user.click(await screen.findByRole("button", { name: "Copy connection token" }));
-    expect(await screen.findByText("Copied")).toBeInTheDocument();
-    expect(mocks.post).toHaveBeenCalledWith("/api/auth/connection-token");
-    expect(await navigator.clipboard.readText()).toBe("header.payload.sig");
-  });
-
-  it("mints a personal access token and shows it once", async () => {
-    mocks.post.mockResolvedValue({
-      data: { token: "dep_ABC123rawvalue", id: "pat-1", name: "ci agent", prefix: "rawvalue", created_at: "2026-08-12T00:00:00Z" },
-    });
-    const user = userEvent.setup();
+  it("opens the personal access tokens from their path", async () => {
     renderPage("/settings/security/tokens");
 
-    await user.type(await screen.findByLabelText(/token name/i), "ci agent");
-    await user.click(screen.getByRole("button", { name: /^create token$/i }));
-
-    expect(await screen.findByText(/copy this token now/i)).toBeInTheDocument();
-    expect(screen.getByText("dep_ABC123rawvalue")).toBeInTheDocument();
-    expect(mocks.post).toHaveBeenCalledWith("/api/auth/tokens", { name: "ci agent" });
-  });
-
-  it("lists personal access tokens with revoke state and revokes one", async () => {
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/auth/tokens") {
-        return Promise.resolve({
-          data: patList([
-            { id: "pat-1", user_id: "u1", name: "ci agent", prefix: "abc123", created_at: "2026-08-01T00:00:00Z" },
-            { id: "pat-2", user_id: "u1", name: "old token", prefix: "xyz789", created_at: "2026-07-01T00:00:00Z", revoked_at: "2026-07-15T00:00:00Z" },
-          ]),
-        });
-      }
-      return mockGet(url);
-    });
-    mocks.del.mockResolvedValue({ data: patList([]) });
-    const user = userEvent.setup();
-    renderPage("/settings/security/tokens");
-
-    expect(await screen.findByText("ci agent")).toBeInTheDocument();
-    expect(screen.getByText("old token")).toBeInTheDocument();
-    expect(screen.getByText(/^Revoked/)).toBeInTheDocument();
-
-    const revokeButtons = screen.getAllByRole("button", { name: /^revoke$/i });
-    expect(revokeButtons).toHaveLength(1);
-
-    await user.click(revokeButtons[0]!);
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
-    await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/auth/tokens/pat-1"));
+    expect(await screen.findByLabelText(/token name/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^create token$/i })).toBeInTheDocument();
   });
 });

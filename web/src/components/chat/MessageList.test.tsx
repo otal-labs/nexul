@@ -80,19 +80,13 @@ describe("MessageList agent stream bubble lifecycle", () => {
     expect(screen.queryByText("Agent")).not.toBeInTheDocument();
   });
 
-  it("renders the in-progress bubble once a frame lands in the store, with a stop button while streaming", () => {
-    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "Looking into it", streaming: true }));
+  it("renders the in-progress bubble once a frame lands in the store, with a stop button while streaming, and replaces its text as later frames arrive", () => {
+    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "Looking", streaming: true }));
     renderList([message({})]);
 
     expect(screen.getByText("Agent")).toBeInTheDocument();
-    expect(screen.getByText("Looking into it")).toBeInTheDocument();
-    expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
-  });
-
-  it("full-text-replaces the bubble as later frames for the same conversation arrive", () => {
-    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "Looking", streaming: true }));
-    renderList([message({})]);
     expect(screen.getByText("Looking")).toBeInTheDocument();
+    expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
 
     act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "Looking into it now", streaming: true }));
     expect(screen.queryByText("Looking")).not.toBeInTheDocument();

@@ -44,13 +44,6 @@ const renderForm = () => {
   );
 };
 
-const fillAndSubmit = async () => {
-  const user = userEvent.setup();
-  await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
-  await user.click(screen.getByRole("button", { name: /create instance record/i }));
-  return user;
-};
-
 beforeEach(() => {
   mocks.get.mockReset();
   mocks.post.mockReset();
@@ -67,12 +60,15 @@ describe("InstanceRecordForm", () => {
     expect(await screen.findByText("Zones failed")).toBeInTheDocument();
   });
 
-  it("preselects the only zone and creates the record with its name filled in", async () => {
+  it("preselects the only zone, previews the record name derived from the instance URL, and creates the record with it filled in", async () => {
     mockGets();
     mocks.post.mockResolvedValue({ data: { id: "r1" } });
     renderForm();
     expect(await screen.findByRole("combobox", { name: /^Zone$/ })).toHaveTextContent("example.com");
-    await fillAndSubmit();
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
+    expect(await screen.findByText("deploy.example.com → 203.0.113.10")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /create instance record/i }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/dns/instance-record", {
         zone_id: "z1",
@@ -82,14 +78,6 @@ describe("InstanceRecordForm", () => {
       }),
     );
     expect(mocks.onDone).toHaveBeenCalledWith(expect.objectContaining({ detail: "A → 203.0.113.10" }));
-  });
-
-  it("previews the record name derived from the instance URL", async () => {
-    mockGets();
-    renderForm();
-    const user = userEvent.setup();
-    await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
-    expect(await screen.findByText("deploy.example.com → 203.0.113.10")).toBeInTheDocument();
   });
 
   it("blocks the record when the instance URL is outside the zone, pointing at Settings", async () => {
@@ -111,17 +99,6 @@ describe("InstanceRecordForm", () => {
     await user.type(screen.getByLabelText(/points to/i), "203.0.113.10");
     expect(screen.getByRole("alert")).toHaveTextContent(/isn.t under other\.dev/i);
     expect(screen.getByRole("button", { name: /create instance record/i })).toBeDisabled();
-  });
-
-  it("surfaces the mismatch error via toast, keeps the values, and does not advance", async () => {
-    mockGets();
-    mocks.post.mockRejectedValue(new Error("boom"));
-    mocks.errorMessage.mockReturnValue("hostname is not under zone");
-    renderForm();
-    await fillAndSubmit();
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("hostname is not under zone"));
-    expect(screen.getByLabelText(/points to/i)).toHaveValue("203.0.113.10");
-    expect(mocks.onDone).not.toHaveBeenCalled();
   });
 
   it("rejects a submit without a target", async () => {

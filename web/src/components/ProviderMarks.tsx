@@ -36,29 +36,6 @@ export const ProviderMark = ({ provider }: { provider: Provider }) => {
   return <Mark />;
 };
 
-interface LoginProviderMarksProps {
-  login: string;
-}
-
-// GitHub checks a username, Google/Discord check verified email, so an "@" entry admits either.
-export const LoginProviderMarks = ({ login }: LoginProviderMarksProps) => {
-  if (login.includes("@")) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1" title="Google or Discord email">
-        <GoogleMark />
-        <DiscordMark />
-        <span className="sr-only">Google or Discord email</span>
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center" title="GitHub username">
-      <GithubMark />
-      <span className="sr-only">GitHub username</span>
-    </span>
-  );
-};
-
 const repoProviders: Record<string, { label: string; Mark: typeof GithubMark }> = {
   github: { label: "GitHub", Mark: GithubMark },
 };

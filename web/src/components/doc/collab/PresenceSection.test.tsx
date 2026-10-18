@@ -15,23 +15,19 @@ describe("PresenceSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders the avatar image when a participant carries one, initials otherwise", () => {
+  it("shows an avatar per participant with their activity, the image when one carries it and initials otherwise", () => {
     const withAvatar: CollabParticipant[] = [
       { clientID: 1, name: "Alice", color: "#ef4444", activity: "editing", avatar: "https://avatars.example/alice.png" },
       { clientID: 2, name: "Bob", color: "#22c55e", activity: "viewing" },
     ];
     render(<PresenceSection participants={withAvatar} />);
     const bubbles = screen.getAllByTestId("presence-avatar");
+    expect(bubbles).toHaveLength(2);
+    expect(screen.getByLabelText("Alice editing")).toBeInTheDocument();
+    expect(screen.getByLabelText("Bob viewing")).toBeInTheDocument();
     expect(bubbles[0]?.querySelector("img")).toHaveAttribute("src", "https://avatars.example/alice.png");
     expect(bubbles[1]?.querySelector("img")).toBeNull();
     expect(bubbles[1]).toHaveTextContent("B");
-  });
-
-  it("shows an avatar per participant with their activity", () => {
-    render(<PresenceSection participants={participants} />);
-    expect(screen.getAllByTestId("presence-avatar")).toHaveLength(2);
-    expect(screen.getByLabelText("Alice editing")).toBeInTheDocument();
-    expect(screen.getByLabelText("Bob viewing")).toBeInTheDocument();
   });
 
   it("caps the stack and shows an overflow chip beyond max", () => {

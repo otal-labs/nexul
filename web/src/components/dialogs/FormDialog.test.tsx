@@ -111,14 +111,15 @@ const renderWithRoot = (ui: ReactElement) =>
   );
 
 describe("useFormDialog", () => {
-  it("renders the title and description", async () => {
+  it("renders the title, description and a custom ok label", async () => {
     const user = userEvent.setup();
-    renderWithRoot(<FormHarness form={<TestForm />} />);
+    renderWithRoot(<FormHarness form={<TestForm />} okLabel="Create" />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
 
     expect(screen.getByText("New ticket")).toBeInTheDocument();
     expect(screen.getByText("Fill the form")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
   });
 
@@ -229,39 +230,20 @@ describe("useFormDialog", () => {
     await user.keyboard("{Escape}");
   });
 
-  it("renders a custom ok label", async () => {
-    const user = userEvent.setup();
-    renderWithRoot(<FormHarness form={<TestForm />} okLabel="Create" />);
-
-    await user.click(screen.getByRole("button", { name: "Open" }));
-
-    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-  });
-
   it("throws when useFormDialogContext is used outside a FormDialog", () => {
     expect(() => {
       render(<TestForm />);
     }).toThrow("useFormDialogContext must be used within a FormDialog");
   });
 
-  it("renders a header in place of the title, keeping the title as the dialog's accessible name", async () => {
+  it("renders a header in place of the title, keeping the title as the dialog's accessible name, and footerStart beside Cancel and OK", async () => {
     const user = userEvent.setup();
-    renderWithRoot(<FormHarness form={<TestForm />} header={<div>Custom header</div>} />);
+    renderWithRoot(<FormHarness form={<TestForm />} header={<div>Custom header</div>} footerStart={<span>Left content</span>} />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
 
     expect(screen.getByText("Custom header")).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "New ticket" })).toBeInTheDocument();
-    await user.keyboard("{Escape}");
-  });
-
-  it("renders footerStart at the left of the footer, alongside Cancel/OK", async () => {
-    const user = userEvent.setup();
-    renderWithRoot(<FormHarness form={<TestForm />} footerStart={<span>Left content</span>} />);
-
-    await user.click(screen.getByRole("button", { name: "Open" }));
-
     expect(screen.getByText("Left content")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();

@@ -1,14 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
   useCompleteOwnerWizard,
-  useFetchMe,
-  useFetchSettings,
-  useCopyConnectionToken,
   useUpdateSettings,
   authFollower,
 } from "@/hooks/AuthHooks";
@@ -56,20 +54,12 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.put).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.delete).mockReset();
-});
-
-describe("useFetchMe", () => {
-  it("loads the current user + onboarding status", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: me });
-    const { result } = renderHook(() => useFetchMe(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(me));
-    expect(api.get).toHaveBeenCalledWith("/api/auth/me");
-  });
 });
 
 describe("useCompleteOwnerWizard", () => {
@@ -83,26 +73,14 @@ describe("useCompleteOwnerWizard", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
+});
 
-  it("surfaces an api error", async () => {
+describe("useCompleteOwnerWizard failure", () => {
+  it("toasts a refusal", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useCompleteOwnerWizard(), { wrapper });
     await result.current.mutateAsync("https://deploy.example.com").catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-});
-
-describe("useFetchSettings", () => {
-  it("loads instance settings", async () => {
-    const settings = {
-      instance_url: "https://deploy.example.com",
-      settings_version: 2,
-      oauth_callback: "https://deploy.example.com/auth/callback",
-    };
-    vi.mocked(api.get).mockResolvedValue({ data: settings });
-    const { result } = renderHook(() => useFetchSettings(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(settings));
-    expect(api.get).toHaveBeenCalledWith("/api/auth/settings");
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 
@@ -112,18 +90,6 @@ describe("useUpdateSettings", () => {
     const { result } = renderHook(() => useUpdateSettings(), { wrapper });
     await result.current.mutateAsync("https://new.example.com");
     expect(api.put).toHaveBeenCalledWith("/api/auth/settings", { instance_url: "https://new.example.com" });
-  });
-});
-
-describe("useCopyConnectionToken", () => {
-  it("mints a token and puts it on the clipboard", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true, writable: true });
-    vi.mocked(api.post).mockResolvedValue({ data: { token: "t", instance_url: "https://deploy.example.com", settings_version: 2, expires_at: "2026-09-11T12:00:00Z" } });
-    const { result } = renderHook(() => useCopyConnectionToken(), { wrapper });
-    await result.current.mutateAsync();
-    expect(api.post).toHaveBeenCalledWith("/api/auth/connection-token");
-    expect(writeText).toHaveBeenCalledWith("t");
   });
 });
 

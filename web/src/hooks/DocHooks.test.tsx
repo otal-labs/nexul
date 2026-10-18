@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -8,7 +9,6 @@ import {
   useArchiveDoc,
   useCreateDoc,
   useFetchDoc,
-  useFetchDocs,
   useFetchDocsByProject,
   useRestoreDoc,
   docFollower,
@@ -46,19 +46,11 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.put).mockReset();
   vi.mocked(api.delete).mockReset();
-});
-
-describe("useFetchDocs", () => {
-  it("loads the doc list", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [doc] });
-    const { result } = renderHook(() => useFetchDocs(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([doc]));
-    expect(api.get).toHaveBeenCalledWith("/api/docs");
-  });
 });
 
 describe("useFetchDocsByProject", () => {
@@ -82,13 +74,6 @@ describe("useFetchDoc", () => {
     expect(result.current.isPending).toBe(true);
     expect(api.get).not.toHaveBeenCalled();
   });
-
-  it("loads a single doc", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: doc });
-    const { result } = renderHook(() => useFetchDoc("doc-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual(doc));
-    expect(api.get).toHaveBeenCalledWith("/api/docs/doc-1");
-  });
 });
 
 describe("useCreateDoc", () => {
@@ -99,12 +84,14 @@ describe("useCreateDoc", () => {
     expect(api.post).toHaveBeenCalledWith("/api/docs", { project_id: "project-1", title: "Spec", body: "body" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
+});
 
-  it("surfaces an api error", async () => {
+describe("useCreateDoc failure", () => {
+  it("toasts a refusal", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
     const { result } = renderHook(() => useCreateDoc(), { wrapper });
     await result.current.mutateAsync({ project_id: "project-1", title: "Spec", body: "body" }).catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });
 

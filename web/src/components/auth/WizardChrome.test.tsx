@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { WizardConfirmation } from "@/components/auth/WizardConfirmation";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 
 describe("WizardLayout", () => {
@@ -37,5 +38,19 @@ describe("WizardLayout", () => {
     );
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
     expect(screen.getByText("1 / 1")).toBeInTheDocument();
+  });
+});
+
+describe("WizardConfirmation", () => {
+  it("renders the success check with the headline and subtitle", () => {
+    render(<WizardConfirmation title="Instance registered" subtitle="One more step." />);
+    expect(screen.getByRole("heading", { name: "Instance registered" })).toBeInTheDocument();
+    expect(screen.getByText("One more step.")).toBeInTheDocument();
+  });
+
+  it("renders without a subtitle when none is given", () => {
+    render(<WizardConfirmation title="All set" />);
+    expect(screen.getByRole("heading", { name: "All set" })).toBeInTheDocument();
+    expect(screen.queryByRole("paragraph")).not.toBeInTheDocument();
   });
 });

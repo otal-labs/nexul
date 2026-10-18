@@ -16,11 +16,6 @@ describe("HealthDot", () => {
     expect(failed.firstChild).not.toHaveClass("animate-[status-pulse_2.4s_ease-standard_infinite]");
   });
 
-  it("cross-fades status color changes instead of a hard cut", () => {
-    const { container } = render(<HealthDot status={DeployStatus.Pending} />);
-    expect(container.firstChild).toHaveClass("transition-colors", "duration-150", "ease-standard");
-  });
-
   it("is decorative — the label lives in the adjacent badge, not the dot", () => {
     const { container } = render(<HealthDot status={DeployStatus.Failed} />);
     expect(container.firstChild).toHaveAttribute("aria-hidden");

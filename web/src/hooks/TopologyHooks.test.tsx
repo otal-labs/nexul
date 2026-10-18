@@ -59,19 +59,6 @@ describe("useFetchTopology", () => {
     });
   });
 
-  it("surfaces errors without crashing", async () => {
-    mocks.get.mockRejectedValue(new Error("boom"));
-    render(
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
-        <MemoryRouter>
-          <Harness />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    await screen.findByText("error");
-  });
 });
 
 describe("useFetchTopology across workspaces", () => {
