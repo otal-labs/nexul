@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button, type ButtonProps } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface DangerZoneProps {
   children: ReactNode;
@@ -38,8 +36,3 @@ export const DangerAction = ({ title, consequence, details, action }: DangerActi
 );
 
 export const dangerButtonClass = "border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive";
-
-// Outline in the destructive hue: the solid red button is the confirm dialog's, where deleting is the main action.
-export const DangerButton = ({ className, ...props }: ButtonProps) => (
-  <Button type="button" variant="outline" size="sm" className={cn(dangerButtonClass, className)} {...props} />
-);
