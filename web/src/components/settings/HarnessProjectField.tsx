@@ -16,6 +16,16 @@ interface HarnessProjectFieldProps<T extends FieldValues> {
 export const HarnessProjectField = <T extends FieldValues>({ control, name, label, computerId }: HarnessProjectFieldProps<T>) => {
   const projects = useFetchHarnessProjects(computerId);
 
+  // The manual input would show the saved raw id until the list arrives, so loading shows the label and loader alone.
+  if (computerId && projects.isPending) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium">{label}</p>
+        <LoadingDisplay label="Loading projects" className="justify-start p-0" />
+      </div>
+    );
+  }
+
   if (projects.data && projects.data.length > 0) {
     return (
       <FormCombobox
@@ -32,7 +42,6 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
     <div className="space-y-1">
       <FormInput control={control} name={name} label={label} placeholder="e.g. proj_abc123" />
       {!computerId && <p className="text-xs text-muted-foreground">Pick a computer to load its projects.</p>}
-      {projects.isPending && !!computerId && <LoadingDisplay label="Loading projects" className="justify-start p-0" />}
       {projects.isError && (
         <p className="text-xs text-muted-foreground">
           Couldn't load this computer's projects. Check it's online, or paste the project id.
