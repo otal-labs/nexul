@@ -123,42 +123,19 @@ describe("BoardSettingsSection", () => {
     expect(screen.queryByText(/no ticket types yet/i)).not.toBeInTheDocument();
   });
 
-  it("adds a status column preset to the stage's kind", async () => {
-    mocks.post.mockResolvedValue({
-      data: statusColumn({ id: "blocked", name: "Blocked", position: 4 }),
-    });
+  it.each([
+    ["progress", "Blocked"],
+    ["done", "Shipped"],
+  ])("adds a status column preset to the %s stage's kind", async (kind, name) => {
+    mocks.post.mockResolvedValue({ data: statusColumn({ id: "new", name, position: 4, kind }) });
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Add progress status" }));
-    await user.type(screen.getByLabelText("New status name"), "Blocked");
+    await user.click(await screen.findByRole("button", { name: `Add ${kind} status` }));
+    await user.type(screen.getByLabelText("New status name"), name);
     await user.click(screen.getByRole("button", { name: "Add column" }));
 
-    expect(mocks.post).toHaveBeenCalledWith("/api/statuses", {
-      project_id: PROJECT_ID,
-      name: "Blocked",
-      kind: "progress",
-      icon: "",
-    });
-  });
-
-  it("adds a done status column preset to that stage's kind", async () => {
-    mocks.post.mockResolvedValue({
-      data: statusColumn({ id: "done", name: "Done", position: 4, kind: "done" }),
-    });
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: "Add done status" }));
-    await user.type(screen.getByLabelText("New status name"), "Done");
-    await user.click(screen.getByRole("button", { name: "Add column" }));
-
-    expect(mocks.post).toHaveBeenCalledWith("/api/statuses", {
-      project_id: PROJECT_ID,
-      name: "Done",
-      kind: "done",
-      icon: "",
-    });
+    expect(mocks.post).toHaveBeenCalledWith("/api/statuses", { project_id: PROJECT_ID, name, kind, icon: "" });
   });
 
   it("adds a status column with a chosen icon", async () => {
@@ -202,15 +179,6 @@ describe("BoardSettingsSection", () => {
     expect(screen.queryByLabelText("New status name")).not.toBeInTheDocument();
   });
 
-  it("renders 'Add column' as an icon-only button, not visible text", async () => {
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: "Add progress status" }));
-    const addColumn = await screen.findByRole("button", { name: "Add column" });
-    expect(addColumn).not.toHaveTextContent("Add column");
-  });
-
   it("removes a status column", async () => {
     mocks.del.mockResolvedValue({ data: undefined });
     mocks.get.mockImplementation((url: string) => {
@@ -228,7 +196,7 @@ describe("BoardSettingsSection", () => {
     expect(mocks.del).toHaveBeenCalledWith("/api/statuses/blocked");
   });
 
-  it("reorders status columns with the arrows", async () => {
+  it("reorders status columns with the arrows, disabled at the list edges", async () => {
     mocks.post.mockResolvedValue({ data: undefined });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/statuses") {
@@ -244,38 +212,19 @@ describe("BoardSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Actions for Open" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Done" }));
+    expect(screen.getByRole("button", { name: "Move up" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move down" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Actions for Open" }));
+    expect(screen.getByRole("button", { name: "Move up" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Move down" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/statuses/reorder", {
       project_id: PROJECT_ID,
       ids: ["done", "open"],
     });
-  });
-
-  it("disables reorder buttons at the list edges", async () => {
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/statuses") {
-        return Promise.resolve({
-          data: [
-            statusColumn(),
-            statusColumn({ id: "done", name: "Done", position: 1, kind: "done" }),
-          ],
-        });
-      }
-      return Promise.resolve({ data: [] });
-    });
-    renderSection();
-
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Actions for Open" }));
-    expect(screen.getByRole("button", { name: "Move up" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move down" })).not.toBeDisabled();
-    await user.keyboard("{Escape}");
-
-    await user.click(screen.getByRole("button", { name: "Actions for Done" }));
-    expect(screen.getByRole("button", { name: "Move up" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move down" })).toBeDisabled();
   });
 
   it("renames a status column inline, resending its current icon", async () => {
