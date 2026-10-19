@@ -199,9 +199,9 @@ func TestAutoPlays_EachVerbNeedsItsOwnBit(t *testing.T) {
 		},
 	}
 	denied := map[string][]string{
-		"player": {"list", "list by play", "create", "update", "delete", "read cap", "set cap"},
-		"reader": {"create", "update", "delete", "set cap"},
-		"writer": {"list", "list by play", "delete", "read cap"},
+		"player": {"list", "list by play", "create", "update", "delete", "read limits", "set limits"},
+		"reader": {"create", "update", "delete", "set limits"},
+		"writer": {"list", "list by play", "delete", "read limits"},
 	}
 	for user, names := range denied {
 		for _, name := range names {
