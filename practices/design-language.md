@@ -590,17 +590,14 @@ Team's person dialog, its body scrolling between a fixed header and footer); a
 page that works as a full detail view is not forced into a drawer.
 
 Ticket page. The page runs the full width beside the sidebar, with no centred
-cap: the Thread is its own full-height panel on the left with the composer at
-its foot, and the body is a second panel that scrolls on its own. Its header
-spans the whole panel, so a long title reads across it, and under it sit the
-body and a 19.5rem rail behind a hairline rule. The thread panel's width is dragged like the list pane
-(handle in the gap on its right, 288 to 640px, arrow keys, double-click back to
-its share of the page, saved once on release, kept in the browser). The body
-sits open on the panel, no card, held to a 68ch measure; a card around it only
-framed the empty editing space. Breakpoints follow widths, not
-the screen: the two panels from 736px of page width, the rail beside the body
-once the body panel is 52rem wide (under a hairline above it until then), and below 736px one panel holds the body,
-then the Thread, then the rail. A ticket opened inside
+cap, as one full-height panel. Its header spans the panel, so a long title
+reads across it, and under it a line tab row holds Ticket and Thread, the
+Thread tab at its own path segment. Ticket scrolls under the tab row: the body
+and a 19.5rem rail behind a hairline rule. Thread fills the rest of the panel
+with the composer at its foot. The body sits open on the panel, no card, held
+to a 68ch measure; a card around it only framed the empty editing space. The
+rail joins the body once the panel is 52rem wide, under a hairline above it
+until then. A ticket opened inside
 another page (the Inbox split view) keeps the Thread under the body. The rail
 is a run of sections, each a mono uppercase microheader with its one action
 trailing as a ghost `+`, compact rows, and a muted one-line sentence

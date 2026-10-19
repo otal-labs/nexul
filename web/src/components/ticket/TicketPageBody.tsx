@@ -1,22 +1,10 @@
-import type { CSSProperties } from "react";
-
-import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
-import { ReviewPanel } from "@/components/codereview/ReviewPanel";
-import { DecisionsCheckNotice } from "@/components/play/DecisionsCheckNotice";
-import { PlaysRailSection } from "@/components/play/PlaysRailSection";
-import { TrailSection } from "@/components/play/TrailSection";
-import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
-import { TicketBugsSection } from "@/components/ticket/TicketBugsSection";
-import { ThreadPaneResizeHandle } from "@/components/ticket/ThreadPaneResizeHandle";
+import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
-import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
-import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
-import { TicketTestSection } from "@/components/ticket/TicketTestSection";
+import { TicketRail } from "@/components/ticket/TicketRail";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
-import { useThreadPaneStore } from "@/stores/threadPaneStore";
 
 interface TicketPageBodyProps {
   ticket: Ticket;
@@ -30,63 +18,53 @@ interface TicketPageBodyProps {
   embedded: boolean;
 }
 
-export const TicketPageBody = ({
-  ticket,
-  project,
-  workspaceId,
-  onTransition,
-  onSetType,
-  onAddLabel,
-  onRemoveLabel,
-  embedded,
-}: TicketPageBodyProps) => {
+export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...handlers }: TicketPageBodyProps) => {
   const layout = ticketPageLayout(embedded);
-  const threadWidth = useThreadPaneStore((s) => s.widths[ticket.id]?.width ?? null);
-  const gridStyle = !embedded && threadWidth !== null ? ({ "--thread-pane-width": `${threadWidth}px` } as CSSProperties) : undefined;
-  return (
-    <div className={layout.page} data-pane-layout={embedded ? undefined : ""}>
-      <div className={layout.grid} data-thread-grid="" style={gridStyle}>
-        <div className={layout.main}>
-          <div className={layout.mainGrid}>
-            <div className={layout.body}>
-              <TicketDetail key={ticket.id} ticket={ticket} layout={layout} {...(project ? { project } : {})} />
-            </div>
-            <div className={layout.rail}>
-              <TicketPropertiesPanel
-                ticket={ticket}
-                onTransition={onTransition}
-                onSetType={onSetType}
-                onAddLabel={onAddLabel}
-                onRemoveLabel={onRemoveLabel}
-              >
-                <PlaysRailSection ticket={ticket} />
-                <DevelopmentSection ticketId={ticket.id} />
-                <ReviewPanel ticketId={ticket.id} />
-                <AttachmentsSection owner={{ ticket_id: ticket.id }} projectId={ticket.project_id} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
-                <TicketLinksSection ticket={ticket} />
-                <DecisionsCheckNotice ticketId={ticket.id} />
-                <TicketTestSection ticket={ticket} />
-                <TicketBugsSection ticket={ticket} />
-                {workspaceId !== "" && (
-                  <TrailSection
-                    workspaceId={workspaceId}
-                    targetType="ticket"
-                    targetId={ticket.id}
-                    emptyMessage="No play runs yet."
-                    className="border-t-0 pt-0"
-                  />
-                )}
-              </TicketPropertiesPanel>
-            </div>
-          </div>
-        </div>
-        {workspaceId !== "" && (
+  const hasThread = workspaceId !== "";
+  const rail = <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />;
+  const projectProp = project ? { project } : {};
+
+  if (embedded) {
+    return (
+      <div className={layout.page}>
+        <TicketDetail key={ticket.id} ticket={ticket} layout={layout} {...projectProp} />
+        <div className={layout.rail}>{rail}</div>
+        {hasThread && (
           <div className={layout.thread}>
-            <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane={!embedded} />
-            {!embedded && <ThreadPaneResizeHandle ticketId={ticket.id} />}
+            <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />
           </div>
         )}
       </div>
+    );
+  }
+
+  const tabs: PageTab[] = [
+    { value: "ticket", label: "Ticket" },
+    { value: "thread", label: "Thread", hidden: !hasThread },
+  ];
+  return (
+    <div className={layout.page} data-pane-layout="">
+      <TicketDetail
+        key={ticket.id}
+        ticket={ticket}
+        layout={layout}
+        {...projectProp}
+        frameBody={(article) => (
+          <PageTabs label="Ticket sections" tabs={tabs} className={layout.tabs}>
+            <PageTabsContent value="ticket" className={layout.ticketTab}>
+              <div className={layout.ticketGrid}>
+                {article}
+                <div className={layout.rail}>{rail}</div>
+              </div>
+            </PageTabsContent>
+            {hasThread && (
+              <PageTabsContent value="thread" className={layout.thread}>
+                <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane />
+              </PageTabsContent>
+            )}
+          </PageTabs>
+        )}
+      />
     </div>
   );
 };

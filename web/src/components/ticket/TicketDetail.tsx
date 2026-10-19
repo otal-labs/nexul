@@ -1,5 +1,6 @@
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { personLabel } from "@nexul/client-core/person";
+import type { ReactNode } from "react";
 
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
@@ -30,13 +31,15 @@ interface TicketDetailProps {
   project?: Project;
   /** Where the header and the body sit in the ticket page's grid; they stack when omitted. */
   layout?: Pick<TicketPageLayout, "header" | "article">;
+  /** Wraps the body under the header, so the ticket page can hold it in a tab. */
+  frameBody?: (article: ReactNode) => ReactNode;
   /** Test seam: the session's socket factory. */
   wsFactory?: (url: string) => LiveSocket;
 }
 
 // Mounted with key={ticket.id}: the title seeds once, so switching tickets must remount, not update in place.
 // A writer edits the title and body live in the ticket's room, the way a doc is edited; a reader sees them static.
-export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetailProps) => {
+export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: TicketDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
   const canEdit = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
@@ -57,6 +60,24 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
   const workspaceCrumb = useWorkspaceCrumb();
   const projectCrumb = useProjectCrumb(ticket.project_id);
   const crumbs = useEmbeddedCrumbs(projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb]);
+
+  const article = (
+    <article className={layout?.article}>
+      {/* Open on the panel like a page, held to a reading measure; a card around it only framed empty space. */}
+      <div className="max-w-[68ch]">
+        {session && (
+          <CollabRichTextEditor
+            session={session}
+            value={ticket.body}
+            onChange={onBodyChange}
+            aria-label="Ticket description"
+            attachTo={{ ticket_id: ticket.id }}
+          />
+        )}
+        {!session && <DocBodyView body={ticket.body} />}
+      </div>
+    </article>
+  );
 
   return (
     <div className={cn(!layout && "space-y-6", layout && "contents")}>
@@ -100,21 +121,8 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
           </>
         }
       />
-      <article className={layout?.article}>
-        {/* Open on the panel like a page, held to a reading measure; a card around it only framed empty space. */}
-        <div className="max-w-[68ch]">
-          {session && (
-            <CollabRichTextEditor
-              session={session}
-              value={ticket.body}
-              onChange={onBodyChange}
-              aria-label="Ticket description"
-              attachTo={{ ticket_id: ticket.id }}
-            />
-          )}
-          {!session && <DocBodyView body={ticket.body} />}
-        </div>
-      </article>
+      {frameBody && frameBody(article)}
+      {!frameBody && article}
     </div>
   );
 };

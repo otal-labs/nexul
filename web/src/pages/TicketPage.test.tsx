@@ -27,7 +27,7 @@ const renderPage = (entry = "/tickets/t-1", embeddedTicketId?: string, inInbox =
       <EmbeddedCrumbsContext.Provider value={inInbox ? [] : undefined}>
         <MemoryRouter initialEntries={[entry]}>
           <Routes>
-            <Route path="/tickets/:ticketId" element={<TicketPage {...(embeddedTicketId ? { ticketId: embeddedTicketId } : {})} />} />
+            <Route path="/tickets/:ticketId/:tab?" element={<TicketPage {...(embeddedTicketId ? { ticketId: embeddedTicketId } : {})} />} />
             <Route path="/acme/board/:token" element={<p>Board page</p>} />
           </Routes>
         </MemoryRouter>
@@ -164,32 +164,46 @@ describe("TicketPage sections", () => {
     renderPage();
 
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Thread" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Thread" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Trail" })).not.toBeInTheDocument();
   });
 
-  it("shows the thread with no tab row, and every rail section says something when empty", async () => {
+  it("opens on the Ticket tab, its description beside a rail whose every section says something when empty", async () => {
     mockTicket();
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ticket" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Add the runner.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start thread" })).not.toBeInTheDocument();
     expect(await screen.findByText("Pass and Fail show in a testing column.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Source" })).toBeInTheDocument();
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
     expect(await screen.findByText("No play runs yet.")).toBeInTheDocument();
   });
 
-  it("gives the thread a resizable pane on the page and keeps it under the body in a split view", async () => {
+  it("shows the thread on its own tab, which a link opens straight to, in place of the description and rail", async () => {
+    const user = userEvent.setup();
     mockTicket();
     const page = renderPage();
-    expect(await screen.findByRole("separator", { name: "Resize thread" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Thread" }));
+    expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
+    expect(screen.queryByText("Add the runner.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No bugs reported.")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     page.unmount();
 
+    renderPage("/tickets/t-1/thread");
+    expect(await screen.findByRole("tab", { name: "Thread" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
+  });
+
+  it("keeps the thread under the body, with no tabs, inside another page", async () => {
+    mockTicket();
     renderPage("/tickets/t-1", "t-1");
     expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
-    expect(screen.queryByRole("separator", { name: "Resize thread" })).not.toBeInTheDocument();
+    expect(screen.getByText("Add the runner.")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 
   it("puts Plays directly under Properties, above Development", async () => {

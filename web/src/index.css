@@ -207,12 +207,6 @@ body {
   initial-value: 300px;
 }
 
-/* Set on the ticket grid and read only by its first track; "*" lets an unset value fall back to the column's share of the page. */
-@property --thread-pane-width {
-  syntax: "*";
-  inherits: false;
-}
-
 /* The scroll lock under every modal overlay sets this on body; not inherited, opening one restyles body instead of the whole page. */
 @property --removed-body-scroll-bar-size {
   syntax: "<length>";

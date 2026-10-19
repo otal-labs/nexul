@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 interface TicketThreadSectionProps {
   workspaceId: string;
   ticketId: string;
-  /** The thread is its own full-height panel beside the body, composer at its foot. */
+  /** The thread fills the ticket page's Thread tab, composer at its foot; the tab names it, so it drops its heading. */
   pane?: boolean;
 }
 
@@ -32,18 +32,19 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
     <div
       className={cn(
         "space-y-3 border-t border-border pt-6",
-        pane &&
-          "@min-[46rem]:flex @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
+        pane && "flex min-h-0 flex-1 flex-col border-t-0 pt-0",
       )}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">Thread</h2>
-        {onBots && (
-          <span className="-my-1.5">
-            <RowActions itemLabel="the thread" onBots={onBots} />
-          </span>
-        )}
-      </div>
+      {(!pane || onBots) && (
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          {!pane && <h2 className="text-sm font-semibold tracking-tight">Thread</h2>}
+          {onBots && (
+            <span className="-my-1.5 ml-auto">
+              <RowActions itemLabel="the thread" onBots={onBots} />
+            </span>
+          )}
+        </div>
+      )}
       {statusPending && <LoadingDisplay label="Loading thread…" />}
       {showStart && <QueueEventList targetType="ticket" targetId={ticketId} />}
       {showStart && pane && <p className="text-sm text-muted-foreground">No messages yet.</p>}
@@ -59,7 +60,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         <div
           className={cn(
             "h-96 overflow-hidden rounded-lg border border-border",
-            pane && "@min-[46rem]:h-auto @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:rounded-none @min-[46rem]:border-0",
+            pane && "h-auto min-h-0 flex-1 rounded-none border-0",
           )}
         >
           <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />
