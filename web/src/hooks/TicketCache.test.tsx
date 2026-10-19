@@ -43,6 +43,15 @@ describe("the ticket cache", () => {
     expect(client.getQueryData<Ticket[]>(["getTickets"])?.[0]?.title).toBe("Saved last");
   });
 
+  it("refetches the board's blockers when a ticket finishes, since a merged blocker no longer holds anything up", async () => {
+    const client = seeded();
+    client.setQueryData(["getBlockers"], {});
+    await ticketChanged(client, { ...ticket, title: "Login times out", updated_at: "2026-10-01T10:00:05Z" });
+    expect(stale(client, ["getBlockers"])).toBe(false);
+    await ticketChanged(client, { ...ticket, finished_at: "2026-10-01T10:00:09Z", updated_at: "2026-10-01T10:00:09Z" });
+    expect(stale(client, ["getBlockers"])).toBe(true);
+  });
+
   it("refetches the lists a new ticket belongs to and leaves the others alone", async () => {
     const client = seeded();
     await ticketCreated(client, { ...ticket, id: "t-2", doc_id: "doc-2" });

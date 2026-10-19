@@ -29,7 +29,7 @@ const refetch = (client: QueryClient, queryKey: QueryKey) => client.invalidateQu
 
 const linkedIds = (set: TicketLinkSet): string[] => linkedTickets(set).map((t) => t.id);
 
-// Other tickets' link sets and the board's blockers show a ticket's title and stage, so they follow those two fields.
+// Other tickets' link sets and the board's blockers show a ticket's title, stage and whether it merged, so they follow those.
 const refetchMentions = (client: QueryClient, id: string, stageMayMove: boolean) => {
   const sets = client
     .getQueriesData<TicketLinkSet>({ queryKey: [getTicketLinkSetKey] })
@@ -63,8 +63,8 @@ export const ticketChanged = (client: QueryClient, ticket: Ticket | string): Pro
     if (present && !belongs) client.setQueryData<Ticket[]>(key, list.filter((t) => t.id !== ticket.id));
     if (!present && belongs) work.push(refetch(client, key));
   }
-  const stageMoved = previous?.status !== ticket.status;
-  if (stageMoved || previous?.title !== ticket.title) work.push(...refetchMentions(client, ticket.id, stageMoved));
+  const cleared = previous?.status !== ticket.status || previous?.finished_at !== ticket.finished_at;
+  if (cleared || previous?.title !== ticket.title) work.push(...refetchMentions(client, ticket.id, cleared));
   return settle(work);
 };
 

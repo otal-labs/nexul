@@ -37,7 +37,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicLinkDeleted, Payload: LinkEvent{}, Description: "A found-in or blocked-by link was removed, or replaced by a new found-in."},
 		{Name: TopicTestPassed, Payload: TestedEvent{}, Description: "A ticket passed testing and moved to a done-stage column; tester is the login of whoever passed it."},
 		{Name: TopicTestFailed, Payload: TestedEvent{}, Description: "A ticket failed testing and moved back to a progress-stage column; report is the bug report posted to its thread."},
-		{Name: TopicUnblocked, Payload: UnblockedEvent{}, Description: "A ticket not in a done stage lost its last open blocked-by ticket: the blocker entered a done-stage column, its link was removed, or it was deleted. Each entry into done is a new unblock; a column redefined as done publishes nothing."},
+		{Name: TopicUnblocked, Payload: UnblockedEvent{}, Description: "A ticket not in a done stage lost its last open blocked-by ticket: the blocker finished (its pull request merged), entered a done-stage column, had its link removed, or was deleted. A finished blocker stays cleared; an unfinished one unblocks again on each entry into done. A column redefined as done publishes nothing."},
 	}
 }
 
@@ -111,9 +111,10 @@ type LinkEvent struct {
 
 // Causes of an unblock, the change that cleared a ticket's last open blocker.
 const (
-	UnblockedByBlockerDone    = "blocker_done"
-	UnblockedByLinkDeleted    = "link_deleted"
-	UnblockedByBlockerDeleted = "blocker_deleted"
+	UnblockedByBlockerDone     = "blocker_done"
+	UnblockedByBlockerFinished = "blocker_finished"
+	UnblockedByLinkDeleted     = "link_deleted"
+	UnblockedByBlockerDeleted  = "blocker_deleted"
 )
 
 // UnblockedEvent is the payload for ticket.unblocked; it names the ticket, and consumers load it for anything more.
@@ -121,8 +122,8 @@ type UnblockedEvent struct {
 	TicketID  string `json:"ticket_id"`
 	ProjectID string `json:"project_id"`
 	BlockerID string `json:"blocker_id" jsonschema:"The blocker whose change cleared the last open one; after blocker_deleted it no longer exists."`
-	Cause     string `json:"cause" enum:"blocker_done,link_deleted,blocker_deleted"`
-	Actor     Actor  `json:"actor" jsonschema:"Who moved the blocker, removed the link, or deleted the blocker."`
+	Cause     string `json:"cause" enum:"blocker_done,link_deleted,blocker_deleted,blocker_finished"`
+	Actor     Actor  `json:"actor" jsonschema:"Who moved the blocker, removed the link, or deleted the blocker; nobody for a pull request merged on the git host."`
 }
 
 // unblockedEvents publishes ticket.unblocked for each ticket the change to blockerID unblocks.

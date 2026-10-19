@@ -282,13 +282,13 @@ func TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL(t *testing.T) {
 }
 
 // TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees: a ticket is blocked while a blocker in a project the
-// scope reads is not in a done-stage column; a done blocker or one the reader cannot see holds nothing.
+// scope reads is neither finished nor in a done-stage column; a cleared blocker or one the reader cannot see holds nothing.
 func TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	s := newTestStore(t)
 	seedProject(t, s, "p-hidden", "workspace-default", "HID")
-	for _, tk := range []struct{ id, project string }{{"waits-on-open", "project-general"}, {"waits-on-hidden", "project-general"}, {"waits-on-done", "project-general"}, {"open", "project-general"}, {"hidden", "p-hidden"}, {"done", "project-general"}} {
+	for _, tk := range []struct{ id, project string }{{"waits-on-open", "project-general"}, {"waits-on-hidden", "project-general"}, {"waits-on-done", "project-general"}, {"waits-on-merged", "project-general"}, {"open", "project-general"}, {"hidden", "p-hidden"}, {"done", "project-general"}, {"merged", "project-general"}} {
 		ticket := newTestTicket(tk.id, "")
 		ticket.ProjectID = tk.project
 		if tk.id == "done" {
@@ -296,7 +296,9 @@ func TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees(t *testing.T
 		}
 		require.NoError(t, s.Tickets.Create(ctx, ticket))
 	}
-	for blocked, blocker := range map[string]string{"waits-on-open": "open", "waits-on-hidden": "hidden", "waits-on-done": "done"} {
+	_, err := s.Tickets.SetFinishedAt(ctx, "merged", time.Now(), nil)
+	require.NoError(t, err)
+	for blocked, blocker := range map[string]string{"waits-on-open": "open", "waits-on-hidden": "hidden", "waits-on-done": "done", "waits-on-merged": "merged"} {
 		require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: blocked, Kind: tickets.LinkBlockedBy, TargetID: blocker, CreatedAt: time.Now()}))
 	}
 	blocked := tickets.TicketFilter{BlockedOnly: true}

@@ -19,7 +19,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const bug: LinkedTicket = { id: "t-6", project_id: "p-1", prefix: "BKS", number: 6, title: "books 500s", status: "open", done: false };
+const bug: LinkedTicket = { id: "t-6", project_id: "p-1", prefix: "BKS", number: 6, title: "books 500s", status: "open", done: false, finished: false };
 
 const emptySet: TicketLinkSet = { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false };
 

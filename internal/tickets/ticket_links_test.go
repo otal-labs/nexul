@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -18,7 +19,7 @@ func (f *fakeRepo) linkedLocked(id string) *LinkedTicket {
 	if !ok {
 		return nil
 	}
-	return &LinkedTicket{ID: t.ID, ProjectID: t.ProjectID, Number: t.Number, Title: t.Title, Status: t.Status, Done: f.doneStatuses[t.Status]}
+	return &LinkedTicket{ID: t.ID, ProjectID: t.ProjectID, Number: t.Number, Title: t.Title, Status: t.Status, Done: f.doneStatuses[t.Status], Finished: t.FinishedAt != nil}
 }
 
 func (f *fakeRepo) ListLinkEnds(_ context.Context, id string) ([]LinkEnd, []LinkEnd, error) {
@@ -125,7 +126,7 @@ func (f *fakeRepo) UnclearedBlockers(_ context.Context) (map[string][]LinkedTick
 	out := map[string][]LinkedTicket{}
 	for _, l := range f.ticketLinks {
 		blocker := f.linkedLocked(l.TargetID)
-		if l.Kind != LinkBlockedBy || blocker == nil || blocker.Done {
+		if l.Kind != LinkBlockedBy || blocker == nil || blocker.Cleared() {
 			continue
 		}
 		out[l.TicketID] = append(out[l.TicketID], *blocker)
@@ -421,6 +422,12 @@ func TestUnblocked_EachPathNamesItsCauseAndActor(t *testing.T) {
 			_, err := s.SetStatusAs(ctx, blocker, StatusDone, automation, "run-1")
 			return err
 		}, UnblockedByBlockerDone, automation},
+		{"the blocker's pull request merges", func(ctx context.Context, s *Service, _, blocker string) error {
+			if err := s.LinkPR(ctx, blocker, validPRRef()); err != nil {
+				return err
+			}
+			return s.HandlePRMerged(ctx, eventbus.Event{Payload: json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":42,"linked_ticket_ids":[]}}`)})
+		}, UnblockedByBlockerFinished, person},
 		{"a person removes the blocker", func(ctx context.Context, s *Service, blocked, blocker string) error {
 			_, err := s.RemoveBlocker(ctx, blocked, blocker)
 			return err

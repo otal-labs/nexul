@@ -52,7 +52,7 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 
 For unit tests, `createMockContext` from `@nexul/sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
 
-Two events mark a moment rather than one change. `ticket.unblocked` fires when a ticket's last open blocker reaches a done column, its blocked-by link is removed, or it's deleted, with `cause` saying which. `doc.settled` fires once a person's edits to a doc have stopped for ten minutes, with `first` true for a doc created inside that window; edits an agent makes through MCP, or an automation makes, never start the wait.
+Two events mark a moment rather than one change. `ticket.unblocked` fires when a ticket's last open blocker gets its pull request merged, reaches a done column, has its blocked-by link removed, or is deleted, with `cause` saying which (`blocker_finished`, `blocker_done`, `link_deleted`, `blocker_deleted`). `doc.settled` fires once a person's edits to a doc have stopped for ten minutes, with `first` true for a doc created inside that window; edits an agent makes through MCP, or an automation makes, never start the wait.
 
 ## When a service goes down
 

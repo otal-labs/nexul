@@ -489,7 +489,7 @@ func (r ticketRepo) UnclearedBlockers(context.Context) (map[string][]tickets.Lin
 	}
 	out := map[string][]tickets.LinkedTicket{}
 	for _, l := range r.w.links {
-		if b := r.w.linked(l.TargetID); l.Kind == tickets.LinkBlockedBy && b != nil && !b.Done {
+		if b := r.w.linked(l.TargetID); l.Kind == tickets.LinkBlockedBy && b != nil && !b.Cleared() {
 			out[l.TicketID] = append(out[l.TicketID], *b)
 		}
 	}

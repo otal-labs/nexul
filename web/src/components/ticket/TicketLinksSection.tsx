@@ -38,7 +38,7 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
         </LinkGroupSection>
       )}
       {links && links.blocked_by.length > 0 && (
-        <LinkGroupSection title={links.blocked ? "Blocked by" : "Blocked by (all done)"}>
+        <LinkGroupSection title={links.blocked ? "Blocked by" : "Blocked by (all clear)"}>
           {links.blocked_by.map((t) => (
             <LinkedTicketRow
               key={t.id}

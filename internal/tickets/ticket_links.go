@@ -59,7 +59,7 @@ func buildLinkSet(from, to []LinkEnd) *LinkSet {
 		}
 		if e.Kind == LinkBlockedBy && e.Ticket != nil {
 			set.BlockedBy = append(set.BlockedBy, *e.Ticket)
-			set.Blocked = set.Blocked || !e.Ticket.Done
+			set.Blocked = set.Blocked || !e.Ticket.Cleared()
 		}
 	}
 	for _, e := range to {
@@ -165,7 +165,7 @@ func (s *Service) foundIn(ctx context.Context, id string) (string, bool, error) 
 	return "", false, nil
 }
 
-// AddBlocker records that a ticket waits on another reaching done, in any project of its workspace; it refuses a cycle
+// AddBlocker records that a ticket waits on another merging or reaching done, in any project of its workspace; it refuses a cycle
 // but never gates a status move.
 func (s *Service) AddBlocker(ctx context.Context, id, blockerID string) (*LinkSet, error) {
 	id, blockerID = strings.TrimSpace(id), strings.TrimSpace(blockerID)

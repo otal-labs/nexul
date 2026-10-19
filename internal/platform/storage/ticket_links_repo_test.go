@@ -1,12 +1,14 @@
 package storage
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -188,6 +190,33 @@ func (f *unblockFixture) move(t *testing.T, name string, kind workspace.StatusKi
 	require.NoError(t, err)
 }
 
+// merge links a pull request to the named ticket and merges it, which finishes the ticket.
+func (f *unblockFixture) merge(t *testing.T, name string) {
+	t.Helper()
+	ctx := t.Context()
+	require.NoError(t, f.svc.LinkPR(ctx, f.ids[name], tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}))
+	payload := json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":7,"linked_ticket_ids":[]}}`)
+	require.NoError(t, f.svc.HandlePRMerged(ctx, eventbus.Event{Payload: payload}))
+}
+
+func TestTicketLinks_Integration_AMergedBlockerIsClearedBeforeDone(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	f := newUnblockFixture(t, newTestStore(t), []string{"b"})
+	f.move(t, "b", workspace.StatusKindTesting)
+	f.merge(t, "b")
+
+	set, err := f.svc.Links(ctx, f.ids["a"])
+	require.NoError(t, err)
+	assert.False(t, set.Blocked)
+	require.Len(t, set.BlockedBy, 1)
+	assert.True(t, set.BlockedBy[0].Finished)
+	assert.False(t, set.BlockedBy[0].Done)
+	uncleared, err := f.svc.UnclearedBlockers(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, uncleared)
+}
+
 func TestTicketsRepo_Integration_UnblockedFiresOncePerUnblock(t *testing.T) {
 	t.Parallel()
 	done, progress := workspace.StatusKindDone, workspace.StatusKindProgress
@@ -209,6 +238,22 @@ func TestTicketsRepo_Integration_UnblockedFiresOncePerUnblock(t *testing.T) {
 			f.move(t, "b", progress)
 			f.move(t, "b", done)
 		}, [][3]string{{"a", "b", "blocker_done"}, {"a", "b", "blocker_done"}}},
+		{"a blocker's pull request merging unblocks", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.merge(t, "b")
+		}, [][3]string{{"a", "b", "blocker_finished"}}},
+		{"a merged blocker entering done unblocks nothing more", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.merge(t, "b")
+			f.move(t, "b", done)
+			f.move(t, "b", progress)
+			f.move(t, "b", done)
+		}, [][3]string{{"a", "b", "blocker_finished"}}},
+		{"a done blocker merging unblocks nothing more", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", done)
+			f.merge(t, "b")
+		}, [][3]string{{"a", "b", "blocker_done"}}},
+		{"one of two blockers merging unblocks nothing", []string{"b", "c"}, func(t *testing.T, f *unblockFixture) {
+			f.merge(t, "b")
+		}, nil},
 		{"a blocker moving between open stages unblocks nothing", []string{"b"}, func(t *testing.T, f *unblockFixture) {
 			f.move(t, "b", progress)
 		}, nil},

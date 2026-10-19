@@ -56,15 +56,20 @@ func (q *Queries) DeleteTicketFoundIn(ctx context.Context, ticketID string) (int
 	return result.RowsAffected()
 }
 
-const getTicketStage = `-- name: GetTicketStage :one
-SELECT s.kind AS stage FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?
+const getTicketBlockerState = `-- name: GetTicketBlockerState :one
+SELECT s.kind AS stage, t.finished_at FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?
 `
 
-func (q *Queries) GetTicketStage(ctx context.Context, id string) (sql.NullString, error) {
-	row := q.db.QueryRowContext(ctx, getTicketStage, id)
-	var stage sql.NullString
-	err := row.Scan(&stage)
-	return stage, err
+type GetTicketBlockerStateRow struct {
+	Stage      sql.NullString
+	FinishedAt sql.NullInt64
+}
+
+func (q *Queries) GetTicketBlockerState(ctx context.Context, id string) (GetTicketBlockerStateRow, error) {
+	row := q.db.QueryRowContext(ctx, getTicketBlockerState, id)
+	var i GetTicketBlockerStateRow
+	err := row.Scan(&i.Stage, &i.FinishedAt)
+	return i, err
 }
 
 const insertTicketLink = `-- name: InsertTicketLink :exec
@@ -116,7 +121,7 @@ func (q *Queries) ListTicketBlockerIDs(ctx context.Context, ticketID string) ([]
 }
 
 const listTicketLinksFrom = `-- name: ListTicketLinksFrom :many
-SELECT l.kind, l.target_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage
+SELECT l.kind, l.target_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage, t.finished_at
 FROM ticket_links l
 LEFT JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
@@ -126,14 +131,15 @@ ORDER BY l.created_at, l.target_id
 `
 
 type ListTicketLinksFromRow struct {
-	Kind      string
-	TargetID  sql.NullString
-	ProjectID sql.NullString
-	Number    sql.NullInt64
-	Title     sql.NullString
-	Status    sql.NullString
-	Prefix    sql.NullString
-	Stage     sql.NullString
+	Kind       string
+	TargetID   sql.NullString
+	ProjectID  sql.NullString
+	Number     sql.NullInt64
+	Title      sql.NullString
+	Status     sql.NullString
+	Prefix     sql.NullString
+	Stage      sql.NullString
+	FinishedAt sql.NullInt64
 }
 
 func (q *Queries) ListTicketLinksFrom(ctx context.Context, ticketID string) ([]ListTicketLinksFromRow, error) {
@@ -154,6 +160,7 @@ func (q *Queries) ListTicketLinksFrom(ctx context.Context, ticketID string) ([]L
 			&i.Status,
 			&i.Prefix,
 			&i.Stage,
+			&i.FinishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -169,7 +176,7 @@ func (q *Queries) ListTicketLinksFrom(ctx context.Context, ticketID string) ([]L
 }
 
 const listTicketLinksTo = `-- name: ListTicketLinksTo :many
-SELECT l.kind, l.ticket_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage
+SELECT l.kind, l.ticket_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage, t.finished_at
 FROM ticket_links l
 JOIN tickets t ON t.id = l.ticket_id
 LEFT JOIN projects p ON p.id = t.project_id
@@ -179,14 +186,15 @@ ORDER BY l.created_at, l.ticket_id
 `
 
 type ListTicketLinksToRow struct {
-	Kind      string
-	TicketID  string
-	ProjectID sql.NullString
-	Number    int64
-	Title     string
-	Status    string
-	Prefix    sql.NullString
-	Stage     sql.NullString
+	Kind       string
+	TicketID   string
+	ProjectID  sql.NullString
+	Number     int64
+	Title      string
+	Status     string
+	Prefix     sql.NullString
+	Stage      sql.NullString
+	FinishedAt sql.NullInt64
 }
 
 func (q *Queries) ListTicketLinksTo(ctx context.Context, targetID sql.NullString) ([]ListTicketLinksToRow, error) {
@@ -207,6 +215,7 @@ func (q *Queries) ListTicketLinksTo(ctx context.Context, targetID sql.NullString
 			&i.Status,
 			&i.Prefix,
 			&i.Stage,
+			&i.FinishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -232,7 +241,7 @@ WHERE l.kind = 'blocked_by' AND l.target_id = ?1 AND COALESCE(ts.kind, '') != 'd
     JOIN tickets b ON b.id = o.target_id
     LEFT JOIN statuses s ON s.id = b.status
     WHERE o.ticket_id = l.ticket_id AND o.kind = 'blocked_by' AND o.target_id != ?1
-      AND COALESCE(s.kind, '') != 'done'
+      AND COALESCE(s.kind, '') != 'done' AND b.finished_at IS NULL
   )
 ORDER BY l.ticket_id
 `
@@ -271,7 +280,7 @@ FROM ticket_links l
 JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
 LEFT JOIN statuses s ON s.id = t.status
-WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done'
+WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND t.finished_at IS NULL
 ORDER BY l.ticket_id, l.created_at, t.id
 `
 
@@ -322,7 +331,7 @@ FROM ticket_links l
 JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
 LEFT JOIN statuses s ON s.id = t.status
-WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND l.ticket_id IN (/*SLICE:ids*/?)
+WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND t.finished_at IS NULL AND l.ticket_id IN (/*SLICE:ids*/?)
 ORDER BY l.ticket_id, l.created_at, t.id
 `
 

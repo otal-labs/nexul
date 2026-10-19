@@ -298,9 +298,10 @@ func (f *fakeRepo) ListIDsByPR(_ context.Context, owner, repo string, number int
 	return ids, nil
 }
 
-func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error) {
+func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.unblocked = unblocked
 	t, ok := f.tickets[id]
 	if !ok {
 		return false, apperrs.ErrNotFound

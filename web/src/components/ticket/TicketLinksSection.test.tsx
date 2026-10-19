@@ -19,7 +19,7 @@ vi.mock("@/api/client", () => ({
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 
-const linked = (id: string, number: number, title: string, done = false): LinkedTicket => ({
+const linked = (id: string, number: number, title: string, done = false, finished = false): LinkedTicket => ({
   id,
   project_id: "p-1",
   prefix: "BKS",
@@ -27,6 +27,7 @@ const linked = (id: string, number: number, title: string, done = false): Linked
   title,
   status: "open",
   done,
+  finished,
 });
 
 const emptySet: TicketLinkSet = {
@@ -126,6 +127,14 @@ describe("TicketLinksSection", () => {
     expect(screen.getAllByRole("img", { name: "Done" })).toHaveLength(2);
     expect(screen.getByText("Blocks")).toBeInTheDocument();
     expect(screen.getByText("Found in")).toBeInTheDocument();
+  });
+
+  it("clears a blocker whose pull request merged before it reaches done", async () => {
+    mockApi({ ...emptySet, blocked_by: [linked("t-2", 2, "backend /books", false, true)], blocked: false });
+    renderSection();
+    expect(await screen.findByText("Blocked by (all clear)")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Merged" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Not done yet" })).not.toBeInTheDocument();
   });
 
   it("shows only the key in a row and opens the title and description on keyboard focus", async () => {

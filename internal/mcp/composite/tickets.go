@@ -140,7 +140,7 @@ type ticketListIn struct {
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only tickets in this project, by its id from project_list."`
 	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, by its id."`
 	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and the text of notes on the ticket's thread, for example login timeout. Title and body matches come first, by relevance, then note-only matches."`
-	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets still waiting on a blocker that has not reached a done-stage column."`
+	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets still waiting on a blocker whose pull request has not merged and that has not reached a done-stage column."`
 	mcptool.PageArgs
 }
 
@@ -229,6 +229,7 @@ type linkedResult struct {
 	Title    string `json:"title"`
 	StatusID string `json:"status_id"`
 	Done     bool   `json:"done"`
+	Finished bool   `json:"finished"`
 }
 
 type reviewResult struct {
@@ -308,7 +309,7 @@ func (d *ticketDetail) addReviews(ctx context.Context, r *codereview.Service, id
 }
 
 func linked(l tickets.LinkedTicket) linkedResult {
-	return linkedResult{ID: l.ID, Key: ticketKey(l.Prefix, l.Number), Title: l.Title, StatusID: string(l.Status), Done: l.Done}
+	return linkedResult{ID: l.ID, Key: ticketKey(l.Prefix, l.Number), Title: l.Title, StatusID: string(l.Status), Done: l.Done, Finished: l.Finished}
 }
 
 func linkedAll(ls []tickets.LinkedTicket) []linkedResult {
@@ -406,7 +407,7 @@ type ticketUpdateIn struct {
 	FoundInID        string        `json:"found_in_id,omitempty" jsonschema:"The id or key of the ticket this bug was found in; replaces any earlier found-in."`
 	FoundInUnknown   bool          `json:"found_in_unknown,omitzero" jsonschema:"True marks that nobody knows which ticket this bug was found in."`
 	ClearFoundIn     bool          `json:"clear_found_in,omitzero" jsonschema:"True removes the found-in link or the unknown marker."`
-	AddBlockerIDs    []string      `json:"add_blocker_ids,omitempty" jsonschema:"Ids or keys of tickets that must reach a done-stage column first. A link that would form a cycle is refused."`
+	AddBlockerIDs    []string      `json:"add_blocker_ids,omitempty" jsonschema:"Ids or keys of tickets that must merge a pull request or reach a done-stage column first. A link that would form a cycle is refused."`
 	RemoveBlockerIDs []string      `json:"remove_blocker_ids,omitempty" jsonschema:"Ids or keys of blockers to remove."`
 	LinkPR           *prLinkIn     `json:"link_pr,omitempty" jsonschema:"A pull request to link to the ticket."`
 	LinkBranch       *branchLinkIn `json:"link_branch,omitempty" jsonschema:"A branch to link to the ticket."`
