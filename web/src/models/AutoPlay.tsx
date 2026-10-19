@@ -78,10 +78,13 @@ export type SaveAutoPlayRequest = Pick<
 
 export interface AutoPlayLimits {
   daily_cap_per_ticket: number;
+  runs_at_once_per_person: number;
 }
 
 export const MIN_DAILY_CAP = 1;
 export const MAX_DAILY_CAP = 50;
+export const MIN_RUNS_AT_ONCE = 1;
+export const MAX_RUNS_AT_ONCE = 5;
 
 export type AutoPlaySubject = "ticket" | "doc" | "stack";
 

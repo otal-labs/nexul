@@ -491,7 +491,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	for _, topic := range plays.MomentTopics {
 		mustSubscribe(ctx, bus, "plays.auto_match", topic, " for auto plays", svc.playsRunner.HandleAutoPlayMoment)
 	}
-	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleRunFinished)
+	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleSlotsFreed)
+	mustSubscribe(ctx, bus, "plays.queue_limits", plays.TopicAutoPlayLimitsUpdated, " for the run queue", svc.playsRunner.HandleSlotsFreed)
 	// A paired computer or a finished setup may close the gap a person's queued runs wait on.
 	for _, topic := range plays.ComputerTopics {
 		mustSubscribe(ctx, bus, "plays.queue_computer", topic, " for the run queue", svc.playsRunner.HandleComputerChanged)

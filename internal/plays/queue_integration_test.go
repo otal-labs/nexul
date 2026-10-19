@@ -296,6 +296,28 @@ func TestDispatch_HighestPriorityFirst_OneSlotPerPerson(t *testing.T) {
 	assert.Equal(t, plays.QueueStarted, r.only(t, "t-task").Status)
 }
 
+func TestDispatch_RunsAtOnce_LetsThatManyGoSideBySide(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	require.NoError(t, r.store.Plays.SetAutoPlayLimits(t.Context(), ws, plays.AutoPlayLimits{DailyCapPerTicket: 5, RunsAtOncePerPerson: 2}))
+	r.press(t, fix.ID, "t-pressed", dev)
+	for _, id := range []string{"t-1", "t-2", "t-3"} {
+		r.ticket(id)
+		r.unblock(t, id)
+		r.clock = r.clock.Add(time.Second)
+	}
+
+	r.dispatch(t)
+	assert.Equal(t, []any{plays.QueueStarted, plays.QueueQueued, plays.ReasonNoFreeSlot},
+		[]any{r.only(t, "t-1").Status, r.only(t, "t-2").Status, r.only(t, "t-3").Reason},
+		"the pressed run takes one of the two slots, the oldest auto run the other")
+
+	r.endRuns(t, "t-pressed")
+	r.dispatch(t)
+	assert.Equal(t, []any{plays.QueueStarted, plays.QueueQueued}, []any{r.only(t, "t-2").Status, r.only(t, "t-3").Status})
+}
+
 func TestDispatch_PressedRunTakesTheSlot(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")
@@ -728,7 +750,7 @@ func TestPickComputer_AroundTheClaim_IsUsedOrRefusedNeverLost(t *testing.T) {
 
 func TestDispatch_DailyCap_PausesUntilResumed(t *testing.T) {
 	r := newRig(t, openStore(t))
-	require.NoError(t, r.store.Plays.SetAutoPlayDailyCap(t.Context(), ws, 2))
+	require.NoError(t, r.store.Plays.SetAutoPlayLimits(t.Context(), ws, plays.AutoPlayLimits{DailyCapPerTicket: 2, RunsAtOncePerPerson: 1}))
 	fix := r.play(t, "Fix it")
 	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
 	r.ticket("t-1")

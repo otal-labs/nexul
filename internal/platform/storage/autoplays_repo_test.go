@@ -138,24 +138,25 @@ func TestAutoPlaysRepo_MissingRowsAndAMissingPlay(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestAutoPlaysRepo_DailyCapStartsAtFive(t *testing.T) {
+func TestAutoPlaysRepo_LimitsStartAtFiveADayAndOneAtOnce(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	seedPlays(t, s)
 	ctx := t.Context()
-	limit, err := s.Plays.AutoPlayDailyCap(ctx, "ws-1")
+	limits, err := s.Plays.AutoPlayLimits(ctx, "ws-1")
 	require.NoError(t, err)
-	assert.Equal(t, plays.DefaultAutoPlayDailyCap, limit)
-	evt := eventbus.OutboxEvent{ID: "evt-cap", Topic: plays.TopicAutoPlayLimitsUpdated, Payload: plays.AutoPlayLimitsEvent{WorkspaceID: "ws-1", DailyCapPerTicket: 9}}
-	require.NoError(t, s.Plays.SetAutoPlayDailyCap(ctx, "ws-1", 9, evt))
-	limit, err = s.Plays.AutoPlayDailyCap(ctx, "ws-1")
+	assert.Equal(t, plays.AutoPlayLimits{DailyCapPerTicket: plays.DefaultAutoPlayDailyCap, RunsAtOncePerPerson: plays.DefaultAutoPlayRunsAtOnce}, limits)
+	want := plays.AutoPlayLimits{DailyCapPerTicket: 9, RunsAtOncePerPerson: 3}
+	evt := eventbus.OutboxEvent{ID: "evt-cap", Topic: plays.TopicAutoPlayLimitsUpdated, Payload: plays.AutoPlayLimitsEvent{WorkspaceID: "ws-1", DailyCapPerTicket: 9, RunsAtOncePerPerson: 3}}
+	require.NoError(t, s.Plays.SetAutoPlayLimits(ctx, "ws-1", want, evt))
+	limits, err = s.Plays.AutoPlayLimits(ctx, "ws-1")
 	require.NoError(t, err)
-	assert.Equal(t, 9, limit)
+	assert.Equal(t, want, limits)
 	var topic string
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE id = 'evt-cap'`).Scan(&topic))
 	assert.Equal(t, plays.TopicAutoPlayLimitsUpdated, topic)
 
-	_, err = s.Plays.AutoPlayDailyCap(ctx, "ghost")
+	_, err = s.Plays.AutoPlayLimits(ctx, "ghost")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-	require.ErrorIs(t, s.Plays.SetAutoPlayDailyCap(ctx, "ghost", 3), apperrs.ErrNotFound)
+	require.ErrorIs(t, s.Plays.SetAutoPlayLimits(ctx, "ghost", want), apperrs.ErrNotFound)
 }

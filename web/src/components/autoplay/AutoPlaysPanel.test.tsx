@@ -61,7 +61,7 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays") return { data: [play] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
-    if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5 } };
+    if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
     if (url === "/api/ticket-types" && projectId === "p-1") return { data: [{ id: "tt-1", name: "Bug" }] };
     if (url === "/api/tickets/labels") return { data: ["urgent"] };
@@ -113,9 +113,14 @@ describe("a play's auto plays", () => {
     refuse(new Error("no"));
     await waitFor(() => expect(toggle).toBeChecked());
 
-    mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7 } });
+    mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 1 } });
     await pickOption(user, "Auto plays per ticket a day", "7");
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 });
+
+    mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 3 } });
+    await pickOption(user, "Runs at once per person", "3");
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { runs_at_once_per_person: 3 });
+    expect(screen.getByRole("combobox", { name: "Runs at once per person" })).toHaveTextContent("3");
   });
 
   it("opens one in place of the list, and Cancel with an edit asks before going back", async () => {

@@ -1,5 +1,5 @@
 import { InlineSelect } from "@/components/autoplay/ComposerControls";
-import { useFetchAutoPlayLimits, useSetAutoPlayDailyCap } from "@/hooks/PlayHooks";
+import { useFetchAutoPlayLimits, useSetAutoPlayLimits } from "@/hooks/PlayHooks";
 import { MAX_DAILY_CAP, MIN_DAILY_CAP } from "@/models/AutoPlay";
 
 const CAP_OPTIONS = Array.from({ length: MAX_DAILY_CAP - MIN_DAILY_CAP + 1 }, (_, i) => {
@@ -15,7 +15,7 @@ interface AutoPlayCapLineProps {
 // The workspace's loop guard, shared by every play; picking a number applies it at once, like any setting without a Save.
 export const AutoPlayCapLine = ({ workspaceId, canWrite }: AutoPlayCapLineProps) => {
   const { data: limits } = useFetchAutoPlayLimits(workspaceId);
-  const setCap = useSetAutoPlayDailyCap(workspaceId);
+  const setCap = useSetAutoPlayLimits(workspaceId);
   const cap = limits?.daily_cap_per_ticket;
 
   return (
@@ -27,7 +27,7 @@ export const AutoPlayCapLine = ({ workspaceId, canWrite }: AutoPlayCapLineProps)
             label="Auto plays per ticket a day"
             value={String(cap)}
             options={CAP_OPTIONS}
-            onChange={(value) => setCap.mutate(Number(value))}
+            onChange={(value) => setCap.mutate({ daily_cap_per_ticket: Number(value) })}
             disabled={setCap.isPending}
             className="h-7 px-2 font-mono text-xs tabular-nums"
           />

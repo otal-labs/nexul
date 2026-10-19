@@ -479,12 +479,17 @@
       "daily_cap_per_ticket": {
         "type": "integer",
         "description": "How many automatic runs auto plays may start on one ticket per rolling day."
+      },
+      "runs_at_once_per_person": {
+        "type": "integer",
+        "description": "How many runs a person may have going, pressed or automatic, before their next auto run in this workspace waits."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "workspace_id",
-      "daily_cap_per_ticket"
+      "daily_cap_per_ticket",
+      "runs_at_once_per_person"
     ]
   },
   "auto_play.updated": {

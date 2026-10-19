@@ -25,14 +25,14 @@ type fakeRepo struct {
 	autoPlayErr error
 	// autoPlayLists counts ListAutoPlays calls, so a list proves it reads once per page.
 	autoPlayLists int
-	dailyCap      map[string]int
+	limits        map[string]AutoPlayLimits
 	// automationNames answers AutomationNamesByLabel by the label asked for; the matching itself is storage's.
 	automationNames map[string][]string
 	namesErr        error
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{byID: map[string]*Play{}, dailyCap: map[string]int{}}
+	return &fakeRepo{byID: map[string]*Play{}, limits: map[string]AutoPlayLimits{}}
 }
 
 func (f *fakeRepo) CreateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
@@ -125,25 +125,25 @@ func (f *fakeRepo) DeleteAutoPlay(_ context.Context, id string, evts ...eventbus
 	return apperrs.ErrNotFound
 }
 
-func (f *fakeRepo) AutoPlayDailyCap(_ context.Context, workspaceID string) (int, error) {
+func (f *fakeRepo) AutoPlayLimits(_ context.Context, workspaceID string) (AutoPlayLimits, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.autoPlayErr != nil {
-		return 0, f.autoPlayErr
+		return AutoPlayLimits{}, f.autoPlayErr
 	}
-	if limit, ok := f.dailyCap[workspaceID]; ok {
-		return limit, nil
+	if limits, ok := f.limits[workspaceID]; ok {
+		return limits, nil
 	}
-	return DefaultAutoPlayDailyCap, nil
+	return AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap, RunsAtOncePerPerson: DefaultAutoPlayRunsAtOnce}, nil
 }
 
-func (f *fakeRepo) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) SetAutoPlayLimits(_ context.Context, workspaceID string, limits AutoPlayLimits, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.autoPlayErr != nil {
 		return f.autoPlayErr
 	}
-	f.dailyCap[workspaceID] = limit
+	f.limits[workspaceID] = limits
 	f.published = append(f.published, evts...)
 	return nil
 }

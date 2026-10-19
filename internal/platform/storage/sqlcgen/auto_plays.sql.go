@@ -93,15 +93,20 @@ func (q *Queries) GetAutoPlay(ctx context.Context, id string) (AutoPlay, error) 
 	return i, err
 }
 
-const getAutoPlayDailyCap = `-- name: GetAutoPlayDailyCap :one
-SELECT auto_play_daily_cap FROM workspaces WHERE id = ?
+const getAutoPlayLimits = `-- name: GetAutoPlayLimits :one
+SELECT auto_play_daily_cap, auto_play_runs_at_once FROM workspaces WHERE id = ?
 `
 
-func (q *Queries) GetAutoPlayDailyCap(ctx context.Context, id string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getAutoPlayDailyCap, id)
-	var auto_play_daily_cap int64
-	err := row.Scan(&auto_play_daily_cap)
-	return auto_play_daily_cap, err
+type GetAutoPlayLimitsRow struct {
+	AutoPlayDailyCap   int64
+	AutoPlayRunsAtOnce int64
+}
+
+func (q *Queries) GetAutoPlayLimits(ctx context.Context, id string) (GetAutoPlayLimitsRow, error) {
+	row := q.db.QueryRowContext(ctx, getAutoPlayLimits, id)
+	var i GetAutoPlayLimitsRow
+	err := row.Scan(&i.AutoPlayDailyCap, &i.AutoPlayRunsAtOnce)
+	return i, err
 }
 
 const listAutoPlaysByPlays = `-- name: ListAutoPlaysByPlays :many
@@ -197,17 +202,18 @@ func (q *Queries) ListEnabledAutoPlaysByMoment(ctx context.Context, arg ListEnab
 	return items, nil
 }
 
-const setAutoPlayDailyCap = `-- name: SetAutoPlayDailyCap :execrows
-UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?
+const setAutoPlayLimits = `-- name: SetAutoPlayLimits :execrows
+UPDATE workspaces SET auto_play_daily_cap = ?, auto_play_runs_at_once = ? WHERE id = ?
 `
 
-type SetAutoPlayDailyCapParams struct {
-	AutoPlayDailyCap int64
-	ID               string
+type SetAutoPlayLimitsParams struct {
+	AutoPlayDailyCap   int64
+	AutoPlayRunsAtOnce int64
+	ID                 string
 }
 
-func (q *Queries) SetAutoPlayDailyCap(ctx context.Context, arg SetAutoPlayDailyCapParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setAutoPlayDailyCap, arg.AutoPlayDailyCap, arg.ID)
+func (q *Queries) SetAutoPlayLimits(ctx context.Context, arg SetAutoPlayLimitsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setAutoPlayLimits, arg.AutoPlayDailyCap, arg.AutoPlayRunsAtOnce, arg.ID)
 	if err != nil {
 		return 0, err
 	}

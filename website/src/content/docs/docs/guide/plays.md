@@ -93,6 +93,8 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 
 **Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
 
+**Each person has at most 1 run going at once** by default, pressed or automatic, so a second auto run waits ("busy with another run") until the first ends. Under any play's list of auto plays, pick up to 5 to let that many go side by side; it applies to the whole workspace and starts waiting runs at once. Runs side by side work best when the person's project link starts each run in its own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
+
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computer offline)".
 
 On the ticket, the rail's **Plays** section shows what is waiting: each queued run with its person and why it waits (computer offline, busy with another run, ticket busy, paused, or what to fix in their computer setup), and **Cancel** for that person or anyone with `autoplays:write`. When several computers are paired and none is the default, the person it runs on gets **Pick a computer**: a menu of their computers with each one's T3 projects. Picking one starts the run there and saves it as their link for the project, as the run dialog does the first time, so their other runs in that project start without asking; it doesn't change their default. While the run still waits, say because the picked computer went offline, the same person gets **Change computer** to pick another, which replaces the pick and the link. Once the run is starting, a pick is refused with "the run is already starting". Once a ticket reaches the daily cap, it shows **Auto plays paused** with the runs today; the ticket's developer or anyone with `autoplays:write` can press **Resume**, or it resumes by itself as the day rolls on. What already happened sits in the ticket's thread at the time it happened: "Fix with AI skipped: no longer unblocked" when the ticket stopped matching before the run's turn came, or "Fix with AI didn't run" with the reason when there was nobody to run it on. **Run it** on the latest one runs the play on your own computer. A ticket with no thread yet shows these lines above **Start thread**. A doc shows the same: queued and paused beside its trail, skipped and didn't run in its thread, or beside its trail too while it has no thread.
@@ -129,8 +131,8 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 | `plays:run` | press the plays you can see |
 | `plays:write` | create and edit plays, set who may see and run each one, stop anyone's run |
 | `plays:delete` | delete plays |
-| `autoplays:read` | see a play's auto plays and the daily cap |
-| `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
+| `autoplays:read` | see a play's auto plays, the daily cap, and the runs at once |
+| `autoplays:write` | add, change, and switch auto plays, and set the daily cap and the runs at once |
 | `autoplays:delete` | delete auto plays |
 
 A role gives these for every play; a play's own rules turn **See this play**, **Run**, **Edit** and **Delete** on or off for that play alone. A play whose own rule allows you **Run** shows its button even when your roles don't hold `plays:run`, and one whose rule denies it keeps its button hidden.

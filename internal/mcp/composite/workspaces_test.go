@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
@@ -69,22 +70,29 @@ type renameCall struct {
 	name, slug *string
 }
 
-// fakeLimits holds each workspace's auto play daily cap; err is what both calls return.
+// fakeLimits holds each workspace's auto play limits; err is what both calls return.
 type fakeLimits struct {
-	caps map[string]int
+	caps map[string]plays.AutoPlayLimits
 	err  error
 }
 
-func (f *fakeLimits) AutoPlayDailyCap(_ context.Context, workspaceID string) (int, error) {
+func (f *fakeLimits) AutoPlayLimits(_ context.Context, workspaceID string) (plays.AutoPlayLimits, error) {
 	return f.caps[workspaceID], f.err
 }
 
-func (f *fakeLimits) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int) (int, error) {
+func (f *fakeLimits) SetAutoPlayLimits(_ context.Context, workspaceID string, patch plays.AutoPlayLimitsPatch) (plays.AutoPlayLimits, error) {
 	if f.err != nil {
-		return 0, f.err
+		return plays.AutoPlayLimits{}, f.err
 	}
-	f.caps[workspaceID] = limit
-	return limit, nil
+	limits := f.caps[workspaceID]
+	if patch.DailyCapPerTicket != nil {
+		limits.DailyCapPerTicket = *patch.DailyCapPerTicket
+	}
+	if patch.RunsAtOncePerPerson != nil {
+		limits.RunsAtOncePerPerson = *patch.RunsAtOncePerPerson
+	}
+	f.caps[workspaceID] = limits
+	return limits, nil
 }
 
 // fakeAccounts records which accounts were detached from which workspace; err refuses every change.
@@ -188,17 +196,19 @@ func TestWorkspaceList_ListFailurePropagates(t *testing.T) {
 }
 
 func newWorkspaceUpdateCall(ws *fakeWorkspaces) func(context.Context, json.RawMessage) (any, error) {
-	return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{}}, &fakeAccounts{}, nil)[1].Call
+	return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]plays.AutoPlayLimits{}}, &fakeAccounts{}, nil)[1].Call
 }
 
-func TestWorkspaceList_WithIDShowsTheDailyCapToItsReaders(t *testing.T) {
+func TestWorkspaceList_WithIDShowsTheAutoPlayLimitsToItsReaders(t *testing.T) {
 	ws := &fakeWorkspaces{byUser: map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme"}}}}
-	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{"ws-1": 7}}, &fakeAccounts{}, nil)[0].Call
+	limits := map[string]plays.AutoPlayLimits{"ws-1": {DailyCapPerTicket: 7, RunsAtOncePerPerson: 2}}
+	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: limits}, &fakeAccounts{}, nil)[0].Call
 	out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
 	require.NoError(t, err)
 	got := out.(mcptool.Page[workspaceResult]).Items[0]
 	require.NotNil(t, got.AutoPlayDailyCap)
-	assert.Equal(t, 7, *got.AutoPlayDailyCap)
+	require.NotNil(t, got.AutoPlayRunsAtOnce)
+	assert.Equal(t, []int{7, 2}, []int{*got.AutoPlayDailyCap, *got.AutoPlayRunsAtOnce})
 
 	call = WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: errors.New("db down")}, &fakeAccounts{}, nil)[0].Call
 	_, err = call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
@@ -211,9 +221,17 @@ func TestWorkspaceUpdate_DailyCap(t *testing.T) {
 		ws := &fakeWorkspaces{byUser: member}
 		out, err := newWorkspaceUpdateCall(ws)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))
 		require.NoError(t, err)
-		nine := 9
-		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &nine}, out)
+		nine, none := 9, 0
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &nine, AutoPlayRunsAtOnce: &none}, out)
 		assert.Nil(t, ws.renamed, "no name or slug passed, so nothing is renamed")
+	})
+	t.Run("runs at once alone keeps the cap", func(t *testing.T) {
+		limits := &fakeLimits{caps: map[string]plays.AutoPlayLimits{"ws-1": {DailyCapPerTicket: 5, RunsAtOncePerPerson: 1}}}
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, limits, &fakeAccounts{}, nil)[1].Call
+		out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_runs_at_once":3}`))
+		require.NoError(t, err)
+		five, three := 5, 3
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &five, AutoPlayRunsAtOnce: &three}, out)
 	})
 	t.Run("in a workspace the caller is not in it is not found", func(t *testing.T) {
 		_, err := newWorkspaceUpdateCall(&fakeWorkspaces{byUser: member})(actorCtx("u-2"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))

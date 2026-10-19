@@ -54,3 +54,7 @@ pick writes only while the run is queued, so a pick landing as the run starts is
 as "already starting", never saved and then ignored.
 
 Amended: an archived workspace's auto plays match nothing and its queued runs wait without starting, so no automatic run starts there; a restore resumes the queue, and moments from the archived time are not replayed.
+
+Amended: a workspace sets how many runs a person may have going, 1 to 5 and 1 by default, before their next auto run
+there waits for a free slot. Every active run of theirs counts against it, pressed or automatic and in any workspace,
+since they all share the person's computer; raising it starts waiting runs at once.

@@ -25,10 +25,6 @@ func (req autoPlayRequest) input() AutoPlayInput {
 	}
 }
 
-type autoPlayLimits struct {
-	DailyCapPerTicket int `json:"daily_cap_per_ticket"`
-}
-
 func (h *Handler) listAutoPlays(w http.ResponseWriter, r *http.Request) {
 	list, err := h.svc.ListAutoPlays(r.Context(), r.PathValue("workspaceID"), r.PathValue("playID"))
 	if err != nil {
@@ -75,24 +71,24 @@ func (h *Handler) deleteAutoPlay(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAutoPlayLimits(w http.ResponseWriter, r *http.Request) {
-	limit, err := h.svc.AutoPlayDailyCap(r.Context(), r.PathValue("workspaceID"))
+	limits, err := h.svc.AutoPlayLimits(r.Context(), r.PathValue("workspaceID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, autoPlayLimits{DailyCapPerTicket: limit})
+	httpx.WriteJSON(w, http.StatusOK, limits)
 }
 
 func (h *Handler) setAutoPlayLimits(w http.ResponseWriter, r *http.Request) {
-	var req autoPlayLimits
+	var req AutoPlayLimitsPatch
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	limit, err := h.svc.SetAutoPlayDailyCap(r.Context(), r.PathValue("workspaceID"), req.DailyCapPerTicket)
+	limits, err := h.svc.SetAutoPlayLimits(r.Context(), r.PathValue("workspaceID"), req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, autoPlayLimits{DailyCapPerTicket: limit})
+	httpx.WriteJSON(w, http.StatusOK, limits)
 }

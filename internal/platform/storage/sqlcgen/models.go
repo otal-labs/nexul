@@ -1247,6 +1247,7 @@ type Workspace struct {
 	AccessSetupBy         string
 	AccessSetupAt         int64
 	ArchivedAt            sql.NullInt64
+	AutoPlayRunsAtOnce    int64
 }
 
 type WorkspaceInvite struct {

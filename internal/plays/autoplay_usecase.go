@@ -134,33 +134,57 @@ func (s *Service) DeleteAutoPlay(ctx context.Context, workspaceID, playID, id st
 	return nil
 }
 
-// AutoPlayDailyCap is how many automatic runs one ticket of workspaceID may get per rolling day (autoplays:read).
-func (s *Service) AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error) {
+// AutoPlayLimits are workspaceID's bounds on automatic runs (autoplays:read).
+func (s *Service) AutoPlayLimits(ctx context.Context, workspaceID string) (AutoPlayLimits, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if err := s.require(ctx, workspaceID, permissions.AutoplaysRead); err != nil {
-		return 0, err
+		return AutoPlayLimits{}, err
 	}
-	limit, err := s.repo.AutoPlayDailyCap(ctx, workspaceID)
+	limits, err := s.repo.AutoPlayLimits(ctx, workspaceID)
 	if err != nil {
-		return 0, fmt.Errorf("get the auto play daily cap of workspace %s: %w", workspaceID, err)
+		return AutoPlayLimits{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
 	}
-	return limit, nil
+	return limits, nil
 }
 
-// SetAutoPlayDailyCap changes workspaceID's cap on automatic runs per ticket per day (autoplays:write).
-func (s *Service) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) (int, error) {
+// AutoPlayLimitsPatch names the limits to change; a nil field keeps its value.
+type AutoPlayLimitsPatch struct {
+	DailyCapPerTicket   *int `json:"daily_cap_per_ticket"`
+	RunsAtOncePerPerson *int `json:"runs_at_once_per_person"`
+}
+
+// SetAutoPlayLimits changes workspaceID's bounds on automatic runs (autoplays:write).
+func (s *Service) SetAutoPlayLimits(ctx context.Context, workspaceID string, patch AutoPlayLimitsPatch) (AutoPlayLimits, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if err := s.require(ctx, workspaceID, permissions.AutoplaysWrite); err != nil {
-		return 0, err
+		return AutoPlayLimits{}, err
 	}
-	if limit < MinAutoPlayDailyCap || limit > MaxAutoPlayDailyCap {
-		return 0, fmt.Errorf("%w: the daily cap on automatic runs per ticket is %d to %d", apperrs.ErrInvalid, MinAutoPlayDailyCap, MaxAutoPlayDailyCap)
+	if patch.DailyCapPerTicket == nil && patch.RunsAtOncePerPerson == nil {
+		return AutoPlayLimits{}, fmt.Errorf("%w: send daily_cap_per_ticket, runs_at_once_per_person, or both", apperrs.ErrInvalid)
 	}
-	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: limit})
-	if err := s.repo.SetAutoPlayDailyCap(ctx, workspaceID, limit, evt); err != nil {
-		return 0, fmt.Errorf("set the auto play daily cap of workspace %s: %w", workspaceID, err)
+	if c := patch.DailyCapPerTicket; c != nil && (*c < MinAutoPlayDailyCap || *c > MaxAutoPlayDailyCap) {
+		return AutoPlayLimits{}, fmt.Errorf("%w: the daily cap on automatic runs per ticket is %d to %d", apperrs.ErrInvalid, MinAutoPlayDailyCap, MaxAutoPlayDailyCap)
 	}
-	return limit, nil
+	if n := patch.RunsAtOncePerPerson; n != nil && (*n < MinAutoPlayRunsAtOnce || *n > MaxAutoPlayRunsAtOnce) {
+		return AutoPlayLimits{}, fmt.Errorf("%w: the runs at once per person are %d to %d", apperrs.ErrInvalid, MinAutoPlayRunsAtOnce, MaxAutoPlayRunsAtOnce)
+	}
+	limits, err := s.repo.AutoPlayLimits(ctx, workspaceID)
+	if err != nil {
+		return AutoPlayLimits{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
+	}
+	if patch.DailyCapPerTicket != nil {
+		limits.DailyCapPerTicket = *patch.DailyCapPerTicket
+	}
+	if patch.RunsAtOncePerPerson != nil {
+		limits.RunsAtOncePerPerson = *patch.RunsAtOncePerPerson
+	}
+	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{
+		WorkspaceID: workspaceID, DailyCapPerTicket: limits.DailyCapPerTicket, RunsAtOncePerPerson: limits.RunsAtOncePerPerson,
+	})
+	if err := s.repo.SetAutoPlayLimits(ctx, workspaceID, limits, evt); err != nil {
+		return AutoPlayLimits{}, fmt.Errorf("set the auto play limits of workspace %s: %w", workspaceID, err)
+	}
+	return limits, nil
 }
 
 // autoPlayInPlay finds an auto play under its play and workspace; one under another play reads as not found.

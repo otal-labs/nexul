@@ -61,8 +61,9 @@ type AutoPlayDeletedEvent struct {
 
 // AutoPlayLimitsEvent is the auto_play.limits_updated payload: a workspace's caps on automatic runs after a change.
 type AutoPlayLimitsEvent struct {
-	WorkspaceID       string `json:"workspace_id"`
-	DailyCapPerTicket int    `json:"daily_cap_per_ticket" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day."`
+	WorkspaceID         string `json:"workspace_id"`
+	DailyCapPerTicket   int    `json:"daily_cap_per_ticket" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day."`
+	RunsAtOncePerPerson int    `json:"runs_at_once_per_person" jsonschema:"How many runs a person may have going, pressed or automatic, before their next auto run in this workspace waits."`
 }
 
 // CreatedEvent is the payload for play.created; field names are part of the event contract (ADR 0044).
