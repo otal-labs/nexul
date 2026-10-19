@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectCategories } from "@/components/project/ProjectCategories";
 import { api } from "@/api/client";
 import type { Category } from "@/models/Category";
-import { withOwner } from "@/test/viewer";
+import { asReader, settle, withOwner } from "@/test/viewer";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
@@ -154,6 +154,29 @@ describe("ProjectCategories", () => {
     await user.click(await screen.findByRole("button", { name: "Actions for Sprint 1" }));
     await user.click(await screen.findByRole("button", { name: "Move down" }));
     expect(api.post).toHaveBeenCalledWith("/api/categories/reorder", { project_id: "p-1", ids: ["c-2", "c-1"] });
+  });
+
+  it("makes a writer's whole row the drag surface, with the actions menu beside it", async () => {
+    renderCategories();
+
+    const surface = await screen.findByRole("button", { name: "Reorder Sprint 1" });
+    expect(surface).toHaveAttribute("aria-roledescription", "sortable");
+    expect(surface).toHaveTextContent("Sprint 1");
+    expect(surface).not.toContainElement(screen.getByRole("button", { name: "Actions for Sprint 1" }));
+  });
+
+  it("gives a viewer who cannot write no way to drag a row", async () => {
+    const reads: Record<string, unknown> = { "/api/categories": categories, "/api/tickets": tickets };
+    vi.mocked(api.get).mockImplementation(asReader({ permissions: ["projects:read", "tickets:read"] }, (url: string) => reads[url] ?? []));
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ProjectCategories projectId="p-1" />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
+    await settle();
+    expect(screen.queryByRole("button", { name: /^Reorder / })).not.toBeInTheDocument();
   });
 
   it("disables Move up for the first row and Move down for the last row in the kebab menu", async () => {

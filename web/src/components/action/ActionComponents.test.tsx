@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionState } from "@nexul/client-core/actionState";
 
 import { ActionButton } from "@/components/action/ActionButton";
-import { ActionDragHandle } from "@/components/action/ActionDragHandle";
 import { ActionInlineEdit } from "@/components/action/ActionInlineEdit";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 
@@ -55,12 +54,6 @@ const controls: { name: string; control: string; tooltip: boolean; stays?: strin
         Atlas
       </ActionInlineEdit>
     ),
-  },
-  {
-    name: "drag handle",
-    control: "Reorder Atlas",
-    tooltip: true,
-    draw: (activate) => <ActionDragHandle permission="projects:write" label="Reorder Atlas" onClick={activate} />,
   },
 ];
 

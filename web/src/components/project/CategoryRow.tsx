@@ -2,11 +2,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { ActionDragHandle } from "@/components/action/ActionDragHandle";
 import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS, type ConfigurableColorName } from "@/components/board/ticketTypeColor";
 import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useDeleteCategory } from "@/hooks/CategoryHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { EASE_OUT, lastInputWasKeyboard, ROW_GLIDE } from "@/lib/motion";
@@ -30,7 +30,7 @@ interface CategoryRowProps {
   onLeave?: () => void;
 }
 
-// Edit, reorder and delete sit in one menu so the row reads as grip, dot, name, count and one affordance.
+// Edit, reorder and delete sit in one menu so the row reads as dot, name, count and one affordance; the rest of the row is what drags.
 export const CategoryRow = ({ category, index, lifted, count, first, last, onMoveUp, onMoveDown, onLeave }: CategoryRowProps) => {
   const reduced = useReducedMotion() ?? false;
   // A move made with the keyboard lands at once; a pointer's glides, so the eye follows the row to its new place.
@@ -39,9 +39,10 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
   const { open: confirm } = useConfirmationDialog();
   const [editing, setEditing] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const draggable = useActionState({ permission: "projects:write", projectId: category.project_id }).state === "live";
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: category.id,
-    disabled: editing,
+    disabled: editing || !draggable,
     transition: { duration: 200, easing: EASE_OUT },
   });
 
@@ -74,31 +75,30 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
           layoutDependency={index}
           transition={{ layout: ROW_GLIDE }}
           className={cn(
-            "relative flex items-center gap-2 bg-card px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40",
+            "relative flex items-center bg-card pr-3 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40",
             lifted && "z-10",
           )}
         >
-          <ActionDragHandle
-            permission="projects:write"
-            projectId={category.project_id}
-            verb="reorder categories"
-            label={`Reorder ${category.name}`}
+          <div
             ref={setActivatorNodeRef}
-            className="-ml-1 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-            {...attributes}
-            {...listeners}
-          />
-          {/* Always holds the dot column so names line up with or without a color. */}
-          <span
-            className={cn("size-2 shrink-0 rounded-full", isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : "bg-transparent")}
-            aria-hidden
-          />
-          <span className="min-w-0 flex-1 truncate" title={category.name}>
-            {category.name}
-          </span>
-          <span className="font-mono text-xs tabular-nums text-muted-foreground" title={`${count} tickets`}>
-            {count}
-          </span>
+            {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${category.name}` } : {})}
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md py-2 pr-2 pl-3",
+              draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
+            )}
+          >
+            {/* Always holds the dot column so names line up with or without a color. */}
+            <span
+              className={cn("size-2 shrink-0 rounded-full", isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : "bg-transparent")}
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 truncate" title={category.name}>
+              {category.name}
+            </span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground" title={`${count} tickets`}>
+              {count}
+            </span>
+          </div>
           <RowActionsMenu
             subject={category.name}
             projectId={category.project_id}
