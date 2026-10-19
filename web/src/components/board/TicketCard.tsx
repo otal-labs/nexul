@@ -151,8 +151,12 @@ const TicketCardImpl = ({ ticket }: TicketCardProps) => {
       {...attributes}
       onClick={open}
       onKeyDown={(event) => {
-        // Space is dnd-kit's keyboard drag pickup; only Enter opens the ticket, matching native <button>.
-        if (event.key === "Enter") open();
+        // Enter opens the ticket, matching native <button>; every other key goes to dnd-kit, whose pickup is Space.
+        if (event.key === "Enter") {
+          open();
+          return;
+        }
+        if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
         "group relative flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",

@@ -155,4 +155,16 @@ describe("KanbanBoard", () => {
     const copies = await screen.findAllByText("Fix login");
     expect(copies.filter((copy) => !container.contains(copy))).toHaveLength(1);
   });
+
+  it("picks a card up with Space, so a keyboard user can move it", async () => {
+    const { container } = renderBoard(
+      <KanbanBoard columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
+    );
+    const card = within(container).getByText("Fix login").closest<HTMLElement>('[role="button"]')!;
+    card.focus();
+    fireEvent.keyDown(card, { code: "Space", key: " " });
+
+    const copies = await screen.findAllByText("Fix login");
+    expect(copies.filter((copy) => !container.contains(copy))).toHaveLength(1);
+  });
 });
