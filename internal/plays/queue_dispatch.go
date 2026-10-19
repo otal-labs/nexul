@@ -200,7 +200,8 @@ func (r *Runner) dispatchPerson(ctx context.Context, pass *queuePass, person str
 		limit, ok := limits[it.WorkspaceID]
 		if !ok {
 			if limit, err = r.plays.AutoPlayLimits(ctx, it.WorkspaceID); err != nil {
-				return fmt.Errorf("get the auto play limits of workspace %s: %w", it.WorkspaceID, err)
+				r.log.Error("plays: read a queued run's workspace limits", "item", it.ID, "error", err)
+				continue
 			}
 			limits[it.WorkspaceID] = limit
 		}
