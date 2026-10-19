@@ -5,7 +5,7 @@ sidebar:
   order: 8
 ---
 
-Conversations sit in the app sidebar in four groups: **Channels**, **Voice channels**, **Direct messages**, and **Threads**. Threads holds doc threads once one exists; a ticket's thread stays on its ticket page. Each row shows its unread count, and a conversation's link opens straight to it.
+Conversations sit in the app sidebar in four groups: **Channels**, **Voice channels**, **Direct messages**, and **Threads**. Threads holds doc threads once one exists, and a doc thread's title links back to its doc; a ticket's thread stays on its ticket page. Each row shows its unread count, and a conversation's link opens straight to it.
 
 ## Start a conversation
 
