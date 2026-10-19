@@ -200,7 +200,10 @@ func (h *DialinHandler) handleConn(ctx context.Context, automationID string, ws 
 		return
 	}
 
-	go h.deliverLoop(ctx, c)
+	// Switching on or restoring drops this connection, so one that did not run at hello never delivers.
+	if automation.Runs() {
+		go h.deliverLoop(ctx, c)
+	}
 	h.readLoop(ctx, c)
 }
 
