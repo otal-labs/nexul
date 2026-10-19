@@ -567,14 +567,14 @@ Rules:
 
 Every write control goes through the action components in
 `components/action/`; nobody writes a permission check by hand beside a
-button, menu row, inline edit or drag handle (ADR 0152).
+button, menu row or inline edit (ADR 0152).
 
 | Control | Component | Takes |
 |---|---|---|
 | Button | `ActionButton` | the `Button` props, an optional `icon`, `to` (a link while live), and the gate below |
 | Row of a popover menu | `ActionMenuItem` | `onSelect`, `icon`, `destructive`, `separated`, and the gate; a `RowAction` with a `permission` renders through it |
 | A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state; hidden, the value still shows as plain text |
-| The grip that starts a drag | `ActionDragHandle` | `label`, the sortable's ref, attributes and listeners as props, and the gate |
+| A sortable item | `useActionState` in the item | the item is the drag surface, like the board card: it spreads the sortable's attributes and listeners only while the state is `live`, and a viewer who can't write gets an element that doesn't drag |
 | A switch | `ActionSwitch` | `checked`, `onCheckedChange`, `aria-label`, and the gate; a viewer who can't flip it still sees the state, disabled |
 | The Save of a form only some roles change | `GatedSaveBar` | the `SettingsSaveBar` props and the gate; the form itself takes `disabled` from `useActionState` |
 | Items of a list row's ⋯ or right-click menu | `RowMenu.locked` | each action's `useActionResolver` answer: `isOffered` keeps the handler on the menu, `lockedReasons` names the reasons for `locked`, and `MenuEntry` draws the locked item |

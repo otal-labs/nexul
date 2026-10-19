@@ -104,11 +104,14 @@ describe("KanbanColumn", () => {
     expect(onAddTicket).toHaveBeenCalledWith("open");
   });
 
-  it("exposes a grip that reorders the column, separate from the add button", async () => {
+  it("makes the header's name and count the column's drag surface, leaving the add button outside it", async () => {
     renderColumn();
-    const grip = await screen.findByRole("button", { name: "Reorder Open" });
-    expect(grip).toHaveAttribute("aria-roledescription", "sortable");
-    expect(screen.getByRole("button", { name: "New ticket in Open" })).not.toBe(grip);
+    const surface = await screen.findByRole("button", { name: "Reorder Open" });
+    const add = screen.getByRole("button", { name: "New ticket in Open" });
+    expect(surface).toHaveAttribute("aria-roledescription", "sortable");
+    expect(surface).not.toBe(add);
+    expect(surface).not.toContainElement(add);
+    expect(surface).toHaveTextContent("Open");
   });
 
   it("falls back to the stage dot when no icon is set", () => {
@@ -148,7 +151,7 @@ describe("KanbanColumn", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
     });
 
-    it("locks the grip and the add button when a role shows locked actions, and adds nothing", async () => {
+    it("locks the add button and offers no way to drag the column when a role shows locked actions", async () => {
       readOnly(true);
       const user = userEvent.setup();
       const onAddTicket = vi.fn();
@@ -156,8 +159,7 @@ describe("KanbanColumn", () => {
 
       const add = await screen.findByRole("button", { name: "New ticket in Open" });
       expect(add).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByRole("button", { name: "Reorder Open" })).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByRole("button", { name: "Reorder Open" })).toHaveAccessibleDescription("Your role can't reorder columns");
+      expect(screen.queryByRole("button", { name: "Reorder Open" })).not.toBeInTheDocument();
       await user.click(add);
       expect(onAddTicket).not.toHaveBeenCalled();
     });

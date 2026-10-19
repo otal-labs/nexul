@@ -3,12 +3,12 @@ import { PlusIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
-import { ActionDragHandle } from "@/components/action/ActionDragHandle";
 import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
+import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -34,9 +34,11 @@ const KanbanColumnImpl = ({
   // Keyed on the ids, not the array: a new items array re-renders every card in the column.
   const idsKey = tickets.map((t) => t.id).join(" ");
   const ticketIds = useMemo(() => (idsKey === "" ? [] : idsKey.split(" ")), [idsKey]);
-  // Both a drop target for cards and a sortable in its lane's column row; only the grip activates the sort.
+  // Both a drop target for cards and a sortable in its lane's column row; only the header activates the sort.
+  const draggable = useActionState({ permission: "projects:write" }).state === "live";
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: droppableId,
+    disabled: !draggable,
     data,
   });
 
@@ -55,23 +57,22 @@ const KanbanColumnImpl = ({
       )}
     >
       <h4 className="flex items-center gap-1.5 px-1 pt-1">
-        <ActionDragHandle
-          permission="projects:write"
-          verb="reorder columns"
-          label={`Reorder ${column.name}`}
+        <span
           ref={setActivatorNodeRef}
-          className="transition-colors duration-[120ms] ease-standard focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          {...attributes}
-          {...listeners}
-        />
-        <span className="flex min-w-0 items-center gap-1.5">
-          <StatusMark status={column} className="size-3.5" />
-          <span className="truncate text-sm font-medium">{column.name}</span>
+          {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
+            draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            <StatusMark status={column} className="size-3.5" />
+            <span className="truncate text-sm font-medium">{column.name}</span>
+          </span>
+          <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
+            {tickets.length}
+          </span>
         </span>
-        <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
-          {tickets.length}
-        </span>
-        <span className="flex-1" />
         <ActionButton
           permission="tickets:write"
           verb="create tickets"

@@ -55,7 +55,7 @@ const renderSettings = (path: string) =>
 // Each page of project settings, text a reader still sees, every control that writes, and the row menus whose items do.
 const pages = [
   { path: "general", anchor: "Backend", controls: ["Rename project", "Open the wizard"], menus: [] },
-  { path: "categories", anchor: "Sprint 1", controls: ["New category", "Reorder Sprint 1"], menus: ["Actions for Sprint 1"] },
+  { path: "categories", anchor: "Sprint 1", controls: ["New category"], menus: ["Actions for Sprint 1"] },
   { path: "repositories", anchor: "acme/api", controls: ["Add repo", "Remove acme/api"], menus: [] },
   { path: "services", anchor: "Attached, not deployed yet", controls: ["New service", "Deploy this repository"], menus: [] },
   { path: "board", anchor: "Open", controls: ["Add backlog status"], menus: ["Actions for Open"] },
