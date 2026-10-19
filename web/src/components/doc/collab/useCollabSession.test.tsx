@@ -11,6 +11,7 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { api } from "@/api/client";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { useFetchDoc } from "@/hooks/DocHooks";
+import { useViewAsStore } from "@/stores/viewAsStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -59,6 +60,18 @@ const remotePresence = () => {
 };
 
 describe("useCollabSession", () => {
+  it("opens no room while viewing as another member, since the socket would edit as the signed-in one", async () => {
+    useViewAsStore.getState().start({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "" });
+    const factory = vi.fn();
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }), {
+      wrapper: withClient,
+    });
+    await flushConnect();
+    useViewAsStore.getState().exit();
+    expect(result.current).toBeNull();
+    expect(factory).not.toHaveBeenCalled();
+  });
+
   it("stays null and never opens a socket without a token (buildCollabURL requires one)", async () => {
     const { socket, factory } = makeSocket();
     const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", null, { wsFactory: factory }), {

@@ -8,6 +8,7 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { getDocKey } from "@/hooks/DocHooks";
 import { buildCollabURL } from "@/lib/collab/url";
 import { RelayCollabProvider } from "@/lib/collab/provider";
+import { useIsViewingAs } from "@/stores/viewAsStore";
 import type { Doc } from "@/models/Doc";
 
 // Cool-hue palette only, keyed by y client id, so cursors read as part of the black+blue canvas.
@@ -80,6 +81,7 @@ export const useCollabSession = (
     null,
   );
   const queryClient = useQueryClient();
+  const viewing = useIsViewingAs();
   const [seededDoc, setSeededDoc] = useState<Y.Doc | null>(null);
   const [connected, setConnected] = useState(false);
   const [applyError, setApplyError] = useState(false);
@@ -92,7 +94,8 @@ export const useCollabSession = (
   // One effect (not split) keeps StrictMode's double-invoke setup/cleanup symmetric.
   useEffect(() => {
     // No room or token yet means no connection; the effect re-runs once the token dependency lands.
-    if (!room || !token) return;
+    // A view opens none: the room would accept edits as the signed-in member, not the person being viewed.
+    if (!room || !token || viewing) return;
     const doc = new Y.Doc();
     const user: CollabUser = {
       name: name || "You",
@@ -157,7 +160,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [room, mode, name, token, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
+  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {

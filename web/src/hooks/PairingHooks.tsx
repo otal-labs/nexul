@@ -25,6 +25,7 @@ import {
   type TunnelStatus,
 } from "@/models/Pairing";
 import { ownComputers } from "@/models/SharedComputer";
+import { useIsViewingAs } from "@/stores/viewAsStore";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getComputersKey = "getComputers";
@@ -186,6 +187,7 @@ export const useFetchPresence = () =>
     queryKey: [getPairingPresenceKey],
     queryFn: async () => (await api.get<{ computers: Record<string, string> }>("/api/pairing/presence")).data.computers,
     refetchInterval: 15_000,
+    enabled: !useIsViewingAs(), // a personal route: a view gets a 404 and the poll would repeat it
   });
 
 // Joins the read-only resolve route with presence: ready needs both a resolved computer and a connected session.

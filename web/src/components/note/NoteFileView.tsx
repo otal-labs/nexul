@@ -11,6 +11,7 @@ import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { getNoteTextKey, useFetchNoteText } from "@/hooks/NoteHooks";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useIsViewingAs } from "@/stores/viewAsStore";
 import type { Message } from "@/models/Chat";
 import { effectiveAvatar } from "@/models/User";
 
@@ -26,7 +27,8 @@ export const NoteFileView = ({ message, fileName, canEdit }: NoteFileViewProps) 
   const { data: me } = useFetchMe();
   const avatar = me?.user ? effectiveAvatar(me.user) : "";
   const { data: markdown, dataUpdatedAt, error, isPending } = useFetchNoteText(message.attachment_id);
-  const editable = canEdit && markdown !== undefined;
+  const viewing = useIsViewingAs();
+  const editable = canEdit && !viewing && markdown !== undefined;
   // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
   const session = useCollabSession(editable && me ? `notes/${message.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getNoteTextKey, message.attachment_id],
