@@ -1,4 +1,4 @@
-import { CircleHelpIcon, FileTextIcon, LoaderCircleIcon, LockIcon } from "lucide-react";
+import { CircleCheckIcon, CircleHelpIcon, FileTextIcon, LoaderCircleIcon, LockIcon } from "lucide-react";
 
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { useDocRunState } from "@/hooks/TrailHooks";
@@ -29,7 +29,10 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
           {runState !== undefined && runState !== "waiting" && (
             <LoaderCircleIcon className="ml-4.5 size-3.5 shrink-0 animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Play running" />
           )}
-          {runState === undefined && <FileTextIcon className="ml-4.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+          {runState === undefined && doc.clarification_closed && (
+            <CircleCheckIcon className="ml-4.5 size-3.5 shrink-0 text-success" role="img" aria-label="Questions closed" />
+          )}
+          {runState === undefined && !doc.clarification_closed && <FileTextIcon className="ml-4.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
         </>
       }
       titleIcon={doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}

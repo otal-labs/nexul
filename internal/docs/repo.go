@@ -41,6 +41,8 @@ type ClarificationRepo interface {
 	ListClarificationRounds(ctx context.Context, docID string) ([]*ClarificationRound, error)
 	// ListClarificationQuestions returns every question of the doc by round, then position.
 	ListClarificationQuestions(ctx context.Context, docID string) ([]*ClarificationQuestion, error)
+	// ClosedClarifications returns which docs in ids have their newest round closed.
+	ClosedClarifications(ctx context.Context, ids []string) (map[string]bool, error)
 	GetClarificationQuestion(ctx context.Context, id string) (*ClarificationQuestion, error)
 	// CreateClarificationRound returns ErrConflict when the doc already has a round of that number.
 	CreateClarificationRound(ctx context.Context, r *ClarificationRound, evts ...eventbus.OutboxEvent) error

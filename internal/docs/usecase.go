@@ -273,7 +273,8 @@ func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([
 	if err != nil {
 		return nil, 0, fmt.Errorf("list docs: %w", err)
 	}
-	return listItems(ds), total, nil
+	items, err := s.listItems(ctx, ds)
+	return items, total, err
 }
 
 // listScope is the projects whose docs the caller may see listed and, within them, the docs they may read; a search
@@ -312,30 +313,39 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 	}
 	reads := s.canEach(ctx, ds, permissions.DocsRead)
 	ds = slices.DeleteFunc(ds, func(d *Doc) bool { return !reads[d.ID] })
-	return listItems(ds), nil
+	return s.listItems(ctx, ds)
 }
 
 // listItems shows each doc, every one of which the caller may read.
-func listItems(ds []*Doc) []*DocListItem {
+func (s *Service) listItems(ctx context.Context, ds []*Doc) ([]*DocListItem, error) {
+	ids := make([]string, 0, len(ds))
+	for _, d := range ds {
+		ids = append(ids, d.ID)
+	}
+	closed, err := s.repo.ClosedClarifications(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list docs: %w", err)
+	}
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
 		item := &DocListItem{
-			ID:        d.ID,
-			ProjectID: d.ProjectID,
-			FolderID:  d.FolderID,
-			Title:     d.Title,
-			Version:   d.Version,
-			Archived:  d.Archived,
-			Locked:    d.Locked,
-			CanOpen:   true,
-			CreatedAt: d.CreatedAt,
-			UpdatedAt: d.UpdatedAt,
-			CreatedBy: d.CreatedBy,
-			Snippet:   richtext.Snippet(d.Body, snippetRunes),
+			ID:                  d.ID,
+			ProjectID:           d.ProjectID,
+			FolderID:            d.FolderID,
+			Title:               d.Title,
+			Version:             d.Version,
+			Archived:            d.Archived,
+			Locked:              d.Locked,
+			CanOpen:             true,
+			CreatedAt:           d.CreatedAt,
+			UpdatedAt:           d.UpdatedAt,
+			CreatedBy:           d.CreatedBy,
+			Snippet:             richtext.Snippet(d.Body, snippetRunes),
+			ClarificationClosed: closed[d.ID],
 		}
 		out = append(out, item)
 	}
-	return out
+	return out, nil
 }
 
 func (s *Service) requireProject(ctx context.Context, projectID string, action permissions.Action) error {

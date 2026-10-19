@@ -242,14 +242,11 @@ interface DocRefPayload {
 }
 
 const clarificationTopics = [
-  "doc.clarification.round_started",
   "doc.clarification.round_posted",
-  "doc.clarification.round_ended",
   "doc.clarification.round_answered",
   "doc.clarification.answer_saved",
   "doc.clarification.answer_cleared",
   "doc.clarification.anything_else_saved",
-  "doc.clarification.closed",
 ];
 
 const refetch = (client: QueryClient, queryKey: unknown[]) => client.invalidateQueries({ queryKey, exact: true });
@@ -260,6 +257,15 @@ const followFolderDeleted = (client: QueryClient, from: string, to: string) => {
   client.setQueriesData<DocListItem[]>({ queryKey: [getDocsKey] }, (list) => (list?.some((d) => d.folder_id === from) ? list.map(move) : list));
   client.setQueriesData<Doc>({ queryKey: [getDocKey] }, (doc) => doc && move(doc));
 };
+
+const setClarificationClosed = (client: QueryClient, docID: string, closed: boolean) =>
+  client.setQueriesData<DocListItem[]>({ queryKey: [getDocsKey] }, (list) =>
+    list?.some((d) => d.id === docID) ? list.map((d) => (d.id === docID ? { ...d, clarification_closed: closed } : d)) : list,
+  );
+
+// A removed round hands the doc back to the round before it, which the frame does not say is closed.
+const refetchListsHolding = (client: QueryClient, docID: string) =>
+  client.invalidateQueries({ queryKey: [getDocsKey], predicate: (q) => (q.state.data as DocListItem[] | undefined)?.some((d) => d.id === docID) === true });
 
 export const docFollower: LiveFollower = {
   "doc.created": ({ doc }: DocPayload, { client }) => Promise.all([refetch(client, [getDocsKey]), refetch(client, [getDocsKey, "byProject", doc.project_id])]),
@@ -275,4 +281,14 @@ export const docFollower: LiveFollower = {
     followFolderDeleted(client, folder.id, to),
   "doc.watchers.changed": ({ doc }: DocRefPayload, { client }) => refetch(client, [getDocWatchersKey, doc.id]),
   ...followEach(clarificationTopics, ({ doc }: DocRefPayload, { client }) => refetch(client, [getDocClarificationKey, doc.id])),
+  "doc.clarification.round_started": ({ doc }: DocRefPayload, { client }) => {
+    setClarificationClosed(client, doc.id, false);
+    return refetch(client, [getDocClarificationKey, doc.id]);
+  },
+  "doc.clarification.round_ended": ({ doc, removed }: DocRefPayload & { removed?: boolean }, { client }) =>
+    Promise.all([refetch(client, [getDocClarificationKey, doc.id]), removed && refetchListsHolding(client, doc.id)]),
+  "doc.clarification.closed": ({ doc }: DocRefPayload, { client }) => {
+    setClarificationClosed(client, doc.id, true);
+    return refetch(client, [getDocClarificationKey, doc.id]);
+  },
 };

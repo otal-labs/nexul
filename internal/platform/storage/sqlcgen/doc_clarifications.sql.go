@@ -126,6 +126,36 @@ func (q *Queries) InsertDocClarificationRound(ctx context.Context, arg InsertDoc
 	return err
 }
 
+const listClosedClarificationDocs = `-- name: ListClosedClarificationDocs :many
+SELECT r.doc_id FROM doc_clarification_rounds r
+WHERE r.closed_at <> 0
+  AND r.doc_id IN (SELECT value FROM json_each(?1))
+  AND r.round = (SELECT MAX(n.round) FROM doc_clarification_rounds n WHERE n.doc_id = r.doc_id)
+`
+
+func (q *Queries) ListClosedClarificationDocs(ctx context.Context, ids interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listClosedClarificationDocs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var doc_id string
+		if err := rows.Scan(&doc_id); err != nil {
+			return nil, err
+		}
+		items = append(items, doc_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocClarificationQuestions = `-- name: ListDocClarificationQuestions :many
 SELECT id, doc_id, round, position, question, why, options, multi_select, selected, free_text, skipped, answered_by, answered_at FROM doc_clarification_questions WHERE doc_id = ? ORDER BY round, position
 `

@@ -157,4 +157,21 @@ describe("the doc follower", () => {
     const keys = [["getDocs"], ["getDocs", "byProject", "p-1"], ["getDocs", "byProject", "p-2"], ["getDocClarification", "d-1"], ["getDocClarification", "d-2"]];
     expect(keys.map((key) => isStale(client, key))).toEqual([true, true, false, false, true]);
   });
+
+  it("ticks a doc whose questions closed in every list from the frame alone, and unticks it when a round starts", async () => {
+    const client = views();
+    const closed = (key: unknown[]) => client.getQueryData<DocListItem[]>(key)?.map((d) => d.clarification_closed ?? false);
+    await followFrame(docFollower, "doc.clarification.closed", { doc: { id: "d-1" }, round: 2 }, client);
+    expect([closed(["getDocs"]), closed(["getDocs", "byProject", "p-1"])]).toEqual([[true, false], [true, false]]);
+    expect(isStale(client, ["getDocs"])).toBe(false);
+
+    await followFrame(docFollower, "doc.clarification.round_started", { doc: { id: "d-1" }, round: 3 }, client);
+    expect(closed(["getDocs"])).toEqual([false, false]);
+  });
+
+  it("refetches only the lists holding a doc whose empty round was removed", async () => {
+    const client = views();
+    await followFrame(docFollower, "doc.clarification.round_ended", { doc: { id: "d-1" }, round: 3, removed: true }, client);
+    expect([["getDocs"], ["getDocs", "byProject", "p-1"], ["getDocs", "byProject", "p-2"]].map((key) => isStale(client, key))).toEqual([true, true, false]);
+  });
 });

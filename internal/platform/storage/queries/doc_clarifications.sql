@@ -30,3 +30,9 @@ WHERE id = ?;
 -- name: CountPendingDocClarificationQuestions :one
 SELECT COUNT(*) FROM doc_clarification_questions
 WHERE doc_id = ? AND round = ? AND skipped = 0 AND free_text = '' AND selected = '[]';
+
+-- name: ListClosedClarificationDocs :many
+SELECT r.doc_id FROM doc_clarification_rounds r
+WHERE r.closed_at <> 0
+  AND r.doc_id IN (SELECT value FROM json_each(sqlc.arg(ids)))
+  AND r.round = (SELECT MAX(n.round) FROM doc_clarification_rounds n WHERE n.doc_id = r.doc_id);

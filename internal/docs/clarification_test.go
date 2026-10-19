@@ -37,6 +37,20 @@ func (f *fakeRepo) ListClarificationRounds(_ context.Context, docID string) ([]*
 	return out, nil
 }
 
+func (f *fakeRepo) ClosedClarifications(ctx context.Context, ids []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, id := range ids {
+		rounds, err := f.ListClarificationRounds(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if len(rounds) > 0 && rounds[len(rounds)-1].ClosedAt != nil {
+			out[id] = true
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) ListClarificationQuestions(_ context.Context, docID string) ([]*ClarificationQuestion, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -492,12 +506,23 @@ func TestCloseClarification(t *testing.T) {
 	_, err = s.CloseClarification(as(starter), d.ID)
 	require.NoError(t, err)
 	assert.Len(t, repo.eventsFor(TopicClarificationClosed), 1, "closing a closed clarification changes nothing")
+	assert.True(t, listedClosed(t, s, d.ID), "the doc list shows it closed")
 
 	_, err = s.OpenRound(context.Background(), d.ID, starter, "trail-3", false)
 	require.NoError(t, err)
 	c, err = s.Clarification(as(starter), d.ID)
 	require.NoError(t, err)
 	assert.False(t, c.Closed, "a new round reopens it")
+	assert.False(t, listedClosed(t, s, d.ID))
+}
+
+func listedClosed(t *testing.T, s *Service, docID string) bool {
+	t.Helper()
+	items, err := s.List(as(starter))
+	require.NoError(t, err)
+	i := slices.IndexFunc(items, func(d *DocListItem) bool { return d.ID == docID })
+	require.GreaterOrEqual(t, i, 0)
+	return items[i].ClarificationClosed
 }
 
 func TestClarification_RepoFailuresSurface(t *testing.T) {

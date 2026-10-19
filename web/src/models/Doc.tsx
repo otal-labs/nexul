@@ -35,6 +35,8 @@ export interface DocListItem {
   created_by?: string;
   /** The body's first line of text, sent only when can_open; the list search matches it. */
   snippet?: string;
+  /** True while the newest round of the doc's questions is closed. */
+  clarification_closed?: boolean;
 }
 
 /** How someone came to watch a doc: added for creating or editing it, or by choosing to. */

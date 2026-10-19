@@ -306,3 +306,35 @@ func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 		}
 	}
 }
+
+func TestDocsRepo_ClosedClarifications_NamesDocsWhoseNewestRoundIsClosed(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	at := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	for _, id := range []string{"doc-closed", "doc-reopened", "doc-open", "doc-none"} {
+		require.NoError(t, s.Docs.Create(ctx, newTestDoc(id)))
+	}
+	round := func(docID string, n int, closed bool) *docs.ClarificationRound {
+		r := &docs.ClarificationRound{DocID: docID, Round: n, StartedBy: "u-dev", StartedAt: at}
+		require.NoError(t, s.Docs.CreateClarificationRound(ctx, r))
+		if closed {
+			r.ClosedBy, r.ClosedAt = "u-dev", &at
+			require.NoError(t, s.Docs.SaveClarification(ctx, []*docs.ClarificationRound{r}, nil))
+		}
+		return r
+	}
+	round("doc-closed", 1, false)
+	round("doc-closed", 2, true)
+	round("doc-reopened", 1, true)
+	round("doc-reopened", 2, false)
+	round("doc-open", 1, false)
+
+	got, err := s.Docs.ClosedClarifications(ctx, []string{"doc-closed", "doc-reopened", "doc-open", "doc-none"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"doc-closed": true}, got, "a new round reopens a closed clarification")
+
+	got, err = s.Docs.ClosedClarifications(ctx, []string{"doc-open"})
+	require.NoError(t, err)
+	assert.Empty(t, got, "only the docs asked about are read")
+}

@@ -68,6 +68,8 @@ type DocListItem struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedBy string    `json:"created_by,omitempty"`
 	Snippet   string    `json:"snippet,omitempty"`
+	// ClarificationClosed is true while the newest round of the doc's clarification is closed.
+	ClarificationClosed bool `json:"clarification_closed,omitempty"`
 }
 
 // Folder groups a project's docs one level deep; each project has one default folder, which is never deleted.
