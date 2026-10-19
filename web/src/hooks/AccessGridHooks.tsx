@@ -12,11 +12,12 @@ import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getAccessGridKey = "getAccessGrid";
 
-export const useFetchAccessGrid = (workspaceId: string) =>
+// The server refuses the grid to anyone managing no project, so a roles-only viewer passes enabled = false.
+export const useFetchAccessGrid = (workspaceId: string, enabled = true) =>
   useQuery({
     queryKey: [getAccessGridKey, workspaceId],
     queryFn: async () => (await api.get<AccessGrid>(`/api/workspaces/${workspaceId}/access`)).data,
-    enabled: workspaceId !== "",
+    enabled: workspaceId !== "" && enabled,
   });
 
 // No success toast: the save strip answers in its button, and Finish shows its own.

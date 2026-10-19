@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: [] } };
     if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
-    return { data: { role_name: "Owner", permissions: ["automations:read", "topology:read", "roles:write"] } };
+    return { data: { role_name: "Owner", permissions: ["automations:read", "topology:read", "workspaces:write"] } };
   });
 });
 

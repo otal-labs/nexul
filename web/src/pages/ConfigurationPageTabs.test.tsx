@@ -9,7 +9,6 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "error" }));
-vi.mock("@/components/settings/RoleSettingsSection", () => ({ RoleSettingsSection: () => <p>Roles card</p> }));
 vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team card</p> }));
 
 // Every instance-level permission, as the Owner of some workspace holds them.
@@ -50,11 +49,11 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("lists only workspace sections, even for a viewer holding every instance permission", async () => {
-    renderPage("/acme/configuration", everythingAnywhere, ["roles:write"]);
+    renderPage("/acme/configuration", everythingAnywhere, ["workspaces:write", "roles:write"]);
 
     const nav = within(await screen.findByRole("navigation", { name: "Configuration sections" }));
-    expect(await screen.findByText("Roles card")).toBeInTheDocument();
-    expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual(["Roles", "Danger zone"]);
+    await screen.findByRole("link", { name: "General" });
+    expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual(["General", "Mention chips", "Danger zone"]);
   });
 
   it("lands an instance-only viewer on Danger zone, never on an instance section", async () => {

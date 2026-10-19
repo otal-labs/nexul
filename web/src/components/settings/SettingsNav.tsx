@@ -4,7 +4,6 @@ import type { InstanceSection } from "@/models/Access";
 
 export const SETTINGS_SECTIONS = [
   "general",
-  "roles",
   "interview",
   "mentions",
   "danger",
@@ -27,7 +26,6 @@ const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign
 
 export const sectionLabels: Record<SettingsSection, string> = {
   general: "General",
-  roles: "Roles",
   interview: "Interview template",
   mentions: "Mention chips",
   danger: "Danger zone",
@@ -48,7 +46,6 @@ export interface SettingsVisibility {
   teamIsInstanceWide: boolean;
   // Each gated workspace section renders only for its permission holder; the nav must not link to an empty section.
   showGeneral: boolean;
-  showRoles: boolean;
   showInterviewTemplate: boolean;
   showMentionLayout: boolean;
 }
@@ -59,7 +56,6 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
     if (section === "team") return visibility.showTeam;
     if (INSTANCE_SECTIONS.includes(section)) return (visibility.instanceSections as readonly string[]).includes(section);
     if (section === "general") return visibility.showGeneral;
-    if (section === "roles") return visibility.showRoles;
     if (section === "interview") return visibility.showInterviewTemplate;
     if (section === "mentions") return visibility.showMentionLayout;
     return true;

@@ -58,6 +58,8 @@ removing an account).
 Amended by ADR 0148: a person's workspace entry holds a set of roles, or none, and nothing per person;
 which projects they are in is set on each project and on the Access page.
 
+Amended 2026-10-19: roles moved from Configuration to the Roles tab of the Access page, beside the grids that use them as columns.
+
 The instance sections moved from Configuration to the Settings page on
 2026-09-30, where the group is called Instance settings and each entry shows
 only to a holder of its permission; Team's scoped variant stayed in

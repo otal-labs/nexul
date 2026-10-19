@@ -53,7 +53,7 @@ Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `me
 
 ## Roles
 
-Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Configuration → Roles**.
+Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Access → Roles**.
 
 **New role** and a role's **Edit** open the role editor, a dialog with the name at the top and Save at the bottom. A new role can **Start from** a copy of another role's permissions and Welcome steps; the copy is yours to change and the other role stays as it is. Nothing is saved until **Create role** or **Save**, and closing with changes asks before it throws them away.
 
@@ -131,19 +131,21 @@ A machine carries rules of its own, like a project: a role of any workspace or a
 
 ## Who's in each project
 
-**Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project. It shows to anyone who can manage a project's access (`projects:access`); the Owner sees every project, anyone else only the projects they're in and manage.
+**Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project and what each role can do. It shows to anyone who can manage a project's access (`projects:access`) or edit roles (`roles:write`); the Owner sees every project, anyone else only the projects they're in and manage. Its tabs are **Projects**, **Roles** and **Public channels**, each shown to the people who hold what it needs. Someone who edits roles but manages no project sees **Roles** alone.
 
 The **Projects** tab is a grid: one row per project, one column per role, with how many people hold each role under its name. Tick a role on a project and everyone holding it sees the project and everything in it. The **Every project** row ticks a role on every project at once, or clears it from all of them when every project already has it; past ten projects a filter narrows the rows, and the top row then acts on the rows shown. **People**, the last column, names someone on a project whatever roles they hold: the add button opens a list of the workspace's people. A project that lists nobody says **Owners only**, since only Owners see it.
 
 The grid is the whole workspace at a glance. For one project, its settings' [People in this project](#people-in-this-project) lists everyone in it, through which role or by name, and anyone kept out of it by name.
 
+The **Roles** tab, between the two grids, is where you define what each role can do: the same [roles](#roles) the grid uses as columns, so who a role reaches and what it allows sit on one page. It takes `roles:write`.
+
 The **Public channels** tab is the Owner's. Every member sees a public channel, so every box starts ticked; untick a role to hide that channel from everyone holding it. Private channels keep their own members. A box here is the same rule as **See this channel** in the channel's own [permissions](/docs/guide/chat-and-voice/#who-sees-and-posts-in-a-channel), where whoever holds `channels:write` also sets who posts in it.
 
-Each tab saves from its own footer, and the change reaches everyone at once: a project someone was just listed in shows up in their sidebar without a reload. Leaving the page with unsaved ticks asks first.
+The grid tabs save from their own footers (the role editor saves on its own), and the change reaches everyone at once: a project someone was just listed in shows up in their sidebar without a reload. Leaving the page with unsaved ticks asks first.
 
 ### After upgrading
 
-The release that made projects opt-in wiped every per-person permission, so right after upgrading no project lists anyone and only Owners see projects. An Owner's first visit to the workspace then opens **Who's in each project**: the Projects grid and the Public channels grid on one page, and one **Finish setup** that saves both. Until an Owner finishes, the sidebar offers Owners **Set up access** to get back to it, and members see **Projects being set up**; any page that would show a project tells them their projects are on their way, and chat works as usual. **Finish setup** works with projects left empty: they stay Owners only until you list someone. Afterwards the page is the workspace's Access page, which shows who finished the setup and when.
+The release that made projects opt-in wiped every per-person permission, so right after upgrading no project lists anyone and only Owners see projects. An Owner's first visit to the workspace then opens **Who's in each project**: the Projects grid and the Public channels grid on one page, and one **Finish setup** that saves both, with a **Roles** tab beside it to review or change what the roles allow first. Until an Owner finishes, the sidebar offers Owners **Set up access** to get back to it, and members see **Projects being set up**; any page that would show a project tells them their projects are on their way, and chat works as usual. **Finish setup** works with projects left empty: they stay Owners only until you list someone. Afterwards the page is the workspace's Access page, which shows who finished the setup and when.
 
 ## People in this project
 

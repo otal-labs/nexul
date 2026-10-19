@@ -832,7 +832,7 @@ button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
 instance sections Instance-wide.
 
-Role rows. Configuration's Roles card lists one row per role: a chevron and
+Role rows. The Roles tab of the Access page lists one row per role: a chevron and
 the name, the people who hold it as overlapping 24px avatars with a mono
 count, and one `…` menu (Edit, Duplicate, Clone to workspace, Delete). Under
 the name, the levels as a tally, highest first, each a `LevelGlyph` (the

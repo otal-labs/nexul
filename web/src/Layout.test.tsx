@@ -216,7 +216,7 @@ describe("Layout", () => {
       user: ownerUser,
       permissions: ownerGrid,
       main: ["/acme/inbox", "/acme/board/BE", "/acme/projects/BE/interview", "/acme/docs", "/acme/memories", "/acme/projects/BE/settings"],
-      workspace: ["/acme/runners", "/acme/topology", "/acme/plays", "/acme/automations", "/acme/configuration"],
+      workspace: ["/acme/runners", "/acme/topology", "/acme/plays", "/acme/automations", "/acme/access", "/acme/configuration"],
       create: ["New channel", "New voice channel", "New direct message"],
     },
     {
@@ -244,11 +244,11 @@ describe("Layout", () => {
       create: [],
     },
     {
-      name: "a member who manages roles reaches Configuration alone",
+      name: "a member who manages roles reaches Access alone",
       user: member,
       permissions: ["roles:write"],
       main: ["/acme/inbox"],
-      workspace: ["/acme/runners", "/acme/configuration"],
+      workspace: ["/acme/runners", "/acme/access"],
       create: [],
     },
     {

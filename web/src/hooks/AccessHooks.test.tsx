@@ -9,4 +9,11 @@ describe("workspaceAccess", () => {
     expect(editor.canOpen("configuration")).toBe(true);
     expect(workspaceAccess([], []).configurationSections).not.toContain("interview");
   });
+
+  it("opens Access for whoever manages access or edits roles, and Configuration for a role editor not at all", () => {
+    expect(workspaceAccess([], ["projects:access"]).canOpen("access")).toBe(true);
+    expect(workspaceAccess([], ["roles:write"]).canOpen("access")).toBe(true);
+    expect(workspaceAccess([], ["roles:write"]).canOpen("configuration")).toBe(false);
+    expect(workspaceAccess([], ["tickets:read"]).canOpen("access")).toBe(false);
+  });
 });

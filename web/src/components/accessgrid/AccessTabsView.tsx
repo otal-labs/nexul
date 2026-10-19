@@ -2,6 +2,8 @@ import { AccessChannelsTab } from "@/components/accessgrid/AccessChannelsTab";
 import { AccessProjectsTab } from "@/components/accessgrid/AccessProjectsTab";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
+import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
@@ -14,9 +16,10 @@ interface AccessTabsViewProps {
   owner: boolean;
 }
 
-// The workspace's Access page once set up: the two grids as tabs, Public channels for the Owner alone.
+// The workspace's Access page once set up: the two grids and the roles as tabs, Public channels for the Owner alone.
 export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
   const crumb = useWorkspaceCrumb();
+  const canWriteRoles = useHasPermission("roles:write");
   const wsPath = useWorkspacePath();
   const draft = useAccessDraft(grid);
   useLeaveGuard(draft.projectChanges.length + draft.channelChanges.length > 0, wsPath("/access"), useAccessDraftStore.getState().clear);
@@ -31,9 +34,19 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
   return (
     <>
       <PageHeader className="mb-6" crumbs={[crumb]} title="Access" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
-      <PageTabs label="Access" tabs={[{ value: "projects", label: "Projects" }, { value: "channels", label: "Public channels", hidden: !owner }]}>
+      <PageTabs
+        label="Access"
+        tabs={[
+          { value: "projects", label: "Projects" },
+          { value: "roles", label: "Roles", hidden: !canWriteRoles },
+          { value: "channels", label: "Public channels", hidden: !owner },
+        ]}
+      >
         <PageTabsContent value="projects">
           <AccessProjectsTab grid={grid} />
+        </PageTabsContent>
+        <PageTabsContent value="roles">
+          <RoleSettingsSection />
         </PageTabsContent>
         <PageTabsContent value="channels">
           <AccessChannelsTab grid={grid} />
