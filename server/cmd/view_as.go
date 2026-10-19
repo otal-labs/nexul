@@ -97,7 +97,7 @@ func viewRefusal(r *http.Request, viewed *tenancy.ViewedMember) error {
 	if inOtherWorkspace(r.URL.Path, viewed.WorkspaceID) {
 		return apperrs.ErrNotFound
 	}
-	if routed(viewAsPersonal, r) && !(r.Method == http.MethodGet && path.Clean(r.URL.Path) == "/api/auth/me") {
+	if routed(viewAsPersonal, r) && (r.Method != http.MethodGet || path.Clean(r.URL.Path) != "/api/auth/me") {
 		return apperrs.ErrNotFound
 	}
 	switch r.Method {
