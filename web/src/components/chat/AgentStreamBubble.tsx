@@ -1,6 +1,6 @@
 import { Bot, Square } from "lucide-react";
 
-import { stepPhrase } from "@nexul/client-core/agentSteps";
+import { liveStepLabel } from "@nexul/client-core/agentSteps";
 
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { HandoffPills } from "@/components/handoff/HandoffPills";
@@ -30,8 +30,7 @@ const streamingLabel = (frame: AgentStreamFrame, elapsed: number, hasTurns: bool
 // The frame carries the latest step without its detail or time, enough to say what the Agent is doing.
 const latestStepLabel = (frame: AgentStreamFrame): string => {
   const step: ActivityEntry = { kind: frame.activityKind ?? "other", ...(frame.activityTool && { tool: frame.activityTool }), summary: frame.activity, at: "" };
-  const { verb, object } = stepPhrase(step, step.kind === "tool_call");
-  return verb === "" ? object : `${verb} ${object}`;
+  return liveStepLabel([step]);
 };
 
 // Mirrors MessageRow's agent-kind shape so it doesn't visually jump when the persisted message replaces it.
