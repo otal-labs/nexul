@@ -32,3 +32,6 @@ export const useViewAsStore = create<ViewAsStore>()(
 );
 
 export const useIsViewingAs = () => useViewAsStore((s) => s.target !== null);
+
+// A personal route answers 404 in a view, so the queries that read one stay off rather than repeat the request.
+export const notViewing = () => useViewAsStore.getState().target === null;
