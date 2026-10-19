@@ -1,8 +1,12 @@
+import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, errorMessage } from "@/api/client";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSetupPassStore } from "@/stores/setupPassStore";
+import { useViewAsStore } from "@/stores/viewAsStore";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 describe("errorMessage", () => {
   it.each([
@@ -149,5 +153,57 @@ describe("api client interceptors", () => {
       api.get("/ping", { adapter: async () => Promise.reject(error) }),
     ).rejects.toMatchObject({ message: "Request failed" });
     expect(useSessionStore.getState().isLoggedIn).toBe(true);
+  });
+});
+
+const alice = { workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "" };
+
+const sentHeaders = async () => {
+  let captured: Record<string, unknown> = {};
+  await api.get("/ping", {
+    adapter: async (config) => {
+      captured = { ...config.headers };
+      return { data: {}, status: 200, statusText: "OK", headers: {}, config };
+    },
+  });
+  return captured;
+};
+
+const refuse = (status: number, headers: Record<string, string>) =>
+  api.get("/ping", {
+    adapter: async () =>
+      Promise.reject({ response: { status, headers, data: { message: "Nova now holds permissions you don't", code: "FORBIDDEN" } }, message: "Request failed" }),
+  });
+
+describe("api client while viewing as another member", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useSessionStore.getState().login("tok-1");
+    useViewAsStore.setState({ target: null });
+  });
+
+  it("sends both view headers only while a target is set", async () => {
+    expect(await sentHeaders()).not.toHaveProperty("X-View-As-User");
+
+    useViewAsStore.getState().start(alice);
+    expect(await sentHeaders()).toMatchObject({ "X-View-As-User": "u-alice", "X-View-As-Workspace": "ws-1" });
+
+    useViewAsStore.getState().exit();
+    expect(await sentHeaders()).not.toHaveProperty("X-View-As-Workspace");
+  });
+
+  it("leaves the view when the server refuses it, and stays signed in", async () => {
+    useViewAsStore.getState().start(alice);
+    await expect(refuse(403, { "x-view-as": "refused" })).rejects.toBeDefined();
+    expect(useViewAsStore.getState().target).toBeNull();
+    expect(useSessionStore.getState().isLoggedIn).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith("Stopped viewing as Alice: Nova now holds permissions you don't");
+  });
+
+  it("keeps the view on an ordinary 403, such as a write the view turns away", async () => {
+    useViewAsStore.getState().start(alice);
+    await expect(refuse(403, {})).rejects.toBeDefined();
+    expect(useViewAsStore.getState().target).toEqual(alice);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { notViewing } from "@/stores/viewAsStore";
 import type { DocFolder } from "@/models/DocFolder";
 import { SubjectType, type Notification, type UnreadCount } from "@/models/Notification";
 import { groupInbox, inboxRows, type InboxRow } from "@/utils/InboxUtility";
@@ -53,7 +54,7 @@ export const useFetchUnreadCount = (enabled = true) => {
     queryFn: async () =>
       (await api.get<UnreadCount>("/api/notifications/unread-count", { params: { workspace_id: workspaceId } }))
         .data,
-    enabled,
+    enabled: enabled && notViewing(),
   });
 };
 
@@ -63,6 +64,7 @@ export const useFetchUnreadByWorkspace = () =>
     queryKey: [getUnreadCountKey],
     queryFn: async () => (await api.get<UnreadCount>("/api/notifications/unread-count")).data,
     select: (d) => d.workspaces,
+    enabled: notViewing,
   });
 
 const refreshInbox = async (client: QueryClient) => {

@@ -7,6 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useViewAsStore } from "@/stores/viewAsStore";
 import { providerLabel } from "@/models/User";
 import type {
   BootstrapResponse,
@@ -211,9 +212,17 @@ export const useUnlinkIdentity = () => {
 // Deletes the session server-side first; local state clears either way, since a failed delete still means leaving.
 export const useLogout = () => {
   const navigate = useNavigate();
+  const client = useQueryClient();
   const logout = useSessionStore((s) => s.logout);
   return useMutation({
-    mutationFn: requires("none", async () => api.delete("/api/auth/sessions/current")),
+    mutationFn: requires("none", async () => {
+      // Leaving the view first keeps the view headers off this personal route, which the server answers 404 in a view.
+      if (useViewAsStore.getState().target) {
+        useViewAsStore.getState().exit();
+        client.clear();
+      }
+      return api.delete("/api/auth/sessions/current");
+    }),
     onSettled: () => {
       logout();
       // Replace, not push: the current URL would 404 once the router rebuilds logged-out.

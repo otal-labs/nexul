@@ -863,5 +863,6 @@ func (s *Service) ListForUser(ctx context.Context, userID string) ([]*Workspace,
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces for user %s: %w", userID, err)
 	}
+	ws = heldToViewedWorkspace(ctx, ws)
 	return ws, s.withChips(ctx, ws...)
 }

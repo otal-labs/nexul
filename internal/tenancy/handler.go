@@ -94,6 +94,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/workspaces/{workspaceID}/members/{userID}", h.addMember)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/members/{userID}", h.changeMemberRole)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/invites/{login}", h.cancelInvite)
+	mux.HandleFunc("POST /api/workspaces/{workspaceID}/members/{userID}/view-as", h.viewAs)
 	return mux
 }
 
@@ -328,6 +329,17 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// viewAs checks the caller may view Nexul as the member and names them; the audit row of this route is the record
+// of who viewed as whom (ADR 0160).
+func (h *Handler) viewAs(w http.ResponseWriter, r *http.Request) {
+	viewed, err := h.svc.StartViewAs(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, viewed)
 }
 
 func (h *Handler) cancelInvite(w http.ResponseWriter, r *http.Request) {

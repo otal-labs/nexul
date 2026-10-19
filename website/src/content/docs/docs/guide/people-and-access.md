@@ -51,6 +51,16 @@ Everyone sees their own roles in **Settings → Profile → Your roles**, one li
 
 Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `members:write` there. Without `accounts:read`, someone who manages members finds Team under **Configuration** instead, showing only the workspaces they manage.
 
+## Check what someone can see
+
+To see whether a person's roles give them too much or too little, view Nexul as them. Open the person on **Settings → Team**, pick the workspace's tab, and press **View as** followed by their first name. Every page then shows what they see in that workspace: their projects, their channels, the buttons their roles allow. A bar across the top says who you're viewing as, and stays until you stop.
+
+Viewing as someone needs the **View Nexul as another member** permission in that workspace. You can't view as yourself or as an Owner, who sees everything, and you can't view as someone who holds a permission you don't: Nexul says which one, since you couldn't tell what it gives them.
+
+A view is read only. A button the person can press is still there, but pressing it tells you changes are off, so nothing is done in their name. Live updates are off too: reload a page to see new changes. Their inbox, their devices and computers, and any direct message or private channel you aren't in yourself are never shown, and neither are their other workspaces; a page that depends on them comes up empty.
+
+Press **Stop viewing** in the bar to leave. You land back on Team. Nexul also ends the view by itself, and tells you why, if the person's roles change in a way that would no longer let you view them. Signing out ends it too.
+
 ## Roles
 
 Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Access → Roles**.

@@ -1,7 +1,10 @@
 import axios, { type AxiosError } from "axios";
+import { toast } from "sonner";
 
+import { queryClient } from "@/lib/queryClient";
 import { useSessionStore } from "@/stores/sessionStore";
 import { currentSetupPass, useSetupPassStore } from "@/stores/setupPassStore";
+import { useViewAsStore } from "@/stores/viewAsStore";
 
 export interface ApiErrorBody {
   message: string;
@@ -30,6 +33,11 @@ export const api = axios.create({ baseURL: API_BASE_URL });
 api.interceptors.request.use((config) => {
   const token = useSessionStore.getState().token ?? currentSetupPass();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const viewing = useViewAsStore.getState().target;
+  if (viewing) {
+    config.headers["X-View-As-User"] = viewing.userId;
+    config.headers["X-View-As-Workspace"] = viewing.workspaceId;
+  }
   return config;
 });
 
@@ -42,6 +50,13 @@ const redirectToLogin = () => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorBody>) => {
+    const viewing = useViewAsStore.getState().target;
+    if (viewing && error.response?.status === 403 && error.response.headers?.["x-view-as"] === "refused") {
+      useViewAsStore.getState().exit();
+      void queryClient.resetQueries();
+      toast.error(`Stopped viewing as ${viewing.name}: ${errorMessage(error)}`);
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401 && !useSessionStore.getState().token && useSetupPassStore.getState().token) {
       // A refused pass (expired, or a user now exists) sends setup back to the code screen, not to /login.
       useSetupPassStore.getState().clear();

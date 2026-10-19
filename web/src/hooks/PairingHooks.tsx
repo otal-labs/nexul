@@ -25,6 +25,7 @@ import {
   type TunnelStatus,
 } from "@/models/Pairing";
 import { ownComputers } from "@/models/SharedComputer";
+import { notViewing } from "@/stores/viewAsStore";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getComputersKey = "getComputers";
@@ -61,7 +62,7 @@ export const computersQuery = queryOptions({
   queryFn: async () => (await api.get<{ computers: Computer[] }>("/api/pairing/computers")).data.computers,
 });
 
-export const useListComputers = () => useQuery({ ...computersQuery, select: ownComputers });
+export const useListComputers = () => useQuery({ ...computersQuery, select: ownComputers, enabled: notViewing });
 
 interface PairComputerInput {
   // A computer tunnel, paired at its own address.
@@ -186,6 +187,7 @@ export const useFetchPresence = () =>
     queryKey: [getPairingPresenceKey],
     queryFn: async () => (await api.get<{ computers: Record<string, string> }>("/api/pairing/presence")).data.computers,
     refetchInterval: 15_000,
+    enabled: notViewing,
   });
 
 // Joins the read-only resolve route with presence: ready needs both a resolved computer and a connected session.

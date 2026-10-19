@@ -8,6 +8,14 @@ type Actor struct {
 	ID string
 	// Automation is set for an automation-token request: domains record the automation, not its creator, as the actor.
 	Automation *AutomationRef
+	// Viewer is set while someone views Nexul as ID (ADR 0160): ID is then the viewed member, and every check answers as them.
+	Viewer *ViewerRef
+}
+
+// ViewerRef names the person behind a view-as request and the one workspace the view is held to.
+type ViewerRef struct {
+	ID          string
+	WorkspaceID string
 }
 
 // AutomationRef names the automation behind an automation-token request.

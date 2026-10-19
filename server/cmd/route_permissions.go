@@ -307,6 +307,7 @@ var routePermissions = map[string][]string{
 	"DELETE /api/workspaces/{workspaceID}/members/{userID}":                       {"members:write"},
 	"PATCH /api/workspaces/{workspaceID}/members/{userID}":                        {"members:write"},
 	"PUT /api/workspaces/{workspaceID}/members/{userID}":                          {"members:write"},
+	"POST /api/workspaces/{workspaceID}/members/{userID}/view-as":                 {"members:view_as"},
 	"PATCH /api/workspaces/{workspaceID}/mention-chip-template":                   {"workspaces:write"},
 	"POST /api/workspaces/{workspaceID}/plays":                                    {"plays:write"},
 	"PATCH /api/workspaces/{workspaceID}/plays/auto-play-limits":                  {"autoplays:write"},

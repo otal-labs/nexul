@@ -125,10 +125,31 @@ func (s *Service) requireRead(ctx context.Context, c *Conversation, callerID str
 		}
 		callerID = actor.ID
 	}
+	viewerReads, err := s.viewerReads(ctx, c)
+	if err != nil {
+		return err
+	}
+	if !viewerReads {
+		return fmt.Errorf("%w: conversation %s", apperrs.ErrNotFound, c.ID)
+	}
 	if c.Kind == KindDocThread && !s.canThread(ctx, callerID, c.DocID) {
 		return fmt.Errorf("%w: docs:thread required on doc %s", apperrs.ErrForbidden, c.DocID)
 	}
 	return s.reads(ctx, callerID, c)
+}
+
+// viewerReads is whether the person viewing as the actor could read c too, when c is members-only: a DM or private
+// channel is shown in a view only to a viewer who is in it (ADR 0160). Any other request, and any other conversation, passes.
+func (s *Service) viewerReads(ctx context.Context, c *Conversation) (bool, error) {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.Viewer == nil || !c.MembersOnly() {
+		return true, nil
+	}
+	err := s.reads(ctx, actor.Viewer.ID, c)
+	if err != nil && !permissions.Refused(err) {
+		return false, err
+	}
+	return err == nil, nil
 }
 
 // reads is the person's part of reading c beyond its threads: a DM's participants, a channel's standing.

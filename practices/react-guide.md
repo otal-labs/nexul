@@ -915,7 +915,14 @@ API rules:
 - The request interceptor injects the bearer token, read with `getState()`
   (the setup pass stands in before the first user exists).
 - Handle errors at the hook or component layer, not in the interceptor. The
-  interceptor only handles a 401: logout, then redirect to `/login`.
+  interceptor only handles a 401 (logout, then redirect to `/login`) and,
+  while viewing as another member, a 403 carrying `X-View-As: refused` (leave
+  the view, reset the cache, toast why).
+- While `stores/viewAsStore` holds a target, the request interceptor adds
+  `X-View-As-User` and `X-View-As-Workspace`, so every read answers as that
+  member. Anything that authenticates with the token alone and so cannot
+  carry them (the live events socket, collab rooms, log streams) stays closed
+  in a view; a new socket gates on `useIsViewingAs()`.
 
 ---
 

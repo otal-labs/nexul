@@ -206,7 +206,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("POST /api/automation-hosts/self/remove", automationHostsPublic)
 	httpMux.Handle("GET /api/automation-hosts/self/assignments", automationHostsPublic)
 	httpMux.Handle("POST /api/automation-hosts/self/logs", automationHostsPublic)
-	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(withIdentity(h)) }
+	viewAs := withViewAs(svc.tenancySvc, svc.authSvc)
+	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(viewAs(withIdentity(h))) }
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.HandleFunc("GET /api/about", aboutHandler)
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
@@ -222,7 +223,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// Automation tokens, then integration tokens, then session/PAT/setup pass — one audit-logged handler underneath all.
 	httpMux.Handle("/api/", withAccessMemo(svc.accessSvc, svc.automationsSvc.RequireAutomation(
 		func(h http.Handler) http.Handler { return svc.integrationsSvc.RequireIntegration(userAuth, h) },
-		svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux),
+		rejectViewAsOffSession(svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux)),
 	)))
 	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(withIdentity(liveEventsHandler(svc.presenceKeeper, liveHub))))
 	httpMux.Handle("GET /ws/collab/{id}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
@@ -363,6 +364,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/workspaces/archived", "List the archived workspaces, newest archive first; needs instance:write, the instance Owner's", "workspaces")
 	spec.Register("POST", "/api/workspaces/{workspaceID}/archive", "Archive a workspace: it leaves every list, search and live frame for its members until the instance Owner restores it; needs workspaces:delete there", "workspaces")
 	spec.Register("POST", "/api/workspaces/{workspaceID}/restore", "Restore an archived workspace for everyone who was in it; needs instance:write, the instance Owner's", "workspaces")
+	spec.Register("POST", "/api/workspaces/{workspaceID}/members/{userID}/view-as", "Check the caller may view Nexul as this member, read only, and name them: needs members:view_as, a member who is not an Owner, and roles that give nothing the caller could not give. Other requests then carry X-View-As-User and X-View-As-Workspace; the audit row of this call records who viewed as whom", "workspaces")
 	spec.Register("GET", "/api/workspaces/{workspaceID}/people", "List a workspace's people: id, login, display name, picture; any member may read it", "workspaces")
 	spec.Register("GET", "/api/people/{userID}/avatar", "Get a person's uploaded picture; the URL comes from the people list", "workspaces")
 	spec.Register("GET", "/api/workspaces/{workspaceID}/roles", "List a workspace's roles", "roles")

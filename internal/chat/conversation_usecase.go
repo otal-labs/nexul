@@ -290,6 +290,13 @@ func (s *Service) listed(ctx context.Context, userID string, cs []*Conversation)
 	}
 	out := make([]*Conversation, 0, len(cs))
 	for _, c := range cs {
+		viewerReads, err := s.viewerReads(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		if !viewerReads {
+			continue
+		}
 		if readable, thread := threads[c.ID]; thread {
 			if readable {
 				out = append(out, c)
@@ -306,7 +313,7 @@ func (s *Service) listed(ctx context.Context, userID string, cs []*Conversation)
 			}
 			continue
 		}
-		err := s.reads(ctx, userID, c)
+		err = s.reads(ctx, userID, c)
 		if err != nil && !permissions.Refused(err) {
 			return nil, err
 		}

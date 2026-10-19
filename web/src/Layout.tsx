@@ -5,6 +5,7 @@ import { CommandPalette } from "@/components/command/CommandPalette";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
+import { ViewAsBanner } from "@/components/ViewAsBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { VoiceCallAudio } from "@/components/voice/VoiceCallAudio";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
@@ -13,13 +14,16 @@ import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useIsViewingAs } from "@/stores/viewAsStore";
 
 export const Layout = () => {
   // At 768px an open sidebar leaves the page too little width, so it starts as the icon rail below 1024px.
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
   const token = useSessionStore((s) => s.token);
-  useLiveEvents(token ? buildLiveURL(token) : null);
+  const viewing = useIsViewingAs();
+  // The socket authenticates as the signed-in member and cannot carry the view headers, so a view leaves it closed.
+  useLiveEvents(token && !viewing ? buildLiveURL(token) : null);
   const { data: unread } = useFetchUnreadCount(isLoggedIn);
   useEnsureWorkspaceSelected(isLoggedIn);
   // Wizards, the invite page and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
@@ -45,6 +49,7 @@ export const Layout = () => {
           )}
           {!onboarding && <CommandPalette />}
           <div className="flex min-w-0 flex-1 flex-col">
+            <ViewAsBanner />
             <ServerUpdatedBanner />
             <PhoneBanner />
             <main className="min-h-0 flex-1 p-2">

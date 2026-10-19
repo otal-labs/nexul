@@ -6,6 +6,7 @@ import { RoleChipRow } from "@/components/role/RoleChipRow";
 import { RolesChecklist } from "@/components/role/RolesChecklist";
 import { TeamReadOnlyReason } from "@/components/team/TeamReadOnlyReason";
 import { TeamRemovedNotice } from "@/components/team/TeamRemovedNotice";
+import { TeamViewAsButton } from "@/components/team/TeamViewAsButton";
 import { useMemberDraft } from "@/hooks/useMemberDraft";
 import { heldRoles, type TeamMembership, type TeamWorkspace } from "@/models/Team";
 import { personName } from "@/utils/TeamUtility";
@@ -52,6 +53,7 @@ export const TeamWorkspacePanel = ({ workspace, membership }: TeamWorkspacePanel
           The projects, channels and plays {firstName} sees follow from these roles and from the rules on each one.
         </p>
       )}
+      {!removed && !entry && !membership.is_owner && <TeamViewAsButton person={person} workspace={workspace} />}
       {!removed && editable && (
         <Button
           type="button"
