@@ -328,6 +328,17 @@ crash does when it trips. A bug in Nexul itself becomes a diagnosed issue
 through a triage skill the person's own agent runs, posted only after they
 approve the draft.
 
+### View as
+
+A member holding the View Nexul as another member permission opens a person's
+tab on Team and presses View as to see Nexul exactly as they do in that
+workspace, read only, to check whether their roles give too much or too
+little. A bar across the top names who is being viewed and stays until Stop
+viewing. Changes, live updates, the person's inbox, direct messages, devices
+and computers are off, an Owner can't be viewed, and neither can someone
+holding a permission the viewer lacks. The view ends by itself, with the
+reason, if the person's roles change under it.
+
 ---
 
 ## Now — improving what's built
