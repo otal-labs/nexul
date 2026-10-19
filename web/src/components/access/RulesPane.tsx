@@ -1,6 +1,7 @@
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SignInAccounts } from "@/components/SignInAccounts";
 import { ComputerShareWarning } from "@/components/access/ComputerShareWarning";
 import { PanelPaneHeader } from "@/components/access/PanelPaneHeader";
 import { PermissionGroupSection } from "@/components/access/PermissionGroupSection";
@@ -54,9 +55,9 @@ const RulesFor = ({ targetKey }: { targetKey: string }) => {
   const target = targetOf(targetKey);
   const role = heldRole(explanation);
   const roleLine = role ? `holds ${role}` : "holds no role";
-  // A computer's rules never read roles, so its person is named by login instead.
-  const personLine = entity.type === "computer" ? target.login : roleLine;
-  const line = target.kind === "role" ? "Role" : `Person · ${personLine}`;
+  // A computer's rules never read roles, so its person is named by their sign-in accounts instead.
+  const personLine = entity.type === "computer" ? <SignInAccounts providers={target.providers} usernames={target.usernames} /> : roleLine;
+  const line = target.kind === "role" ? "Role" : <>Person · {personLine}</>;
 
   return (
     <div className="min-w-0 flex-1 space-y-5">

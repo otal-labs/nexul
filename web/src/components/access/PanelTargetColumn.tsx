@@ -1,6 +1,7 @@
 import { Microheader } from "@/components/Microheader";
 import { PanelAddTarget } from "@/components/access/PanelAddTarget";
 import { PanelTargetRow } from "@/components/access/PanelTargetRow";
+import { SignInAccounts } from "@/components/SignInAccounts";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
@@ -35,7 +36,7 @@ export const PanelTargetColumn = () => {
       {mode === "check" && (
         <ul className={listClass}>
           {people.map((person) => (
-            <PanelTargetRow key={person.key} target={person} selected={checked === person.id} onSelect={() => check(person.id)} subline={person.login} />
+            <PanelTargetRow key={person.key} target={person} selected={checked === person.id} onSelect={() => check(person.id)} subline={<SignInAccounts providers={person.providers} usernames={person.usernames} />} />
           ))}
         </ul>
       )}

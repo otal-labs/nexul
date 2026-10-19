@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
+
 import { TargetMark } from "@/components/access/TargetMark";
 import type { PanelTarget } from "@/hooks/usePanelTargets";
 
 interface PanelPaneHeaderProps {
   target: PanelTarget;
   title: string;
-  line: string;
+  line: ReactNode;
 }
 
 // The pane's head: the target's 32px mark, a title and a muted line.
