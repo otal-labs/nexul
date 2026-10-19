@@ -21,9 +21,11 @@ func TestViewAs_HoldsMembershipToThePinnedWorkspaceWithoutPoisoningTheMemo(t *te
 	roles := newFakeRoles()
 	roles.set("ws-a", "alice", RoleInfo{})
 	roles.set("ws-b", "alice", RoleInfo{})
+	roles.set("ws-default", "alice", RoleInfo{IsOwnerRole: true})
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
-	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}}})
+	s.SetInstanceAreas("ws-default", nil)
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b", "ws-default"}}})
 	plain := WithMemo(context.Background(), s.NewMemo())
 	view := viewing(plain, "alice")
 
@@ -32,10 +34,13 @@ func TestViewAs_HoldsMembershipToThePinnedWorkspaceWithoutPoisoningTheMemo(t *te
 	assert.Equal(t, []string{"ws-a"}, viewed, "the list holds only the pinned workspace")
 	require.ErrorIs(t, s.Require(view, "ws-b", permissions.Member), apperrs.ErrNotFound)
 	require.NoError(t, s.Require(view, "ws-a", permissions.Member))
+	owner, err := s.IsInstanceOwner(view, "alice")
+	require.NoError(t, err)
+	assert.False(t, owner, "owning the default workspace is not standing in the viewed one")
 
 	own, err := s.WorkspacesOf(plain, "alice")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ws-a", "ws-b"}, own, "the same request's memo still holds the person's own list")
+	assert.Equal(t, []string{"ws-a", "ws-b", "ws-default"}, own, "the same request's memo still holds the person's own list")
 	require.NoError(t, s.Require(identity.WithActor(plain, identity.Actor{ID: "alice"}), "ws-b", permissions.Member))
 }
 

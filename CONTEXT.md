@@ -794,6 +794,18 @@ they can't take is not there. A thing they can't read
 is not found either way.
 _Avoid_: Disabled button, greyed out, read-only mode
 
+**View as**:
+A read-only look at Nexul as another member of one workspace, to check that
+their roles give them neither too much nor too little. It takes the
+permission **View Nexul as another member**, and the member must not be an
+Owner and must hold nothing the viewer could not give. Everything shown is
+what that member is shown in that workspace: their projects, their chat, their
+answer to every action. Changes are off, their personal things (tokens,
+sessions, computers, inbox) are not found, and a DM or private channel shows
+only if the viewer could read it too. The record of who viewed as whom is the
+audit row of the call that starts it.
+_Avoid_: Impersonate, log in as, sudo, preview mode
+
 **Automation**:
 First-party event-driven code: when an event happens, a function runs.
 Written in TS/JS against the SDK — **Default automations** ship with the
