@@ -13,31 +13,40 @@ import (
 
 // QueueRig is a Runner over real stores with every other seam faked, for the queue's tests over real SQLite in plays_test.
 type QueueRig struct {
-	Runner  *Runner
-	harness *switchableHarness
-	perm    *fakePerm
-	facts   *fakeFacts
-	targets *fakeTargets
-	shares  *fakeComputers
-	turns   *idleTurns
+	Runner   *Runner
+	harness  *switchableHarness
+	perm     *fakePerm
+	facts    *fakeFacts
+	targets  *fakeTargets
+	shares   *fakeComputers
+	turns    *idleTurns
+	memories *fakeMemories
 }
 
 // NewQueueRig wires a runner whose plays, trails, and queue are the given stores; projectID is in workspaceID.
 func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID, projectID string, now func() time.Time) *QueueRig {
 	q := &QueueRig{
-		harness: &switchableHarness{links: map[string][2]string{}},
-		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
-		facts:   &fakeFacts{byID: map[string]Facts{}},
-		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
-		turns:   &idleTurns{started: make(chan struct{})},
-		shares:  &fakeComputers{owners: map[string]string{}, held: map[string]permissions.Set{}},
+		harness:  &switchableHarness{links: map[string][2]string{}},
+		perm:     &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
+		facts:    &fakeFacts{byID: map[string]Facts{}},
+		targets:  &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
+		turns:    &idleTurns{started: make(chan struct{})},
+		shares:   &fakeComputers{owners: map[string]string{}, held: map[string]permissions.Set{}},
+		memories: &fakeMemories{byProject: map[string][]Memory{}},
 	}
 	q.Runner = NewRunner(RunnerConfig{
 		Plays: playsRepo, Trails: trails, Queue: queue, Facts: q.facts, Perm: q.perm, Targets: q.targets,
 		Projects: &fakeProjects{workspaces: map[string]string{projectID: workspaceID}},
-		Harness:  q.harness, Checkouts: q.harness, Memories: &fakeMemories{}, Threads: &fakeThreads{}, Turns: q.turns, Users: fakeUsers{}, Computers: q.shares, Now: now,
+		Harness:  q.harness, Checkouts: q.harness, Memories: q.memories, Threads: &fakeThreads{}, Turns: q.turns, Users: fakeUsers{}, Computers: q.shares, Now: now,
 	})
 	return q
+}
+
+// SetMemories gives a project the memories with these ids, none always included.
+func (q *QueueRig) SetMemories(projectID string, ids ...string) {
+	for _, id := range ids {
+		q.memories.byProject[projectID] = append(q.memories.byProject[projectID], Memory{ID: id, Title: id})
+	}
 }
 
 // SetTicket gives a ticket its facts now, and the stage and key a run reads.

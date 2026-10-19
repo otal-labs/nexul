@@ -318,6 +318,25 @@ func TestDispatch_RunsAtOnce_LetsThatManyGoSideBySide(t *testing.T) {
 	assert.Equal(t, []any{plays.QueueStarted, plays.QueueQueued}, []any{r.only(t, "t-2").Status, r.only(t, "t-3").Status})
 }
 
+func TestDispatch_AutoPlayMemories_TheRunReadsThoseInItsProject(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked, func(a *plays.AutoPlay) {
+		a.MemoryIDs = []string{"m-elsewhere", "m-here"}
+	})
+	r.SetMemories(project, "m-here", "m-unpicked")
+	r.SetMemories("other-project", "m-elsewhere")
+	r.ticket("t-1")
+	r.unblock(t, "t-1")
+
+	r.dispatch(t)
+	require.Equal(t, plays.QueueStarted, r.only(t, "t-1").Status, "a pick from another project never stops the run")
+	trails, err := r.store.PlayTrails.ListTrailsByTarget(t.Context(), plays.TargetTicket, "t-1")
+	require.NoError(t, err)
+	require.Len(t, trails, 1)
+	assert.Equal(t, []string{"m-here"}, trails[0].SelectedMemoryIDs)
+}
+
 func TestDispatch_PressedRunTakesTheSlot(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")

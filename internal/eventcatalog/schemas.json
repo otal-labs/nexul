@@ -414,6 +414,12 @@
           "run_as": {
             "type": "string"
           },
+          "memory_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "created_by": {
             "type": "string"
           },
@@ -439,6 +445,7 @@
           "run_on",
           "computer_id",
           "run_as",
+          "memory_ids",
           "created_by",
           "created_at",
           "updated_at"
@@ -753,6 +760,12 @@
           "run_as": {
             "type": "string"
           },
+          "memory_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "created_by": {
             "type": "string"
           },
@@ -778,6 +791,7 @@
           "run_on",
           "computer_id",
           "run_as",
+          "memory_ids",
           "created_by",
           "created_at",
           "updated_at"

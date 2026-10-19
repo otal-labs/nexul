@@ -81,7 +81,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
 	}
-	memories, err := r.memoriesToRead(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
+	memories, err := r.memoriesToRead(ctx, trail.ProjectID, trail.SelectedMemoryIDs, mode == launchQueued)
 	if err != nil {
 		return refuse(err)
 	}
@@ -623,18 +623,19 @@ func (r *Runner) refuseIfActive(ctx context.Context, targetType TargetType, targ
 	return nil
 }
 
-// memoriesToRead names the run's memories for the agent to read itself, refusing an id outside the project: the
-// interview memory, then the other always-included ones, then the rest of the selection; footer memories come apart.
-func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (runMemories, error) {
+// memoriesToRead names the run's memories for the agent to read itself, refusing an id outside the project unless
+// dropMissing, as for an auto run whose picks span projects: the interview memory, then the other always-included ones,
+// then the rest of the selection; footer memories come apart.
+func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string, dropMissing bool) (runMemories, error) {
 	all, err := r.memories.ListForProject(ctx, projectID)
-	if errors.Is(err, apperrs.ErrForbidden) && len(selected) == 0 {
+	if errors.Is(err, apperrs.ErrForbidden) && (len(selected) == 0 || dropMissing) {
 		return runMemories{}, nil
 	}
 	if err != nil {
 		return runMemories{}, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
 	ms, missing := orderMemories(all, selected)
-	if len(missing) > 0 {
+	if len(missing) > 0 && !dropMissing {
 		return runMemories{}, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, missing[0])
 	}
 	return ms, nil

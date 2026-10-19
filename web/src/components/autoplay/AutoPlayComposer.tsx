@@ -4,6 +4,7 @@ import { useLocation } from "react-router";
 
 import { ConditionsSection } from "@/components/autoplay/ConditionsSection";
 import { LimitsSection } from "@/components/autoplay/LimitsSection";
+import { MemoriesSection } from "@/components/autoplay/MemoriesSection";
 import { MomentSection } from "@/components/autoplay/MomentSection";
 import { PrioritySection } from "@/components/autoplay/PrioritySection";
 import { RunOnSection } from "@/components/autoplay/RunOnSection";
@@ -70,6 +71,7 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
         <PrioritySection />
         <LimitsSection />
         <RunOnSection />
+        <MemoriesSection />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => void back()}>
             {canWrite ? "Cancel" : "Close"}

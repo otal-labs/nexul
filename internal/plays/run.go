@@ -346,6 +346,8 @@ type target struct {
 	testsLocation string
 	service       string
 	outageID      string
+	// memoryIDs are an auto run's picks from its auto play; the run reads those in its project and drops the rest.
+	memoryIDs []string
 }
 
 func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, result harness.TurnResult, replyMessageID, note string) {

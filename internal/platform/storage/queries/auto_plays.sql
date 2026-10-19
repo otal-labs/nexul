@@ -1,6 +1,6 @@
 -- name: CreateAutoPlay :exec
-INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, computer_id, run_as, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, computer_id, run_as, memory_ids, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetAutoPlay :one
 SELECT * FROM auto_plays WHERE id = ?;
@@ -9,7 +9,7 @@ SELECT * FROM auto_plays WHERE id = ?;
 SELECT * FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(sqlc.arg(play_ids))) ORDER BY play_id, created_at, id;
 
 -- name: UpdateAutoPlay :execrows
-UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, run_as = ?, updated_at = ?
+UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, run_as = ?, memory_ids = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteAutoPlay :execrows

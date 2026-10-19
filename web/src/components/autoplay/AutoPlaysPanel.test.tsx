@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { AutoPlay } from "@/models/AutoPlay";
+import type { Memory } from "@/models/Memory";
 import { pickOption } from "@/test/pickOption";
 import { renderPlaysPage } from "@/test/renderPlaysPage";
 
@@ -45,11 +46,15 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
   run_on: "developer",
   computer_id: "",
   run_as: "",
+  memory_ids: [],
   created_by: "u1",
   created_at: "",
   updated_at: "",
   ...overrides,
 });
+
+const memory = (id: string, title: string, flags: Partial<Memory> = {}) => ({ id, project_id: "p-1", title, always_included: false, footer: false, ...flags });
+const MEMORIES = [memory("m-1", "Branching"), memory("m-2", "Ship it", { footer: true }), memory("m-3", "House rules", { always_included: true })];
 
 const WRITE = ["plays:read", "plays:write", "autoplays:read", "autoplays:write", "autoplays:delete"];
 let permissions: string[] = WRITE;
@@ -63,6 +68,7 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
     if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
+    if (url === "/api/memories") return { data: MEMORIES };
     if (url === "/api/ticket-types" && projectId === "p-1") return { data: [{ id: "tt-1", name: "Bug" }] };
     if (url === "/api/tickets/labels") return { data: ["urgent"] };
     if (url === "/api/categories") return { data: [] };
@@ -188,6 +194,12 @@ describe("a play's auto plays", () => {
     await user.keyboard("{Escape}");
     expect(screen.getAllByText(/must match:/)[0]).toHaveTextContent("of these 2 conditions must match:");
 
+    await user.click(screen.getByRole("button", { name: "Memories" }));
+    expect(screen.queryByRole("checkbox", { name: /House rules/ })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("checkbox", { name: "Ship it (footer) · Website" }));
+    await user.click(screen.getByRole("checkbox", { name: "Branching · Website" }));
+    await user.keyboard("{Escape}");
+
     mocks.post.mockResolvedValue({ data: autoPlay({ id: "ap-2", enabled: false }) });
     await user.click(footer("Save"));
     await waitFor(() =>
@@ -206,6 +218,7 @@ describe("a play's auto plays", () => {
         once_within_minutes: 1440,
         run_on: "developer",
         computer_id: "",
+        memory_ids: ["m-2", "m-1"],
       }),
     );
     expect(await screen.findByRole("button", { name: "Add auto play" })).toBeInTheDocument();
@@ -226,6 +239,20 @@ describe("a play's auto plays", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(await screen.findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("keeps its memories when switched, and one it can't name stays picked as an unknown memory", async () => {
+    autoPlays = [autoPlay({ memory_ids: ["m-gone", "m-1"] })];
+    const { user } = await openAutoPlays();
+    mocks.patch.mockResolvedValue({ data: autoPlays[0] });
+    await user.click(await screen.findByRole("switch", { name: "Switch auto play ap-1 on or off" }));
+    expect(mocks.patch).toHaveBeenCalledWith(
+      "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
+      expect.objectContaining({ enabled: false, memory_ids: ["m-gone", "m-1"] }),
+    );
+
+    await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Memories" })).toHaveTextContent("Unknown memory, Branching · Website"));
   });
 
   it("keeps a value it can't name through a save, shown as an unknown project", async () => {
