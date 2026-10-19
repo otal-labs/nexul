@@ -14,12 +14,12 @@ with enforcement.
   that workspace. The target is a member of it, is not the viewer, and does not hold the Owner role, which sees
   everything and leaves nothing to check. The union of the target's role permissions there is within what the viewer
   could give (ADR 0088, `access.GrantablePermissions`), so a viewer never sees through a role they could not hand out.
-- **Starting** is `POST /api/workspaces/{id}/members/{userId}/view-as`, run as the real caller. Its audit row is the
+- **Starting** is `POST /api/workspaces/{workspaceID}/members/{userID}/view-as`, run as the real caller. Its audit row is the
   record of who viewed as whom, and the only one: nothing else in a view writes.
 - **Headers** are honoured only on a browser session. A personal access token, an automation or an integration that
   sends them gets a 400. Sending one of the two is a 400. A request the check refuses is a 403 with `X-View-As:
   refused`, never a 401, so the web leaves the mode instead of signing the viewer out.
-- **Writes are off.** Every request that is not a GET, HEAD or OPTIONS is a 403 ("You're viewing as <name>; changes
+- **Writes are off.** Every request that is not a GET, HEAD or OPTIONS is a 403 ("You're viewing as <name>, so changes
   are off"), except the POSTs that only read: mentions resolve, ticket label colours and the browser log relay.
 - **Personal things are not found.** Sign-in state, tokens and sessions (`/api/auth/` but `GET /api/auth/me`), personal
   computers (`/api/pairing/`, ADR 0146: no bypass reaches them, and `access` answers no computer permission to an
