@@ -20,6 +20,8 @@ export interface PanelTarget {
   name: string;
   login: string;
   avatarUrl: string;
+  providers?: string[] | undefined;
+  usernames?: Partial<Record<string, string>> | undefined;
   // False for a role or account the workspace no longer lists.
   known: boolean;
 }
@@ -62,7 +64,7 @@ export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false
   const { data: workspacePeople } = useFetchWorkspacePeople(everyWorkspace || instance ? undefined : workspaceId);
   const around = usePeopleAround(everyWorkspace);
   const teamRoles = areaTeam?.workspaces.flatMap((w) => w.roles.map((r) => ({ id: r.id, name: `${r.name} in ${w.name}`, is_owner_role: r.is_owner })));
-  const teamPeople = areaTeam?.people.filter((p) => p.status !== "removed").map((p) => ({ user_id: p.id, login: p.login, display_name: p.display_name || p.name, avatar_url: p.avatar_url }));
+  const teamPeople = areaTeam?.people.filter((p) => p.status !== "removed").map((p) => ({ user_id: p.id, login: p.login, display_name: p.display_name || p.name, avatar_url: p.avatar_url, providers: p.providers, usernames: p.usernames }));
   const byScope = <T,>(computer: T, area: T, workspace: T): T => {
     if (everyWorkspace) return computer;
     if (instance) return area;
@@ -79,7 +81,7 @@ export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false
   // The Owner role reaches everything whatever a rule says, so it is never offered as a target.
   const roleTargets = allRoles.filter((t) => !roles?.find((r) => r.id === t.id)?.is_owner_role);
   const personTargets: PanelTarget[] = (people ?? []).map((p) => ({
-    key: targetKey("person", p.user_id), kind: "person", id: p.user_id, name: personLabel(p), login: p.login, avatarUrl: p.avatar_url, known: true,
+    key: targetKey("person", p.user_id), kind: "person", id: p.user_id, name: personLabel(p), login: p.login, avatarUrl: p.avatar_url, providers: p.providers, usernames: p.usernames, known: true,
   }));
 
   const targetOf = (key: string): PanelTarget => {

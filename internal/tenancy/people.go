@@ -140,7 +140,7 @@ func toPerson(a *TeamAccount) Person {
 	if name == "" {
 		name = a.Name
 	}
-	return Person{UserID: a.ID, Login: a.Login, DisplayName: name, AvatarURL: effectiveAvatarURL(a)}
+	return Person{UserID: a.ID, Login: a.Login, DisplayName: name, AvatarURL: effectiveAvatarURL(a), Providers: a.Providers, Usernames: a.Usernames}
 }
 
 // effectiveAvatarURL versions an uploaded picture by its content, so no cache can serve the old one after a new upload.

@@ -1,28 +1,20 @@
-import { ProviderMark } from "@/components/ProviderMarks";
+import { SignInAccount } from "@/components/SignInAccounts";
 import type { TeamPerson } from "@/models/Team";
-import { providerLabel, loginHandle } from "@/models/User";
+import { knownProviders, loginHandle } from "@/models/User";
 
 interface TeamSignInAccountsProps {
   person: TeamPerson;
 }
 
-// A provider this build has no mark for (the dev login) is left out rather than drawn blank; with no username at all the login stands in.
+// With no username at all the login stands in.
 export const TeamSignInAccounts = ({ person }: TeamSignInAccountsProps) => {
-  const known = person.providers.filter((provider) => provider in providerLabel);
+  const known = knownProviders(person.providers);
   const named = known.some((provider) => person.usernames?.[provider]);
   return (
     <>
       {known.map((provider) => (
-        <span key={provider} className="inline-flex shrink-0 items-center gap-1 [&_svg]:size-3">
-          <span role="img" aria-label={providerLabel[provider]} title={providerLabel[provider]} className="inline-flex">
-            <ProviderMark provider={provider} />
-          </span>
-          {person.usernames?.[provider] && (
-            <span className="font-mono">
-              {provider === "github" && "@"}
-              {person.usernames[provider]}
-            </span>
-          )}
+        <span key={provider} className="inline-flex shrink-0 items-center gap-1">
+          <SignInAccount provider={provider} username={person.usernames?.[provider]} />
           <span aria-hidden>·</span>
         </span>
       ))}

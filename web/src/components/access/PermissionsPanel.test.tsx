@@ -24,7 +24,8 @@ const catalog = [
   { value: "docs:delete", label: "Delete docs", domain: "docs", action: "delete", area: "project" },
 ];
 const person = (login: string) => ({ user_id: login, login, display_name: "", avatar_url: "https://example.com/a.png" });
-const people = ["alice", "bob", "lena", "sam"].map(person);
+// lena signed in with Discord, so her login is her email.
+const people = ["alice", "bob", "lena", "sam"].map(person).map((p) => (p.login === "lena" ? { ...p, login: "lena@example.com", display_name: "lena", providers: ["discord"], usernames: { discord: "lena_d" } } : p));
 
 const source = (over: Partial<PermissionSource>): PermissionSource => ({
   kind: "role", entity_type: "workspace", entity_id: "ws-1", target_type: "role", target_id: "r-dev", state: "allow",
@@ -271,6 +272,16 @@ describe("PermissionsPanel", () => {
     const [link] = await screen.findAllByRole("button", { name: "Developer" });
     await user.click(link!);
     expect(await screen.findByRole("heading", { name: "Developer" })).toBeInTheDocument();
+  });
+
+  it("names each person to check by their sign-in username and its mark, never an email login", async () => {
+    await openPanel();
+    await user.click(screen.getByRole("radio", { name: "Check access" }));
+    const column = within(await screen.findByRole("navigation", { name: "People to check" }));
+    const lena = column.getByRole("button", { name: /^lena/ });
+    expect(within(lena).getByText("lena_d")).toBeInTheDocument();
+    expect(within(lena).getByRole("img", { name: "Discord" })).toBeInTheDocument();
+    expect(column.queryByText(/@example\.com/)).not.toBeInTheDocument();
   });
 
   it("checks a person's answers with the source of each, and a person outside the project once", async () => {

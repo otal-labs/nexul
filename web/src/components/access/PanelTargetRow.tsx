@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, Trash2 } from "lucide-react";
 
 import { TargetMark } from "@/components/access/TargetMark";
@@ -9,7 +9,7 @@ interface PanelTargetRowProps {
   target: PanelTarget;
   selected: boolean;
   onSelect: () => void;
-  subline: string;
+  subline: ReactNode;
   onRemove?: () => void;
 }
 

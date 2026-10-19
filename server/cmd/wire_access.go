@@ -101,9 +101,20 @@ func (a accessNames) Name(ctx context.Context, entityType, id string) (string, e
 	case access.TargetRole:
 		return named(ctx, id, a.store.Roles.Get, func(r *roles.Role) string { return r.Name })
 	case access.TargetPerson:
-		return named(ctx, id, a.store.Users.GetUserByID, func(u *auth.User) string { return u.Login })
+		return named(ctx, id, a.store.Users.GetUserByID, personName)
 	}
 	return "", nil
+}
+
+// personName is how a sentence names someone: never their login, which is the email of a Google or Discord account.
+func personName(u *auth.User) string {
+	if u.DisplayName != nil && *u.DisplayName != "" {
+		return *u.DisplayName
+	}
+	if u.Name != "" {
+		return u.Name
+	}
+	return u.Login
 }
 
 // named reads one entity with get and names it with name.

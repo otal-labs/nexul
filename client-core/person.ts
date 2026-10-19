@@ -6,6 +6,9 @@ export interface Person {
   display_name: string;
   // An https URL, or a /api/people/... path that needs the session to load.
   avatar_url: string;
+  // The sign-in accounts and the names others know them by, so nobody is shown by an email login.
+  providers?: string[];
+  usernames?: Partial<Record<string, string>> | undefined;
   // Set on an Owner of the workspace the directory lists, so someone with no role knows who to ask.
   owner?: boolean;
 }

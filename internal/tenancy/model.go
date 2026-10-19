@@ -198,6 +198,9 @@ type Person struct {
 	Login       string `json:"login"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url"`
+	// Providers and Usernames are the sign-in accounts and the names others know them by, as on TeamAccount.
+	Providers []string          `json:"providers,omitempty"`
+	Usernames map[string]string `json:"usernames,omitempty"`
 	// Owner is set in a workspace's directory, so someone with no role knows who to ask for one (ADR 0148).
 	Owner bool `json:"owner,omitempty"`
 }

@@ -45,6 +45,10 @@ export const loginHandle = (login: string): string => (login.includes("@") ? log
 
 export const providerLabel: Record<Provider, string> = { github: "GitHub", google: "Google", discord: "Discord" };
 
+// A provider this build has no mark for (the dev login) is left out rather than drawn blank.
+export const knownProviders = (providers: readonly string[] | undefined): Provider[] =>
+  (providers ?? []).filter((provider): provider is Provider => provider in providerLabel);
+
 // The one rule for which avatar to show: the manual override if set, else the provider-sourced one.
 export const effectiveAvatar = (user: User): string => user.avatar_override_url || user.avatar_url;
 

@@ -19,7 +19,7 @@ func newPeopleFixture(t *testing.T) (*Handler, *Service, *fakeAccountGate) {
 		require.NoError(t, repo.AddMember(t.Context(), m))
 	}
 	accounts := newFakeAccountGate()
-	accounts.accounts["lewis"] = &TeamAccount{ID: "lewis", Login: "LewisWelch94", Name: "Lewis Welch", DisplayName: "Lewis", AvatarURL: "https://avatars.example/lewis", Status: "active", AvatarOverride: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="}
+	accounts.accounts["lewis"] = &TeamAccount{ID: "lewis", Login: "LewisWelch94", Name: "Lewis Welch", DisplayName: "Lewis", AvatarURL: "https://avatars.example/lewis", Status: "active", AvatarOverride: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=", Providers: []string{"discord"}, Usernames: map[string]string{"discord": "lewis_w"}}
 	accounts.accounts["carol"] = &TeamAccount{ID: "carol", Login: "carol", Status: "disabled"}
 	accounts.accounts["bob"] = &TeamAccount{ID: "bob", Login: "bob", Status: "active"}
 	perm := newFakePermissionGate()
@@ -29,7 +29,7 @@ func newPeopleFixture(t *testing.T) (*Handler, *Service, *fakeAccountGate) {
 }
 
 func TestHandler_ListPeople(t *testing.T) {
-	t.Run("a member gets id, login, display name and picture, and nothing else", func(t *testing.T) {
+	t.Run("a member gets id, login, display name, picture and sign-in usernames, and nothing else", func(t *testing.T) {
 		h, _, _ := newPeopleFixture(t)
 		rec := do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/people", "", "carol")
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -43,8 +43,14 @@ func TestHandler_ListPeople(t *testing.T) {
 			for k := range p {
 				keys = append(keys, k)
 			}
-			assert.ElementsMatch(t, []string{"user_id", "login", "display_name", "avatar_url"}, keys)
+			assert.Subset(t, []string{"user_id", "login", "display_name", "avatar_url", "providers", "usernames"}, keys)
 		}
+		lewis := body.People[0]
+		if lewis["user_id"] != "lewis" {
+			lewis = body.People[1]
+		}
+		assert.Equal(t, []any{"discord"}, lewis["providers"])
+		assert.Equal(t, map[string]any{"discord": "lewis_w"}, lewis["usernames"], "the panel names someone by username, never their email login")
 	})
 	t.Run("a non-member is refused", func(t *testing.T) {
 		h, _, _ := newPeopleFixture(t)
