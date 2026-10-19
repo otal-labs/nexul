@@ -2,6 +2,7 @@
 export const AREA_PERMISSION = {
   topology: "topology:read",
   automations: "automations:read",
+  plays: "plays:read",
   projects: "projects:read",
   tickets: "tickets:read",
   memories: "memories:read",

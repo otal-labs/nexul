@@ -9,6 +9,7 @@ import {
   NetworkIcon,
   SettingsIcon,
   SlidersHorizontalIcon,
+  SparklesIcon,
   UserCogIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -50,6 +51,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("project-settings", "Project settings", SettingsIcon, projectSettingsPath(token), !!current && !!can?.("projects")),
     ...page("runners", "Runners", CpuIcon, "/runners", showRunners),
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
+    ...page("plays", "Plays", SparklesIcon, "/plays", canOpen("plays") === true),
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),
     { id: "page:settings", label: "Your settings", icon: UserCogIcon, keywords: "go to page profile account", run: () => void navigate("/settings") },

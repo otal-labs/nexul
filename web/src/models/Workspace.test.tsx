@@ -11,12 +11,12 @@ import {
   type WorkspaceAccess,
 } from "@/models/Workspace";
 
-const access = (areas: RouteArea[], configurationSections: string[] = ["roles", "plays", "danger"]): WorkspaceAccess => ({
+const access = (areas: RouteArea[], configurationSections: string[] = ["roles", "danger"]): WorkspaceAccess => ({
   canOpen: (area) => areas.includes(area),
   configurationSections,
 });
 
-const everything = access(["tickets", "docs", "memories", "topology", "automations", "wizard"]);
+const everything = access(["tickets", "docs", "memories", "topology", "plays", "automations", "wizard"]);
 
 describe("switchWorkspacePath", () => {
   it.each([
@@ -35,7 +35,8 @@ describe("switchWorkspacePath", () => {
     ["/a/stacks/s-1/deploys/d-1", "/b/topology"],
     ["/a/automations/au-1", "/b/automations"],
     ["/a/wizard/project/service?project=p-1", "/b/wizard/project/project"],
-    ["/a/configuration/plays", "/b/configuration/plays"],
+    ["/a/plays/pl-1/auto-plays", "/b/plays"],
+    ["/a/configuration/roles", "/b/configuration/roles"],
     ["/a/nowhere", "/b"],
   ])("%s lands on %s", (from, to) => {
     expect(switchWorkspacePath(from, "b", everything)).toBe(to);
@@ -43,6 +44,10 @@ describe("switchWorkspacePath", () => {
 
   it("lands on the first Configuration section the viewer has there when theirs is hidden", () => {
     expect(switchWorkspacePath("/a/configuration/mentions", "b", everything)).toBe("/b/configuration/roles");
+  });
+
+  it("goes home from Plays when the viewer can't read plays there", () => {
+    expect(switchWorkspacePath("/a/plays/pl-1", "b", access(["tickets"]))).toBe("/b");
   });
 
   it("goes home when Configuration has nothing but Danger zone there", () => {

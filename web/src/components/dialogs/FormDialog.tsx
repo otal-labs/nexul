@@ -7,7 +7,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import type { ZodType } from "zod";
 
 import { errorMessage } from "@/api/client";
-import { FormDialogContext, type FooterIntercept } from "@/components/dialogs/FormDialogContext";
+import { FormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -64,8 +64,6 @@ export const FormDialog = ({
   // "Create more": a form can flag via context to keep the dialog open and clean itself up via onAfterSubmit.
   const stayOpenRef = useRef(false);
   const afterSubmitHandlerRef = useRef<(() => void) | null>(null);
-  const interceptRef = useRef<FooterIntercept | null>(null);
-  const [intercepting, setIntercepting] = useState(false);
 
   const methods = useForm<FieldValues>({
     ...formOptions,
@@ -97,20 +95,10 @@ export const FormDialog = ({
   };
 
   const handleAction = async (): Promise<void> => {
-    const intercept = interceptRef.current;
-    if (intercept) {
-      setIntercepting(true);
-      await intercept.submit().finally(() => setIntercepting(false));
-      return;
-    }
     await methods.handleSubmit(handleOkClick)();
   };
 
   const handleCancel = (): void => {
-    if (interceptRef.current) {
-      interceptRef.current.cancel();
-      return;
-    }
     proceed({ success: false, data: null });
   };
 
@@ -129,12 +117,9 @@ export const FormDialog = ({
     submit: () => {
       void handleAction();
     },
-    intercept: (handlers: FooterIntercept | null) => {
-      interceptRef.current = handlers;
-    },
   };
 
-  const busy = isLoading || intercepting || methods.formState.isSubmitting;
+  const busy = isLoading || methods.formState.isSubmitting;
 
   return (
     <Dialog

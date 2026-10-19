@@ -17,7 +17,6 @@ const nothing: SettingsVisibility = {
   teamIsInstanceWide: false,
   showGeneral: false,
   showRoles: false,
-  showPlays: false,
   showInterviewTemplate: false,
   showMentionLayout: false,
   showTeam: false,
@@ -28,7 +27,6 @@ const everything: SettingsVisibility = {
   teamIsInstanceWide: true,
   showGeneral: true,
   showRoles: true,
-  showPlays: true,
   showInterviewTemplate: true,
   showMentionLayout: true,
   showTeam: true,
@@ -52,13 +50,12 @@ describe("SettingsNav", () => {
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "General",
       "Roles",
-      "Plays",
       "Interview template",
       "Mention chips",
       "Danger zone",
     ]);
     expect(nav.getByRole("link", { name: "General" })).toHaveAttribute("href", "/acme/configuration/general");
-    expect(nav.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/acme/configuration/plays");
+    expect(nav.queryByRole("link", { name: "Plays" })).not.toBeInTheDocument();
   });
 
   it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {

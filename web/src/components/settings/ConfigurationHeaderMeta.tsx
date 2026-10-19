@@ -1,6 +1,5 @@
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
-import { useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
@@ -23,13 +22,6 @@ const RolesMeta = () => {
   return <>{join([roles && count(roles.length, "role"), members !== undefined && count(members, "person", "people")])}</>;
 };
 
-const PlaysMeta = () => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: plays } = useFetchWorkspacePlays(workspaceId);
-  const off = plays?.filter((play) => !play.enabled).length ?? 0;
-  return <>{join([plays && count(plays.length, "play"), off > 0 && `${off} off`])}</>;
-};
-
 const InterviewMeta = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: template } = useFetchInterviewTemplate(workspaceId);
@@ -50,7 +42,6 @@ export const ConfigurationHeaderMeta = ({ section }: ConfigurationHeaderMetaProp
   <>
     {section === "general" && <GeneralMeta />}
     {section === "roles" && <RolesMeta />}
-    {section === "plays" && <PlaysMeta />}
     {section === "interview" && <InterviewMeta />}
     {section === "mentions" && <MentionsMeta />}
   </>

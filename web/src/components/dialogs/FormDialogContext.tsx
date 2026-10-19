@@ -2,12 +2,6 @@ import { createContext, useContext } from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
 import { useFormContext } from "react-hook-form";
 
-// A sub-form shown inside the dialog (an auto play opened from a play) takes over the footer while it is open.
-export interface FooterIntercept {
-  submit: () => Promise<void>;
-  cancel: () => void;
-}
-
 export interface FormDialogContextValue<TFormValues extends FieldValues = FieldValues> {
   setLoading: (loading: boolean) => void;
   // Disables OK while the form says it can't be sent yet, without the spinner setLoading shows.
@@ -18,8 +12,6 @@ export interface FormDialogContextValue<TFormValues extends FieldValues = FieldV
   onAfterSubmit: (handler: () => void) => void;
   // Same submit path as the OK button, so a form can wire its own shortcut (e.g. Cmd/Ctrl+Enter).
   submit: () => void;
-  // While set, OK, Cancel, Esc and the close button act on the sub-form instead of the dialog's own form; null hands them back.
-  intercept: (handlers: FooterIntercept | null) => void;
 }
 
 // Context can't be parameterized, so the value is type-erased; useFormDialogContext<T>() restores it.

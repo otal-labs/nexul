@@ -429,7 +429,7 @@ row, so the field after it never shifts between Success and Failure. A page
 that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
 
-List pane. A page that edits one record beside its siblings (Docs, Memories)
+List pane. A page that edits one record beside its siblings (Docs, Memories, Plays)
 is the app sidebar, a list, and the open record. From 1024px the list is
 dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 300px default, one width shared by every page,
@@ -518,7 +518,7 @@ A mark that names the record (the board's project mark) goes in the
 `leading` slot, centred on the title and meta pair. Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
-A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
+A list pane (Docs, Memories, Plays, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
 to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
 a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
@@ -539,7 +539,7 @@ Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
 single-record pages (Configuration, Your settings, Project settings, Stack,
 Deploy, Automation); every page pads `py-8` inside its panel. Pages built
-from panes (Docs, Memories, Inbox, Ticket) run the full width with no
+from panes (Docs, Memories, Plays, Inbox, Ticket) run the full width with no
 Container, one panel per pane; Chat is one conversation panel.
 
 Microheader. The one small uppercase label is `microheaderClass`
@@ -1051,7 +1051,7 @@ scrolling sideways at narrow widths, the active tab the last
 path segment (`/settings/connectors/github-app`) with the query left alone,
 the first visible tab when the segment is missing or unknown. The first tab
 has no segment of its own. A tab the viewer lacks permission for is hidden,
-not disabled, and a view left with one tab drops the row. Anything that
+not disabled, and a view left with one tab drops the row, unless it has a `trailing` control: a switch that belongs to the whole record rather than one tab (a play's Enabled) sits right-aligned on the tab row and keeps the row. Anything that
 deep-links into a tabbed view builds its path with `useTabPath`, never by
 hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one

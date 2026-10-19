@@ -27,7 +27,7 @@ export const useFetchWorkspacePlays = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-// A play's auto plays, oldest first, for its settings page.
+// A play's auto plays, oldest first, for its page.
 export const useFetchAutoPlays = (workspaceId: string, playId: string) =>
   useQuery({
     queryKey: [getAutoPlaysKey, workspaceId, playId],

@@ -1,21 +1,22 @@
 import { ArrowLeftIcon } from "lucide-react";
-import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { useLocation } from "react-router";
 
 import { ConditionsSection } from "@/components/autoplay/ConditionsSection";
 import { LimitsSection } from "@/components/autoplay/LimitsSection";
 import { MomentSection } from "@/components/autoplay/MomentSection";
 import { PrioritySection } from "@/components/autoplay/PrioritySection";
 import { RunOnSection } from "@/components/autoplay/RunOnSection";
-import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { useCreateAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
-import { usePlayDialogStore } from "@/stores/playDialogStore";
 import { newDraft, subjectOf, toDraft, toSaveRequest, type AutoPlay, type AutoPlayDraft } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
+
+const DISCARD_MESSAGE = "Your changes to this auto play will be lost.";
 
 interface AutoPlayComposerProps {
   play: Play;
@@ -24,7 +25,7 @@ interface AutoPlayComposerProps {
   onClose: () => void;
 }
 
-// Takes the list's place in the play's dialog; while open, the dialog's Save and Cancel act on this auto play.
+// Takes the list's place on the play's Auto plays tab; Save and Cancel act on this auto play.
 export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerProps) => {
   const subject = subjectOf(play);
   const can = useAreaAccess();
@@ -34,32 +35,19 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
     disabled: !canWrite,
   });
   const { isDirty } = form.formState;
-  const { intercept } = useFormDialogContext();
+  const { pathname } = useLocation();
   const { open: confirm } = useConfirmationDialog();
   const create = useCreateAutoPlay(play.workspace_id, play.id);
   const update = useUpdateAutoPlay(play.workspace_id, play.id);
 
-  const setLeaveGuard = usePlayDialogStore((s) => s.setLeaveGuard);
-
-  // Whether leaving the composer may drop its edits: at once when clean, else once the person confirms.
-  const mayLeave = useLatestCallback(async () => {
-    if (!isDirty) return true;
-    return confirm({
-      title: "Discard changes?",
-      message: "Your changes to this auto play will be lost.",
-      confirmLabel: "Discard changes",
-    });
-  });
+  // Leaving the tab (another tab, another play) with edits asks first; closing the composer itself goes back to the list.
+  useLeaveGuard(isDirty, pathname, () => undefined, DISCARD_MESSAGE);
 
   const back = useLatestCallback(async () => {
-    if (await mayLeave()) onClose();
+    if (!isDirty || (await confirm({ title: "Discard changes?", message: DISCARD_MESSAGE, confirmLabel: "Discard changes" }))) onClose();
   });
 
   const save = useLatestCallback(async () => {
-    if (!canWrite) {
-      onClose();
-      return;
-    }
     const input = toSaveRequest(form.getValues());
     try {
       if (autoPlay) await update.mutateAsync({ id: autoPlay.id, input: { ...input, enabled: autoPlay.enabled } });
@@ -69,16 +57,6 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
       // The hook toasts why the server refused; the composer stays open with the edits.
     }
   });
-
-  useEffect(() => {
-    intercept({ submit: save, cancel: () => void back() });
-    return () => intercept(null);
-  }, [intercept, save, back]);
-
-  useEffect(() => {
-    setLeaveGuard(mayLeave);
-    return () => setLeaveGuard(null);
-  }, [setLeaveGuard, mayLeave]);
 
   return (
     <FormProvider {...form}>
@@ -92,6 +70,16 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
         <PrioritySection />
         <LimitsSection />
         <RunOnSection />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => void back()}>
+            {canWrite ? "Cancel" : "Close"}
+          </Button>
+          {canWrite && (
+            <Button type="button" loading={create.isPending || update.isPending} onClick={() => void save()}>
+              Save
+            </Button>
+          )}
+        </div>
       </div>
     </FormProvider>
   );

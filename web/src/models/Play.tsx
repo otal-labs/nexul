@@ -82,6 +82,26 @@ export const SavePlayFormSchema = z
 
 export type SavePlayFormData = z.infer<typeof SavePlayFormSchema>;
 
+export const emptyPlayForm = (): SavePlayFormData => ({
+  label: "",
+  type: "ticket",
+  description: "",
+  instructions: "",
+  enabled: true,
+  show_when_stage: "progress",
+  excluded_project_ids: [],
+});
+
+export const playToFormData = (play: Play): SavePlayFormData => ({
+  label: play.label,
+  type: play.type,
+  description: play.description,
+  instructions: play.instructions,
+  enabled: play.enabled,
+  show_when_stage: play.show_when_stage ?? "",
+  excluded_project_ids: play.excluded_project_ids,
+});
+
 // The wire shape the gateway accepts: show_when_stage travels as null, never "".
 export interface SavePlayRequest {
   label: string;

@@ -60,24 +60,24 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 ## Create or change a play
 
-Open **Configuration → Plays**. A play has:
+Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
 - **Description**, shown as the button's tooltip.
 - **Instructions**, what the agent should do on every run.
-- **Enabled**, and **Excluded projects** where it never shows.
+- **Enabled**, and **Excluded projects** where it never shows. The **Enabled** switch also sits beside the tabs on the play's page and saves as soon as you flip it.
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-To choose who may see, run, edit or delete one play, right-click its row, pick **Permissions…**, and set **See this play**, **Run**, **Edit** or **Delete** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play). The list shows how many a play is hidden from. Running a play needs seeing it: for a role or person denied **See this play**, the **Run** row keeps its own answer and adds a line such as "Can't run while See this play is denied · Denied on play Deploy prod for role Client".
+To choose who may see, run, edit or delete one play, right-click its row in the list, or open its **⋯** menu on its page, pick **Permissions…**, and set **See this play**, **Run**, **Edit** or **Delete** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play). Running a play needs seeing it: for a role or person denied **See this play**, the **Run** row keeps its own answer and adds a line such as "Can't run while See this play is denied · Denied on play Deploy prod for role Client".
 
-A play someone can't see is gone for them: from **Configuration → Plays**, the buttons and menus on tickets, docs and the Interview page, its auto plays and queued runs, and agents' `play_list`, and its link is not found. Its auto plays never run on them. Runs it already made stay readable to whoever started them and to everyone who can see the play.
+A play someone can't see is gone for them: from **Plays**, the buttons and menus on tickets, docs and the Interview page, its auto plays and queued runs, and agents' `play_list`, and its link is not found. Its auto plays never run on them. Runs it already made stay readable to whoever started them and to everyone who can see the play.
 
 ## Auto plays
 
-An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Configuration → Plays**, press **Edit**, and go to the **Auto plays** tab. Interview plays have none.
+An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Plays** and go to its **Auto plays** tab. Interview plays have none.
 
 Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
 
@@ -107,7 +107,7 @@ Nexul checks that you still own the computer or hold **Run agents** on it when y
 
 ## Investigate a crash
 
-**Investigate a crash** is a built-in stack play with one auto play, "When a stack **service crashes**", that starts off. A service crashes when its container dies with a non-zero exit code or is killed for running out of memory, outside a deploy; a service that keeps restarting counts once. To switch it on, open **Configuration → Plays**, press **Edit** on **Investigate a crash**, go to the **Auto plays** tab, pick the computer it runs on, and turn it on. You can add conditions on the project, the stack or the service, such as only `api`.
+**Investigate a crash** is a built-in stack play with one auto play, "When a stack **service crashes**", that starts off. A service crashes when its container dies with a non-zero exit code or is killed for running out of memory, outside a deploy; a service that keeps restarting counts once. To switch it on, open **Plays**, open **Investigate a crash**, go to its **Auto plays** tab, pick the computer it runs on, and turn it on. You can add conditions on the project, the stack or the service, such as only `api`.
 
 The agent reads the stack with `stack_get`, the crashed service's logs, and the stack's recent deploys, and finds the cause in the project's repository. It writes what it found on the crash's ticket if one is open for that service, or on a new ticket in the stack's project. It never deploys, restarts or edits the stack, and opens a fix pull request only if you edit the play's instructions to say so. If it thinks the fault is in Nexul rather than your app, it says so and points to the [triage skill](/docs/guide/triage/).
 
@@ -117,7 +117,7 @@ A stack run is recorded as a trail under the person whose computer it ran on, in
 
 The **Decisions check** is a built-in play with one auto play, so nobody has to press it. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
 
-Its auto play starts off. To switch it on for a workspace, open **Configuration → Plays**, press **Edit** on **Decisions check**, go to the **Auto plays** tab, and turn on "When a ticket **enters Done**". It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it. You can add conditions to it like any auto play, or press the play on a done ticket to run it by hand.
+Its auto play starts off. To switch it on for a workspace, open **Plays**, open **Decisions check**, go to its **Auto plays** tab, and turn on "When a ticket **enters Done**". It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it. You can add conditions to it like any auto play, or press the play on a done ticket to run it by hand.
 
 If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 
@@ -125,7 +125,7 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 
 | Permission | Lets you |
 |---|---|
-| `plays:read` | see plays: **Configuration → Plays**, their buttons, and their runs |
+| `plays:read` | see plays: **Plays** in the sidebar, their buttons, and their runs |
 | `plays:run` | press the plays you can see |
 | `plays:write` | create and edit plays, set who may see and run each one, stop anyone's run |
 | `plays:delete` | delete plays |

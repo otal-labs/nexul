@@ -1,14 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AxiosRequestConfig } from "axios";
-import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { AutoPlay } from "@/models/AutoPlay";
 import { pickOption } from "@/test/pickOption";
+import { renderPlaysPage } from "@/test/renderPlaysPage";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 
@@ -75,28 +73,14 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <ContextAwareConfirmation.ConfirmationRoot />
-      <PlaySettingsSection />
-    </QueryClientProvider>,
-  );
-  await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
-  await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
-  const dialog = await screen.findByRole("dialog", { name: "Edit Fix with AI" });
-  await user.click(await within(dialog).findByRole("tab", { name: "Auto plays" }));
-  return { user, dialog };
+  const router = renderPlaysPage("/acme/plays/pl-1/auto-plays");
+  await screen.findByRole("tab", { name: "Auto plays", selected: true });
+  return { user, router };
 };
 
-const footer = (dialog: HTMLElement, name: string) => within(dialog).getAllByRole("button", { name }).at(-1)!;
+const footer = (name: string) => screen.getAllByRole("button", { name }).at(-1)!;
 
-// The dialogs live in a module-level root, so each test closes its own from the list or the next one opens behind it.
-const close = async (user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) => {
-  await within(dialog).findAllByRole("button", { name: /becomes unblocked|Add auto play/ });
-  await user.click(footer(dialog, "Cancel"));
-  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-};
+const discardPrompt = () => screen.findByRole("dialog", { name: "Discard changes?" });
 
 beforeEach(() => {
   permissions = WRITE;
@@ -110,8 +94,8 @@ describe("a play's auto plays", () => {
   it("lists each as a sentence, switches it at once and puts it back when the save is refused, and sets the daily cap", async () => {
     const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
-    const { user, dialog } = await openAutoPlays();
-    const rows = await within(dialog).findAllByRole("button", { name: /becomes unblocked/ });
+    const { user } = await openAutoPlays();
+    const rows = await screen.findAllByRole("button", { name: /becomes unblocked/ });
     await waitFor(() =>
       expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High if Type is Bug, else Normal, runs on Developer"),
     );
@@ -119,7 +103,7 @@ describe("a play's auto plays", () => {
 
     let refuse: (error: Error) => void = () => {};
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));
-    const toggle = within(dialog).getByRole("switch", { name: "Switch auto play ap-1 on or off" });
+    const toggle = screen.getByRole("switch", { name: "Switch auto play ap-1 on or off" });
     await user.click(toggle);
     expect(toggle).not.toBeChecked();
     expect(mocks.patch).toHaveBeenCalledWith(
@@ -132,84 +116,75 @@ describe("a play's auto plays", () => {
     mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7 } });
     await pickOption(user, "Auto plays per ticket a day", "7");
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 });
-    await close(user, dialog);
   });
 
   it("opens one in place of the list, and Cancel with an edit asks before going back", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
     await pickOption(user, "Moment", "Ticket is created");
 
-    await user.click(footer(dialog, "Cancel"));
-    const prompt = await screen.findByRole("dialog", { name: "Discard changes?" });
-    await user.click(within(prompt).getByRole("button", { name: "Cancel" }));
-    expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
+    await user.click(footer("Cancel"));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
 
-    await user.click(footer(dialog, "Cancel"));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
-    expect(await within(dialog).findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: "Edit Fix with AI" })).toBeInTheDocument();
+    await user.click(footer("Cancel"));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Discard changes" }));
+    expect(await screen.findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
-    await close(user, dialog);
   });
 
   it("keeps the composer's edits when switching to Play is cancelled", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
     await pickOption(user, "Moment", "Ticket is created");
 
-    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
-    const prompt = await screen.findByRole("dialog", { name: "Discard changes?" });
-    await user.click(within(prompt).getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("tab", { name: "Play" }));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Cancel" }));
 
-    expect(within(dialog).getByRole("tab", { name: "Auto plays" })).toHaveAttribute("aria-selected", "true");
-    expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
-    await user.click(within(dialog).getByRole("button", { name: "Auto plays" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
-    await close(user, dialog);
+    expect(screen.getByRole("tab", { name: "Auto plays" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
   });
 
   it("drops the composer's edits and shows Play when switching is confirmed, and asks nothing when clean", async () => {
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    const { user, router } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
     await pickOption(user, "Moment", "Ticket is created");
 
-    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
-    await waitFor(() => expect(within(dialog).getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true"));
-    expect(within(dialog).queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Play" }));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true"));
+    expect(router.state.location.pathname).toBe("/acme/plays/pl-1");
+    expect(screen.queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("tab", { name: "Auto plays" }));
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
-    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
-    expect(within(dialog).getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Auto plays" }));
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
+    await user.click(screen.getByRole("tab", { name: "Play" }));
+    expect(screen.getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("dialog", { name: "Discard changes?" })).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("tab", { name: "Auto plays" }));
-    await close(user, dialog);
   });
 
   it("builds a condition and a nested group, and Save creates the auto play and goes back to the list", async () => {
     autoPlays = [];
-    const { user, dialog } = await openAutoPlays();
-    expect(await within(dialog).findByText(/No auto plays yet/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Add auto play" }));
+    const { user } = await openAutoPlays();
+    expect(await screen.findByText(/No auto plays yet/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add auto play" }));
 
-    await user.click(within(dialog).getByRole("button", { name: "Add a condition" }));
-    await user.click(within(dialog).getByRole("button", { name: "Type values" }));
+    await user.click(screen.getByRole("button", { name: "Add a condition" }));
+    await user.click(screen.getByRole("button", { name: "Type values" }));
     await user.click(await screen.findByRole("checkbox", { name: "Bug" }));
     await user.keyboard("{Escape}");
 
-    await user.click(within(dialog).getByRole("button", { name: "Add a group" }));
-    const fields = within(dialog).getAllByRole("combobox", { name: "Field" });
+    await user.click(screen.getByRole("button", { name: "Add a group" }));
+    const fields = screen.getAllByRole("combobox", { name: "Field" });
     await user.click(fields[1]!);
     await user.click(await screen.findByRole("option", { name: "Label" }));
-    await user.click(within(dialog).getByRole("button", { name: "Label values" }));
+    await user.click(screen.getByRole("button", { name: "Label values" }));
     await user.click(await screen.findByRole("checkbox", { name: "urgent" }));
     await user.keyboard("{Escape}");
-    expect(within(dialog).getAllByText(/must match:/)[0]).toHaveTextContent("of these 2 conditions must match:");
+    expect(screen.getAllByText(/must match:/)[0]).toHaveTextContent("of these 2 conditions must match:");
 
     mocks.post.mockResolvedValue({ data: autoPlay({ id: "ap-2", enabled: false }) });
-    await user.click(footer(dialog, "Save"));
+    await user.click(footer("Save"));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays", {
         enabled: false,
@@ -228,39 +203,36 @@ describe("a play's auto plays", () => {
         computer_id: "",
       }),
     );
-    expect(await within(dialog).findByRole("button", { name: "Add auto play" })).toBeInTheDocument();
-    await close(user, dialog);
+    expect(await screen.findByRole("button", { name: "Add auto play" })).toBeInTheDocument();
   });
 
   it("shows the list and the composer read-only without autoplays:write", async () => {
     permissions = ["plays:read", "plays:write", "autoplays:read"];
-    const { user, dialog } = await openAutoPlays();
-    const toggle = await within(dialog).findByRole("switch", { name: "Switch auto play ap-1 on or off" });
+    const { user } = await openAutoPlays();
+    const toggle = await screen.findByRole("switch", { name: "Switch auto play ap-1 on or off" });
     expect(toggle).toBeDisabled();
-    expect(within(dialog).queryByRole("button", { name: "Add auto play" })).not.toBeInTheDocument();
-    expect(await within(dialog).findByText(/auto plays a day/)).toHaveTextContent("Each ticket runs at most 5 auto plays a day");
+    expect(screen.queryByRole("button", { name: "Add auto play" })).not.toBeInTheDocument();
+    expect(await screen.findByText(/auto plays a day/)).toHaveTextContent("Each ticket runs at most 5 auto plays a day");
 
-    await user.click(within(dialog).getByRole("button", { name: /becomes unblocked/ }));
-    expect(within(dialog).getByRole("combobox", { name: "Moment" })).toBeDisabled();
-    expect(within(dialog).queryByRole("button", { name: "Add a condition" })).not.toBeInTheDocument();
-    await user.click(footer(dialog, "Save"));
-    expect(await within(dialog).findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));
+    expect(screen.getByRole("combobox", { name: "Moment" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Add a condition" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(await screen.findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
-    await close(user, dialog);
   });
 
   it("keeps a value it can't name through a save, shown as an unknown project", async () => {
     autoPlays = [
       autoPlay({ conditions: { match: "all", groups: [{ match: "all", rules: [{ field: "project", op: "is", values: ["p-gone", "p-1"] }] }] } }),
     ];
-    const { user, dialog } = await openAutoPlays();
-    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
-    await waitFor(() =>
-      expect(within(dialog).getByRole("button", { name: "Project values" })).toHaveTextContent("Unknown project, Website"),
-    );
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Project values" })).toHaveTextContent("Unknown project, Website"));
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
-    await user.click(footer(dialog, "Save"));
+    await user.click(footer("Save"));
     await waitFor(() =>
       expect(mocks.patch).toHaveBeenCalledWith(
         "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
@@ -269,6 +241,5 @@ describe("a play's auto plays", () => {
         }),
       ),
     );
-    await close(user, dialog);
   });
 });

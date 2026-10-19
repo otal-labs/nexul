@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { PageBreadcrumb, type Crumb } from "@/components/PageBreadcrumb";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,8 @@ export const ClampedTitle = ({ title, children }: ClampedTitleProps) => {
 
 interface PageHeaderProps {
   title: ReactNode;
+  // One small uppercase line over the title: what kind of record this is.
+  overline?: string;
   crumbs?: Crumb[];
   meta?: ReactNode;
   actions?: ReactNode;
@@ -71,13 +74,14 @@ interface PageHeaderProps {
   className?: string;
 }
 
-export const PageHeader = ({ title, crumbs, meta, actions, leading, className }: PageHeaderProps) => (
+export const PageHeader = ({ title, overline, crumbs, meta, actions, leading, className }: PageHeaderProps) => (
   <header className={cn("border-b border-border pb-5", className)}>
     {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="mb-2" />}
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-1 basis-80 items-center gap-3.5">
         {leading}
         <div className="min-w-0 flex-1">
+          {overline && <p className={cn(microheaderClass, "mb-1.5")}>{overline}</p>}
           {typeof title === "string" && (
             <ClampedTitle title={title}>
               <h1 dir="auto" className={pageTitleClassFor(title)}>
