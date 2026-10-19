@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { DndContextProps, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 
@@ -22,6 +22,9 @@ vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
   return { ...actual, useNavigate: () => vi.fn() };
 });
+
+// Every card here is draggable, as for a viewer who can write tickets.
+vi.mock("@/hooks/useActionState", () => ({ useActionState: () => ({ state: "live" }) }));
 
 // jsdom never lays anything out, so drags are driven through the handlers the board hands to DndContext.
 const dnd = vi.hoisted(() => ({ props: null as DndContextProps | null }));
@@ -139,5 +142,17 @@ describe("KanbanBoard", () => {
 
     act(() => dnd.props!.onDragOver!(overDone("c-2", { x: 40, y: 90 })));
     expect(doneIn("Sprint 2").getByText("Fix login")).toBeInTheDocument();
+  });
+
+  it("renders the dragged card's overlay outside the page, so a blurred page frame cannot offset it from the pointer", async () => {
+    const { container } = renderBoard(
+      <KanbanBoard columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
+    );
+    const card = within(container).getByText("Fix login").closest<HTMLElement>('[role="button"]')!;
+    fireEvent.mouseDown(card, { button: 0, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(document, { clientX: 20, clientY: 0 });
+
+    const copies = await screen.findAllByText("Fix login");
+    expect(copies.filter((copy) => !container.contains(copy))).toHaveLength(1);
   });
 });

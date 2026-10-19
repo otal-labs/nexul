@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
@@ -169,9 +170,13 @@ export const KanbanBoard = ({
         ))}
       </div>
       {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
-      <DragOverlay dropAnimation={dropAnimation}>
-        {activeTicket && <TicketCardOverlay ticket={activeTicket} />}
-      </DragOverlay>
+      {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}
+      {createPortal(
+        <DragOverlay dropAnimation={dropAnimation}>
+          {activeTicket && <TicketCardOverlay ticket={activeTicket} />}
+        </DragOverlay>,
+        document.body,
+      )}
     </DndContext>
   );
 };
