@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeamSection } from "@/components/team/TeamSection";
 import type { Team, TeamMembership } from "@/models/Team";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "You can't give a role holding more than you hold" }));
@@ -47,15 +48,15 @@ const teamWith = (memberships: TeamMembership[], canManage = true): Team => ({
   people: [{ id: "u-sam", login: "sam", name: "Sam Lee", avatar_url: "", status: "active", created_at: "", providers: ["github"], online: false, last_seen_at: null, workspaces: memberships }],
 });
 
-const renderDialog = async (team: Team) => {
+const renderDialog = async (team: Team, viewer: { id?: string; holds?: string[] } = {}) => {
   mocks.get.mockImplementation((url: string) => {
-    if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: ["members:write"] } });
+    if (url === "/api/auth/me") return Promise.resolve({ data: { user: { id: viewer.id }, instance_permissions: ["members:write"] } });
     if (url === "/api/team") return Promise.resolve({ data: team });
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
     const rolesOf = /^\/api\/workspaces\/ws-(\w+)\/roles$/.exec(url);
     if (rolesOf) return Promise.resolve({ data: roles(rolesOf[1]!) });
     const meIn = /^\/api\/workspaces\/ws-(\w+)\/me$/.exec(url);
-    if (meIn) return Promise.resolve({ data: { role_name: "Editor", roles: [{ id: `${meIn[1]}-editor`, name: "Editor", is_owner: false }], permissions: [] } });
+    if (meIn) return Promise.resolve({ data: { role_name: "Editor", roles: [{ id: `${meIn[1]}-editor`, name: "Editor", is_owner: false }], permissions: viewer.holds ?? [] } });
     return Promise.resolve({ data: [] });
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -229,5 +230,37 @@ describe("Team dialog", () => {
 
     expect(await dialog.findByText(/The Owner role is never given or taken here/)).toBeInTheDocument();
     expect(dialog.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+});
+
+describe("Team dialog, View as", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-nexul" });
+  });
+
+  const viewer = { id: "u-viewer", holds: ["members:view_as"] };
+
+  it("offers View as on a member's workspace to a viewer who holds it", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul")]), viewer);
+    expect(await dialog.findByRole("button", { name: "View as Sam" })).toBeEnabled();
+  });
+
+  it("offers nothing to a viewer without the permission", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul")]), { id: "u-viewer" });
+    await dialog.findByRole("checkbox", { name: /Client/ });
+    expect(dialog.queryByRole("button", { name: /View as/ })).not.toBeInTheDocument();
+  });
+
+  it("offers nothing for a person holding the workspace's Owner role", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul", ["owner"])]), viewer);
+    await dialog.findByText(/The Owner role is never given or taken here/);
+    expect(dialog.queryByRole("button", { name: /View as/ })).not.toBeInTheDocument();
+  });
+
+  it("offers nothing for yourself", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul")]), { ...viewer, id: "u-sam" });
+    await dialog.findByRole("checkbox", { name: /Client/ });
+    expect(dialog.queryByRole("button", { name: /View as/ })).not.toBeInTheDocument();
   });
 });

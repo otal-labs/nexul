@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { Layout } from "@/Layout";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
+import { useLiveEvents } from "@/hooks/useLiveEvents";
+import { useViewAsStore } from "@/stores/viewAsStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -88,6 +90,7 @@ const renderLayout = (path = "/") => {
 describe("Layout", () => {
   beforeEach(() => {
     localStorage.clear();
+    useViewAsStore.getState().exit();
     useSessionStore.setState({ token: null, isLoggedIn: false });
     meResponse = { role_name: "Owner", permissions: ownerGrid };
     projects = [];
@@ -113,6 +116,18 @@ describe("Layout", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it("opens the live socket as the signed-in member, and leaves it closed while viewing as someone else", () => {
+    useSessionStore.setState({ token: "t", isLoggedIn: true });
+    const { unmount } = renderLayout();
+    expect(useLiveEvents).toHaveBeenLastCalledWith(expect.stringContaining("token=t"));
+    unmount();
+
+    useViewAsStore.getState().start({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "" });
+    renderLayout();
+    expect(useLiveEvents).toHaveBeenLastCalledWith(null);
+    expect(screen.getByText(/This view is read only/)).toBeInTheDocument();
   });
 
   it("gives guests the page alone, with no sidebar", () => {
