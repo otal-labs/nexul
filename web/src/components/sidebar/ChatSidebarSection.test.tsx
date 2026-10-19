@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
 import { useHiddenThreadStore } from "@/stores/hiddenThreadStore";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -63,6 +64,7 @@ beforeEach(() => {
   useVoiceCallStore.setState({ activeConversationId: null });
   useVoiceOccupancyStore.setState({ occupancy: {} });
   useHiddenThreadStore.setState({ hidden: {} });
+  useSidebarStore.setState({ threadsNavOpen: true });
   localStorage.clear();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
@@ -191,6 +193,29 @@ describe("ChatSidebarSection", () => {
     renderSection();
     expect(await screen.findByText("Runbook")).toBeInTheDocument();
     expect(screen.getByText("Threads")).toBeInTheDocument();
+  });
+
+  it("folds the Threads group down to its header and opens it again", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") {
+        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+      }
+      if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
+      if (url === "/api/auth/me") return { data: meResponse };
+      return { data: {} };
+    });
+    renderSection();
+    expect(await screen.findByText("Runbook")).toBeInTheDocument();
+
+    const header = screen.getByRole("button", { name: "Threads" });
+    await user.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Runbook")).not.toBeInTheDocument();
+    expect(useSidebarStore.getState().threadsNavOpen).toBe(false);
+
+    await user.click(header);
+    expect(screen.getByText("Runbook")).toBeInTheDocument();
   });
 
   it("marks the open conversation's row as the current page", async () => {

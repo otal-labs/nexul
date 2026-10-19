@@ -1,12 +1,11 @@
-import { ChevronDownIcon, Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
+import { Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
+import { type SidebarNavEntry } from "@/components/SidebarNav";
+import { SidebarFoldHeader } from "@/components/sidebar/SidebarFoldHeader";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen, useShowRunnersLink } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { lastInputWasKeyboard, settleIn } from "@/lib/motion";
-import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
@@ -37,27 +36,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   return (
     <div role="group" aria-label="Workspace" className="flex flex-col gap-0.5">
       {collapsed && <div className="mx-2 my-2 border-t border-border" aria-hidden />}
-      {!collapsed && (
-        <button
-          type="button"
-          onClick={(event) => {
-            const group = event.currentTarget.parentElement;
-            toggle();
-            if (!open && !lastInputWasKeyboard()) requestAnimationFrame(() => settleIn(group?.querySelector("[data-fold]")));
-          }}
-          aria-expanded={open}
-          className={cn(
-            sectionLabelClass,
-            "flex w-full items-center justify-between rounded-md transition-colors duration-150 ease-standard hover:text-foreground",
-          )}
-        >
-          <span>Workspace</span>
-          <ChevronDownIcon
-            className={cn("size-3.5 transition-transform duration-150 ease-standard", !open && "-rotate-90")}
-            aria-hidden
-          />
-        </button>
-      )}
+      {!collapsed && <SidebarFoldHeader label="Workspace" open={open} onToggle={toggle} />}
       {(open || collapsed) && (
         <div data-fold className="flex flex-col gap-0.5">
           {entries.map((entry) => (
