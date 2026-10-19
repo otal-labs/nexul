@@ -84,3 +84,14 @@ export const usePendingServiceContext = () => {
     return { stack_id: stackId, env_keys: serviceEnvKeys, steps: { service: "done" as const } };
   };
 };
+
+// The tests question as this run answered it, else as the project saved it, so a revisit opens on the saved answer.
+export const useWizardTestsAnswer = () => {
+  const project = useWizardProject();
+  const { projectId, testsLocation, testsRepo } = useProjectWizardStore(
+    useShallow((s) => ({ projectId: s.projectId, testsLocation: s.testsLocation, testsRepo: s.testsRepo })),
+  );
+  const attached = useFetchProjectRepos(projectId ?? undefined).data?.find((r) => r.role === RepoRole.Tests);
+  const savedRepo = attached && { owner: attached.owner, name: attached.name, full_name: attached.full_name, provider: attached.connector_id };
+  return { testsLocation: testsLocation ?? (project?.tests_location || null), testsRepo: testsRepo ?? savedRepo ?? null };
+};

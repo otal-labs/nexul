@@ -4,6 +4,7 @@ import { RepoProviderMark } from "@/components/ProviderMarks";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
+import { useWizardTestsAnswer } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { RepoRole, TestsLocation } from "@/enums/Project";
 
@@ -27,9 +28,10 @@ const TestsLocationRow = ({ value, label, description }: TestsLocationRowProps) 
 );
 
 const TestsRepoPicker = () => {
-  const { projectId, repository, testsRepo, setTestsRepo } = useProjectWizardStore(
-    useShallow((s) => ({ projectId: s.projectId, repository: s.repository, testsRepo: s.testsRepo, setTestsRepo: s.setTestsRepo })),
+  const { projectId, repository, setTestsRepo } = useProjectWizardStore(
+    useShallow((s) => ({ projectId: s.projectId, repository: s.repository, setTestsRepo: s.setTestsRepo })),
   );
+  const { testsRepo } = useWizardTestsAnswer();
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
   // A repository is attached once, in one role, so the one this project deploys can't double as its tests.
   const deployed = (projectRepos ?? []).filter((r) => r.role === RepoRole.App).map((r) => r.full_name);
@@ -51,9 +53,8 @@ const TestsRepoPicker = () => {
 
 // Asked before the repository to deploy is picked, because picking it moves the wizard on.
 export const TestsLocationChoice = () => {
-  const { testsLocation, setTestsLocation } = useProjectWizardStore(
-    useShallow((s) => ({ testsLocation: s.testsLocation, setTestsLocation: s.setTestsLocation })),
-  );
+  const setTestsLocation = useProjectWizardStore((s) => s.setTestsLocation);
+  const { testsLocation } = useWizardTestsAnswer();
 
   return (
     <div>

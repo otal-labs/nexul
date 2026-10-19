@@ -9,16 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
+import { WizardAttachedRepositoryRow } from "@/components/wizard/WizardAttachedRepositoryRow";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardNoRepositoryLine } from "@/components/wizard/WizardNoRepositoryLine";
 import { WizardOpenRepositoryRow } from "@/components/wizard/WizardOpenRepositoryRow";
 import { useAddProjectRepo, useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
 import { useActionState } from "@/hooks/useActionState";
+import { useWizardTestsAnswer } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import type { SetupMark } from "@/models/Project";
 import { manualCandidate, parseInstallUrl, preferredCandidate, type Repo } from "@/models/Repository";
-import { TestsLocation } from "@/enums/Project";
+import { RepoRole, TestsLocation } from "@/enums/Project";
 
 interface WizardRepositoryStepProps {
   onDone: () => void;
@@ -35,17 +37,12 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
-  const { projectId, attachStackId, testsLocation, testsRepo, repository, scanResult } = useProjectWizardStore(
-    useShallow((s) => ({
-      projectId: s.projectId,
-      attachStackId: s.attachStackId,
-      testsLocation: s.testsLocation,
-      testsRepo: s.testsRepo,
-      repository: s.repository,
-      scanResult: s.scanResult,
-    })),
+  const { projectId, attachStackId, repository, scanResult } = useProjectWizardStore(
+    useShallow((s) => ({ projectId: s.projectId, attachStackId: s.attachStackId, repository: s.repository, scanResult: s.scanResult })),
   );
+  const { testsLocation, testsRepo } = useWizardTestsAnswer();
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
+  const attachedApp = projectRepos?.find((r) => r.role === RepoRole.App);
   const saveTestsAnswer = useSaveTestsAnswer();
   const addRepo = useAddProjectRepo();
   const asksTests = !!projectId && !attachStackId;
@@ -83,6 +80,10 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const leaveWithoutRepository = async () => {
     await saveTests();
     await onLeaveEarly?.("skipped");
+  };
+  const keepAttached = async () => {
+    await saveTests();
+    await onLeaveEarly?.("done");
   };
   const attachWithoutDeploying = async () => {
     if (!picked || !projectId) return;
@@ -126,6 +127,13 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     <div className="space-y-4">
       {asksTests && <TestsLocationChoice />}
       {asksTests && <p className="text-sm font-medium">Repository</p>}
+      {onLeaveEarly && attachedApp && !picked && (
+        <WizardAttachedRepositoryRow
+          repo={attachedApp}
+          keeping={saveTestsAnswer.isPending}
+          onKeep={() => void keepAttached().catch(() => undefined)}
+        />
+      )}
       {canScan.state === "live" && (
         <RepositorySearch
           onSelect={(repo) => void scan(repo)}
