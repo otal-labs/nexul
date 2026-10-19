@@ -78,4 +78,16 @@ describe("DocListRow run indicator", () => {
     });
     await waitFor(() => expect(screen.queryByRole("img", { name: "Play running" })).not.toBeInTheDocument());
   });
+
+  it("marks a doc whose questions are closed with a tick, until a play runs on it", async () => {
+    mockApi({});
+    renderRow({ ...idle, clarification_closed: true });
+    expect(await screen.findByRole("img", { name: "Questions closed" })).toBeInTheDocument();
+
+    usePlayRunStore.getState().applyFrame({
+      trail_id: "tr-2", play_id: "play-1", target_type: "doc", target_id: "d-2", state: "running", activity: null, ended_at: null, last_error: "",
+    });
+    expect(await screen.findByRole("img", { name: "Play running" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Questions closed" })).not.toBeInTheDocument();
+  });
 });

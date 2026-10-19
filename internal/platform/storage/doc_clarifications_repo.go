@@ -31,6 +31,22 @@ func (r *DocsRepo) ListClarificationRounds(ctx context.Context, docID string) ([
 	return out, nil
 }
 
+// ClosedClarifications returns which docs in ids have their newest clarification round closed, in one read.
+func (r *DocsRepo) ClosedClarifications(ctx context.Context, ids []string) (map[string]bool, error) {
+	out := make(map[string]bool, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListClosedClarificationDocs(ctx, idsJSON(ids))
+	if err != nil {
+		return nil, fmt.Errorf("closed clarifications of docs: %w", err)
+	}
+	for _, id := range rows {
+		out[id] = true
+	}
+	return out, nil
+}
+
 func (r *DocsRepo) ListClarificationQuestions(ctx context.Context, docID string) ([]*docs.ClarificationQuestion, error) {
 	rows, err := r.q.ListDocClarificationQuestions(ctx, docID)
 	if err != nil {
