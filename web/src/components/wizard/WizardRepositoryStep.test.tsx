@@ -378,6 +378,41 @@ describe("WizardRepositoryStep tests question", () => {
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "same" });
   });
 
+  describe("revisited after setup recorded it", () => {
+    const answered = (attached: object[]) =>
+      mocks.get.mockImplementation((url: string) => {
+        if (url === "/api/repositories") return Promise.resolve({ data: { repositories: repos } });
+        if (url === "/api/projects/p-1") return Promise.resolve({ data: { id: "p-1", tests_location: "separate", setup: { finished: true, steps: {} } } });
+        return Promise.resolve({ data: attached });
+      });
+    const app = { owner: "onik97", name: "api", full_name: "onik97/api", connector_id: "github", role: "app" };
+
+    it("opens on the saved answer and the repositories already attached", async () => {
+      answered([app, { owner: "onik97", name: "worker", full_name: "onik97/worker", connector_id: "github", role: "tests" }]);
+      renderStep(vi.fn(), vi.fn());
+
+      await vi.waitFor(() => expect(screen.getByRole("radio", { name: /in a separate repository/i })).toBeChecked());
+      expect(await screen.findByText("onik97/worker")).toBeInTheDocument();
+      expect(screen.getByText("onik97/api")).toBeInTheDocument();
+    });
+
+    it("keeps the attached repository and attaches the tests repository picked, without scanning again", async () => {
+      answered([app]);
+      const onLeaveEarly = vi.fn().mockResolvedValue(undefined);
+      renderStep(vi.fn(), onLeaveEarly);
+      const user = userEvent.setup();
+      mocks.post.mockResolvedValue({ data: undefined });
+
+      await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
+      await user.click(await screen.findByRole("button", { name: /onik97\/worker/ }));
+      await user.click(screen.getByRole("button", { name: "Keep it" }));
+
+      await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("done"));
+      expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", { owner: "onik97", name: "worker", connector_id: "github", role: "tests" });
+      expect(mocks.post).not.toHaveBeenCalledWith("/api/repositories/scan", expect.anything());
+    });
+  });
+
   it("is not asked when attaching a repository to an existing stack", async () => {
     useProjectWizardStore.getState().setAttachStackId("s-1");
     renderStep();

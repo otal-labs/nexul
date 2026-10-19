@@ -164,7 +164,7 @@ export const useAddProjectRepo = () => {
 interface SaveTestsAnswerInput {
   projectId: string;
   testsLocation: TestsLocation;
-  testsRepo: Repo | null;
+  testsRepo: Pick<Repo, "owner" | "name"> | null;
   attached: RepoRef[];
 }
 
