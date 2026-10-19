@@ -57,7 +57,11 @@ func (s *Service) CheckViewAs(ctx context.Context, viewerID, workspaceID, target
 		return nil, fmt.Errorf("get account %s: %w", targetID, err)
 	}
 	person := toPerson(account)
-	return &ViewedMember{WorkspaceID: workspaceID, UserID: targetID, Name: person.DisplayName, AvatarURL: person.AvatarURL}, nil
+	name := person.DisplayName
+	if name == "" {
+		name = person.Login
+	}
+	return &ViewedMember{WorkspaceID: workspaceID, UserID: targetID, Name: name, AvatarURL: person.AvatarURL}, nil
 }
 
 // StartViewAs runs the check as the caller; the audit row of the route that calls it records who viewed as whom.
