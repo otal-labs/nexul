@@ -1,5 +1,6 @@
-import { FileText, Hash, Ticket, Users, Volume2, type LucideIcon } from "lucide-react";
+import { FileText, Hash, Ticket as TicketIcon, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
+import { Link } from "react-router";
 
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 
@@ -21,10 +22,15 @@ import {
   usePostMessage,
 } from "@/hooks/ChatHooks";
 import { useFetchDoc } from "@/hooks/DocHooks";
+import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useChannelPostRefusal } from "@/hooks/useChannelPosting";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { channelMention } from "@/models/Chat";
+import { type Doc } from "@/models/Doc";
+import { docPath, projectTokenById, type Project } from "@/models/Project";
+import { ticketPath, type Ticket } from "@/models/Ticket";
 
 interface ConversationThreadProps {
   workspaceId: string;
@@ -37,7 +43,19 @@ const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = {
   voice_channel: Volume2,
   dm: Users,
   doc_thread: FileText,
-  ticket_thread: Ticket,
+  ticket_thread: TicketIcon,
+};
+
+// A doc or ticket thread's title leads back to what it is about.
+const subjectPathOf = (
+  doc: Doc | undefined,
+  ticket: Ticket | undefined,
+  projects: Project[] | undefined,
+): string | undefined => {
+  if (!projects) return undefined;
+  if (doc) return docPath(projectTokenById(projects, doc.project_id), doc.id);
+  if (ticket) return ticketPath(ticket, projects.find((p) => p.id === ticket.project_id)?.prefix);
+  return undefined;
 };
 
 export const ConversationThread = ({ workspaceId, conversation, showHeader = true }: ConversationThreadProps) => {
@@ -53,6 +71,9 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const { data: doc } = useFetchDoc(conversation.kind === "doc_thread" ? conversation.doc_id : undefined);
   const { data: ticket } = useFetchTicket(conversation.kind === "ticket_thread" ? conversation.ticket_id : undefined);
   const label = doc?.title ?? ticket?.title ?? conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
+  const { data: projects } = useFetchProjects();
+  const wsPath = useWorkspacePath();
+  const subjectPath = subjectPathOf(doc, ticket, projects);
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
   const postRefusal = useChannelPostRefusal(conversation);
@@ -86,9 +107,21 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
       {showHeader && (
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
           <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
-            {label}
-          </span>
+          {subjectPath && (
+            <Link
+              to={wsPath(subjectPath)}
+              dir="auto"
+              title={label}
+              className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
+            >
+              {label}
+            </Link>
+          )}
+          {!subjectPath && (
+            <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
+              {label}
+            </span>
+          )}
         </div>
       )}
       {isVoiceChannel && (
