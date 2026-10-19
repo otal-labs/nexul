@@ -15,7 +15,7 @@ export const isYourSettingsSection = (value: string | null | undefined): value i
 
 const YOUR_GROUP = "You";
 
-const sectionLabels: Record<YourSettingsSection, string> = {
+export const sectionLabels: Record<YourSettingsSection, string> = {
   profile: "Profile",
   appearance: "Appearance",
   security: "Security",

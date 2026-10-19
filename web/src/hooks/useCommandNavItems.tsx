@@ -8,6 +8,7 @@ import {
   MessagesSquareIcon,
   NetworkIcon,
   SettingsIcon,
+  ShieldCheck,
   SlidersHorizontalIcon,
   SparklesIcon,
   UserCogIcon,
@@ -53,6 +54,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
     ...page("plays", "Plays", SparklesIcon, "/plays", canOpen("plays") === true),
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
+    ...page("access", "Access", ShieldCheck, "/access", canOpen("access") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),
     { id: "page:settings", label: "Your settings", icon: UserCogIcon, keywords: "go to page profile account", run: () => void navigate("/settings") },
   ];
