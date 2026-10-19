@@ -84,6 +84,18 @@ describe("the plays list", () => {
     expect(within(screen.getByRole("region", { name: "Stack" })).getByText("Disabled")).toBeInTheDocument();
   });
 
+  it("says a play starts by itself only when one of its auto plays is on, between its stage and Disabled", async () => {
+    serve([
+      play({ id: "on", label: "Fix with AI", auto_plays_on: 2, enabled: false }),
+      play({ id: "off", label: "Test with AI", type: "doc", show_when_stage: null, auto_plays_on: 0 }),
+      play({ id: "unknown", label: "Clarify", type: "doc", show_when_stage: null }),
+    ]);
+    renderPlaysPage();
+    await screen.findByText("3 plays in Acme");
+
+    expect(screen.getAllByText(/Starts by itself/).map((row) => row.textContent)).toEqual(["In progress · Starts by itself · Disabled"]);
+  });
+
   it.each([
     { name: "hides", showLocked: false },
     { name: "locks", showLocked: true },

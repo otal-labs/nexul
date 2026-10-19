@@ -45,6 +45,8 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
+  // How many of its auto plays are switched on; the list sends it only to someone who reads auto plays.
+  auto_plays_on?: number;
   // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, update-doc, audit, decisions-check, investigate-crash), kept through renames; "" for a play a person made.
   builtin_key: string;
   created_by: string;

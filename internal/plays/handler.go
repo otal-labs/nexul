@@ -49,13 +49,53 @@ func (h *Handler) Routes() http.Handler {
 	return mux
 }
 
+// listedJSON is the plays list's wire row: a listed play, plus how many of its auto plays are switched on for a caller who reads them.
+type listedJSON struct {
+	Listed
+	AutoPlaysOn *int `json:"auto_plays_on,omitempty"`
+}
+
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.List(r.Context(), r.PathValue("workspaceID"))
+	workspaceID := r.PathValue("workspaceID")
+	list, err := h.svc.List(r.Context(), workspaceID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, list)
+	out, err := h.withAutoPlaysOn(r, workspaceID, list)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// withAutoPlaysOn reads the listed plays' auto plays in one batch; without autoplays:read the plays go out without the count.
+func (h *Handler) withAutoPlaysOn(r *http.Request, workspaceID string, list []Listed) ([]listedJSON, error) {
+	ids := make([]string, 0, len(list))
+	for _, p := range list {
+		ids = append(ids, p.ID)
+	}
+	byPlay, err := h.svc.AutoPlaysByPlay(r.Context(), workspaceID, ids)
+	readable := !errors.Is(err, apperrs.ErrForbidden)
+	if err != nil && readable {
+		return nil, err
+	}
+	out := make([]listedJSON, 0, len(list))
+	for _, p := range list {
+		row := listedJSON{Listed: p}
+		if readable {
+			on := 0
+			for _, a := range byPlay[p.ID] {
+				if a.Enabled {
+					on++
+				}
+			}
+			row.AutoPlaysOn = &on
+		}
+		out = append(out, row)
+	}
+	return out, nil
 }
 
 // listApplicable serves a target's Plays section: the run buttons the caller may see and fire.

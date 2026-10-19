@@ -15,7 +15,7 @@ interface PlayDetailHeaderProps {
 
 export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
-  const crumbs = useEmbeddedCrumbs([{ label: "Plays", to: wsPath("/plays") }]);
+  const crumbs = useEmbeddedCrumbs([{ label: "Plays", to: wsPath("/plays") }, { label: `${PLAY_TYPE_LABELS[play.type]} play` }]);
   const answer = useEntityActions("play", play.id);
   const { edit } = usePlayDialogs();
   const menu = { ...usePlayMenu(play), onEdit: undefined };
@@ -23,7 +23,6 @@ export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
   return (
     <PageHeader
       crumbs={crumbs}
-      overline={`${PLAY_TYPE_LABELS[play.type]} play`}
       title={play.label}
       meta={play.description && <span className="max-w-prose">{play.description}</span>}
       actions={

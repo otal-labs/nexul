@@ -9,7 +9,11 @@ interface PlayListRowProps {
 }
 
 const factsOf = (play: Play) =>
-  [play.type === "ticket" && play.show_when_stage && PLAY_STAGE_LABELS[play.show_when_stage], !play.enabled && "Disabled"]
+  [
+    play.type === "ticket" && play.show_when_stage && PLAY_STAGE_LABELS[play.show_when_stage],
+    (play.auto_plays_on ?? 0) > 0 && "Starts by itself",
+    !play.enabled && "Disabled",
+  ]
     .filter(Boolean)
     .join(" · ");
 

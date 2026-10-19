@@ -167,13 +167,16 @@ describe("the play follower", () => {
     expect(isStale(client, ["getWorkspacePlays", "ws-1"])).toBe(true);
   });
 
-  it("refetches only the auto plays of the play a frame names", async () => {
+  it("refetches only the auto plays of the play a frame names, and the workspace's play list that counts them", async () => {
     const client = seeded([
       [["getAutoPlays", "ws-1", "pl-1"], []],
       [["getAutoPlays", "ws-1", "pl-2"], []],
+      [["getWorkspacePlays", "ws-1"], []],
+      [["getWorkspacePlays", "ws-2"], []],
     ]);
     await followFrame(playFollower, "auto_play.updated", { auto_play: { id: "ap-1", play_id: "pl-1", workspace_id: "ws-1" } }, client);
     expect([isStale(client, ["getAutoPlays", "ws-1", "pl-1"]), isStale(client, ["getAutoPlays", "ws-1", "pl-2"])]).toEqual([true, false]);
+    expect([isStale(client, ["getWorkspacePlays", "ws-1"]), isStale(client, ["getWorkspacePlays", "ws-2"])]).toEqual([true, false]);
 
     await followFrame(playFollower, "auto_play.deleted", { id: "ap-2", play_id: "pl-2", workspace_id: "ws-1" }, client);
     expect(isStale(client, ["getAutoPlays", "ws-1", "pl-2"])).toBe(true);
