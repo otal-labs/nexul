@@ -18,7 +18,7 @@ export const DEFAULT_PROJECT_SETTINGS_SECTION: ProjectSettingsSection = "general
 export const isProjectSettingsSection = (value: string | null | undefined): value is ProjectSettingsSection =>
   !!value && (PROJECT_SETTINGS_SECTIONS as readonly string[]).includes(value);
 
-const sectionLabels: Record<ProjectSettingsSection, string> = {
+export const sectionLabels: Record<ProjectSettingsSection, string> = {
   general: "General",
   categories: "Categories",
   repositories: "Repositories",

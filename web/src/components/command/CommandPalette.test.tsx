@@ -18,10 +18,10 @@ const permissions = ["tickets:read", "docs:read", "memories:read", "projects:rea
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
-const renderPalette = () => {
+const renderPalette = (extra: string[] = []) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }] };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: [...permissions, ...extra] } };
     if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
     if (url === "/api/mentions/search") return { data: { results: [{ type: "ticket", id: "t-1", title: "Renew the staging certificate", can_open: true }] } };
     return { data: [] };
@@ -85,5 +85,38 @@ describe("CommandPalette", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
+  });
+
+  it("lists no settings until something is typed, then finds a tab by name and opens its path", async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.keyboard("{Control>}k{/Control}");
+    const input = await screen.findByRole("combobox");
+    expect(screen.queryByRole("option", { name: /Tokens/ })).not.toBeInTheDocument();
+
+    await user.type(input, "tokens");
+    const tokens = await screen.findByRole("option", { name: /Tokens/ });
+    expect(tokens).toHaveTextContent("Settings › Security");
+
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("location")).toHaveTextContent("/settings/security/tokens");
+  });
+
+  it("offers the Roles tab only to someone who can write roles", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderPalette();
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "roles");
+    await screen.findByRole("option", { name: /Renew the staging certificate/ });
+    expect(screen.queryByRole("option", { name: /Roles/ })).not.toBeInTheDocument();
+    unmount();
+    useCommandPaletteStore.setState({ open: false });
+
+    renderPalette(["roles:write"]);
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "roles");
+    await user.click(await screen.findByRole("option", { name: /Roles/ }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/access/roles");
   });
 });
