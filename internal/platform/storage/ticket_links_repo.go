@@ -29,6 +29,7 @@ func (r *TicketsRepo) ListLinkEnds(ctx context.Context, id string) ([]tickets.Li
 			end.Ticket = &tickets.LinkedTicket{
 				ID: row.TargetID.String, ProjectID: row.ProjectID.String, Prefix: row.Prefix.String,
 				Number: int(row.Number.Int64), Title: row.Title.String, Status: tickets.Status(row.Status.String), Done: isDoneStage(row.Stage),
+				Finished: row.FinishedAt.Valid,
 			}
 		}
 		from = append(from, end)
@@ -37,7 +38,7 @@ func (r *TicketsRepo) ListLinkEnds(ctx context.Context, id string) ([]tickets.Li
 	for _, row := range toRows {
 		to = append(to, tickets.LinkEnd{Kind: tickets.LinkKind(row.Kind), Ticket: &tickets.LinkedTicket{
 			ID: row.TicketID, ProjectID: row.ProjectID.String, Prefix: row.Prefix.String,
-			Number: int(row.Number), Title: row.Title, Status: tickets.Status(row.Status), Done: isDoneStage(row.Stage),
+			Number: int(row.Number), Title: row.Title, Status: tickets.Status(row.Status), Done: isDoneStage(row.Stage), Finished: row.FinishedAt.Valid,
 		}})
 	}
 	return from, to, nil
@@ -140,11 +141,11 @@ func freedBy(ctx context.Context, q *sqlcgen.Queries, blockerID, only string, un
 	if unblocked == nil {
 		return nil, nil
 	}
-	stage, err := q.GetTicketStage(ctx, blockerID)
+	state, err := q.GetTicketBlockerState(ctx, blockerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("read stage of ticket %s: %w", blockerID, err)
+		return nil, fmt.Errorf("read state of ticket %s: %w", blockerID, err)
 	}
-	if isDoneStage(stage) {
+	if isDoneStage(state.Stage) || state.FinishedAt.Valid {
 		return nil, nil
 	}
 	rows, err := q.ListTicketsWaitingOnlyOn(ctx, nullString(blockerID))
@@ -164,7 +165,7 @@ func freedBy(ctx context.Context, q *sqlcgen.Queries, blockerID, only string, un
 	return unblocked(freed), nil
 }
 
-// UnclearedBlockers maps each blocked ticket id to its blockers whose status is not in the done stage.
+// UnclearedBlockers maps each blocked ticket id to its blockers neither finished nor in the done stage.
 func (r *TicketsRepo) UnclearedBlockers(ctx context.Context) (map[string][]tickets.LinkedTicket, error) {
 	rows, err := r.q.ListUnclearedTicketBlockers(ctx)
 	if err != nil {

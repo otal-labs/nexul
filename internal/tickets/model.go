@@ -152,7 +152,7 @@ const BugTypeName = "bug"
 // IsBugType reports whether a ticket type name is the bug type, ignoring case and surrounding space.
 func IsBugType(name string) bool { return strings.EqualFold(strings.TrimSpace(name), BugTypeName) }
 
-// LinkKind names a ticket-to-ticket link: found_in points a bug at its origin, blocked_by at a ticket that must reach done first.
+// LinkKind names a ticket-to-ticket link: found_in points a bug at its origin, blocked_by at a ticket that must merge or reach done first.
 type LinkKind string
 
 const (
@@ -174,7 +174,7 @@ type TicketFilter struct {
 	DocID     string
 	// Query full-text searches titles, bodies, and notes, and orders the list by relevance instead of age.
 	Query string
-	// BlockedOnly keeps tickets still waiting on a blocker the caller can read that is not in a done-stage column.
+	// BlockedOnly keeps tickets still waiting on a blocker the caller can read that is neither finished nor done.
 	BlockedOnly bool
 }
 
@@ -193,7 +193,11 @@ type LinkedTicket struct {
 	Title     string `json:"title"`
 	Status    Status `json:"status"`
 	Done      bool   `json:"done"`
+	Finished  bool   `json:"finished"`
 }
+
+// Cleared reports whether, as a blocker, the ticket no longer holds anything up: its code merged or it reached done.
+func (l LinkedTicket) Cleared() bool { return l.Done || l.Finished }
 
 // LinkEnd is one stored link seen from a ticket; Ticket is nil for a found-in whose origin is unknown.
 type LinkEnd struct {
@@ -201,7 +205,7 @@ type LinkEnd struct {
 	Ticket *LinkedTicket
 }
 
-// LinkSet is both directions of a ticket's links; Blocked holds while any blocker is outside a done-stage status.
+// LinkSet is both directions of a ticket's links; Blocked holds while any blocker is not yet cleared.
 type LinkSet struct {
 	FoundIn       *LinkedTicket  `json:"found_in"`
 	OriginUnknown bool           `json:"origin_unknown"`

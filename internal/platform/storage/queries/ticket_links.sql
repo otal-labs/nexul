@@ -11,7 +11,7 @@ DELETE FROM ticket_links WHERE ticket_id = ? AND kind = 'blocked_by' AND target_
 SELECT target_id FROM ticket_links WHERE ticket_id = ? AND kind = 'blocked_by' AND target_id IS NOT NULL;
 
 -- name: ListTicketLinksFrom :many
-SELECT l.kind, l.target_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage
+SELECT l.kind, l.target_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage, t.finished_at
 FROM ticket_links l
 LEFT JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
@@ -20,7 +20,7 @@ WHERE l.ticket_id = ?
 ORDER BY l.created_at, l.target_id;
 
 -- name: ListTicketLinksTo :many
-SELECT l.kind, l.ticket_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage
+SELECT l.kind, l.ticket_id, t.project_id, t.number, t.title, t.status, p.prefix, s.kind AS stage, t.finished_at
 FROM ticket_links l
 JOIN tickets t ON t.id = l.ticket_id
 LEFT JOIN projects p ON p.id = t.project_id
@@ -34,7 +34,7 @@ FROM ticket_links l
 JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
 LEFT JOIN statuses s ON s.id = t.status
-WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done'
+WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND t.finished_at IS NULL
 ORDER BY l.ticket_id, l.created_at, t.id;
 
 -- name: ListUnclearedTicketBlockersOf :many
@@ -43,14 +43,14 @@ FROM ticket_links l
 JOIN tickets t ON t.id = l.target_id
 LEFT JOIN projects p ON p.id = t.project_id
 LEFT JOIN statuses s ON s.id = t.status
-WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND l.ticket_id IN (sqlc.slice('ids'))
+WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND t.finished_at IS NULL AND l.ticket_id IN (sqlc.slice('ids'))
 ORDER BY l.ticket_id, l.created_at, t.id;
 
 -- name: CountProjectWorkspaces :one
 SELECT COUNT(DISTINCT workspace_id) FROM projects WHERE id IN (sqlc.arg(project_a), sqlc.arg(project_b));
 
--- name: GetTicketStage :one
-SELECT s.kind AS stage FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?;
+-- name: GetTicketBlockerState :one
+SELECT s.kind AS stage, t.finished_at FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?;
 
 -- name: ListTicketsWaitingOnlyOn :many
 SELECT l.ticket_id, t.project_id
@@ -63,6 +63,6 @@ WHERE l.kind = 'blocked_by' AND l.target_id = sqlc.arg(blocker_id) AND COALESCE(
     JOIN tickets b ON b.id = o.target_id
     LEFT JOIN statuses s ON s.id = b.status
     WHERE o.ticket_id = l.ticket_id AND o.kind = 'blocked_by' AND o.target_id != sqlc.arg(blocker_id)
-      AND COALESCE(s.kind, '') != 'done'
+      AND COALESCE(s.kind, '') != 'done' AND b.finished_at IS NULL
   )
 ORDER BY l.ticket_id;

@@ -1038,7 +1038,7 @@ func (s *Service) finishTicket(ctx context.Context, id string) error {
 		return fmt.Errorf("finish ticket %s: %w", id, err)
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFinished, Payload: FinishedEvent{Ticket: *t}}
-	if _, err := s.repo.SetFinishedAt(ctx, id, s.now().UTC(), evt); err != nil {
+	if _, err := s.repo.SetFinishedAt(ctx, id, s.now().UTC(), unblockedEvents(id, UnblockedByBlockerFinished, statusActor(ctx)), evt); err != nil {
 		return fmt.Errorf("finish ticket %s: %w", id, err)
 	}
 	return nil

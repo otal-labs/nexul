@@ -14,7 +14,7 @@ const naming = (status: string): TicketLinkSet => ({
   found_in: null,
   origin_unknown: false,
   bugs_found: [],
-  blocked_by: [{ id: "t-2", project_id: "p-1", prefix: "ACME", number: 2, title: "Login", status: status as TicketStatus, done: false }],
+  blocked_by: [{ id: "t-2", project_id: "p-1", prefix: "ACME", number: 2, title: "Login", status: status as TicketStatus, done: false, finished: false }],
   blocks: [],
   blocked: true,
 });

@@ -6,7 +6,7 @@ import type { TicketStatus } from "@/models/Ticket";
 import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
-const linked = (id: string, status: string): LinkedTicket => ({ id, project_id: "p-1", prefix: "ACME", number: 1, title: id, status: status as TicketStatus, done: false });
+const linked = (id: string, status: string): LinkedTicket => ({ id, project_id: "p-1", prefix: "ACME", number: 1, title: id, status: status as TicketStatus, done: false, finished: false });
 
 const set = (blockedBy: LinkedTicket[] = []): TicketLinkSet => ({
   found_in: null,

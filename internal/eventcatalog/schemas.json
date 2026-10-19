@@ -8292,7 +8292,8 @@
         "enum": [
           "blocker_done",
           "link_deleted",
-          "blocker_deleted"
+          "blocker_deleted",
+          "blocker_finished"
         ]
       },
       "actor": {
@@ -8324,14 +8325,14 @@
             "type": "string"
           }
         },
-        "description": "Who moved the blocker, removed the link, or deleted the blocker.",
+        "description": "Who moved the blocker, removed the link, or deleted the blocker; nobody for a pull request merged on the git host.",
         "required": [
           "kind"
         ]
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "description": "A ticket not in a done stage lost its last open blocked-by ticket: the blocker entered a done-stage column, its link was removed, or it was deleted. Each entry into done is a new unblock; a column redefined as done publishes nothing.",
+    "description": "A ticket not in a done stage lost its last open blocked-by ticket: the blocker finished (its pull request merged), entered a done-stage column, had its link removed, or was deleted. A finished blocker stays cleared; an unfinished one unblocks again on each entry into done. A column redefined as done publishes nothing.",
     "required": [
       "ticket_id",
       "project_id",

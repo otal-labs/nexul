@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Circle } from "lucide-react";
+import { Ban, CheckCircle2, Circle, GitMerge } from "lucide-react";
 import { Link } from "react-router";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -19,6 +19,7 @@ interface LinkedTicketRowProps {
 
 const stateOf = (ticket: LinkedTicket, waiting: boolean) => {
   if (ticket.done) return { Icon: CheckCircle2, color: "text-success", label: "Done" };
+  if (ticket.finished) return { Icon: GitMerge, color: "text-success", label: "Merged" };
   if (waiting) return { Icon: Ban, color: "text-warning", label: "Not done yet" };
   return { Icon: Circle, color: "text-muted-foreground", label: "Not done" };
 };

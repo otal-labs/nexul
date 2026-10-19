@@ -60,7 +60,7 @@ type LinkRepo interface {
 	PutLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// DeleteLink returns false when no such link existed; a found_in link is matched by ticket alone.
 	DeleteLink(ctx context.Context, link TicketLink, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error)
-	// UnclearedBlockers maps each blocked ticket id to its blockers not yet in a done-stage status.
+	// UnclearedBlockers maps each blocked ticket id to its blockers neither finished nor in a done-stage status.
 	UnclearedBlockers(ctx context.Context) (map[string][]LinkedTicket, error)
 	// UnclearedBlockersOf is UnclearedBlockers for the tickets ids names only.
 	UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]LinkedTicket, error)
@@ -113,8 +113,8 @@ type Repo interface {
 	MarkPRState(ctx context.Context, owner, repo string, number int, state PRState) ([]string, error)
 	// ListIDsByPR returns the ids of the tickets linked to one PR.
 	ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error)
-	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once.
-	SetFinishedAt(ctx context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error)
+	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once; unblocked's events go with it.
+	SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error)
 	LinkBranch(ctx context.Context, id string, link BranchLink) error
 	// UnlinkBranch removes a branch's link; a link that is not there is a no-op.
 	UnlinkBranch(ctx context.Context, id string, link BranchLink) error

@@ -152,7 +152,7 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	if f.BlockedOnly {
 		// Drawn from the links once, where a test per ticket would read every ticket's links.
 		q.where(`t.id IN (SELECT l.ticket_id FROM ticket_links l JOIN tickets b ON b.id = l.target_id LEFT JOIN statuses st ON st.id = b.status
-			WHERE l.kind = 'blocked_by' AND COALESCE(st.kind, '') != 'done' AND (? OR b.project_id IN (SELECT value FROM json_each(?))))`, scope.All, readable)
+			WHERE l.kind = 'blocked_by' AND COALESCE(st.kind, '') != 'done' AND b.finished_at IS NULL AND (? OR b.project_id IN (SELECT value FROM json_each(?))))`, scope.All, readable)
 	}
 	ids, total, err := q.page(ctx, r.db, w)
 	if err != nil {
@@ -397,10 +397,14 @@ func (r *TicketsRepo) ListOpenPRNumbers(ctx context.Context, owner, repo string)
 	return out, nil
 }
 
-func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error) {
+func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
 	var set bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
+		freed, err := freedBy(ctx, q, id, "", unblocked)
+		if err != nil {
+			return err
+		}
 		n, err := q.SetTicketFinishedAt(ctx, sqlcgen.SetTicketFinishedAtParams{
 			FinishedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, ID: id,
 		})
@@ -411,7 +415,7 @@ func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time
 			return nil
 		}
 		set = true
-		return enqueueTicketsOutbox(ctx, tx, evts)
+		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
 	if err != nil {
 		return false, fmt.Errorf("finish ticket %s: %w", id, err)
