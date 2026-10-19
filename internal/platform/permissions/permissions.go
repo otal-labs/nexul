@@ -64,6 +64,7 @@ const (
 	WorkspacesDelete   Action = "workspaces:delete"
 	WorkspacesCreate   Action = "workspaces:create"
 	MembersWrite       Action = "members:write"
+	MembersViewAs      Action = "members:view_as"
 	RolesWrite         Action = "roles:write"
 	RolesClone         Action = "roles:clone"
 	AutomationsRead    Action = "automations:read"
@@ -133,6 +134,7 @@ const (
 	template = "template"
 	post     = "post"
 	deploy   = "deploy"
+	viewAs   = "view_as"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -153,6 +155,7 @@ var verbLabel = map[Action]string{
 	MachinesDeploy:   "Deploy to machines",
 	MachinesWrite:    "Manage machines",
 	MachinesCreate:   "Add machines",
+	MembersViewAs:    "View Nexul as another member",
 }
 
 // Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
@@ -191,7 +194,7 @@ var domainTable = []domainInfo{
 	{"mentions", "mentions", []string{read, write}, AreaWorkspace},
 	{"projects", "projects and board settings", []string{read, write, delete, create, access}, AreaProject},
 	{"workspaces", "workspaces", []string{read, write, delete, create}, AreaWorkspace},
-	{"members", "members and invites", []string{read, write, delete}, AreaWorkspace},
+	{"members", "members and invites", []string{read, write, delete, viewAs}, AreaWorkspace},
 	{"roles", "roles", []string{read, write, delete, clone}, AreaWorkspace},
 	{"machines", "machines", []string{write, deploy, delete, create}, AreaInstance},
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},

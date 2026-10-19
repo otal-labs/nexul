@@ -40,7 +40,7 @@ func (s *Service) ComputerPermissions(ctx context.Context, userID, computerID st
 		return "", nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
 	}
 	notFound := fmt.Errorf("%w: computer %s", apperrs.ErrNotFound, computerID)
-	if s.computers == nil || strings.TrimSpace(computerID) == "" {
+	if _, viewing := viewedWorkspace(ctx); viewing || s.computers == nil || strings.TrimSpace(computerID) == "" {
 		return "", nil, notFound
 	}
 	ownerID, allow, err := s.computers.ComputerAccess(ctx, computerID, userID)

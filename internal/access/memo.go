@@ -157,6 +157,9 @@ type (
 )
 
 func (s *Service) memberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error) {
+	if pinned, viewing := viewedWorkspace(ctx); viewing && workspaceID != pinned {
+		return RoleInfo{}, fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
+	}
 	return remember(ctx, memberKey{workspaceID, userID}, func() (RoleInfo, error) {
 		return s.roles.MemberRole(ctx, workspaceID, userID)
 	})

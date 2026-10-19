@@ -7,6 +7,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 type ctxKey string
@@ -14,6 +15,7 @@ type ctxKey string
 const (
 	userCtxKey    ctxKey = "user"
 	sessionCtxKey ctxKey = "session"
+	viewerCtxKey  ctxKey = "viewer"
 )
 
 // UserFromCtx returns the authenticated user record set by RequireAuth, or nil when unauthenticated.
@@ -34,6 +36,17 @@ func withPrincipal(ctx context.Context, user *User, ses *Session) context.Contex
 		return ctx
 	}
 	return context.WithValue(ctx, sessionCtxKey, ses)
+}
+
+// WithViewedUser makes target the request's user for a view-as request (ADR 0160); the real session stays in context.
+func WithViewedUser(ctx context.Context, target *User, viewer *identity.ViewerRef) context.Context {
+	return context.WithValue(context.WithValue(ctx, userCtxKey, target), viewerCtxKey, viewer)
+}
+
+// ViewerFromCtx returns who is viewing as the request's user and the workspace the view is held to; nil outside a view.
+func ViewerFromCtx(ctx context.Context) *identity.ViewerRef {
+	v, _ := ctx.Value(viewerCtxKey).(*identity.ViewerRef)
+	return v
 }
 
 // RequireAuth resolves the full User into context, or 401s; a setup pass resolves to the setup identity (setup.go).

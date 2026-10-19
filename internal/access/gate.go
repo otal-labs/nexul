@@ -146,11 +146,9 @@ func (s *Service) ProjectsAnywhere(ctx context.Context, userID string, action pe
 		return []string{}, []string{}, nil
 	}
 	ctx = s.memoized(ctx)
-	workspaceIDs, err = remember(ctx, membershipKey{userID}, func() ([]string, error) {
-		return s.scopes.WorkspaceIDsForUser(ctx, userID)
-	})
+	workspaceIDs, err = s.memberWorkspaces(ctx, userID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
+		return nil, nil, err
 	}
 	projectIDs = []string{}
 	for _, workspaceID := range workspaceIDs {
@@ -250,13 +248,23 @@ func (s *Service) workspacesOf(ctx context.Context, userID string) ([]string, er
 	if userID == "" || s.scopes == nil {
 		return nil, nil
 	}
+	return s.memberWorkspaces(ctx, userID)
+}
+
+// memberWorkspaces is the workspaces userID belongs to, from the memo; a view-as request is held to its one workspace
+// after the lookup, so the memoised list stays the person's own (ADR 0160).
+func (s *Service) memberWorkspaces(ctx context.Context, userID string) ([]string, error) {
 	workspaceIDs, err := remember(ctx, membershipKey{userID}, func() ([]string, error) {
 		return s.scopes.WorkspaceIDsForUser(ctx, userID)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
 	}
-	return workspaceIDs, nil
+	pinned, viewing := viewedWorkspace(ctx)
+	if !viewing {
+		return workspaceIDs, nil
+	}
+	return slices.DeleteFunc(slices.Clone(workspaceIDs), func(id string) bool { return id != pinned }), nil
 }
 
 // caller is the person a check is about; checked is false for the server's own calls and for a shipped default
@@ -270,6 +278,15 @@ func caller(ctx context.Context) (userID string, checked bool) {
 		return "", false
 	}
 	return actor.ID, true
+}
+
+// viewedWorkspace is the one workspace a view-as request is held to; viewing is false for every other request.
+func viewedWorkspace(ctx context.Context) (workspaceID string, viewing bool) {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.Viewer == nil {
+		return "", false
+	}
+	return actor.Viewer.WorkspaceID, true
 }
 
 // defaultAutomationInside holds a shipped default automation, whose scopes are its whole grant, to its own workspace.
@@ -317,11 +334,9 @@ func (s *Service) HoldsRole(ctx context.Context, userID, roleID string) (bool, e
 	if userID == "" || roleID == "" || s.scopes == nil {
 		return false, nil
 	}
-	workspaceIDs, err := remember(ctx, membershipKey{userID}, func() ([]string, error) {
-		return s.scopes.WorkspaceIDsForUser(ctx, userID)
-	})
+	workspaceIDs, err := s.memberWorkspaces(ctx, userID)
 	if err != nil {
-		return false, fmt.Errorf("list workspaces of %s: %w", userID, err)
+		return false, err
 	}
 	for _, workspaceID := range workspaceIDs {
 		info, err := s.standing(ctx, userID, workspaceID)

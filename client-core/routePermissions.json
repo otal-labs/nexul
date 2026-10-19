@@ -247,6 +247,7 @@
   "POST /api/workspaces/{id}/members/{userId}/view-as": ["members:view_as"],
   "POST /api/workspaces/{workspaceID}/archive": ["workspaces:delete"],
   "POST /api/workspaces/{workspaceID}/members": ["members:write"],
+  "POST /api/workspaces/{workspaceID}/members/{userID}/view-as": ["members:view_as"],
   "POST /api/workspaces/{workspaceID}/plays": ["plays:write"],
   "POST /api/workspaces/{workspaceID}/plays/{playID}/auto-plays": ["autoplays:write"],
   "POST /api/workspaces/{workspaceID}/restore": ["instance:write"],
