@@ -128,7 +128,7 @@ func TestQueuePlay_NobodyToRunItOn_DidntRunWithAFailedTrail(t *testing.T) {
 
 func TestQueuePlay_AtTheDailyCap_WaitsPausedAndCountsTowardIt(t *testing.T) {
 	r := newRig(t, openStore(t))
-	require.NoError(t, r.store.Plays.SetAutoPlayDailyCap(t.Context(), ws, 1))
+	require.NoError(t, r.store.Plays.SetAutoPlayLimits(t.Context(), ws, plays.AutoPlayLimits{DailyCapPerTicket: 1, RunsAtOncePerPerson: 1}))
 	r.play(t, "Fix it")
 	r.ticket("t-1")
 	queue := func() *plays.QueueItem {

@@ -32,8 +32,8 @@ type AutoPlayRepo interface {
 	ListAutoPlays(ctx context.Context, playIDs []string) ([]*AutoPlay, error)
 	UpdateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
 	DeleteAutoPlay(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
-	AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error)
-	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error
+	AutoPlayLimits(ctx context.Context, workspaceID string) (AutoPlayLimits, error)
+	SetAutoPlayLimits(ctx context.Context, workspaceID string, limits AutoPlayLimits, evts ...eventbus.OutboxEvent) error
 	// ListEnabledAutoPlays returns a workspace's switched-on auto plays waiting for moment, oldest first.
 	ListEnabledAutoPlays(ctx context.Context, workspaceID string, moment Moment) ([]*AutoPlay, error)
 }

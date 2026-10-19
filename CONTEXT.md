@@ -345,7 +345,8 @@ no developer, so it offers only that), or a chosen computer, which every
 play type offers and a stack play offers alone (see **Run on a chosen
 computer**). The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
-priority then oldest first, until they have a free slot and their computer
+priority then oldest first, until they have a free slot (one run going at
+once by default, up to five as the workspace sets it) and their computer
 is online and set up, and is checked again before it starts; with several
 computers and none the default, the waiting run asks them to pick one, saved
 as their project link so the project's next runs need no pick. A ticket past the daily

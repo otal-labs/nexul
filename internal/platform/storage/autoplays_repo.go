@@ -111,19 +111,21 @@ func (r *PlaysRepo) ListEnabledAutoPlays(ctx context.Context, workspaceID string
 	return out, nil
 }
 
-// AutoPlayDailyCap reads workspaceID's cap on automatic runs per ticket per day.
-func (r *PlaysRepo) AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error) {
-	limit, err := r.q.GetAutoPlayDailyCap(ctx, workspaceID)
+// AutoPlayLimits reads workspaceID's bounds on automatic runs.
+func (r *PlaysRepo) AutoPlayLimits(ctx context.Context, workspaceID string) (plays.AutoPlayLimits, error) {
+	row, err := r.q.GetAutoPlayLimits(ctx, workspaceID)
 	if err != nil {
-		return 0, fmt.Errorf("get auto play daily cap for workspace %s: %w", workspaceID, notFoundIfNoRows(err))
+		return plays.AutoPlayLimits{}, fmt.Errorf("get auto play limits for workspace %s: %w", workspaceID, notFoundIfNoRows(err))
 	}
-	return int(limit), nil
+	return plays.AutoPlayLimits{DailyCapPerTicket: int(row.AutoPlayDailyCap), RunsAtOncePerPerson: int(row.AutoPlayRunsAtOnce)}, nil
 }
 
-// SetAutoPlayDailyCap changes workspaceID's cap on automatic runs per ticket per day.
-func (r *PlaysRepo) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error {
+// SetAutoPlayLimits changes workspaceID's bounds on automatic runs.
+func (r *PlaysRepo) SetAutoPlayLimits(ctx context.Context, workspaceID string, limits plays.AutoPlayLimits, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetAutoPlayDailyCap(ctx, sqlcgen.SetAutoPlayDailyCapParams{AutoPlayDailyCap: int64(limit), ID: workspaceID})
+		n, err := r.q.WithTx(tx).SetAutoPlayLimits(ctx, sqlcgen.SetAutoPlayLimitsParams{
+			AutoPlayDailyCap: int64(limits.DailyCapPerTicket), AutoPlayRunsAtOnce: int64(limits.RunsAtOncePerPerson), ID: workspaceID,
+		})
 		if err != nil {
 			return classifyWriteErr(err)
 		}

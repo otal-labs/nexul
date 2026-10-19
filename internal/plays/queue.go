@@ -308,10 +308,11 @@ func (r *Runner) queueTarget(ctx context.Context, targetType TargetType, targetI
 // autoRunsToday counts the target's automatic runs in the rolling day, or since its resume, against the workspace's
 // cap, and says when the oldest of them leaves the count.
 func (r *Runner) autoRunsToday(ctx context.Context, workspaceID string, targetType TargetType, targetID string) (count, limit int, frees time.Time, err error) {
-	limit, err = r.plays.AutoPlayDailyCap(ctx, workspaceID)
+	limits, err := r.plays.AutoPlayLimits(ctx, workspaceID)
 	if err != nil {
-		return 0, 0, time.Time{}, fmt.Errorf("get the auto play daily cap of workspace %s: %w", workspaceID, err)
+		return 0, 0, time.Time{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
 	}
+	limit = limits.DailyCapPerTicket
 	count, oldest, err := r.queue.CountAutoRuns(ctx, targetType, targetID, r.now().UTC().Add(-autoRunWindow))
 	if err != nil {
 		return 0, 0, time.Time{}, fmt.Errorf("count the automatic runs on %s %s: %w", targetType, targetID, err)

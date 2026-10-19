@@ -22,8 +22,6 @@ const RefusalOffline = "offline"
 const RefusalNoDefaultComputer = "no_default_computer"
 
 const (
-	// autoRunsPerPerson is how many runs a person's queue lets go at once; every active trail of theirs takes a slot.
-	autoRunsPerPerson = 1
 	// heldRetry is when an item held by its person's computer is tried again: offline, or a gap in its setup.
 	heldRetry = time.Minute
 	// dispatchTimeout bounds one start, so a hung tunnel cannot stall everyone's queue.
@@ -42,8 +40,9 @@ func (r *Runner) Kick() {
 	}
 }
 
-// HandleRunFinished is registered on play.run_finished: a run ending frees its person's slot and its target.
-func (r *Runner) HandleRunFinished(context.Context, eventbus.Event) error {
+// HandleSlotsFreed is registered on play.run_finished, where a run ending frees its person's slot and its target, and on
+// auto_play.limits_updated, where a workspace may now let more runs go at once.
+func (r *Runner) HandleSlotsFreed(context.Context, eventbus.Event) error {
 	r.Kick()
 	return nil
 }
@@ -185,19 +184,27 @@ func (r *Runner) dispatch(ctx context.Context) (time.Duration, error) {
 	return max(pass.next.Sub(r.now().UTC()), 0), nil
 }
 
-// dispatchPerson starts a person's due items, highest priority then oldest first, while they have a free slot.
+// dispatchPerson starts a person's due items, highest priority then oldest first, while they have fewer runs going than
+// each item's workspace lets go at once; every active trail of theirs counts, in any workspace.
 func (r *Runner) dispatchPerson(ctx context.Context, pass *queuePass, person string) error {
 	active, err := r.queue.CountActiveRuns(ctx, person)
 	if err != nil {
 		return fmt.Errorf("count the runs of %s: %w", person, err)
 	}
-	free := autoRunsPerPerson - active
 	items, err := r.queue.ListDue(ctx, person, pass.now)
 	if err != nil {
 		return fmt.Errorf("list the queue of %s: %w", person, err)
 	}
+	limits := map[string]AutoPlayLimits{}
 	for _, it := range items {
-		if free <= 0 {
+		limit, ok := limits[it.WorkspaceID]
+		if !ok {
+			if limit, err = r.plays.AutoPlayLimits(ctx, it.WorkspaceID); err != nil {
+				return fmt.Errorf("get the auto play limits of workspace %s: %w", it.WorkspaceID, err)
+			}
+			limits[it.WorkspaceID] = limit
+		}
+		if active >= limit.RunsAtOncePerPerson {
 			r.hold(ctx, it, ReasonNoFreeSlot)
 			continue
 		}
@@ -206,7 +213,7 @@ func (r *Runner) dispatchPerson(ctx context.Context, pass *queuePass, person str
 			return nil
 		}
 		if started {
-			free--
+			active++
 		}
 	}
 	return nil

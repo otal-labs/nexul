@@ -92,7 +92,7 @@ export const useDeleteAutoPlay = (workspaceId: string, playId: string) => {
 
 const limitsPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/plays/auto-play-limits`;
 
-// The workspace's cap on automatic runs per ticket per day, shared by every play's auto plays.
+// The workspace's bounds on automatic runs, shared by every play's auto plays.
 export const useFetchAutoPlayLimits = (workspaceId: string) =>
   useQuery({
     queryKey: [getAutoPlayLimitsKey, workspaceId],
@@ -100,14 +100,19 @@ export const useFetchAutoPlayLimits = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-export const useSetAutoPlayDailyCap = (workspaceId: string) => {
+const limitsToast = (limits: AutoPlayLimits, patch: Partial<AutoPlayLimits>) => {
+  if (patch.runs_at_once_per_person !== undefined) return `Each person now has at most ${limits.runs_at_once_per_person} runs going at once`;
+  return `Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`;
+};
+
+export const useSetAutoPlayLimits = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("autoplays:write", async (cap: number) =>
-      (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), { daily_cap_per_ticket: cap })).data),
-    onSuccess: (limits) => {
+    mutationFn: requires("autoplays:write", async (patch: Partial<AutoPlayLimits>) =>
+      (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), patch)).data),
+    onSuccess: (limits, patch) => {
       client.setQueryData([getAutoPlayLimitsKey, workspaceId], limits);
-      toast.success(`Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`);
+      toast.success(limitsToast(limits, patch));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
