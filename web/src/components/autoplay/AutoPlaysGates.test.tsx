@@ -28,6 +28,7 @@ const autoPlay: AutoPlay = {
   run_on: "developer",
   computer_id: "",
   run_as: "",
+  memory_ids: [],
   created_by: "u1",
   created_at: "",
   updated_at: "",

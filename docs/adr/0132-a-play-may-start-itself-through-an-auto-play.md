@@ -58,3 +58,7 @@ Amended: an archived workspace's auto plays match nothing and its queued runs wa
 Amended: a workspace sets how many runs a person may have going, 1 to 5 and 1 by default, before their next auto run
 there waits for a free slot. Every active run of theirs counts against it, pressed or automatic and in any workspace,
 since they all share the person's computer; raising it starts waiting runs at once.
+
+Amended: an auto play may also name memories, as the run dialog does, for each run to read beside the always-included
+ones. They can come from any project in the workspace, since one auto play serves every project its play is in; a run
+reads those in its target's project and leaves the rest out rather than refusing to start.

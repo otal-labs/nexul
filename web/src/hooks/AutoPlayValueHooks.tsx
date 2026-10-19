@@ -3,6 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { personLabel } from "@nexul/client-core/person";
 
 import { useFetchCategories } from "@/hooks/CategoryHooks";
+import { useFetchMemories } from "@/hooks/MemoryHooks";
 import { docFoldersQuery } from "@/hooks/DocFolderHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -13,6 +14,7 @@ import { projectTicketTypesQuery } from "@/hooks/TicketTypeHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { FIELD_LABELS, ID_FIELDS, type AutoPlayField } from "@/models/AutoPlay";
 import { PLAY_STAGE_LABELS, PLAY_STAGES } from "@/models/Play";
+import type { Memory } from "@/models/Memory";
 import type { Project } from "@/models/Project";
 
 export interface ValueOption {
@@ -90,4 +92,25 @@ export const useAutoPlayValues = (field: AutoPlayField): FieldValues => {
   };
 
   return { options, label };
+};
+
+// The workspace's memories an auto play may pick, each named with its project; always-included ones are read anyway.
+export const useAutoPlayMemoryValues = (): FieldValues => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: memories } = useFetchMemories(workspaceId);
+  const { data: projects } = useFetchProjects();
+  const names = new Map((projects ?? []).map((p) => [p.id, p.name]));
+  const labelOf = (m: Memory) => `${m.title}${m.footer ? " (footer)" : ""} · ${names.get(m.project_id) ?? "Unknown project"}`;
+  const byId = new Map((memories ?? []).map((m) => [m.id, m]));
+  const options = (memories ?? [])
+    .filter((m) => !m.always_included)
+    .map((m) => ({ value: m.id, label: labelOf(m) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return {
+    options,
+    label: (id) => {
+      const memory = byId.get(id);
+      return memory ? labelOf(memory) : "Unknown memory";
+    },
+  };
 };

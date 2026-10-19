@@ -21,6 +21,7 @@ type AutoPlayInput struct {
 	RunOn             RunOn
 	// ComputerID is the computer a RunOnComputer auto play lands on.
 	ComputerID string
+	MemoryIDs  []string
 }
 
 // ListAutoPlays returns a play's auto plays, oldest first (autoplays:read).
@@ -236,4 +237,5 @@ func (a *AutoPlay) apply(in AutoPlayInput) {
 	a.OnceWithinMinutes = in.OnceWithinMinutes
 	a.RunOn = in.RunOn
 	a.ComputerID = strings.TrimSpace(in.ComputerID)
+	a.MemoryIDs = in.MemoryIDs
 }

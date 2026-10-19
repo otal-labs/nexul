@@ -286,7 +286,7 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 	defer cancel()
 	trail := &Trail{
 		ID: it.TrailID, WorkspaceID: it.WorkspaceID, PlayID: play.ID, PlayLabel: play.Label, TargetType: it.TargetType,
-		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: []string{},
+		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: normalizeIDs(tgt.memoryIDs),
 		State: TrailStarting, StartedAt: now,
 	}
 	pick := HarnessChoice{ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID}
@@ -369,6 +369,9 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 		return nil, target{}, verdict{status: QueueDidntRun, reason: err.Error()}, nil
 	}
 	tgt.service, tgt.outageID = it.Service, it.OutageID
+	if a != nil {
+		tgt.memoryIDs = a.MemoryIDs
+	}
 	return play, tgt, goAhead, nil
 }
 

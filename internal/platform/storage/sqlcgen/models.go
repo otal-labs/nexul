@@ -52,6 +52,7 @@ type AutoPlay struct {
 	UpdatedAt         int64
 	ComputerID        string
 	RunAs             string
+	MemoryIds         string
 }
 
 type Automation struct {

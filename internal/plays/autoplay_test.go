@@ -2,6 +2,7 @@ package plays
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,10 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		tooMany[i] = rule(FieldBlocked, OpSet)
 	}
 	tooManyValues := make([]string, MaxAutoPlayRuleValues+1)
+	tooManyMemories := make([]string, MaxAutoPlayMemories+1)
+	for i := range tooManyMemories {
+		tooManyMemories[i] = fmt.Sprintf("m-%d", i)
+	}
 	for i := range tooManyValues {
 		tooManyValues[i] = string(rune('a'+i%26)) + string(rune('a'+i/26))
 	}
@@ -63,6 +68,7 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		{"an op the field does not take", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldBlocked, OpIs, "yes"))}}}, "takes the ops set, unset"},
 		{"set with values", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldDeveloper, OpSet, "u-1"))}}}, "set takes no values"},
 		{"is with no values", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldType, OpIs, " "))}}}, "is needs at least one value"},
+		{"too many memories", TypeTicket, AutoPlay{Moment: MomentTicketCreated, MemoryIDs: tooManyMemories}, "at most 50 memories"},
 		{"too many values", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldLabel, OpIs, tooManyValues...))}}}, "at most 50 values"},
 		{"a stage that does not exist", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldStage, OpIs, "shipped"))}}}, `stage "shipped" is not one of`},
 		{"an unknown otherwise", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Priority: Priority{Otherwise: "urgent"}}, "priority otherwise"},

@@ -122,6 +122,7 @@ const (
 	MinAutoPlayRunsAtOnce     = 1
 	MaxAutoPlayRunsAtOnce     = 5
 	DefaultAutoPlayRunsAtOnce = 1
+	MaxAutoPlayMemories       = 50
 )
 
 // AutoPlayLimits are a workspace's bounds on automatic runs, shared by every play's auto plays.
@@ -178,11 +179,13 @@ type AutoPlay struct {
 	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,computer"`
 	// ComputerID is the computer a RunOnComputer auto play lands on, and RunAs the person who picked it, whose
 	// identity the run takes; both are empty for any other RunOn, and ComputerID while a seeded one waits for its pick.
-	ComputerID string    `json:"computer_id"`
-	RunAs      string    `json:"run_as"`
-	CreatedBy  string    `json:"created_by"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ComputerID string `json:"computer_id"`
+	RunAs      string `json:"run_as"`
+	// MemoryIDs are read by each run beside the always-included ones; a run reads only those in its target's project.
+	MemoryIDs []string  `json:"memory_ids"`
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // normalize fills the defaults an omitted part means and tidies values, so equal auto plays store equal.
@@ -220,6 +223,7 @@ func (a *AutoPlay) normalize(playType Type) {
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
 	}
+	a.MemoryIDs = normalizeIDs(a.MemoryIDs)
 }
 
 func normalizeGroup(g *Group) {
@@ -247,6 +251,9 @@ func (a *AutoPlay) Validate(playType Type) error {
 	}
 	if err := a.validateRunOn(playType); err != nil {
 		return err
+	}
+	if len(a.MemoryIDs) > MaxAutoPlayMemories {
+		return fmt.Errorf("%w: an auto play reads at most %d memories", apperrs.ErrInvalid, MaxAutoPlayMemories)
 	}
 	if a.OnceWithinMinutes < 0 || a.OnceWithinMinutes > MaxOnceWithinMinutes {
 		return fmt.Errorf("%w: once_within_minutes must be 0 (no limit) to %d (30 days)", apperrs.ErrInvalid, MaxOnceWithinMinutes)

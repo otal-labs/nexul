@@ -17,7 +17,7 @@ func newTestAutoPlay(id, playID string, at time.Time) *plays.AutoPlay {
 		ID: id, PlayID: playID, WorkspaceID: "ws-1", Moment: plays.MomentDocChanged, RunOn: plays.RunOnCauser,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}},
 		Priority:   plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal},
-		CreatedAt:  at, UpdatedAt: at,
+		MemoryIDs:  []string{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
@@ -83,6 +83,24 @@ func TestAutoPlaysRepo_RoundTripsTheComputerAndThePersonWhoPickedIt(t *testing.T
 	again, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
 	require.NoError(t, err)
 	assert.Equal(t, got, again)
+}
+
+func TestAutoPlaysRepo_RoundTripsTheMemories(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedPlays(t, s, "play-1")
+	a := newTestAutoPlay("ap-1", "play-1", time.Date(2026, 10, 19, 9, 0, 0, 0, time.UTC))
+	a.MemoryIDs = []string{"m-1", "m-2"}
+	require.NoError(t, s.Plays.CreateAutoPlay(t.Context(), a))
+	got, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"m-1", "m-2"}, got.MemoryIDs)
+
+	got.MemoryIDs = nil
+	require.NoError(t, s.Plays.UpdateAutoPlay(t.Context(), got))
+	again, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{}, again.MemoryIDs, "none reads back as an empty list, never null on the wire")
 }
 
 func TestAutoPlaysRepo_ListsEachPlaysOldestFirstInOneRead(t *testing.T) {

@@ -19,6 +19,7 @@ type autoPlayResult struct {
 	OnceWithinMinutes int        `json:"once_within_minutes"`
 	RunOn             RunOn      `json:"run_on"`
 	ComputerID        string     `json:"computer_id,omitempty"`
+	MemoryIDs         []string   `json:"memory_ids"`
 }
 
 func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
@@ -27,6 +28,7 @@ func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
 		out = append(out, autoPlayResult{
 			ID: a.ID, Enabled: a.Enabled, Moment: a.Moment, MomentStage: a.MomentStage, Conditions: a.Conditions,
 			Priority: a.Priority, OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerID: a.ComputerID,
+			MemoryIDs: a.MemoryIDs,
 		})
 	}
 	return out
@@ -40,10 +42,14 @@ type autoPlayIn struct {
 	OnceWithinMinutes int         `json:"once_within_minutes,omitempty" jsonschema:"At most one run per ticket or doc within this many minutes of the moment, up to 43200; 0 or omitted is no limit."`
 	RunOn             RunOn       `json:"run_on,omitempty" jsonschema:"Whose computer runs it: developer (the default for ticket plays), tester, causer (whoever caused the moment, the default for doc plays), or computer (a chosen one, the only choice for stack plays, with computer_id)."`
 	ComputerID        string      `json:"computer_id,omitempty" jsonschema:"With run_on computer: the computer's id, from computer_list. You must own it or hold computers:run_agents on its share, and the run takes your identity. Needed before the auto play is switched on."`
+	MemoryIDs         []string    `json:"memory_ids,omitempty" jsonschema:"Ids of memories each run reads beside the always-included ones, from memory_list, up to 50; they may come from several projects, and a run reads only those in its ticket's, doc's, or stack's own project."`
 }
 
 func (in autoPlayIn) input() AutoPlayInput {
-	out := AutoPlayInput{Moment: in.Moment, MomentStage: optionalStage(in.MomentStage), OnceWithinMinutes: in.OnceWithinMinutes, RunOn: in.RunOn, ComputerID: in.ComputerID}
+	out := AutoPlayInput{
+		Moment: in.Moment, MomentStage: optionalStage(in.MomentStage), OnceWithinMinutes: in.OnceWithinMinutes, RunOn: in.RunOn,
+		ComputerID: in.ComputerID, MemoryIDs: in.MemoryIDs,
+	}
 	if in.Conditions != nil {
 		out.Conditions = *in.Conditions
 	}
@@ -63,6 +69,7 @@ type autoPlayChangeIn struct {
 	OnceWithinMinutes *int        `json:"once_within_minutes,omitempty" jsonschema:"A new limit in minutes, 0 for none; omit to keep it."`
 	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, causer, or computer; omit to keep it."`
 	ComputerID        *string     `json:"computer_id,omitempty" jsonschema:"With run_on computer: a new computer's id, picked as you; omit to keep it."`
+	MemoryIDs         *[]string   `json:"memory_ids,omitempty" jsonschema:"New memory ids, replacing the old list whole; [] reads none beyond the always-included ones; omit to keep them."`
 }
 
 // overlay keeps every field the change left out.
@@ -70,7 +77,7 @@ func (in autoPlayChangeIn) overlay(a *AutoPlay) (bool, AutoPlayInput) {
 	enabled := a.Enabled
 	out := AutoPlayInput{
 		Moment: a.Moment, MomentStage: a.MomentStage, Conditions: a.Conditions, Priority: a.Priority,
-		OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerID: a.ComputerID,
+		OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerID: a.ComputerID, MemoryIDs: a.MemoryIDs,
 	}
 	if in.Enabled != nil {
 		enabled = *in.Enabled
@@ -95,6 +102,9 @@ func (in autoPlayChangeIn) overlay(a *AutoPlay) (bool, AutoPlayInput) {
 	}
 	if in.ComputerID != nil {
 		out.ComputerID = *in.ComputerID
+	}
+	if in.MemoryIDs != nil {
+		out.MemoryIDs = *in.MemoryIDs
 	}
 	return enabled, out
 }

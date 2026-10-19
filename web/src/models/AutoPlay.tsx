@@ -65,6 +65,8 @@ export interface AutoPlay {
   // The computer a "computer" auto play lands on, and the person who picked it, whose identity the run takes; both "" otherwise.
   computer_id: string;
   run_as: string;
+  // Read by each run beside the always-included memories; a run reads only those in its own project.
+  memory_ids: string[];
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -73,7 +75,7 @@ export interface AutoPlay {
 // The full replace the create and update routes take.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "computer_id"
+  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "computer_id" | "memory_ids"
 >;
 
 export interface AutoPlayLimits {
@@ -232,6 +234,7 @@ export interface AutoPlayDraft {
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
   computer_id: string;
+  memory_ids: string[];
 }
 
 export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
@@ -245,6 +248,7 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   once_within_minutes: 24 * 60,
   run_on: SUBJECT_RUN_ON[subject][0] ?? "developer",
   computer_id: "",
+  memory_ids: [],
 });
 
 export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayDraft => ({
@@ -258,6 +262,7 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
   computer_id: autoPlay.computer_id,
+  memory_ids: autoPlay.memory_ids,
 });
 
 // Values the editor cannot name (a project the viewer can't open) ride along untouched, so a save never drops them.
@@ -273,6 +278,7 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
   computer_id: draft.run_on === "computer" ? draft.computer_id : "",
+  memory_ids: draft.memory_ids,
 });
 
 export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
@@ -284,6 +290,7 @@ export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
   computer_id: autoPlay.computer_id,
+  memory_ids: autoPlay.memory_ids,
 });
 
 export const MATCH_OPTIONS = [

@@ -47,6 +47,7 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
   run_on: "computer",
   computer_id: "",
   run_as: "",
+  memory_ids: [],
   created_by: "",
   created_at: "",
   updated_at: "",
@@ -72,6 +73,7 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5 } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/queued") return { data: [] };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
+    if (url === "/api/memories") return { data: [] };
     if (url === "/api/stacks") return { data: [{ id: "st-1", name: "acme-web", project_id: projectId ?? "p-1" }] };
     if (url === "/api/stacks/st-1/services") return { data: [{ id: "sv-1", stack_id: "st-1", name: "api" }, { id: "sv-2", stack_id: "st-1", name: "worker" }] };
     if (url === "/api/pairing/computers") return { data: { computers } };
@@ -150,6 +152,7 @@ describe("a stack play's auto plays", () => {
         once_within_minutes: 1440,
         run_on: "computer",
         computer_id: "c-1",
+        memory_ids: [],
       }),
     );
   });

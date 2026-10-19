@@ -343,7 +343,8 @@ its project, the stack and the service by name), a priority, limits, and whom
 it runs on: the developer, the tester, whoever caused the moment (a doc has
 no developer, so it offers only that), or a chosen computer, which every
 play type offers and a stack play offers alone (see **Run on a chosen
-computer**). The play's show-when stage does not apply; a
+computer**), and memories each run reads beside the always-included ones,
+only those in its target's project. The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot (one run going at
 once by default, up to five as the workspace sets it) and their computer
