@@ -792,7 +792,8 @@ func (r *Runner) FollowThread(ctx context.Context, conversationID, threadID, use
 	if (trail.State.Active() && !parked) || trail.HarnessSessionID != threadID || trail.StarterID != userID || trail.ComputerID != computerID {
 		return nil, false
 	}
-	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
+	// Thread news has no signed-in actor and the target reads check permissions, so read as the run's starter.
+	tgt, err := r.readTarget(identity.WithActor(ctx, identity.Actor{ID: trail.StarterID}), trail.TargetType, trail.TargetID)
 	if err != nil {
 		r.log.Warn("plays: follow again could not read the target", "trail", trail.ID, "error", err)
 	}

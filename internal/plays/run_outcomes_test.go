@@ -459,6 +459,22 @@ func TestFollowThread_NewsOnAnEndedRunsThread_ReopensItsTrailAndCatchesUpFromSin
 	assert.Empty(t, f.trails.eventsFor(TopicRunStarted), "a reopened run announces no second start")
 }
 
+func TestFollowThread_NamesTheTargetAsTheStarter(t *testing.T) {
+	f := newRunnerFixture()
+	f.targets.needActor = true
+	seedTrail(f, "tr-done", TrailDone, "th-1")
+
+	done, ok := f.runner.FollowThread(t.Context(), "conv-tr-done", "th-1", starter, "pc-1", "run-7")
+	require.True(t, ok)
+	<-f.turns.done
+	f.turns.last().Observer.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-2")
+	<-done
+
+	finished := f.trails.eventsFor(TopicRunFinished)
+	require.Len(t, finished, 1)
+	assert.Equal(t, "NEX-1", finished[0].Payload.(RunFinishedEvent).TargetTitle, "thread news has no signed-in actor, so the target is read as the run's starter")
+}
+
 func TestFollowThread_RunsUnreadable_LeavesItToAPlainTurn(t *testing.T) {
 	f := newRunnerFixture()
 	f.trails.latestErr = errors.New("db down")
