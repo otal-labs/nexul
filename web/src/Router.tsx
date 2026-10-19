@@ -83,7 +83,7 @@ const workspaceRoutes: RouteObject[] = [
   { path: "memories/:projectToken/:memoryId/:tab?", handle: projectGate("memories"), element: <MemoriesPage /> },
   { path: "board", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: projectGate("tickets"), element: <BoardPage /> },
-  { path: "tickets/:ticketId", handle: projectGate("tickets"), element: <TicketPage /> },
+  { path: "tickets/:ticketId/:tab?", handle: projectGate("tickets"), element: <TicketPage /> },
   { path: "runners", element: <RunnersPage /> },
   { path: "plays", handle: gate("plays"), element: <PlaysPage /> },
   { path: "plays/:playId/:tab?", handle: gate("plays"), element: <PlaysPage /> },

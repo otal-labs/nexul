@@ -54,7 +54,7 @@ The ticket page has everything else:
 - **Links.** The **+** adds **Blocked by…**, **Blocks…**, **Found in…**, or **Source doc…**. A blocked card shows an icon until every blocker has a merged pull request or is done, but still moves freely; a play on it asks you to confirm. A blocker that merged shows a merge icon, so a ticket can start on its code while the blocker waits in QA.
 - **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket. Point at a linked branch or pull request and press its **×** to unlink it, if you linked the wrong one; that needs permission to change the ticket, and the branch or PR itself is untouched. A pull request that still names the ticket in its description or branch name links itself again the next time GitHub reports it. Agents unlink with `unlink_pr` and `unlink_branch` on `ticket_update`.
 - **Testing.** In a Testing column it shows where to test and the acceptance criteria, with **Pass** and **Fail**. Fail asks for steps to reproduce, the expected and actual results, and a screenshot. It never points at production.
-- **Thread.** The ticket's conversation, where plays post their runs and agents leave notes.
+- **Thread.** The ticket's conversation, where plays post their runs and agents leave notes. It has its own tab beside **Ticket**, under the title; a link that ends in `/thread` opens straight to it. A ticket opened inside the Inbox keeps the thread under its body instead.
 
 ### Delete a ticket
 
