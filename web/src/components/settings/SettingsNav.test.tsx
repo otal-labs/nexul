@@ -16,7 +16,6 @@ const nothing: SettingsVisibility = {
   instanceSections: [],
   teamIsInstanceWide: false,
   showGeneral: false,
-  showRoles: false,
   showInterviewTemplate: false,
   showMentionLayout: false,
   showTeam: false,
@@ -26,7 +25,6 @@ const everything: SettingsVisibility = {
   instanceSections: ["instance", "sign-in", "connectors", "dns", "templates"],
   teamIsInstanceWide: true,
   showGeneral: true,
-  showRoles: true,
   showInterviewTemplate: true,
   showMentionLayout: true,
   showTeam: true,
@@ -49,7 +47,6 @@ describe("SettingsNav", () => {
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "General",
-      "Roles",
       "Interview template",
       "Mention chips",
       "Danger zone",
@@ -59,9 +56,9 @@ describe("SettingsNav", () => {
   });
 
   it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {
-    renderNav(workspaceSections({ ...nothing, showRoles: true, showTeam: true }));
+    renderNav(workspaceSections({ ...nothing, showTeam: true }));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
-    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Roles", "Team", "Danger zone"]);
+    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Team", "Danger zone"]);
     expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/acme/configuration/team");
   });
 
@@ -76,7 +73,6 @@ describe("isInstanceSection", () => {
     expect(isInstanceSection("team", true)).toBe(true);
     expect(isInstanceSection("team", false)).toBe(false);
     expect(isInstanceSection("connectors", false)).toBe(true);
-    expect(isInstanceSection("roles", true)).toBe(false);
   });
 });
 

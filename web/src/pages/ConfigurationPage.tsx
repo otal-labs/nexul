@@ -12,8 +12,6 @@ import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
-  // Same permission the roles REST endpoints require server-side.
-  const canManageRoles = useHasPermission("roles:write");
   const canManageWorkspace = useHasPermission("workspaces:write");
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
@@ -37,11 +35,7 @@ export const ConfigurationPage = () => {
         meta={<ConfigurationHeaderMeta section={section} />}
       />
       <SettingsShell section={section} nav={<SettingsNav active={section} sections={sections} />}>
-        <SettingsPageContent
-          section={section}
-          canManageRoles={canManageRoles}
-          canManageWorkspace={canManageWorkspace}
-        />
+        <SettingsPageContent section={section} canManageWorkspace={canManageWorkspace} />
       </SettingsShell>
     </Container>
   );

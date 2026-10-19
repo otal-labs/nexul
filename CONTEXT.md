@@ -1018,7 +1018,9 @@ channel, as tick grids of projects and channels by roles. An Owner's first
 visit after the upgrade that rebuilt permissions opens it as the one-time setup
 "Who's in each project"; a workspace with no projects at that upgrade, and
 every one made later, starts set up. Shown to anyone who may manage a project's
-access; only an Owner sees the channels grid.
+access or edit roles; only an Owner sees the channels grid. Its Roles tab is
+where a workspace's roles are defined, and a role editor who manages no project
+sees that tab alone.
 _Avoid_: Permissions page, project access, setup wizard (that is the instance's)
 
 **Private channel**:

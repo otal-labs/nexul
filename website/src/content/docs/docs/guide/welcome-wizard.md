@@ -41,7 +41,7 @@ The phone app has no Welcome row and no dot. Every step but the phone's is done 
 
 ## Choosing the steps a role gives
 
-Steps belong to roles. In **Configuration → Roles**, open a role's **Edit**; the role editor's **Welcome** tab, after **In projects**, has one switch per step. Switching one on asks everyone holding the role, including people who skipped it. A step gives no permission, so anyone who can edit the role (`roles:write`) can switch any step on. Duplicating or cloning a role copies its steps.
+Steps belong to roles. In **Access → Roles**, open a role's **Edit**; the role editor's **Welcome** tab, after **In projects**, has one switch per step. Switching one on asks everyone holding the role, including people who skipped it. A step gives no permission, so anyone who can edit the role (`roles:write`) can switch any step on. Duplicating or cloning a role copies its steps.
 
 The **Owner** role can't be edited. Its steps are fixed: **Connect GitHub** and **Your computer**.
 

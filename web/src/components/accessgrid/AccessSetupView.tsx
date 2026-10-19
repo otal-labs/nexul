@@ -5,6 +5,8 @@ import { ChannelsCard } from "@/components/accessgrid/ChannelsCard";
 import { ProjectsCard } from "@/components/accessgrid/ProjectsCard";
 import { ProjectsReadback } from "@/components/accessgrid/ProjectsReadback";
 import { PageHeader } from "@/components/PageHeader";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
 import { useSaveAccessGrid } from "@/hooks/AccessGridHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -41,21 +43,26 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
           project; you can change it any time on the Access page.
         </p>
       </div>
-      <div className="space-y-6">
-        <ProjectsCard grid={grid} footer={<ProjectsReadback grid={grid} />} />
-        <ChannelsCard
-          grid={grid}
-          alignWithProjects
-          footer={
-            <>
-              <span className="text-sm text-muted-foreground">Leave every box ticked to keep channels as they are.</span>
-              <Button size="sm" loading={save.isPending} onClick={() => void finish().catch(() => undefined)}>
-                Finish setup
-              </Button>
-            </>
-          }
-        />
-      </div>
+      <PageTabs label="Access setup" tabs={[{ value: "setup", label: "Set up" }, { value: "roles", label: "Roles" }]}>
+        <PageTabsContent value="setup">
+          <ProjectsCard grid={grid} footer={<ProjectsReadback grid={grid} />} />
+          <ChannelsCard
+            grid={grid}
+            alignWithProjects
+            footer={
+              <>
+                <span className="text-sm text-muted-foreground">Leave every box ticked to keep channels as they are.</span>
+                <Button size="sm" loading={save.isPending} onClick={() => void finish().catch(() => undefined)}>
+                  Finish setup
+                </Button>
+              </>
+            }
+          />
+        </PageTabsContent>
+        <PageTabsContent value="roles">
+          <RoleSettingsSection />
+        </PageTabsContent>
+      </PageTabs>
     </>
   );
 };

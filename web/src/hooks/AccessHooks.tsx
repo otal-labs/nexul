@@ -28,8 +28,11 @@ export const useAnyProjectAreaAccess = (): ((area: Area) => boolean) | undefined
   return (area) => hasPermission(held, AREA_PERMISSION[area]);
 };
 
-// Manage this project's access, held through a role or on one project: what opens the Access page.
+// Manage this project's access, held through a role or on one project: what opens the Access grids.
 const MANAGES_ACCESS = "projects:access";
+
+// Edit the workspace's roles: the other way into the Access page, which then shows its Roles tab alone.
+const MANAGES_ROLES = "roles:write";
 
 // Whether the viewer holds value through a role or in any project they are in; undefined while that is still loading.
 const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
@@ -38,6 +41,9 @@ const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
   if (!isFetched) return undefined;
   return hasPermission(workspaceWidePermissions(data), value);
 };
+
+// Whether the viewer may read the Access grids, which the server refuses to anyone managing no project; undefined while loading.
+export const useManagesAccess = (): boolean | undefined => useAnyProjectAreaAccessOf(MANAGES_ACCESS);
 
 // Whether the viewer holds value in any workspace, which is what the server checks an instance-level action against.
 export const useHasInstancePermission = (value: string): boolean => {
@@ -71,7 +77,6 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
     teamIsInstanceWide: hasPermission(anywhere, "accounts:read"),
     showTeam: hasPermission(anywhere, "accounts:read") || hasPermission(anywhere, "members:write"),
     showGeneral: hasPermission(permissions, "workspaces:write"),
-    showRoles: hasPermission(permissions, "roles:write"),
     showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
   });
@@ -90,7 +95,7 @@ export const workspaceAccess = (anywhere: string[] | undefined, permissions: str
     configurationSections,
     canOpen: (area) => {
       if (area === "configuration") return opensConfiguration(configurationSections);
-      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS);
+      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS) || hasPermission(permissions, MANAGES_ROLES);
       if (area === "wizard") return canOpenWizard((held) => hasPermission(permissions, AREA_PERMISSION[held]));
       return hasPermission(permissions, AREA_PERMISSION[area]);
     },
@@ -128,11 +133,12 @@ export const useCanOpenSection = (section: SettingsSection): boolean =>
 // Whether the viewer may open an area's page; undefined while that is still loading.
 export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
-  const anywhere = useAnyProjectAreaAccessOf(MANAGES_ACCESS);
+  const managesAccess = useManagesAccess();
+  const managesRoles = useAnyProjectAreaAccessOf(MANAGES_ROLES);
   const sections = useConfigurationSections();
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
-    if (area === "access") return anywhere;
+    if (area === "access") return managesAccess === undefined ? undefined : managesAccess || managesRoles === true;
     if (area === "wizard") return can && canOpenWizard(can);
     return can && can(area);
   };

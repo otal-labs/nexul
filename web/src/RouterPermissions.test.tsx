@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
+  AccessPage,
   AutomationPage,
   AutomationsPage,
   ConfigurationPage,
@@ -72,7 +73,7 @@ const renderAt = (path: string) => {
 // module graph under full-suite load.
 beforeAll(async () => {
   await Promise.all(
-    [AutomationPage, AutomationsPage, ConfigurationPage, InboxPage, MemoriesPage, RunnersPage, WorkspaceEntryPage, YourSettingsPage].map((page) =>
+    [AccessPage, AutomationPage, AutomationsPage, ConfigurationPage, InboxPage, MemoriesPage, RunnersPage, WorkspaceEntryPage, YourSettingsPage].map((page) =>
       page.preload(),
     ),
   );
@@ -92,7 +93,9 @@ describe("route permissions", () => {
     { path: "/acme/automations", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/board", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/configuration", anywhere: [], permissions: ["chat:read"], page: null },
-    { path: "/acme/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
+    { path: "/acme/configuration", anywhere: [], permissions: ["roles:write"], page: null },
+    { path: "/acme/access", anywhere: [], permissions: ["roles:write"], page: "Access" },
+    { path: "/acme/access", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/configuration", anywhere: ["instance:read"], permissions: [], page: null },
     { path: "/acme/configuration", anywhere: ["members:write"], permissions: [], page: "Configuration" },
     { path: "/settings", anywhere: ["connectors:read"], permissions: [], page: "Settings" },

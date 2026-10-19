@@ -12,6 +12,7 @@ import type { AccessGrid } from "@/models/AccessGrid";
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), toast: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorMessage: () => "refused" }));
 vi.mock("sonner", () => ({ toast: { success: mocks.toast, error: vi.fn() } }));
+vi.mock("@/components/settings/RoleSettingsSection", () => ({ RoleSettingsSection: () => <p>Roles card</p> }));
 
 const grid = (over: Partial<AccessGrid> = {}): AccessGrid => ({
   workspace_id: "ws-1",
@@ -28,18 +29,19 @@ const grid = (over: Partial<AccessGrid> = {}): AccessGrid => ({
   ...over,
 });
 
-const me = (owner: boolean, finished: boolean) => ({
+const me = (owner: boolean, finished: boolean, permissions: string[]) => ({
   role_name: owner ? "Owner" : "Developer",
   roles: [{ id: owner ? "r-owner" : "r-dev", name: owner ? "Owner" : "Developer", is_owner: owner }],
-  permissions: ["projects:access"],
+  permissions,
   projects: [],
   access_setup_finished: finished,
 });
 
-const serve = (data: AccessGrid, owner = true) =>
+const serve = (data: AccessGrid, owner = true, permissions = ["projects:access", "roles:write"]) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/access") return { data };
-    if (url === "/api/workspaces/ws-1/me") return { data: me(owner, data.setup.finished) };
+    if (url === "/api/workspaces/ws-1/me") return { data: me(owner, data.setup.finished, permissions) };
+    if (url === "/api/workspaces/ws-1/roles") return { data: data.roles };
     if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", slug: "acme" }] };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [{ user_id: "u-lena", login: "lena", display_name: "Lena", avatar_url: "" }] } };
     return { data: [] };
@@ -183,12 +185,13 @@ describe("AccessPage", () => {
 
   it("shows a manager only the Projects grid, and filters a long list", async () => {
     const projects = Array.from({ length: 12 }, (_, i) => ({ id: `p-${i}`, name: `Project ${i}`, prefix: `P${i}`, role_ids: ["r-dev"], user_ids: [] }));
-    serve(grid({ setup: { finished: true }, projects, channels: [] }), false);
+    serve(grid({ setup: { finished: true }, projects, channels: [] }), false, ["projects:access"]);
     const user = userEvent.setup();
     renderPage();
 
     expect(await screen.findByText("12 projects · 2 roles")).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Public channels" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Roles" })).not.toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: "Filter projects" }), "Project 1");
     expect(screen.getByText("Every project shown")).toBeInTheDocument();
     expect(screen.getAllByRole("checkbox", { name: /^Developer in/ })).toHaveLength(3);
@@ -197,8 +200,44 @@ describe("AccessPage", () => {
     expect(screen.getByText(/No project matches/)).toBeInTheDocument();
   });
 
+  it("puts Roles between the grids for a role editor, at its own path", async () => {
+    serve(grid({ setup: { finished: true } }));
+    const user = userEvent.setup();
+    renderPage("/acme/access/roles");
+
+    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Projects", "Roles", "Public channels"]);
+    await user.click(screen.getByRole("tab", { name: "Projects" }));
+    expect(await screen.findByRole("checkbox", { name: "Client in Storefront" })).toBeInTheDocument();
+  });
+
+  it("keeps Roles reachable for the Owner during the one-time setup", async () => {
+    serve(grid());
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Roles" }));
+    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+  });
+
+  it("shows a role editor who manages no project the Roles card alone, without asking for the grids", async () => {
+    serve(grid({ setup: { finished: true } }), false, ["roles:write"]);
+    renderPage();
+
+    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Access" })).toBeInTheDocument();
+    expect(await screen.findByText("2 roles")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/workspaces/ws-1/access");
+  });
+
   it("says what failed to load", async () => {
-    mocks.get.mockRejectedValue(new Error("down"));
+    serve(grid());
+    const served = mocks.get.getMockImplementation();
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/access") throw new Error("down");
+      return served?.(url);
+    });
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });

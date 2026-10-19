@@ -1,7 +1,5 @@
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
-import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
-import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -12,14 +10,6 @@ const join = (parts: (string | false | undefined)[]) => parts.filter(Boolean).jo
 const GeneralMeta = () => {
   const workspace = useSelectedWorkspace();
   return <span className="font-mono">{workspace && `/${workspace.slug}`}</span>;
-};
-
-const RolesMeta = () => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: roles } = useFetchWorkspaceRoles(workspaceId);
-  const { data: team } = useFetchTeam();
-  const members = team?.people.filter((person) => person.workspaces.some((m) => m.workspace_id === workspaceId)).length;
-  return <>{join([roles && count(roles.length, "role"), members !== undefined && count(members, "person", "people")])}</>;
 };
 
 const InterviewMeta = () => {
@@ -41,7 +31,6 @@ interface ConfigurationHeaderMetaProps {
 export const ConfigurationHeaderMeta = ({ section }: ConfigurationHeaderMetaProps) => (
   <>
     {section === "general" && <GeneralMeta />}
-    {section === "roles" && <RolesMeta />}
     {section === "interview" && <InterviewMeta />}
     {section === "mentions" && <MentionsMeta />}
   </>
