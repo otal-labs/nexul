@@ -101,6 +101,8 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err := r.trails.CreateTrail(ctx, trail); err != nil {
 		return nil, fmt.Errorf("create trail for play %s: %w", play.ID, err)
 	}
+	// Opening the harness turn can take seconds; without this frame a run nobody pressed for stays invisible until then.
+	r.publishLive(ctx, trail)
 	body := startedMessage(play.Label, trail.CustomInstructions)
 	if _, err := r.threads.PostMessage(ctx, conversationID, trail.StarterID, body); err != nil {
 		reason := "post started message: " + err.Error()
