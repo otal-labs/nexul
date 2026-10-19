@@ -22,10 +22,12 @@ interface PageTabsProps {
   tabs: PageTab[];
   children: ReactNode;
   className?: string;
+  /** Sits right-aligned on the tab row, and keeps the row when only one tab shows. */
+  trailing?: ReactNode;
 }
 
 // The active tab is the path's last segment so it survives a reload and can be linked; the first visible tab has no segment, and a missing or unknown one falls back to it.
-export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) => {
+export const PageTabs = ({ label, tabs, children, className, trailing }: PageTabsProps) => {
   const navigate = useNavigate();
   const { search } = useLocation();
   const { current, tabPath } = useTabPath();
@@ -45,26 +47,32 @@ export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) =>
 
   return (
     <Tabs ref={root} value={active.value} onValueChange={select} className={cn("gap-6", className)}>
-      {visible.length > 1 && (
-        <TabsList
-          variant="line"
-          aria-label={label}
-          className="relative isolate w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border p-0"
-        >
-          <TabUnderline />
-          {visible.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="flex-none px-3 after:hidden"
-            >
-              <span className="relative">
-                {tab.label}
-                {tab.dot && <UpdateDot label={tab.dot} className="-top-0.5 -right-2 ring-0" />}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {(visible.length > 1 || trailing) && (
+        <div className="relative">
+          <TabsList
+            variant="line"
+            aria-label={label}
+            className={cn(
+              "relative isolate w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border p-0",
+              trailing && "pr-32",
+            )}
+          >
+            <TabUnderline />
+            {visible.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="flex-none px-3 after:hidden"
+              >
+                <span className="relative">
+                  {tab.label}
+                  {tab.dot && <UpdateDot label={tab.dot} className="-top-0.5 -right-2 ring-0" />}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {trailing && <div className="absolute inset-y-0 right-0 flex items-center">{trailing}</div>}
+        </div>
       )}
       {children}
     </Tabs>

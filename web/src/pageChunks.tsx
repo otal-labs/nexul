@@ -31,6 +31,7 @@ export const InvitePreviewPage = page(() => import("@/pages/InvitePreviewPage"),
 export const LoginPage = page(() => import("@/pages/LoginPage"), (m) => m.LoginPage);
 export const MemoriesPage = page(() => import("@/pages/MemoriesPage"), (m) => m.MemoriesPage);
 export const OwnerWizardPage = page(() => import("@/pages/OwnerWizardPage"), (m) => m.OwnerWizardPage);
+export const PlaysPage = page(() => import("@/pages/PlaysPage"), (m) => m.PlaysPage);
 export const ProjectSettingsPage = page(() => import("@/pages/ProjectSettingsPage"), (m) => m.ProjectSettingsPage);
 export const ProjectWizardImportPage = page(() => import("@/pages/ProjectWizardImportPage"), (m) => m.ProjectWizardImportPage);
 export const ProjectWizardPage = page(() => import("@/pages/ProjectWizardPage"), (m) => m.ProjectWizardPage);
@@ -60,6 +61,7 @@ const warmed: (() => Promise<unknown>)[] = [
   LoginPage.preload,
   MemoriesPage.preload,
   OwnerWizardPage.preload,
+  PlaysPage.preload,
   ProjectSettingsPage.preload,
   ProjectWizardImportPage.preload,
   ProjectWizardPage.preload,

@@ -72,7 +72,6 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
     showTeam: hasPermission(anywhere, "accounts:read") || hasPermission(anywhere, "members:write"),
     showGeneral: hasPermission(permissions, "workspaces:write"),
     showRoles: hasPermission(permissions, "roles:write"),
-    showPlays: hasPermission(permissions, "plays:read"),
     showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
   });

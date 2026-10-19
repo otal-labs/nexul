@@ -45,6 +45,8 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
+  // How many of its auto plays are switched on; the list sends it only to someone who reads auto plays.
+  auto_plays_on?: number;
   // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, update-doc, audit, decisions-check, investigate-crash), kept through renames; "" for a play a person made.
   builtin_key: string;
   created_by: string;
@@ -81,6 +83,26 @@ export const SavePlayFormSchema = z
   );
 
 export type SavePlayFormData = z.infer<typeof SavePlayFormSchema>;
+
+export const emptyPlayForm = (): SavePlayFormData => ({
+  label: "",
+  type: "ticket",
+  description: "",
+  instructions: "",
+  enabled: true,
+  show_when_stage: "progress",
+  excluded_project_ids: [],
+});
+
+export const playToFormData = (play: Play): SavePlayFormData => ({
+  label: play.label,
+  type: play.type,
+  description: play.description,
+  instructions: play.instructions,
+  enabled: play.enabled,
+  show_when_stage: play.show_when_stage ?? "",
+  excluded_project_ids: play.excluded_project_ids,
+});
 
 // The wire shape the gateway accepts: show_when_stage travels as null, never "".
 export interface SavePlayRequest {

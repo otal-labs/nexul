@@ -1,7 +1,6 @@
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
-import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
 import { WorkspaceGeneralSection } from "@/components/settings/WorkspaceGeneralSection";
 import { TeamSection } from "@/components/team/TeamSection";
@@ -19,8 +18,6 @@ const RolesPanel = ({ canManageRoles }: { canManageRoles: boolean }) => (
   <>{canManageRoles && <RoleSettingsSection />}</>
 );
 
-const PlaysPanel = ({ canReadPlays }: { canReadPlays: boolean }) => <>{canReadPlays && <PlaySettingsSection />}</>;
-
 // Keyed by workspace and text so a switch or an instance change reseeds the form instead of keeping the old template.
 const MentionsPanel = ({ canManageWorkspace }: { canManageWorkspace: boolean }) => {
   const workspace = useSelectedWorkspace();
@@ -35,7 +32,6 @@ interface SettingsPageContentProps {
   section: SettingsSection;
   canManageWorkspace: boolean;
   canManageRoles: boolean;
-  canReadPlays: boolean;
 }
 
 // One card per workspace section (mirrors ProjectSettingsPage); the instance sections are InstanceSettingsContent.
@@ -43,12 +39,10 @@ export const SettingsPageContent = ({
   section,
   canManageWorkspace,
   canManageRoles,
-  canReadPlays,
 }: SettingsPageContentProps) => (
   <>
     {section === "general" && <GeneralPanel canManageWorkspace={canManageWorkspace} />}
     {section === "roles" && <RolesPanel canManageRoles={canManageRoles} />}
-    {section === "plays" && <PlaysPanel canReadPlays={canReadPlays} />}
     {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && <MentionsPanel canManageWorkspace={canManageWorkspace} />}
     {section === "danger" && <DangerZoneSection />}

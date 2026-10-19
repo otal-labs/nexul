@@ -1241,7 +1241,7 @@ export const AppRouter = () => {
   with Search (the command palette) and Inbox, then one project at a time
   behind a project switcher, its pages listed once (or Continue setup while
   the project's setup is open, ADR 0143), then the foldable
-  workspace section (Runners, Topology, Automations, Configuration), then the
+  workspace section (Runners, Topology, Plays, Automations, Configuration), then the
   conversations (channels, voice channels, direct messages, threads); the
   account menu (Support, Sign out) and the Your settings gear at the bottom.
   The icon rail keeps every page and adds one Chat link for the conversations. The

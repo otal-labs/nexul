@@ -55,7 +55,7 @@ Edit the instance's in **Settings → Templates**, under Instance settings, with
 |---|---|---|
 | Interview | **Configuration → Interview template** | yes, until edited |
 | Mention chip | **Configuration → Mention chips** | yes, until edited |
-| Play instructions | each built-in play in **Configuration → Plays** | no, copied when the workspace is made |
+| Play instructions | each built-in play in **Plays** | no, copied when the workspace is made |
 | Ticket body | a ticket type in project settings | no, copied when the project is made |
 
 A copied template shows whether it matches or differs from the instance's, with **Reset to instance template** when it differs. **Clone to…** copies a template over another of the same kind, at the instance, a workspace, or a project, and asks before overwriting one with its own text.

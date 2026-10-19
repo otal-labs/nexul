@@ -161,7 +161,7 @@ The project wizard's **Who's in it** step sets the same roles when you create a 
 
 ## Permissions on a project, a folder, a doc or a play
 
-Right-click a project in the sidebar's switcher, a folder or a doc in the Docs list, or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too, and each row of a project's **People in this project** opens it. It shows only to someone who can change that project's, folder's, doc's or play's rules. The list on the left holds the roles, then the people, with a rule here; **Add role or person** lists another. A folder or a doc refuses a role or person who isn't in its project, and says to add them to the project first.
+Right-click a project in the sidebar's switcher, a folder or a doc in the Docs list, or a play in **Plays** and pick **Permissions…**; a doc's settings menu has it too, and each row of a project's **People in this project** opens it. It shows only to someone who can change that project's, folder's, doc's or play's rules. The list on the left holds the roles, then the people, with a rule here; **Add role or person** lists another. A folder or a doc refuses a role or person who isn't in its project, and says to add them to the project first.
 
 Pick a role or a person to set its rule, one row per permission, each with three buttons:
 

@@ -13,7 +13,8 @@ interface ListPaneHeaderProps {
   /** The permission creating needs: the button is hidden, or locked with the reason, for a viewer without it. */
   newPermission: PermissionAction;
   newVerb: string;
-  projectId: string;
+  /** Left out for a list scoped to the workspace, such as plays. */
+  projectId?: string;
   onNew: () => void;
   search: string;
   onSearch: (value: string) => void;
@@ -33,7 +34,7 @@ export const ListPaneHeader = ({ title, count, newLabel, newPermission, newVerb,
         <ActionButton
           permission={newPermission}
           verb={newVerb}
-          projectId={projectId}
+          {...(projectId && { projectId })}
           variant="ghost"
           size="icon"
           className="size-8"

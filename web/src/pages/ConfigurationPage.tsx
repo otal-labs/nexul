@@ -14,7 +14,6 @@ import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 export const ConfigurationPage = () => {
   // Same permission the roles REST endpoints require server-side.
   const canManageRoles = useHasPermission("roles:write");
-  const canReadPlays = useHasPermission("plays:read");
   const canManageWorkspace = useHasPermission("workspaces:write");
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
@@ -41,7 +40,6 @@ export const ConfigurationPage = () => {
         <SettingsPageContent
           section={section}
           canManageRoles={canManageRoles}
-          canReadPlays={canReadPlays}
           canManageWorkspace={canManageWorkspace}
         />
       </SettingsShell>

@@ -74,3 +74,48 @@ func TestHandler_StackAutoPlayPicksAComputerAsTheCaller(t *testing.T) {
 	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-run"}`, "editor")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 }
+
+func TestHandler_ListCountsTheAutoPlaysSwitchedOn(t *testing.T) {
+	s, _, ps := autoPlayFixture(t)
+	routes := NewHandler(s).Routes()
+	path := "/api/workspaces/" + workspaceID + "/plays"
+	ticket := ps[TypeTicket].ID
+	for _, enabled := range []bool{true, true, false} {
+		a, err := s.CreateAutoPlay(ctxAs("editor"), workspaceID, ticket, AutoPlayInput{Moment: MomentTicketCreated})
+		require.NoError(t, err)
+		_, err = s.UpdateAutoPlay(ctxAs("editor"), workspaceID, ticket, a.ID, enabled, AutoPlayInput{Moment: MomentTicketCreated})
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name string
+		user string
+		want map[string]*int
+	}{
+		{"a reader of auto plays gets the enabled ones counted, 0 for a play with none", "editor", map[string]*int{ticket: ptr(2), ps[TypeDoc].ID: ptr(0)}},
+		{"a caller without autoplays:read gets no field", "player", map[string]*int{ticket: nil, ps[TypeDoc].ID: nil}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := do(t, routes, http.MethodGet, path, "", tt.user)
+			require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+			var rows []struct {
+				ID          string `json:"id"`
+				AutoPlaysOn *int   `json:"auto_plays_on"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &rows))
+			got := map[string]*int{}
+			for _, row := range rows {
+				got[row.ID] = row.AutoPlaysOn
+			}
+			for id, want := range tt.want {
+				assert.Equal(t, want, got[id], id)
+			}
+		})
+	}
+
+	raw := do(t, routes, http.MethodGet, path, "", "player").Body.String()
+	assert.NotContains(t, raw, "auto_plays_on", "the key is left out, not null")
+}
+
+func ptr(n int) *int { return &n }

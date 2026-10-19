@@ -2,10 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { PlayRow } from "@/components/play/PlayRow";
+import { PlayListRow } from "@/components/play/PlayListRow";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { settle } from "@/test/viewer";
 import type { Play } from "@/models/Play";
@@ -53,18 +54,16 @@ const mockGet = (grants: unknown[] = [], me: unknown = { role_name: "Member", pe
 };
 
 // The row's menu opens once the viewer's permissions have landed.
-const renderRow = async () => {
+const renderRow = async (shown: Play = play) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <ul>
-        <PlayRow
-          play={play}
-          workspaceId="ws-1"
-          onEdit={() => {}}
-        />
-      </ul>
+      <MemoryRouter>
+        <ul>
+          <PlayListRow play={shown} selected={false} />
+        </ul>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   await settle();
@@ -75,7 +74,7 @@ beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
-describe("PlayRow", () => {
+describe("PlayListRow", () => {
   it("offers no menu without plays:write or plays:delete", async () => {
     vi.mocked(api.get).mockImplementation(mockGet([], { role_name: "Reader", permissions: ["plays:read"] }));
     await renderRow();
@@ -107,23 +106,14 @@ describe("PlayRow", () => {
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Permissions…", "Delete"]);
   });
 
-  it("shows the excluded count from the grants query", async () => {
-    vi.mocked(api.get).mockImplementation(
-      mockGet([{ resource_type: "play", resource_id: "play-1", user_id: "u1", allow: [], deny: ["plays:run"] }]),
-    );
-    await renderRow();
-    expect(await screen.findByText("1 excluded")).toBeInTheDocument();
-  });
+  it("adds Clone for a built-in play", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockImplementation(mockGet());
+    await renderRow({ ...play, builtin_key: "fix-with-ai" });
 
-  it("shows how many rules hide the play", async () => {
-    vi.mocked(api.get).mockImplementation(
-      mockGet([
-        { resource_type: "play", resource_id: "play-1", target: "role", role_id: "r1", user_id: "", allow: [], deny: ["plays:read"] },
-        { resource_type: "play", resource_id: "play-1", user_id: "u1", allow: ["plays:read"], deny: [] },
-      ]),
-    );
-    await renderRow();
-    expect(await screen.findByText("hidden from 1")).toBeInTheDocument();
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    await screen.findByRole("menuitem", { name: "Permissions…" });
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Clone", "Permissions…", "Delete"]);
   });
 
   it("opens the permissions panel on the play, today's exclusions as Deny on Run", async () => {

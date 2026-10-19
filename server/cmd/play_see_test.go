@@ -281,3 +281,39 @@ func TestPlays_RunExplainsTheSeeItNeeds(t *testing.T) {
 	body := `{"target_type":"doc","target_id":"` + f.doc + `"}`
 	assert.Equal(t, http.StatusNotFound, serveAs(plays.NewRunHandler(runner, nil).Routes(), uReader, http.MethodPost, "/api/plays/"+hiddenPlay+"/run", body).Code)
 }
+
+// TestPlays_ListCountsAutoPlaysOnlyForWhatTheCallerSees: a switched-on auto play counts on its play's row for those who
+// see the play, and a play hidden from the caller brings no row and no count with it.
+func TestPlays_ListCountsAutoPlaysOnlyForWhatTheCallerSees(t *testing.T) {
+	t.Parallel()
+	f, _ := playSeeFixture(t)
+	s := f.svc
+	existing, err := s.playsSvc.ListAutoPlays(as(uOwner), wsDefault, hiddenPlay)
+	require.NoError(t, err)
+	require.Len(t, existing, 1)
+	_, err = s.playsSvc.UpdateAutoPlay(as(uOwner), wsDefault, hiddenPlay, existing[0].ID, true, plays.AutoPlayInput{Moment: plays.MomentDocCreated, RunOn: plays.RunOnCauser,
+		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}}, Priority: plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal}})
+	require.NoError(t, err)
+	defs := plays.NewHandler(s.playsSvc).Routes()
+
+	for user, want := range map[string]*int{uOwner: new(1), uWriter: new(1), uReader: nil} {
+		t.Run(user, func(t *testing.T) {
+			rec := serveAs(defs, user, http.MethodGet, "/api/workspaces/"+wsDefault+"/plays", "")
+			require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+			var list []struct {
+				ID          string `json:"id"`
+				AutoPlaysOn *int   `json:"auto_plays_on"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
+			var found bool
+			for _, p := range list {
+				if p.ID != hiddenPlay {
+					continue
+				}
+				found = true
+				assert.Equal(t, want, p.AutoPlaysOn)
+			}
+			assert.Equal(t, want != nil, found, "the hidden play's row")
+		})
+	}
+}

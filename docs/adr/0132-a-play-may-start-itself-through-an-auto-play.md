@@ -8,8 +8,8 @@ more of them: "run Fix with AI when the ticket becomes unblocked, bugs first, on
 already do anything in code, but writing SDK code for "when X, if Y, run this play" is too much for a team that only
 wants to pick from dropdowns.
 
-Decision: an **auto play** belongs to one play and starts it when a moment matches. It is composed on the play's own
-settings page as a stack, not a graph: one moment, conditions over the ticket's or doc's existing fields in all/any
+Decision: an **auto play** belongs to one play and starts it when a moment matches. It is composed on the Auto plays tab of
+the play's page as a stack, not a graph: one moment, conditions over the ticket's or doc's existing fields in all/any
 groups nested one level, priority rules, limits, and whom it runs on (the developer by default, the tester, or whoever
 caused the moment). Anything that branches, waits, or loops is an automation calling `runPlay`.
 

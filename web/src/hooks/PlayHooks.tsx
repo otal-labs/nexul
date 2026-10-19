@@ -27,7 +27,7 @@ export const useFetchWorkspacePlays = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-// A play's auto plays, oldest first, for its settings page.
+// A play's auto plays, oldest first, for its page.
 export const useFetchAutoPlays = (workspaceId: string, playId: string) =>
   useQuery({
     queryKey: [getAutoPlaysKey, workspaceId, playId],
@@ -42,7 +42,7 @@ export const useCreateAutoPlay = (workspaceId: string, playId: string) => {
   return useMutation({
     mutationFn: requires("autoplays:write", async (input: SaveAutoPlayRequest) => (await api.post<AutoPlay>(autoPlaysPath(workspaceId, playId), input)).data),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
+      await Promise.all([refetchAutoPlays(client, workspaceId, playId), refetchPlaysList(client, workspaceId)]);
       toast.success("Auto play added, switched off until you turn it on");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -74,7 +74,7 @@ export const useUpdateAutoPlay = (workspaceId: string, playId: string) => {
       client.setQueryData(key, context?.previous);
       toast.error(errorMessage(error));
     },
-    onSettled: () => client.invalidateQueries({ queryKey: key, exact: true }),
+    onSettled: () => Promise.all([client.invalidateQueries({ queryKey: key, exact: true }), refetchPlaysList(client, workspaceId)]),
   });
 };
 
@@ -83,7 +83,7 @@ export const useDeleteAutoPlay = (workspaceId: string, playId: string) => {
   return useMutation({
     mutationFn: requires("autoplays:delete", async (id: string) => api.delete(`${autoPlaysPath(workspaceId, playId)}/${id}`)),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
+      await Promise.all([refetchAutoPlays(client, workspaceId, playId), refetchPlaysList(client, workspaceId)]);
       toast.success("Auto play deleted");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -202,12 +202,13 @@ export const useDeletePlay = (workspaceId: string) => {
   });
 };
 
+// The plays page's list carries each play's count of switched-on auto plays, so an auto play's change refreshes it too.
+const refetchPlaysList = (client: QueryClient, workspaceId: string) =>
+  client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId], exact: true });
+
 // A play's lists are its workspace's: the plays page and the run menus.
 const refetchWorkspacePlays = (client: QueryClient, workspaceId: string) =>
-  Promise.all([
-    client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId], exact: true }),
-    client.invalidateQueries({ queryKey: [getApplicablePlaysKey, workspaceId] }),
-  ]);
+  Promise.all([refetchPlaysList(client, workspaceId), client.invalidateQueries({ queryKey: [getApplicablePlaysKey, workspaceId] })]);
 
 const refetchAutoPlays = (client: QueryClient, workspaceId: string, playId: string) =>
   client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
@@ -217,10 +218,10 @@ export const playFollower: LiveFollower = {
   "play.deleted": ({ id, workspace_id }: { id: string; workspace_id: string }, { client }) =>
     Promise.all([refetchWorkspacePlays(client, workspace_id), refetchAutoPlays(client, workspace_id, id)]),
   ...followEach(["auto_play.created", "auto_play.updated"], ({ auto_play }: { auto_play: AutoPlay }, { client }) =>
-    refetchAutoPlays(client, auto_play.workspace_id, auto_play.play_id),
+    Promise.all([refetchAutoPlays(client, auto_play.workspace_id, auto_play.play_id), refetchPlaysList(client, auto_play.workspace_id)]),
   ),
   "auto_play.deleted": ({ play_id, workspace_id }: { play_id: string; workspace_id: string }, { client }) =>
-    refetchAutoPlays(client, workspace_id, play_id),
+    Promise.all([refetchAutoPlays(client, workspace_id, play_id), refetchPlaysList(client, workspace_id)]),
   "auto_play.limits_updated": ({ workspace_id, ...limits }: AutoPlayLimits & { workspace_id: string }, { client }) =>
     client.setQueryData([getAutoPlayLimitsKey, workspace_id], limits),
   // A play's rule decides who sees it; its frame names no workspace, so every workspace's play lists refetch.

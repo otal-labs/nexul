@@ -5,13 +5,13 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 
 // Leaving a page with held changes asks first; a path that starts with stayWithin is the same page (its tabs).
-export const useLeaveGuard = (dirty: boolean, stayWithin: string, onDiscard: () => void) => {
+export const useLeaveGuard = (dirty: boolean, stayWithin: string, onDiscard: () => void, message = "Your ticks on this page haven't been saved.") => {
   const blocker = useBlocker(({ nextLocation }) => dirty && !nextLocation.pathname.startsWith(stayWithin));
   const { open } = useConfirmationDialog();
   const discard = useLatestCallback(onDiscard);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    void open({ title: "Discard changes?", message: "Your ticks on this page haven't been saved.", confirmLabel: "Discard changes" }).then((ok) => {
+    void open({ title: "Discard changes?", message, confirmLabel: "Discard changes" }).then((ok) => {
       if (!ok) {
         blocker.reset();
         return;
@@ -19,5 +19,5 @@ export const useLeaveGuard = (dirty: boolean, stayWithin: string, onDiscard: () 
       discard();
       blocker.proceed();
     });
-  }, [blocker, open, discard]);
+  }, [blocker, open, discard, message]);
 };
