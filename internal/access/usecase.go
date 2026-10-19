@@ -168,6 +168,9 @@ type workspaceLayers struct {
 // layers reads userID's roles in workspaceID and projectID's rules for them and their roles, built
 // once per request so a list's per-row checks cost one memo lookup.
 func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
+	if pinned, viewing := viewedWorkspace(ctx); viewing && workspaceID != pinned {
+		return workspaceLayers{userID: userID, workspaceID: workspaceID}.in(projectID, nil)
+	}
 	// A failed read counts as no rule, as a check's always has, and the memo keeps nothing built on one.
 	ws, _ := remember(ctx, layersKey{userID, workspaceID, projectID}, func() (workspaceLayers, error) {
 		return s.readLayers(ctx, userID, workspaceID, projectID)
