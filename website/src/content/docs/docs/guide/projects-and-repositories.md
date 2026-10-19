@@ -45,7 +45,7 @@ A repository belongs to one project. Attaching one that's already in another pro
 
 ## A tests repository
 
-If the project's tests live in a repository of their own, choose **In a separate repository** at the repository step and pick it. It's attached for agents to read and run, and never deployed: Nexul refuses to build a stack from it. It shows in **Settings → Repositories** with a `tests` marker, and the interview starts from it when it asks about testing.
+If the project's tests live in a repository of their own, choose **In a separate repository** at the repository step and pick it. It's attached for agents to read and run, and never deployed: Nexul refuses to build a stack from it. It shows in **Settings → Repositories** with a `tests` marker, and the interview starts from it when it asks about testing. It has to be a different repository from the one the project deploys, so the tests search leaves that one out.
 
 ## Rename a workspace
 

@@ -14,8 +14,8 @@ import { REPOSITORY_SEARCH_MIN_LENGTH, type Repo } from "@/models/Repository";
 
 export interface RepositorySearchProps {
   onSelect: (repo: Repo) => void;
-  // A repository already taken elsewhere in the wizard, left out of the results.
-  excludeId?: number | undefined;
+  // Full names of repositories already taken elsewhere, left out of the results.
+  exclude?: string[] | undefined;
   // The repository being scanned, shown as busy.
   busyId?: number | undefined;
   // Tells apart two searches on one page.
@@ -27,11 +27,11 @@ export interface RepositorySearchProps {
 }
 
 // Nothing loads until enough letters are typed: an installation can grant thousands of repositories.
-export const RepositorySearchField = ({ onSelect, excludeId, busyId, label = "Search repositories", openRow, after }: RepositorySearchProps) => {
+export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Search repositories", openRow, after }: RepositorySearchProps) => {
   const [text, setText] = useState("");
   const searching = text.trim().length >= REPOSITORY_SEARCH_MIN_LENGTH;
   const { data, isFetching, error } = useSearchRepositories(text);
-  const repos = searching ? data?.filter((r) => r.id !== excludeId) : undefined;
+  const repos = searching ? data?.filter((r) => !exclude?.includes(r.full_name)) : undefined;
   // A token GitHub stopped refreshing mid-search asks for a reconnect instead of an error.
   const refusal = searching ? githubLinkRefusal(error) : undefined;
 

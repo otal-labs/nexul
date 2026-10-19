@@ -129,7 +129,7 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
       {canScan.state === "live" && (
         <RepositorySearch
           onSelect={(repo) => void scan(repo)}
-          excludeId={separateTestsRepo?.id}
+          exclude={separateTestsRepo ? [separateTestsRepo.full_name] : undefined}
           busyId={scanRepository.isPending ? picked?.id : undefined}
           openRow={openRow || undefined}
           after={noRepositoryLine}

@@ -3,6 +3,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -408,14 +409,37 @@ func (s *Service) AddRepo(ctx context.Context, projectID, owner, name, connector
 	if err != nil {
 		return fmt.Errorf("add repo to project %s: %w", projectID, err)
 	}
-	if err := s.repo.AddRepo(ctx, projectID, RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: connectorID, Role: role}); err != nil {
-		return fmt.Errorf("add repo %s/%s: %w", owner, name, err)
+	err = s.repo.AddRepo(ctx, projectID, RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: connectorID, Role: role})
+	if errors.Is(err, apperrs.ErrConflict) {
+		err = s.explainRepoClash(ctx, projectID, owner, name, role)
+	}
+	if err != nil {
+		return err
 	}
 	if role != RepoRoleTests || project.TestsLocation == TestsLocationSeparate {
 		return nil
 	}
 	_, err = s.saveTestsLocation(ctx, project, TestsLocationSeparate)
 	return err
+}
+
+// explainRepoClash turns a repository already attached somewhere into a no-op when it is already here in this role,
+// and otherwise into a conflict that says where it is, because a repository belongs to one project in one role.
+func (s *Service) explainRepoClash(ctx context.Context, projectID, owner, name string, role RepoRole) error {
+	existing, err := s.repo.GetRepoByFullName(ctx, owner, name)
+	if err != nil {
+		return fmt.Errorf("add repo %s/%s: %w", owner, name, err)
+	}
+	if existing.ProjectID != projectID {
+		return fmt.Errorf("%w: %s/%s is already attached to another project", apperrs.ErrConflict, owner, name)
+	}
+	if existing.Role == role {
+		return nil
+	}
+	if existing.Role == RepoRoleTests {
+		return fmt.Errorf("%w: %s/%s is already this project's tests repository, so it can't also be deployed", apperrs.ErrConflict, owner, name)
+	}
+	return fmt.Errorf("%w: %s/%s is already the repository this project deploys; pick a different one for tests", apperrs.ErrConflict, owner, name)
 }
 
 // SetTestsLocation records where a project's tests live (projects:write); "" withdraws the answer.
