@@ -321,6 +321,24 @@ describe("WizardRepositoryStep tests question", () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
+  it("keeps the repository the project deploys out of the tests list, since it can't be attached twice", async () => {
+    mocks.get.mockImplementation((url: string) =>
+      Promise.resolve(
+        url === "/api/repositories"
+          ? { data: { repositories: repos } }
+          : { data: [{ owner: "onik97", name: "api", full_name: "onik97/api", connector_id: "github", role: "app" }] },
+      ),
+    );
+    renderStep();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("radio", { name: /in a separate repository/i }));
+    await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
+
+    expect(await screen.findByRole("button", { name: /onik97\/worker/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /onik97\/api/ })).not.toBeInTheDocument();
+  });
+
   it("stays on the step when the answer cannot be saved", async () => {
     const onDone = renderStep();
     const user = userEvent.setup();

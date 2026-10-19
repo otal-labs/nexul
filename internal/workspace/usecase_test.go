@@ -79,8 +79,10 @@ type fakeRepo struct {
 	deleteErr error
 	countErr  error
 	repoErr   error
-	moveErr   error
-	saved     []eventbus.OutboxEvent
+	// repoLookupErr fails only GetRepoByFullName, so an add can conflict and its lookup fail.
+	repoLookupErr error
+	moveErr       error
+	saved         []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -246,9 +248,11 @@ func (f *fakeRepo) AddRepo(_ context.Context, projectID string, r RepoRef) error
 	if _, ok := f.projects[projectID]; !ok {
 		return apperrs.ErrNotFound
 	}
-	for _, existing := range f.repos[projectID] {
-		if existing.Owner == r.Owner && existing.Name == r.Name {
-			return apperrs.ErrConflict
+	for _, repos := range f.repos {
+		for _, existing := range repos {
+			if existing.Owner == r.Owner && existing.Name == r.Name {
+				return apperrs.ErrConflict
+			}
 		}
 	}
 	f.repos[projectID] = append(f.repos[projectID], r)
@@ -275,12 +279,13 @@ func (f *fakeRepo) RemoveRepo(_ context.Context, owner, name string) error {
 func (f *fakeRepo) GetRepoByFullName(_ context.Context, owner, name string) (RepoRef, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.repoErr != nil {
-		return RepoRef{}, f.repoErr
+	if err := cmp.Or(f.repoErr, f.repoLookupErr); err != nil {
+		return RepoRef{}, err
 	}
-	for _, repos := range f.repos {
+	for projectID, repos := range f.repos {
 		for _, r := range repos {
 			if r.Owner == owner && r.Name == name {
+				r.ProjectID = projectID
 				return r, nil
 			}
 		}

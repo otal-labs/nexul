@@ -3,8 +3,9 @@ import { useShallow } from "zustand/react/shallow";
 import { RepoProviderMark } from "@/components/ProviderMarks";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
-import { TestsLocation } from "@/enums/Project";
+import { RepoRole, TestsLocation } from "@/enums/Project";
 
 interface TestsLocationRowProps {
   value: TestsLocation;
@@ -26,9 +27,13 @@ const TestsLocationRow = ({ value, label, description }: TestsLocationRowProps) 
 );
 
 const TestsRepoPicker = () => {
-  const { testsRepo, setTestsRepo } = useProjectWizardStore(
-    useShallow((s) => ({ testsRepo: s.testsRepo, setTestsRepo: s.setTestsRepo })),
+  const { projectId, repository, testsRepo, setTestsRepo } = useProjectWizardStore(
+    useShallow((s) => ({ projectId: s.projectId, repository: s.repository, testsRepo: s.testsRepo, setTestsRepo: s.setTestsRepo })),
   );
+  const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
+  // A repository is attached once, in one role, so the one this project deploys can't double as its tests.
+  const deployed = (projectRepos ?? []).filter((r) => r.role === RepoRole.App).map((r) => r.full_name);
+  const exclude = repository ? [...deployed, repository.full_name] : deployed;
 
   return (
     <div className="space-y-2 pt-3">
@@ -39,7 +44,7 @@ const TestsRepoPicker = () => {
           <span className="min-w-0 truncate font-medium">{testsRepo.full_name}</span>
         </p>
       )}
-      <RepositorySearch label="Search tests repositories" onSelect={setTestsRepo} />
+      <RepositorySearch label="Search tests repositories" onSelect={setTestsRepo} exclude={exclude} />
     </div>
   );
 };

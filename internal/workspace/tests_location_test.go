@@ -48,6 +48,46 @@ func TestAddRepo_Role(t *testing.T) {
 	})
 }
 
+func TestAddRepo_AlreadyAttached(t *testing.T) {
+	tests := []struct {
+		name      string
+		attached  RepoRef
+		inProject string
+		role      RepoRole
+		want      string
+	}{
+		{"the deployed repository picked for tests", RepoRef{Owner: "acme", Name: "app", Role: RepoRoleApp}, "p-1", RepoRoleTests, "acme/app is already the repository this project deploys"},
+		{"the tests repository picked to deploy", RepoRef{Owner: "acme", Name: "app", Role: RepoRoleTests}, "p-1", RepoRoleApp, "acme/app is already this project's tests repository"},
+		{"another project's repository", RepoRef{Owner: "acme", Name: "app", Role: RepoRoleApp}, "p-2", RepoRoleTests, "acme/app is already attached to another project"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, repo, _ := newOwnerRepo(t, true)
+			repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
+			repo.projects["p-2"] = &Project{ID: "p-2", Name: "B"}
+			repo.repos[tt.inProject] = []RepoRef{tt.attached}
+			err := s.AddRepo(t.Context(), "p-1", "acme", "app", "", tt.role)
+			require.ErrorIs(t, err, apperrs.ErrConflict)
+			assert.Contains(t, err.Error(), tt.want)
+		})
+	}
+	t.Run("attaching it again in the role it has is a no-op", func(t *testing.T) {
+		s, repo, _ := newOwnerRepo(t, true)
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A", TestsLocation: TestsLocationSeparate}
+		repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "e2e", Role: RepoRoleTests}}
+		require.NoError(t, s.AddRepo(t.Context(), "p-1", "acme", "e2e", "", RepoRoleTests))
+		assert.Len(t, repo.repos["p-1"], 1)
+	})
+	t.Run("the lookup behind the clash can fail", func(t *testing.T) {
+		s, repo, _ := newOwnerRepo(t, true)
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
+		repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app", Role: RepoRoleApp}}
+		repo.repoLookupErr = errors.New("db down")
+		err := s.AddRepo(t.Context(), "p-1", "acme", "app", "", RepoRoleTests)
+		require.ErrorIs(t, err, repo.repoLookupErr)
+	})
+}
+
 func TestSetTestsLocation(t *testing.T) {
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
