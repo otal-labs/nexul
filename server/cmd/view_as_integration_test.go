@@ -142,7 +142,7 @@ func TestViewAs_Start_RefusesWhatTheCheckRefuses(t *testing.T) {
 		contains string
 	}{
 		{"a caller without members:view_as", uManager, uReader, http.StatusForbidden, "members:view_as"},
-		{"a target holding what the caller can't give", uAuditor, uReader, http.StatusForbidden, "docs:read"},
+		{"a target holding what the caller can't give", uAuditor, uReader, http.StatusForbidden, "Read docs"},
 		{"an Owner target", uOwner, uOwnerToo, http.StatusBadRequest, "nothing to check"},
 		{"oneself", uOwner, uOwner, http.StatusBadRequest, "view as yourself"},
 		{"someone outside the workspace", uOwner, uOutsider, http.StatusNotFound, ""},
@@ -214,7 +214,7 @@ func TestViewAs_ServesTheTargetsView_AndNothingIsWritten(t *testing.T) {
 
 	rec := v.do(t, uOwner, http.MethodPost, "/api/chat/channels", `{"workspace_id":"workspace-default","name":"ops"}`, asMember(uReader)...)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.Contains(t, rec.Body.String(), "You're viewing as u-reader; changes are off")
+	assert.Contains(t, rec.Body.String(), `"sentence":"You're viewing as u-reader, so changes are off"`)
 	assert.Empty(t, auditRows(t, v.f.store), "a refused write leaves no audit row")
 
 	rec = v.do(t, uOwner, http.MethodPost, "/api/mentions/resolve", `{"refs":[]}`, asMember(uReader)...)

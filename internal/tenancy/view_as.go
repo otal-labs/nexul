@@ -1,6 +1,7 @@
 package tenancy
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"strings"
@@ -49,9 +50,6 @@ func (s *Service) CheckViewAs(ctx context.Context, viewerID, workspaceID, target
 		}
 		given = permissions.SetOf(append(given.Actions(), perms...)...)
 	}
-	if err := s.requireHolds(ctx, viewerID, workspaceID, given); err != nil {
-		return nil, err
-	}
 	account, err := s.accounts.Account(ctx, targetID)
 	if err != nil {
 		return nil, fmt.Errorf("get account %s: %w", targetID, err)
@@ -61,7 +59,35 @@ func (s *Service) CheckViewAs(ctx context.Context, viewerID, workspaceID, target
 	if name == "" {
 		name = person.Login
 	}
+	// Hold-what-you-give (ADR 0088): a view must not show what the viewer couldn't hand out themselves.
+	missing := given.Except(permissions.SetOfStrings(s.wsPerms.GrantablePermissions(ctx, viewerID, workspaceID)))
+	if len(missing) > 0 {
+		return nil, ViewAsRefusal(fmt.Sprintf("%s's roles give permissions you don't hold (%s), so you can't view as them", name, labels(missing)))
+	}
 	return &ViewedMember{WorkspaceID: workspaceID, UserID: targetID, Name: name, AvatarURL: person.AvatarURL}, nil
+}
+
+// ViewAsRefusal is a forbidden answer about a view that carries its sentence, which the web shows instead of the message.
+func ViewAsRefusal(sentence string) error {
+	return viewAsRefusal{sentence}
+}
+
+type viewAsRefusal struct{ sentence string }
+
+func (e viewAsRefusal) Error() string     { return apperrs.ErrForbidden.Error() + ": " + e.sentence }
+func (e viewAsRefusal) Unwrap() error     { return apperrs.ErrForbidden }
+func (e viewAsRefusal) ErrorDetails() any { return map[string]string{"sentence": e.sentence} }
+
+func labels(actions permissions.Set) string {
+	byValue := map[permissions.Action]string{}
+	for _, info := range permissions.Catalog() {
+		byValue[info.Value] = info.Label
+	}
+	out := make([]string, 0, len(actions))
+	for _, a := range actions {
+		out = append(out, cmp.Or(byValue[a], string(a)))
+	}
+	return strings.Join(out, ", ")
 }
 
 // StartViewAs runs the check as the caller; the audit row of the route that calls it records who viewed as whom.

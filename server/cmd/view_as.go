@@ -70,7 +70,12 @@ func withViewAs(tenancySvc *tenancy.Service, authSvc *auth.Service) func(http.Ha
 			viewed, err := tenancySvc.CheckViewAs(r.Context(), viewer.ID, workspaceID, targetID)
 			if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) || errors.Is(err, apperrs.ErrInvalid) {
 				w.Header().Set(headerViewAsRefused, "refused")
-				httpx.WriteJSON(w, http.StatusForbidden, httpx.Envelope{Message: err.Error(), Code: "FORBIDDEN"})
+				var detailed httpx.DetailedError
+				var details any
+				if errors.As(err, &detailed) {
+					details = detailed.ErrorDetails()
+				}
+				httpx.WriteJSON(w, http.StatusForbidden, httpx.Envelope{Message: err.Error(), Code: "FORBIDDEN", Details: details})
 				return
 			}
 			if err != nil {
@@ -107,7 +112,7 @@ func viewRefusal(r *http.Request, viewed *tenancy.ViewedMember) error {
 	if routed(viewAsReadPosts, r) {
 		return nil
 	}
-	return fmt.Errorf("%w: You're viewing as %s; changes are off", apperrs.ErrForbidden, viewed.Name)
+	return tenancy.ViewAsRefusal(fmt.Sprintf("You're viewing as %s, so changes are off", viewed.Name))
 }
 
 // inOtherWorkspace is whether urlPath is a workspace's route for any workspace but the one the view is held to.
