@@ -5,9 +5,9 @@ import { conversationLabel, type DMLabelContext } from "@nexul/client-core/chat"
 import { ChannelSidebarRow } from "@/components/sidebar/ChannelSidebarRow";
 import { DMSidebarRow } from "@/components/sidebar/DMSidebarRow";
 import { DocThreadSidebarRow } from "@/components/sidebar/DocThreadSidebarRow";
+import { SidebarFoldHeader } from "@/components/sidebar/SidebarFoldHeader";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
 import { VoiceChannelSidebarRow } from "@/components/sidebar/VoiceChannelSidebarRow";
-import { sectionLabelClass } from "@/components/SidebarNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
 import { useActionStates } from "@/hooks/useActionState";
@@ -18,6 +18,7 @@ import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isOffered } from "@/components/listpane/rowMenu";
 import { groupConversations } from "@/models/Chat";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface ChatSidebarSectionProps {
@@ -35,6 +36,8 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const wsPath = useWorkspacePath();
   const occupancy = useVoiceOccupancy(!collapsed);
   const { hiddenIds } = useHiddenThreads();
+  const threadsOpen = useSidebarStore((s) => s.threadsNavOpen);
+  const toggleThreads = useSidebarStore((s) => s.toggleThreadsNav);
   const openId = useMatch("/:workspace/chat/:conversationId")?.params.conversationId;
   const [channelState, dmState] = useActionStates([{ permission: "channels:write" }, { permission: "chat:write" }]);
   const canCreateChannel = !!channelState && isOffered(channelState);
@@ -110,10 +113,14 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
       {/* No +: a thread is started from its doc, so the group only shows once one exists. */}
       {shownThreads.length > 0 && (
         <div className="flex flex-col gap-0.5">
-          <p className={sectionLabelClass}>Threads</p>
-          {shownThreads.map((conversation) => (
-            <DocThreadSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
-          ))}
+          <SidebarFoldHeader label="Threads" open={threadsOpen} onToggle={toggleThreads} />
+          {threadsOpen && (
+            <div data-fold className="flex flex-col gap-0.5">
+              {shownThreads.map((conversation) => (
+                <DocThreadSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

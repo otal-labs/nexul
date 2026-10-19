@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 export type SidebarStore = {
   workspaceNavOpen: boolean;
   toggleWorkspaceNav: () => void;
+  threadsNavOpen: boolean;
+  toggleThreadsNav: () => void;
 };
 
 export const useSidebarStore = create<SidebarStore>()(
@@ -11,7 +13,9 @@ export const useSidebarStore = create<SidebarStore>()(
     (set) => ({
       workspaceNavOpen: true,
       toggleWorkspaceNav: () => set((s) => ({ workspaceNavOpen: !s.workspaceNavOpen })),
+      threadsNavOpen: true,
+      toggleThreadsNav: () => set((s) => ({ threadsNavOpen: !s.threadsNavOpen })),
     }),
-    { name: "sidebar", partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen }) },
+    { name: "sidebar", partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen, threadsNavOpen: s.threadsNavOpen }) },
   ),
 );
