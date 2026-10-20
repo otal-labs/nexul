@@ -83,8 +83,8 @@ const KanbanColumnImpl = ({
           className="size-6 text-muted-foreground/60"
         />
       </h4>
-      {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count, not the window height. */}
-      <EnterList as="div" className="flex max-h-[31.5rem] min-h-16 flex-col gap-1.5 overflow-y-auto">
+      {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count; the 1px top padding is room for a card's hover lift. */}
+      <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-col gap-1.5 overflow-y-auto pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
