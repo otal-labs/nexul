@@ -25,4 +25,10 @@ describe("AgentStreamBubble", () => {
     expect(screen.getByText("Thinking")).toBeInTheDocument();
     expect(screen.queryByText(/^Called /)).not.toBeInTheDocument();
   });
+
+  it("says the Agent is thinking before its first step or text", () => {
+    render(<AgentStreamBubble frame={frame({ text: "" })} onInterrupt={() => {}} live={null} />);
+    expect(screen.getByText("Thinking")).toBeInTheDocument();
+    expect(screen.queryByText("…")).not.toBeInTheDocument();
+  });
 });
