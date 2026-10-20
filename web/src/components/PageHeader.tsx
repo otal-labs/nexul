@@ -16,10 +16,12 @@ const titleSizeClass = (length: number) => {
 export const pageTitleClassFor = (title: string) => `${displayTitleClass} ${titleSizeClass(title.length)}`;
 
 // Marks the box data-clamped while its title runs past it; watching the content too catches a title that grows while clamped.
+// Fractional heights, because the rounded scrollHeight runs 2px past clientHeight on one line at some page zooms.
 const markClamped = (el: HTMLDivElement | null) => {
   const content = el?.firstElementChild;
   if (!el || !content) return;
-  const mark = () => el.toggleAttribute("data-clamped", el.scrollHeight > el.clientHeight + 1);
+  const mark = () =>
+    el.toggleAttribute("data-clamped", content.getBoundingClientRect().height > el.getBoundingClientRect().height + 1);
   const observer = new ResizeObserver(mark);
   observer.observe(el);
   observer.observe(content);
