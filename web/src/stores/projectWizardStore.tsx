@@ -7,6 +7,15 @@ import type { Candidate, Repo, ScanResult } from "@/models/Repository";
 // (react-guide.md §9 — "cross-surface client state in Zustand"). Not persisted: a wizard session is meant to
 // start clean, and mid-wizard server ids (stackId, exposure) would be stale after a real reload anyway.
 // null (not undefined) marks "not set yet", matching sessionStore's convention under exactOptionalPropertyTypes.
+// The read of an attached repository that fills in for a scan this browser never made.
+export interface SeedScan {
+  status: "idle" | "running" | "failed";
+  repository: string | null;
+  error: unknown;
+}
+
+const idleSeed: SeedScan = { status: "idle", repository: null, error: null };
+
 export type ProjectWizardStore = {
   // Door 2 seeds this from ?project=<id> and locks the project step (no "Change"); door 1 leaves it unset
   // until the project step itself creates one.
@@ -22,6 +31,7 @@ export type ProjectWizardStore = {
   testsRepo: Repo | null;
   scanResult: ScanResult | null;
   candidate: Candidate | null;
+  seed: SeedScan;
   name: string;
   envValues: Record<string, string>;
   stackId: string | null;
@@ -37,6 +47,8 @@ export type ProjectWizardStore = {
   setTestsRepo: (testsRepo: Repo) => void;
   setScanResult: (scanResult: ScanResult) => void;
   setCandidate: (candidate: Candidate) => void;
+  setSeed: (seed: SeedScan) => void;
+  clearSeed: () => void;
   setName: (name: string) => void;
   setEnvValues: (envValues: Record<string, string>) => void;
   setStackId: (stackId: string, envKeys?: string[]) => void;
@@ -56,6 +68,7 @@ const initialState: Pick<
   | "testsRepo"
   | "scanResult"
   | "candidate"
+  | "seed"
   | "name"
   | "envValues"
   | "serviceEnvKeys"
@@ -73,6 +86,7 @@ const initialState: Pick<
   testsRepo: null,
   scanResult: null,
   candidate: null,
+  seed: idleSeed,
   name: "",
   envValues: {},
   stackId: null,
@@ -87,11 +101,19 @@ export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
   setProjectId: (projectId, projectName, preselected = false) =>
     set({ projectId, projectName, projectPreselected: preselected }),
   setAttachStackId: (attachStackId) => set({ attachStackId }),
-  setRepository: (repository) => set((state) => ({ repository, ...(!state.stackId && { name: repository.name }) })),
+  // A different repository drops the scan and the read of the one before it.
+  setRepository: (repository) =>
+    set((state) => ({
+      repository,
+      ...(!state.stackId && { name: repository.name }),
+      ...(state.repository?.full_name !== repository.full_name && { scanResult: null, candidate: null, seed: idleSeed }),
+    })),
   setTestsLocation: (testsLocation) => set({ testsLocation }),
   setTestsRepo: (testsRepo) => set({ testsRepo }),
   setScanResult: (scanResult) => set({ scanResult }),
   setCandidate: (candidate) => set((state) => ({ candidate, ...(!state.stackId && { name: candidate.name }) })),
+  setSeed: (seed) => set({ seed }),
+  clearSeed: () => set({ seed: idleSeed }),
   setName: (name) => set({ name }),
   setEnvValues: (envValues) => set({ envValues }),
   setStackId: (stackId, envKeys) => set((state) => ({ stackId, serviceEnvKeys: envKeys ?? state.scanResult?.env_keys ?? [], envValues: {} })),

@@ -689,46 +689,37 @@ led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
-Project wizard. The `/wizard/project/<step>` flow (info, who's in it, repository, service,
-environment when the scan found keys, reach, deploy branches, done) is a
-horizontal progress row above the active step, not the vertical rail. The row
-is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
-segments up to the current step fill with `brand` (a `scaleX` growing from
-the left, see the Motion baseline),
-the rest stay `border`. A node shows what the project records for its step
-(ADR 0143): done is a check in the `success` token, skipped a dashed muted ring
-with a dash, never visited a hollow muted ring, and the current node a filled
-ring with `aria-current="step"` in `brand`. Every node but the current one is a
-button, so any step opens at any time; a step revisited after it made
-something (Info, a Service whose stack exists) shows what it made with a
-Continue, and a step opened before its groundwork says in one line what it
-needs, with a "Go to <step>" primary. Labels are
-`text-xs` mono under each node from a 42rem container up; narrower, one line
-under the row names the current step with its `n / total` counter. The step
-content sits in a `max-w-xl` column beneath the title and slides 8px in the
-direction of travel over 180ms. Every step ends with one footer: Back on the
-left (Info leaves the wizard, every other step returns to the one before it),
-then a ghost "Skip for now" where the step allows it, which records the step
-skipped and moves to the next, then the primary action; Info's reads
-"Continue to <next step>". Done lists what is left for later (skipped or never
-visited) as hairline rows with an Open each, and ends with Finish, which sets
-the project up and lands on its board. Repository has no Skip. It asks two
-things in order, each a small heading over its control: "Deploys from", then
-"Tests live in" with a segmented "The same repository | A separate one". A
-repository either answer already holds is a card (`bg-card`, hairline border,
-the provider mark in a `surface-2` tile, the name over one muted line) with an
-outline Change that opens the search under it and turns into Cancel; only one
-search shows per question, its "Missing a repository?" install line only under
-results. While a project is set up, a picked repository opens in place once
-scanned (`accent` fill, a 2px `brand` left edge, the scan as one mono line)
-with a ghost "Attach without deploying" and a primary "Deploy it"; an attached
-repository kept as it is goes on with the footer's Continue, and a project
-with none takes the footer's ghost "No repository yet". Both early exits mark the
-deploy steps skipped and land on Done, which, while the project has no
-service, folds Repository and the deploy steps into one Deploying row and
-lists Docs, Board and Invite people under "Where to next" as hairline rows
-that finish setup on the way out. No new stepper chrome beyond this row
-exists. The URL step is the whole navigation state.
+Project wizard. The `/wizard/project/<step>` flow sits on the quiet showcase surface inside `max-w-6xl`, a rail
+beside the step like the welcome wizard's (13rem, 15rem from 56rem, a hairline `border-r`, from a 42rem container).
+The rail is a microheader naming the door ("New project", "Project setup", "New service", "Attach repository") over
+the project's name in mono once there is one, then one project-wizard node per step (Name, People, Repository, Deploy,
+Service, Environment when the scan found keys, Domain, Branches, Done), each a button, so any step opens at any time.
+A node shows what the project records for its step (ADR 0143): done is a check in the `success` token, skipped a dashed
+muted ring with a dash, never visited a hollow muted ring, and the current node a filled ring with `aria-current="step"`
+in `brand`; an 11px mono word under a label other than the current one says `skipped` or `later` (`done` is left to
+the check and spoken only). In the setup door the steps after Deploy are its sub-steps, indented one step, shown only
+while Deploy or one of them is open or a service exists; Deploy reads `later` when setup skipped the service. The rail
+is an `EnterList` with the rise arrival: it cascades in once, and sub-steps that appear when Deploy opens rise 8px over
+200ms; rejected were no motion (the rows jumped in under Deploy with nothing saying where they came from) and the pop
+arrival (a 0.97 scale is invisible on 14px text and read as a plain fade). The add-a-service and attach doors have no Name,
+People or Deploy, and show only what that run passed, never the project's recorded marks. Narrower than 42rem the rail
+is its header over one mono line, the current step's label and `n / total`. A step is a Fraunces title at 2rem that asks
+its own question, an optional muted lead, and its body in a `max-w-xl` column that slides 8px in the direction of travel
+over 180ms; there is no door title, step heading or step description. Every step ends with one footer: Back on the
+left (the first step of a door leaves the wizard, every other returns to the row above it), a ghost "Skip for now" where
+the step allows it, then the primary, which says what happens ("Continue", "Create & deploy", "Save & deploy", "Expose",
+"Finish"). A step opened before its groundwork says so in one muted line with a "Go to <step>" primary; a step that
+already made something shows it with Continue. Repository asks two things in order, each a small heading over its
+control: "Deploys from", then "Tests live in" with a segmented "The same repository | A separate one". A repository
+either answer already holds is a card (`bg-card`, hairline border, the provider mark in a `surface-2` tile, the name over
+one muted line) with an outline Change that opens the search under it and turns into Cancel. In the setup door picking
+only names the repository; Continue attaches it and goes to Deploy, and a project with none takes the ghost "No
+repository yet". Deploy reads the attached repository itself, on any device, and offers two hairline radio rows
+(`EntryPathChoice`'s pattern): "Deploy now" over a mono line of the repository, branch and what the scan found, and
+"Later". Skipping Service, or a step after it with no service, is Later: the deploy steps are marked skipped and the
+wizard goes to Done, which folds Repository and the deploy steps into one Deploy row while the project has no service
+and lists Docs, Board and Invite people under "Where to next" as hairline rows that finish setup on the way out. No new
+stepper chrome beyond the rail exists. The URL step is the whole navigation state.
 
 Welcome wizard. `/wizard/welcome?step=<key>` sits on the quiet showcase surface
 inside `max-w-6xl`, a top bar of the logo and a ghost "Finish later", then a

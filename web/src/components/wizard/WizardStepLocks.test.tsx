@@ -85,7 +85,7 @@ const rows: Row[] = [
   {
     name: "Who's in it ticks a role into the project",
     holds: ["projects:read"],
-    step: () => <WizardPeopleStep project={project} continueLabel="Continue" onDone={vi.fn()} onBack={vi.fn()} onSkip={vi.fn()} />,
+    step: () => <WizardPeopleStep project={project} onDone={vi.fn()} onBack={vi.fn()} onSkip={vi.fn()} />,
     control: { role: "checkbox", name: "Developer" },
     reason: "Your role can't choose who is in a project",
   },
@@ -112,7 +112,10 @@ const rows: Row[] = [
   {
     name: "Environment saves the values and deploys",
     holds: ["stacks:write"],
-    step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
+    step: () => {
+      useProjectWizardStore.getState().setStackId("stack-1");
+      return <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />;
+    },
     control: { role: "button", name: "Save & deploy" },
     reason: "Your role can't save the environment and deploy",
   },
@@ -120,7 +123,10 @@ const rows: Row[] = [
     name: "Environment deploys to a machine they see but hold no Deploy to on",
     holds: ["stacks:write", "deploys:write"],
     machine: ["machines:see"],
-    step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
+    step: () => {
+      useProjectWizardStore.getState().setStackId("stack-1");
+      return <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />;
+    },
     control: { role: "button", name: "Save & deploy" },
     reason: "No Deploy to on machine prod",
   },
@@ -128,7 +134,10 @@ const rows: Row[] = [
     name: "Environment deploys to a machine they can't see",
     holds: ["stacks:write", "deploys:write"],
     machine: null,
-    step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
+    step: () => {
+      useProjectWizardStore.getState().setStackId("stack-1");
+      return <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />;
+    },
     control: { role: "button", name: "Save & deploy" },
     reason: "No Deploy to on machine prod",
   },
@@ -147,7 +156,7 @@ const rows: Row[] = [
   {
     name: "Deploy branches saves the rules",
     holds: ["deploys:write"],
-    step: () => <BranchRulesForm stack={stack} exposure={undefined} defaultPort="" networks={[]} onDone={vi.fn()} onSkip={vi.fn()} />,
+    step: () => <BranchRulesForm stack={stack} exposure={undefined} defaultPort="" networks={[]} onDone={vi.fn()} onBack={vi.fn()} onSkip={vi.fn()} />,
     control: { role: "button", name: "Save branches" },
     reason: "Your role can't save branch deploy rules",
   },

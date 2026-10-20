@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,13 +33,14 @@ const exposure = { id: "e1", gateway_id: "g1", hostname: "app.example.com", serv
 const renderStep = () => {
   const onDone = vi.fn();
   const onSkip = vi.fn();
+  const onBack = vi.fn();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <WizardBranchesStep stackId="stack-1" onDone={onDone} onSkip={onSkip} />
+      <WizardBranchesStep stackId="stack-1" onDone={onDone} onBack={onBack} onSkip={onSkip} />
     </QueryClientProvider>,
   );
-  return { onDone, onSkip, user: userEvent.setup() };
+  return { onDone, onSkip, onBack, user: userEvent.setup() };
 };
 
 const productionWarning = /uses production's services/i;
@@ -177,8 +178,27 @@ describe("WizardBranchesStep", () => {
   it("skips without saving any rule", async () => {
     const { onSkip, user } = renderStep();
 
-    await user.click(await screen.findByRole("button", { name: /skip for now/i }));
+    await screen.findByRole("button", { name: "Save branches" });
+    await user.click(screen.getByRole("button", { name: /skip for now/i }));
     expect(onSkip).toHaveBeenCalled();
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("goes back from the form, and from the error that replaces it when the machine can't be read", async () => {
+    const { onBack, user } = renderStep();
+
+    await screen.findByRole("button", { name: "Save branches" });
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/stacks/stack-1") throw new Error("offline");
+      return { data: [] };
+    });
+    cleanup();
+    const failed = renderStep();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await failed.user.click(screen.getByRole("button", { name: "Back" }));
+    expect(failed.onBack).toHaveBeenCalled();
   });
 });

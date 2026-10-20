@@ -21,14 +21,13 @@ import { roleHolders } from "@/models/Team";
 
 interface WizardPeopleStepProps {
   project: Project;
-  continueLabel: string;
   onDone: () => void;
   onBack: () => void;
   onSkip: () => void;
 }
 
 // "Who's in it": the roles the project lets in, pre-ticked with the creator's own by its creation; the creator is always in.
-export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSkip }: WizardPeopleStepProps) => {
+export const WizardPeopleStep = ({ project, onDone, onBack, onSkip }: WizardPeopleStepProps) => {
   const { data: grants, error, isPending } = useFetchGrants("project", project.id);
   const { roles, ready } = usePanelTargets({ workspaceId: project.workspace_id });
   // Holder counts come from Team, so only a viewer who may read Team asks for it.
@@ -55,10 +54,6 @@ export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSki
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Owners open every project, and you're always in {project.name}. Add people by name or keep someone out later, in the project's
-        settings.
-      </p>
       {(isPending || !ready) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {grants && ready && roles.length === 0 && <p className="text-sm text-muted-foreground">This workspace has no roles but the Owner's yet.</p>}
@@ -77,7 +72,7 @@ export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSki
       )}
       <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />}>
         <Button type="button" disabled={!grants} loading={save.isPending} onClick={() => void onContinue()}>
-          {continueLabel}
+          Continue
         </Button>
       </WizardFooter>
     </div>

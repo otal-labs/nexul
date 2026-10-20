@@ -14,10 +14,7 @@ export const WizardInterviewOffer = ({ projectName, onStart, onSkip }: WizardInt
       <ClipboardList className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
       <div className="space-y-1">
         <p className="text-sm font-medium">Run the interview</p>
-        <p className="text-sm text-muted-foreground">
-          Answer questions about {projectName}&apos;s stack, testing, and conventions. An agent then asks follow-ups and
-          writes the rules every agent turn here reads first.
-        </p>
+        <p className="text-sm text-muted-foreground">Answer a few questions about {projectName}; agents follow the rules it writes.</p>
       </div>
     </div>
     <div className="flex flex-wrap gap-3">

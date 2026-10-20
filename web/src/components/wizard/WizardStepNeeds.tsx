@@ -2,26 +2,25 @@ import { Button } from "@/components/ui/button";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useWizardGoTo } from "@/hooks/useWizardNavigation";
-import { useProjectWizardStore } from "@/stores/projectWizardStore";
-import { wizardStepLabel, type WizardStepId } from "@/models/ProjectWizard";
+import { useWizardDoor } from "@/hooks/useWizardStepOrder";
+import { needsMessage, wizardStepLabel, type NeedsStep } from "@/models/ProjectWizard";
 
 interface WizardStepNeedsProps {
-  message: string;
-  needs: WizardStepId;
+  needs: NeedsStep;
   onBack: () => void;
   onSkip?: (() => void) | undefined;
 }
 
-// A step opened before the one it builds on: it says what is missing and jumps there, a signal rather than a locked rung.
-export const WizardStepNeeds = ({ message, needs, onBack, onSkip }: WizardStepNeedsProps) => {
+// A step opened before the one it builds on: one line on what is missing and a jump there, a signal rather than a locked rung.
+export const WizardStepNeeds = ({ needs, onBack, onSkip }: WizardStepNeedsProps) => {
   const goTo = useWizardGoTo();
-  const isAttach = useProjectWizardStore((s) => !!s.attachStackId);
+  const door = useWizardDoor();
   return (
     <div>
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">{needsMessage[needs]}</p>
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
         <Button type="button" onClick={() => goTo(needs)}>
-          Go to {wizardStepLabel(needs, isAttach)}
+          Go to {wizardStepLabel(needs, door)}
         </Button>
       </WizardFooter>
     </div>

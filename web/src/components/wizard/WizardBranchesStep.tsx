@@ -1,6 +1,7 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { BranchRulesForm } from "@/components/wizard/BranchRulesForm";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchMachineNetworks, useFetchStack, useFetchStackServices } from "@/hooks/StackHooks";
@@ -10,10 +11,11 @@ import { defaultNetwork } from "@/models/Stack";
 interface WizardBranchesStepProps {
   stackId: string;
   onDone: () => void;
+  onBack: () => void;
   onSkip: () => void;
 }
 
-export const WizardBranchesStep = ({ stackId, onDone, onSkip }: WizardBranchesStepProps) => {
+export const WizardBranchesStep = ({ stackId, onDone, onBack, onSkip }: WizardBranchesStepProps) => {
   const candidate = useProjectWizardStore((s) => s.candidate);
   const stack = useFetchStack(stackId);
   const services = useFetchStackServices(stackId);
@@ -25,15 +27,12 @@ export const WizardBranchesStep = ({ stackId, onDone, onSkip }: WizardBranchesSt
   const exposure = exposures.data?.find((e) => services.data?.some((c) => c.id === e.service_id));
   const port = exposure?.port ?? candidate?.reachable?.port;
 
+  const ready = stack.data && services.data && exposures.data && networks.data;
+
   return (
     <>
       {isPending && <LoadingDisplay />}
-      {error && (
-        <div className="space-y-4">
-          <ErrorDisplay error={error} title="Couldn't load what this machine runs." />
-          <WizardSkipLink onClick={onSkip} />
-        </div>
-      )}
+      {error && <ErrorDisplay error={error} title="Couldn't load what this machine runs." />}
       {stack.data && services.data && exposures.data && networks.data && (
         <BranchRulesForm
           stack={stack.data}
@@ -41,9 +40,11 @@ export const WizardBranchesStep = ({ stackId, onDone, onSkip }: WizardBranchesSt
           defaultPort={port ? String(port) : ""}
           networks={networks.data}
           onDone={onDone}
+          onBack={onBack}
           onSkip={onSkip}
         />
       )}
+      {!ready && <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />} />}
     </>
   );
 };

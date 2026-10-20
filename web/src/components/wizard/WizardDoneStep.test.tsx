@@ -8,7 +8,7 @@ import { WizardDoneStep } from "@/components/wizard/WizardDoneStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
 const access = vi.hoisted(() => ({ areas: ["stacks", "topology", "tickets"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area), useVisibleSettingsSections: () => [] }));
 
 beforeEach(() => {
   access.areas = ["stacks", "topology", "tickets"];
@@ -33,10 +33,11 @@ const project = {
 
 const interview = [{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }];
 
-const mockApi = (memories: unknown[]) =>
+const mockApi = (memories: unknown[], recorded: object = project, repos: unknown[] = []) =>
   mocks.get.mockImplementation(async (url: string) => {
-    if (url === "/api/projects") return { data: [project] };
-    if (url === "/api/projects/p-1") return { data: project };
+    if (url === "/api/projects") return { data: [recorded] };
+    if (url === "/api/projects/p-1") return { data: recorded };
+    if (url === "/api/projects/p-1/repos") return { data: repos };
     if (url === "/api/stacks/s-1") return { data: { id: "s-1", project_id: "p-1", name: "api", machine: "box-1" } };
     if (url === "/api/memories") return { data: memories };
     return { data: [] };
@@ -49,6 +50,8 @@ const renderStep = () =>
         <Routes>
           <Route path="/acme/wizard/project/done" element={<WizardDoneStep onBack={() => undefined} />} />
           <Route path="/acme/wizard/project/reach" element={<p>reach step</p>} />
+          <Route path="/acme/wizard/project/deploy" element={<p>deploy step</p>} />
+          <Route path="/acme/wizard/project/repository" element={<p>repository step</p>} />
           <Route path="/acme/board/:token" element={<p>project board</p>} />
           <Route path="/acme/projects/:projectId/interview" element={<p>interview page</p>} />
           <Route path="/acme/topology" element={<p>canvas page</p>} />
@@ -129,10 +132,10 @@ describe("WizardDoneStep", () => {
 
     const left = within(await screen.findByRole("region", { name: "Left for later" }));
     expect(left.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
-      expect.stringContaining("Reachskipped"),
-      expect.stringContaining("Deploy branchesnot done"),
+      expect.stringContaining("Domainskipped"),
+      expect.stringContaining("Branchesnot done"),
     ]);
-    await user.click(left.getByRole("button", { name: "Open Reach" }));
+    await user.click(left.getByRole("button", { name: "Open Domain" }));
 
     expect(await screen.findByText("reach step")).toBeInTheDocument();
   });
@@ -143,5 +146,50 @@ describe("WizardDoneStep", () => {
     renderStep();
     expect(await screen.findByRole("button", { name: "View on the canvas" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "View stack" })).not.toBeInTheDocument();
+  });
+
+  it("says the service is deploying when this run made it, and that it runs when an earlier run did", async () => {
+    mockApi(interview);
+    const { unmount } = renderStep();
+    expect(await screen.findByText("api is deploying on box-1.")).toBeInTheDocument();
+    unmount();
+
+    useProjectWizardStore.setState({ stackId: null });
+    renderStep();
+    expect(await screen.findByText("api runs on box-1.")).toBeInTheDocument();
+    expect(screen.queryByText(/is deploying on/)).not.toBeInTheDocument();
+  });
+
+  describe("without a service", () => {
+    const unserved = { ...project, setup: { ...project.setup, stack_id: undefined, steps: { project: "done", people: "done", repository: "done" } } };
+    const attached = [{ owner: "acme", name: "portal", full_name: "acme/portal", connector_id: "github", role: "app" }];
+
+    beforeEach(() => {
+      useProjectWizardStore.setState({ stackId: null });
+    });
+
+    it("folds the deploy steps into one Deploy row that opens Deploy when a repository is attached", async () => {
+      const user = userEvent.setup();
+      mockApi(interview, unserved, attached);
+      renderStep();
+
+      const left = within(await screen.findByRole("region", { name: "Left for later" }));
+      expect(left.getAllByRole("listitem").map((row) => row.textContent)).toEqual([expect.stringContaining("Deploylater")]);
+      await user.click(left.getByRole("button", { name: "Deploy now" }));
+
+      expect(await screen.findByText("deploy step")).toBeInTheDocument();
+    });
+
+    it("sends the Deploy row to Repository when none is attached", async () => {
+      const user = userEvent.setup();
+      mockApi(interview, unserved, []);
+      renderStep();
+
+      const left = within(await screen.findByRole("region", { name: "Left for later" }));
+      expect(left.getByText("needs a repository")).toBeInTheDocument();
+      await user.click(left.getByRole("button", { name: "Open Repository" }));
+
+      expect(await screen.findByText("repository step")).toBeInTheDocument();
+    });
   });
 });

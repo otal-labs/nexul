@@ -48,6 +48,7 @@ beforeEach(() => {
   mocks.post.mockReset();
   mocks.post.mockResolvedValue({ data: { id: "d1", stack_id: "stack-1", status: "pending", kind: "build" } });
   useProjectWizardStore.getState().reset();
+  useProjectWizardStore.getState().setStackId("stack-1");
   mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/machines" ? machines : stack }));
 });
 
@@ -115,6 +116,36 @@ describe("WizardEnvStep", () => {
       "/api/stacks/stack-1",
       expect.objectContaining({ env: { API_KEY: "from-paste" } }),
     );
+  });
+
+  describe("on a revisit, with the service made in an earlier run", () => {
+    beforeEach(() => {
+      useProjectWizardStore.getState().reset();
+      mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/machines" ? machines : { ...stack, env: { API_KEY: "kept" } } }));
+    });
+
+    it("offers Continue while nothing was changed, and moves on without saving or deploying again", async () => {
+      const onDone = renderStep();
+      const user = userEvent.setup();
+
+      expect(await screen.findByLabelText("API_KEY")).toHaveValue("kept");
+      expect(screen.queryByRole("button", { name: /save & deploy/i })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(onDone).toHaveBeenCalled();
+      expect(mocks.patch).not.toHaveBeenCalled();
+      expect(mocks.post).not.toHaveBeenCalled();
+    });
+
+    it("offers Save & deploy once a value is changed", async () => {
+      renderStep();
+      const user = userEvent.setup();
+
+      await user.type(await screen.findByLabelText("DB_URL"), "postgres://x");
+
+      expect(await screen.findByRole("button", { name: /save & deploy/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+    });
   });
 
   it("blocks Save and leaving Paste while a line is not KEY=value, and names the line", async () => {

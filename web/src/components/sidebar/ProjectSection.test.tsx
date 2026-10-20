@@ -102,7 +102,7 @@ describe("ProjectSection", () => {
 
     expect(await screen.findByRole("link", { name: "Continue setup" })).toHaveAttribute(
       "href",
-      "/acme/wizard/project/service?project=p-1",
+      "/acme/wizard/project/deploy?project=p-1",
     );
     for (const page of ["Board", "Interview", "Docs", "Memories", "Settings"]) {
       expect(screen.queryByRole("link", { name: page })).not.toBeInTheDocument();

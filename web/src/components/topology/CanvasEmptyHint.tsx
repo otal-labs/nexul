@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { canRunWizard } from "@/models/Access";
+import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface CanvasEmptyHintProps {
   onAddNode: () => void;
@@ -27,7 +28,7 @@ export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
           <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
             {canAddService && (
               <Button asChild>
-                <Link to={wsPath("/wizard/project/repository")}>Add a service</Link>
+                <Link to={wsPath(NEW_PROJECT_PATH)}>Add a service</Link>
               </Button>
             )}
             <ActionButton permission="topology:write" verb="add topology nodes" variant="outline" onClick={onAddNode}>

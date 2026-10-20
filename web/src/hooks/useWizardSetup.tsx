@@ -5,7 +5,7 @@ import { useChangeProjectSetup, useFetchProject, useFetchProjectRepos } from "@/
 import { useFetchStack } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { inSetup, type SetupMark } from "@/models/Project";
-import type { WizardStepId } from "@/models/ProjectWizard";
+import type { ServerStepId, WizardStepId } from "@/models/ProjectWizard";
 import { RepoRole } from "@/enums/Project";
 
 // The project the wizard is working on, as the server records it; undefined until Info has made one.
@@ -24,14 +24,17 @@ export const useSetupSession = (): boolean => {
   return inSetup(project) && !searchParams.has("add") && !searchParams.has("stack");
 };
 
+// Deploy and Done are the browser's own: the server's setup never hears of them.
+const isServerStep = (step: WizardStepId): step is ServerStepId => step !== "deploy" && step !== "done";
+
 // Navigation waits for the project to remember the step; a failed write leaves it open for retry.
 export const useMarkStep = () => {
   const projectId = useProjectWizardStore((s) => s.projectId);
   const session = useSetupSession();
   const change = useChangeProjectSetup();
   const pendingContext = usePendingServiceContext();
-  return (step: WizardStepId, mark: SetupMark, also: Partial<Record<WizardStepId, SetupMark>> = {}) => {
-    if (!projectId || !session || step === "done") return;
+  return (step: WizardStepId, mark: SetupMark, also: Partial<Record<ServerStepId, SetupMark>> = {}) => {
+    if (!projectId || !session || !isServerStep(step)) return;
     const context = pendingContext();
     return change.mutateAsync({
       projectId,

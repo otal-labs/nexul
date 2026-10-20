@@ -28,7 +28,7 @@ describe("CanvasEmptyHint", () => {
     renderHint(() => {});
     expect(screen.getByText("Nothing on the canvas yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add a node/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /add a service/i })).toHaveAttribute("href", "/acme/wizard/project/repository");
+    expect(screen.getByRole("link", { name: /add a service/i })).toHaveAttribute("href", "/acme/wizard/project/project");
   });
 
   it("opens the add-node flow from the CTA", () => {

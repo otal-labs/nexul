@@ -47,12 +47,12 @@ const search = async (user: ReturnType<typeof userEvent.setup>, text = "onik97")
   await screen.findByText("onik97/api");
 };
 
-const renderStep = (onDone = vi.fn(), onLeaveEarly?: (repository: string) => Promise<void>) => {
+const renderStep = (onDone = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <WizardRepositoryStep onDone={onDone} onLeaveEarly={onLeaveEarly} />
+        <WizardRepositoryStep onDone={onDone} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -132,9 +132,10 @@ describe("WizardRepositoryStep", () => {
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
   });
 
-  it("while the project is set up, opens the scanned repository with what it found and carries on only from Deploy it", async () => {
-    const onLeaveEarly = vi.fn();
-    const onDone = renderStep(vi.fn(), onLeaveEarly);
+  it("with a project, opens the scanned repository with what it found and carries on only from Deploy it", async () => {
+    useProjectWizardStore.getState().setProjectId("p-1", "Backend");
+    mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/repositories" ? { repositories: repos } : [] }));
+    const onDone = renderStep();
     const user = userEvent.setup();
     const service = (name: string) => ({ name, ports: [], expose: [], env_keys: [] });
     mocks.post.mockResolvedValue({
@@ -152,14 +153,14 @@ describe("WizardRepositoryStep", () => {
 
     await user.click(screen.getByRole("button", { name: "Deploy it" }));
     expect(onDone).toHaveBeenCalled();
-    expect(onLeaveEarly).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Attach without deploying" })).not.toBeInTheDocument();
   });
 
   it("shows the repository already picked when the step is come back to, without searching again", async () => {
     const { setRepository, setScanResult } = useProjectWizardStore.getState();
     setRepository(repos[0]!);
     setScanResult({ default_branch: "main", candidates: [{ kind: "dockerfile", path: "Dockerfile", name: "api", services: [] }], env_keys: [] });
-    const onDone = renderStep(vi.fn(), vi.fn());
+    const onDone = renderStep();
     const user = userEvent.setup();
 
     expect(await screen.findByText("onik97/api")).toBeInTheDocument();
@@ -170,7 +171,7 @@ describe("WizardRepositoryStep", () => {
     expect(onDone).toHaveBeenCalled();
   });
 
-  it("comes back to a repository with nothing to deploy still offering the Dockerfile path, and no attach outside setup", async () => {
+  it("comes back to a repository with nothing to deploy still offering the Dockerfile path", async () => {
     const { setRepository, setScanResult } = useProjectWizardStore.getState();
     setRepository(repos[1]!);
     setScanResult({ default_branch: "main", candidates: [], env_keys: [] });
@@ -178,7 +179,6 @@ describe("WizardRepositoryStep", () => {
 
     expect(await screen.findByText("onik97/worker")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue manually" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Attach without deploying" })).not.toBeInTheDocument();
   });
 
   it("links the App's install page under the results, and nowhere before a search", async () => {
@@ -372,70 +372,6 @@ describe("WizardRepositoryStep tests question", () => {
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.put).not.toHaveBeenCalled();
-  });
-
-  it("saves the answer before leaving without a repository, which needs no GitHub link", async () => {
-    mocks.link = { state: "none" };
-    const onLeaveEarly = vi.fn().mockResolvedValue(undefined);
-    renderStep(vi.fn(), onLeaveEarly);
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("radio", { name: "The same repository" }));
-    await user.click(await screen.findByRole("button", { name: "No repository yet" }));
-
-    await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("skipped"));
-    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "same" });
-  });
-
-  describe("revisited after setup recorded it", () => {
-    const answered = (attached: object[]) =>
-      mocks.get.mockImplementation((url: string) => {
-        if (url === "/api/repositories") return Promise.resolve({ data: { repositories: repos } });
-        if (url === "/api/projects/p-1") return Promise.resolve({ data: { id: "p-1", tests_location: "separate", setup: { finished: true, steps: {} } } });
-        return Promise.resolve({ data: attached });
-      });
-    const app = { owner: "onik97", name: "api", full_name: "onik97/api", connector_id: "github", role: "app" };
-
-    it("opens on the saved answer and the repositories already attached", async () => {
-      answered([app, { owner: "onik97", name: "worker", full_name: "onik97/worker", connector_id: "github", role: "tests" }]);
-      renderStep(vi.fn(), vi.fn());
-
-      await vi.waitFor(() => expect(screen.getByRole("radio", { name: "A separate one" })).toBeChecked());
-      expect(await screen.findByText("onik97/worker")).toBeInTheDocument();
-      expect(screen.getByText("onik97/api")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Search repositories")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "No repository yet" })).not.toBeInTheDocument();
-    });
-
-    it("keeps the attached repository and attaches the tests repository picked, without scanning again", async () => {
-      answered([app]);
-      const onLeaveEarly = vi.fn().mockResolvedValue(undefined);
-      renderStep(vi.fn(), onLeaveEarly);
-      const user = userEvent.setup();
-      mocks.post.mockResolvedValue({ data: undefined });
-
-      await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
-      await user.click(await screen.findByRole("button", { name: /onik97\/worker/ }));
-      await user.click(screen.getByRole("button", { name: "Continue" }));
-
-      await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("done"));
-      expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", { owner: "onik97", name: "worker", connector_id: "github", role: "tests" });
-      expect(mocks.post).not.toHaveBeenCalledWith("/api/repositories/scan", expect.anything());
-    });
-
-    it("searches for another repository to deploy only after Change, and Cancel puts the attached one back", async () => {
-      answered([app]);
-      renderStep(vi.fn(), vi.fn());
-      const user = userEvent.setup();
-
-      await user.click(await screen.findByRole("button", { name: "Change" }));
-      expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
-      await search(user);
-      await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-      expect(screen.queryByLabelText("Search repositories")).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
-    });
   });
 
   it("is not asked when attaching a repository to an existing stack", async () => {

@@ -40,7 +40,7 @@ describe("WizardPeopleStep", () => {
     const onDone = vi.fn();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <WizardPeopleStep project={project} continueLabel="Continue to Repository" onDone={onDone} onBack={vi.fn()} onSkip={vi.fn()} />
+        <WizardPeopleStep project={project} onDone={onDone} onBack={vi.fn()} onSkip={vi.fn()} />
       </QueryClientProvider>,
     );
 
@@ -49,7 +49,7 @@ describe("WizardPeopleStep", () => {
     expect(screen.queryByRole("checkbox", { name: "Owner" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Client" }));
-    await user.click(screen.getByRole("button", { name: "Continue to Repository" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.put).toHaveBeenCalledTimes(1);
