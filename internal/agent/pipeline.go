@@ -33,6 +33,8 @@ type StreamFrame struct {
 	Activity     string               `json:"activity,omitempty"`
 	ActivityKind harness.ActivityKind `json:"activity_kind,omitempty"`
 	ActivityTool string               `json:"activity_tool,omitempty"`
+	// ActivityCallID names the tool call, so its result replaces the call in the bubble's steps instead of following it.
+	ActivityCallID string `json:"activity_call_id,omitempty"`
 	// Handoff is set only on the frame for a hand-off that changed; the web merges it by id.
 	Handoff *chat.Handoff `json:"handoff,omitempty"`
 }
@@ -772,7 +774,7 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 			}
 			// One message finishing is not the turn finishing; the frame streams until finishTurn clears it.
 			frame.MessageID, frame.Text = u.Snapshot.MessageID, u.Snapshot.Text
-			frame.Activity, frame.ActivityKind, frame.ActivityTool = "", "", ""
+			frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = "", "", "", ""
 			publish()
 			obs.OnSnapshot()
 			seg.observe(*u.Snapshot)
@@ -816,7 +818,7 @@ func (s *Service) onActivity(ctx context.Context, conversationID, viaUserID stri
 		obs.OnActivity(a)
 		return
 	}
-	frame.Activity, frame.ActivityKind, frame.ActivityTool = a.Summary, a.Kind, a.Tool
+	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = a.Summary, a.Kind, a.Tool, a.CallID
 	publish()
 	if a.Kind == harness.ActivityToolCall {
 		seg.flush(obs)

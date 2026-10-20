@@ -27,6 +27,7 @@ interface AgentStreamPayload {
   activity?: string;
   activity_kind?: ActivityKind;
   activity_tool?: string;
+  activity_call_id?: string;
   // Set only on the frame for the one hand-off that changed.
   handoff?: Handoff;
 }
@@ -139,6 +140,7 @@ export const chatFollower: LiveFollower = {
       activity: p.activity ?? "",
       ...(p.activity_kind && { activityKind: p.activity_kind }),
       ...(p.activity_tool && { activityTool: p.activity_tool }),
+      ...(p.activity_call_id && { activityCallId: p.activity_call_id }),
       ...(p.handoff && { handoff: p.handoff }),
     });
   },
