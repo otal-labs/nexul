@@ -103,6 +103,29 @@ func TestAutoPlaysRepo_RoundTripsTheMemories(t *testing.T) {
 	assert.Equal(t, []string{}, again.MemoryIDs, "none reads back as an empty list, never null on the wire")
 }
 
+func TestAutoPlaysRepo_ForgetADeletedMemory(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedPlays(t, s, "play-1")
+	ctx := t.Context()
+	for _, id := range []string{"mem-1", "mem-2"} {
+		require.NoError(t, s.Memories.Create(ctx, newTestMemory(id, "project-general"), ""))
+	}
+	a := newTestAutoPlay("ap-1", "play-1", time.Now())
+	a.MemoryIDs = []string{"mem-1", "mem-2"}
+	require.NoError(t, s.Plays.CreateAutoPlay(ctx, a))
+
+	require.NoError(t, s.Memories.Delete(ctx, "mem-1"))
+	got, err := s.Plays.GetAutoPlay(ctx, "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"mem-2"}, got.MemoryIDs)
+
+	require.NoError(t, s.Memories.Delete(ctx, "mem-2"))
+	got, err = s.Plays.GetAutoPlay(ctx, "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{}, got.MemoryIDs)
+}
+
 func TestAutoPlaysRepo_ListsEachPlaysOldestFirstInOneRead(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
