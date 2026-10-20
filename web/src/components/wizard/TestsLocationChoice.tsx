@@ -1,31 +1,14 @@
+import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { RepoProviderMark } from "@/components/ProviderMarks";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { WizardRepositoryCard } from "@/components/wizard/WizardRepositoryCard";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useWizardTestsAnswer } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { RepoRole, TestsLocation } from "@/enums/Project";
-
-interface TestsLocationRowProps {
-  value: TestsLocation;
-  label: string;
-  description: string;
-}
-
-const TestsLocationRow = ({ value, label, description }: TestsLocationRowProps) => (
-  <label
-    htmlFor={`tests-location-${value}`}
-    className="-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40"
-  >
-    <RadioGroupItem id={`tests-location-${value}`} value={value} className="mt-0.5" />
-    <span className="min-w-0">
-      <span className="block text-sm font-medium">{label}</span>
-      <span className="mt-0.5 block text-sm text-muted-foreground">{description}</span>
-    </span>
-  </label>
-);
 
 const TestsRepoPicker = () => {
   const { projectId, repository, setTestsRepo } = useProjectWizardStore(
@@ -33,50 +16,62 @@ const TestsRepoPicker = () => {
   );
   const { testsRepo } = useWizardTestsAnswer();
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
+  const [changing, setChanging] = useState(false);
   // A repository is attached once, in one role, so the one this project deploys can't double as its tests.
   const deployed = (projectRepos ?? []).filter((r) => r.role === RepoRole.App).map((r) => r.full_name);
   const exclude = repository ? [...deployed, repository.full_name] : deployed;
 
   return (
-    <div className="space-y-2 pt-3">
-      <p className="text-xs text-muted-foreground">Attached to the project for the agent to read and run. Never deployed.</p>
+    <div className="space-y-3">
       {testsRepo && (
-        <p className="flex items-center gap-2 text-sm">
-          <RepoProviderMark provider={testsRepo.provider} />
-          <span className="min-w-0 truncate font-medium">{testsRepo.full_name}</span>
-        </p>
+        <WizardRepositoryCard
+          fullName={testsRepo.full_name}
+          provider={testsRepo.provider}
+          meta="Agents read and run it. Never deployed."
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={() => setChanging(!changing)}>
+              {changing ? "Cancel" : "Change"}
+            </Button>
+          }
+        />
       )}
-      <RepositorySearch label="Search tests repositories" onSelect={setTestsRepo} exclude={exclude} />
+      {(!testsRepo || changing) && (
+        <RepositorySearch
+          label="Search tests repositories"
+          onSelect={(repo) => {
+            setTestsRepo(repo);
+            setChanging(false);
+          }}
+          exclude={exclude}
+        />
+      )}
     </div>
   );
 };
 
-// Asked before the repository to deploy is picked, because picking it moves the wizard on.
 export const TestsLocationChoice = () => {
   const setTestsLocation = useProjectWizardStore((s) => s.setTestsLocation);
   const { testsLocation } = useWizardTestsAnswer();
 
   return (
-    <div>
-      <p className="text-sm font-medium">Where do this project's tests live?</p>
-      <RadioGroup
-        aria-label="Where tests live"
-        value={testsLocation ?? ""}
-        onValueChange={(value) => setTestsLocation(value as TestsLocation)}
-        className="mt-2 gap-0 divide-y divide-border border-y border-border"
-      >
-        <TestsLocationRow
-          value={TestsLocation.Same}
-          label="In the repository you deploy"
-          description="Tests sit next to the code they cover."
-        />
-        <TestsLocationRow
-          value={TestsLocation.Separate}
-          label="In a separate repository"
-          description="A tests repository, attached to the project but never deployed."
-        />
-      </RadioGroup>
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h3 id="tests-location" className="text-sm font-medium">
+          Tests live in
+        </h3>
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="xs"
+          aria-labelledby="tests-location"
+          value={testsLocation ?? ""}
+          onValueChange={(value) => value && setTestsLocation(value as TestsLocation)}
+        >
+          <ToggleGroupItem value={TestsLocation.Same}>The same repository</ToggleGroupItem>
+          <ToggleGroupItem value={TestsLocation.Separate}>A separate one</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
       {testsLocation === TestsLocation.Separate && <TestsRepoPicker />}
-    </div>
+    </section>
   );
 };

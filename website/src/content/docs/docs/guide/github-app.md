@@ -65,7 +65,7 @@ The App's own access is only for work on repositories already attached to a proj
 
 **Settings → Connectors → GitHub App** lists, under **Installations**, the accounts and organisations the App is installed on that your own GitHub account can open, with whether each grants all repositories or a selection, and **Manage** to change that on GitHub. Without your GitHub connected, it shows the **Connect GitHub** prompt instead.
 
-To add one, click **Add account or organisation**, or **Install it on an account or organisation you manage** under the wizard's search, and install the App there on GitHub. Its repositories then list for everyone whose GitHub account can open them. Installing links the account to no workspace. A client who wants you to deploy their repository installs the App on their account and gives your GitHub account access to the repository.
+To add one, click **Add account or organisation**, or **Install the GitHub App on its account** under the wizard's search results, and install the App there on GitHub. Its repositories then list for everyone whose GitHub account can open them. Installing links the account to no workspace. A client who wants you to deploy their repository installs the App on their account and gives your GitHub account access to the repository.
 
 A workspace uses an account once someone who can open one of its repositories attaches that repository to one of its projects; the list shows those workspaces as **Used by**. The **×** next to a workspace, where you can manage its projects, detaches the account after you confirm: deploys, webhooks and pull request reads there stop reading its repositories as the App until someone attaches one again. Nobody assigns an account to a workspace by hand.
 

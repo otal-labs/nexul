@@ -431,6 +431,7 @@ describe("ProjectWizardPage", () => {
     await user.click(within(rung("Repository")).getByRole("button"));
     await user.type(await screen.findByPlaceholderText("Search repositories…"), "other");
     await user.click(await screen.findByRole("button", { name: /acme.*other/ }));
+    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
     await screen.findByRole("heading", { name: "Service" });
     await user.click(screen.getByRole("button", { name: "Continue to Environment" }));
     expect(await screen.findByLabelText("PORT")).toHaveValue("8000");

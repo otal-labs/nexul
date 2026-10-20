@@ -19,7 +19,7 @@ const labels: Record<WizardStepId, string> = {
 
 const descriptions: Partial<Record<WizardStepId, string>> = {
   people: "Pick the roles that can open this project. Your own roles start ticked.",
-  repository: "Pick the repository this project's code lives in. Nexul reads its Dockerfile or compose file to deploy it.",
+  repository: "The repository Nexul builds from its Dockerfile or compose file.",
   reach: "Optional. Give this service a hostname now, or later from the stack page.",
   branches: "Optional. Deploy other branches as their own copies, each at its own URL.",
 };

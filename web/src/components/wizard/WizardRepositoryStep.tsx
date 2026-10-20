@@ -6,13 +6,12 @@ import { errorMessage } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
-import { WizardAttachedRepositoryRow } from "@/components/wizard/WizardAttachedRepositoryRow";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
-import { WizardNoRepositoryLine } from "@/components/wizard/WizardNoRepositoryLine";
+import { WizardManualDockerfile } from "@/components/wizard/WizardManualDockerfile";
 import { WizardOpenRepositoryRow } from "@/components/wizard/WizardOpenRepositoryRow";
+import { WizardRepositoryCard } from "@/components/wizard/WizardRepositoryCard";
 import { useAddProjectRepo, useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
 import { useActionState } from "@/hooks/useActionState";
@@ -30,7 +29,8 @@ interface WizardRepositoryStepProps {
 }
 
 // Searches installation repositories (spec §5/§7); picking one scans it. A scan can land in three places: candidates
-// found (advance, or open the row while setting up), nothing found (a manual Dockerfile), or the App isn't installed.
+// found (advance, or open the row while the tests question or setup's early exits are on screen), nothing found
+// (a manual Dockerfile), or the App isn't installed.
 export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRepositoryStepProps) => {
   const scanRepository = useScanRepository();
   const canScan = useActionState({ permission: "projects:create", verb: "scan repositories" });
@@ -49,7 +49,8 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const separateTestsRepo = testsLocation === TestsLocation.Separate ? testsRepo : null;
   // Coming back to the step opens the repository already picked, with its scan.
   const [picked, setPicked] = useState<Repo | null>(repository);
-  const [dockerfilePath, setDockerfilePath] = useState("Dockerfile");
+  const [changing, setChanging] = useState(false);
+  const keeping = !!onLeaveEarly && !!attachedApp && !picked;
 
   // The answer is saved on every way out, so it lands whichever way the step is left; a failed save is toasted.
   const saveTests = async () => {
@@ -70,7 +71,7 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
       setScanResult(result);
       const preferred = preferredCandidate(result);
       if (preferred) setCandidate(preferred);
-      if (preferred && !onLeaveEarly) await advance();
+      if (preferred && !onLeaveEarly && !asksTests) await advance();
     } catch {
       // Scan failures render inline below; a failed tests-answer save was already toasted by its hook.
     }
@@ -107,15 +108,13 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     ),
   };
 
-  const continueManually = async () => {
-    if (!picked || !dockerfilePath.trim()) return;
+  const continueManually = async (dockerfilePath: string) => {
+    if (!picked) return;
     setRepository(picked);
-    setCandidate(manualCandidate(picked.name, dockerfilePath.trim()));
+    setCandidate(manualCandidate(picked.name, dockerfilePath));
     // A failed tests-answer save was already toasted by its hook; the step stays put.
     await advance().catch(() => undefined);
   };
-
-  const noRepositoryLine = onLeaveEarly && <WizardNoRepositoryLine onClick={() => void leaveWithoutRepository().catch(() => undefined)} />;
 
   const notInstalled =
     scanRepository.isError &&
@@ -124,73 +123,75 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   const nothingFound = !!scanned && scanned.candidates.length === 0;
 
   return (
-    <div className="space-y-4">
-      {asksTests && <TestsLocationChoice />}
-      {asksTests && <p className="text-sm font-medium">Repository</p>}
-      {onLeaveEarly && attachedApp && !picked && (
-        <WizardAttachedRepositoryRow
-          repo={attachedApp}
-          keeping={saveTestsAnswer.isPending}
-          onKeep={() => void keepAttached().catch(() => undefined)}
-        />
-      )}
-      {canScan.state === "live" && (
-        <RepositorySearch
-          onSelect={(repo) => void scan(repo)}
-          exclude={separateTestsRepo ? [separateTestsRepo.full_name] : undefined}
-          busyId={scanRepository.isPending ? picked?.id : undefined}
-          openRow={openRow || undefined}
-          after={noRepositoryLine}
-        />
-      )}
-      {canScan.state === "locked" && (
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <LockIcon className="size-3.5 shrink-0" aria-hidden />
-          {canScan.reason}
-        </p>
-      )}
-      {canScan.state !== "live" && noRepositoryLine}
-      {notInstalled && (
-        <EmptyState
-          icon={AlertCircle}
-          title="The GitHub App isn't installed on this repository"
-          message={errorMessage(scanRepository.error)}
-          size="compact"
-          action={
-            installUrl && (
-              <Button asChild variant="outline" size="sm">
-                <a href={installUrl} target="_blank" rel="noreferrer">
-                  Install the GitHub App
-                  <ExternalLink className="size-3.5" aria-hidden />
-                </a>
-              </Button>
-            )
-          }
-        />
-      )}
-      {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository." />}
-      {nothingFound && (
-        <EmptyState
-          title="Nothing to deploy found"
-          message="No Dockerfile or compose file found. Enter a Dockerfile path to continue."
-          size="compact"
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Input
-                value={dockerfilePath}
-                onChange={(e) => setDockerfilePath(e.target.value)}
-                placeholder="Dockerfile"
-                aria-label="Dockerfile path"
-                className="h-8 w-40"
-              />
-              <Button size="sm" onClick={() => void continueManually()} disabled={!dockerfilePath.trim()}>
-                Continue manually
-              </Button>
-            </div>
-          }
-        />
-      )}
-      <WizardFooter onBack={onBack} />
+    <div>
+      <div className="space-y-8">
+        <section className="space-y-3">
+          {asksTests && <h3 className="text-sm font-medium">Deploys from</h3>}
+          {keeping && (
+            <WizardRepositoryCard
+              fullName={attachedApp.full_name}
+              provider={attachedApp.connector_id}
+              meta="Attached to this project"
+              action={
+                <Button type="button" variant="outline" size="sm" onClick={() => setChanging(!changing)}>
+                  {changing ? "Cancel" : "Change"}
+                </Button>
+              }
+            />
+          )}
+          {(!keeping || changing) && canScan.state === "live" && (
+            <RepositorySearch
+              onSelect={(repo) => void scan(repo)}
+              exclude={separateTestsRepo ? [separateTestsRepo.full_name] : undefined}
+              busyId={scanRepository.isPending ? picked?.id : undefined}
+              openRow={openRow || undefined}
+            />
+          )}
+          {(!keeping || changing) && canScan.state === "locked" && (
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <LockIcon className="size-3.5 shrink-0" aria-hidden />
+              {canScan.reason}
+            </p>
+          )}
+          {notInstalled && (
+            <EmptyState
+              icon={AlertCircle}
+              title="The GitHub App isn't installed on this repository"
+              message={errorMessage(scanRepository.error)}
+              size="compact"
+              action={
+                installUrl && (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={installUrl} target="_blank" rel="noreferrer">
+                      Install the GitHub App
+                      <ExternalLink className="size-3.5" aria-hidden />
+                    </a>
+                  </Button>
+                )
+              }
+            />
+          )}
+          {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository." />}
+          {nothingFound && <WizardManualDockerfile onContinue={(path) => void continueManually(path)} />}
+        </section>
+        {asksTests && <TestsLocationChoice />}
+      </div>
+      <WizardFooter
+        onBack={onBack}
+        skip={
+          onLeaveEarly && !attachedApp && (
+            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => void leaveWithoutRepository().catch(() => undefined)}>
+              No repository yet
+            </Button>
+          )
+        }
+      >
+        {keeping && !changing && (
+          <Button type="button" onClick={() => void keepAttached().catch(() => undefined)} loading={saveTestsAnswer.isPending}>
+            Continue
+          </Button>
+        )}
+      </WizardFooter>
     </div>
   );
 };
