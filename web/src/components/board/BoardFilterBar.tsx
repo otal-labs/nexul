@@ -17,7 +17,7 @@ import { DeveloperStack } from "@/components/board/DeveloperStack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
-import { useFetchCategories } from "@/hooks/CategoryHooks";
+import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchAllLabels } from "@/hooks/TicketHooks";
@@ -67,8 +67,8 @@ export const BoardFilterBar = ({
   onNewCategory,
 }: BoardFilterBarProps) => {
   const { data: projects } = useFetchProjects();
-  const { data: categories } = useFetchCategories();
-  const { data: labels } = useFetchAllLabels();
+  const { data: categories } = useFetchProjectCategories(projectId);
+  const { data: labels } = useFetchAllLabels(projectId);
   const { data: ticketTypes } = useFetchProjectTicketTypes(projectId);
   const { data: statuses } = useFetchProjectStatuses(projectId);
 

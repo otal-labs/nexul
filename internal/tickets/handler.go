@@ -325,7 +325,7 @@ func (h *Handler) removeLabel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listAllLabels(w http.ResponseWriter, r *http.Request) {
-	labels, err := h.svc.ListAllLabels(r.Context())
+	labels, err := h.svc.ListAllLabels(r.Context(), r.URL.Query().Get("project_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

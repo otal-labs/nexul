@@ -281,6 +281,9 @@ func (r ticketRepo) List(context.Context) ([]*tickets.Ticket, error) {
 }
 
 func (r ticketRepo) ListByProject(_ context.Context, projectID string) ([]*tickets.Ticket, error) {
+	if err := r.w.check("ListByProject"); err != nil {
+		return nil, err
+	}
 	return r.filter(func(t *tickets.Ticket) bool { return t.ProjectID == projectID }), nil
 }
 

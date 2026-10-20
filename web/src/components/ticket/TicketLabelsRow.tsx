@@ -19,7 +19,7 @@ interface AddLabelPopoverProps {
 }
 
 const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverProps) => {
-  const { data: allLabels } = useFetchAllLabels();
+  const { data: allLabels } = useFetchAllLabels(projectId);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const trimmed = search.trim();

@@ -58,14 +58,19 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   const { data: statuses } = useFetchProjectStatuses(projectId);
   const myLogin = me?.user.login ?? "";
 
+  const projectTickets = useMemo(
+    () => (projectId ? (tickets ?? []).filter((t) => t.project_id === projectId) : (tickets ?? [])),
+    [tickets, projectId],
+  );
+
   const developers = useMemo(() => {
-    const set = new Set((tickets ?? []).map((t) => t.developer).filter((d) => d !== ""));
+    const set = new Set(projectTickets.map((t) => t.developer).filter((d) => d !== ""));
     return Array.from(set).sort();
-  }, [tickets]);
+  }, [projectTickets]);
 
   // Offered once the signed-in member tests anything here, and kept while on so it can be switched off.
   const showWaitingForMeToTest =
-    filters.waitingForMeToTest || (myLogin !== "" && (tickets ?? []).some((t) => t.tester === myLogin));
+    filters.waitingForMeToTest || (myLogin !== "" && projectTickets.some((t) => t.tester === myLogin));
 
   const filteredTickets = useMemo(() => {
     const sets: FilterSets = {

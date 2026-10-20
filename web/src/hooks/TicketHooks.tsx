@@ -257,15 +257,16 @@ export const useUnlinkPR = () =>
     "Pull request unlinked",
   );
 
-export const useFetchAllLabels = () =>
+// Without a project, the labels on every ticket the caller may read.
+export const useFetchAllLabels = (projectId?: string) =>
   useQuery({
-    queryKey: [getAllLabelsKey],
-    queryFn: async () => (await api.get<string[]>("/api/tickets/labels")).data,
+    queryKey: [getAllLabelsKey, projectId],
+    queryFn: async () => (await api.get<string[]>("/api/tickets/labels", { params: { project_id: projectId } })).data,
   });
 
 // TanStack dedupes identical queryKeys, so every TicketCard sharing this hook still fires one HTTP call.
 export const useFetchLabelColors = (projectId: string | undefined) => {
-  const { data: labels } = useFetchAllLabels();
+  const { data: labels } = useFetchAllLabels(projectId);
   return useQuery({
     queryKey: [getLabelColorsKey, projectId, labels],
     queryFn: requires("tickets:read", async () =>

@@ -62,11 +62,12 @@ describe("useBoardFilters", () => {
     expect(result.current.filters.projectIds).toEqual([]);
   });
 
-  it("scopes to a single project when a projectId is locked", () => {
-    const tickets = [ticket("t-1", "p-1"), ticket("t-2", "p-2")];
+  it("scopes tickets and developers to a single project when a projectId is locked", () => {
+    const tickets = [ticket("t-1", "p-1", { developer: "lena" }), ticket("t-2", "p-2", { developer: "bob" })];
     const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
     expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["t-1"]);
     expect(result.current.filters.projectIds).toEqual(["p-1"]);
+    expect(result.current.developers).toEqual(["lena"]);
   });
 
   it("narrows to the picked developers", () => {
