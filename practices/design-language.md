@@ -712,11 +712,18 @@ then a ghost "Skip for now" where the step allows it, which records the step
 skipped and moves to the next, then the primary action; Info's reads
 "Continue to <next step>". Done lists what is left for later (skipped or never
 visited) as hairline rows with an Open each, and ends with Finish, which sets
-the project up and lands on its board. Repository has no Skip: while a project
-is set up, a picked repository opens in place once scanned (`accent` fill, a
-2px `brand` left edge, the scan as one mono line) with a ghost "Attach without
-deploying" and a primary "Deploy it", and a muted "No code to point at?" line
-under the results holds an ink "No repository yet". Both early exits mark the
+the project up and lands on its board. Repository has no Skip. It asks two
+things in order, each a small heading over its control: "Deploys from", then
+"Tests live in" with a segmented "The same repository | A separate one". A
+repository either answer already holds is a card (`bg-card`, hairline border,
+the provider mark in a `surface-2` tile, the name over one muted line) with an
+outline Change that opens the search under it and turns into Cancel; only one
+search shows per question, its "Missing a repository?" install line only under
+results. While a project is set up, a picked repository opens in place once
+scanned (`accent` fill, a 2px `brand` left edge, the scan as one mono line)
+with a ghost "Attach without deploying" and a primary "Deploy it"; an attached
+repository kept as it is goes on with the footer's Continue, and a project
+with none takes the footer's ghost "No repository yet". Both early exits mark the
 deploy steps skipped and land on Done, which, while the project has no
 service, folds Repository and the deploy steps into one Deploying row and
 lists Docs, Board and Invite people under "Where to next" as hairline rows

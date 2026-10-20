@@ -181,16 +181,19 @@ describe("WizardRepositoryStep", () => {
     expect(screen.queryByRole("button", { name: "Attach without deploying" })).not.toBeInTheDocument();
   });
 
-  it("says the list is the person's own GitHub view and links the App's install page", async () => {
+  it("links the App's install page under the results, and nowhere before a search", async () => {
     mocks.get.mockImplementation(async (url: string) => ({
       data: url === "/api/connectors/github/app-config" ? { configured: true, app_slug: "nexul-acme" } : { repositories: repos },
     }));
     renderStep();
+    const user = userEvent.setup();
 
-    const link = await screen.findByRole("link", { name: "Install it on an account or organisation you manage" });
+    await screen.findByLabelText("Search repositories");
+    expect(screen.queryByText(/Missing a repository/)).not.toBeInTheDocument();
+    await search(user);
+    const link = await screen.findByRole("link", { name: "Install the GitHub App on its account" });
     expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-acme/installations/new");
     expect(link).toHaveAttribute("target", "_blank");
-    expect(screen.getByText(/lists what your own GitHub account can open/)).toBeInTheDocument();
   });
 
   it("has no install link when no App slug is configured", async () => {
@@ -198,9 +201,10 @@ describe("WizardRepositoryStep", () => {
       data: url === "/api/connectors/github/app-config" ? { configured: false } : { repositories: repos },
     }));
     renderStep();
+    await search(userEvent.setup());
 
-    expect(await screen.findByText(/lists what your own GitHub account can open/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Install it on/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/The GitHub App has to be installed on its account/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Install the GitHub App/ })).not.toBeInTheDocument();
   });
 
   it("asks someone without a GitHub link to connect it instead of searching, and lists nothing", async () => {
@@ -285,14 +289,16 @@ describe("WizardRepositoryStep tests question", () => {
     mocks.put.mockResolvedValue({ data: {} });
   });
 
-  it("records tests in the same repository once the deployed repository is picked", async () => {
+  it("records tests in the same repository once the deployed repository is picked and deployed", async () => {
     const onDone = renderStep();
     const user = userEvent.setup();
     scanFinds();
 
-    await user.click(await screen.findByRole("radio", { name: /in the repository you deploy/i }));
+    await user.click(await screen.findByRole("radio", { name: "The same repository" }));
     await search(user);
     await user.click(screen.getByText("onik97/api"));
+    expect(onDone).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "same" });
@@ -303,14 +309,15 @@ describe("WizardRepositoryStep tests question", () => {
     const user = userEvent.setup();
     scanFinds();
 
-    await user.click(await screen.findByRole("radio", { name: /in a separate repository/i }));
+    await user.click(await screen.findByRole("radio", { name: "A separate one" }));
     await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
     await user.click(await screen.findByRole("button", { name: /onik97\/worker/ }));
-    await user.clear(screen.getByLabelText("Search tests repositories"));
+    expect(screen.queryByLabelText("Search tests repositories")).not.toBeInTheDocument();
 
     await search(user);
     expect(screen.queryByRole("button", { name: /onik97\/worker/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /onik97\/api/ }));
+    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", {
       owner: "onik97",
@@ -332,7 +339,7 @@ describe("WizardRepositoryStep tests question", () => {
     renderStep();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("radio", { name: /in a separate repository/i }));
+    await user.click(await screen.findByRole("radio", { name: "A separate one" }));
     await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
 
     expect(await screen.findByRole("button", { name: /onik97\/worker/ })).toBeInTheDocument();
@@ -345,9 +352,10 @@ describe("WizardRepositoryStep tests question", () => {
     scanFinds();
     mocks.put.mockRejectedValue(new Error("boom"));
 
-    await user.click(await screen.findByRole("radio", { name: /in the repository you deploy/i }));
+    await user.click(await screen.findByRole("radio", { name: "The same repository" }));
     await search(user);
     await user.click(screen.getByText("onik97/api"));
+    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
 
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalled());
     expect(onDone).not.toHaveBeenCalled();
@@ -360,6 +368,7 @@ describe("WizardRepositoryStep tests question", () => {
 
     await search(user);
     await user.click(screen.getByText("onik97/api"));
+    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.put).not.toHaveBeenCalled();
@@ -371,8 +380,8 @@ describe("WizardRepositoryStep tests question", () => {
     renderStep(vi.fn(), onLeaveEarly);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("radio", { name: /in the repository you deploy/i }));
-    await user.click(await screen.findByRole("button", { name: /No repository yet/ }));
+    await user.click(await screen.findByRole("radio", { name: "The same repository" }));
+    await user.click(await screen.findByRole("button", { name: "No repository yet" }));
 
     await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("skipped"));
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "same" });
@@ -391,9 +400,11 @@ describe("WizardRepositoryStep tests question", () => {
       answered([app, { owner: "onik97", name: "worker", full_name: "onik97/worker", connector_id: "github", role: "tests" }]);
       renderStep(vi.fn(), vi.fn());
 
-      await vi.waitFor(() => expect(screen.getByRole("radio", { name: /in a separate repository/i })).toBeChecked());
+      await vi.waitFor(() => expect(screen.getByRole("radio", { name: "A separate one" })).toBeChecked());
       expect(await screen.findByText("onik97/worker")).toBeInTheDocument();
       expect(screen.getByText("onik97/api")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Search repositories")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "No repository yet" })).not.toBeInTheDocument();
     });
 
     it("keeps the attached repository and attaches the tests repository picked, without scanning again", async () => {
@@ -405,11 +416,25 @@ describe("WizardRepositoryStep tests question", () => {
 
       await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
       await user.click(await screen.findByRole("button", { name: /onik97\/worker/ }));
-      await user.click(screen.getByRole("button", { name: "Keep it" }));
+      await user.click(screen.getByRole("button", { name: "Continue" }));
 
       await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("done"));
       expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", { owner: "onik97", name: "worker", connector_id: "github", role: "tests" });
       expect(mocks.post).not.toHaveBeenCalledWith("/api/repositories/scan", expect.anything());
+    });
+
+    it("searches for another repository to deploy only after Change, and Cancel puts the attached one back", async () => {
+      answered([app]);
+      renderStep(vi.fn(), vi.fn());
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole("button", { name: "Change" }));
+      expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+      await search(user);
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByLabelText("Search repositories")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
     });
   });
 
@@ -418,6 +443,6 @@ describe("WizardRepositoryStep tests question", () => {
     renderStep();
 
     expect(await screen.findByLabelText("Search repositories")).toBeInTheDocument();
-    expect(screen.queryByText("Where do this project's tests live?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tests live in")).not.toBeInTheDocument();
   });
 });

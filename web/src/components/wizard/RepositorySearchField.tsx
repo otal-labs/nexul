@@ -22,14 +22,13 @@ export interface RepositorySearchProps {
   label?: string;
   // The picked repository's row, opened in place of its plain one.
   openRow?: { id: number; row: ReactNode } | undefined;
-  // Under the results, before the hint on why a repository may be missing.
-  after?: ReactNode;
 }
 
 // Nothing loads until enough letters are typed: an installation can grant thousands of repositories.
-export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Search repositories", openRow, after }: RepositorySearchProps) => {
+export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Search repositories", openRow }: RepositorySearchProps) => {
   const [text, setText] = useState("");
-  const searching = text.trim().length >= REPOSITORY_SEARCH_MIN_LENGTH;
+  const typed = text.trim().length;
+  const searching = typed >= REPOSITORY_SEARCH_MIN_LENGTH;
   const { data, isFetching, error } = useSearchRepositories(text);
   const repos = searching ? data?.filter((r) => !exclude?.includes(r.full_name)) : undefined;
   // A token GitHub stopped refreshing mid-search asks for a reconnect instead of an error.
@@ -56,7 +55,7 @@ export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Sear
           />
         )}
       </div>
-      {!searching && (
+      {typed > 0 && !searching && (
         <p className="text-xs text-muted-foreground">
           Type at least {REPOSITORY_SEARCH_MIN_LENGTH} letters to search your repositories.
         </p>
@@ -84,8 +83,7 @@ export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Sear
           ))}
         </ul>
       )}
-      {after}
-      <RepositoryInstallHint />
+      {searching && <RepositoryInstallHint />}
     </div>
   );
 };
