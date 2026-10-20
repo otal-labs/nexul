@@ -139,7 +139,9 @@ const (
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
 var verbLabel = map[Action]string{
-	PlaysRun:         "Run plays",
+	PlaysRun: "Run plays",
+	// The grid names a row after its read label, and the Interview page follows this row.
+	MemoriesRead:     "Read memories and interview",
 	MemoriesClone:    "Clone memories to another project",
 	MemoriesTemplate: "Edit the workspace Interview template",
 	RolesClone:       "Clone roles to another workspace",

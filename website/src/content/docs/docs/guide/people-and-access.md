@@ -73,7 +73,7 @@ A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, ea
 
 - **Instance**: areas that apply across every workspace on this install, such as adding machines, DNS and gateways, connectors, accounts, the audit log, and the instance's logs.
 - **Workspace**: across the workspace, whatever project someone is in. It leads with **Show locked actions**, a switch for the role and not a permission, then **Create projects** (`projects:create`) and **Edit the workspace Interview template** (`memories:template`), then areas such as chat, channels, plays, members, and roles.
-- **In projects**: a project's areas, such as tickets, docs, memories, and stacks, which a holder has only inside the projects they're in. It leads with **Manage this project's access** (`projects:access`): choosing who's in a project and what they can do there.
+- **In projects**: a project's areas, such as tickets, docs, memories and interview, and stacks, which a holder has only inside the projects they're in. It leads with **Manage this project's access** (`projects:access`): choosing who's in a project and what they can do there.
 
 **Show locked actions** decides what a holder sees where they can't take an action. With it off, the action isn't there. With it on, the action shows dimmed with the reason, such as "Your role can't deploy", so they can see what exists and which role would let them. Someone holding several roles sees locked actions when any one of them has it on. A new role starts with it off, a duplicate or clone keeps the original's setting, and the Owner role never needs it. Something a person can't read stays not found either way. It gives no permission, so anyone who can edit a role can change it.
 

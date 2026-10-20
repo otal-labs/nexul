@@ -9,6 +9,8 @@ The interview is how you tell agents how a project works: its stack, how the cod
 
 Open **Interview** under the project in the sidebar. The page has three tabs: **Questions**, **Sources**, and **Memory**. The line above them shows the latest run and holds **Regenerate** and **Audit via AI**, whichever tab is open.
 
+The page follows the **Memories and interview** area in the role editor: someone without **Read** there doesn't see **Interview** in the sidebar, and answering or adding sources takes **Create and update**.
+
 ## Answer the questions
 
 1. Work down the questions. Each one opens on its own with any options to pick, and a recommended option already picked. **Next** saves your answer, **Skip** saves a skip. Click any earlier question to change it.

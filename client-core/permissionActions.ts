@@ -119,7 +119,7 @@ export const PERMISSION_LABELS: Record<PermissionAction, string> = {
   "autoplays:read": "Read auto plays",
   "autoplays:write": "Create and update auto plays",
   "autoplays:delete": "Delete auto plays",
-  "memories:read": "Read memories",
+  "memories:read": "Read memories and interview",
   "memories:write": "Create and update memories",
   "memories:delete": "Delete memories",
   "memories:clone": "Clone memories to another project",
