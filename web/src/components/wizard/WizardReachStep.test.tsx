@@ -25,14 +25,14 @@ const gateways = [
   { id: "g1", kind: "tunnel", docker_network: "api_default", zone_id: "z1", zone: "example.com", created_at: "", updated_at: "" },
 ];
 
-const renderStep = (onDone = vi.fn(), onSkip = vi.fn()) => {
+const renderStep = (onDone = vi.fn(), onSkip = vi.fn(), onBack = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <WizardReachStep stackId="stack-1" onDone={onDone} onSkip={onSkip} />
+      <WizardReachStep stackId="stack-1" onDone={onDone} onBack={onBack} onSkip={onSkip} />
     </QueryClientProvider>,
   );
-  return { onDone, onSkip };
+  return { onDone, onSkip, onBack };
 };
 
 beforeEach(() => {
@@ -67,7 +67,7 @@ describe("WizardReachStep", () => {
     await user.type(screen.getByLabelText("Subdomain"), "app");
     await pickOption(user, "Zone", "example.com");
     expect(screen.getByText("app.example.com")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /expose service/i }));
+    await user.click(screen.getByRole("button", { name: "Expose" }));
 
     const progress = await screen.findByRole("list", { name: "Exposure progress" });
     await vi.waitFor(() =>
@@ -93,11 +93,11 @@ describe("WizardReachStep", () => {
 
     await user.type(await screen.findByLabelText("Subdomain"), "app");
     await pickOption(user, "Zone", "example.com");
-    await user.click(screen.getByRole("button", { name: /expose service/i }));
+    await user.click(screen.getByRole("button", { name: "Expose" }));
 
     const progress = await screen.findByRole("list", { name: "Exposure progress" });
     expect(within(progress).getAllByRole("status").map((row) => row.dataset.state)).toEqual(Array(4).fill("pending"));
-    expect(screen.getByRole("button", { name: /expose service/i })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Expose" })).toHaveAttribute("aria-busy", "true");
   });
 
   it("shows the server's message and lets the owner retry when the exposure fails", async () => {
@@ -108,11 +108,11 @@ describe("WizardReachStep", () => {
 
     await user.type(await screen.findByLabelText("Subdomain"), "app");
     await pickOption(user, "Zone", "example.com");
-    await user.click(screen.getByRole("button", { name: /expose service/i }));
+    await user.click(screen.getByRole("button", { name: "Expose" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("gateway unreachable");
     expect(screen.queryByRole("button", { name: /continue/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /expose service/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Expose" })).toBeEnabled();
     expect(onDone).not.toHaveBeenCalled();
   });
 
@@ -120,8 +120,47 @@ describe("WizardReachStep", () => {
     const { onSkip } = renderStep();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: /skip for now/i }));
+    await screen.findByLabelText("Subdomain");
+    await user.click(screen.getByRole("button", { name: /skip for now/i }));
     expect(onSkip).toHaveBeenCalled();
     expect(mocks.post).not.toHaveBeenCalled();
+  });
+
+  it("goes back from the form", async () => {
+    const { onBack } = renderStep();
+    const user = userEvent.setup();
+
+    await screen.findByLabelText("Subdomain");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it("ends in Back and a primary Skip for now when the zones cannot be loaded", async () => {
+    mocks.errorMessage.mockReturnValue("invalid: cloudflare: Invalid request headers");
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/dns/zones") throw new Error("invalid: cloudflare: Invalid request headers");
+      if (url === "/api/stacks/stack-1/services") return { data: services };
+      return { data: [] };
+    });
+    const { onSkip, onBack } = renderStep();
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("invalid: cloudflare: Invalid request headers");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(onBack).toHaveBeenCalled();
+    expect(onSkip).toHaveBeenCalled();
+  });
+
+  it("says no domains are connected when there are no zones, and leaves Skip for now as the way on", async () => {
+    mocks.get.mockImplementation(async (url: string) => ({ data: url === "/api/stacks/stack-1/services" ? services : [] }));
+    const { onSkip } = renderStep();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("No domains connected yet.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Subdomain")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Skip for now" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(onSkip).toHaveBeenCalled();
   });
 });

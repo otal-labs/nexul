@@ -11,10 +11,9 @@ import { useProjectWizardStore } from "@/stores/projectWizardStore";
 interface WizardProjectStepProps {
   onDone: (projectId: string) => void;
   onBack?: (() => void) | undefined;
-  continueLabel?: string;
 }
 
-export const WizardProjectStep = ({ onDone, onBack, continueLabel = "Continue" }: WizardProjectStepProps) => {
+export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) => {
   const createProject = useCreateProject();
   const setProjectId = useProjectWizardStore((s) => s.setProjectId);
   const form = useForm<SaveProjectFormData>({
@@ -51,7 +50,7 @@ export const WizardProjectStep = ({ onDone, onBack, continueLabel = "Continue" }
       />
       <WizardFooter onBack={onBack}>
         <ActionButton permission="projects:create" type="submit" loading={form.formState.isSubmitting}>
-          {continueLabel}
+          Continue
         </ActionButton>
       </WizardFooter>
     </form>

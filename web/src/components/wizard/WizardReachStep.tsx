@@ -45,12 +45,13 @@ const DeployStatusLine = ({ stackId }: { stackId: string }) => {
 interface WizardReachStepProps {
   stackId: string;
   onDone: () => void;
+  onBack: () => void;
   onSkip: () => void;
 }
 
 // Zone + subdomain + service/port, defaulted to the candidate's reachable service (spec §7 issue answer); the
 // server reuses or provisions the gateway, so the result just names which one it picked.
-export const WizardReachStep = ({ stackId, onDone, onSkip }: WizardReachStepProps) => {
+export const WizardReachStep = ({ stackId, onDone, onBack, onSkip }: WizardReachStepProps) => {
   const candidate = useProjectWizardStore((s) => s.candidate);
   const setExposure = useProjectWizardStore((s) => s.setExposure);
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones();
@@ -61,12 +62,17 @@ export const WizardReachStep = ({ stackId, onDone, onSkip }: WizardReachStepProp
   const defaultService = services?.find((c) => c.name === candidate?.reachable?.service) ?? services?.[0];
   const defaultPort = candidate?.reachable?.port ?? Number(defaultService?.declared.ports?.[0] ?? 0);
 
+  const noZones = !!zones && zones.length === 0;
+  const blocked = !!zonesError || !!servicesError || noZones;
+  const ready = !!zones && zones.length > 0 && !!services;
+
   return (
     <>
       {(zonesPending || servicesPending) && <LoadingDisplay />}
       {zonesError && <ErrorDisplay error={zonesError} title="Couldn't load zones." />}
       {servicesError && <ErrorDisplay error={servicesError} title="Couldn't load the stack's services." />}
-      {zones && services && (
+      {noZones && <p className="text-sm text-muted-foreground">No domains connected yet.</p>}
+      {zones && services && zones.length > 0 && (
         <ReachForm
           zones={zones}
           services={services}
@@ -78,9 +84,19 @@ export const WizardReachStep = ({ stackId, onDone, onSkip }: WizardReachStepProp
             setExposure(exposureId, hostname);
             onDone();
           }}
+          onBack={onBack}
           onSkip={onSkip}
           gatewayName={(gatewayId: string) => gateways?.find((g) => g.id === gatewayId)?.kind}
         />
+      )}
+      {!ready && (
+        <WizardFooter onBack={onBack} skip={!blocked && <WizardSkipLink onClick={onSkip} />}>
+          {blocked && (
+            <Button type="button" onClick={onSkip}>
+              Skip for now
+            </Button>
+          )}
+        </WizardFooter>
       )}
     </>
   );
@@ -94,6 +110,7 @@ interface ReachFormProps {
   stackId: string;
   createExposure: ReturnType<typeof useCreateServiceExposure>;
   onDone: (exposureId: string, hostname: string) => void;
+  onBack: () => void;
   onSkip: () => void;
   gatewayName: (gatewayId: string) => string | undefined;
 }
@@ -106,6 +123,7 @@ const ReachForm = ({
   stackId,
   createExposure,
   onDone,
+  onBack,
   onSkip,
   gatewayName,
 }: ReachFormProps) => {
@@ -157,7 +175,7 @@ const ReachForm = ({
       </div>
       {hostname && <p className="font-mono text-xs text-muted-foreground">{hostname}</p>}
       <ExposureTicker status={createExposure.status} error={createExposure.error} result={exposedLabel} />
-      <WizardFooter skip={!exposed && <WizardSkipLink onClick={onSkip} />}>
+      <WizardFooter onBack={onBack} skip={!exposed && <WizardSkipLink onClick={onSkip} />}>
         {exposed && (
           <Button type="button" onClick={() => onDone(exposed.id, exposedLabel ?? exposed.hostname)}>
             Continue
@@ -165,7 +183,7 @@ const ReachForm = ({
         )}
         {!exposed && (
           <ActionButton permission="dns:write" verb="expose services" type="submit" loading={createExposure.isPending}>
-            Expose service
+            Expose
           </ActionButton>
         )}
       </WizardFooter>

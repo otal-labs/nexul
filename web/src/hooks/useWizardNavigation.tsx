@@ -1,12 +1,12 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { useChangeProjectSetup } from "@/hooks/ProjectHooks";
-import { usePendingServiceContext } from "@/hooks/useWizardSetup";
+import { usePendingServiceContext, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { useAreaAccess } from "@/hooks/AccessHooks";
-import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
+import { useWizardDoor, useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { WizardStepId } from "@/models/ProjectWizard";
+import { railRows, type WizardStepId } from "@/models/ProjectWizard";
 
 // Moves within the wizard keeping the door's query; projectId adds the project Info just made, so a reload keeps it.
 export const useWizardGoTo = () => {
@@ -21,7 +21,7 @@ export const useWizardGoTo = () => {
   };
 };
 
-// Info leaves the wizard; any other step returns to the one before it, which shows what it made instead of making it twice.
+// The first step leaves the wizard; any other returns to the row above it on the rail, which shows what it made instead of making it twice.
 export const useWizardBack = (step: WizardStepId): (() => void) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,8 +30,9 @@ export const useWizardBack = (step: WizardStepId): (() => void) => {
   const changeSetup = useChangeProjectSetup();
   const pendingContext = usePendingServiceContext();
   const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
-  const order = useWizardStepOrder();
-  const previous = order[order.indexOf(step) - 1];
+  const door = useWizardDoor();
+  const rows = railRows(door, useWizardStepOrder(), step, !!useWizardStackId());
+  const previous = rows[rows.findIndex((row) => row.id === step) - 1]?.id;
 
   if (previous) return () => goTo(previous);
   return () => {

@@ -9,12 +9,12 @@ Decision: the project records its own setup, on the server: whether the wizard's
 Environment values stay on the stack; resuming reads them there, and the deploy uses that stack's build branch.
 While setup is open, the project's section of the sidebar holds a single brand-filled Continue setup row instead of Board, Interview, Docs,
 Memories and Settings, for every member who holds `projects:write` there; everyone else who can open the project sees
-a muted "Being set up" line. Continue setup opens the wizard at the first step neither done nor skipped, including Environment when keys were detected, else at Done.
+a muted "Being set up" line. Continue setup opens the wizard at the first step neither done nor skipped, including Environment when keys were detected, else at Done; a deploy step with no service made opens Deploy, a browser-only step the server never records.
 
 - **A signal, not a lock.** Only the sidebar changes. Direct links to the board, docs and settings still open, MCP and
   the HTTP gateway reach everything, and nothing is refused because setup is open.
-- **Every step opens at any time.** Each node of the wizard's row is a button. Skip for now records the step skipped
-  and moves to the next one instead of leaving the wizard; a step opened before its groundwork (Service with no
+- **Every step opens at any time.** Each row of the wizard's rail is a button. Skip for now records the step skipped
+  and moves to the next one instead of leaving the wizard (skipping Service with no service skips the steps under it and goes to Done); a step opened before its groundwork (Service with no
   repository) says what it needs and links there. Finish works with steps skipped, and Done lists them.
 - **Only the wizard starts a project unfinished.** `POST /api/projects` and `project_create` take an optional
   `setup_finished`; omitted it is true, so every other caller still gets a ready project. Migration 0085 adds the

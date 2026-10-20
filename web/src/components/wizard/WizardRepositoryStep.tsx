@@ -1,37 +1,28 @@
-import { AlertCircle, ExternalLink, LockIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { errorMessage } from "@/api/client";
-import { EmptyState } from "@/components/EmptyState";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { Button } from "@/components/ui/button";
+import { RepositoryScanError } from "@/components/wizard/RepositoryScanError";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardManualDockerfile } from "@/components/wizard/WizardManualDockerfile";
 import { WizardOpenRepositoryRow } from "@/components/wizard/WizardOpenRepositoryRow";
-import { WizardRepositoryCard } from "@/components/wizard/WizardRepositoryCard";
-import { useAddProjectRepo, useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
+import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useWizardTestsAnswer } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
-import type { SetupMark } from "@/models/Project";
-import { manualCandidate, parseInstallUrl, preferredCandidate, type Repo } from "@/models/Repository";
-import { RepoRole, TestsLocation } from "@/enums/Project";
+import { manualCandidate, preferredCandidate, type Repo } from "@/models/Repository";
+import { TestsLocation } from "@/enums/Project";
 
 interface WizardRepositoryStepProps {
   onDone: () => void;
   onBack?: (() => void) | undefined;
-  // Offered while the project is set up: ends setup's deploy path here, with the repository attached or none.
-  onLeaveEarly?: ((repository: SetupMark) => Promise<void>) | undefined;
 }
 
-// Searches installation repositories (spec §5/§7); picking one scans it. A scan can land in three places: candidates
-// found (advance, or open the row while the tests question or setup's early exits are on screen), nothing found
-// (a manual Dockerfile), or the App isn't installed.
-export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRepositoryStepProps) => {
+// Add a service and Attach: picking a repository scans it, then advances, opens the row, or offers a manual Dockerfile.
+export const WizardRepositoryStep = ({ onDone, onBack }: WizardRepositoryStepProps) => {
   const scanRepository = useScanRepository();
   const canScan = useActionState({ permission: "projects:create", verb: "scan repositories" });
   const setRepository = useProjectWizardStore((s) => s.setRepository);
@@ -42,24 +33,17 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
   );
   const { testsLocation, testsRepo } = useWizardTestsAnswer();
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
-  const attachedApp = projectRepos?.find((r) => r.role === RepoRole.App);
   const saveTestsAnswer = useSaveTestsAnswer();
-  const addRepo = useAddProjectRepo();
   const asksTests = !!projectId && !attachStackId;
   const separateTestsRepo = testsLocation === TestsLocation.Separate ? testsRepo : null;
   // Coming back to the step opens the repository already picked, with its scan.
   const [picked, setPicked] = useState<Repo | null>(repository);
-  const [changing, setChanging] = useState(false);
-  const keeping = !!onLeaveEarly && !!attachedApp && !picked;
 
-  // The answer is saved on every way out, so it lands whichever way the step is left; a failed save is toasted.
-  const saveTests = async () => {
+  // The answer is saved on every way out; a failed save is toasted by its hook.
+  const advance = async () => {
     if (asksTests && testsLocation) {
       await saveTestsAnswer.mutateAsync({ projectId, testsLocation, testsRepo, attached: projectRepos ?? [] });
     }
-  };
-  const advance = async () => {
-    await saveTests();
     onDone();
   };
 
@@ -71,27 +55,10 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
       setScanResult(result);
       const preferred = preferredCandidate(result);
       if (preferred) setCandidate(preferred);
-      if (preferred && !onLeaveEarly && !asksTests) await advance();
+      if (preferred && !asksTests) await advance();
     } catch {
       // Scan failures render inline below; a failed tests-answer save was already toasted by its hook.
     }
-  };
-
-  // Failures are toasted by their hooks; the step stays for another try.
-  const leaveWithoutRepository = async () => {
-    await saveTests();
-    await onLeaveEarly?.("skipped");
-  };
-  const keepAttached = async () => {
-    await saveTests();
-    await onLeaveEarly?.("done");
-  };
-  const attachWithoutDeploying = async () => {
-    if (!picked || !projectId) return;
-    const attached = projectRepos?.some((r) => r.owner === picked.owner && r.name === picked.name);
-    await saveTests();
-    if (!attached) await addRepo.mutateAsync({ projectId, owner: picked.owner, name: picked.name, connectorId: picked.provider });
-    await onLeaveEarly?.("done");
   };
 
   const scanned = picked && (scanRepository.data ?? (picked.id === repository?.id ? scanResult : null));
@@ -101,8 +68,6 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
       <WizardOpenRepositoryRow
         repo={picked}
         scan={scanned}
-        attaching={addRepo.isPending || saveTestsAnswer.isPending}
-        onAttach={onLeaveEarly && (() => void attachWithoutDeploying().catch(() => undefined))}
         onDeploy={scanned.candidates.length > 0 ? () => void advance().catch(() => undefined) : undefined}
       />
     ),
@@ -112,34 +77,15 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
     if (!picked) return;
     setRepository(picked);
     setCandidate(manualCandidate(picked.name, dockerfilePath));
-    // A failed tests-answer save was already toasted by its hook; the step stays put.
     await advance().catch(() => undefined);
   };
-
-  const notInstalled =
-    scanRepository.isError &&
-    (scanRepository.error as { response?: { status?: number } })?.response?.status === 404;
-  const installUrl = notInstalled ? parseInstallUrl(errorMessage(scanRepository.error)) : undefined;
-  const nothingFound = !!scanned && scanned.candidates.length === 0;
 
   return (
     <div>
       <div className="space-y-8">
         <section className="space-y-3">
           {asksTests && <h3 className="text-sm font-medium">Deploys from</h3>}
-          {keeping && (
-            <WizardRepositoryCard
-              fullName={attachedApp.full_name}
-              provider={attachedApp.connector_id}
-              meta="Attached to this project"
-              action={
-                <Button type="button" variant="outline" size="sm" onClick={() => setChanging(!changing)}>
-                  {changing ? "Cancel" : "Change"}
-                </Button>
-              }
-            />
-          )}
-          {(!keeping || changing) && canScan.state === "live" && (
+          {canScan.state === "live" && (
             <RepositorySearch
               onSelect={(repo) => void scan(repo)}
               exclude={separateTestsRepo ? [separateTestsRepo.full_name] : undefined}
@@ -147,51 +93,18 @@ export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRep
               openRow={openRow || undefined}
             />
           )}
-          {(!keeping || changing) && canScan.state === "locked" && (
+          {canScan.state === "locked" && (
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <LockIcon className="size-3.5 shrink-0" aria-hidden />
               {canScan.reason}
             </p>
           )}
-          {notInstalled && (
-            <EmptyState
-              icon={AlertCircle}
-              title="The GitHub App isn't installed on this repository"
-              message={errorMessage(scanRepository.error)}
-              size="compact"
-              action={
-                installUrl && (
-                  <Button asChild variant="outline" size="sm">
-                    <a href={installUrl} target="_blank" rel="noreferrer">
-                      Install the GitHub App
-                      <ExternalLink className="size-3.5" aria-hidden />
-                    </a>
-                  </Button>
-                )
-              }
-            />
-          )}
-          {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository." />}
-          {nothingFound && <WizardManualDockerfile onContinue={(path) => void continueManually(path)} />}
+          {scanRepository.isError && <RepositoryScanError error={scanRepository.error} />}
+          {!!scanned && scanned.candidates.length === 0 && <WizardManualDockerfile onContinue={(path) => void continueManually(path)} />}
         </section>
         {asksTests && <TestsLocationChoice />}
       </div>
-      <WizardFooter
-        onBack={onBack}
-        skip={
-          onLeaveEarly && !attachedApp && (
-            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => void leaveWithoutRepository().catch(() => undefined)}>
-              No repository yet
-            </Button>
-          )
-        }
-      >
-        {keeping && !changing && (
-          <Button type="button" onClick={() => void keepAttached().catch(() => undefined)} loading={saveTestsAnswer.isPending}>
-            Continue
-          </Button>
-        )}
-      </WizardFooter>
+      <WizardFooter onBack={onBack} />
     </div>
   );
 };

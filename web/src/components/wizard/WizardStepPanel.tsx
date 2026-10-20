@@ -1,17 +1,20 @@
 import { useState, type ReactNode } from "react";
 
-import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
-import { wizardStepDescription, type WizardStepId } from "@/models/ProjectWizard";
+import { displayTitleClass } from "@/components/PageHeader";
+import { useWizardDoor, useWizardStepOrder } from "@/hooks/useWizardStepOrder";
+import { wizardStepLead, wizardStepTitle, type WizardStepId } from "@/models/ProjectWizard";
+import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { cn } from "@/lib/utils";
 
 interface WizardStepPanelProps {
   step: WizardStepId;
-  title: string;
   children: ReactNode;
 }
 
-// Slides the step in from the side it was reached from, so moving on and going back read as opposite directions.
-export const WizardStepPanel = ({ step, title, children }: WizardStepPanelProps) => {
+// The step's own question as the page title, then its body, sliding in from the side it was reached from so moving on and going back read as opposite directions.
+export const WizardStepPanel = ({ step, children }: WizardStepPanelProps) => {
+  const door = useWizardDoor();
+  const projectName = useProjectWizardStore((s) => s.projectName);
   const index = useWizardStepOrder().indexOf(step);
   const [seen, setSeen] = useState(index);
   const [forward, setForward] = useState(true);
@@ -19,7 +22,7 @@ export const WizardStepPanel = ({ step, title, children }: WizardStepPanelProps)
     setForward(index > seen);
     setSeen(index);
   }
-  const description = wizardStepDescription(step);
+  const lead = wizardStepLead(step);
 
   return (
     <div
@@ -29,9 +32,9 @@ export const WizardStepPanel = ({ step, title, children }: WizardStepPanelProps)
         forward ? "slide-in-from-right-2" : "slide-in-from-left-2",
       )}
     >
-      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-4">{children}</div>
+      <h1 className={cn(displayTitleClass, "text-[2rem]")}>{wizardStepTitle(step, door, projectName)}</h1>
+      {lead && <p className="mt-2 text-muted-foreground">{lead}</p>}
+      <div className="mt-8">{children}</div>
     </div>
   );
 };

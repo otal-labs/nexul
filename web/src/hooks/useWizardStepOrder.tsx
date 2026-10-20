@@ -1,12 +1,18 @@
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 import { useWizardEnvKeys } from "@/hooks/useWizardSetup";
-import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
-import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { wizardOrder, type WizardDoor, type WizardStepId } from "@/models/ProjectWizard";
+
+// The URL picks the door: ?stack= attaches a repository to a stack, ?add= adds a service, else the project's setup.
+export const useWizardDoor = (): WizardDoor => {
+  const [searchParams] = useSearchParams();
+  if (searchParams.has("stack")) return "attach";
+  return searchParams.has("add") ? "add" : "setup";
+};
 
 export const useWizardStepOrder = (): WizardStepId[] => {
-  const isAttach = useProjectWizardStore((s) => !!s.attachStackId);
+  const door = useWizardDoor();
   const { step } = useParams();
   const showEnv = useWizardEnvKeys().length > 0 || step === "env";
-  return WizardSteps.filter((id) => (id !== "env" || showEnv) && (id !== "reach" || !isAttach));
+  return wizardOrder(door, showEnv);
 };

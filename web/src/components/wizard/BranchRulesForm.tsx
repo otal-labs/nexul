@@ -21,11 +21,12 @@ interface BranchRulesFormProps {
   defaultPort: string;
   networks: MachineNetwork[];
   onDone: () => void;
+  onBack: () => void;
   onSkip: () => void;
 }
 
 // Saving replaces the stack's rules with the rows, so reopening the rung edits the same set.
-export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone, onSkip }: BranchRulesFormProps) => {
+export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone, onBack, onSkip }: BranchRulesFormProps) => {
   const setBranchesSummary = useProjectWizardStore((s) => s.setBranchesSummary);
   const updateStack = useUpdateStack();
   const productionNetwork = defaultNetwork(stack);
@@ -93,7 +94,7 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         <Plus aria-hidden className="size-4" />
         Add branch
       </Button>
-      <WizardFooter skip={<WizardSkipLink onClick={onSkip} />}>
+      <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />}>
         <ActionButton permission="stacks:write" projectId={stack.project_id} verb="save branch deploy rules" type="submit" loading={updateStack.isPending}>
           Save branches
         </ActionButton>

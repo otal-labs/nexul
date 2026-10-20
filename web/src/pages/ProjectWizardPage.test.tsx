@@ -21,10 +21,10 @@ beforeEach(() => {
   access.areas = ["tickets"];
 });
 
-// Step components are exercised in full by their own test files (WizardRepositoryStep.test.tsx,
+// Step components are exercised in full by their own test files (WizardSetupRepositoryStep.test.tsx,
 // WizardServiceStep.test.tsx, WizardEnvStep.test.tsx, WizardReachStep.test.tsx); this file only cares about the
 // stepper mechanics ProjectWizardPage owns: which rung the URL opens, what a skip records, what a step opened early
-// says it needs, and the doors that arrive with a project.
+// says it needs, what Deploy and Service read from the attached repository, and the doors that arrive with a project.
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn() }));
 
 // The person's GitHub link is connected throughout, so each test's GET mock stays about the wizard.
@@ -99,10 +99,9 @@ const renderPage = (path: string | string[]) => {
   );
 };
 
-const rung = (label: string) =>
-  within(screen.getByRole("list", { name: "Project wizard steps" }))
-    .getAllByRole("listitem")
-    .find((item) => item.textContent?.includes(label))!;
+const rungs = () => within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem");
+const rung = (label: string) => rungs().find((item) => item.textContent?.startsWith(label))!;
+const railWord = (word: string) => within(screen.getByRole("navigation", { name: "Project wizard" })).getByText(word);
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
@@ -142,17 +141,17 @@ describe("ProjectWizardPage", () => {
     expect(await screen.findByText(landing)).toBeInTheDocument();
   });
 
-  it("goes back from the service rung to the repository rung while no stack exists yet", async () => {
+  it("goes back from the service rung to the deploy rung while no stack exists yet", async () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/service");
-    await screen.findByRole("heading", { name: "Service" });
+    await screen.findByRole("heading", { name: "Where should it run?" });
 
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(rung("Repository")).toHaveAttribute("data-state", "current");
+    expect(rung("Deploy")).toHaveAttribute("data-state", "current");
   });
 
   it("shows the service a revisited Service step made, instead of making a second", async () => {
@@ -180,10 +179,10 @@ describe("ProjectWizardPage", () => {
 
     await user.type(await screen.findByLabelText("Project name"), "Backend");
     await user.type(screen.getByLabelText("Prefix"), "BE");
-    await user.click(screen.getByRole("button", { name: "Continue to Who's in it" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { people: "skipped" } });
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
@@ -192,10 +191,10 @@ describe("ProjectWizardPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/reach?project=p-1");
 
-    expect(await screen.findByText("Reach gives a service a hostname. There's no service yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Create the service first.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Go to Service" }));
 
-    expect(await screen.findByText("A service builds from a repository. Pick one first.")).toBeInTheDocument();
+    expect(await screen.findByText("Pick a repository first.")).toBeInTheDocument();
     expect(rung("Service")).toHaveAttribute("data-state", "current");
   });
 
@@ -208,8 +207,8 @@ describe("ProjectWizardPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(screen.getByRole("heading", { name: "Service" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Reach" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Where should it run?" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Backend is ready" })).not.toBeInTheDocument();
   });
 
   describe("leaving Repository without a service", () => {
@@ -236,7 +235,7 @@ describe("ProjectWizardPage", () => {
       await screen.findByLabelText("Search repositories");
       await user.click(screen.getByRole("button", { name: /No repository yet/ }));
 
-      expect(await screen.findByText("Backend is ready for docs and tickets.")).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
       expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
         finished: undefined,
         steps: { repository: "skipped", service: "skipped", reach: "skipped", branches: "skipped" },
@@ -247,7 +246,7 @@ describe("ProjectWizardPage", () => {
       expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", { finished: true });
     });
 
-    it("Attach without deploying attaches the scanned repository, makes no service, and ends on Done waiting to deploy it", async () => {
+    it("Continue attaches the picked repository without scanning it, and Deploy then reads it, so Later ends on Done waiting to deploy it", async () => {
       mocks.post.mockImplementation(async (url: string) => {
         if (url === "/api/repositories/scan") {
           return { data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "portal", services: [] }] } };
@@ -261,40 +260,48 @@ describe("ProjectWizardPage", () => {
 
       await user.type(await screen.findByPlaceholderText("Search repositories…"), "portal");
       await user.click(await screen.findByRole("button", { name: /acme\/portal/ }));
-      await user.click(await screen.findByRole("button", { name: "Attach without deploying" }));
+      expect(mocks.post).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: "Continue" }));
 
-      expect(await screen.findByText(/is attached; deploy it whenever it's ready/)).toHaveTextContent(
-        "acme/portal is attached; deploy it whenever it's ready.",
-      );
+      expect(await screen.findByRole("radio", { name: /Deploy now/ })).toBeChecked();
       expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", { owner: "acme", name: "portal", connector_id: "github" });
-      expect(mocks.post).toHaveBeenCalledTimes(2);
-      expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
+      expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "acme", name: "portal", workspace_id: "ws-1" });
+      await user.click(screen.getByRole("radio", { name: /Later/ }));
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
+      expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", {
         finished: undefined,
         steps: { repository: "done", service: "skipped", reach: "skipped", branches: "skipped" },
       });
-      expect(screen.getByText("not started")).toBeInTheDocument();
+      expect(screen.getByText("later")).toBeInTheDocument();
     });
   });
 
-  it("can skip Environment before a service exists and advances to Reach", async () => {
-    mockProjectInSetup();
-    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", env: "skipped" }) });
+  it.each([
+    ["service", { project: "done" }, { service: "skipped", reach: "skipped", branches: "skipped" }],
+    ["env", { project: "done" }, { env: "skipped", service: "skipped", reach: "skipped", branches: "skipped" }],
+  ])("skipping %s with no service made skips every deploy step with it and lands on Done", async (step, steps, recorded) => {
+    mockProjectInSetup(steps);
+    mocks.put.mockResolvedValue({ data: inSetup({ ...steps, ...recorded }) });
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
-    store.setScanResult({ default_branch: "main", candidates: [], env_keys: ["PORT"] });
+    if (step === "env") store.setScanResult({ default_branch: "main", candidates: [], env_keys: ["PORT"] });
     const user = userEvent.setup();
-    renderPage("/acme/wizard/project/env?project=p-1");
+    renderPage(`/acme/wizard/project/${step}?project=p-1`);
 
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
-    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { env: "skipped" } });
+    expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
+    expect(mocks.put).toHaveBeenCalledTimes(1);
+    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: recorded });
+    expect(screen.queryByText("Create the service first.")).not.toBeInTheDocument();
   });
 
   it.each([
-    { finished: false, query: "", title: "Continue setup" },
-    { finished: true, query: "&revisit=1", title: "Project setup" },
-  ])("opens a recorded service from another device with setup finished=$finished", async ({ finished, query, title }) => {
+    { finished: false, query: "" },
+    { finished: true, query: "&revisit=1" },
+  ])("opens a recorded service from another device with setup finished=$finished", async ({ finished, query }) => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1")
         return { data: { ...project, setup: { finished, stack_id: "stack-1", steps: { project: "done", repository: "done", service: "done" } } } };
@@ -305,7 +312,7 @@ describe("ProjectWizardPage", () => {
     renderPage(`/acme/wizard/project/service?project=p-1${query}`);
 
     expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
-    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(railWord("Project setup")).toBeInTheDocument();
     expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 
@@ -331,22 +338,8 @@ describe("ProjectWizardPage", () => {
     await pickOption(user, "Machine", "prod");
     await user.click(screen.getByRole("button", { name: "Create & deploy" }));
 
-    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Give it a domain" })).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(1);
-    expect(mocks.put).not.toHaveBeenCalled();
-  });
-
-  it("says the repository needs scanning again when setup recorded it but this browser holds no scan, and jumps there without undoing it", async () => {
-    mockProjectInSetup({ project: "done", repository: "done" });
-    const user = userEvent.setup();
-    renderPage("/acme/wizard/project/service?project=p-1");
-
-    expect(await screen.findByText(/scan isn't loaded on this device/)).toBeInTheDocument();
-    expect(screen.queryByText(/Pick one first/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Go to Repository" }));
-
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    expect(rung("Repository")).toHaveAttribute("data-state", "current");
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
@@ -370,11 +363,11 @@ describe("ProjectWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create & deploy" }));
     await screen.findByText(/api runs on/);
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole("button", { name: "Continue to Reach" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
-    expect(screen.getByRole("heading", { name: "Service" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue to Reach" }));
-    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Where should it run?" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "Give it a domain" })).toBeInTheDocument();
     expect(mocks.put).toHaveBeenCalledTimes(3);
     expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", expect.objectContaining({
       steps: { service: "done" }, stack_id: "stack-1", env_keys: [],
@@ -405,12 +398,12 @@ describe("ProjectWizardPage", () => {
     expect(rung("Environment")).toHaveAttribute("data-state", "current");
     await user.click(await screen.findByRole("button", { name: "Save & deploy" }));
 
-    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Give it a domain" })).toBeInTheDocument();
     expect(mocks.patch).toHaveBeenCalledWith("/api/stacks/stack-1", expect.objectContaining({ env: { PORT: "8080", EXTRA: "1" } }));
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "release" }));
   });
 
-  it("keeps restored service context when Repository scans another repository", async () => {
+  it("keeps restored service context when Repository picks another repository", async () => {
     const setup = { finished: false, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done", service: "done" } };
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: { ...project, setup } };
@@ -431,14 +424,17 @@ describe("ProjectWizardPage", () => {
     await user.click(within(rung("Repository")).getByRole("button"));
     await user.type(await screen.findByPlaceholderText("Search repositories…"), "other");
     await user.click(await screen.findByRole("button", { name: /acme.*other/ }));
-    await user.click(await screen.findByRole("button", { name: "Deploy it" }));
-    await screen.findByRole("heading", { name: "Service" });
-    await user.click(screen.getByRole("button", { name: "Continue to Environment" }));
-    expect(await screen.findByLabelText("PORT")).toHaveValue("8000");
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "Deploy it now?" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    const port = await screen.findByLabelText("PORT");
+    expect(port).toHaveValue("8000");
     expect(screen.queryByLabelText("OTHER_KEY")).not.toBeInTheDocument();
+    await user.type(port, "1");
     await user.click(await screen.findByRole("button", { name: "Save & deploy" }));
-    await screen.findByRole("heading", { name: "Reach" });
+    await screen.findByRole("heading", { name: "Give it a domain" });
     expect(mocks.post).toHaveBeenLastCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "release" }));
+    expect(mocks.post).not.toHaveBeenCalledWith("/api/repositories/scan", expect.anything());
     for (const [, body] of mocks.put.mock.calls) expect(body.env_keys ?? ["PORT"]).toEqual(["PORT"]);
   });
 
@@ -464,17 +460,18 @@ describe("ProjectWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
     await screen.findByText(/api runs on/);
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
-    const target = action === "Finish" ? "Done" : "Info";
+    const target = action === "Finish" ? "Done" : "Name";
+    const heading = action === "Finish" ? "Backend is ready" : "Name your project";
     await user.click(within(rung(target)).getByRole("button"));
     await user.click(await screen.findByRole("button", { name: action }));
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole("heading", { name: target })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     expect(useProjectWizardStore.getState().stackId).toBe("stack-1");
     await user.click(screen.getByRole("button", { name: action }));
     if (action === "Finish") {
       await screen.findByText("project board");
     } else {
-      await screen.findByRole("heading", { name: "Service" });
+      await screen.findByRole("heading", { name: "Where should it run?" });
     }
     expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", expect.objectContaining({
       stack_id: "stack-1", env_keys: ["PORT"], steps: { service: "done" },
@@ -485,44 +482,36 @@ describe("ProjectWizardPage", () => {
 
   it("redirects an unknown step back to the project step", async () => {
     renderPage("/acme/wizard/project/nonsense");
-    expect(await screen.findByRole("heading", { name: "Info" })).toBeInTheDocument();
-    expect(rung("Info")).toHaveAttribute("data-state", "current");
+    expect(await screen.findByRole("heading", { name: "Name your project" })).toBeInTheDocument();
+    expect(rung("Name")).toHaveAttribute("data-state", "current");
   });
 
-  it("opens the project rung by default with nothing after it visited and no way to skip it", async () => {
+  it("opens the project rung by default with nothing after it visited, the deploy steps folded into Deploy, and no way to skip it", async () => {
     renderPage("/acme/wizard/project/project");
-    await screen.findByRole("heading", { name: "Info" });
+    await screen.findByRole("heading", { name: "Name your project" });
     expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
-    expect(rung("Info")).toHaveAttribute("data-state", "current");
-    for (const label of ["Who's in it", "Repository", "Service", "Reach", "Deploy branches", "Done"]) {
+    expect(railWord("New project")).toBeInTheDocument();
+    expect(rung("Name")).toHaveAttribute("data-state", "current");
+    for (const label of ["People", "Repository", "Deploy", "Done"]) {
       expect(rung(label)).toHaveAttribute("data-state", "unvisited");
     }
-    expect(within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem")).toHaveLength(7);
-    expect(await screen.findByRole("heading", { name: /^create your first project$/i })).toBeInTheDocument();
+    expect(rungs().map((item) => item.textContent)).toEqual(["Name", "People", "Repository", "Deploy", "Done"]);
   });
 
-  it("titles the project rung New project once the workspace has one", async () => {
+  it("door 2: preselects the project from ?project= and opens Repository, with a rail that shows only what this run passed", async () => {
     mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/projects/p-1")
+        return { data: { ...project, setup: { finished: false, steps: { project: "done", people: "done", reach: "skipped" } } } };
       return { data: [] };
     });
-    renderPage("/acme/wizard/project/project");
-    await screen.findByRole("heading", { name: "Info" });
-    expect(await screen.findByRole("heading", { name: /^new project$/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /first project/i })).not.toBeInTheDocument();
-  });
+    renderPage("/acme/wizard/project/repository?project=p-1&add=1");
+    expect(await screen.findByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
 
-  it("door 2: preselects the project from ?project= and opens the repository rung with Info as the project records it", async () => {
-    mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/projects/p-1") return { data: { ...project, setup: { finished: true, steps: { project: "done" } } } };
-      return { data: [] };
-    });
-    renderPage("/acme/wizard/project/repository?project=p-1");
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: /^add a service$/i })).toBeInTheDocument();
-
-    await vi.waitFor(() => expect(rung("Info")).toHaveAttribute("data-state", "done"));
+    expect(await within(screen.getByRole("navigation", { name: "Project wizard" })).findByText("Backend")).toBeInTheDocument();
+    expect(railWord("New service")).toBeInTheDocument();
+    expect(rungs().map((item) => item.textContent)).toEqual(["Repository", "Service", "Domain", "Branches", "Done"]);
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
+    for (const label of ["Service", "Domain", "Branches", "Done"]) expect(rung(label)).toHaveAttribute("data-state", "unvisited");
   });
 
   describe("adding a service while a repository waits to deploy", () => {
@@ -550,11 +539,11 @@ describe("ProjectWizardPage", () => {
       mockWaiting(repos);
       renderPage(`/acme/wizard/project/repository?project=p-1&add=1${query}`);
 
-      expect(await screen.findByRole("heading", { name: "Service" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Where should it run?" })).toBeInTheDocument();
       const [owner, name] = picked.split("/");
       expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner, name, workspace_id: "ws-1" });
+      expect(mocks.post).toHaveBeenCalledTimes(1);
       expect(useProjectWizardStore.getState().repository?.full_name).toBe(picked);
-      expect(screen.getByText(`Deploy ${picked} as a new service. The project's setup stays as it is.`)).toBeInTheDocument();
     });
 
     it("asks which one when several wait and the link names none", async () => {
@@ -565,8 +554,91 @@ describe("ProjectWizardPage", () => {
       await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/projects/p-1/repos"));
       await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "p-1" } }));
       expect(mocks.post).not.toHaveBeenCalled();
-      expect(screen.getByRole("heading", { name: "Repository" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
     });
+  });
+
+  describe("a project whose attached repository was never deployed", () => {
+    const portal = { owner: "acme", name: "portal", full_name: "acme/portal", connector_id: "github", role: "app" };
+    const setup = { finished: false, steps: { project: "done", people: "done", repository: "done", service: "skipped", reach: "skipped", branches: "skipped" } };
+
+    beforeEach(() => {
+      access.areas = ["tickets", "projects", "stacks"];
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url === "/api/projects/p-1") return { data: { ...project, setup } };
+        if (url === "/api/projects/p-1/repos") return { data: [portal] };
+        if (url === "/api/machines/deployable") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+        return { data: [] };
+      });
+      mocks.post.mockResolvedValue({
+        data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "portal", services: [] }] },
+      });
+      mocks.put.mockResolvedValue({ data: { ...project, setup } });
+    });
+
+    it("scans the attached repository when Service opens, with no scan held by this browser", async () => {
+      renderPage("/acme/wizard/project/service?project=p-1&revisit=1");
+
+      expect(await screen.findByRole("button", { name: "Create & deploy" })).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "acme", name: "portal", workspace_id: "ws-1" });
+      expect(screen.queryByText(/scan isn't loaded/)).not.toBeInTheDocument();
+    });
+
+    it("folds Service, Domain and Branches under Deploy while it is open, and shows Deploy as later once it is not", async () => {
+      renderPage("/acme/wizard/project/deploy?project=p-1&revisit=1");
+
+      await screen.findByRole("radio", { name: /Deploy now/ });
+      expect(rungs().map((item) => item.textContent)).toEqual([
+        "Namedone", "Peopledone", "Repositorydone", "Deploy", "Serviceskipped", "Domainskipped", "Branchesskipped", "Done",
+      ]);
+    });
+
+    it("shows Deploy as later on the rail, without the sub-steps, once the wizard is on Done", async () => {
+      renderPage("/acme/wizard/project/done?project=p-1&revisit=1");
+
+      await vi.waitFor(() => expect(rungs().map((item) => item.textContent)).toEqual(["Namedone", "Peopledone", "Repositorydone", "Deploylater", "Done"]));
+    });
+
+    it("says why the read failed and leaves Go to Repository and Later as the ways on", async () => {
+      mocks.post.mockRejectedValue(new Error("offline"));
+      const user = userEvent.setup();
+      renderPage("/acme/wizard/project/deploy?project=p-1&revisit=1");
+
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Go to Repository" })).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenCalledTimes(1);
+      await user.click(screen.getByRole("button", { name: "Later" }));
+
+      expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
+    });
+
+    it("offers Deploy now when Deploy opens, and Later lands on Done without a service", async () => {
+      const user = userEvent.setup();
+      renderPage("/acme/wizard/project/deploy?project=p-1&revisit=1");
+
+      expect(await screen.findByRole("radio", { name: /Deploy now/ })).toBeChecked();
+      expect(mocks.post).toHaveBeenCalledTimes(1);
+      await user.click(screen.getByRole("radio", { name: /Later/ }));
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
+      expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
+        finished: undefined,
+        steps: { repository: "done", service: "skipped", reach: "skipped", branches: "skipped" },
+      });
+    });
+  });
+
+  it("door 2: Service has no Skip for now, since the door exists to make one, and Back is the way out", async () => {
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    renderPage("/acme/wizard/project/service?project=p-1&add=1");
+
+    await screen.findByRole("heading", { name: "Where should it run?" });
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
+    expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 
   it("door 3: preselects the project from ?stack= and opens the repository rung", async () => {
@@ -577,9 +649,9 @@ describe("ProjectWizardPage", () => {
       return { data: [] };
     });
     renderPage("/acme/wizard/project/repository?stack=stack-1");
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^attach a repository$/i })).toBeInTheDocument();
-
+    expect(await screen.findByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
+    expect(railWord("Attach repository")).toBeInTheDocument();
+    expect(rungs().map((item) => item.textContent)).toEqual(["Repository", "Attach", "Branches", "Done"]);
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
   });
 });

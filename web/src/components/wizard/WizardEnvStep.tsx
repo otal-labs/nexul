@@ -6,6 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ActionButton } from "@/components/action/ActionButton";
+import { Button } from "@/components/ui/button";
 import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
 import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
@@ -30,6 +31,7 @@ export const WizardEnvStep = ({ stackId, ...props }: WizardEnvStepProps) => {
     <div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load the stack." />}
+      {error && <WizardFooter onBack={props.onBack} skip={props.onSkip && <WizardSkipLink onClick={props.onSkip} />} />}
       {stack && <WizardEnvForm key={stack.id} stack={stack} {...props} />}
     </div>
   );
@@ -40,8 +42,8 @@ interface WizardEnvFormProps extends Omit<WizardEnvStepProps, "stackId"> {
 }
 
 const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvFormProps) => {
-  const { envValues } = useProjectWizardStore(
-    useShallow((s) => ({ envValues: s.envValues })),
+  const { envValues, madeThisRun } = useProjectWizardStore(
+    useShallow((s) => ({ envValues: s.envValues, madeThisRun: !!s.stackId })),
   );
   const initialValues = { ...stack.env, ...envValues };
   const setEnvValues = useProjectWizardStore((s) => s.setEnvValues);
@@ -54,13 +56,17 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
     defaultValues: Object.fromEntries(envKeys.map((key) => [key, initialValues[key] ?? ""])),
   });
   const [mode, setMode] = useState<EnvMode>("fields");
+  const [switched, setSwitched] = useState(false);
   const [text, setText] = useState("");
   // Keys beyond the detected ones have no field; they ride along in Paste and are still saved.
   const [extras, setExtras] = useState(() => Object.fromEntries(Object.entries(initialValues).filter(([key]) => !envKeys.includes(key))));
   const parsed = useMemo(() => parseEnvFile(text), [text]);
   const pasteBlocked = mode === "paste" && parsed.invalidLines.length > 0;
+  // A service from an earlier run only redeploys when a value changed; this run's own waits here for its first deploy.
+  const unchanged = !madeThisRun && !form.formState.isDirty && !switched;
 
   const changeMode = (next: EnvMode) => {
+    setSwitched(true);
     if (next === "paste") setText(formatEnvFile({ ...extras, ...form.getValues() }, [...envKeys, ...Object.keys(extras)]));
     if (next === "fields") {
       form.reset(Object.fromEntries(envKeys.map((key) => [key, parsed.values[key] ?? ""])));
@@ -95,7 +101,12 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        {deployTo && (
+        {unchanged && (
+          <Button type="button" onClick={onDone}>
+            Continue
+          </Button>
+        )}
+        {!unchanged && deployTo && (
           <ActionButton permission={["machines:deploy", "stacks:write", "deploys:write"]} answer={deployTo} projectId={stack.project_id} verb="save the environment and deploy" type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
             Save & deploy
           </ActionButton>
