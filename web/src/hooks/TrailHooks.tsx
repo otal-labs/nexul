@@ -47,11 +47,13 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
     enabled: playId !== "" && projectId !== "",
   });
 
-// Target id to trail id; waiting holds the subset stopped on a question to the user, started each run's start time.
+// Target id to trail id; waiting holds the subset stopped on a question to the user, started each run's start time,
+// queued the targets with a run waiting in the queue, to its queue item id.
 interface ActiveTargets {
   active: Record<string, string>;
   waiting: Record<string, string>;
   started: Record<string, string>;
+  queued: Record<string, string>;
 }
 
 // One request per project and target type, named by the project so the URL stays one size however big the board.
@@ -60,7 +62,7 @@ const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefin
     queryKey: [getActiveTrailsKey, targetType, projectId],
     queryFn: async (): Promise<ActiveTargets> => {
       const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, project_id: projectId } });
-      return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {} };
+      return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {}, queued: data.queued ?? {} };
     },
     enabled: !!projectId,
   });
@@ -244,6 +246,10 @@ export const useTicketRunState = (projectId: string, ticketId: string): TrailSta
 // When the ticket's run started, for the card's timer; undefined until the batch answer carries it.
 export const useTicketRunStartedAt = (projectId: string, ticketId: string): string | undefined =>
   useFetchActiveTrails(projectId).data?.started[ticketId];
+
+// Whether the ticket has a run waiting in the queue, for the card's clock.
+export const useTicketRunQueued = (projectId: string, ticketId: string): boolean =>
+  useFetchActiveTrails(projectId).data?.queued[ticketId] !== undefined;
 
 // A swimlane header's question: how many of its tickets have a run going, and how many wait on an answer.
 export const useTicketRunCounts = (projectId: string | undefined, ticketIds: string[]) => {

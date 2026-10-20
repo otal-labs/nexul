@@ -46,17 +46,22 @@ describe("useFetchPlayQueue", () => {
 });
 
 describe("playQueueFollower", () => {
-  it("refetches only the queue of the target and the play a frame names", async () => {
+  it("refetches only the queue of the target, the play, and the board of the project a frame names", async () => {
     const client = seeded([
       [["getPlayQueue", "ticket", "t-1"], playQueue()],
       [["getPlayQueue", "ticket", "t-2"], playQueue()],
       [["getPlayQueued", "play-1"], []],
       [["getPlayQueued", "play-2"], []],
+      [["getActiveTrails", "ticket", "p-1"], {}],
+      [["getActiveTrails", "ticket", "p-2"], {}],
     ]);
     await followFrame(playQueueFollower, "play.queue_updated", queueItem({ status: "skipped" }), client);
     expect(
-      [["getPlayQueue", "ticket", "t-1"], ["getPlayQueue", "ticket", "t-2"], ["getPlayQueued", "play-1"], ["getPlayQueued", "play-2"]].map((key) => isStale(client, key)),
-    ).toEqual([true, false, true, false]);
+      [
+        ["getPlayQueue", "ticket", "t-1"], ["getPlayQueue", "ticket", "t-2"], ["getPlayQueued", "play-1"], ["getPlayQueued", "play-2"],
+        ["getActiveTrails", "ticket", "p-1"], ["getActiveTrails", "ticket", "p-2"],
+      ].map((key) => isStale(client, key)),
+    ).toEqual([true, false, true, false, true, false]);
 
     await followFrame(playQueueFollower, "play.queue_resumed", { target_type: "ticket", target_id: "t-2", resumed_by: "u-1" }, client);
     expect(isStale(client, ["getPlayQueue", "ticket", "t-2"])).toBe(true);

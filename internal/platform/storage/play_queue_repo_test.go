@@ -135,6 +135,14 @@ func TestPlayQueueRepo_DueByPriorityThenAge(t *testing.T) {
 	_, ok, err = s.PlayQueue.NextNotBefore(ctx, at.Add(3*time.Hour))
 	require.NoError(t, err)
 	assert.False(t, ok)
+
+	onTargets, err := s.PlayQueue.ListQueuedByTargets(ctx, plays.TargetTicket, []string{"t-1", "t-3", "t-9"})
+	require.NoError(t, err)
+	require.Len(t, onTargets, 2)
+	assert.Equal(t, []string{"q-high-old", "q-low"}, []string{onTargets[0].ID, onTargets[1].ID})
+	onTargets, err = s.PlayQueue.ListQueuedByTargets(ctx, plays.TargetTicket, nil)
+	require.NoError(t, err)
+	assert.Empty(t, onTargets)
 }
 
 func TestPlayQueueRepo_CountsStartedRunsSinceTheLaterOfTheDayAndAResume(t *testing.T) {

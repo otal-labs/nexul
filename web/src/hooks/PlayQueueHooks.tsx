@@ -7,6 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
+import { getActiveTrailsKey } from "@/hooks/TrailHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
@@ -106,8 +107,13 @@ export const useResumeAutoPlays = () => {
 // play.queued and play.queue_updated carry the item; play.queue_resumed names only its target.
 type QueueFrame = Pick<PlayQueueItem, "target_type" | "target_id">;
 
+// The board's batch answer names the queued targets, so a queue frame refreshes it too.
 export const playQueueFollower: LiveFollower = {
-  ...followEach(["play.queued", "play.queue_updated"], (item: PlayQueueItem, { client }) => refreshQueues(client, item)),
+  ...followEach(["play.queued", "play.queue_updated"], (item: PlayQueueItem, { client }) =>
+    Promise.all([
+      refreshQueues(client, item),
+      client.invalidateQueries({ queryKey: [getActiveTrailsKey, item.target_type, item.project_id], exact: true }),
+    ])),
   "play.queue_resumed": ({ target_type, target_id }: QueueFrame, { client }) =>
     client.invalidateQueries({ queryKey: [getPlayQueueKey, target_type, target_id], exact: true }),
 };

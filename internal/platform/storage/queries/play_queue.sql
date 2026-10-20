@@ -18,6 +18,10 @@ WHERE id = ? AND status = 'queued';
 -- name: ListPlayQueueByTarget :many
 SELECT * FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC;
 
+-- name: ListQueuedPlayQueueByTargets :many
+SELECT * FROM play_queue WHERE status = 'queued' AND target_type = ? AND target_id IN (sqlc.slice('ids'))
+ORDER BY priority DESC, queued_at, id;
+
 -- name: ListQueuedPlayQueueByPlay :many
 SELECT * FROM play_queue
 WHERE status = 'queued' AND play_id = sqlc.arg(play_id)

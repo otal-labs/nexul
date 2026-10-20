@@ -49,6 +49,8 @@ type QueueRepo interface {
 	PickQueueItem(ctx context.Context, it *QueueItem, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
+	// ListQueuedByTargets returns the queued items on any of the given targets, highest priority then oldest first.
+	ListQueuedByTargets(ctx context.Context, targetType TargetType, targetIDs []string) ([]*QueueItem, error)
 	// ListQueuedByPlay returns a play's queued items in the projects of scope, highest priority then oldest first.
 	ListQueuedByPlay(ctx context.Context, playID string, scope ProjectScope) ([]*QueueItem, error)
 	// Resume restarts the target's count of automatic runs from at.

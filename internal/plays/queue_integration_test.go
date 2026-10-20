@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -414,6 +415,34 @@ func TestDispatch_OneRunPerTicket(t *testing.T) {
 	r.endRuns(t, "t-1")
 	r.dispatch(t)
 	assert.Equal(t, []plays.QueueStatus{plays.QueueStarted, plays.QueueStarted}, statuses(r.queued(t, "t-1")))
+}
+
+func TestQueuedTargets_NamesTicketsWithARunWaiting_ToThoseWhoSeeIt(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	review := r.play(t, "Review it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.autoPlay(t, review.ID, plays.MomentTicketUnblocked, func(a *plays.AutoPlay) { a.RunOn = plays.RunOnTester })
+	r.ticket("t-1")
+	r.ticket("t-2")
+	r.unblock(t, "t-1")
+	r.dispatch(t)
+	items := r.queued(t, "t-1")
+	waiting := items[slices.IndexFunc(items, func(it *plays.QueueItem) bool { return it.Status == plays.QueueQueued })]
+
+	got, err := r.Runner.QueuedTargets(as(t.Context(), dev), plays.TargetTicket, []string{"t-1", "t-2"})
+	require.NoError(t, err)
+	require.Len(t, got, 1, "a started run is not waiting, and t-2 has none")
+	assert.Equal(t, waiting.ID, got["t-1"].ID)
+
+	got, err = r.Runner.QueuedTargets(as(t.Context(), "stranger"), plays.TargetTicket, []string{"t-1"})
+	require.NoError(t, err)
+	assert.Empty(t, got, "a caller who cannot see the play gets no clock")
+
+	r.HideProject(tester, project)
+	got, err = r.Runner.QueuedTargets(as(t.Context(), tester), plays.TargetTicket, []string{"t-1"})
+	require.NoError(t, err)
+	assert.Empty(t, got, "the run's own person loses it with the project")
 }
 
 func TestDispatch_RecheckAtTheFront(t *testing.T) {

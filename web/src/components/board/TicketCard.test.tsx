@@ -197,6 +197,25 @@ describe("TicketCard", () => {
     expect(screen.queryByLabelText("Play waiting for an answer")).not.toBeInTheDocument();
   });
 
+  it("shows a clock while a run waits in the queue, and the spinner instead once one runs", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
+      if (url === "/api/tickets") return { data: [ticket("t-1", "Fix login", "open")] };
+      if (url === "/api/plays/runs/active") return { data: { active: {}, queued: { "t-1": "q-1" } } };
+      return { data: [] };
+    });
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(await screen.findByLabelText("Play queued")).toBeInTheDocument();
+
+    act(() =>
+      usePlayRunStore.getState().applyFrame({
+        trail_id: "tr-1", play_id: "play-1", target_type: "ticket", target_id: "t-1", state: "running", activity: null, ended_at: null, last_error: "",
+      }),
+    );
+    expect(screen.getByLabelText("Play running")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Play queued")).not.toBeInTheDocument();
+  });
+
   it("shows no chat indicator when the ticket has no thread", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/tickets") return { data: [ticket("t-1", "Fix login", "open")] };

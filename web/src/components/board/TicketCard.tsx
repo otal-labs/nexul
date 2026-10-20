@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
+import { CircleHelp, Clock, LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -19,7 +19,7 @@ import { getProjectKey, useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import { useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
+import { useTicketRunQueued, useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
@@ -47,6 +47,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const hasThread = threadIndicators?.[ticket.id] === true;
   const runState = useTicketRunState(ticket.project_id, ticket.id);
   const runStartedAt = useTicketRunStartedAt(ticket.project_id, ticket.id);
+  const runQueued = useTicketRunQueued(ticket.project_id, ticket.id);
   const prefix = project?.prefix ?? "";
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
@@ -81,6 +82,9 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   );
   const run = (
     <>
+      {runState === undefined && runQueued && (
+        <Clock className="size-3 shrink-0 text-info" role="img" aria-label="Play queued" />
+      )}
       {runState === "waiting" && (
         <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
       )}
