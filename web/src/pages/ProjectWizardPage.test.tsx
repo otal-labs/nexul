@@ -141,6 +141,22 @@ describe("ProjectWizardPage", () => {
     expect(await screen.findByText(landing)).toBeInTheDocument();
   });
 
+  it.each([
+    { name: "Finish later from a project in setup", project: true, label: "Finish later", landing: "project board" },
+    { name: "Exit before a project exists", project: false, label: "Exit", landing: "board" },
+  ])("leaves mid-wizard by $name, landing on the board instead of the step before", async ({ project, label, landing }) => {
+    if (project) {
+      mockProjectInSetup({ project: "done" });
+      useProjectWizardStore.getState().setProjectId("p-1", "Backend");
+    }
+    const user = userEvent.setup();
+    renderPage(["/acme/wizard/project/project", "/acme/wizard/project/people"]);
+
+    await user.click(await screen.findByRole("button", { name: label }));
+
+    expect(await screen.findByText(landing)).toBeInTheDocument();
+  });
+
   it("goes back from the service rung to the deploy rung while no stack exists yet", async () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
