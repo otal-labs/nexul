@@ -330,6 +330,17 @@ describe("PlayRunDialog", () => {
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
   });
 
+  it("shows a loader instead of the linked project's id, and keeps Run disabled, while the computer's projects load", async () => {
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
+    const mocked = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/pairing/computers/c-1/projects" ? new Promise(() => {}) : mocked(url)));
+    renderDialog();
+
+    expect(await screen.findByText("Loading where it runs")).toBeInTheDocument();
+    expect(screen.queryByText(/t3-app/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
+  });
+
   it("changes where from the run, which sends the new place to be saved", async () => {
     const user = userEvent.setup();
     presence["c-2"] = "connected";
@@ -437,7 +448,7 @@ describe("PlayRunDialog", () => {
       renderClarify(clarification([question("a"), question("b"), question("c", { skipped: true }), question("d", { text: "Staff" })]));
 
       expect(await screen.findByText("2 questions in Round 2 are still unanswered")).toBeInTheDocument();
-      expect(await screen.findByRole("button", { name: "Run Clarify via AI" })).toBeEnabled();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run Clarify via AI" })).toBeEnabled());
     });
 
     it("says nothing once every question of the newest round is answered or skipped", async () => {

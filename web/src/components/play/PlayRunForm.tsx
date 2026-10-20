@@ -62,8 +62,8 @@ export const PlayRunForm = ({
   );
   const asking = !linked || changing || isNeedsLocationRefusal(runPlay.error);
   // Shares RunWhereSection's cache, so this adds no request.
-  const projectsLoading = useFetchHarnessProjects(asking ? where.computer_id : "").isLoading;
-  const whereUnready = asking && (where.computer_id === "" || where.harness_project_id === "" || projectsLoading);
+  const projectsLoading = useFetchHarnessProjects(where.computer_id).isLoading;
+  const whereUnready = projectsLoading || (asking && (where.computer_id === "" || where.harness_project_id === ""));
 
   // Another computer has its own providers, so the model goes back to that computer's defaults.
   const pickWhere = useCallback((next: RunWhere) => {

@@ -58,8 +58,8 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
 };
 
 export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeRequested }: RunWhereSectionProps) => {
-  const { data: computers } = useListComputers();
-  const { data: projects } = useFetchHarnessProjects(value.computer_id);
+  const { data: computers, isPending: computersPending } = useListComputers();
+  const { data: projects, isLoading: projectsLoading } = useFetchHarnessProjects(value.computer_id);
   const computer = computers?.find((c) => c.id === value.computer_id)?.name ?? value.computer_id;
   const project = projects?.find((p) => p.id === value.harness_project_id)?.title ?? value.harness_project_id;
   const note = firstRun
@@ -69,7 +69,8 @@ export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeReq
   return (
     <section className="space-y-2">
       <h3 className={microheaderClass}>Where to run</h3>
-      {!asking && (
+      {!asking && (computersPending || projectsLoading) && <LoadingDisplay label="Loading where it runs" className="justify-start p-0" />}
+      {!asking && !computersPending && !projectsLoading && (
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
             {computer} · {project}
