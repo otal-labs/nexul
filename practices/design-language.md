@@ -598,7 +598,7 @@ with the composer at its foot. The body sits open on the panel, no card, held
 to a 68ch measure; a card around it only framed the empty editing space. The
 rail joins the body once the panel is 52rem wide, under a hairline above it
 until then. A ticket opened inside
-another page (the Inbox split view) keeps the Thread under the body. The rail
+another page (the Inbox split view) fills its detail pane with the same tabs. The rail
 is a run of sections, each a mono uppercase microheader with its one action
 trailing as a ghost `+`, compact rows, and a muted one-line sentence
 when empty ("No bugs reported."): Properties, Plays, Development, Reviews,

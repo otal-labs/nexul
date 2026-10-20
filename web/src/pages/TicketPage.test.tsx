@@ -198,12 +198,17 @@ describe("TicketPage sections", () => {
     expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
   });
 
-  it("keeps the thread under the body, with no tabs, inside another page", async () => {
+  it("splits a ticket opened inside another page into the same Ticket and Thread tabs", async () => {
+    const user = userEvent.setup();
     mockTicket();
     renderPage("/tickets/t-1", "t-1");
-    expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Ticket" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Add the runner.")).toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start thread" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Thread" }));
+    expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
+    expect(screen.queryByText("Add the runner.")).not.toBeInTheDocument();
   });
 
   it("puts Plays directly under Properties, above Development", async () => {

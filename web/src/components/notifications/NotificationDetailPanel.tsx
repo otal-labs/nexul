@@ -17,7 +17,7 @@ interface NotificationDetailPanelProps {
 }
 
 export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelProps) => (
-  <div>
+  <div className="h-full">
     {selected && selected.subject_type === SubjectType.Ticket && <TicketPage ticketId={selected.subject_id} />}
     {selected && selected.subject_type === SubjectType.Doc && (
       <Suspense fallback={<LoadingDisplay />}>
