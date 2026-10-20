@@ -693,8 +693,9 @@ led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
-Project wizard. The `/wizard/project/<step>` flow sits on the quiet showcase surface inside `max-w-6xl`, a rail
-beside the step like the welcome wizard's (13rem, 15rem from 56rem, a hairline `border-r`, from a 42rem container).
+Project wizard. The `/wizard/project/<step>` flow sits on the quiet showcase surface inside `max-w-6xl`, under the
+welcome wizard's top bar (the logo and a ghost "Finish later", "Exit" before setup has a project and in the other doors,
+which lands on the project's board), a rail beside the step like the welcome wizard's (13rem, 15rem from 56rem, a hairline `border-r`, from a 42rem container).
 The rail is a microheader naming the door ("New project", "Project setup", "New service", "Attach repository") over
 the project's name in mono once there is one, then one project-wizard node per step (Name, People, Repository, Deploy,
 Service, Environment when the scan found keys, Domain, Branches, Done), each a button, so any step opens at any time.
