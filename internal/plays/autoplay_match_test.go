@@ -123,6 +123,8 @@ func TestMomentOf(t *testing.T) {
 		{"between two done columns", "ticket.status_changed", `{"ticket":{"id":"t-1"},"from":"st-done","to":"st-shipped"}`, moment{}, false},
 		{"into a deleted column", "ticket.status_changed", `{"ticket":{"id":"t-1"},"from":"st-done","to":"st-gone"}`, moment{}, false},
 		{"developer cleared", "ticket.developer_changed", `{"ticket":{"id":"t-1"},"from":"login-u-1","to":""}`, moment{}, false},
+		{"developer changed hands", "ticket.developer_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"login-u-2","to":"login-u-3","actor":{"kind":"user","user_id":"u-1"}}`,
+			moment{name: MomentTicketDeveloperSet, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb, from: "u-2"}, true},
 		{"tester set", "ticket.tester_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"to":"login-u-3","actor":{"kind":"user","user_id":"u-1"}}`,
 			moment{name: MomentTicketTesterSet, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb}, true},
 		{"test failed by its tester", "ticket.test_failed", `{"ticket":{"id":"t-1","project_id":"p-1"},"tester":"login-u-3"}`,
@@ -152,6 +154,10 @@ func TestMomentOf_LookupFailuresRetry(t *testing.T) {
 	var p momentPayload
 	require.NoError(t, json.Unmarshal([]byte(`{"ticket":{"id":"t-1"},"tester":"broken"}`), &p))
 	_, _, err := f.runner.momentOf(context.Background(), "ticket.test_failed", p)
+	require.Error(t, err)
+
+	require.NoError(t, json.Unmarshal([]byte(`{"ticket":{"id":"t-1"},"from":"broken","to":"login-u-3"}`), &p))
+	_, _, err = f.runner.momentOf(context.Background(), "ticket.developer_changed", p)
 	require.Error(t, err)
 }
 

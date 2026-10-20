@@ -143,6 +143,8 @@ type moment struct {
 	// automation marks a moment an automation caused; it runs on the developer, as nobody pressed anything.
 	automation bool
 	via        Via
+	// from is who held the developer or tester before a person-set moment, a user id.
+	from string
 	// eventID makes a redelivered event's match the same queue row, so it never queues a second run.
 	eventID string
 }
@@ -240,11 +242,7 @@ func (r *Runner) momentOf(ctx context.Context, topic string, p momentPayload) (m
 		ticket.name, ticket.stage = MomentTicketEnteredStage, stage
 		return ticket, entered, err
 	case "ticket.developer_changed", "ticket.tester_changed":
-		ticket.name = MomentTicketDeveloperSet
-		if topic == "ticket.tester_changed" {
-			ticket.name = MomentTicketTesterSet
-		}
-		return ticket, p.To != "", nil
+		return r.personSet(ctx, ticket, topic, p)
 	case "ticket.test_failed":
 		ticket.name = MomentTicketTestFailed
 		return r.withLogin(ctx, ticket, p.Tester)
@@ -292,6 +290,26 @@ func (r *Runner) withLogin(ctx context.Context, m moment, login string) (moment,
 	return m, m.targetID != "", nil
 }
 
+// personSet reads a developer or tester set and who held it before; a clear is no moment, a deleted earlier one nobody.
+func (r *Runner) personSet(ctx context.Context, m moment, topic string, p momentPayload) (moment, bool, error) {
+	m.name = MomentTicketDeveloperSet
+	if topic == "ticket.tester_changed" {
+		m.name = MomentTicketTesterSet
+	}
+	if p.To == "" {
+		return m, false, nil
+	}
+	if p.From == "" || r.users == nil {
+		return m, m.targetID != "", nil
+	}
+	id, err := r.users.UserID(ctx, p.From)
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return m, false, fmt.Errorf("resolve %s: %w", p.From, err)
+	}
+	m.from = id
+	return m, m.targetID != "", nil
+}
+
 // enteredStage is the stage a move lands in, and whether it entered it rather than moving within it.
 func (r *Runner) enteredStage(ctx context.Context, from, to string) (Stage, bool, error) {
 	toStatus, err := r.targets.GetStatus(ctx, to)
@@ -324,7 +342,11 @@ func (r *Runner) match(ctx context.Context, m moment) error {
 		return fmt.Errorf("resolve workspace for project %s: %w", m.projectID, err)
 	}
 	autoPlays, err := r.plays.ListEnabledAutoPlays(ctx, workspaceID, m.name)
-	if err != nil || len(autoPlays) == 0 {
+	if err != nil {
+		return err
+	}
+	late, err := r.lateStageAutoPlays(ctx, workspaceID, m)
+	if err != nil || len(autoPlays)+len(late) == 0 {
 		return err
 	}
 	f, err := r.facts.Facts(ctx, m.targetType, m.targetID)
@@ -343,10 +365,44 @@ func (r *Runner) match(ctx context.Context, m moment) error {
 		}
 		queued = queued || ok
 	}
-	if queued {
+	lateQueued, err := r.matchLate(ctx, workspaceID, late, m, f)
+	if err != nil {
+		return err
+	}
+	if queued || lateQueued {
 		r.Kick()
 	}
 	return nil
+}
+
+// lateStageAutoPlays are the stage auto plays a developer or tester set after the move may still start (ADR 0132).
+func (r *Runner) lateStageAutoPlays(ctx context.Context, workspaceID string, m moment) ([]*AutoPlay, error) {
+	if m.name != MomentTicketDeveloperSet && m.name != MomentTicketTesterSet {
+		return nil, nil
+	}
+	return r.plays.ListEnabledAutoPlays(ctx, workspaceID, MomentTicketEnteredStage)
+}
+
+// matchLate queues each of late whose run the person change lets go ahead: before it, its conditions failed or it had nobody.
+func (r *Runner) matchLate(ctx context.Context, workspaceID string, late []*AutoPlay, m moment, f Facts) (bool, error) {
+	entered, before := m, f
+	entered.name, entered.stage = MomentTicketEnteredStage, f.Stage
+	before.Developer = m.from
+	if m.name == MomentTicketTesterSet {
+		before.Developer, before.Tester = f.Developer, m.from
+	}
+	queued := false
+	for _, a := range late {
+		if a.Conditions.holds(before) && a.person(before, entered) != "" {
+			continue
+		}
+		ok, err := r.matchOne(ctx, workspaceID, a, entered, f)
+		if err != nil {
+			return false, err
+		}
+		queued = queued || ok
+	}
+	return queued, nil
 }
 
 // matchOne queues a's run on m, or records that it didn't run when nobody may run it; true when a run now waits.
