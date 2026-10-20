@@ -182,6 +182,15 @@ describe("the play follower", () => {
     expect(isStale(client, ["getAutoPlays", "ws-1", "pl-2"])).toBe(true);
   });
 
+  it("refetches the auto plays of the workspace a deleted memory was in, which drop it", async () => {
+    const client = seeded([
+      [["getAutoPlays", "ws-1", "pl-1"], []],
+      [["getAutoPlays", "ws-2", "pl-2"], []],
+    ]);
+    await followFrame(playFollower, "memory.deleted", { id: "m-1", workspace_id: "ws-1", project_id: "p-1" }, client);
+    expect([isStale(client, ["getAutoPlays", "ws-1", "pl-1"]), isStale(client, ["getAutoPlays", "ws-2", "pl-2"])]).toEqual([true, false]);
+  });
+
   it("patches the daily cap of the workspace a frame names, with no request", async () => {
     const client = seeded([
       [["getAutoPlayLimits", "ws-1"], { daily_cap_per_ticket: 5 }],

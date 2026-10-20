@@ -229,6 +229,8 @@ export const playFollower: LiveFollower = {
     Promise.all([refetchAutoPlays(client, workspace_id, play_id), refetchPlaysList(client, workspace_id)]),
   "auto_play.limits_updated": ({ workspace_id, ...limits }: AutoPlayLimits & { workspace_id: string }, { client }) =>
     client.setQueryData([getAutoPlayLimitsKey, workspace_id], limits),
+  "memory.deleted": ({ workspace_id }: { workspace_id: string }, { client }) =>
+    client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspace_id] }),
   // A play's rule decides who sees it; its frame names no workspace, so every workspace's play lists refetch.
   "access.grant.changed": ({ resource_type }: { resource_type: string }, { client }) =>
     resource_type === "play" &&
