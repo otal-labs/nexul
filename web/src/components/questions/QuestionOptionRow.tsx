@@ -14,14 +14,14 @@ interface QuestionOptionRowProps {
   drafted?: boolean;
 }
 
-export const DraftedTag = () => <span className="mt-0.5 shrink-0 font-mono text-[10px] text-muted-foreground uppercase">Drafted</span>;
+export const DraftedTag = () => <span className="shrink-0 font-mono text-[10px] leading-5 text-muted-foreground uppercase">Drafted</span>;
 
 // One hairline option row: its number key, the control, the label, and the description muted beneath.
 export const QuestionOptionRow = ({ number, option, checked, control, htmlFor, drafted = false }: QuestionOptionRowProps) => (
   <li className={cn("transition-colors duration-150 ease-standard hover:bg-accent/40", checked && "bg-accent/40")}>
     <label htmlFor={htmlFor} className="flex cursor-pointer items-start gap-2.5 px-3 py-2">
-      <span className="mt-0.5 w-3 shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">{number}</span>
-      <span className="mt-0.5 flex shrink-0 items-center">{control}</span>
+      <span className="w-3 shrink-0 font-mono text-[10px] leading-5 text-muted-foreground tabular-nums">{number}</span>
+      <span className="flex h-5 shrink-0 items-center">{control}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm">{option.label}</span>
         {option.description && <span className="block text-xs text-muted-foreground">{option.description}</span>}
