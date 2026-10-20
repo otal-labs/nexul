@@ -5,7 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { BoardStageSummary } from "@/components/board/BoardStageSummary";
-import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
+import { PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import type { Project } from "@/models/Project";
@@ -78,11 +78,9 @@ export const ProjectBoardSection = ({
           <div className="flex items-center gap-3.5">
             {project && <ProjectMark project={project} />}
             <div className="min-w-0">
-              <ClampedTitle title={project?.name ?? "Board"}>
-                <h1 dir="auto" className={pageTitleClassFor(project?.name ?? "Board")}>
-                  {project?.name ?? "Board"}
-                </h1>
-              </ClampedTitle>
+              <h1 dir="auto" className={pageTitleClassFor(project?.name ?? "Board")}>
+                {project?.name ?? "Board"}
+              </h1>
               {ticketCount !== undefined && (
                 <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">
                   {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
