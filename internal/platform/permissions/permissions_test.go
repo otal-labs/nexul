@@ -85,7 +85,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{PlaysWrite, "Create and update plays", "plays", "write"},
 		{PlaysDelete, "Delete plays", "plays", "delete"},
 		{PlaysRun, "Run plays", "plays", "run"},
-		{MemoriesRead, "Read memories", "memories", "read"},
+		{MemoriesRead, "Read memories and interview", "memories", "read"},
 		{MemoriesWrite, "Create and update memories", "memories", "write"},
 		{MemoriesDelete, "Delete memories", "memories", "delete"},
 		{MemoriesClone, "Clone memories to another project", "memories", "clone"},
