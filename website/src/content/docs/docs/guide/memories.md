@@ -16,7 +16,7 @@ Open **Memories** under the project in the sidebar. Every memory belongs to one 
 3. Switch on **Always included** if every agent turn in the project should read it.
 4. Write the body and save.
 
-To edit one, open it, change the title, hint, or body, and press **Save**. A memory isn't edited live like a doc: every save adds a version under **Versions**, and **Revert** on an older version saves it again as the newest, so nothing in the history is lost.
+To edit one, open it, change the title, hint, or body, and press **Save** in the page header, beside **Clone to…**. A memory isn't edited live like a doc: every save adds a version under **Versions**, and **Revert** on an older version saves it again as the newest, so nothing in the history is lost.
 
 ## How agents find memories
 

@@ -56,6 +56,11 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
             <ActionButton permission="memories:delete" projectId={memory.project_id} variant="ghost" size="sm" onClick={onDelete}>
               Delete
             </ActionButton>
+            {canWrite && (
+              <Button size="sm" loading={saving} disabled={!dirty} onClick={() => onSave({ title, when_to_use: whenToUse, body })}>
+                Save
+              </Button>
+            )}
           </>
         }
       />
@@ -94,15 +99,9 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
               {canWrite && <RichTextEditor value={body} onChange={setBody} aria-label="Body" attachTo={{ memory_id: memory.id }} />}
               {!canWrite && <DocBodyView body={memory.body} />}
 
-              {canWrite && (
-                <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-                  {interview && <InterviewLengthMeter length={interviewLength} />}
-                  <Button
-                    loading={saving} disabled={!dirty}
-                    onClick={() => onSave({ title, when_to_use: whenToUse, body })}
-                  >
-                    Save
-                  </Button>
+              {interview && canWrite && (
+                <div className="mt-6 flex justify-end">
+                  <InterviewLengthMeter length={interviewLength} />
                 </div>
               )}
             </div>
