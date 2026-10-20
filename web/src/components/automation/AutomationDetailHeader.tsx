@@ -33,7 +33,6 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
       }
       meta={
         <>
-          <span className="font-mono text-xs">{automation.id}</span>
           <AutomationKindBadge kind={automation.kind} />
           <AutomationConfigStatusBadge automation={automation} />
         </>

@@ -173,8 +173,8 @@ func TestGrantTools_ProjectRulesForARoleAndAPerson(t *testing.T) {
 	assert.ElementsMatch(t, []grantResult{
 		{Target: TargetPerson, UserID: "client", Allow: permissions.SetOf(permissions.ProjectsOpen, permissions.ProjectsAccess)},
 		{Target: TargetPerson, UserID: "team", Deny: permissions.SetOf(permissions.ProjectsOpen)},
-		{Target: TargetRole, RoleID: "role-team", RoleName: "role-team", Allow: permissions.SetOf(permissions.ProjectsOpen)},
-		{Target: TargetRole, RoleID: "role-client", RoleName: "role-client", Allow: permissions.SetOf(permissions.ProjectsOpen)},
+		{Target: TargetRole, RoleID: "role-team", Allow: permissions.SetOf(permissions.ProjectsOpen)},
+		{Target: TargetRole, RoleID: "role-client", Allow: permissions.SetOf(permissions.ProjectsOpen)},
 	}, got.(mcptool.Page[grantResult]).Items)
 
 	_, err = callGrantTool(t, s, "client", "permission_overwrite_list", `{"resource_type": "project", "resource_id": "p-hidden"}`)

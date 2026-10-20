@@ -30,7 +30,7 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
   const lookup = usePersonLookup(trail.workspace_id);
   const { data: memories } = useFetchMemoriesByProject(trail.project_id);
 
-  const memoryTitles = trail.selected_memory_ids.map((id) => memories?.find((m) => m.id === id)?.title ?? id);
+  const memoryTitles = trail.selected_memory_ids.map((id) => memories?.find((m) => m.id === id)?.title ?? "Unknown memory");
 
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">

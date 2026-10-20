@@ -37,7 +37,7 @@ describe("DeployRow", () => {
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/acme/stacks/stack-1/deploys/d-1");
     expect(link).toHaveTextContent("repo build");
-    expect(link).toHaveTextContent("d-1");
+    expect(link).not.toHaveTextContent("d-1");
   });
 
   it("renders a plain row, not a link, when the viewer can't read deploys", () => {

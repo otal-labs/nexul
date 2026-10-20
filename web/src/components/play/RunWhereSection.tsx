@@ -8,7 +8,8 @@ import { NoComputersDisplay } from "@/components/play/NoComputersDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { HarnessComputerField } from "@/components/settings/HarnessComputerField";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
-import { useFetchHarnessProjects, useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
+import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
+import { useHarnessPlaceNames } from "@/hooks/PairingProjectHooks";
 import { cn } from "@/lib/utils";
 
 // Where a run goes: one of the person's computers and a T3 project on it, saved as their project link (ADR 0145).
@@ -58,10 +59,7 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
 };
 
 export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeRequested }: RunWhereSectionProps) => {
-  const { data: computers, isPending: computersPending } = useListComputers();
-  const { data: projects, isLoading: projectsLoading } = useFetchHarnessProjects(value.computer_id);
-  const computer = computers?.find((c) => c.id === value.computer_id)?.name ?? value.computer_id;
-  const project = projects?.find((p) => p.id === value.harness_project_id)?.title ?? value.harness_project_id;
+  const { computer, project, isPending } = useHarnessPlaceNames(value.computer_id, value.harness_project_id);
   const note = firstRun
     ? "Your first run in this project. Pick where it runs and it's saved as your link here, so later runs skip this."
     : "What you pick here replaces your link for this project.";
@@ -69,8 +67,8 @@ export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeReq
   return (
     <section className="space-y-2">
       <h3 className={microheaderClass}>Where to run</h3>
-      {!asking && (computersPending || projectsLoading) && <LoadingDisplay label="Loading where it runs" className="justify-start p-0" />}
-      {!asking && !computersPending && !projectsLoading && (
+      {!asking && isPending && <LoadingDisplay label="Loading where it runs" className="justify-start p-0" />}
+      {!asking && !isPending && (
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
             {computer} · {project}

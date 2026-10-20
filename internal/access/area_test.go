@@ -101,7 +101,7 @@ func TestInstanceAreas_TheInstanceOwnerIsNeverDenied(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, held)
 	assert.Equal(t, SourceOwner, src.Kind)
-	assert.Equal(t, "Owner of ws-default", s.namer(ctx).named(src).Sentence)
+	assert.Equal(t, "Owner of (unknown)", s.namer(ctx).named(src).Sentence)
 }
 
 // TestInstanceAreas_AnotherWorkspacesOwnerHoldsNoArea: olga owns ws-b, which gives her no instance area; only a rule
@@ -219,13 +219,13 @@ func TestExplain_OnAnInstanceArea(t *testing.T) {
 		write := out.Effective[1]
 		assert.Equal(t, permissions.DNSWrite, write.Action)
 		assert.True(t, write.Allowed)
-		assert.Equal(t, "Allowed on DNS and gateways for bob", write.Source.Sentence)
+		assert.Equal(t, "Allowed on DNS and gateways for someone", write.Source.Sentence)
 		assert.False(t, write.Fallback.Allowed)
-		assert.Equal(t, "Not allowed: role role-fe doesn't grant it", write.Fallback.Source.Sentence)
+		assert.Equal(t, "Not allowed: role (unknown) doesn't grant it", write.Fallback.Source.Sentence)
 
 		out, err = s.Explain(ctx, "bob", resourceTypeInstanceArea, "connector:github", "")
 		require.NoError(t, err)
-		assert.Equal(t, "Allowed on connector GitHub for role role-fe", out.Effective[0].Source.Sentence)
+		assert.Equal(t, "Allowed on connector GitHub for role (unknown)", out.Effective[0].Source.Sentence)
 	})
 	t.Run("only the instance Owner explains someone else's", func(t *testing.T) {
 		_, err := s.Explain(ctx, "olga", resourceTypeInstanceArea, "dns", "bob")

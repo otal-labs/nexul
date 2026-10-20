@@ -1,6 +1,7 @@
 import { ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectLinkForm } from "@/components/settings/ProjectLinkForm";
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useFetchProjectLinks, useProjectLinkSummary } from "@/hooks/PairingProjectHooks";
@@ -24,7 +25,8 @@ export const PairingProjectRow = ({ project, open, onToggle }: PairingProjectRow
     <li>
       <div className="flex min-h-11 items-center gap-3 py-1.5">
         <p className="min-w-0 flex-1 truncate text-sm">{project.name}</p>
-        <p className="min-w-0 max-w-[60%] truncate font-mono text-xs text-muted-foreground">{summary}</p>
+        {summary === undefined && <LoadingDisplay label="Loading link" className="p-0" />}
+        {summary !== undefined && <p className="min-w-0 max-w-[60%] truncate font-mono text-xs text-muted-foreground">{summary}</p>}
         <Button
           type="button"
           variant="ghost"

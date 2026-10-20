@@ -654,7 +654,11 @@ func (f *fakeTurns) last() agent.TurnRequest {
 
 type fakeUsers struct{}
 
+// Login names every user but "gone", a deleted account.
 func (fakeUsers) Login(_ context.Context, userID string) (string, error) {
+	if userID == "gone" {
+		return "", apperrs.ErrNotFound
+	}
 	return "login-" + userID, nil
 }
 

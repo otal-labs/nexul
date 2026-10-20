@@ -169,7 +169,7 @@ func TestExplain_OnAFolder(t *testing.T) {
 	}
 	assert.Len(t, e.Effective, len(docActions))
 	assert.True(t, byAction[permissions.DocsWrite].Allowed)
-	assert.Equal(t, "Allowed on folder f-open for client", byAction[permissions.DocsWrite].Source.Sentence)
+	assert.Equal(t, "Allowed on folder (unknown) for someone", byAction[permissions.DocsWrite].Source.Sentence)
 	assert.False(t, byAction[permissions.DocsWrite].Fallback.Allowed, "at Fallback the role answers")
 
 	_, err = s.Explain(ctx, "client", "folder", "f-hidden", "")

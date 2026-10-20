@@ -221,10 +221,10 @@ func TestSentence_NamesWhatItCan(t *testing.T) {
 	s, _ := explainFixture(t)
 	n := s.namer(context.Background())
 	assert.Equal(t, "Allowed on doc Pricing for role Developer", n.named(src(SourceRule, "doc", "d-price", TargetRole, "role-dev", StateAllow)).Sentence)
-	assert.Equal(t, "Denied on doc d-gone for bob", n.named(src(SourceRule, "doc", "d-gone", TargetPerson, "bob", StateDeny)).Sentence, "a name it can't read is its id")
+	assert.Equal(t, "Denied on doc (unknown) for bob", n.named(src(SourceRule, "doc", "d-gone", TargetPerson, "bob", StateDeny)).Sentence, "a name it can't read is a placeholder, never its id")
 	assert.Empty(t, n.named(Source{Kind: "unknown"}).Sentence)
 	unnamed := newService(newFakeRepo(), newFakeUsers()).namer(context.Background())
-	assert.Equal(t, "Allowed by role role-dev", unnamed.named(src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateAllow)).Sentence, "unwired names are ids")
+	assert.Equal(t, "Allowed by role (unknown)", unnamed.named(src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateAllow)).Sentence, "unwired names are placeholders")
 }
 
 // TestRequire_ForbiddenNamesItsSourceOnlyWhenRead: a refusal reads no name until its message is, so a list dropping

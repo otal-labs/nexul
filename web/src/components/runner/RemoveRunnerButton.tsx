@@ -16,7 +16,7 @@ interface RemoveRunnerButtonProps {
 export const RemoveRunnerButton = ({ runner, machine }: RemoveRunnerButtonProps) => {
   const remove = useRemoveRunner();
   const { open: confirm } = useConfirmationDialog();
-  const name = runner.name || runner.id;
+  const name = runner.name || "this runner";
 
   const onRemove = async () => {
     const effect = runner.connected

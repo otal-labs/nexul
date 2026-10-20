@@ -44,7 +44,6 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
       meta={
         <>
           <DeployStatusBadge status={deploy.status} />
-          <span className="font-mono text-xs wrap-anywhere">{deploy.id}</span>
           <span className="font-mono text-xs wrap-anywhere">{deploy.image || "repo build"}</span>
           {!deploy.image && branch && (
             <span className="inline-flex items-center gap-1 font-mono text-xs wrap-anywhere">

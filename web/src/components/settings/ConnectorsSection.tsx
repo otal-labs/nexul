@@ -29,13 +29,13 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
 
   // Toasts the OAuth callback once, then strips the query params so a refresh doesn't re-fire it.
   useEffect(() => {
-    if (toasted.current) return;
+    if (toasted.current || !data) return;
     const connectorId = searchParams.get("connector");
     const connected = searchParams.get("connected");
     const error = searchParams.get("error");
     if (!connectorId || (connected !== "1" && !error)) return;
     toasted.current = true;
-    const name = data?.find((entry) => entry.connector.id === connectorId)?.connector.name ?? connectorId;
+    const name = data?.find((entry) => entry.connector.id === connectorId)?.connector.name ?? "Connector";
     if (error) toast.error(`${name}: ${error}`);
     if (!error) toast.success(`${name} connected`);
     const next = new URLSearchParams(searchParams);

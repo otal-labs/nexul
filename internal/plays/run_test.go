@@ -864,3 +864,9 @@ func TestActiveTrails(t *testing.T) {
 	_, err = f.runner.ActiveTrails(ctxAs(starter), TargetTicket, []string{"t-2"})
 	assert.ErrorContains(t, err, "db down")
 }
+
+func TestLogin_NamesSomeoneForAnAccountItCannotRead(t *testing.T) {
+	r := &Runner{users: fakeUsers{}}
+	assert.Equal(t, "login-u-1", r.login(t.Context(), "u-1"))
+	assert.Equal(t, "someone", r.login(t.Context(), "gone"), "an id is not a name")
+}

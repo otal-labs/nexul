@@ -21,10 +21,7 @@ export const QueueRow = ({ job, position }: QueueRowProps) => (
         #{position}
       </span>
       {job.service && <span className="min-w-0 flex-1 truncate text-sm font-medium">{job.service}</span>}
-      <span className={cn("min-w-0 font-mono text-xs wrap-anywhere text-muted-foreground", !job.service && "flex-1")}>
-        {job.id}
-      </span>
-      <span className="shrink-0 font-mono text-xs text-muted-foreground">{job.kind}</span>
+      <span className={cn("shrink-0 font-mono text-xs text-muted-foreground", !job.service && "flex-1")}>{job.kind}</span>
     </div>
   </li>
 );

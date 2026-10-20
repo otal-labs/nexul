@@ -32,7 +32,6 @@ export const DeployRow = ({ deploy }: DeployRowProps) => {
           {facts.map((fact) => (
             <span key={fact}>{fact}</span>
           ))}
-          <span title={deploy.id}>{deploy.id.slice(0, 8)}</span>
         </p>
       </div>
       <time dateTime={deploy.created_at} className="pt-px font-mono text-xs text-muted-foreground tabular-nums">
