@@ -20,6 +20,7 @@ const people = {
   people: [
     { user_id: "u1", login: "onik97", display_name: "", avatar_url: "" },
     { user_id: "u2", login: "olive", display_name: "", avatar_url: "" },
+    { user_id: "u3", login: "alice@example.com", display_name: "Alice", avatar_url: "" },
   ],
 };
 
@@ -114,6 +115,17 @@ describe("ChatComposer", () => {
     await user.keyboard("{Enter}");
     expect(input).toHaveValue("hey @onik97 ");
     expect(screen.queryByRole("listbox", { name: "Mention suggestions" })).not.toBeInTheDocument();
+  });
+
+  it("lists a member by display name, not their email login, and still inserts the login on pick", async () => {
+    const user = userEvent.setup();
+    renderComposer();
+    const input = screen.getByLabelText("Message");
+    await user.type(input, "@Ali");
+    expect(await screen.findByRole("option", { name: "@Alice" })).toBeInTheDocument();
+    expect(screen.queryByText(/alice@example\.com/)).not.toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(input).toHaveValue("@alice@example.com ");
   });
 
   it("uploads a picked image against the conversation and sends a body with the markdown line", async () => {

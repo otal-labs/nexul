@@ -44,20 +44,21 @@ describe("buildMentionCandidates", () => {
   it("always offers @Agent first, then every workspace member", () => {
     const candidates = buildMentionCandidates(members);
     expect(candidates).toEqual([
-      { kind: "agent", handle: "Agent" },
-      { kind: "user", handle: "onik97" },
-      { kind: "user", handle: "olive" },
+      { kind: "agent", handle: "Agent", label: "Agent" },
+      { kind: "user", handle: "onik97", label: "Onik" },
+      { kind: "user", handle: "olive", label: "olive" },
     ]);
   });
 });
 
 describe("matchesMentionPrefix", () => {
-  it("matches case-insensitive prefixes, and everything on an empty query", () => {
-    const candidate = { kind: "user" as const, handle: "onik97" };
+  it("matches case-insensitive prefixes of the handle or the label, and everything on an empty query", () => {
+    const candidate = { kind: "user" as const, handle: "alice@example.com", label: "Alice Smith" };
     expect(matchesMentionPrefix(candidate, "")).toBe(true);
-    expect(matchesMentionPrefix(candidate, "on")).toBe(true);
-    expect(matchesMentionPrefix(candidate, "ON")).toBe(true);
-    expect(matchesMentionPrefix(candidate, "nik")).toBe(false);
+    expect(matchesMentionPrefix(candidate, "ali")).toBe(true);
+    expect(matchesMentionPrefix(candidate, "ALICE S")).toBe(true);
+    expect(matchesMentionPrefix(candidate, "alice@")).toBe(true);
+    expect(matchesMentionPrefix(candidate, "smith")).toBe(false);
   });
 });
 
