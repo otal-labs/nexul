@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check, Minus } from "lucide-react";
+import { CircleCheck, CircleMinus } from "lucide-react";
 
 import { answerLine, rowStatus, type ChecklistRow, type ChecklistRowStatus } from "@nexul/client-core/questionChecklist";
 import { cn } from "@/lib/utils";
@@ -21,23 +21,28 @@ interface RowMarkerProps {
   number: number;
 }
 
-const RowMarker = ({ status, drafted, open, number }: RowMarkerProps) => (
-  <span
-    aria-hidden
-    className={cn(
-      "flex size-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px] tabular-nums",
-      open && "bg-foreground text-background",
-      !open && status === "answered" && "bg-success text-background",
-      !open && drafted && "border border-dashed border-muted-foreground text-foreground",
-      !open && !drafted && status === "skipped" && "bg-muted text-muted-foreground",
-      !open && !drafted && status === "pending" && "border border-border text-muted-foreground",
-    )}
-  >
-    {!open && status === "answered" && <Check className="size-3" strokeWidth={3} />}
-    {!open && !drafted && status === "skipped" && <Minus className="size-3" strokeWidth={3} />}
-    {(open || drafted || status === "pending") && number}
-  </span>
+// Drawn on lucide's 24-unit circle so the number and the icons share one ring; y 16.3 centres a mono digit's ink.
+const NumberMarker = ({ number, open, drafted }: { number: number; open: boolean; drafted: boolean }) => (
+  <svg aria-hidden viewBox="0 0 24 24" className="size-5 shrink-0 font-mono tabular-nums">
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      strokeWidth="2"
+      strokeDasharray={drafted && !open ? "3.5 2.5" : undefined}
+      className={cn("fill-none stroke-border", drafted && "stroke-muted-foreground", open && "fill-foreground stroke-foreground")}
+    />
+    <text x="12" y="16.3" textAnchor="middle" fontSize="12" className={cn("fill-muted-foreground", drafted && "fill-foreground", open && "fill-background")}>
+      {number}
+    </text>
+  </svg>
 );
+
+const RowMarker = ({ status, drafted, open, number }: RowMarkerProps) => {
+  if (open || drafted || status === "pending") return <NumberMarker number={number} open={open} drafted={drafted} />;
+  if (status === "answered") return <CircleCheck aria-hidden className="size-5 shrink-0 text-success" />;
+  return <CircleMinus aria-hidden className="size-5 shrink-0 text-muted-foreground" />;
+};
 
 const STATUS_LABEL: Record<ChecklistRowStatus, string> = { answered: "Answered", skipped: "Skipped", pending: "Not answered" };
 
@@ -79,14 +84,14 @@ export const QuestionChecklistRow = ({ row, number, open, readOnly, onToggle, ch
 
   return (
     <li className="border-b border-border">
-      {readOnly && <div className="flex min-h-11 items-center gap-3 px-1.5 py-2.5">{summary}</div>}
+      {readOnly && <div className="flex min-h-11 items-start gap-3 px-1.5 py-3">{summary}</div>}
       {!readOnly && (
         <button
           type="button"
           aria-expanded={open}
           onClick={onToggle}
           className={cn(
-            "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-sm px-1.5 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-sm px-1.5 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
             !open && "transition-colors duration-150 ease-standard hover:bg-accent/40",
           )}
         >
