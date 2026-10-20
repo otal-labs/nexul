@@ -95,7 +95,9 @@ func TestObserver_PublishesLiveFramesOnStateAndActivity(t *testing.T) {
 	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-1")
 
 	frames := f.live.snapshot()
-	require.Len(t, frames, 4, "running, two activity lines, done; snapshots publish nothing")
+	require.Len(t, frames, 5, "starting, running, two activity lines, done; snapshots publish nothing")
+	assert.Equal(t, TrailStarting, frames[0].State, "the run shows on its target as soon as its trail exists, before the harness opens the turn")
+	frames = frames[1:]
 	assert.Equal(t, RunFrame{TrailID: trail.ID, PlayID: fixPlayID, TargetType: TargetTicket, TargetID: ticketID, State: TrailRunning, Activity: nil, StarterID: starter, ProjectID: "proj-1", WorkspaceID: "workspace-1"}, frames[0], "the frame names the run's starter, project and workspace")
 	require.NotNil(t, frames[1].Activity)
 	assert.Equal(t, ActivityEntry(step("Read", "Read main.go")), *frames[1].Activity, "the frame carries the whole latest step")
