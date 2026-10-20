@@ -24,7 +24,7 @@ export const CommandPaletteOption = ({ item, index, active, onHover, onSelect }:
       title={item.label}
       onPointerMove={() => onHover(index)}
       onClick={() => onSelect(item)}
-      className={cn("relative flex h-9 cursor-default items-center gap-3 rounded-md px-3 text-sm select-none", active && "bg-accent text-accent-foreground")}
+      className={cn("relative flex h-9 items-center gap-3 rounded-md px-3 text-sm select-none", active && "bg-accent text-accent-foreground")}
     >
       {active && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand" />}
       <Icon className={cn("size-4 shrink-0 text-muted-foreground", active && "text-brand")} />

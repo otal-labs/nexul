@@ -189,7 +189,7 @@ const ComboboxRow = ({ selected, highlighted, onPick, hint, children }: Combobox
       onPick();
     }}
     className={cn(
-      "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-left text-sm outline-none select-none transition-colors duration-150 ease-standard hover:bg-accent hover:text-accent-foreground",
+      "relative flex w-full items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-left text-sm outline-none select-none transition-colors duration-150 ease-standard hover:bg-accent hover:text-accent-foreground",
       highlighted && "bg-accent text-accent-foreground",
     )}
   >
