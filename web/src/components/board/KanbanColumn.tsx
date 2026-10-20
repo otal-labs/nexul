@@ -18,6 +18,7 @@ interface KanbanColumnProps {
   laneLabel: string;
   categoryId: string;
   column: BoardStatus;
+  collapsed: boolean;
   tickets: Ticket[];
   onAddTicket: (statusId: string) => void;
 }
@@ -27,6 +28,7 @@ const KanbanColumnImpl = ({
   laneLabel,
   categoryId,
   column,
+  collapsed,
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
@@ -38,7 +40,8 @@ const KanbanColumnImpl = ({
   const draggable = useActionState({ permission: "projects:write" }).state === "live";
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: droppableId,
-    disabled: !draggable,
+    // A collapsed lane's columns keep their full height under the clip, over the lane below, so they take no drop.
+    disabled: { draggable: !draggable || collapsed, droppable: collapsed },
     data,
   });
 
@@ -88,7 +91,7 @@ const KanbanColumnImpl = ({
       <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-col gap-1.5 overflow-y-auto pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+            <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
           ))}
         </SortableContext>
         {tickets.length === 0 && (
@@ -106,6 +109,7 @@ const sameColumn = (prev: KanbanColumnProps, next: KanbanColumnProps) =>
   prev.laneLabel === next.laneLabel &&
   prev.categoryId === next.categoryId &&
   prev.column === next.column &&
+  prev.collapsed === next.collapsed &&
   prev.onAddTicket === next.onAddTicket &&
   prev.tickets.length === next.tickets.length &&
   prev.tickets.every((ticket, i) => ticket === next.tickets[i]);

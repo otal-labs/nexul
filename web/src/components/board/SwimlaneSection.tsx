@@ -105,6 +105,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
                   laneLabel={lane.label}
                   categoryId={lane.categoryId ?? ""}
                   column={column}
+                  collapsed={collapsed}
                   tickets={lane.tickets.filter((t) => t.status === column.id).sort((a, b) => a.position - b.position)}
                   onAddTicket={addInLane}
                 />
