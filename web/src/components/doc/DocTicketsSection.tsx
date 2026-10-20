@@ -5,10 +5,11 @@ import { useFetchTicketsByDoc } from "@/hooks/TicketHooks";
 
 interface DocTicketsSectionProps {
   docId: string;
+  className?: string;
 }
 
 // Fetches by doc id itself (F6) so any surface can drop this in without prop drilling.
-export const DocTicketsSection = ({ docId }: DocTicketsSectionProps) => {
+export const DocTicketsSection = ({ docId, className }: DocTicketsSectionProps) => {
   const { data, error, isPending } = useFetchTicketsByDoc(docId);
 
   return (
@@ -16,7 +17,7 @@ export const DocTicketsSection = ({ docId }: DocTicketsSectionProps) => {
       {isPending && <LoadingDisplay label="Loading tickets…" />}
       {error && <ErrorDisplay error={error} />}
       {data && data.length > 0 && (
-        <section aria-label="Tickets from this doc">
+        <section aria-label="Tickets from this doc" className={className}>
           <h2 className={microheaderClass}>
             Tickets from this doc
           </h2>

@@ -1,6 +1,7 @@
 import { ClarificationActions } from "@/components/doc/clarification/ClarificationActions";
 import { ClarificationRoundsFeed } from "@/components/doc/clarification/ClarificationRoundsFeed";
 import { ClarificationStatusLine } from "@/components/doc/clarification/ClarificationStatusLine";
+import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -33,6 +34,7 @@ export const DocQuestionsPanel = ({ docId }: DocQuestionsPanelProps) => {
         {clarification && clarification.can_close && clarificationPhase(clarification) === "none" && (
           <EmptyRow className="mt-5">No questions yet. Clarify via AI asks about what the doc leaves open, one round at a time.</EmptyRow>
         )}
+        {clarification?.closed && <DocTicketsSection docId={docId} className="mt-5" />}
         {clarification && <ClarificationRoundsFeed clarification={clarification} readOnly={!clarification.can_answer} />}
       </section>
     </div>
