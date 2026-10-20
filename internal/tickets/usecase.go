@@ -678,8 +678,7 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 	return labels, nil
 }
 
-// ListAllLabels returns the distinct labels across the tickets the caller may read in projectID, or in every project
-// when it is empty, ordered.
+// ListAllLabels returns the sorted distinct labels on tickets the caller may read in projectID, or anywhere when empty.
 func (s *Service) ListAllLabels(ctx context.Context, projectID string) ([]string, error) {
 	list := s.List
 	if projectID != "" {
