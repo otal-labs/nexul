@@ -16,7 +16,7 @@ interface BoardSettingsSectionProps {
 export const BoardSettingsSection = ({ projectId }: BoardSettingsSectionProps) => {
   const { data: statuses, isPending, error } = useFetchProjectStatuses(projectId);
   const { data: ticketTypes } = useFetchProjectTicketTypes(projectId);
-  const { data: allLabels } = useFetchAllLabels();
+  const { data: allLabels } = useFetchAllLabels(projectId);
   const { data: labelColors } = useFetchLabelColors(projectId);
 
   return (

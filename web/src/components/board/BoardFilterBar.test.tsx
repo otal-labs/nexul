@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from "axios";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -38,14 +39,16 @@ const mockReferenceData = ({
   projects: projectList = projects,
   categories: categoryList = categories,
   labels = [] as string[],
+  otherProjectLabels = [] as string[],
   ticketTypes: typeList = ticketTypes,
   statuses: statusList = statuses,
 } = {}) => {
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
+  vi.mocked(api.get).mockImplementation(async (url: string, config?: AxiosRequestConfig) => {
+    const projectId: string | undefined = config?.params?.project_id;
     if (url === "/api/projects") return { data: projectList };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["tickets:write"] } };
-    if (url === "/api/categories") return { data: categoryList };
-    if (url === "/api/tickets/labels") return { data: labels };
+    if (url === "/api/categories") return { data: categoryList.filter((c) => !projectId || c.project_id === projectId) };
+    if (url === "/api/tickets/labels") return { data: projectId ? labels : [...labels, ...otherProjectLabels] };
     if (url === "/api/ticket-types") return { data: typeList };
     if (url === "/api/statuses") return { data: statusList };
     return { data: [] };
@@ -159,6 +162,21 @@ describe("BoardFilterBar", () => {
     expect(screen.getByRole("button", { name: "task" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open" })).toBeInTheDocument();
     expect(screen.queryByText("Developer")).not.toBeInTheDocument();
+  });
+
+  it("offers only the board project's categories and labels", async () => {
+    const user = userEvent.setup();
+    mockReferenceData({
+      categories: [...categories, { id: "c-2", project_id: "p-2", name: "Elsewhere", position: 0, created_at: "", updated_at: "" }],
+      labels: ["bug"],
+      otherProjectLabels: ["chore"],
+    });
+    renderFilterBar();
+    await openFilterPopover(user);
+    expect(await screen.findByRole("button", { name: "Sprint 1" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "bug" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Elsewhere" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "chore" })).not.toBeInTheDocument();
   });
 
   it("shows no projects state", async () => {

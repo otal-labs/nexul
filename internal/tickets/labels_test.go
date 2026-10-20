@@ -68,17 +68,23 @@ func TestListLabels(t *testing.T) {
 }
 
 func TestListAllLabels(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	for _, title := range []string{"a", "b"} {
-		created, err := s.Create(context.Background(), "p-1", title, "", "", "")
+	s := newTestService(newFakeRepo())
+	for project, label := range map[string]string{"p-1": "bug", "p-2": "chore"} {
+		created, err := s.Create(context.Background(), project, "a", "", "", "")
 		require.NoError(t, err)
-		_, err = s.AddLabel(context.Background(), created.ID, "bug")
+		_, err = s.AddLabel(context.Background(), created.ID, label)
 		require.NoError(t, err)
 	}
-	labels, err := s.ListAllLabels(context.Background())
-	require.NoError(t, err)
-	assert.Contains(t, labels, "bug")
+	t.Run("lists one project's labels", func(t *testing.T) {
+		labels, err := s.ListAllLabels(context.Background(), "p-1")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bug"}, labels)
+	})
+	t.Run("lists every readable label without a project", func(t *testing.T) {
+		labels, err := s.ListAllLabels(context.Background(), "")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bug", "chore"}, labels)
+	})
 }
 
 func TestSetLabelColor(t *testing.T) {

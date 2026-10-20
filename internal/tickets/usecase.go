@@ -678,9 +678,13 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 	return labels, nil
 }
 
-// ListAllLabels returns the distinct labels across the tickets the caller may read, ordered, for the board filter bar.
-func (s *Service) ListAllLabels(ctx context.Context) ([]string, error) {
-	ts, err := s.List(ctx)
+// ListAllLabels returns the sorted distinct labels on tickets the caller may read in projectID, or anywhere when empty.
+func (s *Service) ListAllLabels(ctx context.Context, projectID string) ([]string, error) {
+	list := s.List
+	if projectID != "" {
+		list = func(ctx context.Context) ([]*Ticket, error) { return s.ListByProject(ctx, projectID) }
+	}
+	ts, err := list(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list all labels: %w", err)
 	}

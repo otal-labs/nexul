@@ -155,9 +155,9 @@ func (d *projectDetail) addBoard(ctx context.Context, w *workspace.Service, id s
 	return nil
 }
 
-// projectLabels mirrors the board's filter bar: every label in use, with this project's color for each.
+// projectLabels mirrors the board's filter bar: every label in use in the project, with its color for each.
 func projectLabels(ctx context.Context, t *tickets.Service, projectID string) ([]labelResult, error) {
-	all, err := t.ListAllLabels(ctx)
+	all, err := t.ListAllLabels(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}

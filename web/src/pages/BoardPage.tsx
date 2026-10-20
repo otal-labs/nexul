@@ -5,7 +5,7 @@ import { BoardUnscopedStates } from "@/components/board/BoardUnscopedStates";
 import { ProjectBoardSection } from "@/components/board/ProjectBoardSection";
 import { Container } from "@/components/Container";
 import { InterviewBanner } from "@/components/memory/InterviewBanner";
-import { useFetchCategories } from "@/hooks/CategoryHooks";
+import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { useBoardFilters } from "@/hooks/useBoardFilters";
 import { useBoardProjectScope } from "@/hooks/useBoardProjectScope";
@@ -21,7 +21,6 @@ export const BoardPage = () => {
 
   const { data: projects = [], error, isPending } = useFetchProjects();
   const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTickets();
-  const { data: categories = [] } = useFetchCategories();
 
   const { scopedProject, scopedProjectId, scopedNotFound } = useBoardProjectScope({
     routeParam,
@@ -31,6 +30,7 @@ export const BoardPage = () => {
   });
 
   const { data: statuses = [] } = useFetchProjectStatuses(scopedProjectId);
+  const { data: categories = [] } = useFetchProjectCategories(scopedProjectId);
 
   const {
     filters,

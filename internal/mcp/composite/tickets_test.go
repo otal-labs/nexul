@@ -363,7 +363,7 @@ func TestTools_StorageFailuresPropagate(t *testing.T) {
 		{"ListCategories", "project_get", `{"id":"p-1"}`},
 		{"ListTypes", "project_get", `{"id":"p-1"}`},
 		{"ListRepos", "project_get", `{"id":"p-1"}`},
-		{"List", "project_get", `{"id":"p-1"}`},
+		{"ListByProject", "project_get", `{"id":"p-1"}`},
 		{"LabelColors", "project_get", `{"id":"p-1"}`},
 		{"CountTickets", "project_get", `{"id":"p-1"}`},
 		{"ListProjects", "project_update", `{"id":"p-1","position":1}`},
