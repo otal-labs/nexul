@@ -27,6 +27,13 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
+/* Anything clickable shows the pointer; layered, so a component's own cursor still wins. */
+@layer base {
+	:is(button, summary, select, [role="button"], [role="tab"], [role="option"], [role="menuitem"]):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+		cursor: pointer;
+	}
+}
+
 /* In the base layer so a component that draws its own focus state (the search input) still wins. */
 @layer base {
 	:focus-visible {

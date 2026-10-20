@@ -238,6 +238,27 @@ body {
   background: color-mix(in oklab, var(--brand) 32%, transparent);
 }
 
+/* Tailwind v4 leaves buttons on the arrow; anything clickable shows the pointer. Layered, so a cursor utility still wins. */
+@layer base {
+  :is(
+      button,
+      summary,
+      select,
+      input:is([type="checkbox"], [type="radio"], [type="file"], [type="color"], [type="range"], [type="button"], [type="submit"], [type="reset"]),
+      [role="button"],
+      [role="tab"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="radio"],
+      [role="option"],
+      [role="menuitem"],
+      [role="menuitemradio"],
+      [role="menuitemcheckbox"]
+    ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+}
+
 /* Tailwind v4 defaults a bare `border` to currentColor; the hairline is --border. */
 @layer base {
   * {

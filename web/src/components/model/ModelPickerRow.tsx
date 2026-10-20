@@ -37,7 +37,7 @@ export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onP
           onPick();
         }}
         onMouseMove={onHover}
-        className={cn("flex min-w-0 flex-1 cursor-default items-center gap-2 py-1.5 pl-2 text-left outline-none", blocked && "opacity-50")}
+        className={cn("flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-2 text-left outline-none", blocked && "opacity-50")}
       >
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
