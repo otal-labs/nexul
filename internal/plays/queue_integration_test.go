@@ -256,6 +256,59 @@ func TestQueue_Moments_MatchTheirAutoPlays(t *testing.T) {
 	}
 }
 
+func TestQueue_PersonSetAfterEnteringTheStage_RunsTheStagesAutoPlay(t *testing.T) {
+	progress := plays.StageProgress
+	onlyDev := func(a *plays.AutoPlay) {
+		a.MomentStage = &progress
+		a.Conditions.Groups = []plays.Group{{Match: plays.MatchAll, Rules: []plays.Rule{{Field: plays.FieldDeveloper, Op: plays.OpIs, Values: []string{dev}}}}}
+	}
+	anyDev := func(a *plays.AutoPlay) { a.MomentStage = &progress }
+	tests := []struct {
+		name     string
+		edit     func(*plays.AutoPlay)
+		stage    plays.Stage
+		from, to string
+		want     []plays.QueueStatus
+	}{
+		{"the condition holds only once set", onlyDev, plays.StageProgress, "", dev, []plays.QueueStatus{plays.QueueQueued}},
+		{"changed to the one the condition names", onlyDev, plays.StageProgress, tester, dev, []plays.QueueStatus{plays.QueueQueued}},
+		{"no developer to run on until set", anyDev, plays.StageProgress, "", dev, []plays.QueueStatus{plays.QueueDidntRun, plays.QueueQueued}},
+		{"it could already run before", anyDev, plays.StageProgress, tester, dev, []plays.QueueStatus{plays.QueueQueued}},
+		{"the ticket is in another stage", onlyDev, plays.StageBacklog, "", dev, []plays.QueueStatus{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newRig(t, openStore(t))
+			r.SetStatus("st-backlog", plays.StageBacklog)
+			r.SetStatus("st-progress", plays.StageProgress)
+			fix := r.play(t, "Fix it")
+			r.autoPlay(t, fix.ID, plays.MomentTicketEnteredStage, tt.edit)
+			r.ticket("t-1", func(f *plays.Facts) { f.Stage, f.Developer = tt.stage, tt.from })
+			ticket := map[string]any{"id": "t-1", "project_id": project}
+			mover := map[string]any{"kind": "user", "user_id": tester}
+			if tt.stage == plays.StageProgress {
+				r.moment(t, "ticket.status_changed", map[string]any{"ticket": ticket, "from": "st-backlog", "to": "st-progress", "actor": mover})
+			}
+
+			r.ticket("t-1", func(f *plays.Facts) { f.Stage, f.Developer = tt.stage, tt.to })
+			from := ""
+			if tt.from != "" {
+				from = "login-" + tt.from
+			}
+			r.moment(t, "ticket.developer_changed", map[string]any{"ticket": ticket, "from": from, "to": "login-" + tt.to, "actor": mover})
+
+			items := r.queued(t, "t-1")
+			assert.Len(t, items, len(tt.want))
+			assert.ElementsMatch(t, tt.want, statuses(items))
+			for _, it := range items {
+				if it.Status == plays.QueueQueued && tt.from != tester {
+					assert.Equal(t, dev, it.PersonID, "the run lands on the developer just set")
+				}
+			}
+		})
+	}
+}
+
 func TestQueue_OnceWithin_LetsOneRunPerWindow(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")

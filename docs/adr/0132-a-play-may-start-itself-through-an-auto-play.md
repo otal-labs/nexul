@@ -62,3 +62,9 @@ since they all share the person's computer; raising it starts waiting runs at on
 Amended: an auto play may also name memories, as the run dialog does, for each run to read beside the always-included
 ones. They can come from any project in the workspace, since one auto play serves every project its play is in; a run
 reads those in its target's project and leaves the rest out rather than refusing to start.
+
+Amended: setting a ticket's developer or tester counts as the ticket entering its current stage for that stage's auto
+plays, when the change is what lets one run: its conditions failed or it had nobody to run on with the earlier person,
+and with the new one they hold and it has someone. A move followed by an assignment then starts the run without moving
+the card out and back. An auto play that could already run with the earlier person isn't started again, and
+`once_within_minutes` still applies.
