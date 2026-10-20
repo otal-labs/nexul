@@ -48,6 +48,7 @@ const developer = ["docs:read", "docs:write", "docs:thread", "plays:run"];
 
 let permissions: string[] = [];
 let shownDoc: Doc = doc;
+let docTickets: { id: string; title: string }[] = [];
 
 const serve = (clarification: Clarification) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -59,6 +60,7 @@ const serve = (clarification: Clarification) =>
         data: [play("pl-c", "clarify", "Clarify via AI"), play("pl-u", "update-doc", "Update doc via AI"), play("pl-t", "to-tickets-via-ai", "To tickets via AI")],
       };
     }
+    if (url === "/api/tickets") return { data: docTickets };
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
     return { data: [] };
@@ -87,6 +89,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.put).mockReset();
   vi.mocked(api.post).mockReset();
+  docTickets = [];
 });
 
 describe("DocQuestionsPanel", () => {
@@ -214,10 +217,10 @@ describe("DocQuestionsPanel", () => {
     expect(screen.getByText("· The doc is locked until it ends")).toBeInTheDocument();
   });
 
-  it("offers a developer Update doc via AI only once no question waits, beside Clarify via AI for another round", async () => {
+  it("offers a developer Update doc via AI only once no question waits, beside Continue via AI for another round", async () => {
     serve({ ...waiting, can_close: true });
     const { unmount } = renderPanel(developer);
-    expect(await screen.findByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Continue via AI/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Update doc via AI/ })).not.toBeInTheDocument();
     unmount();
 
@@ -225,7 +228,18 @@ describe("DocQuestionsPanel", () => {
     renderPanel(developer);
     expect(await screen.findByText("Round 1 answered")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /Update doc via AI/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continue via AI/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Clarify via AI/ })).not.toBeInTheDocument();
+  });
+
+  it("shows a developer the doc's tickets in place of To tickets via AI once it has made them", async () => {
+    docTickets = [{ id: "t-1", title: "Send the reminder by email" }];
+    serve({ ...waiting, can_close: true, closed: true });
+    renderPanel(developer);
+
+    expect(await screen.findByText("Send the reminder by email")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Clarify via AI/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /To tickets via AI/ })).not.toBeInTheDocument();
   });
 
   it("lets a developer close after the doc is written, and offers to write again an answer changed since", async () => {
