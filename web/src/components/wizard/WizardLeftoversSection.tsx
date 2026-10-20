@@ -11,15 +11,17 @@ interface WizardLeftoverRowProps {
   // The button's accessible name, when its words alone don't say what it opens.
   actionName?: string;
   to: WizardStepId;
+  // The one row worth a button that reads as one: deploying a repository that is ready.
+  outline?: boolean;
 }
 
-export const WizardLeftoverRow = ({ label, state, action, actionName, to }: WizardLeftoverRowProps) => {
+export const WizardLeftoverRow = ({ label, state, action, actionName, to, outline = false }: WizardLeftoverRowProps) => {
   const goTo = useWizardGoTo();
   return (
     <li className="flex items-center gap-3 py-2">
       <span className="flex-1 text-sm">{label}</span>
       <span className="font-mono text-xs text-muted-foreground">{state}</span>
-      <Button type="button" variant="ghost" size="sm" onClick={() => goTo(to)} aria-label={actionName}>
+      <Button type="button" variant={outline ? "outline" : "ghost"} size="sm" onClick={() => goTo(to)} aria-label={actionName}>
         {action}
       </Button>
     </li>
@@ -57,7 +59,7 @@ export const WizardLeftoversSection = () => {
         {deploying && deploying.length === 0 && (
           <WizardLeftoverRow label="Deploy" state="needs a repository" action="Open Repository" to="repository" />
         )}
-        {deploying && deploying.length > 0 && <WizardLeftoverRow label="Deploy" state="later" action="Deploy now" to="deploy" />}
+        {deploying && deploying.length > 0 && <WizardLeftoverRow label="Deploy" state="later" action="Deploy now" to="deploy" outline />}
       </ul>
     </section>
   );

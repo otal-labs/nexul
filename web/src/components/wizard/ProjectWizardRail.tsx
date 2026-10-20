@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { microheaderClass } from "@/components/Microheader";
 import { ProjectWizardRailItem } from "@/components/wizard/ProjectWizardRailItem";
 import { useWizardStackId } from "@/hooks/useWizardSetup";
@@ -27,11 +28,11 @@ export const ProjectWizardRail = ({ step }: ProjectWizardRailProps) => {
           {position} / {rows.length}
         </span>
       </p>
-      <ol aria-label="Project wizard steps" className="mt-6 hidden @2xl:block">
+      <EnterList as="ol" arrival="rise" aria-label="Project wizard steps" className="mt-6 hidden @2xl:block">
         {rows.map((row, index) => (
           <ProjectWizardRailItem key={row.id} row={row} step={step} last={index === rows.length - 1} />
         ))}
-      </ol>
+      </EnterList>
     </nav>
   );
 };

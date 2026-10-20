@@ -696,9 +696,12 @@ the project's name in mono once there is one, then one project-wizard node per s
 Service, Environment when the scan found keys, Domain, Branches, Done), each a button, so any step opens at any time.
 A node shows what the project records for its step (ADR 0143): done is a check in the `success` token, skipped a dashed
 muted ring with a dash, never visited a hollow muted ring, and the current node a filled ring with `aria-current="step"`
-in `brand`; an 11px mono word under a label other than the current one says `done`, `skipped` or `later`. In the setup
-door the steps after Deploy are its sub-steps, indented one step, shown only while Deploy or one of them is open or a
-service exists; Deploy reads `later` when setup skipped the service. The add-a-service and attach doors have no Name,
+in `brand`; an 11px mono word under a label other than the current one says `skipped` or `later` (`done` is left to
+the check and spoken only). In the setup door the steps after Deploy are its sub-steps, indented one step, shown only
+while Deploy or one of them is open or a service exists; Deploy reads `later` when setup skipped the service. The rail
+is an `EnterList` with the rise arrival: it cascades in once, and sub-steps that appear when Deploy opens rise 8px over
+200ms; rejected were no motion (the rows jumped in under Deploy with nothing saying where they came from) and the pop
+arrival (a 0.97 scale is invisible on 14px text and read as a plain fade). The add-a-service and attach doors have no Name,
 People or Deploy, and show only what that run passed, never the project's recorded marks. Narrower than 42rem the rail
 is its header over one mono line, the current step's label and `n / total`. A step is a Fraunces title at 2rem that asks
 its own question, an optional muted lead, and its body in a `max-w-xl` column that slides 8px in the direction of travel

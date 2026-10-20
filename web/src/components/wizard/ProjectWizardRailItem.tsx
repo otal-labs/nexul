@@ -40,7 +40,9 @@ export const ProjectWizardRailItem = ({ row, step, last }: ProjectWizardRailItem
           >
             {wizardStepLabel(row.id, door)}
           </span>
-          {!current && mark !== "left" && <span className="font-mono text-[11px] text-muted-foreground/80">{mark}</span>}
+          {!current && mark !== "left" && (
+            <span className={cn("font-mono text-[11px] text-muted-foreground/80", mark === "done" && "sr-only")}>{mark}</span>
+          )}
         </span>
       </button>
     </li>
