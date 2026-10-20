@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const countActivePlayTrailsByStarter = `-- name: CountActivePlayTrailsByStarter :one
@@ -307,6 +308,75 @@ type ListQueuedPlayQueueByPlayParams struct {
 
 func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedPlayQueueByPlayParams) ([]PlayQueue, error) {
 	rows, err := q.db.QueryContext(ctx, listQueuedPlayQueueByPlay, arg.PlayID, arg.AllProjects, arg.ProjectIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlayQueue
+	for rows.Next() {
+		var i PlayQueue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.TargetType,
+			&i.TargetID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.AutoPlayID,
+			&i.PersonID,
+			&i.RunOn,
+			&i.Moment,
+			&i.Via,
+			&i.Priority,
+			&i.Status,
+			&i.Reason,
+			&i.TrailID,
+			&i.QueuedAt,
+			&i.DecidedAt,
+			&i.NotBefore,
+			&i.AutomationID,
+			&i.ComputerID,
+			&i.HarnessProjectID,
+			&i.Service,
+			&i.OutageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQueuedPlayQueueByTargets = `-- name: ListQueuedPlayQueueByTargets :many
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id FROM play_queue WHERE status = 'queued' AND target_type = ? AND target_id IN (/*SLICE:ids*/?)
+ORDER BY priority DESC, queued_at, id
+`
+
+type ListQueuedPlayQueueByTargetsParams struct {
+	TargetType string
+	Ids        []string
+}
+
+func (q *Queries) ListQueuedPlayQueueByTargets(ctx context.Context, arg ListQueuedPlayQueueByTargetsParams) ([]PlayQueue, error) {
+	query := listQueuedPlayQueueByTargets
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.TargetType)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

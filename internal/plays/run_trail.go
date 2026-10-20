@@ -31,28 +31,35 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 	return t, nil
 }
 
-// opensProject keeps a trail on a project its reader can no longer open out of every read; the row stays, so access
-// given back brings it back.
-func (r *Runner) opensProject(ctx context.Context, t *Trail) bool {
-	return t.ProjectID == "" || r.perm.HasPermission(ctx, actorID(ctx), t.WorkspaceID, permissions.Member, resourceTypeProject, t.ProjectID)
+// runOwner is what reading a trail or a queued run turns on: its project, its play, and the person it belongs to.
+type runOwner struct {
+	workspaceID, projectID, playID, personID string
 }
 
-// readable keeps the trails of list the caller reads: in a project they can open, and started by them or of a play they
-// can see, from one read of the play rules per workspace (ADR 0148).
-func (r *Runner) readable(ctx context.Context, list []*Trail) []*Trail {
+// readableRuns keeps the rows of list the caller reads: in a project they can open, and theirs or of a play they can
+// see, from one read of the play rules per workspace (ADR 0148). A row on a project its reader can no longer open
+// stays, so access given back brings it back.
+func readableRuns[T any](ctx context.Context, r *Runner, list []T, owner func(T) runOwner) []T {
 	actor := actorID(ctx)
 	byWorkspace := map[string][]string{}
-	for _, t := range list {
-		byWorkspace[t.WorkspaceID] = append(byWorkspace[t.WorkspaceID], t.PlayID)
+	for _, row := range list {
+		o := owner(row)
+		byWorkspace[o.workspaceID] = append(byWorkspace[o.workspaceID], o.playID)
 	}
 	sees := make(map[string]map[string]bool, len(byWorkspace))
 	for workspaceID, playIDs := range byWorkspace {
 		sees[workspaceID] = r.perm.PlaysWith(ctx, actor, workspaceID, permissions.PlaysRead, playIDs)
 	}
-	return slices.DeleteFunc(slices.Clone(list), func(t *Trail) bool {
-		started := actor != "" && actor == t.StarterID
-		return !r.opensProject(ctx, t) || (!started && !sees[t.WorkspaceID][t.PlayID])
+	return slices.DeleteFunc(slices.Clone(list), func(row T) bool {
+		o := owner(row)
+		opens := o.projectID == "" || r.perm.HasPermission(ctx, actor, o.workspaceID, permissions.Member, resourceTypeProject, o.projectID)
+		mine := actor != "" && actor == o.personID
+		return !opens || (!mine && !sees[o.workspaceID][o.playID])
 	})
+}
+
+func (r *Runner) readable(ctx context.Context, list []*Trail) []*Trail {
+	return readableRuns(ctx, r, list, func(t *Trail) runOwner { return runOwner{t.WorkspaceID, t.ProjectID, t.PlayID, t.StarterID} })
 }
 
 // ListTrails returns a target's trails newest first, under the same gate as GetTrail; a playID keeps that play's alone.
@@ -96,6 +103,26 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 	}
 	for _, t := range r.readable(ctx, list) {
 		out[t.TargetID] = t
+	}
+	return out, nil
+}
+
+// QueuedTargets maps each target with a run waiting in the queue to its first; targets the caller cannot read are left
+// out, not refused.
+func (r *Runner) QueuedTargets(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]*QueueItem, error) {
+	out := map[string]*QueueItem{}
+	if r.queue == nil || len(targetIDs) == 0 {
+		return out, nil
+	}
+	list, err := r.queue.ListQueuedByTargets(ctx, targetType, targetIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list queued runs: %w", err)
+	}
+	seen := readableRuns(ctx, r, list, func(it *QueueItem) runOwner { return runOwner{it.WorkspaceID, it.ProjectID, it.PlayID, it.PersonID} })
+	for _, it := range seen {
+		if _, ok := out[it.TargetID]; !ok {
+			out[it.TargetID] = it
+		}
 	}
 	return out, nil
 }

@@ -177,7 +177,7 @@ describe("useFetchActiveTrails / useTicketRunState", () => {
   it("asks once per project, naming the project rather than every ticket on the board", async () => {
     mockBoard({ "t-1": "tr-1" });
     const { result } = renderHook(() => useFetchActiveTrails("p-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {}, started: {} }));
+    await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {}, started: {}, queued: {} }));
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", project_id: "p-1" } });
     expect(api.get).not.toHaveBeenCalledWith("/api/tickets", expect.anything());
   });

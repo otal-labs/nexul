@@ -172,19 +172,19 @@ func TestRunHandler_Active(t *testing.T) {
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1", "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=doc&target_ids=t-1", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs/active?target_ids=t-1", "", starter).Code)
 }
@@ -270,7 +270,7 @@ func TestRunHandler_Active_ByProject(t *testing.T) {
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id="+projectID, "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String(), "each run is still checked against plays:read")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{}}`, rec.Body.String(), "each run is still checked against plays:read")
 
 	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id=proj-other", "", starter).Code)
 }
