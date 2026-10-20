@@ -591,8 +591,12 @@ page that works as a full detail view is not forced into a drawer.
 
 Ticket page. The page runs the full width beside the sidebar, with no centred
 cap, as one full-height panel. Its header spans the panel, so a long title
-reads across it, and under it a line tab row holds Ticket and Thread, the
-Thread tab at its own path segment. Ticket scrolls under the tab row: the body
+reads across it, and under it a line tab row holds Ticket and Thread, each tab
+past the first at its own path segment, and Notes once the ticket has a note.
+Notes is laid out as Ticket: the picked note open on the left at the body's
+measure, headed as its dialog is, and a Notes rail of rows (file, time, the
+summary clamped to two lines) with the picked one on the active edge; the
+newest opens first. Ticket scrolls under the tab row: the body
 and a 19.5rem rail behind a hairline rule. Thread fills the rest of the panel
 with the composer at its foot. The body sits open on the panel, no card, held
 to a 68ch measure; a card around it only framed the empty editing space. The

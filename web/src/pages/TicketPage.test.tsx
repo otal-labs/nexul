@@ -86,6 +86,7 @@ const mockTicket = (overrides: Record<string, unknown> = {}) => {
     if (url === "/api/statuses") return Promise.resolve({ data: statusData });
     if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
     if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
+    if (url === "/api/chat/tickets/t-1/notes") return Promise.resolve({ data: { conversation_id: "", notes: [] } });
     return Promise.resolve({ data: [] });
   });
   return vi.mocked(api.get).mockImplementation((url: string) => (url in overrides ? Promise.resolve({ data: overrides[url] }) : read(url)));
@@ -119,6 +120,7 @@ describe("TicketPage", () => {
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
       if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
       if (url === "/api/reviews") return Promise.resolve({ data: reviewData });
+      if (url === "/api/chat/tickets/t-1/notes") return Promise.resolve({ data: { conversation_id: "", notes: [] } });
       if (url === "/api/tickets/labels") return Promise.resolve({ data: [] });
       if (url === "/api/ticket-types") return Promise.resolve({ data: [] });
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
@@ -209,6 +211,42 @@ describe("TicketPage sections", () => {
     await user.click(screen.getByRole("tab", { name: "Thread" }));
     expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
     expect(screen.queryByText("Add the runner.")).not.toBeInTheDocument();
+  });
+
+  it("adds a Notes tab once the ticket has a note, opening the newest with every note in its rail", async () => {
+    const user = userEvent.setup();
+    const note = (id: string, body: string, file: string, at: string) => ({
+      id, conversation_id: "c-1", author_id: "u-1", author_kind: "agent", body, mentions: null, attachment_id: file, created_at: at, updated_at: at,
+    });
+    mockTicket({
+      "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:read"] },
+      "/api/chat/tickets/t-1/notes": {
+        conversation_id: "c-1",
+        notes: [note("m-2", "Merged in PR #30", "f-2", "2026-10-20T14:11:00Z"), note("m-1", "Left the rollout plan", "f-1", "2026-10-19T09:00:00Z")],
+      },
+      "/api/attachments": [{ id: "f-2", name: "handoff.md", size: 900, content_type: "text/markdown" }, { id: "f-1", name: "rollout.md", size: 400, content_type: "text/markdown" }],
+      "/api/attachments/f-2": "The slot now stores a time zone.",
+      "/api/attachments/f-1": "Roll out region by region.",
+    });
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Notes" }));
+    expect(await screen.findByRole("heading", { name: "Merged in PR #30" })).toBeInTheDocument();
+    expect(await screen.findByText("The slot now stores a time zone.")).toBeInTheDocument();
+    expect(screen.queryByText("Add the runner.")).not.toBeInTheDocument();
+
+    const rail = screen.getByRole("region", { name: "Notes" });
+    expect(within(rail).getByRole("button", { name: /handoff\.md/ })).toHaveAttribute("aria-current", "true");
+    await user.click(within(rail).getByRole("button", { name: /rollout\.md/ }));
+    expect(await screen.findByText("Roll out region by region.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Left the rollout plan" })).toBeInTheDocument();
+  });
+
+  it("has no Notes tab while the ticket has no note", async () => {
+    mockTicket();
+    renderPage();
+    expect(await screen.findByRole("tab", { name: "Thread" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Notes" })).not.toBeInTheDocument();
   });
 
   it("puts Plays directly under Properties, above Development", async () => {

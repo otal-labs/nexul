@@ -43,7 +43,7 @@ On a ticket's or doc's thread the agent works in that project, through your proj
 
 ### Notes on a ticket
 
-An agent can leave a note on a ticket instead of growing its description: a one-line message in the ticket's thread with a file pill. Select the pill to open the file. Anyone who can edit the ticket edits it live, and it saves as you type; deleting the message deletes the file.
+An agent can leave a note on a ticket instead of growing its description: a one-line message in the ticket's thread with a file pill. Select the pill to open the file. Once a ticket has a note, its page gains a Notes tab: the newest note opens there, and the list beside it opens any other. Anyone who can edit the ticket edits a note live, and it saves as you type; deleting the message deletes the file.
 
 ## Private channels
 

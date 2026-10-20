@@ -1,8 +1,10 @@
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
+import { TicketNotesTab } from "@/components/note/TicketNotesTab";
 import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TicketRail } from "@/components/ticket/TicketRail";
+import { useFetchTicketNotes } from "@/hooks/NoteHooks";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 
@@ -23,10 +25,13 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
   const hasThread = workspaceId !== "";
   const rail = <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />;
   const projectProp = project ? { project } : {};
+  const { data: notes } = useFetchTicketNotes(ticket.id);
+  const hasNotes = !!notes && notes.notes.length > 0;
 
   const tabs: PageTab[] = [
     { value: "ticket", label: "Ticket" },
     { value: "thread", label: "Thread", hidden: !hasThread },
+    { value: "notes", label: "Notes", hidden: !hasNotes },
   ];
   return (
     <div className={layout.page} data-pane-layout={embedded ? undefined : ""}>
@@ -46,6 +51,11 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
             {hasThread && (
               <PageTabsContent value="thread" className={layout.thread}>
                 <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane />
+              </PageTabsContent>
+            )}
+            {notes && hasNotes && (
+              <PageTabsContent value="notes" className={layout.ticketTab}>
+                <TicketNotesTab ticketId={ticket.id} notes={notes} gridClassName={layout.ticketGrid} railClassName={layout.rail} />
               </PageTabsContent>
             )}
           </PageTabs>

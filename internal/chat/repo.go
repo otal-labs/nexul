@@ -66,6 +66,8 @@ type Repo interface {
 	// PageLiveMessages returns one window of a conversation's messages that are not deleted, newest first, and how many
 	// there are.
 	PageLiveMessages(ctx context.Context, conversationID string, w paging.Window) ([]*Message, int, error)
+	// ListNotes returns a conversation's notes that are not deleted, newest first.
+	ListNotes(ctx context.Context, conversationID string) ([]*Message, error)
 	// ListMessagesSince returns only messages newer than since, for agent turn context of what's new.
 	ListMessagesSince(ctx context.Context, conversationID string, since time.Time) ([]*Message, error)
 	// UpdateMessage enqueues the given outbox events in the same transaction; the message must exist.
