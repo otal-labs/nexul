@@ -14,7 +14,7 @@ interface TicketPageBodyProps {
   onSetType: (ticketId: string, typeId: string) => Promise<void>;
   onAddLabel: (ticketId: string, label: string) => Promise<void>;
   onRemoveLabel: (ticketId: string, label: string) => Promise<void>;
-  /** Rendered inside another page (the Inbox split view), where the thread stays under the body. */
+  /** Rendered inside another page (the Inbox split view), whose detail pane is already the panel. */
   embedded: boolean;
 }
 
@@ -24,26 +24,12 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
   const rail = <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />;
   const projectProp = project ? { project } : {};
 
-  if (embedded) {
-    return (
-      <div className={layout.page}>
-        <TicketDetail key={ticket.id} ticket={ticket} layout={layout} {...projectProp} />
-        <div className={layout.rail}>{rail}</div>
-        {hasThread && (
-          <div className={layout.thread}>
-            <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const tabs: PageTab[] = [
     { value: "ticket", label: "Ticket" },
     { value: "thread", label: "Thread", hidden: !hasThread },
   ];
   return (
-    <div className={layout.page} data-pane-layout="">
+    <div className={layout.page} data-pane-layout={embedded ? undefined : ""}>
       <TicketDetail
         key={ticket.id}
         ticket={ticket}
