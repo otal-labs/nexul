@@ -149,3 +149,58 @@ func TestContinue_ThreadGone_StartsAgainWhereTheRunWas_WithoutAskingOrTheLink(t 
 	assert.Equal(t, "t3-nexul", f.harness.lastChoice.HarnessProjectID)
 	assert.Contains(t, f.threads.noteBodies(), threadGoneNote)
 }
+
+func TestContinueThread_MentionOnAnEndedRunsThread_ContinuesThatTrailWithoutPostingAgain(t *testing.T) {
+	f := newRunnerFixture()
+	trail := endedRun(t, f)
+	posted := len(f.threads.posts)
+
+	taken := make(chan bool, 1)
+	go func() {
+		taken <- f.runner.ContinueThread(t.Context(), trail.ConversationID, starter, " @Agent carry on ")
+	}()
+	<-f.turns.done
+	req := f.turns.last()
+	assert.Equal(t, "@Agent carry on", req.RequestBody)
+	assert.True(t, req.KeepThread)
+	req.Observer.OnStarted("th-1")
+
+	require.True(t, <-taken)
+	got, err := f.trails.GetTrail(t.Context(), trail.ID)
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State, "the target shows the work as its run")
+	assert.Len(t, f.threads.posts, posted, "the mention is already in the thread")
+}
+
+func TestContinueThread_NotARunToContinue_LeavesItToAPlainTurn(t *testing.T) {
+	tests := []struct {
+		name         string
+		conversation func(f *runnerFixture) string
+		user         string
+		message      string
+	}{
+		{"a conversation no run used", func(*runnerFixture) string { return "conv-none" }, starter, "carry on"},
+		{"a run still going", func(f *runnerFixture) string {
+			seedTrail(f, "tr-1", TrailRunning, "th-1")
+			return "conv-tr-1"
+		}, starter, "carry on"},
+		{"a mention by someone who can't steer the run", func(f *runnerFixture) string {
+			f.perm.grants["reader"] = []permissions.Action{permissions.PlaysRead}
+			seedTrail(f, "tr-1", TrailDone, "th-1")
+			return "conv-tr-1"
+		}, "reader", "carry on"},
+		{"an empty mention", func(f *runnerFixture) string {
+			seedTrail(f, "tr-1", TrailDone, "th-1")
+			return "conv-tr-1"
+		}, starter, "  "},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newRunnerFixture()
+			conv := tt.conversation(f)
+
+			assert.False(t, f.runner.ContinueThread(t.Context(), conv, tt.user, tt.message))
+			assert.Empty(t, f.turns.reqs, "nothing was sent")
+		})
+	}
+}

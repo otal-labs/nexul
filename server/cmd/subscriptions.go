@@ -485,6 +485,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	}
 	// News on a harness thread nobody here watches is caught up: a play's trail first, else a plain turn (ADR 0127).
 	agentSvc.SetFollower(svc.playsRunner)
+	agentSvc.SetContinuer(svc.playsRunner)
 	svc.presenceKeeper.SetOnSession(agentSvc.OnSessionUpdate)
 
 	// A moment an auto play waits for queues its run; a run ending frees a slot in someone's queue (ADR 0132).
