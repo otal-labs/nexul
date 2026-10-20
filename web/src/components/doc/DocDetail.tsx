@@ -8,6 +8,7 @@ import { DocAutoPlaysSection } from "@/components/doc/DocAutoPlaysSection";
 import { DocBodySection } from "@/components/doc/DocBodySection";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
+import { DocTicketsRunLine } from "@/components/doc/DocTicketsRunLine";
 import { DocTitleField } from "@/components/doc/DocTitleField";
 import { DocWatchButton } from "@/components/doc/DocWatchButton";
 import { DocToc } from "@/components/doc/DocToc";
@@ -119,6 +120,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
         </div>
 
         <div className="min-w-0 flex-1 space-y-4">
+          {canThread && <DocTicketsRunLine workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />}
           {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
           {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
           {/* Hidden, not unmounted, behind Questions so the editor keeps its session. */}

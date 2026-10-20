@@ -39,6 +39,8 @@ When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the do
 3. Press **Continue via AI** for the next round. The agent reads the earlier rounds too.
 4. When a round finds no gaps, the agent writes the answers into the doc. Press **Close**, then **To tickets via AI** to cut it into work; once it has, the doc's tickets show there in its place. A closed doc shows a green tick in place of its icon in the doc list, until another round starts.
 
+While **To tickets via AI** runs, a line above the doc counts the tickets it has written so far. When it finishes, the line says how many it wrote, with **Open board** beside it to go and see them. Whoever started the run also gets a notice in their inbox when it ends.
+
 Once no question is waiting, **Update doc via AI** shows beside **Continue via AI**. It asks nothing more: it writes the answers so far into the doc, keeping the authors' words, and puts what's still open under **Open points**. It shows again if someone changes an answer after the doc was written.
 
 The doc keeps its author's words until one of those runs writes it. It's locked only while a round runs.
