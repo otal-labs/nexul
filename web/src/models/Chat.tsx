@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { ChatMessage, Conversation, ConversationKind, MentionKind } from "@nexul/client-core/chat";
-import type { Person } from "@nexul/client-core/person";
+import { personLabel, type Person } from "@nexul/client-core/person";
 
 import { attachmentPath, type Attachment } from "@/models/Attachment";
 import type { Handoff } from "@/models/Handoff";
@@ -75,17 +75,21 @@ export const AgentMentionHandle = "Agent";
 export interface MentionCandidate {
   kind: MentionKind;
   handle: string;
+  // What the picker shows; an email login stays out of sight behind the display name.
+  label: string;
 }
 
 // buildMentionCandidates backs the composer's @ picker: @Agent is always offered, plus every workspace member.
 export const buildMentionCandidates = (people: Person[]): MentionCandidate[] => [
-  { kind: "agent", handle: AgentMentionHandle },
-  ...people.map((p) => ({ kind: "user" as const, handle: p.login })),
+  { kind: "agent", handle: AgentMentionHandle, label: AgentMentionHandle },
+  ...people.map((p) => ({ kind: "user" as const, handle: p.login, label: personLabel(p) })),
 ];
 
-// Same prefix-match pattern as the docs/tickets @ picker, applied to a single-token handle.
-export const matchesMentionPrefix = (candidate: MentionCandidate, query: string): boolean =>
-  query === "" || candidate.handle.toLowerCase().startsWith(query.toLowerCase());
+// Same prefix-match pattern as the docs/tickets @ picker, against the handle or the shown label.
+export const matchesMentionPrefix = (candidate: MentionCandidate, query: string): boolean => {
+  const q = query.toLowerCase();
+  return candidate.handle.toLowerCase().startsWith(q) || candidate.label.toLowerCase().startsWith(q);
+};
 
 export interface MentionTriggerState {
   // start is the index of "@" itself, so the composer can splice the picked handle back in.
