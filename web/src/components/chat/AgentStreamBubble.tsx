@@ -37,6 +37,8 @@ const latestStepLabel = (frame: AgentStreamFrame): string => {
 export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbleProps) => {
   const elapsed = useElapsedSeconds(frame.startedAt);
   const label = streamingLabel(frame, elapsed, live !== null);
+  // Before its first step or text the model is reasoning, which the step line reads as "Thinking".
+  const showStep = live === null && (Boolean(frame.activity) || (!frame.text && frame.handoffs.length === 0));
   return (
     <div className="flex gap-2.5 px-3 py-1.5">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
@@ -53,15 +55,12 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
         {live !== null && <MessageTrailTurns turns={live.turns} />}
         {frame.text && <p className="px-1 py-1 text-sm break-words whitespace-pre-wrap">{frame.text}</p>}
         {/* A snapshot clears the step, so a step in the frame is newer than the text above it. */}
-        {live === null && frame.activity && (
+        {showStep && (
           <p className="max-w-[85%] truncate px-1 py-1 text-sm">
             <span className="shimmer-text">{latestStepLabel(frame)}</span>
           </p>
         )}
         {frame.handoffs.length > 0 && <HandoffPills handoffs={frame.handoffs} />}
-        {live === null && !frame.text && !frame.activity && frame.handoffs.length === 0 && (
-          <p className="max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-muted-foreground animate-[status-pulse_2.4s_ease-standard_infinite] motion-reduce:animate-none">…</p>
-        )}
       </div>
       {frame.streaming && (
         <Button size="icon" variant="ghost" className="size-6 shrink-0" aria-label="Stop agent" onClick={onInterrupt}>
