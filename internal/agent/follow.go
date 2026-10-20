@@ -18,6 +18,19 @@ type ThreadFollower interface {
 	FollowThread(ctx context.Context, conversationID, threadID, userID, computerID, since string) (done <-chan struct{}, ok bool)
 }
 
+// RunContinuer takes an Agent mention on a conversation whose newest run has ended as that run's next turn (ADR 0128),
+// so the target keeps showing the work as a run; false leaves it to a plain turn.
+type RunContinuer interface {
+	ContinueThread(ctx context.Context, conversationID, userID, message string) bool
+}
+
+// SetContinuer registers the continuer a mention is offered to first.
+func (s *Service) SetContinuer(c RunContinuer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.continuer = c
+}
+
 // SetFollower registers the follower asked first; call it before any session update can arrive.
 func (s *Service) SetFollower(f ThreadFollower) {
 	s.mu.Lock()

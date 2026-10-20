@@ -20,8 +20,10 @@ Decision: an ended trail takes a message that continues it.
   answers with that new trail. The new run passes the play's own checks again, so a ticket that moved stage since can
   refuse it.
 - **Adapters.** `POST /api/plays/runs/{id}/continue` with `{message}`, `trail_update` with `continue`, and a "Continue
-  this run" box under an ended trail's transcript. Continue waits up to 30 seconds to learn whether the harness took
-  the turn, then answers with the trail as it is.
+  this run" box under an ended trail's transcript. An @Agent mention in the conversation whose newest trail has
+  ended continues that trail too, its message already posted, so the target's card and counts show the work as a run;
+  a mention on a running trail, or by someone who cannot steer it, stays a plain chat turn. Continue waits up to 30
+  seconds to learn whether the harness took the turn, then answers with the trail as it is.
 
 Rejected: a Continue that presses the play again with the message as extra instructions, which is the redo this
 replaces; and creating a fresh thread when the old one is gone without saying so, which hides that the agent lost

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -203,6 +204,34 @@ func TestRunTurn_KeptThreadGone_EndsSessionGoneWithoutTellingTheThread(t *testin
 			assert.True(t, obs.result.SessionGone)
 			_, systemPosts := conv.snapshot()
 			assert.Empty(t, systemPosts, "the caller says what a gone thread means")
+		})
+	}
+}
+
+// fakeContinuer answers every mention with take and records what it was offered.
+type fakeContinuer struct {
+	take  bool
+	calls [][]string
+}
+
+func (f *fakeContinuer) ContinueThread(_ context.Context, conversationID, userID, message string) bool {
+	f.calls = append(f.calls, []string{conversationID, userID, message})
+	return f.take
+}
+
+func TestHandleMessageCreated_OffersTheMentionToTheRunFirst(t *testing.T) {
+	for _, take := range []bool{true, false} {
+		synctest.Test(t, func(t *testing.T) {
+			client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}}
+			svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+			c := &fakeContinuer{take: take}
+			svc.SetContinuer(c)
+
+			require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent carry on", true)))
+			synctest.Wait()
+
+			assert.Equal(t, [][]string{{"conv-1", "u-1", "@Agent carry on"}}, c.calls)
+			assert.Equal(t, !take, client.lastPrompt != "", "a chat turn runs only when the run leaves the mention")
 		})
 	}
 }

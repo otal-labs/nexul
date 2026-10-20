@@ -401,22 +401,54 @@ func (r *Runner) Continue(ctx context.Context, trailID, message string, via Via)
 	if err != nil {
 		return nil, fmt.Errorf("get trail %s: %w", trailID, err)
 	}
-	actor := actorID(ctx)
-	if err := r.requireSteer(ctx, trail, "continue a run"); err != nil {
+	if err := r.mayContinue(ctx, trail); err != nil {
 		return nil, err
+	}
+	if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actorID(ctx), message); err != nil {
+		return nil, fmt.Errorf("post message: %w", err)
+	}
+	return r.resume(ctx, trail, message, via)
+}
+
+// ContinueThread implements agent.RunContinuer: an Agent mention by userID on a conversation whose newest run has ended
+// continues that run like Continue, its message already posted, so the target shows the work as a run; false leaves it
+// to a plain turn.
+func (r *Runner) ContinueThread(ctx context.Context, conversationID, userID, message string) bool {
+	message = strings.TrimSpace(message)
+	trail, err := r.trails.LatestTrailInConversation(ctx, conversationID)
+	if errors.Is(err, apperrs.ErrNotFound) || message == "" {
+		return false
+	}
+	if err != nil {
+		r.log.Warn("plays: read the run a mention would continue failed", "conversation", conversationID, "error", err)
+		return false
+	}
+	ctx = identity.WithActor(ctx, identity.Actor{ID: userID})
+	if err := r.mayContinue(ctx, trail); err != nil {
+		return false
+	}
+	if _, err := r.resume(ctx, trail, message, trail.Via); err != nil {
+		r.log.Warn("plays: continue from a mention failed", "trail", trail.ID, "error", err)
+	}
+	return true
+}
+
+// mayContinue refuses a continue the caller may not steer, or on a run still going or a target with another one going.
+func (r *Runner) mayContinue(ctx context.Context, trail *Trail) error {
+	if err := r.requireSteer(ctx, trail, "continue a run"); err != nil {
+		return err
 	}
 	if trail.State.Active() {
-		return nil, fmt.Errorf("%w: the run is still going; answer or stop it instead", apperrs.ErrConflict)
+		return fmt.Errorf("%w: the run is still going; answer or stop it instead", apperrs.ErrConflict)
 	}
-	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
-		return nil, err
-	}
+	return r.refuseIfActive(ctx, trail.TargetType, trail.TargetID)
+}
+
+// resume sends message, already in the target's thread, as the ended trail's next turn on its own harness thread.
+func (r *Runner) resume(ctx context.Context, trail *Trail, message string, via Via) (*Trail, error) {
 	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
 	if err != nil {
-		r.log.Warn("plays: continue could not read the target", "trail", trailID, "error", err)
-	}
-	if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actor, message); err != nil {
-		return nil, fmt.Errorf("post message: %w", err)
+		r.log.Warn("plays: continue could not read the target", "trail", trail.ID, "error", err)
 	}
 	before := *trail
 	trail.AppendActivity(ActivityEntry{Kind: harness.ActivityUserMessage, Summary: harness.Preview(message, 160), Detail: harness.CapDetail(message), At: r.now().UTC()})

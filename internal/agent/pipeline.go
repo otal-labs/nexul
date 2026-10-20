@@ -233,6 +233,7 @@ type Service struct {
 	// following holds the conversations a catch-up was started on, until its turn ends (ADR 0127).
 	following map[string]bool
 	follower  ThreadFollower
+	continuer RunContinuer
 }
 
 // activeTurn is an in-flight turn: the client it runs on and the target to interrupt.
@@ -308,8 +309,19 @@ func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) err
 		return nil
 	}
 	// ponytail: fire-and-forget, a turn runs minutes and must not block the bus handler.
-	go s.runChatTurn(TurnRequest{ConversationID: p.Message.ConversationID, ViaUserID: p.Message.AuthorID, RequestBody: p.Message.Body})
+	go s.answerMention(p.Message.ConversationID, p.Message.AuthorID, p.Message.Body)
 	return nil
+}
+
+// answerMention continues the conversation's ended run when the continuer takes the mention, else runs a chat turn.
+func (s *Service) answerMention(conversationID, userID, body string) {
+	s.mu.Lock()
+	continuer := s.continuer
+	s.mu.Unlock()
+	if continuer != nil && continuer.ContinueThread(context.Background(), conversationID, userID, body) {
+		return
+	}
+	s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body})
 }
 
 // runChatTurn runs a chat-started turn under chat's silence window; cancelling on return releases a turn the window ended.
