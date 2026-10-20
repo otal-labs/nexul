@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -39,6 +40,29 @@ func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body s
 		return nil, nil, fmt.Errorf("post note to conversation %s: %w", c.ID, err)
 	}
 	return m, file, nil
+}
+
+// TicketNotes returns a ticket's notes newest first, gated as its thread's messages are; none before the thread exists.
+func (s *Service) TicketNotes(ctx context.Context, ticketID, callerID string) (*TicketNotes, error) {
+	ticketID = strings.TrimSpace(ticketID)
+	if ticketID == "" {
+		return nil, fmt.Errorf("%w: ticket id is required", apperrs.ErrInvalid)
+	}
+	c, err := s.repo.GetTicketThread(ctx, ticketID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return &TicketNotes{Notes: []*Message{}}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ticket notes for ticket %s: %w", ticketID, err)
+	}
+	if err := s.requireRead(ctx, c, callerID); err != nil {
+		return nil, err
+	}
+	notes, err := s.repo.ListNotes(ctx, c.ID)
+	if err != nil {
+		return nil, fmt.Errorf("ticket notes for ticket %s: %w", ticketID, err)
+	}
+	return &TicketNotes{ConversationID: c.ID, Notes: notes}, nil
 }
 
 // noteThread checks, in order, that callerID reads the conversation, that it is a ticket's thread, and tickets:write.

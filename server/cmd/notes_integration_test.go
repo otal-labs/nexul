@@ -126,3 +126,53 @@ func callChatTool(ctx context.Context, t *testing.T, svc *chat.Service, name str
 	t.Fatalf("no chat tool %s", name)
 	return nil
 }
+
+// TestIntegration_TicketNotes holds the ticket's notes list to the thread's own gate, and to notes alone, newest first.
+func TestIntegration_TicketNotes(t *testing.T) {
+	t.Parallel()
+	f := newPermFixture(t)
+	s := f.svc
+	thread, err := f.store.Chat.GetTicketThread(context.Background(), f.ticket.ID)
+	require.NoError(t, err)
+
+	t.Run("a ticket with no thread has no notes", func(t *testing.T) {
+		got, err := s.chatSvc.TicketNotes(as(uOwner), "no-such-ticket", uOwner)
+		require.NoError(t, err)
+		assert.Empty(t, got.ConversationID)
+		assert.Empty(t, got.Notes)
+	})
+
+	t.Run("whoever may read the thread's messages may read its notes, and no one else", func(t *testing.T) {
+		for _, user := range []string{uOwner, uWriter, uReader, uPlain, uOutsider} {
+			_, listErr := s.chatSvc.ListMessages(as(user), thread.ID, user, 1)
+			_, notesErr := s.chatSvc.TicketNotes(as(user), f.ticket.ID, user)
+			assert.Equal(t, outcome(listErr), outcome(notesErr), "notes as %s", user)
+		}
+	})
+
+	t.Run("the route lists only live notes, newest first, with their thread", func(t *testing.T) {
+		_, err := s.chatSvc.PostMessage(as(uOwner), thread.ID, uOwner, "Not a note")
+		require.NoError(t, err)
+		file := chat.NoteFileInput{Name: "handoff", Markdown: "# Handoff"}
+		older, _, err := s.chatSvc.PostNote(as(uOwner), thread.ID, uOwner, "Older", file)
+		require.NoError(t, err)
+		deleted, _, err := s.chatSvc.PostNote(as(uOwner), thread.ID, uOwner, "Deleted", file)
+		require.NoError(t, err)
+		newer, _, err := s.chatSvc.PostNote(as(uOwner), thread.ID, uOwner, "Newer", file)
+		require.NoError(t, err)
+		require.NoError(t, s.chatSvc.DeleteMessage(as(uOwner), deleted.ID, uOwner))
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/api/chat/tickets/"+f.ticket.ID+"/notes", nil)
+		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(uReader), uReader)))
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var got chat.TicketNotes
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+		assert.Equal(t, thread.ID, got.ConversationID)
+		ids := make([]string, 0, len(got.Notes))
+		for _, n := range got.Notes {
+			ids = append(ids, n.ID)
+		}
+		assert.Equal(t, []string{newer.ID, older.ID}, ids)
+	})
+}

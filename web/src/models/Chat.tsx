@@ -11,6 +11,12 @@ export interface Message extends ChatMessage {
   handoffs?: Handoff[];
 }
 
+// A ticket's notes, newest first, and the thread holding them; the thread is empty until the ticket has one.
+export interface TicketNotes {
+  conversation_id: string;
+  notes: Message[];
+}
+
 // The chat.conversation.deleted frame: the conversation is gone, so it names what was deleted.
 export interface ConversationDeleted {
   conversation_id: string;

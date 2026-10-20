@@ -95,6 +95,7 @@ const mockApiResponse = (url: string) => {
     if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
     if (url.endsWith("/watchers")) return Promise.resolve({ data: { watchers: [], watching: false } });
     if (url.endsWith("/clarification")) return Promise.resolve({ data: { rounds: [], running: false, closed: false, can_answer: true, can_close: false } });
+    if (url.endsWith("/notes")) return Promise.resolve({ data: { conversation_id: "", notes: [] } });
     return Promise.resolve({ data: [] });
 };
 

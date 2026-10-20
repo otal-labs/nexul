@@ -480,6 +480,14 @@ func (r *ChatRepo) ListMessages(ctx context.Context, conversationID string, limi
 	return ms, nil
 }
 
+func (r *ChatRepo) ListNotes(ctx context.Context, conversationID string) ([]*chat.Message, error) {
+	rows, err := r.q.ListNotes(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("list notes for conversation %s: %w", conversationID, err)
+	}
+	return toMessages(rows)
+}
+
 // PageLiveMessages reads one window of a conversation's live messages, newest first, and how many it holds.
 func (r *ChatRepo) PageLiveMessages(ctx context.Context, conversationID string, w paging.Window) ([]*chat.Message, int, error) {
 	rows, err := r.q.ListLiveMessagesNewestFirst(ctx, sqlcgen.ListLiveMessagesNewestFirstParams{

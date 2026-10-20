@@ -10,6 +10,7 @@ import { NoteFileEditor } from "@/components/note/NoteFileEditor";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { getNoteTextKey, useFetchNoteText } from "@/hooks/NoteHooks";
+import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useIsViewingAs } from "@/stores/viewAsStore";
 import type { Message } from "@/models/Chat";
@@ -19,10 +20,14 @@ interface NoteFileViewProps {
   message: Message;
   fileName: string;
   canEdit: boolean;
+  /** Open on the ticket's Notes tab instead of in the thread's dialog, so it heads itself and drops the card. */
+  inline?: boolean;
 }
 
-// The dialog's contents: a writer joins the note's room and edits in place, a reader gets the file's render.
-export const NoteFileView = ({ message, fileName, canEdit }: NoteFileViewProps) => {
+// The note's contents: a writer joins the note's room and edits in place, a reader gets the file's render.
+export const NoteFileView = ({ message, fileName, canEdit, inline = false }: NoteFileViewProps) => {
+  const Title = inline ? "h2" : DialogTitle;
+  const Description = inline ? "p" : DialogDescription;
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
   const avatar = me?.user ? effectiveAvatar(me.user) : "";
@@ -36,20 +41,20 @@ export const NoteFileView = ({ message, fileName, canEdit }: NoteFileViewProps) 
   });
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <div className="space-y-2 pr-8">
-        <DialogDescription className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+    <div className={cn("flex min-w-0 flex-col gap-4", inline && "max-w-[68ch]")}>
+      <div className={cn("space-y-2", !inline && "pr-8")}>
+        <Description className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
           <FileText className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{fileName}</span>
           {!canEdit && <span className="shrink-0 text-muted-foreground/70">· read only</span>}
-        </DialogDescription>
-        <DialogTitle className="text-lg leading-snug font-semibold tracking-tight">{message.body}</DialogTitle>
+        </Description>
+        <Title className="text-lg leading-snug font-semibold tracking-tight">{message.body}</Title>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={message.updated_at} />
           {canEdit && <NoteDeleteButton message={message} />}
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
+      <div className={cn(!inline && "rounded-lg border border-border bg-card p-6 shadow-card sm:p-8")}>
         {isPending && <LoadingDisplay label="Loading note…" />}
         {error && <ErrorDisplay error={error} title="Couldn't load the note." />}
         {markdown !== undefined && session && (

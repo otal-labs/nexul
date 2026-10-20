@@ -37,3 +37,7 @@ Decided 2026-10-02.
 
 Amended 2026-10-02: ticket search finds a note's markdown. It is indexed in `ticket_notes_fts`, kept current by triggers on
 the message insert and on the file's update and delete, and a note-only match ranks after every title or body match.
+
+Amended 2026-10-20: `GET /api/chat/tickets/{ticketID}/notes` lists a ticket's notes newest first with their thread's id, gated as
+the thread's messages are, and empty for a ticket with no thread; the ticket page's Notes tab reads it and patches it from the
+message frames by that id. Agents keep reading notes through `message_list`.

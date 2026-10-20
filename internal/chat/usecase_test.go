@@ -375,6 +375,19 @@ func (f *fakeRepo) ListMessagesSince(_ context.Context, conversationID string, s
 	return out, nil
 }
 
+func (f *fakeRepo) ListNotes(_ context.Context, conversationID string) ([]*Message, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*Message
+	for _, m := range f.messages {
+		if m.ConversationID == conversationID && m.DeletedAt == nil && m.AuthorKind == AuthorAgent && m.AttachmentID != "" {
+			out = append(out, m)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	return out, nil
+}
+
 func (f *fakeRepo) SetAgentThread(_ context.Context, conversationID, threadID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

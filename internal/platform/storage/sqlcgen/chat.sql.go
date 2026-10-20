@@ -792,6 +792,51 @@ func (q *Queries) ListNoteFiles(ctx context.Context, ids []string) ([]ListNoteFi
 	return items, nil
 }
 
+const listNotes = `-- name: ListNotes :many
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs, via, author_name, author_avatar_url, embeds FROM messages WHERE conversation_id = ? AND author_kind = 'agent' AND attachment_id IS NOT NULL AND deleted_at IS NULL
+ORDER BY created_at DESC, id DESC
+`
+
+func (q *Queries) ListNotes(ctx context.Context, conversationID string) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listNotes, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.AuthorID,
+			&i.Body,
+			&i.Mentions,
+			&i.AttachmentID,
+			&i.EditedAt,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AuthorKind,
+			&i.Handoffs,
+			&i.Via,
+			&i.AuthorName,
+			&i.AuthorAvatarUrl,
+			&i.Embeds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listParticipantsByConversationIDs = `-- name: ListParticipantsByConversationIDs :many
 SELECT conversation_id, user_id FROM conversation_participants WHERE conversation_id IN (/*SLICE:ids*/?)
 `

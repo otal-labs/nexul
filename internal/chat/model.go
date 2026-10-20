@@ -176,6 +176,12 @@ type NoteFile struct {
 	Markdown string
 }
 
+// TicketNotes is a ticket's notes and the thread holding them, empty when the ticket has no thread yet.
+type TicketNotes struct {
+	ConversationID string     `json:"conversation_id"`
+	Notes          []*Message `json:"notes"`
+}
+
 // mentionPattern matches a login-shaped @token not inside a word, so an email's domain is no mention; it doesn't validate against real workspace members.
 var mentionPattern = regexp.MustCompile(`(?:^|[^\w.])@([\w-]+)`)
 
