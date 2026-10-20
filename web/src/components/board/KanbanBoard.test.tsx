@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { DndContextProps, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
+import { useDndContext, type DndContextProps, type DragOverEvent, type DragStartEvent } from "@dnd-kit/core";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 
@@ -23,8 +24,11 @@ vi.mock("react-router", async () => {
   return { ...actual, useNavigate: () => vi.fn() };
 });
 
-// Every card here is draggable, as for a viewer who can write tickets.
-vi.mock("@/hooks/useActionState", () => ({ useActionState: () => ({ state: "live" }) }));
+// Every card and column here is draggable, as for a viewer who can write tickets and projects, unless a test narrows it.
+const viewer = vi.hoisted(() => ({ holds: new Set(["tickets:write", "projects:write"]) }));
+vi.mock("@/hooks/useActionState", () => ({
+  useActionState: ({ permission }: { permission: string }) => ({ state: viewer.holds.has(permission) ? "live" : "hidden" }),
+}));
 
 // jsdom never lays anything out, so drags are driven through the handlers the board hands to DndContext.
 const dnd = vi.hoisted(() => ({ props: null as DndContextProps | null }));
@@ -34,10 +38,32 @@ vi.mock("@dnd-kit/core", async () => {
     ...actual,
     DndContext: (props: DndContextProps) => {
       dnd.props = props;
-      return <actual.DndContext {...props} />;
+      return (
+        <actual.DndContext {...props}>
+          {props.children}
+          <DropTargets />
+        </actual.DndContext>
+      );
     },
   };
 });
+
+// The drop targets collision detection may pick, which dnd-kit limits to the enabled ones.
+const DropTargets = () => {
+  const { droppableContainers } = useDndContext();
+  return (
+    <ul aria-label="Drop targets">
+      {droppableContainers.getEnabled().map((container) => (
+        <li key={container.id}>{container.id}</li>
+      ))}
+    </ul>
+  );
+};
+
+const dropTargets = () =>
+  within(screen.getByRole("list", { name: "Drop targets" }))
+    .queryAllByRole("listitem")
+    .map((item) => item.textContent ?? "");
 
 const renderBoard = (ui: ReactElement) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -81,6 +107,7 @@ const swimlanes = [
 ];
 
 beforeEach(() => {
+  viewer.holds = new Set(["tickets:write", "projects:write"]);
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockResolvedValue({ data: [] });
 });
@@ -154,6 +181,7 @@ describe("KanbanBoard", () => {
 
     const copies = await screen.findAllByText("Fix login");
     expect(copies.filter((copy) => !container.contains(copy))).toHaveLength(1);
+    fireEvent.mouseUp(document);
   });
 
   it("picks a card up with Space, so a keyboard user can move it", async () => {
@@ -166,5 +194,26 @@ describe("KanbanBoard", () => {
 
     const copies = await screen.findAllByText("Fix login");
     expect(copies.filter((copy) => !container.contains(copy))).toHaveLength(1);
+  });
+
+  it("takes no drop in a collapsed lane, whose hidden columns still measure over the lane below", async () => {
+    const twoLanes = [
+      lane("Sprint 2", "Sprint 2", "c-2", [ticket("t-3", "Ship search", "open", "c-2")]),
+      lane("Sprint 1", "Sprint 1", "c-1", [ticket("t-1", "Fix login", "open", "c-1")]),
+    ];
+    renderBoard(<KanbanBoard columns={columns} swimlanes={twoLanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
+    await userEvent.click(within(screen.getByRole("region", { name: "Sprint 2 swimlane" })).getByRole("button", { expanded: true }));
+
+    const targets = dropTargets();
+    expect(targets.filter((id) => id.startsWith("column-Sprint 2-") || id === "t-3")).toEqual([]);
+    expect(targets).toEqual(expect.arrayContaining(["column-Sprint 1-open", "column-Sprint 1-done", "t-1"]));
+  });
+
+  it("still takes a card in a column the viewer may not reorder", () => {
+    viewer.holds = new Set(["tickets:write"]);
+    renderBoard(<KanbanBoard columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
+
+    expect(screen.queryByRole("button", { name: "Reorder Done" })).not.toBeInTheDocument();
+    expect(dropTargets()).toEqual(expect.arrayContaining(["column-Sprint 1-open", "column-Sprint 1-in_progress", "column-Sprint 1-done"]));
   });
 });

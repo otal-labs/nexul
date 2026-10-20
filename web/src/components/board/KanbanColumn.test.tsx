@@ -62,6 +62,7 @@ const renderColumn = (props: Partial<Parameters<typeof KanbanColumn>[0]> = {}) =
         laneLabel="Sprint 1"
         categoryId="c-1"
         column={column}
+        collapsed={false}
         tickets={[ticket("t-1", "Fix login", "open")]}
         onAddTicket={() => {}}
         {...props}

@@ -27,6 +27,7 @@ import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
   ticket: Ticket;
+  collapsed?: boolean;
 }
 
 interface TicketCardBodyProps {
@@ -114,7 +115,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   );
 });
 
-const TicketCardImpl = ({ ticket }: TicketCardProps) => {
+const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const queryClient = useQueryClient();
@@ -125,7 +126,7 @@ const TicketCardImpl = ({ ticket }: TicketCardProps) => {
   const draggable = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
-    disabled: !draggable,
+    disabled: { draggable: !draggable, droppable: collapsed },
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
     transition: { duration: 200, easing: "ease" },
   });
