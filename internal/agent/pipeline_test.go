@@ -520,9 +520,9 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	client := &fakeHarness{startResult: harness.StartResult{
 		SessionID: "thread-new",
 		Updates: updatesChan(
-			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "Read", Summary: "Read main.go started"}},
+			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "c-1", Tool: "Read", Summary: "Read main.go started"}},
 			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "wor", Streaming: true}},
-			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolResult, Tool: "Bash", Summary: "Bash"}},
+			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolResult, CallID: "c-2", Tool: "Bash", Summary: "Bash"}},
 			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "working on it", Streaming: true}},
 			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
 			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
@@ -541,9 +541,9 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	frames := live.snapshot()
 	require.Len(t, frames, 6)
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true}, frames[0], "an immediate empty working frame precedes the first snapshot")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read"}, frames[1], "a tool step publishes before any text")
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read", ActivityCallID: "c-1"}, frames[1], "a tool step publishes before any text")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true}, frames[2], "text clears the stale tool step")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash"}, frames[3], "a tool step keeps the text so far")
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash", ActivityCallID: "c-2"}, frames[3], "a tool step keeps the text so far")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "done!", Streaming: true}, frames[5], "the persisted reply, not the last snapshot, ends the bubble")
 
 	replies, systemPosts := conv.snapshot()
