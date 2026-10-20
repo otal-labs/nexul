@@ -95,7 +95,7 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 
 func toGrantResult(g *Overwrite, accounts map[string]*User, names *namer) grantResult {
 	if g.Target == TargetRole {
-		return grantResult{Target: TargetRole, RoleID: g.RoleID, RoleName: names.name(TargetRole, g.RoleID), Allow: g.Allow, Deny: g.Deny}
+		return grantResult{Target: TargetRole, RoleID: g.RoleID, RoleName: names.targetName(g), Allow: g.Allow, Deny: g.Deny}
 	}
 	r := grantResult{Target: TargetPerson, UserID: g.UserID, Allow: g.Allow, Deny: g.Deny}
 	if u, ok := accounts[g.UserID]; ok {

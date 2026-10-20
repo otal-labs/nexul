@@ -23,7 +23,7 @@ export const zoneAccounts = (zones: Zone[]): CloudflareAccount[] => {
   const byId = new Map<string, CloudflareAccount>();
   for (const z of zones) {
     if (!z.account_id || byId.has(z.account_id)) continue;
-    byId.set(z.account_id, { id: z.account_id, name: z.account_name ?? z.account_id });
+    byId.set(z.account_id, { id: z.account_id, name: z.account_name ?? "Cloudflare account" });
   }
   return [...byId.values()];
 };

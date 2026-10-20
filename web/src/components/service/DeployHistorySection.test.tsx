@@ -61,12 +61,12 @@ describe("DeployHistorySection", () => {
     expect(screen.queryByText(/No deploys yet/)).not.toBeInTheDocument();
   });
 
-  it("lists deploys with image, status, mono id, and relative time", () => {
+  it("lists deploys with image, status, and relative time, never the id", () => {
     renderSection(<DeployHistorySection deploys={deploys} isLoading={false} />);
     expect(screen.getByText("ghcr.io/onik/api:v1")).toBeInTheDocument();
     expect(screen.getByText("repo build")).toBeInTheDocument();
-    expect(screen.getByText("d-1")).toBeInTheDocument();
-    expect(screen.getByText("d-2")).toBeInTheDocument();
+    expect(screen.queryByText("d-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("d-2")).not.toBeInTheDocument();
     expect(screen.getByText("healthy")).toBeInTheDocument();
     expect(screen.getByText("failed")).toBeInTheDocument();
     expect(screen.getByText("3h ago")).toBeInTheDocument();

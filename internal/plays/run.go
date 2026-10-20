@@ -439,11 +439,11 @@ func formatDuration(d time.Duration) string {
 
 func (r *Runner) login(ctx context.Context, userID string) string {
 	if r.users == nil {
-		return userID
+		return "someone"
 	}
 	login, err := r.users.Login(ctx, userID)
 	if err != nil || login == "" {
-		return userID
+		return "someone"
 	}
 	return login
 }

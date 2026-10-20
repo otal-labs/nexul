@@ -9,7 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// SetNames wires what a source sentence names; unwired, a sentence names ids.
+// SetNames wires what a source sentence names; unwired, a sentence names placeholders.
 func (s *Service) SetNames(n Names) {
 	s.names = n
 }
@@ -414,12 +414,18 @@ func (s *Service) namer(ctx context.Context) *namer {
 	return &namer{ctx: ctx, names: s.names, areas: s.InstanceAreas(), seen: map[[2]string]string{}}
 }
 
-// name is entityType id's name, or the id itself when it has none or the read fails.
+// name is entityType id's name, or a placeholder when it has none or the read fails: an id is not a name.
 func (n *namer) name(entityType, id string) string {
 	if name, ok := n.resolve(entityType, id); ok {
 		return name
 	}
-	return id
+	if id == "" {
+		return ""
+	}
+	if entityType == TargetPerson {
+		return "someone"
+	}
+	return "(unknown)"
 }
 
 // resolve is entityType id's name, and whether one exists.

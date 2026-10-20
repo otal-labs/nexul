@@ -66,19 +66,28 @@ export const useClearProjectLink = (projectId: string, projectName: string) => {
   });
 };
 
-// "onik-desktop · nexul · Sonnet 5 · New worktree": names from the live harness where it answers, the stored ids where it doesn't.
-export const useProjectLinkSummary = (link: ProjectLink | undefined): string => {
+// A link's computer and T3 project by name, never by id: an id is no name, so one that no longer resolves reads as unknown.
+export const useHarnessPlaceNames = (computerId: string, harnessProjectId: string) => {
+  const computers = useListComputers();
+  const projects = useFetchHarnessProjects(computerId);
+  return {
+    computer: computers.data?.find((c) => c.id === computerId)?.name ?? "Unknown computer",
+    project: projects.data?.find((p) => p.id === harnessProjectId)?.title ?? "Unknown project",
+    isPending: computers.isPending || (computerId !== "" && projects.isPending),
+  };
+};
+
+// "onik-desktop · nexul · Sonnet 5 · New worktree", or undefined while the names load.
+export const useProjectLinkSummary = (link: ProjectLink | undefined): string | undefined => {
   const computerId = link?.computer_id ?? "";
-  const { data: computers } = useListComputers();
-  const { data: projects } = useFetchHarnessProjects(computerId);
+  const { computer, project, isPending } = useHarnessPlaceNames(computerId, link?.harness_project_id ?? "");
   const { data: providers } = useFetchHarnessProviders(computerId);
   if (!link?.computer_id) return "Uses your defaults";
+  if (isPending) return undefined;
 
-  const computer = computers?.find((c) => c.id === link.computer_id)?.name ?? link.computer_id;
-  const project = projects?.find((p) => p.id === link.harness_project_id)?.title ?? link.harness_project_id;
   const pick = { provider: link.provider ?? "", model: link.model ?? "" };
   const providerName = providers?.find((p) => p.id === pick.provider)?.name ?? pick.provider;
   const model = findModel(providers ?? [], pick)?.name ?? (pick.model || providerName);
   const startIn = link.start_in && START_IN_SHORT_LABELS[link.start_in];
-  return [computer, project, model, startIn].filter(Boolean).join(" · ");
+  return [computer, link.harness_project_id && project, model, startIn].filter(Boolean).join(" · ");
 };

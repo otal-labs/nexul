@@ -466,7 +466,7 @@ describe("StackPage", () => {
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
     expect(within(screen.getByRole("region", { name: "Live status" })).getByText("3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
-    expect(screen.getByText("d-1")).toBeInTheDocument();
+    expect(screen.queryByText("d-1")).not.toBeInTheDocument();
   });
 
   it("drops the back link for a viewer without the projects area", async () => {

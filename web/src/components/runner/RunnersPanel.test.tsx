@@ -84,8 +84,8 @@ describe("RunnersPanel", () => {
     expect(screen.getByText("beta")).toBeInTheDocument();
     expect(screen.getByText("offline")).toBeInTheDocument();
     expect(screen.getByText("api")).toBeInTheDocument();
-    expect(screen.getByText("d-1")).toBeInTheDocument();
     expect(screen.getByText("web")).toBeInTheDocument();
+    expect(screen.queryByText(/^d-[12]$/)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /import from this machine/i })).toHaveAttribute(
       "href",
       "/acme/wizard/project/import?machine=m-1",
@@ -94,7 +94,6 @@ describe("RunnersPanel", () => {
 
     expect(screen.getByLabelText("Fleet health summary")).toHaveTextContent("Online1of 2Busy1Offline1Queued2");
     expect(screen.getByLabelText("Queue position 1")).toHaveTextContent("#1");
-    expect(screen.getByText("d-2")).toBeInTheDocument();
     expect(screen.getByText("build")).toBeInTheDocument();
     expect(screen.getByLabelText("Queue position 2")).toHaveTextContent("#2");
   });

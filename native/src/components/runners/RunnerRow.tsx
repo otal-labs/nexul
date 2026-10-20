@@ -21,7 +21,7 @@ export const RunnerRow = ({ runner }: RunnerRowProps) => (
     <StatusTile icon={Server} dot={runnerStatusDot(runner.connected)} dashed={!runner.connected} />
     <View className="min-w-0 flex-1 gap-0.5">
       <Text className="text-[15px] font-medium" numberOfLines={1}>
-        {runner.name || runner.id}
+        {runner.name || "Runner"}
       </Text>
       {runner.machine && runner.machine !== runner.name && (
         <Text className="font-mono text-xs text-muted-foreground" numberOfLines={1}>

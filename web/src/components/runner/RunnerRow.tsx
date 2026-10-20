@@ -19,8 +19,8 @@ export const RunnerRow = ({ runner, machine }: RunnerRowProps) => {
     <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_minmax(0,9rem)_2rem] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <RunnerStatusDot connected={runner.connected} />
       <div className="min-w-0">
-        <span className={cn("block truncate font-mono text-sm", !runner.connected && "text-muted-foreground")} title={runner.id}>
-          {named ? runner.name : `runner ${runner.id.slice(0, 8)}`}
+        <span className={cn("block truncate font-mono text-sm", !runner.connected && "text-muted-foreground")}>
+          {named ? runner.name : "Runner"}
         </span>
         {runner.version && <RunnerVersionChip version={runner.version} />}
       </div>

@@ -224,7 +224,7 @@ describe("ConnectorsSection", () => {
 
     // One-shot effect can fire before the connector list loads, so the name
     // falls back to the id, same as the connected toast.
-    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("github: provider exploded"));
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("GitHub: provider exploded"));
     expect(toast.success).not.toHaveBeenCalled();
   });
 

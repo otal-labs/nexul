@@ -341,6 +341,16 @@ describe("PlayRunDialog", () => {
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
   });
 
+  it("names an unknown project, never its id, when the computer's projects can't be read", async () => {
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
+    const mocked = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/pairing/computers/c-1/projects" ? Promise.reject(new Error("offline")) : mocked(url)));
+    renderDialog();
+
+    expect(await screen.findByText("Onik's PC · Unknown project")).toBeInTheDocument();
+    expect(screen.queryByText(/t3-app/)).not.toBeInTheDocument();
+  });
+
   it("changes where from the run, which sends the new place to be saved", async () => {
     const user = userEvent.setup();
     presence["c-2"] = "connected";

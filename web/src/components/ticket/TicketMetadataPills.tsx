@@ -170,7 +170,7 @@ export const DocChip = ({ docId }: { docId: string }) => {
   return (
     <span className={pillTriggerClass}>
       <FileIcon className="size-3.5 text-muted-foreground" aria-hidden />
-      <span className="max-w-40 truncate">{doc?.title ?? docId}</span>
+      <span className="max-w-40 truncate">{doc?.title ?? "Linked doc"}</span>
       <button
         type="button"
         aria-label="Remove doc link"

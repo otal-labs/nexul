@@ -63,6 +63,7 @@ export interface Deploy {
   id: string;
   stack_id: string;
   image: string;
+  commit?: string;
   status: DeployStatus;
   created_at: string;
   updated_at: string;
@@ -72,9 +73,9 @@ export interface Deploy {
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>
   deploys?.reduce<Deploy | undefined>((best, d) => (!best || d.created_at > best.created_at ? d : best), undefined);
 
-// The deploy's short image tag ("abc123" from "ghcr.io/org/app:abc123"), or a short id for a build with no image.
+// The deploy's short image tag ("abc123" from "ghcr.io/org/app:abc123"), or the commit a build with no image was built from.
 export const deployTitle = (deploy: Deploy): string => {
-  if (!deploy.image) return `Build ${deploy.id.slice(0, 7)}`;
+  if (!deploy.image) return deploy.commit ? `Build ${deploy.commit.slice(0, 7)}` : "Repo build";
   const ref = deploy.image.split("/").at(-1) ?? deploy.image;
   const [named = ref, digest] = ref.split("@");
   if (digest) return digest.replace(/^sha256:/, "").slice(0, 7);
