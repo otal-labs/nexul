@@ -77,6 +77,8 @@ type Project struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
 	Path  string `json:"path"`
+	// Repository is the checkout's git remote as T3 normalizes it, such as github.com/acme/api; empty until T3 has resolved it.
+	Repository string `json:"repository,omitempty"`
 }
 
 // ProviderModel is one model a provider instance offers, with the options a turn may set on it.

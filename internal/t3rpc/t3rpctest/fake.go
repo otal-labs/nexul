@@ -64,6 +64,9 @@ type Server struct {
 	AfterCommand map[string]map[string]any
 	// ShellThreads are the threads the shell snapshot lists; set it before connect.
 	ShellThreads []any
+	// ColdRepositories sends the shell snapshot before any git remote is resolved, as T3 does once its cache expired, and
+	// each remote in a refresh after it; set it before connect.
+	ColdRepositories bool
 	// ShellSubscribed gets the requestId of each subscribeShell stream, for the changes a test writes after its snapshot.
 	ShellSubscribed chan string
 	// Pings gets each Ping frame received, answered with a Pong unless IgnorePings is set.
@@ -291,11 +294,16 @@ func (f *Server) writeShell(requestID string) {
 		default:
 		}
 	}()
+	live := map[string]any{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil}
+	resolved := map[string]any{"repositoryIdentity": map[string]any{"canonicalKey": "github.com/acme/app"}}
+	if !f.ColdRepositories {
+		maps.Copy(live, resolved)
+	}
 	snapshot := map[string]any{
 		"snapshotSequence": 1,
 		"threads":          threads,
 		"projects": []map[string]any{
-			{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil},
+			live,
 			{"id": "proj-gone", "title": "Old", "deletedAt": "2026-01-01T00:00:00Z"},
 			{"id": "proj-two", "title": "Second", "workspaceRoot": "/home/me/second"},
 		},
@@ -306,7 +314,17 @@ func (f *Server) writeShell(requestID string) {
 	}
 	snapshot["schemaVersion"] = 2
 	f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot}))
-	f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot, "resolvedRepositoryIdentityRoots": []string{"/home/me/app"}}))
+	if !f.ColdRepositories {
+		f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot, "resolvedRepositoryIdentityRoots": []string{"/home/me/app", "/home/me/second"}}))
+		return
+	}
+	refresh := func(project map[string]any) {
+		f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": map[string]any{"schemaVersion": 2, "snapshotSequence": 1,
+			"projects": []map[string]any{project}, "threads": []any{}}, "resolvedRepositoryIdentityRoots": []string{project["workspaceRoot"].(string)}}))
+	}
+	refresh(map[string]any{"id": "proj-two", "title": "Second", "workspaceRoot": "/home/me/second", "repositoryIdentity": nil})
+	maps.Copy(live, resolved)
+	refresh(live)
 }
 
 func (f *Server) handleDispatch(env clientEnv) {

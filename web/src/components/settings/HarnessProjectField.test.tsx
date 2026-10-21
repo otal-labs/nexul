@@ -21,6 +21,11 @@ const renderField = (computerId: string, saved = "") => {
   );
 };
 
+const HarnessProjectFieldWithProject = () => {
+  const form = useForm<{ harness_project_id: string }>({ defaultValues: { harness_project_id: "" } });
+  return <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId="comp-1" projectId="p1" />;
+};
+
 describe("HarnessProjectField", () => {
   it("renders a picker from the computer's registry", async () => {
     vi.spyOn(api, "get").mockResolvedValueOnce({
@@ -100,6 +105,23 @@ describe("HarnessProjectField", () => {
     expect(screen.queryByRole("button", { name: "Clone acme/web" })).not.toBeInTheDocument();
     expect(post).toHaveBeenCalledWith("/api/pairing/computers/comp-1/projects", { repository: "acme/api" });
     expect(await screen.findByText("picked:t3-api")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Clone/ })).not.toBeInTheDocument();
+  });
+
+  it("counts a repository checked out under another folder name as on the computer, by its git remote", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p1/repos") {
+        return { data: [{ owner: "Acme", name: "api", full_name: "Acme/api", connector_id: "github", role: "app" }] } as never;
+      }
+      return { data: { projects: [{ id: "t3-api", title: "api-monorepo", path: "/home/me/Code/api-monorepo", repository: "github.com/acme/api" }], can_clone: true } } as never;
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <HarnessProjectFieldWithProject />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Create empty project" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Clone/ })).not.toBeInTheDocument();
   });
 

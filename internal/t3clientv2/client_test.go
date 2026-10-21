@@ -154,7 +154,7 @@ func TestSessionCalls_Protocol2_ReturnWhatProtocol1Returns(t *testing.T) {
 	projects, err := h.ListProjects(ctx, laptop(f))
 	require.NoError(t, err)
 	assert.Equal(t, []harness.Project{
-		{ID: "proj-live", Title: "My App", Path: "/home/me/app"},
+		{ID: "proj-live", Title: "My App", Path: "/home/me/app", Repository: "github.com/acme/app"},
 		{ID: "proj-two", Title: "Second", Path: "/home/me/second"},
 	}, projects, "the first snapshot is the registry; the identity-roots one that follows changes no row")
 
