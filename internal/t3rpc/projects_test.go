@@ -2,6 +2,7 @@ package t3rpc
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,9 +20,26 @@ func TestListProjects_ReturnsLiveRegistryFromShellSnapshot(t *testing.T) {
 	projects, err := c.ListProjects(testCtx(t))
 	require.NoError(t, err)
 	assert.Equal(t, []harness.Project{
-		{ID: "proj-live", Title: "My App", Path: "/home/me/app"},
+		{ID: "proj-live", Title: "My App", Path: "/home/me/app", Repository: "github.com/acme/app"},
 		{ID: "proj-two", Title: "Second", Path: "/home/me/second"},
 	}, projects, "deleted projects are dropped")
+}
+
+func TestListProjects_WaitsForRemotesT3ResolvesAfterTheRegistry(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	f.Protocol = 2
+	f.ColdRepositories = true
+	c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), Query: url.Values{"orchestrationProtocol": {"2"}}})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = c.Close() })
+
+	projects, err := c.ListProjects(testCtx(t))
+	require.NoError(t, err)
+	assert.Equal(t, []harness.Project{
+		{ID: "proj-live", Title: "My App", Path: "/home/me/app", Repository: "github.com/acme/app"},
+		{ID: "proj-two", Title: "Second", Path: "/home/me/second"},
+	}, projects)
 }
 
 func TestCloneProject_FailsWithT3sOwnSentence(t *testing.T) {

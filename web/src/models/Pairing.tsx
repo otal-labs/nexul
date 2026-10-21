@@ -370,6 +370,8 @@ export interface HarnessProject {
   id: string;
   title: string;
   path: string;
+  // The checkout's git remote as T3 normalizes it, such as github.com/acme/api; absent until T3 has resolved it.
+  repository?: string;
 }
 
 // can_clone is false for a computer paired before Nexul could clone there.
