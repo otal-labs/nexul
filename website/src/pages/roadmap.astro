@@ -6,6 +6,7 @@ type Status = 'in-progress' | 'planned' | 'shipped';
 
 // Newest first within a status; ROADMAP.md holds the same items and statuses.
 const items: { name: string; status: Status; summary: string }[] = [
+	{ name: 'Clone onto a computer', status: 'shipped', summary: 'When a computer has no T3 project for one of a project\'s repositories, pick Clone beside the T3 project picker and T3 Code clones it next to the computer\'s other projects, then the picker selects it. Agents do the same with computer_project_create.' },
 	{ name: 'View as', status: 'shipped', summary: 'Open a person on Team and view Nexul exactly as they see it in a workspace, read only, to check whether their roles give too much or too little. The view ends by itself, with the reason, if their roles change.' },
 	{ name: 'Projects before code', status: 'shipped', summary: 'Start a project with no repository for a client\'s docs, or attach a repository that isn\'t ready to deploy, as plain choices in the wizard, and deploy it later from the project\'s Services.' },
 	{ name: 'Invitations that explain themselves', status: 'shipped', summary: 'Each role says what it means in one line, on the invite form and the invite page. The page names no project until the person signs in, then lists the projects their roles open. Expired or deleted links say so plainly, and an existing account is turned away without using up a link meant for someone new.' },

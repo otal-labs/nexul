@@ -339,6 +339,15 @@ and computers are off, an Owner can't be viewed, and neither can someone
 holding a permission the viewer lacks. The view ends by itself, with the
 reason, if the person's roles change under it.
 
+### Clone onto a computer
+
+When a computer has no T3 project for one of a project's repositories, the T3
+project picker under Settings, Computers, Projects offers Clone for it. T3
+Code clones the repository next to the computer's other projects, or into
+~/Code, and the picker selects the new project, so a computer that runs T3
+Code from the command line needs no trip to its terminal. Agents do the same
+with computer_project_create.
+
 ---
 
 ## Now — improving what's built
