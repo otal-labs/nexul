@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -36,6 +37,9 @@ type ComputerOptions struct {
 	// NoT3 skips the T3 Code step; T3Port is the port T3 Code is installed on, when not its own 3773.
 	NoT3   bool
 	T3Port int
+	// Foreground runs the runner and T3 Code under `nexul run computer` instead of as services; a Linux host that is
+	// not running systemd does so on its own (ADR 0163).
+	Foreground bool
 }
 
 // computerClaims is the part of a computer's token the installer reads: where to enroll. The token's signature is
@@ -49,6 +53,8 @@ type person struct {
 	name     string
 	uid, gid int
 	home     string
+	// self is the account that runs the install itself, with no root to act as them.
+	self bool
 }
 
 func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
@@ -59,6 +65,7 @@ func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
 	fs.BoolVar(&o.NoT3, "no-t3", false, "leave T3 Code alone: neither look for it nor install it")
 	fs.IntVar(&o.T3Port, "t3-port", 0, "port T3 Code's service listens on when this installs it (default 3773)")
+	fs.BoolVar(&o.Foreground, "foreground", false, "run the runner and T3 Code under `nexul run computer` in this terminal, not as services (the default with no systemd)")
 	fs.Bool("yes", false, "accepted for scripts; this install never asks")
 	fs.Bool("y", false, "shorthand for --yes")
 	if err := fs.Parse(args); err != nil {
@@ -72,8 +79,13 @@ func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
 
 // InstallComputer installs this computer's personal runner for the person who typed sudo: the nexul command, the
 // runner and its credential under their home and owned by them, and a system service that runs it as them.
+// With no systemd, or --foreground, it registers no service and ends by running the foreground supervisor (ADR 0163).
 func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
-	p, err := h.computerPerson()
+	foreground, err := h.runsForeground(o)
+	if err != nil {
+		return err
+	}
+	p, err := h.installerPerson(foreground)
 	if err != nil {
 		return err
 	}
@@ -101,12 +113,40 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := h.installT3(ctx, p, o); err != nil {
+	t3, err := h.installT3For(ctx, p, o, foreground)
+	if err != nil {
 		return err
 	}
-	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p) }); err != nil {
+	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p, t3, foreground) }); err != nil {
 		return err
 	}
+	if foreground {
+		h.foregroundStarted(p, ho.Server)
+		return h.RunComputer(ctx)
+	}
+	h.printComputerInstalled(p, o, ho.Server)
+	return nil
+}
+
+// installerPerson is the account the runner is for: whoever typed sudo, or under the foreground supervisor whoever runs
+// the command.
+func (h *Host) installerPerson(foreground bool) (person, error) {
+	if foreground {
+		return h.foregroundPerson()
+	}
+	return h.computerPerson()
+}
+
+// installT3For makes T3 Code answer for the install: through its own service, or under the supervisor, which returns
+// the command line it runs T3 Code with.
+func (h *Host) installT3For(ctx context.Context, p person, o ComputerOptions, foreground bool) ([]string, error) {
+	if foreground {
+		return h.installT3Foreground(ctx, p, o)
+	}
+	return nil, h.installT3(ctx, p, o)
+}
+
+func (h *Host) printComputerInstalled(p person, o ComputerOptions, server string) {
 	service, logs, when := computerUnit+" system service", "journalctl -u "+computerUnit, "from boot and after you log out"
 	if h.GOOS == "darwin" {
 		service, logs = computerUnit+" LaunchDaemon", launchd{h}.logPath(Unit{Name: computerUnit})
@@ -114,12 +154,11 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if h.GOOS == "windows" {
 		service, logs, when = computerUnit+" task", filepath.Join(h.unitDir(computerUnit), "service.log"), "from when you log on until you log off"
 	}
-	h.printf("\nThis computer's runner runs as %s under the %s, %s; Nexul shows the computer connected once it reaches %s.\n", p.name, service, when, ho.Server)
+	h.printf("\nThis computer's runner runs as %s under the %s, %s; Nexul shows the computer connected once it reaches %s.\n", p.name, service, when, server)
 	h.printf("  Remove it      nexul uninstall computer\n  Logs           %s\n", logs)
 	if h.GOOS == "darwin" && !o.NoT3 {
 		h.printf("  T3 Code        runs only while %s is logged in at this Mac, as T3 Code's macOS service does; until then the computer shows connected but its agents cannot run\n", p.name)
 	}
-	return nil
 }
 
 // computerPerson is the person a computer's runner is for. The install runs as root under sudo only to place the
@@ -158,6 +197,10 @@ func (h *Host) lookupPerson(name string) (person, error) {
 	if err != nil {
 		return person{}, fmt.Errorf("look up %s: %w", name, err)
 	}
+	return personOf(name, account)
+}
+
+func personOf(name string, account *user.User) (person, error) {
 	uid, uidErr := strconv.Atoi(account.Uid)
 	gid, gidErr := strconv.Atoi(account.Gid)
 	if err := errors.Join(uidErr, gidErr); err != nil {
@@ -210,6 +253,9 @@ func (h *Host) computerService() string {
 
 // asPersonArgs is a command run by root as the person: runuser on Linux, sudo on macOS, which has no runuser.
 func (h *Host) asPersonArgs(p person, args ...string) (string, []string) {
+	if p.self {
+		return args[0], args[1:]
+	}
 	if h.GOOS == "darwin" {
 		return "sudo", append([]string{"-u", p.name}, args...)
 	}
@@ -217,25 +263,30 @@ func (h *Host) asPersonArgs(p person, args ...string) (string, []string) {
 }
 
 // installComputerRunner downloads the runner, trades the code for its credential and starts it as a system service
-// running as the person. A failure removes its directory again, so the next attempt starts clean.
-func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag string, p person) (string, error) {
+// running as the person; under the foreground supervisor it only lays the runner out, with t3 as T3 Code's command
+// line. A failure removes its directory again, so the next attempt starts clean.
+func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag string, p person, t3 []string, foreground bool) (string, error) {
 	existing, err := h.loadUnit(computerUnit)
 	if err != nil {
 		return "", err
 	}
-	if existing != nil && fileExists(h.userUnitPath(p)) {
+	if existing != nil && !foreground && fileExists(h.userUnitPath(p)) {
 		return h.moveToSystemService(ctx, *existing, p)
 	}
 	if existing != nil {
 		return "", errors.New("this computer already has its runner; remove it first with: nexul uninstall computer")
 	}
-	if h.GOOS != "windows" && fileExists(h.computerService()) {
+	if h.GOOS != "windows" && !foreground && fileExists(h.computerService()) {
 		return "", errors.New("this computer's runner is installed for another account; that account removes it with: nexul uninstall computer")
 	}
 	dir := h.unitDir(computerUnit)
-	u := Unit{Name: computerUnit, Kind: kindComputer, Version: tag, Dir: dir, WorkDir: dir, Exec: filepath.Join(dir, h.exeName(binaryFor(kindRunner))), User: p.name}
+	u := Unit{Name: computerUnit, Kind: kindComputer, Version: tag, Dir: dir, WorkDir: dir, Exec: filepath.Join(dir, h.exeName(binaryFor(kindRunner))), User: p.name, Foreground: foreground, T3: t3}
 	if err := h.setUpComputer(ctx, &u, o, tag, p); err != nil {
-		return "", errors.Join(err, h.removeCleanup(ctx), os.RemoveAll(u.Dir), h.giveTo(p, filepath.Dir(u.Dir)))
+		var cleanup error
+		if !foreground {
+			cleanup = h.removeCleanup(ctx)
+		}
+		return "", errors.Join(err, cleanup, os.RemoveAll(u.Dir), h.giveTo(p, filepath.Dir(u.Dir)))
 	}
 	return u.Name + ", " + u.Host, nil
 }
@@ -274,6 +325,9 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 	}
 	if err := h.giveTo(p, u.Dir); err != nil {
 		return err
+	}
+	if u.Foreground {
+		return nil
 	}
 	if err := h.installCleanup(ctx, p); err != nil {
 		return err
@@ -340,7 +394,7 @@ func (h *Host) dropUserUnit(ctx context.Context, p person) error {
 // giveTo hands what root made under the person's home to them: each path, everything in it, and the folders above
 // it up to their home, which the install may have created.
 func (h *Host) giveTo(p person, paths ...string) error {
-	if h.GOOS == "windows" { // the person runs a Windows install, so what it makes is theirs already
+	if h.GOOS == "windows" || p.self { // the person runs this install, so what it makes is theirs already
 		return nil
 	}
 	for _, path := range paths {
@@ -531,6 +585,12 @@ func (h *Host) runUninstallComputer(ctx context.Context, args []string) error {
 	}
 	if *detach && h.GOOS == "windows" {
 		return h.detachRemoval()
+	}
+	if _, u, err := h.foregroundInstall(); err == nil && u != nil {
+		if *detach {
+			return h.requestForegroundRemoval(*u)
+		}
+		return h.uninstallForeground(ctx, *u, *yes)
 	}
 	if *detach {
 		if err := h.requestRemoval(); err != nil {

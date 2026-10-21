@@ -70,6 +70,8 @@ if [ -n "$out" ]; then cp "$src" "$out"; else cat "$src"; fi
     PATH: `${bin}:/usr/bin:/bin`,
     NEXUL_TEST_DIR: directory,
     NEXUL_BIN_DIR: join(directory, 'installed-bin'),
+    // computer.sh asks whether systemd runs; the tests answer that it does, wherever they run.
+    NEXUL_SYSTEMD_DIR: directory,
     NEXUL_RELEASE_URL: 'https://example.test/releases',
     NEXUL_API_URL: 'https://api.example.test',
     NEXUL_INSTALL_URL: 'https://nexul.example.test/install.sh',
@@ -273,6 +275,36 @@ test('computer.sh without sudo says to put sudo in front of sh', async () => {
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain('| sudo sh -s -- <token>');
   expect(await exists(directory, 'urls')).toBe(false);
+});
+
+for (const [name, uid] of [['a plain account', 1000], ['a root login', 0]] as const) {
+  test(`computer.sh --foreground installs for ${name} with no sudo, into its own ~/.local/bin`, async () => {
+    const { directory, env } = setup({ uid });
+    const home = join(directory, 'home');
+    const result = spawnSync('/bin/sh', [computerScript, token, '--foreground'], {
+      env: { ...env, HOME: home, SUDO_USER: undefined, NEXUL_BIN_DIR: undefined },
+      input: '',
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(0);
+    expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token, '--foreground'].join('\n') + '\n');
+    expect(await exists(directory, 'home/.local/bin/nexul')).toBe(true);
+    expect(await exists(directory, 'sudo')).toBe(false);
+  });
+}
+
+test('computer.sh on a Linux host with no systemd picks --foreground itself: no sudo, and the installer is told', async () => {
+  const { directory, env } = setup({ uid: 1000 });
+  const home = join(directory, 'home');
+  const result = spawnSync('/bin/sh', [computerScript, token], {
+    env: { ...env, HOME: home, SUDO_USER: undefined, NEXUL_BIN_DIR: undefined, NEXUL_SYSTEMD_DIR: join(directory, 'no-systemd') },
+    input: '',
+    encoding: 'utf8',
+  });
+  expect(result.status).toBe(0);
+  expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token, '--foreground'].join('\n') + '\n');
+  expect(await exists(directory, 'home/.local/bin/nexul')).toBe(true);
+  expect(await exists(directory, 'sudo')).toBe(false);
 });
 
 test('computer.sh on a machine with no sudo says how to get it', async () => {

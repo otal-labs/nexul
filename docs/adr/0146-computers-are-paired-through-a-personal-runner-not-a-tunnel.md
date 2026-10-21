@@ -6,6 +6,8 @@ Supersedes ADR 0062 and ADR 0142. Amends ADR 0031, ADR 0073, ADR 0074 and ADR 01
 
 Sharing a computer is built as computer rules (ADR 0148).
 
+A Linux host with no systemd runs the runner under a built-in supervisor instead of a system service (ADR 0163).
+
 Nexul runs on a server; T3 Code runs on each person's own computer, usually behind a router. ADR 0062 reached it
 through a tunnel in the instance's own Cloudflare account, one per computer, closed by an Access rule. That made
 Cloudflare with Zero Trust a precondition for the main feature, made pairing three steps (a tunnel command, a

@@ -350,6 +350,15 @@ with computer_project_create. When the project has no repository, or the
 computer holds every one, Create empty project makes a new folder the same way,
 which also gives a computer with no T3 project the one setup needs.
 
+### A computer with no systemd
+
+A container or any Linux host that isn't running systemd can be added as a
+computer. The install detects it (or takes --foreground), needs no sudo, and
+stays running as `nexul run computer`, a built-in supervisor that runs the
+Nexul app and T3 Code, starts either one again 5 seconds after it exits, and
+removes the install when the computer is removed from Nexul. It prints the
+line that starts it again after a reboot.
+
 ---
 
 ## Now — improving what's built

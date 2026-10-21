@@ -5,7 +5,8 @@
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 --yes
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- runner --server <url> --name <name> --code <code>
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- computer --token <token>   (computer.sh runs this)
-# A computer installs with sudo for the person who typed it: the nexul command goes in their own ~/.local/bin.
+# A computer installs with sudo for the person who typed it: the nexul command goes in their own ~/.local/bin. With
+# --foreground, for a host with no systemd, it installs without sudo, for whoever runs it.
 # NEXUL_VERSION=v0.2.1 pins a release; unset, it takes the newest stable release, or the newest beta before one exists.
 set -eu
 
@@ -36,7 +37,10 @@ main() {
   # refuses to run as root. A computer's command goes in the home of the person who typed sudo, and
   # `nexul install computer` hands it, and every folder it made there, to them.
   sudo=""
-  if [ "${1:-}" = computer ]; then
+  if [ "${1:-}" = computer ] && foreground_requested "$@"; then
+    [ -n "${HOME:-}" ] || fail "HOME is not set: the nexul command goes in \$HOME/.local/bin"
+    BIN_DIR=${NEXUL_BIN_DIR:-$HOME/.local/bin}
+  elif [ "${1:-}" = computer ]; then
     home=""
     [ "${SUDO_USER:-root}" = root ] || home=$(home_of "$SUDO_USER")
     [ -n "$home" ] || fail "run this from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
@@ -76,6 +80,14 @@ main() {
     return
   fi
   $run_as "$BIN_DIR/nexul" install "$@"
+}
+
+# foreground_requested reports --foreground among the arguments: a computer for a host with no systemd, installed with no sudo.
+foreground_requested() {
+  case " $* " in
+    *" --foreground "*) return 0 ;;
+  esac
+  return 1
 }
 
 # home_of prints an account's home folder: from the passwd database on Linux, from Directory Services on macOS.

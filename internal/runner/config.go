@@ -40,6 +40,8 @@ type RunnerConfig struct {
 	Mode string
 	// T3Home is T3 Code's base directory (T3CODE_HOME, else ~/.t3), where a personal runner finds its port.
 	T3Home string
+	// T3Supervised is set by `nexul run computer` (NEXUL_T3_SUPERVISED), which restarts T3 Code itself.
+	T3Supervised bool
 }
 
 // ModePersonal is NEXUL_RUNNER_MODE for a runner on a person's own computer.
@@ -64,6 +66,7 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		BackoffMax:        envDuration("NEXUL_RUNNER_BACKOFF_MAX", 30*time.Second),
 		Mode:              os.Getenv("NEXUL_RUNNER_MODE"),
 		T3Home:            envOrDefault("T3CODE_HOME", defaultT3Home()),
+		T3Supervised:      os.Getenv("NEXUL_T3_SUPERVISED") != "",
 	}
 	if cfg.CredentialFile == "" {
 		return cfg, nil

@@ -105,31 +105,76 @@ func (h *Host) keepT3(ctx context.Context, p person, found t3Found) (string, err
 
 // installT3CommandLine runs T3 Code's own installer as the person, then starts T3 Code's background service.
 func (h *Host) installT3CommandLine(ctx context.Context, p person, port int) (string, error) {
-	if h.GOOS == "linux" {
-		if err := h.ensureLibatomic(ctx); err != nil {
-			return "", err
-		}
-	}
-	dir, err := os.MkdirTemp("", "nexul-t3-")
-	if err != nil {
-		return "", fmt.Errorf("make a folder for T3 Code's installer: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(dir) }()     // a leftover copy of a public script harms nothing
-	if err := os.Chmod(dir, 0o755); err != nil { // the person, not root, reads the installer
-		return "", fmt.Errorf("open %s to %s: %w", dir, p.name, err)
-	}
-	script := filepath.Join(dir, "install.sh")
-	if err := h.download(ctx, h.T3InstallerURL, script, 0o644); err != nil {
+	if err := h.runT3Installer(ctx, p); err != nil {
 		return "", err
-	}
-	if _, err := h.asPerson(ctx, p, "sh", script); err != nil {
-		return "", fmt.Errorf("T3 Code's installer failed; install T3 Code yourself from https://t3.codes, or run the command again with --no-t3: %w", err)
 	}
 	detail, err := h.startT3(ctx, p, filepath.Join(p.home, ".local", "bin", "t3"), port)
 	if err != nil {
 		return "", err
 	}
 	return "installed, " + detail, nil
+}
+
+// runT3Installer runs T3 Code's own installer as the person, which puts the t3 command in their ~/.local/bin. Only root
+// can add the library its Linux build links.
+func (h *Host) runT3Installer(ctx context.Context, p person) error {
+	if h.GOOS == "linux" && h.Getuid() == 0 {
+		if err := h.ensureLibatomic(ctx); err != nil {
+			return err
+		}
+	}
+	dir, err := os.MkdirTemp("", "nexul-t3-")
+	if err != nil {
+		return fmt.Errorf("make a folder for T3 Code's installer: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()     // a leftover copy of a public script harms nothing
+	if err := os.Chmod(dir, 0o755); err != nil { // the person, not root, reads the installer
+		return fmt.Errorf("open %s to %s: %w", dir, p.name, err)
+	}
+	script := filepath.Join(dir, "install.sh")
+	if err := h.download(ctx, h.T3InstallerURL, script, 0o644); err != nil {
+		return err
+	}
+	if _, err := h.asPerson(ctx, p, "sh", script); err != nil {
+		return fmt.Errorf("T3 Code's installer failed; install T3 Code yourself from https://t3.codes, or run the command again with --no-t3: %w", err)
+	}
+	return nil
+}
+
+// installT3Foreground is installT3 for a host with no systemd, where T3 Code's service has no user manager to live in:
+// it reuses a T3 Code that answers, and otherwise finds or installs the t3 command, which the supervisor runs. It
+// returns that command's line, nil when T3 Code is left to its person (ADR 0163).
+func (h *Host) installT3Foreground(ctx context.Context, p person, o ComputerOptions) ([]string, error) {
+	if o.NoT3 {
+		return nil, h.step("T3 Code", func() (string, error) { return "skipped (--no-t3)", nil })
+	}
+	port := o.T3Port
+	if port == 0 {
+		port = h.T3Port
+	}
+	found := h.findT3(ctx, p, port)
+	if found.answering {
+		return nil, h.step("T3 Code", func() (string, error) {
+			return fmt.Sprintf("running on port %d, started by you: it stays as it is, and the supervisor starts no second one", found.port), nil
+		})
+	}
+	command := found.command
+	if command == "" && found.desktop {
+		return nil, h.step("T3 Code", func() (string, error) {
+			return "the desktop app is installed but closed: Open T3 Code, and Nexul pairs it once it runs", nil
+		})
+	}
+	if command == "" {
+		h.printf("  Installing T3 Code, which Nexul pairs with: its command line from %s into ~/.local/bin, run by the supervisor on port %d. Pass --no-t3 to skip this.\n", h.T3InstallerURL, port)
+		command = filepath.Join(p.home, ".local", "bin", "t3")
+		if err := h.step("T3 Code", func() (string, error) { return "installed at " + command, h.runT3Installer(ctx, p) }); err != nil {
+			return nil, err
+		}
+		return t3ServeArgs(command, port), nil
+	}
+	return t3ServeArgs(command, port), h.step("T3 Code", func() (string, error) {
+		return fmt.Sprintf("%s, run by the supervisor on port %d", command, port), nil
+	})
 }
 
 // startT3 starts T3 Code's own background service for the person and waits until it answers.
@@ -200,7 +245,7 @@ func (h *Host) asPerson(ctx context.Context, p person, name string, args ...stri
 		return h.Exec.Run(ctx, name, args...)
 	}
 	env := []string{"env", "HOME=" + p.home}
-	if h.GOOS == "linux" {
+	if h.GOOS == "linux" && !p.self {
 		env = append(env, "XDG_RUNTIME_DIR=/run/user/"+strconv.Itoa(p.uid))
 	}
 	cmd, cmdArgs := h.asPersonArgs(p, append(append(env, name), args...)...)

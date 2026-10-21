@@ -287,6 +287,7 @@ func TestT3Keeper_RestartsAStoppedServiceAtMostOncePer5Minutes(t *testing.T) {
 	tests := []struct {
 		name           string
 		serviceManaged bool
+		supervised     bool
 		restartErr     error
 		wantRestarts   []time.Duration
 		wantReports    []time.Duration
@@ -306,6 +307,11 @@ func TestT3Keeper_RestartsAStoppedServiceAtMostOncePer5Minutes(t *testing.T) {
 			wantRestarts: []time.Duration{time.Minute, 6 * time.Minute},
 			wantReports:  []time.Duration{30 * time.Second, time.Minute},
 			wantLast:     func(time.Time) T3Facts { return T3Facts{State: T3NotRunning, RestartError: managerDown.Error()} },
+		},
+		{
+			name: "T3 Code restarted by the computer's supervisor", serviceManaged: true, supervised: true,
+			wantReports: []time.Duration{30 * time.Second},
+			wantLast:    func(time.Time) T3Facts { return T3Facts{State: T3NotRunning} },
 		},
 		{
 			name:        "the desktop app",
@@ -329,6 +335,7 @@ func TestT3Keeper_RestartsAStoppedServiceAtMostOncePer5Minutes(t *testing.T) {
 					restarts = append(restarts, time.Since(start))
 					return tt.restartErr
 				}, testLogger())
+				k.supervised = tt.supervised
 
 				ctx, cancel := context.WithCancel(t.Context())
 				done := make(chan struct{})
