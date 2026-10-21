@@ -82,7 +82,7 @@ func (c *Conn) CloneProject(ctx context.Context, title, remoteURL, path string) 
 	})
 	var exit *ExitError
 	if errors.As(err, &exit) && exit.Failed("EnvironmentAuthorizationError") {
-		return harness.Project{}, fmt.Errorf("%w: this computer was paired before Nexul could clone there; pair it again and retry", apperrs.ErrInvalid)
+		return harness.Project{}, harness.ErrPairAgainToClone
 	}
 	if errors.As(err, &exit) && exit.Detail() != "" {
 		return harness.Project{}, fmt.Errorf("%w: %s", apperrs.ErrInvalid, exit.Detail())

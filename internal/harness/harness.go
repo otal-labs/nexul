@@ -29,6 +29,9 @@ var ErrProtocol = errors.New("unsupported harness protocol")
 // ErrSessionRejected is a session the harness refuses; not ErrUnauthorized, whose HTTP 401 signs the browser out of Nexul.
 var ErrSessionRejected = fmt.Errorf("%w: T3 Code no longer accepts this computer's session, pair it again", apperrs.ErrInvalid)
 
+// ErrPairAgainToClone is a session paired before Nexul asked for the scope a clone needs; pairing again grants it.
+var ErrPairAgainToClone = fmt.Errorf("%w: this computer was paired before Nexul could clone there; pair it again and retry", apperrs.ErrInvalid)
+
 // ErrSessionGone marks a session the harness no longer has, deleted there or never kept.
 var ErrSessionGone = errors.New("the harness session is gone")
 
@@ -443,6 +446,8 @@ type Client interface {
 	ListProjects(ctx context.Context, s Session) ([]Project, error)
 	// CloneProject clones remoteURL into path as a new project; it returns once the project exists, the clone still running.
 	CloneProject(ctx context.Context, s Session, title, remoteURL, path string) (Project, error)
+	// CanClone is whether the session may start a clone, read without starting one; true when the harness does not say.
+	CanClone(ctx context.Context, s Session) (bool, error)
 	ListProviders(ctx context.Context, s Session) ([]Provider, error)
 	// Hold keeps a live connection open for presence; a harness with nothing to hold returns a nil Conn.
 	Hold(ctx context.Context, s Session) (Conn, error)

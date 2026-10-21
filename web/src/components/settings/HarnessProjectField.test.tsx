@@ -72,7 +72,7 @@ describe("HarnessProjectField", () => {
           { owner: "acme", name: "api", full_name: "acme/api", connector_id: "github", role: "app" },
         ] } as never;
       }
-      return { data: { projects: [...onComputer] } } as never;
+      return { data: { projects: [...onComputer], can_clone: true } } as never;
     });
     const post = vi.spyOn(api, "post").mockImplementation(async () => {
       onComputer.push({ id: "t3-api", title: "api", path: "/home/me/Code/api" });
@@ -100,5 +100,32 @@ describe("HarnessProjectField", () => {
     expect(post).toHaveBeenCalledWith("/api/pairing/computers/comp-1/projects", { repository: "acme/api" });
     expect(await screen.findByText("picked:t3-api")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Clone/ })).not.toBeInTheDocument();
+  });
+
+  it("says to pair again before a click when the computer's session may not clone", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p1/repos") {
+        return { data: [{ owner: "acme", name: "api", full_name: "acme/api", connector_id: "github", role: "app" }] } as never;
+      }
+      if (url === "/api/pairing/computers") {
+        return { data: { computers: [{ id: "comp-1", name: "Studio" }] } } as never;
+      }
+      return { data: { projects: [], can_clone: false } } as never;
+    });
+    const post = vi.spyOn(api, "post");
+    const Field = () => {
+      const form = useForm<{ harness_project_id: string }>({ defaultValues: { harness_project_id: "" } });
+      return <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId="comp-1" projectId="p1" />;
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Field />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/paired before Nexul could clone there/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pair again" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Clone acme/api" })).toBeDisabled();
+    expect(post).not.toHaveBeenCalled();
   });
 });

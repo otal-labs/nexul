@@ -111,20 +111,29 @@ func protocolOrOne(protocol int) int {
 }
 
 // do maps unreachable-server failures to ErrRetryable and non-200 responses to ErrInvalid (retrying won't help).
-func do(client *http.Client, req *http.Request) (body []byte, err error) {
+func do(client *http.Client, req *http.Request) ([]byte, error) {
+	body, status, err := doStatus(client, req)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf("%w: T3 server responded %d: %s", apperrs.ErrInvalid, status, strings.TrimSpace(string(body)))
+	}
+	return body, nil
+}
+
+// doStatus sends req and returns the bounded body and status, leaving what the status means to the caller.
+func doStatus(client *http.Client, req *http.Request) (body []byte, status int, err error) {
 	resp, err := httpClient(client).Do(req)
 	if err != nil {
-		return nil, apperrs.Retryable(fmt.Errorf("reach T3 server: %w", err))
+		return nil, 0, apperrs.Retryable(fmt.Errorf("reach T3 server: %w", err))
 	}
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
 	body, err = io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
-		return nil, fmt.Errorf("read T3 response: %w", err)
+		return nil, 0, fmt.Errorf("read T3 response: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: T3 server responded %d: %s", apperrs.ErrInvalid, resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-	return body, nil
+	return body, resp.StatusCode, nil
 }

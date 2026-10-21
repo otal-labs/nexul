@@ -372,6 +372,12 @@ export interface HarnessProject {
   path: string;
 }
 
+// can_clone is false for a computer paired before Nexul could clone there.
+export interface HarnessProjects {
+  projects: HarnessProject[];
+  can_clone: boolean;
+}
+
 export interface HarnessProviderModel {
   slug: string;
   name: string;

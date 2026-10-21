@@ -351,7 +351,8 @@ func computerProjectCreateTool(s *Service) mcptool.Tool {
 			"It lands in the folder most of the computer's T3 projects share, or ~/Code when it has none, and the "+
 			"computer clones over https with its own git credentials. Returns the new project's id, the t3_project_id "+
 			"play_run takes, while the clone still runs in the background; a clone that fails leaves the project in T3 "+
-			"Code to retry or remove there. Fails when the folder already exists and is not empty.",
+			"Code to retry or remove there. Fails when the folder already exists and is not empty, and on a "+
+			"computer paired before cloning existed until computer_pair pairs it again.",
 		mcptool.Hints{Additive: true},
 		func(ctx context.Context, in computerProjectCreateIn) (any, error) {
 			return s.CloneProject(ctx, mcpActorID(ctx), in.ID, in.Repository)
