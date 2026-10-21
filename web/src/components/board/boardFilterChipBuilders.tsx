@@ -12,6 +12,7 @@ export interface BoardFilters {
   statusIds: string[];
   developers: string[];
   waitingForMeToTest: boolean;
+  playing: boolean;
   search: string;
 }
 
@@ -27,7 +28,8 @@ export const countActiveFilters = (filters: BoardFilters, hideProjectFilter: boo
   (filters.typeId ? 1 : 0) +
   filters.statusIds.length +
   filters.developers.length +
-  (filters.waitingForMeToTest ? 1 : 0);
+  (filters.waitingForMeToTest ? 1 : 0) +
+  (filters.playing ? 1 : 0);
 
 // "No projects yet" earns its keep; the zero-filter default otherwise needs no summary line.
 export const buildSummaryLabel = (activeCount: number, projects: Project[] | undefined): string | null =>

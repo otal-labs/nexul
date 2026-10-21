@@ -102,6 +102,24 @@ describe("useBoardFilters", () => {
     expect(result.current.showWaitingForMeToTest).toBe(false);
   });
 
+  it("playing keeps the tickets with a run going or waiting on an answer, and is offered only while one is", async () => {
+    const base = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/plays/runs/active") return { data: { active: { running: "tr-1", asking: "tr-2" }, waiting: { asking: "tr-2" } } };
+      return base?.(url);
+    });
+    const tickets = [ticket("running", "p-1"), ticket("asking", "p-1"), ticket("idle", "p-1")];
+    const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
+    expect(result.current.showPlaying).toBe(false);
+    await waitFor(() => expect(result.current.showPlaying).toBe(true));
+
+    act(() => result.current.togglePlaying());
+    expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["running", "asking"]);
+
+    act(() => result.current.clearAll());
+    expect(result.current.filteredTickets).toHaveLength(3);
+  });
+
   it("search matches the title, the bare number, or the full key", () => {
     const tickets = [
       ticket("login", "p-1", { title: "Fix the Login page", number: 12 }),

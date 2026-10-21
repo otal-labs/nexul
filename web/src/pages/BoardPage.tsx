@@ -36,6 +36,7 @@ export const BoardPage = () => {
     filters,
     developers,
     showWaitingForMeToTest,
+    showPlaying,
     filteredTickets,
     toggleProject,
     toggleCategory,
@@ -44,6 +45,7 @@ export const BoardPage = () => {
     toggleStatus,
     toggleDeveloper,
     toggleWaitingForMeToTest,
+    togglePlaying,
     setSearch,
     clearAll,
   } = useBoardFilters(tickets, scopedProjectId);
@@ -84,6 +86,7 @@ export const BoardPage = () => {
           filters={filters}
           developers={developers}
           showWaitingForMeToTest={showWaitingForMeToTest}
+          showPlaying={showPlaying}
           onToggleProject={toggleProject}
           onToggleCategory={toggleCategory}
           onToggleLabel={toggleLabel}
@@ -91,6 +94,7 @@ export const BoardPage = () => {
           onToggleStatus={toggleStatus}
           onToggleDeveloper={toggleDeveloper}
           onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
+          onTogglePlaying={togglePlaying}
           onSearch={setSearch}
           onClear={clearAll}
           onNewTicket={() => void openCreateTicketDialog?.()}
