@@ -3,7 +3,7 @@
 **Status:** ready-for-human
 
 Tickets 01–15 and 18–24 shipped and their files are gone; ticket numbers in this spec point at them in git
-history. Open: 16, the owner's walkthrough on the nightly, and 17, the guide pages and glossary terms, which
+history. Open: 16, the owner's walkthrough on stable 0.1.x, and 17, the guide pages and glossary terms, which
 are not written yet (the paired-computers and computer-setup guides say nothing of protocol 2, Pi or Grok).
 
 ## Objective
@@ -12,8 +12,7 @@ T3 Code merged a new orchestrator (pingdotgg/t3code#2829, 2026-10-02). T3 calls 
 and its wire protocol is "protocol 2". Nexul speaks protocol 1 today.
 
 - Protocol 2 ships in nightlies from `v0.0.46-nightly.20261003.2610`.
-- Stable `v0.0.45` still speaks protocol 1, and T3 has given no date for stable to switch
-  (pingdotgg/t3code#14871).
+- Stable `v0.0.45` speaks protocol 1; stable `v0.1.0` (2026-10-15) is the first stable on protocol 2
 
 A computer whose T3 Code runs a nightly is unreachable from Nexul today:
 

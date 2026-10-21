@@ -1,6 +1,6 @@
 # 17 — Document protocol 2 for people pairing computers
 
-**What to build:** `website/` paired-computers guide: stable and nightly T3 both work; a computer moves
+**What to build:** `website/` paired-computers guide: T3 0.0.45 and 0.1.x both work, and the installer's default stable channel is enough; a computer moves
 to the new orchestrator on its own and cannot go back; provider minimums (Codex 0.159, Claude Code
 2.1.280, Cursor CLI built 2026-05-09 or later, Grok 1.0.13, OpenCode 2.0.18, Pi 0.99 for setup);
 protocol-2 steps show what ran but not tool output; handed-off agents appear as pills. Pi 0.99 is Nexul's setup
