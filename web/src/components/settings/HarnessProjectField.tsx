@@ -1,6 +1,7 @@
-import type { Control, FieldValues, Path } from "react-hook-form";
+import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 
 import { FormCombobox } from "@/components/FormCombobox";
+import { CloneRepositoriesSection } from "@/components/settings/CloneRepositoriesSection";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchHarnessProjects } from "@/hooks/PairingHooks";
@@ -10,11 +11,14 @@ interface HarnessProjectFieldProps<T extends FieldValues> {
   name: Path<T>;
   label: string;
   computerId: string;
+  // The Nexul project whose repositories missing from the computer are offered to clone there.
+  projectId?: string;
 }
 
 // Fed by the computer's live project registry; any failure degrades to manual id input.
-export const HarnessProjectField = <T extends FieldValues>({ control, name, label, computerId }: HarnessProjectFieldProps<T>) => {
+export const HarnessProjectField = <T extends FieldValues>({ control, name, label, computerId, projectId }: HarnessProjectFieldProps<T>) => {
   const projects = useFetchHarnessProjects(computerId);
+  const { field } = useController({ control, name });
 
   // The manual input would show the saved raw id until the list arrives, so loading shows the label and loader alone.
   if (computerId && projects.isPending) {
@@ -26,29 +30,35 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
     );
   }
 
-  if (projects.data && projects.data.length > 0) {
-    return (
-      <FormCombobox
-        control={control}
-        name={name}
-        label={label}
-        placeholder="Pick a project"
-        options={projects.data.map((p) => ({ value: p.id, label: p.title }))}
-      />
-    );
-  }
+  const listed = !!projects.data && projects.data.length > 0;
 
   return (
-    <div className="space-y-1">
-      <FormInput control={control} name={name} label={label} placeholder="e.g. proj_abc123" />
-      {!computerId && <p className="text-xs text-muted-foreground">Pick a computer to load its projects.</p>}
-      {projects.isError && (
-        <p className="text-xs text-muted-foreground">
-          Couldn't load this computer's projects. Check it's online, or paste the project id.
-        </p>
+    <div className="space-y-2">
+      {listed && (
+        <FormCombobox
+          control={control}
+          name={name}
+          label={label}
+          placeholder="Pick a project"
+          options={projects.data.map((p) => ({ value: p.id, label: p.title }))}
+        />
       )}
-      {projects.data?.length === 0 && (
-        <p className="text-xs text-muted-foreground">This computer has no T3 projects yet.</p>
+      {!listed && (
+        <div className="space-y-1">
+          <FormInput control={control} name={name} label={label} placeholder="e.g. proj_abc123" />
+          {!computerId && <p className="text-xs text-muted-foreground">Pick a computer to load its projects.</p>}
+          {projects.isError && (
+            <p className="text-xs text-muted-foreground">
+              Couldn't load this computer's projects. Check it's online, or paste the project id.
+            </p>
+          )}
+          {projects.data?.length === 0 && (
+            <p className="text-xs text-muted-foreground">This computer has no T3 projects yet.</p>
+          )}
+        </div>
+      )}
+      {projectId && projects.data && (
+        <CloneRepositoriesSection projectId={projectId} computerId={computerId} projects={projects.data} onCloned={field.onChange} />
       )}
     </div>
   );

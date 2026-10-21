@@ -48,6 +48,7 @@ type Server struct {
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
 	Persisted   chan map[string]any // payload of each assets.persistChatAttachments call, answered with one reference per image
 	Launched    chan map[string]any // payload of each orchestration.launchThread call (auto-acked)
+	Cloned      chan map[string]any // payload of each projectClone.start call
 	// Branches answers vcs.refreshStatus per folder with the branch it is on; an unnamed folder is not a git repository.
 	Branches map[string]string
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
@@ -80,6 +81,7 @@ type Server struct {
 const (
 	persistRPC = "assets.persistChatAttachments"
 	launchRPC  = "orchestration.launchThread"
+	cloneRPC   = "projectClone.start"
 )
 
 type clientEnv struct {
@@ -105,6 +107,7 @@ func New(t testing.TB) *Server {
 		Dispatched:  make(chan map[string]any, 16),
 		Persisted:   make(chan map[string]any, 4),
 		Launched:    make(chan map[string]any, 4),
+		Cloned:      make(chan map[string]any, 4),
 
 		ShellSubscribed: make(chan string, 4),
 		Pings:           make(chan struct{}, 64),
@@ -249,6 +252,8 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.handlePersist(env)
 	case launchRPC:
 		f.handleLaunch(env)
+	case cloneRPC:
+		f.handleClone(env)
 	case "vcs.refreshStatus":
 		f.handleStatus(env)
 	case "orchestration.subscribeThread":
@@ -372,6 +377,21 @@ func (f *Server) handleLaunch(env clientEnv) {
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"threadId": in["threadId"], "resumed": false}))
 	f.Launched <- in
+}
+
+func (f *Server) handleClone(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable clone payload: %v", err)
+		return
+	}
+	f.Cloned <- in
+	if cause, ok := f.CommandCauses[cloneRPC]; ok {
+		f.writeFailure(env, cause)
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"projectId": in["projectId"], "cwd": in["destinationPath"],
+		"remoteUrl": in["remoteUrl"], "repository": nil}))
 }
 
 func (f *Server) handleStatus(env clientEnv) {

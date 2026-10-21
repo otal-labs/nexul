@@ -141,6 +141,18 @@ func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects
 	return c.ListProjects(ctx)
 }
 
+// CloneProject implements harness.Client: connect, start the clone, close.
+func (h *Harness) CloneProject(ctx context.Context, s harness.Session, title, remoteURL, path string) (project harness.Project, err error) {
+	c, err := dial(ctx, s, h.Options)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	defer func() {
+		err = errors.Join(err, c.Close())
+	}()
+	return c.CloneProject(ctx, title, remoteURL, path)
+}
+
 // ListProviders implements harness.Client: connect, parse the handshake config, close.
 func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (providers []harness.Provider, err error) {
 	c, err := dial(ctx, s, h.Options)

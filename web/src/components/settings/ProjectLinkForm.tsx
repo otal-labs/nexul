@@ -85,6 +85,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
         name="harness_project_id"
         label="T3 project"
         computerId={computerId}
+        projectId={projectId}
       />
       <HarnessProviderModelFields
         control={form.control}

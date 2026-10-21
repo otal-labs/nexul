@@ -13,6 +13,7 @@ type Client struct {
 	PairFn          func(ctx context.Context, serverURL, secret string) (harness.PairResult, error)
 	VersionFn       func(ctx context.Context, serverURL string) (string, error)
 	ListProjectsFn  func(ctx context.Context, s harness.Session) ([]harness.Project, error)
+	CloneProjectFn  func(ctx context.Context, s harness.Session, title, remoteURL, path string) (harness.Project, error)
 	ListProvidersFn func(ctx context.Context, s harness.Session) ([]harness.Provider, error)
 	HoldFn          func(ctx context.Context, s harness.Session) (harness.Conn, error)
 	StartTurnFn     func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
@@ -51,6 +52,13 @@ func (c *Client) ListProjects(ctx context.Context, s harness.Session) ([]harness
 		return nil, nil
 	}
 	return c.ListProjectsFn(ctx, s)
+}
+
+func (c *Client) CloneProject(ctx context.Context, s harness.Session, title, remoteURL, path string) (harness.Project, error) {
+	if c.CloneProjectFn == nil {
+		return harness.Project{}, nil
+	}
+	return c.CloneProjectFn(ctx, s, title, remoteURL, path)
 }
 
 func (c *Client) ListProviders(ctx context.Context, s harness.Session) ([]harness.Provider, error) {

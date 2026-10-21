@@ -39,6 +39,27 @@ func TestExchange_Success(t *testing.T) {
 	assert.Equal(t, 30*24*3600, int(expiresIn.Seconds()))
 }
 
+func TestExchange_FallsBackToTheLegacyScopesWhenT3RefusesTheCurrentOnes(t *testing.T) {
+	t.Parallel()
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		asked = append(asked, r.Form.Get("scope"))
+		if r.Form.Get("scope") != legacyClientScopes {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"_tag":"EnvironmentRequestInvalidError","code":"invalid_request","reason":"invalid_scope"}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "bearer-xyz", "token_type": "Bearer"})
+	}))
+	defer srv.Close()
+
+	token, _, err := Exchange(context.Background(), srv.Client(), srv.URL, "tok")
+	require.NoError(t, err)
+	assert.Equal(t, "bearer-xyz", token)
+	assert.Equal(t, []string{clientScopes, legacyClientScopes}, asked)
+}
+
 func TestExchange_DefaultsExpiryWhenMissing(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

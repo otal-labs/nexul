@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { useForm } from "react-hook-form";
+import userEvent from "@testing-library/user-event";
+import { useForm, useWatch } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -48,5 +49,44 @@ describe("HarnessProjectField", () => {
     renderField("");
     expect(screen.getByText(/Pick a computer/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. proj_abc123")).toBeInTheDocument();
+  });
+
+  it("clones a project repository the computer lacks and picks it", async () => {
+    const onComputer = [{ id: "t3-web", title: "web", path: "/home/me/Code/web" }];
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p1/repos") {
+        return { data: [
+          { owner: "acme", name: "web", full_name: "acme/web", connector_id: "github", role: "app" },
+          { owner: "acme", name: "api", full_name: "acme/api", connector_id: "github", role: "app" },
+        ] } as never;
+      }
+      return { data: { projects: [...onComputer] } } as never;
+    });
+    const post = vi.spyOn(api, "post").mockImplementation(async () => {
+      onComputer.push({ id: "t3-api", title: "api", path: "/home/me/Code/api" });
+      return { data: onComputer[1] } as never;
+    });
+    const Picked = () => {
+      const form = useForm<{ harness_project_id: string }>({ defaultValues: { harness_project_id: "" } });
+      const picked = useWatch({ control: form.control, name: "harness_project_id" });
+      return (
+        <>
+          <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId="comp-1" projectId="p1" />
+          <output>picked:{picked}</output>
+        </>
+      );
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Picked />
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Clone acme/api" }));
+
+    expect(screen.queryByRole("button", { name: "Clone acme/web" })).not.toBeInTheDocument();
+    expect(post).toHaveBeenCalledWith("/api/pairing/computers/comp-1/projects", { repository: "acme/api" });
+    expect(await screen.findByText("picked:t3-api")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Clone/ })).not.toBeInTheDocument();
   });
 });

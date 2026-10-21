@@ -17,8 +17,11 @@ import (
 // wellKnownEnvironmentPath is T3's unauthenticated environment descriptor endpoint, used before any credential exists.
 const wellKnownEnvironmentPath = "/.well-known/t3/environment"
 
-// clientScopes mirrors T3's AuthStandardClientScopes; `t3 pair` grants exactly this set.
-const clientScopes = "orchestration:read orchestration:operate terminal:operate review:write relay:read"
+// clientScopes is what Nexul uses of the scopes `t3 pair` grants; T3 issues those the grant holds and drops unknown ones.
+const clientScopes = "orchestration:read orchestration:operate terminal:operate source-control:write relay:read"
+
+// legacyClientScopes is for T3 from before source-control:write, which refuses the whole request over a scope it lacks.
+const legacyClientScopes = "orchestration:read orchestration:operate terminal:operate review:write relay:read"
 
 const maxResponseBytes = 1 << 20 // 1MiB: generous for a token/JSON response, small enough to bound a hostile/broken server.
 
@@ -30,12 +33,21 @@ type tokenExchangeResponse struct {
 
 // Exchange trades a `t3 pair` one-time token for a bearer session (RFC 8693 token-exchange grant).
 func Exchange(ctx context.Context, client *http.Client, serverURL, oneTimeToken string) (bearerToken string, expiresIn time.Duration, err error) {
+	bearerToken, expiresIn, err = exchange(ctx, client, serverURL, oneTimeToken, clientScopes)
+	// T3 checks scopes before it spends the token, so a refusal over them leaves it good for the retry.
+	if err != nil && strings.Contains(err.Error(), "invalid_scope") {
+		return exchange(ctx, client, serverURL, oneTimeToken, legacyClientScopes)
+	}
+	return bearerToken, expiresIn, err
+}
+
+func exchange(ctx context.Context, client *http.Client, serverURL, oneTimeToken, scopes string) (bearerToken string, expiresIn time.Duration, err error) {
 	form := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {oneTimeToken},
 		"subject_token_type":   {"urn:t3:params:oauth:token-type:environment-bootstrap"},
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
-		"scope":                {clientScopes},
+		"scope":                {scopes},
 		// Presentation hints for T3's authorized-clients UI; without them the row is labeled "one-time-token".
 		"client_label":       {"Nexul"},
 		"client_device_type": {"desktop"},

@@ -441,6 +441,8 @@ type Client interface {
 	// Version is the unauthenticated probe, re-checked at turn start to warn about drift since pairing.
 	Version(ctx context.Context, serverURL string) (string, error)
 	ListProjects(ctx context.Context, s Session) ([]Project, error)
+	// CloneProject clones remoteURL into path as a new project; it returns once the project exists, the clone still running.
+	CloneProject(ctx context.Context, s Session, title, remoteURL, path string) (Project, error)
 	ListProviders(ctx context.Context, s Session) ([]Provider, error)
 	// Hold keeps a live connection open for presence; a harness with nothing to hold returns a nil Conn.
 	Hold(ctx context.Context, s Session) (Conn, error)

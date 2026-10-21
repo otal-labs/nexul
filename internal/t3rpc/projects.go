@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
 // listProjectsTimeout bounds the wait for the shell snapshot; a slow answer means a broken server, not a big list.
@@ -61,4 +62,40 @@ func (c *Conn) ListProjects(ctx context.Context) ([]harness.Project, error) {
 			return projects, nil
 		}
 	}
+}
+
+// projectCloneStart clones a repository into a new project; it answers once the project exists and the clone runs.
+const projectCloneStart = "projectClone.start"
+
+type cloneStart struct {
+	ProjectID       string `json:"projectId"`
+	Title           string `json:"title"`
+	CreatedAt       string `json:"createdAt"`
+	RemoteURL       string `json:"remoteUrl"`
+	DestinationPath string `json:"destinationPath"`
+}
+
+// CloneProject has T3 clone remoteURL into path as a new project titled title; the clone finishes in the background.
+func (c *Conn) CloneProject(ctx context.Context, title, remoteURL, path string) (harness.Project, error) {
+	raw, err := c.Call(ctx, projectCloneStart, cloneStart{
+		ProjectID: ids.New(), Title: title, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), RemoteURL: remoteURL, DestinationPath: path,
+	})
+	var exit *ExitError
+	if errors.As(err, &exit) && exit.Failed("EnvironmentAuthorizationError") {
+		return harness.Project{}, fmt.Errorf("%w: this computer was paired before Nexul could clone there; pair it again and retry", apperrs.ErrInvalid)
+	}
+	if errors.As(err, &exit) && exit.Detail() != "" {
+		return harness.Project{}, fmt.Errorf("%w: %s", apperrs.ErrInvalid, exit.Detail())
+	}
+	if err != nil {
+		return harness.Project{}, err
+	}
+	var out struct {
+		ProjectID string `json:"projectId"`
+		Cwd       string `json:"cwd"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil || out.ProjectID == "" {
+		return harness.Project{}, fmt.Errorf("%s: unexpected result %s", projectCloneStart, Snippet(raw))
+	}
+	return harness.Project{ID: out.ProjectID, Title: title, Path: out.Cwd}, nil
 }
