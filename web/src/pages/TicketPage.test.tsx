@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { TicketPage } from "@/pages/TicketPage";
+import { usePlayRunStore } from "@/stores/playRunStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { withOwner } from "@/test/viewer";
 
@@ -198,6 +199,21 @@ describe("TicketPage sections", () => {
     renderPage("/tickets/t-1/thread");
     expect(await screen.findByRole("tab", { name: "Thread" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
+  });
+
+  it("marks the Thread tab while the ticket's run waits on an answer, and clears it once the run goes on", async () => {
+    usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
+    mockTicket({ "/api/plays/runs/active": { active: { "t-1": "tr-1" }, waiting: { "t-1": "tr-1" } } });
+    renderPage();
+
+    expect(await screen.findByRole("tab", { name: "Thread, needs your answer" })).toBeInTheDocument();
+
+    act(() =>
+      usePlayRunStore.getState().applyFrame({
+        trail_id: "tr-1", play_id: "play-1", target_type: "ticket", target_id: "t-1", state: "running", activity: null, ended_at: null, last_error: "",
+      }),
+    );
+    expect(screen.getByRole("tab", { name: "Thread" })).toBeInTheDocument();
   });
 
   it("splits a ticket opened inside another page into the same Ticket and Thread tabs", async () => {

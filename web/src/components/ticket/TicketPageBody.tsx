@@ -5,6 +5,7 @@ import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TicketRail } from "@/components/ticket/TicketRail";
 import { useFetchTicketNotes } from "@/hooks/NoteHooks";
+import { useTicketRunState } from "@/hooks/TrailHooks";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 
@@ -27,10 +28,11 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
   const projectProp = project ? { project } : {};
   const { data: notes } = useFetchTicketNotes(ticket.id);
   const hasNotes = !!notes && notes.notes.length > 0;
+  const waiting = useTicketRunState(ticket.project_id, ticket.id) === "waiting";
 
   const tabs: PageTab[] = [
     { value: "ticket", label: "Ticket" },
-    { value: "thread", label: "Thread", hidden: !hasThread },
+    { value: "thread", label: "Thread", hidden: !hasThread, dot: waiting ? "needs your answer" : undefined },
     { value: "notes", label: "Notes", hidden: !hasNotes },
   ];
   return (
