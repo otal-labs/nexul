@@ -24,6 +24,8 @@ Adding a computer needs no Cloudflare and no domain: one command installs the Ne
    & ([scriptblock]::Create((irm https://nexul.io/computer.ps1))) <token>
    ```
 
+   In a container, or on a Linux host with no systemd, copy the second command, **Container or no systemd**, instead. It is the same command without `sudo` and with `--foreground` at the end, and it stays running in that terminal (see [A computer with no systemd](#a-computer-with-no-systemd)). The first command picks that mode on its own when it finds systemd isn't running, but the second says so up front.
+
    The token in it is for this computer only and works once, within the hour the dialog names. `sudo` asks for your password once, to install a background service; everything else is installed for you, the account that typed `sudo`, and runs as you, never as root.
 3. Watch the three checks. **Computer connected** passes once the Nexul app on the computer connects, **T3 Code found** once it finds T3 Code answering there, and **Paired** once Nexul has paired with T3 Code through the app's own connection. There's no pairing link to paste. A check that can't pass says what to do in its line: **Offline**, **Closed** (open the T3 Code desktop app), **Not running**, **Missing** (run the command again without `--no-t3`), or **Failed** with the reason.
 4. Press **Set up**, then [set up the computer](/docs/guide/computer-setup/), and **Done**.
@@ -52,7 +54,7 @@ Its log is `%LOCALAPPDATA%\Nexul\computer\service.log`. To remove it, remove the
 
 ### A computer with no systemd
 
-A container, or any Linux host that isn't running systemd, has no service manager to register the Nexul app or T3 Code with. There the command registers nothing: it detects that systemd isn't running, or you force it with `--foreground`, and it needs no `sudo`. Run it as the account the app is for (a root login in a container is that account), from a shell you can leave open:
+A container, or any Linux host that isn't running systemd, has no service manager to register the Nexul app or T3 Code with. There the command registers nothing: it detects that systemd isn't running (`computer.sh` does too, and passes `--foreground` on), or you force it with `--foreground`, and it needs no `sudo`. The dialog's **Container or no systemd** command is this one. Run it as the account the app is for (a root login in a container is that account), from a shell you can leave open:
 
 ```sh
 curl -fsSL https://nexul.io/computer.sh | sh -s -- <token> --foreground

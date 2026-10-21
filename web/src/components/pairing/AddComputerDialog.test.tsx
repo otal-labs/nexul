@@ -84,7 +84,7 @@ describe("AddComputerDialog", () => {
     });
   });
 
-  it("makes a one-time command on open, says it needs sudo and who it installs for, and gives Windows its PowerShell command", async () => {
+  it("makes a one-time command on open, says it needs sudo and who it installs for, offers the no-systemd command beside it, and gives Windows its PowerShell command", async () => {
     const user = userEvent.setup();
     renderDialog();
 
@@ -95,8 +95,12 @@ describe("AddComputerDialog", () => {
     expect(screen.getByText(/never for root/i)).toBeInTheDocument();
     expect(screen.getByText(/on a mac, t3 code answers only while you're logged in/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Set up" })).toBeDisabled();
+    expect(screen.getByText("Container or no systemd")).toBeInTheDocument();
+    expect(screen.getByText("curl -fsSL https://nexul.io/computer.sh | sh -s -- eyJ.token.sig --foreground")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy container or no systemd command/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Windows" }));
+    expect(screen.queryByText("Container or no systemd")).not.toBeInTheDocument();
     expect(screen.getByText(windowsCommand)).toBeInTheDocument();
     expect(screen.getByText(/no admin; runs while you're logged on/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /copy install command/i })).toBeInTheDocument();

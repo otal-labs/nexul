@@ -18,7 +18,7 @@ forwards SIGINT and SIGTERM to both and exits once they have stopped, and logs t
 - **The account is whoever runs the command.** Nothing it installs needs root, so there is no `sudo`, no chown and no
   root cleanup. Under `sudo` it refuses, because the runner would be someone else's; a root login in a container runs the
   runner as root, which ADR 0146 refused for a system service but which here is just the account that started it.
-  `computer.sh --foreground` skips its sudo checks for the same reason.
+  `computer.sh` skips its sudo checks for `--foreground`, and picks it itself when systemd is not running.
 - **Everything else is as installed today.** The command, the runner, its credential, `env` and `unit.json` land under
   the account's home. `unit.json` gains `foreground` and `t3`, the command line the supervisor runs T3 Code with
   (`t3 serve --host 127.0.0.1 --port <port>`, loopback only). The installer reuses a T3 Code that already answers and

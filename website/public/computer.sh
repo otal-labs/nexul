@@ -2,8 +2,8 @@
 # Adds this computer to Nexul, with the command Add a computer shows, run from your own account with sudo:
 #   curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token> [--no-t3]
 # sudo only places a system service; the runner it starts runs as you, the person who typed sudo, never as root.
-# On a host with no systemd, such as a container, add --foreground: nothing is registered, so there is no sudo, and the
-# runner and T3 Code run under `nexul run computer` as whoever runs the command.
+# On a Linux host that is not running systemd, such as a container, it picks --foreground on its own (or add it): nothing
+# is registered, so there is no sudo, and the runner and T3 Code run under `nexul run computer` as whoever runs the command.
 # The token is signed by your instance and carries its address, a one-time code and the computer. This script reads
 # only the address, to say where it connects; it cannot check the signature, and needs not: only the instance that
 # signed the token accepts it, once. It hands over to install.sh, which fetches and verifies the nexul command and
@@ -20,10 +20,14 @@ case "$(uname -s)" in
   *) fail "this script adds a Linux computer or a Mac; on Windows, run Add a computer's Windows command in PowerShell" ;;
 esac
 
+foreground=""
 case " $* " in
   *" --foreground "*) foreground=1 ;;
-  *) foreground="" ;;
 esac
+# The rule `nexul install computer` uses: with systemd not running there is no service to register. NEXUL_SYSTEMD_DIR is for tests.
+if [ "$(uname -s)" = Linux ] && [ ! -d "${NEXUL_SYSTEMD_DIR:-/run/systemd/system}" ]; then
+  foreground=1
+fi
 
 if [ -z "$foreground" ]; then
   if [ "$(id -u)" -ne 0 ]; then
@@ -38,6 +42,10 @@ fi
 token=${1:-}
 [ -n "$token" ] || fail "run the whole command Add a computer shows: it ends in one token"
 shift
+case " $* " in
+  *" --foreground "*) ;;
+  *) [ -z "$foreground" ] || set -- "$@" --foreground ;;
+esac
 payload=$(printf '%s' "$token" | cut -d. -f2 | tr -- '-_' '+/')
 case $((${#payload} % 4)) in
   2) payload="$payload==" ;;

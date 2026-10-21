@@ -1,7 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 
-import { CopyButton } from "@/components/settings/CopyButton";
+import { CommandRow } from "@/components/pairing/CommandRow";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { detectCommandOs, COMMAND_OS_LABELS, CommandOs, type OsCommand } from "@/utils/InstallCommands";
@@ -13,7 +13,8 @@ interface CommandSnippetProps {
   guide: { href: string; label: string };
 }
 
-// The site's install snippet: a system switch, one raised row whose long line scrolls under a faded edge, a note and a guide link.
+// The site's install snippet: a system switch, one raised row whose long line scrolls under a faded edge, a note and a guide link,
+// then a system's second command with its own title when it has one.
 export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) => {
   const [picked, setPicked] = useState<CommandOs>();
   const os = picked ?? detectCommandOs(navigator.userAgent);
@@ -34,34 +35,17 @@ export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) 
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <div
+      <CommandRow
         key={os}
+        lines={command.lines}
+        ariaLabel={`${label}, ${COMMAND_OS_LABELS[os]}`}
+        copyLabel={label.toLowerCase()}
         className={cn(
-          "canvas-card flex min-w-0 items-center gap-1 py-1 pr-1 pl-3.5 has-[pre:focus-visible]:outline-2 has-[pre:focus-visible]:outline-offset-2 has-[pre:focus-visible]:outline-(--focus)",
           picked && "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-[160ms] motion-safe:ease-out",
           picked === CommandOs.Windows && "motion-safe:slide-in-from-right-[6px]",
           picked === CommandOs.Unix && "motion-safe:slide-in-from-left-[6px]",
         )}
-      >
-        <pre
-          tabIndex={0}
-          aria-label={`${label}, ${COMMAND_OS_LABELS[os]}`}
-          className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs leading-6 [scrollbar-width:none] [mask-image:linear-gradient(to_left,transparent,#000_2rem)] quiet-focus [&::-webkit-scrollbar]:hidden"
-        >
-          {command.lines.map((line) => (
-            <code key={line} className="block w-max pr-8">
-              {line}
-            </code>
-          ))}
-        </pre>
-        <CopyButton
-          value={command.lines.join("\n")}
-          label={`Copy ${label.toLowerCase()}`}
-          iconOnly
-          variant="default"
-          className="size-8 text-brand-foreground hover:text-brand-foreground"
-        />
-      </div>
+      />
       <div className="flex min-w-0 items-center justify-between gap-4 text-xs text-muted-foreground">
         <span className="min-w-0">{command.note}</span>
         <a
@@ -77,6 +61,19 @@ export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) 
           />
         </a>
       </div>
+      {command.alternative && (
+        <div className="min-w-0 space-y-2 pt-1">
+          <p className="text-xs">
+            <span className="font-medium text-foreground">{command.alternative.title}</span>
+            <span className="text-muted-foreground"> · {command.alternative.note}</span>
+          </p>
+          <CommandRow
+            lines={command.alternative.lines}
+            ariaLabel={`${label}, ${command.alternative.title.toLowerCase()}`}
+            copyLabel={`${command.alternative.title.toLowerCase()} command`}
+          />
+        </div>
+      )}
     </div>
   );
 };
