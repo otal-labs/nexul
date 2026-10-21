@@ -186,6 +186,7 @@ func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
 	defer c.cancelJob("")
 
 	loops.Go(func() { c.heartbeatLoop(ctx, conn) })
+	loops.Go(func() { c.pingLoop(ctx, conn) })
 	if c.cfg.Personal {
 		loops.Go(func() { c.factsLoop(ctx, conn) })
 	}
@@ -389,6 +390,32 @@ func (c *Client) heartbeatLoop(ctx context.Context, conn *websocket.Conn) {
 		case <-ticker.C:
 			send()
 		}
+	}
+}
+
+// pingMisses is how many heartbeat intervals a ping waits for its pong before the connection counts as dead.
+const pingMisses = 3
+
+// pingLoop ends a connection whose server stopped answering, such as one a sleeping host left half open: nothing else
+// arrives to time the read out, so without it the runner would wait on a dead socket forever.
+func (c *Client) pingLoop(ctx context.Context, conn *websocket.Conn) {
+	ticker := time.NewTicker(c.hb)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		pingCtx, cancel := context.WithTimeout(ctx, pingMisses*c.hb)
+		err := conn.Ping(pingCtx)
+		cancel()
+		if err == nil || ctx.Err() != nil {
+			continue
+		}
+		c.log.Warn("runner connection dead: the server stopped answering pings; reconnecting", "runner", c.cfg.Name, "waited", (pingMisses * c.hb).String(), "error", err)
+		_ = conn.CloseNow() // ends the read in runOnce, whose loop dials again
+		return
 	}
 }
 
