@@ -38,6 +38,18 @@ describe("HarnessProjectField", () => {
     expect(screen.getByPlaceholderText("e.g. proj_abc123")).toBeInTheDocument();
   });
 
+  it("hides a saved id while the computer is unreachable, and Change clears it for a new one", async () => {
+    vi.spyOn(api, "get").mockRejectedValueOnce(new Error("down"));
+    renderField("comp-1", "proj-1");
+    expect(await screen.findByText(/back online/)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("proj-1")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Change" }));
+
+    expect(screen.queryByDisplayValue("proj-1")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("e.g. proj_abc123")).toBeInTheDocument();
+  });
+
   it("shows only a loader while the registry loads, never the saved id", () => {
     vi.spyOn(api, "get").mockReturnValueOnce(new Promise(() => {}));
     renderField("comp-1", "proj-1");
