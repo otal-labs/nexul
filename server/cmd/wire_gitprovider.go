@@ -25,6 +25,25 @@ func (l ticketLinker) LinkPR(ctx context.Context, ticketID string, ref gitprovid
 	return l.svc.LinkPR(ctx, ticketID, tickets.PRRef{Owner: ref.Owner, Repo: ref.Repo, Number: ref.Number, Title: ref.Title, SHA: ref.SHA})
 }
 
+// ticketPRStates reads a pull request's merged, closed or open state for a ticket link made after the webhook fired.
+type ticketPRStates struct {
+	git gitprovider.GitProvider
+}
+
+func (s ticketPRStates) PRState(ctx context.Context, owner, repo string, number int) (tickets.PRState, error) {
+	pr, err := s.git.GetPR(ctx, owner, repo, number)
+	if err != nil {
+		return "", err
+	}
+	if pr.Merged {
+		return tickets.PRStateMerged, nil
+	}
+	if pr.State == gitprovider.PRStateClosed {
+		return tickets.PRStateClosed, nil
+	}
+	return tickets.PRStateOpen, nil
+}
+
 // gitProviderRouter resolves, per repo, which connector backs it; built fresh per call except the App's cached tokens.
 type gitProviderRouter struct {
 	workspace  gitRepoResolver

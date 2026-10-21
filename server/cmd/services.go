@@ -165,6 +165,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		bus:         bus,
 	}
 	projects := hookedProjects{Repo: store.Projects, hooks: repoHooks, scope: githubScope}
+	ticketsSvc.SetPRStates(ticketPRStates{git: repoHooks.git})
 	topoSvc := topology.NewService(store.Topology)
 	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: projects})
 	topoSvc.SetGate(accessSvc)

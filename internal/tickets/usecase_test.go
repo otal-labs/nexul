@@ -392,6 +392,15 @@ func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, 
 	return nil, true, nil
 }
 
+type fakePRStates struct {
+	state PRState
+	err   error
+}
+
+func (f fakePRStates) PRState(context.Context, string, string, int) (PRState, error) {
+	return f.state, f.err
+}
+
 // fakeStatusStore accepts the seeded status columns; a non-existent status is rejected.
 type fakeStatusStore struct {
 	known    map[Status]bool
@@ -932,6 +941,40 @@ func TestCompletion(t *testing.T) {
 		require.Empty(t, repo.eventsFor(TopicFinished))
 		require.NoError(t, s.HandlePRMerged(context.Background(), merged()))
 		require.Len(t, repo.eventsFor(TopicFinished), 1)
+	})
+
+	linkedAfter := func(state PRState, lookupErr error) (*fakeRepo, *Service, string) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		s.SetPRStates(fakePRStates{state: state, err: lookupErr})
+		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
+		require.NoError(t, err)
+		require.NoError(t, s.LinkPR(context.Background(), created.ID, validPRRef()))
+		return repo, s, created.ID
+	}
+
+	t.Run("a pr linked after it merged finishes the ticket", func(t *testing.T) {
+		repo, _, id := linkedAfter(PRStateMerged, nil)
+		links, err := repo.ListPRLinks(context.Background(), id)
+		require.NoError(t, err)
+		assert.Equal(t, PRStateMerged, links[0].State)
+		require.Len(t, repo.eventsFor(TopicFinished), 1)
+	})
+
+	t.Run("a pr linked after it closed unmerged is recorded closed and never finishes", func(t *testing.T) {
+		repo, _, id := linkedAfter(PRStateClosed, nil)
+		links, err := repo.ListPRLinks(context.Background(), id)
+		require.NoError(t, err)
+		assert.Equal(t, PRStateClosed, links[0].State)
+		require.Empty(t, repo.eventsFor(TopicFinished))
+	})
+
+	t.Run("a failed state lookup links the pr as open", func(t *testing.T) {
+		repo, _, id := linkedAfter(PRStateMerged, errors.New("github down"))
+		links, err := repo.ListPRLinks(context.Background(), id)
+		require.NoError(t, err)
+		assert.Equal(t, PRStateOpen, links[0].State)
+		require.Empty(t, repo.eventsFor(TopicFinished))
 	})
 
 	t.Run("malformed payload is fatal", func(t *testing.T) {

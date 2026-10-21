@@ -71,7 +71,7 @@ A bug is a ticket of the type named `bug`, and it always says which ticket it wa
 
 ### Finished
 
-A ticket is finished once it has at least one merged pull request and none still open. Pull requests closed without merging don't count. The default **Ticket finished** automation then moves it to the status picked in its configuration; see [Automations](/docs/guide/automations/#the-defaults).
+A ticket is finished once it has at least one merged pull request and none still open, even when the pull request is linked after it merged. Pull requests closed without merging don't count. The default **Ticket finished** automation then moves it to the status picked in its configuration; see [Automations](/docs/guide/automations/#the-defaults).
 
 ## Inbox
 
