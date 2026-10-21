@@ -72,6 +72,17 @@ On a Mac, T3 Code's background service is one of your login items rather than a 
 
 Once installed, the Nexul app checks T3 Code every 30 seconds. When T3 Code's background service stops answering for two checks in a row, the app restarts it (`t3 service restart`), at most once every 5 minutes, and tells Nexul it did. If your user service manager isn't running, so the service can't be restarted, the app reports that instead; `sudo loginctl enable-linger <you>` turns it on. On a Mac the restart works while you're logged in; logged out, there is nothing to restart into until you log in again. The desktop app is never restarted: when it's closed, open T3 Code.
 
+## When the network only allows port 443
+
+Some networks, behind a company proxy for example, let a computer reach the internet only on port 443, the port of ordinary HTTPS. Two different things then behave differently:
+
+- **Nexul works.** The Nexul app on the computer opens its one connection out to your Nexul address over HTTPS, so it needs nothing but port 443 to that address. Everything Nexul does with the computer goes over that connection: it reaches T3 Code through it, and nothing has to reach into the computer. You can chat with the agent from Nexul's web and phone apps, run [plays](/docs/guide/plays/), run [setup](/docs/guide/computer-setup/), let the agent use [Nexul's MCP server](/docs/guide/mcp-server/), pick T3 projects, clone a repository onto the computer, and read the computer's facts, containers and logs.
+- **T3 Connect may not.** T3 Connect is T3 Code's own way to open T3 Code from another device, and it is not part of Nexul. Its tunnel connects out to Cloudflare on port 7844, with TCP and UDP, so a network that allows only 443 blocks it. T3 Code's own [troubleshooting page](https://github.com/pingdotgg/t3code/blob/main/docs/user/t3-connect-troubleshooting.md#port-7844-is-blocked-on-the-host) says so and suggests allowing port 7844 or using a direct route such as Tailscale instead.
+
+What Nexul does **not** give you is T3 Code's own screen on that computer. There is no way to open T3 Code's web page, its desktop app or its phone app on the computer through Nexul: Nexul uses its connection to T3 Code for the agent work above and does not pass T3 Code's own interface on to your browser. If you need T3 Code's own interface while you are away from the computer, use one of T3 Code's own routes. If you only need to talk to the agent, Nexul's chat does it, and the agent's work shows in the same thread in T3 Code when you are back at the computer.
+
+The Nexul app only needs to connect to your Nexul address. When the network makes it go through a named proxy, it uses the standard `HTTPS_PROXY` variable from its environment; the install does not set it for you. A network that lets port 443 out directly needs nothing.
+
 ## Keep it paired
 
 Each computer is one row. A row shows a button only when something needs doing; everything else is in its **…** menu. Click the name to unfold the details.
