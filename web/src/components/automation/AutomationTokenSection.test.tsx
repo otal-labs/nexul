@@ -58,7 +58,7 @@ describe("AutomationTokenSection", () => {
     renderSection(automation());
     expect(screen.getByText("tickets:write")).toBeInTheDocument();
     expect(screen.getByText("board:read")).toBeInTheDocument();
-    expect(screen.getByText("dep_…ab12")).toBeInTheDocument();
+    expect(screen.getByText("dat_…ab12")).toBeInTheDocument();
   });
 
   it("reveals a fresh token after rotating", async () => {

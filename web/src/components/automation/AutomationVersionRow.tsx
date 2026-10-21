@@ -4,6 +4,7 @@ import { AutomationVersionStatusBadge } from "@/components/automation/Automation
 import { ActionButton } from "@/components/action/ActionButton";
 import { AutomationVersionStatus } from "@/enums/Automation";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { usePersonNamer } from "@/hooks/usePersonNamer";
 import { useRollbackAutomationVersion } from "@/hooks/AutomationVersionHooks";
 import type { AutomationVersion } from "@/models/AutomationVersion";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -20,7 +21,8 @@ interface AutomationVersionRowProps {
 export const AutomationVersionRow = ({ automationId, version }: AutomationVersionRowProps) => {
   const rollback = useRollbackAutomationVersion(automationId);
   const { open: confirm } = useConfirmationDialog();
-  const pusher = version.pusher_id === SEED_PUSHER_ID ? "Nexul" : version.pusher_id;
+  const nameOf = usePersonNamer();
+  const pusher = version.pusher_id === SEED_PUSHER_ID ? "Nexul" : nameOf(version.pusher_id);
   const canRollback = version.status !== AutomationVersionStatus.Active;
 
   const onRollback = async () => {

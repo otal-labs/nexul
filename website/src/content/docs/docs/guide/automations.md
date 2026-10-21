@@ -22,8 +22,8 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 
 ## Write your own
 
-1. On the **Automations** page, press **New automation**. Name it and pick its **Scopes**: what its token may read and change, from the same [permissions](/docs/guide/api-and-tokens/) integrations use.
-2. In an empty project, run `bun add @otal-labs/nexul-sdk`; its commands need Bun. Then run `bunx nexul init`. It asks for your instance URL and a personal access token from **Settings → Security → Tokens**, and writes `src/index.ts`.
+1. On the **Automations** page, press **New automation**. Name it and pick its **Scopes**: what its token may read and change, from the same [permissions](/docs/guide/api-and-tokens/) integrations use. The dialog then shows the commands for the next steps, with your instance URL and the automation's id filled in.
+2. In an empty folder, run `bun add @otal-labs/nexul-sdk`; its commands need Bun. Then run `bunx nexul init --url <your instance URL> --id <automation-id>`. It asks for a personal access token from **Settings → Security → Tokens**, keeps both in `nexul.config.json` (added to `.gitignore`, since it holds the token), and writes `src/index.ts`, named after the automation, and a `tsconfig.json` so your editor knows the SDK's types. The name and description in your code are the ones Nexul shows once it runs.
 3. Write your handlers:
 
    ```ts
@@ -44,11 +44,12 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
    ```
 
    Return `true` for success. A thrown error, a timeout (30 seconds by default), or any other value counts as a failed run. `payload` is typed from the event catalog, and a list in it is always an array, `[]` when empty. `ctx` gives you `ctx.api`, a typed client acting with the automation's token, plus `ctx.config`, `ctx.secrets`, `ctx.log`, and `ctx.runPlay` ([Start a play](#start-a-play)).
-4. Run `nexul dev`, pick a topic, and it fires a sample event at your handler. You see the outcome, the logs, and every API call it would have made. Nothing reaches your instance.
-5. Run `nexul push <automation-id> "message"` to upload the code as a pending version.
+4. Run `bunx nexul dev`, pick a topic, and it fires a sample event at your handler. You see the outcome, the logs, and every API call it would have made. Nothing reaches your instance.
+5. Run `bunx nexul push <automation-id> "message"` to upload the code as a pending version.
 6. On the automation's **Versions** tab, read the diff against the active code and press **Merge**. The automation restarts on the new code.
+7. A new automation starts switched off. Switch it on at the top of its page, and its next event runs your code; each run shows on the **Runs** tab with its logs.
 
-`nexul pull <automation-id>` fetches the active code back into `src/index.ts`. This `nexul` comes with the SDK; it's not the `nexul` that installs your instance.
+`bunx nexul pull <automation-id>` fetches the active code back into `src/index.ts`. Run these commands with `bunx` from the project folder: a bare `nexul` is the command that installs and runs your instance, not the SDK's.
 
 For unit tests, `createMockContext` from `@otal-labs/nexul-sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
 
@@ -78,7 +79,7 @@ automation.on("ticket.test_failed", async (payload, ctx) => {
 - It answers with `{ id, state, reason }`. `state` is `"queued"`, with `reason` `"paused"` when the ticket has reached its daily cap, or `"didnt_run"` with why, such as the ticket having no developer. Either way the ticket shows it.
 - The automation's token needs the `plays:run` scope, and whoever created the automation must be able to run that play on that ticket. The default automations have no creator, so they can't start plays.
 
-Play names are checked as you type. Run `nexul types <automation-id>` and it writes `src/plays.generated.d.ts` with the workspace's play names, so a typo, a doc play, or a play renamed since then is a type error in your editor. `nexul push` refreshes the file every time. A project made by `nexul init` already points `src/index.ts` at it; in an older project, add `/// <reference path="./plays.generated.d.ts" />` as the first line of `src/index.ts`. Labels are unique in a workspace, so a name is always one play.
+Play names are checked as you type. Run `bunx nexul types <automation-id>` and it writes `src/plays.generated.d.ts` with the workspace's play names, so a typo, a doc play, or a play renamed since then is a type error in your editor. `nexul push` refreshes the file every time. A project made by `nexul init` already points `src/index.ts` at it; in an older project, add `/// <reference path="./plays.generated.d.ts" />` as the first line of `src/index.ts`. Labels are unique in a workspace, so a name is always one play.
 
 Code you already pushed keeps the name it was written with. Renaming a play warns first: the play dialog lists the automations whose active or pending code still has the old label in quotes and asks before it saves, and `play_update` over MCP renames it and names them in its `warnings`. If someone renames or deletes that play anyway, `ctx.runPlay` throws, nothing is queued, and the run fails with the server's reason on the **Runs** tab, such as `no play named "Fix with AI" in this workspace`. Rename the play back, or update the name, push, and merge.
 

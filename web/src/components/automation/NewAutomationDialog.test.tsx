@@ -50,7 +50,7 @@ describe("NewAutomationDialog", () => {
   const level = async (domain: string, name: string) =>
     within(await screen.findByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
 
-  it("opens the create form, then reveals the minted token and SDK commands on success", async () => {
+  it("opens the create form, then shows the SDK commands for the new automation on success", async () => {
     mocks.post.mockResolvedValue({
       data: {
         automation: { id: "a1", name: "Slack notifier" },
@@ -72,11 +72,11 @@ describe("NewAutomationDialog", () => {
       workspace_id: "ws-1",
     });
     expect(await screen.findByText("Slack notifier created")).toBeInTheDocument();
-    expect(screen.getByText("dep_secret_abc123")).toBeInTheDocument();
-    expect(screen.getByText(/bunx @otal-labs\/nexul-sdk init/)).toBeInTheDocument();
+    expect(screen.getByText(/bunx nexul init --url .* --id a1/)).toBeInTheDocument();
+    expect(screen.queryByText(/dep_secret_abc123/)).not.toBeInTheDocument();
   });
 
-  it("drops the minted token once the dialog closes, so reopening starts from the form", async () => {
+  it("reopening after Done starts from the form", async () => {
     mocks.post.mockResolvedValue({ data: { automation: { id: "a1", name: "x" }, token: "dep_once" } });
     const user = userEvent.setup();
     renderPanel();
@@ -85,14 +85,13 @@ describe("NewAutomationDialog", () => {
     await user.type(screen.getByLabelText("Name"), "x");
     await user.click(await level("Tickets", "Read"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
-    expect(await screen.findByText("dep_once")).toBeInTheDocument();
+    expect(await screen.findByText("x created")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(screen.queryByText("dep_once")).not.toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "New automation" }));
+
     expect(screen.getByRole("button", { name: "Create automation" })).toBeInTheDocument();
-    expect(screen.queryByText("dep_once")).not.toBeInTheDocument();
+    expect(screen.queryByText("x created")).not.toBeInTheDocument();
   });
 
   it("setting a domain back to None removes its scopes from the submitted set", async () => {

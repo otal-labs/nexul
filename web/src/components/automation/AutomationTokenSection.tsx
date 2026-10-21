@@ -80,7 +80,7 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
               <KeyRound className="size-4" aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="font-mono text-sm">dep_…{automation.token_prefix}</p>
+              <p className="font-mono text-sm">dat_…{automation.token_prefix}</p>
             </div>
           </div>
         )}
