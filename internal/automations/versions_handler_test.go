@@ -21,11 +21,12 @@ func newTestVersionsHandler(t *testing.T) (http.Handler, string) {
 func TestHandler_PushListDiffGetMergeRollback(t *testing.T) {
 	h, id := newTestVersionsHandler(t)
 
-	rec := serve(t, h, "owner", http.MethodPost, "/api/automations/"+id+"/versions", `{"code":"v1","message":"first"}`)
+	rec := serve(t, h, "owner", http.MethodPost, "/api/automations/"+id+"/versions", `{"code":"v1","source":"src v1","message":"first"}`)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var v1 Version
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &v1))
 	assert.Equal(t, VersionPending, v1.Status)
+	assert.Equal(t, "src v1", v1.Source)
 
 	t.Run("list shows the pending version", func(t *testing.T) {
 		rec := serve(t, h, "owner", http.MethodGet, "/api/automations/"+id+"/versions", "")

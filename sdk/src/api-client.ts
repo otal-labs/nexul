@@ -62,8 +62,8 @@ export class ApiClient {
     setEnabled: <T = unknown>(id: string, enabled: boolean) =>
       this.request<T>("PATCH", `/api/automations/${id}/enabled`, { enabled }),
     versions: {
-      push: <T = unknown>(id: string, code: string, message?: string) =>
-        this.request<T>("POST", `/api/automations/${id}/versions`, { code, message }),
+      push: <T = unknown>(id: string, code: string, message?: string, source?: string) =>
+        this.request<T>("POST", `/api/automations/${id}/versions`, { code, message, source }),
       list: <T = unknown>(id: string) => this.request<T>("GET", `/api/automations/${id}/versions`),
       get: <T = unknown>(id: string, versionId: string) => this.request<T>("GET", `/api/automations/${id}/versions/${versionId}`),
       diff: <T = unknown>(id: string) => this.request<T>("GET", `/api/automations/${id}/versions/diff`),

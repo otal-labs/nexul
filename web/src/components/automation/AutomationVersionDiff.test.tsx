@@ -59,6 +59,23 @@ describe("AutomationVersionDiff", () => {
     expect(screen.getByText("return false;")).toBeInTheDocument();
   });
 
+  it("compares the sources when both versions kept one, so the inlined SDK stays out of the diff", () => {
+    const { active, pending } = diffData();
+    renderDiff({ active: { ...active!, source: "log(1)" }, pending: { ...pending!, source: "log(2)" } });
+
+    expect(screen.getByText("log(1)")).toBeInTheDocument();
+    expect(screen.getByText("log(2)")).toBeInTheDocument();
+    expect(screen.queryByText("return true;")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the bundles, and says so, when the active version kept no source", () => {
+    const { active, pending } = diffData();
+    renderDiff({ active: active!, pending: { ...pending!, source: "log(2)" } });
+
+    expect(screen.getByText("return false;")).toBeInTheDocument();
+    expect(screen.getByText(/bundled code/)).toBeInTheDocument();
+  });
+
   it("shows the merge button only when there's a pending version", () => {
     renderDiff(diffData());
     expect(screen.getByRole("button", { name: "Merge" })).toBeInTheDocument();

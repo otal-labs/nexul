@@ -201,11 +201,12 @@ async function cmdPush(automationId: string | undefined, message: string | undef
     process.exit(1);
   }
   const code = await output.text();
+  const source = readFileSync(ENTRY_FILE, "utf8");
   const api = new ApiClient({ baseUrl: config.url, token: config.token });
   await writePlayNames(api, automationId).catch((err: unknown) => {
     console.error(`could not refresh ${PLAYS_FILE}: ${err instanceof Error ? err.message : String(err)}`);
   });
-  const version = await api.automations.versions.push<{ sequence: number }>(automationId, code, message);
+  const version = await api.automations.versions.push<{ sequence: number }>(automationId, code, message, source);
   console.log(`Pushed version ${version.sequence} as pending. Merge it on the automation's Versions tab in Nexul.`);
 }
 
@@ -217,15 +218,25 @@ async function cmdPull(automationId: string | undefined, versionId: string | und
   const config = loadConfig();
   const api = new ApiClient({ baseUrl: config.url, token: config.token });
   const version = versionId
-    ? await api.automations.versions.get<{ code: string }>(automationId, versionId)
-    : (await api.automations.versions.diff<{ active: { code: string } | null }>(automationId)).active;
+    ? await api.automations.versions.get<PulledVersion>(automationId, versionId)
+    : (await api.automations.versions.diff<{ active: PulledVersion | null }>(automationId)).active;
   if (!version) {
     console.error("automation has no active version to pull");
     process.exit(1);
   }
+  // The bundle inlines the SDK, so writing it over src/index.ts would bury the author's code in it.
+  if (!version.source) {
+    console.error(`version ${version.sequence} was pushed before Nexul kept the source file, so there is nothing to pull; its bundle shows on the Versions tab`);
+    process.exit(1);
+  }
   if (!existsSync("src")) mkdirSync("src");
-  writeFileSync(ENTRY_FILE, version.code);
+  writeFileSync(ENTRY_FILE, version.source);
   console.log(`wrote ${ENTRY_FILE}`);
+}
+
+interface PulledVersion {
+  sequence: number;
+  source?: string;
 }
 
 interface PlaySummary {

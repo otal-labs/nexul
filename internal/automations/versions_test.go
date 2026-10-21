@@ -33,13 +33,13 @@ func TestVersionsService_Push(t *testing.T) {
 		autoRepo := newFakeRepo()
 		seedAutomation(t, autoRepo, "a1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), newFakePerm(nil))
-		_, err := s.Push(context.Background(), "someone", "a1", "code", "")
+		_, err := s.Push(context.Background(), "someone", "a1", "code", "", "")
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 	})
 
 	t.Run("push 404s on an unknown automation", func(t *testing.T) {
 		s := newTestVersionsService(newFakeRepo(), newFakeVersionsRepo(), allowAll("owner"))
-		_, err := s.Push(context.Background(), "owner", "missing", "code", "")
+		_, err := s.Push(context.Background(), "owner", "missing", "code", "", "")
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 
@@ -47,7 +47,7 @@ func TestVersionsService_Push(t *testing.T) {
 		autoRepo := newFakeRepo()
 		seedAutomation(t, autoRepo, "a1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
-		_, err := s.Push(context.Background(), "owner", "a1", "   ", "")
+		_, err := s.Push(context.Background(), "owner", "a1", "   ", "", "")
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 
@@ -55,7 +55,7 @@ func TestVersionsService_Push(t *testing.T) {
 		autoRepo := newFakeRepo()
 		seedAutomation(t, autoRepo, "a1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
-		v, err := s.Push(context.Background(), "owner", "a1", "console.log(1)", "first push")
+		v, err := s.Push(context.Background(), "owner", "a1", "console.log(1)", "", "first push")
 		require.NoError(t, err)
 		assert.Equal(t, VersionPending, v.Status)
 		assert.Equal(t, "owner", v.PusherID)
@@ -67,9 +67,9 @@ func TestVersionsService_Push(t *testing.T) {
 		seedAutomation(t, autoRepo, "a1")
 		vRepo := newFakeVersionsRepo()
 		s := newTestVersionsService(autoRepo, vRepo, allowAll("owner"))
-		_, err := s.Push(context.Background(), "owner", "a1", "v1", "")
+		_, err := s.Push(context.Background(), "owner", "a1", "v1", "", "")
 		require.NoError(t, err)
-		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "")
+		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "", "")
 		require.NoError(t, err)
 
 		list, err := s.List(context.Background(), "owner", "a1")
@@ -95,13 +95,13 @@ func TestVersionsService_Activate(t *testing.T) {
 		vRepo := newFakeVersionsRepo()
 		s := newTestVersionsService(autoRepo, vRepo, allowAll("owner"))
 
-		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "")
+		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "", "")
 		require.NoError(t, err)
 		activated, err := s.Activate(context.Background(), "owner", "a1", v1.ID)
 		require.NoError(t, err)
 		assert.Equal(t, VersionActive, activated.Status)
 
-		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "")
+		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "", "")
 		require.NoError(t, err)
 		activated2, err := s.Activate(context.Background(), "owner", "a1", v2.ID)
 		require.NoError(t, err)
@@ -118,11 +118,11 @@ func TestVersionsService_Activate(t *testing.T) {
 		vRepo := newFakeVersionsRepo()
 		s := newTestVersionsService(autoRepo, vRepo, allowAll("owner"))
 
-		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "")
+		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "", "")
 		require.NoError(t, err)
 		_, err = s.Activate(context.Background(), "owner", "a1", v1.ID)
 		require.NoError(t, err)
-		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "")
+		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "", "")
 		require.NoError(t, err)
 		_, err = s.Activate(context.Background(), "owner", "a1", v2.ID)
 		require.NoError(t, err)
@@ -166,7 +166,7 @@ func TestVersionsService_Get(t *testing.T) {
 		seedAutomation(t, autoRepo, "a1")
 		seedAutomation(t, autoRepo, "a2")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
-		v, err := s.Push(context.Background(), "owner", "a1", "v1", "")
+		v, err := s.Push(context.Background(), "owner", "a1", "v1", "", "")
 		require.NoError(t, err)
 		_, err = s.Get(context.Background(), "owner", "a2", v.ID)
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
@@ -196,11 +196,11 @@ func TestVersionsService_Diff(t *testing.T) {
 		autoRepo := newFakeRepo()
 		seedAutomation(t, autoRepo, "a1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
-		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "")
+		v1, err := s.Push(context.Background(), "owner", "a1", "v1", "", "")
 		require.NoError(t, err)
 		_, err = s.Activate(context.Background(), "owner", "a1", v1.ID)
 		require.NoError(t, err)
-		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "")
+		v2, err := s.Push(context.Background(), "owner", "a1", "v2", "", "")
 		require.NoError(t, err)
 
 		active, pending, err := s.Diff(context.Background(), "owner", "a1")
@@ -297,7 +297,7 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 func TestVersionsService_MustExist(t *testing.T) {
 	t.Run("blank automation id is invalid on every entry point", func(t *testing.T) {
 		s := newTestVersionsService(newFakeRepo(), newFakeVersionsRepo(), allowAll("owner"))
-		_, err := s.Push(context.Background(), "owner", "  ", "code", "")
+		_, err := s.Push(context.Background(), "owner", "  ", "code", "", "")
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 		_, err = s.List(context.Background(), "owner", "")
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
@@ -369,7 +369,7 @@ func TestVersionsService_RepoFailure_ComesBackToTheCaller(t *testing.T) {
 			return err
 		}},
 		{"pushing", func(r *erroringVersionsRepo) { r.replacePendingErr = errBoom }, func(s *VersionsService) error {
-			_, err := s.Push(context.Background(), "owner", "a1", "code", "")
+			_, err := s.Push(context.Background(), "owner", "a1", "code", "", "")
 			return err
 		}},
 		{"activating", func(r *erroringVersionsRepo) { r.activateErr = errBoom }, func(s *VersionsService) error {

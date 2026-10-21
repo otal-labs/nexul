@@ -55,7 +55,7 @@ func (q *Queries) DeletePendingAutomationVersion(ctx context.Context, arg Delete
 }
 
 const getAutomationVersion = `-- name: GetAutomationVersion :one
-SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at FROM automation_versions WHERE id = ? AND automation_id = ?
+SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE id = ? AND automation_id = ?
 `
 
 type GetAutomationVersionParams struct {
@@ -75,12 +75,13 @@ func (q *Queries) GetAutomationVersion(ctx context.Context, arg GetAutomationVer
 		&i.Message,
 		&i.Status,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
 
 const getAutomationVersionByID = `-- name: GetAutomationVersionByID :one
-SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at FROM automation_versions WHERE id = ?
+SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE id = ?
 `
 
 func (q *Queries) GetAutomationVersionByID(ctx context.Context, id string) (AutomationVersion, error) {
@@ -95,12 +96,13 @@ func (q *Queries) GetAutomationVersionByID(ctx context.Context, id string) (Auto
 		&i.Message,
 		&i.Status,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
 
 const getAutomationVersionByStatus = `-- name: GetAutomationVersionByStatus :one
-SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at FROM automation_versions WHERE automation_id = ? AND status = ?
+SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE automation_id = ? AND status = ?
 `
 
 type GetAutomationVersionByStatusParams struct {
@@ -120,12 +122,13 @@ func (q *Queries) GetAutomationVersionByStatus(ctx context.Context, arg GetAutom
 		&i.Message,
 		&i.Status,
 		&i.CreatedAt,
+		&i.Source,
 	)
 	return i, err
 }
 
 const insertAutomationVersion = `-- name: InsertAutomationVersion :exec
-INSERT INTO automation_versions (id, automation_id, sequence, code, pusher_id, message, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO automation_versions (id, automation_id, sequence, code, source, pusher_id, message, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAutomationVersionParams struct {
@@ -133,6 +136,7 @@ type InsertAutomationVersionParams struct {
 	AutomationID string
 	Sequence     int64
 	Code         []byte
+	Source       string
 	PusherID     string
 	Message      string
 	Status       string
@@ -145,6 +149,7 @@ func (q *Queries) InsertAutomationVersion(ctx context.Context, arg InsertAutomat
 		arg.AutomationID,
 		arg.Sequence,
 		arg.Code,
+		arg.Source,
 		arg.PusherID,
 		arg.Message,
 		arg.Status,
@@ -154,7 +159,7 @@ func (q *Queries) InsertAutomationVersion(ctx context.Context, arg InsertAutomat
 }
 
 const listAutomationVersionsByAutomation = `-- name: ListAutomationVersionsByAutomation :many
-SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at FROM automation_versions WHERE automation_id = ? ORDER BY sequence DESC
+SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE automation_id = ? ORDER BY sequence DESC
 `
 
 func (q *Queries) ListAutomationVersionsByAutomation(ctx context.Context, automationID string) ([]AutomationVersion, error) {
@@ -175,6 +180,7 @@ func (q *Queries) ListAutomationVersionsByAutomation(ctx context.Context, automa
 			&i.Message,
 			&i.Status,
 			&i.CreatedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}

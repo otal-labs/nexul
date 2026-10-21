@@ -25,13 +25,14 @@ func TestAutomationVersionsRepo_InsertActive(t *testing.T) {
 	s := newTestStore(t)
 	seedTestAutomation(t, s, "a1")
 
-	v := &automations.Version{ID: "v1", AutomationID: "a1", Code: "code v1", PusherID: "seed", Status: automations.VersionActive, CreatedAt: time.Now().UTC()}
+	v := &automations.Version{ID: "v1", AutomationID: "a1", Code: "code v1", Source: "source v1", PusherID: "seed", Status: automations.VersionActive, CreatedAt: time.Now().UTC()}
 	require.NoError(t, s.AutomationVersions.InsertActive(context.Background(), v))
 	assert.Equal(t, 1, v.Sequence, "the first version for an automation gets sequence 1")
 
 	got, err := s.AutomationVersions.Active(context.Background(), "a1")
 	require.NoError(t, err)
 	assert.Equal(t, "code v1", got.Code)
+	assert.Equal(t, "source v1", got.Source)
 	assert.Equal(t, automations.VersionActive, got.Status)
 }
 
