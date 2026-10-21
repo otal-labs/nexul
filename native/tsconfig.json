@@ -9,7 +9,7 @@
       "@/*": [
         "./src/*"
       ],
-      "@nexul/sdk/events": [
+      "@otal-labs/nexul-sdk/events": [
         "../sdk/src/events.generated.ts"
       ],
       "@nexul/client-core/*": [

@@ -1,4 +1,4 @@
-import type { EventPayloads, Topic } from "@nexul/sdk/events";
+import type { EventPayloads, Topic } from "@otal-labs/nexul-sdk/events";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { recordQueries } from "@/lib/queryClient";

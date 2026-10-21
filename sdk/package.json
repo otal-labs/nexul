@@ -1,7 +1,6 @@
 {
-  "name": "@nexul/sdk",
+  "name": "@otal-labs/nexul-sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "bin": {
     "nexul": "./bin/cli.ts"
@@ -23,5 +22,20 @@
   "devDependencies": {
     "@types/bun": "1.4.3",
     "typescript": "7.0.2"
+  },
+  "description": "Write Nexul automations in TypeScript: typed events, a typed API client, and the nexul CLI to test and push them.",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otal-labs/nexul.git",
+    "directory": "sdk"
+  },
+  "homepage": "https://nexul.io/docs/guide/automations/",
+  "files": [
+    "bin",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

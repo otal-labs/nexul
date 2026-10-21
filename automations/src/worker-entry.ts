@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parentPort, workerData } from "node:worker_threads";
-import { DialinClient } from "@nexul/sdk/client";
-import type { Automation } from "@nexul/sdk/automation";
+import { DialinClient } from "@otal-labs/nexul-sdk/client";
+import type { Automation } from "@otal-labs/nexul-sdk/automation";
 
 export interface WorkerData {
   automationId: string;

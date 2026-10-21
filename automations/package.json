@@ -10,7 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@nexul/sdk": "file:../sdk"
+    "@otal-labs/nexul-sdk": "file:../sdk"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",

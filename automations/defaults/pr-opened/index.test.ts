@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createMockContext, eventFixtures } from "@nexul/sdk/testing";
+import { createMockContext, eventFixtures } from "@otal-labs/nexul-sdk/testing";
 import automation from "./index.ts";
 
 describe("pr-opened default", () => {

@@ -73,7 +73,7 @@ describe("NewAutomationDialog", () => {
     });
     expect(await screen.findByText("Slack notifier created")).toBeInTheDocument();
     expect(screen.getByText("dep_secret_abc123")).toBeInTheDocument();
-    expect(screen.getByText(/npx @nexul\/sdk init/)).toBeInTheDocument();
+    expect(screen.getByText(/bunx @otal-labs\/nexul-sdk init/)).toBeInTheDocument();
   });
 
   it("drops the minted token once the dialog closes, so reopening starts from the form", async () => {

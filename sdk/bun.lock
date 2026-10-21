@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@nexul/sdk",
+      "name": "@otal-labs/nexul-sdk",
       "devDependencies": {
         "@types/bun": "1.4.3",
         "typescript": "7.0.2",

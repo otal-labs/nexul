@@ -183,7 +183,7 @@ as written. In particular:
   frame carries the change and is written into the cache). Hooks spread
   `xxxQuery.options(...args)` into `useQuery` and add `enabled`. Topic names
   and payloads are the event catalog's types, imported with `import type` from
-  `@nexul/sdk/events`; a misspelled topic or a missing payload field is a type
+  `@otal-labs/nexul-sdk/events`; a misspelled topic or a missing payload field is a type
   error, and a value import fails lint, so no SDK code reaches the app.
 - The live dispatcher in `useLiveEvents` is derived from the definitions: a
   frame reaches exactly the queries that list its topic, and nothing else does

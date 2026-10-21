@@ -76,7 +76,7 @@ hides which file actually defines the thing.
 an implementation detail: `./automation`, `./client`, `./api-client`,
 `./events`, `./context`, and `./testing` each point at one file in `src/`.
 Every entry is a stable contract; `automations/src/worker-entry.ts`
-imports `@nexul/sdk/client` and `@nexul/sdk/automation` through this map,
+imports `@otal-labs/nexul-sdk/client` and `@otal-labs/nexul-sdk/automation` through this map,
 never a relative path into `sdk/src`. Adding, removing, or repointing an
 entry is a public API change, reviewed as one.
 
@@ -214,7 +214,7 @@ explicitly (`automations/src/worker-entry.ts` writes it as
 
 Minimal direct dependencies. `sdk` and `automations` each carry only
 `typescript`, `@types/bun`, and, for `automations`, the local
-`@nexul/sdk` path dependency; a new dependency has to justify itself
+`@otal-labs/nexul-sdk` path dependency; a new dependency has to justify itself
 against what Bun's own runtime and standard library already cover. Every
 package commits its own `bun.lock`, and CI installs with `bun install
 --frozen-lockfile` so a lockfile that drifts from its `package.json` fails
