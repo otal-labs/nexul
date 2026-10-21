@@ -24,6 +24,10 @@ func newCloneServiceWhere(t *testing.T, canClone func() (bool, error), existing 
 	t.Helper()
 	var calls []cloneCall
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b", ExpiresIn: 30 * 24 * time.Hour}, version: "0.0.34"}
+	exch.CreateProjectFn = func(_ context.Context, _ harness.Session, title, path string) (harness.Project, error) {
+		calls = append(calls, cloneCall{title: title, path: path})
+		return harness.Project{ID: "t3-empty", Title: title, Path: path}, nil
+	}
 	if canClone != nil {
 		exch.CanCloneFn = func(context.Context, harness.Session) (bool, error) { return canClone() }
 	}
@@ -130,4 +134,94 @@ func TestCanClone(t *testing.T) {
 	svc, c, _ := newCloneService(t)
 	_, err := svc.CanClone(t.Context(), "u2", c.ID)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestCreateEmptyProject_RefusesANameThatIsNotAFolder(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"", "   ", ".", "..", "...", "a/b", `a\b`, "../escape", "/abs", "tab\tname", "nul\x00name"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			svc, c, calls := newCloneService(t)
+			_, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, name)
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			assert.Empty(t, *calls, "nothing reaches the computer")
+		})
+	}
+}
+
+func TestCreateEmptyProject_LandsBesideTheComputersProjects(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		existing []string
+		want     string
+	}{
+		{"no projects", nil, "~/Code/notes"},
+		{"the folder most share", []string{"/srv/one", "/home/me/Code/a", "/home/me/Code/b"}, "/home/me/Code/notes"},
+		{"windows paths", []string{`C:\Users\me\Code\shop`}, `C:\Users\me\Code\notes`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, c, calls := newCloneService(t, tt.existing...)
+			project, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, " notes ")
+			require.NoError(t, err)
+			assert.Equal(t, []cloneCall{{title: "notes", path: tt.want}}, *calls)
+			assert.Equal(t, "t3-empty", project.ID)
+		})
+	}
+}
+
+func TestCreateEmptyProject_NeedsNoCloneScope(t *testing.T) {
+	t.Parallel()
+	svc, c, calls := newCloneServiceWhere(t, func() (bool, error) { return false, nil })
+	_, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, "notes")
+	require.NoError(t, err)
+	assert.Len(t, *calls, 1, "a computer paired before cloning existed can still make an empty project")
+}
+
+func TestCreateEmptyProject_SomeoneElsesComputerIsNotFound(t *testing.T) {
+	t.Parallel()
+	svc, c, calls := newCloneService(t)
+	_, err := svc.CreateEmptyProject(t.Context(), "u2", c.ID, "notes")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.Empty(t, *calls)
+}
+
+func TestAddProject_TakesARepositoryOrANameButNotBothOrNeither(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name, repository, projectName string
+		wantErr                       bool
+		want                          []cloneCall
+	}{
+		{"a repository clones", "acme/api", "", false, []cloneCall{{"api", "https://github.com/acme/api.git", "~/Code/api"}}},
+		{"a name makes an empty project", "", "notes", false, []cloneCall{{title: "notes", path: "~/Code/notes"}}},
+		{"neither", "", "", true, nil},
+		{"both", "acme/api", "notes", true, nil},
+		{"only blanks", "  ", " ", true, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, c, calls := newCloneService(t)
+			_, err := svc.AddProject(t.Context(), "u1", c.ID, tt.repository, tt.projectName)
+			if tt.wantErr {
+				require.ErrorIs(t, err, apperrs.ErrInvalid)
+			}
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, append([]cloneCall(nil), *calls...))
+		})
+	}
+}
+
+func TestCreateEmptyProject_AFolderThatIsAlreadyAProjectIsAConflict(t *testing.T) {
+	t.Parallel()
+	svc, c, calls := newCloneService(t, "/home/me/Code/notes", "/home/me/Code/api")
+	_, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, "notes")
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "/home/me/Code/notes")
+	assert.Empty(t, *calls, "T3 would register the same folder twice")
 }

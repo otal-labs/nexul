@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -13,7 +15,7 @@ import (
 
 var githubRepository = regexp.MustCompile(`^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$`)
 
-// defaultCloneParent is where a clone lands on a computer with no T3 projects to sit beside.
+// defaultCloneParent is where a clone or an empty project lands on a computer with no T3 projects to sit beside.
 const defaultCloneParent = "~/Code"
 
 // CloneProject clones a GitHub repository ("owner/name") onto one of the caller's computers as a new T3 project,
@@ -35,16 +37,66 @@ func (s *Service) CloneProject(ctx context.Context, userID, computerID, reposito
 	if !s.mayClone(ctx, client, session) {
 		return harness.Project{}, harness.ErrPairAgainToClone
 	}
-	projects, err := client.ListProjects(ctx, session.Session())
+	path, _, err := s.newProjectPath(ctx, client, session, name)
 	if err != nil {
-		return harness.Project{}, fmt.Errorf("list projects on %s: %w", session.Name, err)
+		return harness.Project{}, err
 	}
-	parent, sep := cloneParent(projects)
-	project, err := client.CloneProject(ctx, session.Session(), name, "https://github.com/"+repository+".git", parent+sep+name)
+	project, err := client.CloneProject(ctx, session.Session(), name, "https://github.com/"+repository+".git", path)
 	if err != nil {
 		return harness.Project{}, fmt.Errorf("clone %s on %s: %w", repository, session.Name, err)
 	}
 	return project, nil
+}
+
+// AddProject is the one entry for a new T3 project on a computer: clone repository, or create an empty folder called name.
+func (s *Service) AddProject(ctx context.Context, userID, computerID, repository, name string) (harness.Project, error) {
+	repository, name = strings.TrimSpace(repository), strings.TrimSpace(name)
+	if (repository == "") == (name == "") {
+		return harness.Project{}, fmt.Errorf("%w: give either a repository to clone or a name for an empty project", apperrs.ErrInvalid)
+	}
+	if name != "" {
+		return s.CreateEmptyProject(ctx, userID, computerID, name)
+	}
+	return s.CloneProject(ctx, userID, computerID, repository)
+}
+
+// CreateEmptyProject makes a new empty folder called name as a T3 project on one of the caller's computers, beside the
+// ones it already has, so a computer with no repository to clone still has a project to run in.
+func (s *Service) CreateEmptyProject(ctx context.Context, userID, computerID, name string) (harness.Project, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.Trim(name, ".") == "" || strings.ContainsAny(name, "/\\") || strings.IndexFunc(name, unicode.IsControl) >= 0 {
+		return harness.Project{}, fmt.Errorf("%w: name must be a folder name, with no slashes, such as acme-notes", apperrs.ErrInvalid)
+	}
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	client, err := s.client(session.Kind)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	path, existing, err := s.newProjectPath(ctx, client, session, name)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	if i := slices.IndexFunc(existing, func(p harness.Project) bool { return p.Path == path }); i >= 0 {
+		return harness.Project{}, fmt.Errorf("%w: %s already has the T3 project %q at %s; use it instead", apperrs.ErrConflict, session.Name, existing[i].Title, path)
+	}
+	project, err := client.CreateProject(ctx, session.Session(), name, path)
+	if err != nil {
+		return harness.Project{}, fmt.Errorf("create %s on %s: %w", name, session.Name, err)
+	}
+	return project, nil
+}
+
+// newProjectPath is where a project called name lands on the computer, beside the projects it already has, which it returns too.
+func (s *Service) newProjectPath(ctx context.Context, client harness.Client, session Computer, name string) (string, []harness.Project, error) {
+	projects, err := client.ListProjects(ctx, session.Session())
+	if err != nil {
+		return "", nil, fmt.Errorf("list projects on %s: %w", session.Name, err)
+	}
+	parent, sep := cloneParent(projects)
+	return parent + sep + name, projects, nil
 }
 
 // CanClone reports whether the computer's T3 session may start a clone, so the picker can say to pair it again before a click.

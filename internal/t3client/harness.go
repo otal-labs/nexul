@@ -153,6 +153,18 @@ func (h *Harness) CloneProject(ctx context.Context, s harness.Session, title, re
 	return c.CloneProject(ctx, title, remoteURL, path)
 }
 
+// CreateProject implements harness.Client: connect, register the project, close.
+func (h *Harness) CreateProject(ctx context.Context, s harness.Session, title, path string) (project harness.Project, err error) {
+	c, err := dial(ctx, s, h.Options)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	defer func() {
+		err = errors.Join(err, c.Close())
+	}()
+	return c.CreateProject(ctx, title, path)
+}
+
 // CanClone implements harness.Client from the scopes T3 granted the session.
 func (h *Harness) CanClone(ctx context.Context, s harness.Session) (bool, error) {
 	return t3rpc.CanClone(ctx, h.Options.HTTPClient, s.ServerURL, s.BearerToken)

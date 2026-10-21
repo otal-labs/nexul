@@ -346,7 +346,9 @@ project picker under Settings, Computers, Projects offers Clone for it. T3
 Code clones the repository next to the computer's other projects, or into
 ~/Code, and the picker selects the new project, so a computer that runs T3
 Code from the command line needs no trip to its terminal. Agents do the same
-with computer_project_create.
+with computer_project_create. When the project has no repository, or the
+computer holds every one, Create empty project makes a new folder the same way,
+which also gives a computer with no T3 project the one setup needs.
 
 ---
 

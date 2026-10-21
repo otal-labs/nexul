@@ -446,6 +446,8 @@ type Client interface {
 	ListProjects(ctx context.Context, s Session) ([]Project, error)
 	// CloneProject clones remoteURL into path as a new project; it returns once the project exists, the clone still running.
 	CloneProject(ctx context.Context, s Session, title, remoteURL, path string) (Project, error)
+	// CreateProject registers path as a new project titled title, creating the folder when it is missing.
+	CreateProject(ctx context.Context, s Session, title, path string) (Project, error)
 	// CanClone is whether the session may start a clone, read without starting one; true when the harness does not say.
 	CanClone(ctx context.Context, s Session) (bool, error)
 	ListProviders(ctx context.Context, s Session) ([]Provider, error)

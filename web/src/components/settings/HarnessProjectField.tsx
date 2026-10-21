@@ -1,7 +1,7 @@
 import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 
 import { FormCombobox } from "@/components/FormCombobox";
-import { CloneRepositoriesSection } from "@/components/settings/CloneRepositoriesSection";
+import { AddProjectSection } from "@/components/settings/AddProjectSection";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ interface HarnessProjectFieldProps<T extends FieldValues> {
   name: Path<T>;
   label: string;
   computerId: string;
-  // The Nexul project whose repositories missing from the computer are offered to clone there.
+  // The Nexul project whose repositories missing from the computer are offered to clone there; without one, only an empty project is offered.
   projectId?: string;
 }
 
@@ -72,9 +72,7 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
           )}
         </div>
       )}
-      {projectId && projects.data && (
-        <CloneRepositoriesSection projectId={projectId} computerId={computerId} projects={projects.data} onCloned={field.onChange} />
-      )}
+      {projects.data && <AddProjectSection projectId={projectId} computerId={computerId} projects={projects.data} onAdded={field.onChange} />}
     </div>
   );
 };

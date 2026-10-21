@@ -1,30 +1,16 @@
-import { useMemo } from "react";
-
 import { CloneRepositoryButton } from "@/components/settings/CloneRepositoryButton";
 import { PairAgainToClone } from "@/components/settings/PairAgainToClone";
 import { useCanCloneOnComputer } from "@/hooks/PairingHooks";
-import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
-import type { HarnessProject } from "@/models/Pairing";
 
 interface CloneRepositoriesSectionProps {
-  projectId: string;
   computerId: string;
-  projects: HarnessProject[];
+  // owner/name of each repository the computer holds no T3 project for.
+  repositories: string[];
   onCloned: (harnessProjectId: string) => void;
 }
 
-const folderName = (path: string) => path.split(/[\\/]/).pop() ?? "";
-
-// Offers the project's GitHub repositories that no T3 project on the computer holds, matched by folder name.
-export const CloneRepositoriesSection = ({ projectId, computerId, projects, onCloned }: CloneRepositoriesSectionProps) => {
-  const { data: repos } = useFetchProjectRepos(projectId);
+export const CloneRepositoriesSection = ({ computerId, repositories, onCloned }: CloneRepositoriesSectionProps) => {
   const { data: canClone } = useCanCloneOnComputer(computerId);
-  const missing = useMemo(
-    () => (repos ?? []).filter((r) => r.connector_id === "github" && !projects.some((p) => folderName(p.path) === r.name)),
-    [repos, projects],
-  );
-
-  if (missing.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -33,8 +19,8 @@ export const CloneRepositoriesSection = ({ projectId, computerId, projects, onCl
       </p>
       {canClone === false && <PairAgainToClone computerId={computerId} />}
       <div className="flex flex-wrap gap-2">
-        {missing.map((r) => (
-          <CloneRepositoryButton key={r.full_name} computerId={computerId} repository={r.full_name} disabled={canClone === false} onCloned={onCloned} />
+        {repositories.map((repository) => (
+          <CloneRepositoryButton key={repository} computerId={computerId} repository={repository} disabled={canClone === false} onCloned={onCloned} />
         ))}
       </div>
     </div>

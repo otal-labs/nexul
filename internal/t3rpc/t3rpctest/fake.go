@@ -49,12 +49,13 @@ type Server struct {
 	Persisted   chan map[string]any // payload of each assets.persistChatAttachments call, answered with one reference per image
 	Launched    chan map[string]any // payload of each orchestration.launchThread call (auto-acked)
 	Cloned      chan map[string]any // payload of each projectClone.start call
+	Mutated     chan map[string]any // payload of each projects.mutate call
 	// Branches answers vcs.refreshStatus per folder with the branch it is on; an unnamed folder is not a git repository.
 	Branches map[string]string
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
-	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload or the thread
-	// launch when it names assets.persistChatAttachments or orchestration.launchThread; set it before connect.
+	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload, the thread
+	// launch, the clone or the project mutation when it names that RPC; set it before connect.
 	CommandCauses map[string]any
 	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
 	Projections     map[string]any
@@ -82,6 +83,7 @@ const (
 	persistRPC = "assets.persistChatAttachments"
 	launchRPC  = "orchestration.launchThread"
 	cloneRPC   = "projectClone.start"
+	mutateRPC  = "projects.mutate"
 )
 
 type clientEnv struct {
@@ -108,6 +110,7 @@ func New(t testing.TB) *Server {
 		Persisted:   make(chan map[string]any, 4),
 		Launched:    make(chan map[string]any, 4),
 		Cloned:      make(chan map[string]any, 4),
+		Mutated:     make(chan map[string]any, 4),
 
 		ShellSubscribed: make(chan string, 4),
 		Pings:           make(chan struct{}, 64),
@@ -254,6 +257,8 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.handleLaunch(env)
 	case cloneRPC:
 		f.handleClone(env)
+	case mutateRPC:
+		f.handleMutate(env)
 	case "vcs.refreshStatus":
 		f.handleStatus(env)
 	case "orchestration.subscribeThread":
@@ -392,6 +397,21 @@ func (f *Server) handleClone(env clientEnv) {
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"projectId": in["projectId"], "cwd": in["destinationPath"],
 		"remoteUrl": in["remoteUrl"], "repository": nil}))
+}
+
+func (f *Server) handleMutate(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable mutation payload: %v", err)
+		return
+	}
+	f.Mutated <- in
+	if cause, ok := f.CommandCauses[mutateRPC]; ok {
+		f.writeFailure(env, cause)
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"id": in["projectId"], "title": in["title"], "workspaceRoot": in["workspaceRoot"],
+		"scripts": []any{}, "deletedAt": nil}))
 }
 
 func (f *Server) handleStatus(env clientEnv) {

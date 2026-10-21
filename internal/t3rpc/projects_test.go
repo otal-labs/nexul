@@ -59,3 +59,31 @@ func TestCloneProject_StartsTheCloneAndReturnsTheNewProject(t *testing.T) {
 	assert.Equal(t, "https://github.com/acme/api.git", sent["remoteUrl"])
 	assert.Equal(t, harness.Project{ID: fmt.Sprint(sent["projectId"]), Title: "api", Path: "/home/me/api"}, project)
 }
+
+func TestCreateProject_RegistersTheFolderAsAProjectAndCreatesItWhenMissing(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	c := connectFake(t, f)
+
+	project, err := c.CreateProject(testCtx(t), "notes", "~/Code/notes")
+	require.NoError(t, err)
+	sent := <-f.Mutated
+	assert.Equal(t, "project.create", sent["type"])
+	assert.Equal(t, "notes", sent["title"])
+	assert.Equal(t, "~/Code/notes", sent["workspaceRoot"])
+	assert.Equal(t, true, sent["createWorkspaceRootIfMissing"], "T3 makes the folder, Nexul has no way into the computer's disk")
+	assert.NotEmpty(t, sent["commandId"])
+	assert.Equal(t, harness.Project{ID: fmt.Sprint(sent["projectId"]), Title: "notes", Path: "~/Code/notes"}, project)
+}
+
+func TestCreateProject_FailsWithT3sOwnSentence(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	f.CommandCauses = map[string]any{"projects.mutate": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+		"_tag": "ProjectMutationError", "message": "Project directory is not empty."}}}}
+	c := connectFake(t, f)
+
+	_, err := c.CreateProject(testCtx(t), "notes", "/home/me/notes")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Equal(t, "invalid: Project directory is not empty.", err.Error())
+}

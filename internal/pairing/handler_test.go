@@ -307,3 +307,22 @@ func TestHandler_ProjectsListSaysWhetherTheComputerCanClone(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"projects":[],"can_clone":false}`, rec.Body.String())
 }
+
+func TestHandler_ProjectsPost_MakesAnEmptyProjectFromAName(t *testing.T) {
+	t.Parallel()
+	h, _, exch := newTestHandler()
+	var made []string
+	exch.CreateProjectFn = func(_ context.Context, _ harness.Session, title, path string) (harness.Project, error) {
+		made = append(made, title+" at "+path)
+		return harness.Project{ID: "t3-new", Title: title, Path: path}, nil
+	}
+	created := pairedComputer(t, h, "u1", "Home")
+
+	rec := doRequest(h.Routes(), http.MethodPost, "/api/pairing/computers/"+created.ID+"/projects", "u1", map[string]string{"name": "notes"})
+	require.Equal(t, http.StatusCreated, rec.Code)
+	assert.JSONEq(t, `{"id":"t3-new","title":"notes","path":"~/Code/notes"}`, rec.Body.String())
+	assert.Equal(t, []string{"notes at ~/Code/notes"}, made)
+
+	rec = doRequest(h.Routes(), http.MethodPost, "/api/pairing/computers/"+created.ID+"/projects", "u1", map[string]string{})
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "neither a repository nor a name")
+}

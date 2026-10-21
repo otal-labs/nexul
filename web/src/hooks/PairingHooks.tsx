@@ -189,20 +189,24 @@ export const useCanCloneOnComputer = (computerId: string) =>
   useQuery({ ...harnessProjectsQuery(computerId), select: (data) => data.can_clone });
 
 // The new project lands in the cached list at once, since T3 registers it before the clone finishes.
-export const useCloneHarnessProject = (computerId: string) => {
+const useAddHarnessProject = <V,>(computerId: string, body: (input: V) => object, message: (project: HarnessProject, input: V) => string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("none", async (repository: string) =>
-      (await api.post<HarnessProject>(`/api/pairing/computers/${computerId}/projects`, { repository })).data,
-    ),
-    onSuccess: (project, repository) => {
+    mutationFn: requires("none", async (input: V) => (await api.post<HarnessProject>(`/api/pairing/computers/${computerId}/projects`, body(input))).data),
+    onSuccess: (project, input) => {
       client.setQueryData<HarnessProjects>([getHarnessProjectsKey, computerId], (old) => old && { ...old, projects: [...old.projects, project] });
       void client.invalidateQueries({ queryKey: [getHarnessProjectsKey, computerId], exact: true });
-      toast.success(`Cloning ${repository} into ${project.path}`);
+      toast.success(message(project, input));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+export const useCloneHarnessProject = (computerId: string) =>
+  useAddHarnessProject(computerId, (repository: string) => ({ repository }), (project, repository) => `Cloning ${repository} into ${project.path}`);
+
+export const useCreateEmptyHarnessProject = (computerId: string) =>
+  useAddHarnessProject(computerId, (name: string) => ({ name }), (project) => `Created ${project.title} at ${project.path}`);
 
 // Same live-server caveat as useFetchHarnessProjects: falls back to manual provider/model entry on error.
 export const useFetchHarnessProviders = (computerId: string) =>
