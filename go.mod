@@ -2,7 +2,7 @@ module github.com/otal-labs/nexul
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/coder/websocket v1.8.15
