@@ -68,7 +68,7 @@ describe("PairingDefaultsSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByDisplayValue("proj-1")).toBeInTheDocument();
+    expect(await screen.findByText(/back online/)).toBeInTheDocument();
     expect(screen.getByDisplayValue("claude")).toBeInTheDocument();
     expect(screen.getByDisplayValue("sonnet")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /default computer/i })).toHaveTextContent("home");
