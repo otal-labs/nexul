@@ -37,6 +37,9 @@ const mockGet = (url: string) => {
   if (url === "/api/pairing/computers") {
     return Promise.resolve({ data: { computers: [computer("c1", "home"), computer("c2", "vps")] } });
   }
+  if (url.endsWith("/projects")) {
+    return Promise.reject(new Error("the computer is offline"));
+  }
   return Promise.resolve({ data: {} });
 };
 
