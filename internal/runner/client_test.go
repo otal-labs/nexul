@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -485,6 +486,44 @@ func TestClient_ReconnectsAfterDrop(t *testing.T) {
 	case <-accepts:
 	case <-time.After(2 * time.Second):
 		t.Fatal("runner did not reconnect after the server closed")
+	}
+	cancel()
+	assert.NoError(t, <-done)
+}
+
+// attemptLog passes the attempt of every reconnect the client logs to a channel.
+type attemptLog struct{ attempts chan int64 }
+
+func (l attemptLog) Enabled(context.Context, slog.Level) bool { return true }
+func (l attemptLog) WithAttrs([]slog.Attr) slog.Handler       { return l }
+func (l attemptLog) WithGroup(string) slog.Handler            { return l }
+func (l attemptLog) Handle(_ context.Context, r slog.Record) error {
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "attempt" {
+			l.attempts <- a.Value.Int64()
+		}
+		return true
+	})
+	return nil
+}
+
+func TestClient_DropAfterAConnection_StartsTheBackoffOver(t *testing.T) {
+	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+		var raw json.RawMessage
+		_ = wsjson.Read(ctx, conn, &raw)
+	})
+	client := newTestClient(wsURL(srv), &fakeExecutor{})
+	logs := attemptLog{attempts: make(chan int64, 16)}
+	client.log = slog.New(logs)
+	cancel, done := runClient(t, client)
+
+	for range 4 {
+		select {
+		case got := <-logs.attempts:
+			assert.Equal(t, int64(1), got, "every drop came after a connection, so none waits longer than the first")
+		case <-time.After(2 * time.Second):
+			t.Fatal("runner did not reconnect")
+		}
 	}
 	cancel()
 	assert.NoError(t, <-done)
