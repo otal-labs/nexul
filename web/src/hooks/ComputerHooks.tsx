@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
-import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
+import { computersQuery, getComputersKey, getHarnessProjectsKey } from "@/hooks/PairingHooks";
 import { getRunnerEnrollmentsKey } from "@/hooks/RunnerHooks";
 import { notViewing } from "@/stores/viewAsStore";
 import type { Computer, ComputerEnrollment, RenameComputerFormData } from "@/models/Pairing";
@@ -45,6 +45,7 @@ export const usePairNow = (computer: Computer) => {
   return useMutation({
     mutationFn: requires("none", async () => (await api.post<Computer>(`/api/pairing/computers/${computer.id}/pair`)).data),
     onSuccess: async () => {
+      void client.invalidateQueries({ queryKey: [getHarnessProjectsKey, computer.id] });
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success(`${computer.name} re-paired`);
     },

@@ -153,6 +153,11 @@ func (h *Harness) CloneProject(ctx context.Context, s harness.Session, title, re
 	return c.CloneProject(ctx, title, remoteURL, path)
 }
 
+// CanClone implements harness.Client from the scopes T3 granted the session.
+func (h *Harness) CanClone(ctx context.Context, s harness.Session) (bool, error) {
+	return t3rpc.CanClone(ctx, h.Options.HTTPClient, s.ServerURL, s.BearerToken)
+}
+
 // ListProviders implements harness.Client: connect, parse the handshake config, close.
 func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (providers []harness.Provider, err error) {
 	c, err := dial(ctx, s, h.Options)

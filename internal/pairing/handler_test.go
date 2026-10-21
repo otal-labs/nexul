@@ -296,3 +296,14 @@ func pairedComputer(t *testing.T, h *Handler, userID, name string) Computer {
 	require.NoError(t, err)
 	return *c
 }
+
+func TestHandler_ProjectsListSaysWhetherTheComputerCanClone(t *testing.T) {
+	t.Parallel()
+	h, _, exch := newTestHandler()
+	exch.CanCloneFn = func(context.Context, harness.Session) (bool, error) { return false, nil }
+	created := pairedComputer(t, h, "u1", "Home")
+
+	rec := doRequest(h.Routes(), http.MethodGet, "/api/pairing/computers/"+created.ID+"/projects", "u1", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"projects":[],"can_clone":false}`, rec.Body.String())
+}

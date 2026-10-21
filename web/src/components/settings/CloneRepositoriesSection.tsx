@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
 import { CloneRepositoryButton } from "@/components/settings/CloneRepositoryButton";
+import { PairAgainToClone } from "@/components/settings/PairAgainToClone";
+import { useCanCloneOnComputer } from "@/hooks/PairingHooks";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import type { HarnessProject } from "@/models/Pairing";
 
@@ -16,6 +18,7 @@ const folderName = (path: string) => path.split(/[\\/]/).pop() ?? "";
 // Offers the project's GitHub repositories that no T3 project on the computer holds, matched by folder name.
 export const CloneRepositoriesSection = ({ projectId, computerId, projects, onCloned }: CloneRepositoriesSectionProps) => {
   const { data: repos } = useFetchProjectRepos(projectId);
+  const { data: canClone } = useCanCloneOnComputer(computerId);
   const missing = useMemo(
     () => (repos ?? []).filter((r) => r.connector_id === "github" && !projects.some((p) => folderName(p.path) === r.name)),
     [repos, projects],
@@ -28,9 +31,10 @@ export const CloneRepositoriesSection = ({ projectId, computerId, projects, onCl
       <p className="text-xs text-muted-foreground">
         Not on this computer yet. Cloning puts it beside the computer's other T3 projects.
       </p>
+      {canClone === false && <PairAgainToClone computerId={computerId} />}
       <div className="flex flex-wrap gap-2">
         {missing.map((r) => (
-          <CloneRepositoryButton key={r.full_name} computerId={computerId} repository={r.full_name} onCloned={onCloned} />
+          <CloneRepositoryButton key={r.full_name} computerId={computerId} repository={r.full_name} disabled={canClone === false} onCloned={onCloned} />
         ))}
       </div>
     </div>

@@ -73,7 +73,12 @@ func (h *Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"projects": projects})
+	canClone, err := h.svc.CanClone(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"projects": projects, "can_clone": canClone})
 }
 
 type cloneProjectRequest struct {

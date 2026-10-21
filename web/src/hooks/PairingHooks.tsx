@@ -12,6 +12,7 @@ import {
   leftoverSessionNote,
   type Computer,
   type HarnessProject,
+  type HarnessProjects,
   type HarnessProvider,
   type HarnessReadiness,
   type MCPToken,
@@ -169,15 +170,23 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
   };
 };
 
-// Comes from the computer's live T3 server, so consumers fall back to manual id entry on error.
-export const useFetchHarnessProjects = (computerId: string) =>
-  useQuery({
+// One request reads the computer's T3 projects and whether its session may clone; each hook selects its half.
+const harnessProjectsQuery = (computerId: string) =>
+  queryOptions({
     queryKey: [getHarnessProjectsKey, computerId],
-    queryFn: async () => (await api.get<{ projects: HarnessProject[] }>(`/api/pairing/computers/${computerId}/projects`)).data.projects,
+    queryFn: async () => (await api.get<HarnessProjects>(`/api/pairing/computers/${computerId}/projects`)).data,
     enabled: !!computerId,
     retry: false,
     staleTime: 60_000,
   });
+
+// Comes from the computer's live T3 server, so consumers fall back to manual id entry on error.
+export const useFetchHarnessProjects = (computerId: string) =>
+  useQuery({ ...harnessProjectsQuery(computerId), select: (data) => data.projects });
+
+// False for a computer paired before Nexul could clone there; it needs pairing again.
+export const useCanCloneOnComputer = (computerId: string) =>
+  useQuery({ ...harnessProjectsQuery(computerId), select: (data) => data.can_clone });
 
 // The new project lands in the cached list at once, since T3 registers it before the clone finishes.
 export const useCloneHarnessProject = (computerId: string) => {
@@ -187,7 +196,7 @@ export const useCloneHarnessProject = (computerId: string) => {
       (await api.post<HarnessProject>(`/api/pairing/computers/${computerId}/projects`, { repository })).data,
     ),
     onSuccess: (project, repository) => {
-      client.setQueryData<HarnessProject[]>([getHarnessProjectsKey, computerId], (old) => old && [...old, project]);
+      client.setQueryData<HarnessProjects>([getHarnessProjectsKey, computerId], (old) => old && { ...old, projects: [...old.projects, project] });
       void client.invalidateQueries({ queryKey: [getHarnessProjectsKey, computerId], exact: true });
       toast.success(`Cloning ${repository} into ${project.path}`);
     },
