@@ -456,6 +456,57 @@ func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID st
 	return items, nil
 }
 
+const listPairingTunnelComputers = `-- name: ListPairingTunnelComputers :many
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
+`
+
+func (q *Queries) ListPairingTunnelComputers(ctx context.Context) ([]PairingComputer, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingTunnelComputers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PairingComputer
+	for rows.Next() {
+		var i PairingComputer
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.ServerUrl,
+			&i.BearerToken,
+			&i.TokenExpiresAt,
+			&i.HarnessVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Kind,
+			&i.SetupConfirmedAt,
+			&i.TunnelID,
+			&i.TunnelHostname,
+			&i.TunnelZoneID,
+			&i.TunnelRecordID,
+			&i.TunnelAccessAppID,
+			&i.SetupMcpToken,
+			&i.SetupSkippedProviders,
+			&i.SetupModels,
+			&i.SetupModelOptions,
+			&i.SetupFolder,
+			&i.Facts,
+			&i.FactsAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersWithReadyComputer = `-- name: ListUsersWithReadyComputer :many
 SELECT DISTINCT user_id FROM pairing_computers
 WHERE token_expires_at > 0 AND setup_confirmed_at IS NOT NULL AND user_id IN (SELECT value FROM json_each(?1))
@@ -482,17 +533,6 @@ func (q *Queries) ListUsersWithReadyComputer(ctx context.Context, userIds interf
 		return nil, err
 	}
 	return items, nil
-}
-
-const pairingComputerTunnelHostnameExists = `-- name: PairingComputerTunnelHostnameExists :one
-SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tunnel_hostname != '')
-`
-
-func (q *Queries) PairingComputerTunnelHostnameExists(ctx context.Context, tunnelHostname string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, pairingComputerTunnelHostnameExists, tunnelHostname)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const savePairingComputer = `-- name: SavePairingComputer :exec

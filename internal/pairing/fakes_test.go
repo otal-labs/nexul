@@ -116,6 +116,18 @@ func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string, evts ...
 	return nil
 }
 
+func (f *fakeRepo) ListTunnelComputers(context.Context) ([]Computer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]Computer, 0)
+	for _, c := range f.computers {
+		if c.Tunnel != nil {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) ClearTunnel(_ context.Context, userID, computerID string, at time.Time, evt eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -423,4 +435,9 @@ func (f *fakeTokens) RevokeComputerToken(_ context.Context, userID, computerID s
 		delete(f.active, userID+"/"+computerID)
 	}
 	return nil
+}
+
+// pairAt pairs a new computer of userID's at serverURL, the exchange pairing through a runner makes at the runner's address.
+func pairAt(svc *Service, ctx context.Context, userID string, kind harness.Kind, name, serverURL, secret string) (*Computer, error) {
+	return svc.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
 }

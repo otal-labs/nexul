@@ -13,9 +13,10 @@ const (
 	TopicComputerRemoved  = "computer.removed"
 	TopicSetupConfirmed   = "computer.setup_confirmed"
 	TopicSetupUnconfirmed = "computer.setup_unconfirmed"
-	TopicTunnelCreated    = "computer.tunnel_created"
-	TopicTunnelRemoved    = "computer.tunnel_removed"
-	// TopicTunnelStatusChanged is ephemeral: published straight to the bus, never through the outbox.
+	// TopicTunnelCreated is no longer published: pairing through a tunnel was retired (ADR 0146).
+	TopicTunnelCreated = "computer.tunnel_created"
+	TopicTunnelRemoved = "computer.tunnel_removed"
+	// TopicTunnelStatusChanged is no longer published: pairing through a tunnel was retired (ADR 0146).
 	TopicTunnelStatusChanged = "computer.tunnel_status_changed"
 	TopicSetupTurnChanged    = "computer.setup_turn_changed"
 	TopicSetupFinished       = "computer.setup_finished"

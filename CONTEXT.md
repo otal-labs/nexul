@@ -131,7 +131,8 @@ _Avoid_: Traits, knobs, model settings
 A user's own machine running a harness, attached to their Nexul account.
 It is reached through its personal runner, which also pairs it, and pairs it
 again before its session ends, with no one asking; one paired before personal
-runners is reached through its computer tunnel, or by URL. Owned by one user; nobody
+runners, through a tunnel or by URL, runs nothing until its owner moves it onto
+one (ADR 0146). Owned by one user; nobody
 else can see it or run on it, a workspace Owner included, unless its owner shares
 it with them by name (Computer sharing).
 _Avoid_: Device, host, runner (a runner builds and deploys)
@@ -183,15 +184,6 @@ defaults; a project link can override it or follow the defaults. A reused
 thread stays where it began, and a T3 Code that cannot launch a worktree
 starts the thread in the folder and says so.
 _Avoid_: Workspace (that is the tenant boundary), env mode
-
-**Computer tunnel**:
-The outbound connection a paired computer keeps open to the instance's own
-Cloudflare account, giving it a hostname made from the computer's name plus
-eight random characters, which only the Nexul server may reach. The old way to
-reach a paired computer, kept until its owner moves the computer to a personal
-runner: once pairing through the runner works, the tunnel, its DNS record and
-its Access app are deleted.
-_Avoid_: Relay, VPN, proxy
 
 **Setup confirmation**:
 An agent's assessment, recorded through MCP and nowhere else, that a paired

@@ -1,5 +1,7 @@
 # Paired computers are reached through a tunnel on the instance's own Cloudflare
 
+Superseded by ADR 0146: computers are paired through a personal runner, and pairing through a tunnel or by URL is retired; the tunnels left are deleted from Cloudflare.
+
 Nexul runs on a server; the harness it drives runs on each user's own
 machine, usually behind a home or office router with no address the server
 can reach. Pairing by URL only works when both sit on the same machine or

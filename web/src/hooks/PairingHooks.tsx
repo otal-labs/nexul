@@ -10,7 +10,6 @@ import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
   leftoverSessionNote,
-  pairingToken,
   type Computer,
   type HarnessProject,
   type HarnessProvider,
@@ -18,11 +17,9 @@ import {
   type MCPToken,
   type MintedMCPToken,
   type OptionSetting,
-  type PairComputerFormData,
   type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
-  type TunnelStatus,
 } from "@/models/Pairing";
 import { ownComputers } from "@/models/SharedComputer";
 import { notViewing } from "@/stores/viewAsStore";
@@ -34,8 +31,6 @@ export const getHarnessProjectsKey = "getHarnessProjects";
 export const getPairingPresenceKey = "getPairingPresence";
 export const getHarnessProvidersKey = "getHarnessProviders";
 export const getHarnessResolveKey = "getHarnessResolve";
-export const getTunnelStatusKey = "getTunnelStatus";
-export const getTunnelTokenKey = "getTunnelToken";
 export const getMCPTokenKey = "getMCPToken";
 
 // The four NotConfiguredReason values internal/pairing.ResolveTarget can fail with, mapped onto HarnessReadiness states.
@@ -64,27 +59,6 @@ export const computersQuery = queryOptions({
 
 export const useListComputers = () => useQuery({ ...computersQuery, select: ownComputers, enabled: notViewing });
 
-interface PairComputerInput {
-  // A computer tunnel, paired at its own address.
-  computerId: string;
-  form: PairComputerFormData;
-}
-
-// No error toast: the pairing form shows each failure on the field that caused it.
-export const usePairComputer = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("none", async ({ computerId, form }: PairComputerInput) => {
-      const token = pairingToken(form.token);
-      return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token })).data;
-    }),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getComputersKey] });
-      toast.success("Computer paired");
-    },
-  });
-};
-
 // The field each failure belongs to, from the error envelope's errors map; empty when the failure has no field.
 export const pairFieldErrors = (error: unknown): [PairField, string][] => {
   const errors = (error as AxiosError<ApiErrorBody> | null)?.response?.data?.errors ?? {};
@@ -94,37 +68,8 @@ export const pairFieldErrors = (error: unknown): [PairField, string][] => {
   });
 };
 
-// Read once; every later change arrives as a computer.tunnel_status_changed frame that pairingFollower patches in.
-export const useFetchTunnelStatus = (computerId: string) =>
-  useQuery({
-    queryKey: [getTunnelStatusKey, computerId],
-    queryFn: async () => (await api.get<TunnelStatus>(`/api/pairing/computers/${computerId}/tunnel/status`)).data,
-    enabled: !!computerId,
-  });
-
-export const useFetchTunnelToken = (computerId: string) =>
-  useQuery({
-    queryKey: [getTunnelTokenKey, computerId],
-    queryFn: async () => (await api.get<{ token: string }>(`/api/pairing/computers/${computerId}/tunnel/token`)).data.token,
-    enabled: !!computerId,
-    staleTime: Infinity,
-  });
-
 // The note carries commands to copy, so it stays until closed.
 const sessionNoteToast = (note?: string) => (note ? { description: note, duration: Infinity, closeButton: true } : undefined);
-
-export const useRepairComputer = (computer: Computer) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("none", async (input: PairComputerFormData) =>
-      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, { ...input, token: pairingToken(input.token) })).data),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getComputersKey] });
-      toast.success("Computer re-paired", sessionNoteToast(leftoverSessionNote(computer, true)));
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
 
 export const useDeleteComputer = () => {
   const client = useQueryClient();
@@ -271,9 +216,8 @@ const refetchComputers = (client: QueryClient, readiness: boolean) =>
   Promise.all([client.invalidateQueries({ queryKey: [getComputersKey] }), readiness && client.invalidateQueries({ queryKey: [getHarnessResolveKey] })]);
 
 export const pairingFollower: LiveFollower = {
-  // A computer row goes from pairing to paired, gains or loses its tunnel, or shows its T3 Code's new version.
+  // A computer row goes from pairing to paired, loses the tunnel it was paired through, or shows its T3 Code's new version.
   ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
-  "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
   // A computer row follows its personal runner enrolling, connecting and going away, and a failed pairing's reason.
   // ...and a computer someone shares with the viewer, or stops sharing, joining or leaving their list.
   ...followEach(["runner.personal_changed", "computer.pair_failed", "computer.grant_changed"], (_p: unknown, { client }) => refetchComputers(client, false)),
@@ -283,12 +227,6 @@ export const pairingFollower: LiveFollower = {
       refetchComputers(client, false),
       client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
     ]),
-  "computer.tunnel_status_changed": (p: ComputerPayload & TunnelStatus, { client }) =>
-    client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
-      tunnel: p.tunnel,
-      harness_reachable: p.harness_reachable,
-      ...(p.harness_version && { harness_version: p.harness_version }),
-    }),
   // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
   ...followEach(["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_finished"], ({ computer_id }: ComputerPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),

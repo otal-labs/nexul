@@ -37,7 +37,7 @@ func newGateFixture(t *testing.T) *gateFixture {
 		}, nil
 	}
 	svc := newTestService(repo, exch)
-	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+	c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj"})
 	require.NoError(t, err)

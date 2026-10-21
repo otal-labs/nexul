@@ -238,7 +238,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGatewayAdopter(deployGatewayAdopterAdapter{dns: dnsSvc})
 	// One client per harness kind; the real ones talk to the user's own machines, never reachable in tests.
 	computers := &runnerComputers{}
-	harnessHTTP := harnessHTTPClient(computers, computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials)
+	harnessHTTP := harnessHTTPClient(computers)
 	var pairingSvc *pairing.Service // constructed below; a harness only moves a computer once requests start flowing
 	harnesses := harnessRegistry(t3rpc.Options{Logger: logger, HTTPClient: harnessHTTP}, func(ctx context.Context, s harness.Session, to harness.Kind) error {
 		return pairingSvc.SwitchHarness(ctx, s, to)

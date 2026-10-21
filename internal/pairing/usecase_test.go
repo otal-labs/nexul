@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
 var testEncKey = []byte("0123456789abcdef0123456789abcdef")
@@ -31,10 +32,10 @@ func TestService_Pair_Success(t *testing.T) {
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "bearer-abc", ExpiresIn: 30 * 24 * time.Hour}, version: "0.0.34"}
 	svc := newTestService(repo, exch)
 
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "  Home  ", "https://home.example.com/", "one-time-token")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "  Home  ", "https://home.example.com", "one-time-token")
 	require.NoError(t, err)
 	assert.Equal(t, "Home", c.Name)
-	assert.Equal(t, "https://home.example.com", c.ServerURL) // trailing slash trimmed
+	assert.Equal(t, "https://home.example.com", c.ServerURL)
 	assert.Equal(t, "0.0.34", c.HarnessVersion)
 	assert.Equal(t, time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC), c.TokenExpiresAt)
 	assert.Empty(t, c.BearerToken, "bearer token never returned to the caller")
@@ -58,15 +59,12 @@ func TestService_Pair_ValidatesInput(t *testing.T) {
 		serverURL string
 		token     string
 	}{
-		{"missing user", "", "Home", "https://h.example.com", "tok"},
 		{"missing name", "u1", "  ", "https://h.example.com", "tok"},
-		{"missing server url", "u1", "Home", "", "tok"},
-		{"bad server url scheme", "u1", "Home", "ftp://h.example.com", "tok"},
 		{"missing token", "u1", "Home", "https://h.example.com", "  "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := svc.Pair(context.Background(), tt.userID, harness.KindT3Code, tt.compName, tt.serverURL, tt.token)
+			_, err := pairAt(svc, context.Background(), tt.userID, harness.KindT3Code, tt.compName, tt.serverURL, tt.token)
 			require.Error(t, err)
 		})
 	}
@@ -75,62 +73,29 @@ func TestService_Pair_ValidatesInput(t *testing.T) {
 func TestService_Pair_ExchangeError(t *testing.T) {
 	t.Parallel()
 	svc := newTestService(newFakeRepo(), &fakeExchanger{exchangeErr: errBoom})
-	_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.ErrorIs(t, err, errBoom)
 }
 
 func TestService_Pair_VersionError(t *testing.T) {
 	t.Parallel()
 	svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, versionErr: errBoom})
-	_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.ErrorIs(t, err, errBoom)
 }
 
 func TestService_Pair_NoEncryptionKey(t *testing.T) {
 	t.Parallel()
 	svc := NewService(Config{Repo: newFakeRepo(), Harnesses: registry(&fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})})
-	_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.ErrorIs(t, err, apperrs.ErrFatal)
-}
-
-func TestService_Repair_UpdatesExistingRow(t *testing.T) {
-	t.Parallel()
-	repo := newFakeRepo()
-	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "bearer-1", ExpiresIn: time.Hour}, version: "0.0.33"}
-	svc := newTestService(repo, exch)
-
-	created, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok1")
-	require.NoError(t, err)
-
-	exch.result = harness.PairResult{BearerToken: "bearer-2", ExpiresIn: 2 * time.Hour}
-	exch.version = "0.0.34"
-	updated, err := svc.Repair(context.Background(), "u1", created.ID, "Home", "https://h.example.com", "tok2")
-	require.NoError(t, err)
-
-	assert.Equal(t, created.ID, updated.ID, "re-pair updates the same row, not a new one")
-	assert.Equal(t, "0.0.34", updated.HarnessVersion)
-
-	all, err := repo.ListComputers(context.Background(), "u1")
-	require.NoError(t, err)
-	assert.Len(t, all, 1, "repair must not create a second row")
-}
-
-func TestService_Repair_WrongOwnerIsNotFound(t *testing.T) {
-	t.Parallel()
-	repo := newFakeRepo()
-	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	created, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
-	require.NoError(t, err)
-
-	_, err = svc.Repair(context.Background(), "u2", created.ID, "Home", "https://h.example.com", "tok2")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestService_ListComputers_StripsBearerToken(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "secret"}, version: "0.0.34"})
-	_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	list, err := svc.ListComputers(context.Background(), "u1")
@@ -143,7 +108,7 @@ func TestService_DeleteComputer(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	require.NoError(t, svc.DeleteComputer(context.Background(), "u1", c.ID))
@@ -152,27 +117,33 @@ func TestService_DeleteComputer(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestService_ActiveSessions_DecryptsAndSkipsExpired(t *testing.T) {
+func TestService_ActiveSessions_DecryptsAndSkipsExpiredAndUnmoved(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "bearer-live", ExpiresIn: 30 * 24 * time.Hour}, version: "0.0.34"}
 	svc := newTestService(repo, exch)
 
-	live, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Live", "https://live.example.com", "tok")
+	onRunner := func(name string) *Computer {
+		id := ids.New()
+		c, err := svc.pair(context.Background(), Computer{ID: id, UserID: "u1", Kind: harness.KindT3Code, Name: name}, runnerAddress(id), "tok")
+		require.NoError(t, err)
+		return c
+	}
+	live := onRunner("Live")
+	_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Unmoved", "https://unmoved.example.com", "tok")
 	require.NoError(t, err)
-	// A second computer whose session expires immediately.
+	// A third computer whose session expires immediately.
 	exch.result = harness.PairResult{BearerToken: "bearer-dead", ExpiresIn: -time.Hour}
-	_, err = svc.Pair(context.Background(), "u1", harness.KindT3Code, "Dead", "https://dead.example.com", "tok")
-	require.NoError(t, err)
+	onRunner("Dead")
 
 	sessions, err := svc.ActiveSessions(context.Background(), "u1")
 	require.NoError(t, err)
-	require.Len(t, sessions, 1, "expired computer skipped")
+	require.Len(t, sessions, 1, "the expired computer and the one paired before the Nexul app hold nothing open")
 	assert.Equal(t, live.ID, sessions[0].ID)
 	assert.Equal(t, "bearer-live", sessions[0].BearerToken, "token returned decrypted")
 }
 
-func TestService_OnComputersChanged_FiresOnPairRepairDelete(t *testing.T) {
+func TestService_OnComputersChanged_FiresOnPairAndDelete(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b", ExpiresIn: time.Hour}, version: "0.0.34"}
@@ -185,20 +156,18 @@ func TestService_OnComputersChanged_FiresOnPairRepairDelete(t *testing.T) {
 		Tokens:             newFakeTokens(),
 	})
 
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
-	require.NoError(t, err)
-	_, err = svc.Repair(context.Background(), "u1", c.ID, "Home", "https://h.example.com", "tok2")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	require.NoError(t, svc.DeleteComputer(context.Background(), "u1", c.ID))
 
-	assert.Equal(t, []string{"u1", "u1", "u1"}, changed)
+	assert.Equal(t, []string{"u1", "u1"}, changed)
 }
 
 func TestService_DeleteComputer_WrongOwner(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	err = svc.DeleteComputer(context.Background(), "u2", c.ID)
@@ -209,7 +178,7 @@ func TestService_Defaults_RoundTrip(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	empty, err := svc.GetDefaults(context.Background(), "u1")
@@ -234,7 +203,7 @@ func TestService_ProjectLink_RoundTrip(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	empty, err := svc.GetProjectLink(context.Background(), "u1", "proj-1")
@@ -258,7 +227,7 @@ func TestService_SetProjectLink_RejectsForeignComputer(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	other, err := svc.Pair(context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
+	other, err := pairAt(svc, context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: other.ID, HarnessProjectID: "p"})
@@ -269,7 +238,7 @@ func TestService_SetProjectLink_RequiresComputerAndProject(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{HarnessProjectID: "p"})
@@ -283,7 +252,7 @@ func TestService_ClearProjectLink(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "t3-proj-1"})
 	require.NoError(t, err)
@@ -299,9 +268,9 @@ func TestService_ResolveTarget_UsesProjectLinkOverDefaults(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "secret-token"}, version: "0.0.34"})
-	linked, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Linked", "https://h.example.com", "tok1")
+	linked, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Linked", "https://h.example.com", "tok1")
 	require.NoError(t, err)
-	fallback, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Fallback", "https://f.example.com", "tok2")
+	fallback, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Fallback", "https://f.example.com", "tok2")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{
 		DefaultComputerID: fallback.ID, FallbackProjectID: "default-proj", Provider: "opencode", Model: "gpt",
@@ -339,7 +308,7 @@ func TestService_ResolveTarget_StartIn_ProjectLinkOverridesDefaults(t *testing.T
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-			c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 			require.NoError(t, err)
 			_, err = svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj", StartIn: tt.defaults})
 			require.NoError(t, err)
@@ -359,7 +328,7 @@ func TestService_ResolveTarget_StartIn_ProjectLinkOverridesDefaults(t *testing.T
 func TestService_SetStartIn_RejectsAnUnknownPlace(t *testing.T) {
 	t.Parallel()
 	svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.SetDefaults(t.Context(), "u1", Defaults{StartIn: "docker"})
@@ -372,7 +341,7 @@ func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	fallback, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Fallback", "https://f.example.com", "tok")
+	fallback, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Fallback", "https://f.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{
 		DefaultComputerID: fallback.ID, FallbackProjectID: "default-proj",
@@ -394,7 +363,7 @@ func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
 	exch.ListProjectsFn = listsT3Projects("t3-app", "t3-web")
 	svc := newTestService(newFakeRepo(), exch)
 	ctx := t.Context()
-	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	home, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.ConfirmSetup(ctx, "u1", home.ID)
 	require.NoError(t, err)
@@ -443,7 +412,7 @@ func TestService_SaveRunLocation_SavesTheLinkARunsFirstPickWould(t *testing.T) {
 	exch.ListProjectsFn = listsT3Projects("t3-app")
 	svc := newTestService(newFakeRepo(), exch)
 	ctx := t.Context()
-	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	home, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: home.ID, Provider: "claude", Model: "sonnet"})
 	require.NoError(t, err)
@@ -486,9 +455,9 @@ func TestService_ResolvePersonRun_Where(t *testing.T) {
 			exch.ListProjectsFn = listsT3Projects("t3-other")
 			svc := newTestService(newFakeRepo(), exch)
 			ctx := t.Context()
-			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			home, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 			require.NoError(t, err)
-			other, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Other", "https://o.example.com", "tok")
+			other, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Other", "https://o.example.com", "tok")
 			require.NoError(t, err)
 			_, err = svc.ConfirmProviderSetup(ctx, "u1", other.ID, "claude", []string{"tdd"})
 			require.NoError(t, err)
@@ -538,9 +507,9 @@ func TestService_ProjectLink_EachPersonResolvesTheirOwn(t *testing.T) {
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
 	ctx := t.Context()
-	theirs, err := svc.Pair(ctx, "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
+	theirs, err := pairAt(svc, ctx, "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
-	mine, err := svc.Pair(ctx, "u1", harness.KindT3Code, "My box", "https://m.example.com", "tok")
+	mine, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "My box", "https://m.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: mine.ID, FallbackProjectID: "my-fallback"})
 	require.NoError(t, err)
@@ -570,7 +539,7 @@ func TestService_ProjectLink_HiddenProjectIsNotFound(t *testing.T) {
 	repo := newFakeRepo()
 	svc := NewService(Config{Repo: repo, Harnesses: registry(&fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}),
 		EncryptionKey: testEncKey, Projects: fakeProjects{hidden: []string{"proj-hidden"}}})
-	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	calls := map[string]func() error{
@@ -627,7 +596,7 @@ func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-		_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		_, err = svc.ResolveTarget(context.Background(), "u1", "")
 		var nc *NotConfiguredError
@@ -639,9 +608,9 @@ func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-		_, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		_, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
-		_, err = svc.Pair(context.Background(), "u1", harness.KindT3Code, "VPS", "https://v.example.com", "tok2")
+		_, err = pairAt(svc, context.Background(), "u1", harness.KindT3Code, "VPS", "https://v.example.com", "tok2")
 		require.NoError(t, err)
 		_, err = svc.ResolveTarget(context.Background(), "u1", "")
 		var nc *NotConfiguredError
@@ -653,7 +622,7 @@ func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID})
 		require.NoError(t, err)
@@ -669,7 +638,7 @@ func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {
 		repo := newFakeRepo()
 		exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b", ExpiresIn: time.Hour}, version: "0.0.34"}
 		svc := newTestService(repo, exch)
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "p"})
 		require.NoError(t, err)
@@ -704,7 +673,7 @@ func TestService_ResolveTargetOverride_EmptyComputerFallsBackToResolveTarget(t *
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "p", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
@@ -719,7 +688,7 @@ func TestService_ResolveTargetOverride_PinnedComputerWithExplicitProviderAndMode
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "secret"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{
 		ComputerID: c.ID, HarnessProjectID: "linked-proj", Model: "opus", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "low"}},
@@ -741,7 +710,7 @@ func TestService_ResolveTargetOverride_BlankProviderAndModelFillFromTheMatchingP
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{
 		ComputerID: c.ID, HarnessProjectID: "linked-proj", Provider: "claude", Model: "sonnet", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}},
@@ -760,7 +729,7 @@ func TestService_ResolveTargetOverride_BlankFieldsFillFromDefaultsWhenTheCompute
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
@@ -776,7 +745,7 @@ func TestService_ResolveTargetOverride_NoProjectResolvesIsNoDefault(t *testing.T
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", c.ID, "claude", "sonnet", nil)
@@ -789,7 +758,7 @@ func TestService_ResolveTargetOverride_RefusesAComputerNotOwnedByTheCaller(t *te
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	theirs, err := svc.Pair(context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
+	theirs, err := pairAt(svc, context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", theirs.ID, "claude", "sonnet", nil)
@@ -802,7 +771,7 @@ func TestService_SetDefaults_RejectsForeignComputer(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	other, err := svc.Pair(context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
+	other, err := pairAt(svc, context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: other.ID})
@@ -848,7 +817,7 @@ func TestService_ResolvePersonRun_AT3ProjectTheComputerDoesNotList_IsRefusedAndN
 			exch.ListProjectsFn = tt.list
 			svc := newTestService(newFakeRepo(), exch)
 			ctx := t.Context()
-			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			home, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 			require.NoError(t, err)
 
 			_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-typo", "", "", nil)

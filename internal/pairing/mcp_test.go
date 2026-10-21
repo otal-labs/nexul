@@ -49,7 +49,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotNil(t, tool.InputSchema, tool.Name)
 	}
 	assert.Equal(t, []string{
-		"computer_list", "computer_create", "computer_pair", "computer_delete", "computer_tunnel_token_get",
+		"computer_list", "computer_create", "computer_pair", "computer_delete",
 		"computer_setup_run", "computer_setup_update", "computer_mcp_token_create", "computer_mcp_token_delete", "skill_get",
 	}, names)
 }
@@ -62,9 +62,9 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		args string
 	}{
 		{"list with a numeric id", "computer_list", `{"id": 7}`},
-		{"pair by URL without a name", "computer_pair", `{"server_url": "https://vps.example.com", "token": "tok"}`},
+		{"pair without a computer", "computer_pair", `{"name": "VPS"}`},
+		{"pair with a token, as before the Nexul app", "computer_pair", `{"id": "c1", "token": "tok"}`},
 		{"delete without an id", "computer_delete", `{}`},
-		{"tunnel token without a computer", "computer_tunnel_token_get", `{}`},
 		{"setup run without a computer", "computer_setup_run", `{}`},
 		{"setup run with model but no provider", "computer_setup_run", `{"computer_id": "c1", "model": "gpt-big"}`},
 		{"setup run with provider and models", "computer_setup_run", `{"computer_id": "c1", "provider": "codex", "models": {"codex": "gpt-mini"}}`},
@@ -106,7 +106,6 @@ func TestMCPTools_MissingEntity(t *testing.T) {
 	}{
 		{"list one unknown computer", "computer_list", `{"id": "nope"}`},
 		{"delete an unknown computer", "computer_delete", `{"id": "nope"}`},
-		{"tunnel token of an unknown computer", "computer_tunnel_token_get", `{"computer_id": "nope"}`},
 		{"confirm an unknown computer", "computer_setup_update", `{"computer_id": "nope", "confirmed": true}`},
 		{"delete a token the computer does not have", "computer_mcp_token_delete", `{"computer_id": "c1"}`},
 	}
@@ -124,9 +123,8 @@ func TestMCPTools_OnlyTheOwnerReachesAComputer(t *testing.T) {
 	t.Parallel()
 	calls := map[string]string{
 		"computer_list":             `{"id": "c1"}`,
-		"computer_pair":             `{"id": "c1", "token": "tok"}`,
+		"computer_pair":             `{"id": "c1"}`,
 		"computer_delete":           `{"id": "c1"}`,
-		"computer_tunnel_token_get": `{"computer_id": "c1"}`,
 		"computer_setup_run":        `{"computer_id": "c1"}`,
 		"computer_setup_update":     `{"computer_id": "c1", "provider": "claude", "confirmed": true, "skills": ["tdd"]}`,
 		"computer_mcp_token_create": `{"computer_id": "c1"}`,
@@ -237,90 +235,37 @@ func confirmedProviders(s Setup) map[string]bool {
 	return out
 }
 
-func TestComputerPairAndDelete_ThroughATunnel(t *testing.T) {
+func TestComputerPairAndDelete_ThroughTheRunner(t *testing.T) {
 	t.Parallel()
-	exch := pairedExchanger()
-	tunnels := &fakeTunnels{}
-	repo := newFakeRepo()
-	svc, _ := newTunnelService(repo, exch, tunnels)
-	ctx := actorCtx(t, "u1")
+	f := newRunnerFixture(t, Computer{Name: "Laptop"})
+	ctx := actorCtx(t, "u-alice")
 
-	c, err := svc.CreateComputerTunnel(ctx, "u1", harness.KindT3Code, "Laptop", 3773)
-	require.NoError(t, err)
-	created := toComputerResult(*c)
-	assert.Equal(t, "https://laptop-ab12cd34.example.com", created.ServerURL)
-	assert.False(t, created.Paired)
-	assert.Equal(t, "tun-1", created.Tunnel.TunnelID)
-
-	token, err := callTool(t, ctx, svc, "computer_tunnel_token_get", `{"computer_id": "`+created.ID+`"}`)
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"computer_id": created.ID, "token": "connector-token-tun-1"}, token)
-
-	out, err := callTool(t, ctx, svc, "computer_pair", `{"id": "`+created.ID+`", "token": "tok"}`)
+	out, err := callTool(t, ctx, f.svc, "computer_pair", `{"id": "c-laptop"}`)
 	require.NoError(t, err)
 	paired := out.(computerResult)
-	assert.Equal(t, created.ID, paired.ID)
 	assert.True(t, paired.Paired)
 	assert.NotNil(t, paired.SessionExpiresAt)
-	assert.Equal(t, "https://laptop-ab12cd34.example.com", exch.pairedURL, "a tunnel computer pairs over its hostname")
+	assert.Equal(t, runnerAddress("c-laptop"), f.exch.pairedURL)
 
-	out, err = callTool(t, ctx, svc, "computer_delete", `{"id": "`+created.ID+`"}`)
+	out, err = callTool(t, ctx, f.svc, "computer_delete", `{"id": "c-laptop"}`)
 	require.NoError(t, err)
-	assert.Equal(t, mcptool.Gone(created.ID), out)
-	assert.NotContains(t, repo.computers, created.ID)
-	assert.Len(t, tunnels.deleted, 1)
+	assert.Equal(t, mcptool.Gone("c-laptop"), out)
+	assert.NotContains(t, f.repo.computers, "c-laptop")
 }
 
-func TestComputerPair_ByURL_AddsAComputerWithoutATunnel(t *testing.T) {
+func TestComputerPair_WithName_OnlyRenames(t *testing.T) {
 	t.Parallel()
-	exch := pairedExchanger()
-	svc, _ := newTunnelService(newFakeRepo(), exch, &fakeTunnels{})
-	ctx := actorCtx(t, "u1")
+	f := newRunnerFixture(t, Computer{Name: "Laptop"})
 
-	out, err := callTool(t, ctx, svc, "computer_pair", `{"name": "VPS", "server_url": "https://vps.example.com", "token": "tok"}`)
+	out, err := callTool(t, actorCtx(t, "u-alice"), f.svc, "computer_pair", `{"id": "c-laptop", "name": "Box"}`)
 	require.NoError(t, err)
-	vps := out.(computerResult)
-	assert.Equal(t, "https://vps.example.com", exch.pairedURL)
-	assert.Nil(t, vps.Tunnel)
-
-	_, err = callTool(t, ctx, svc, "computer_tunnel_token_get", `{"computer_id": "`+vps.ID+`"}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer paired by URL has no tunnel token")
+	assert.Equal(t, "Box", out.(computerResult).Name)
+	assert.Empty(t, f.exch.pairedURL, "a rename pairs nothing")
 }
 
-func TestComputerPair_WithID_RenamesOrMovesAndKeepsWhatIsOmitted(t *testing.T) {
+func TestComputerList_ShowsSetupAndTokenMetadata(t *testing.T) {
 	t.Parallel()
-	exch := pairedExchanger()
-	svc, _ := newTunnelService(newFakeRepo(), exch, &fakeTunnels{})
-	ctx := actorCtx(t, "u1")
-	pair := func(args string) computerResult {
-		t.Helper()
-		out, err := callTool(t, ctx, svc, "computer_pair", args)
-		require.NoError(t, err)
-		return out.(computerResult)
-	}
-	vps := pair(`{"name": "VPS", "server_url": "https://vps.example.com", "token": "tok"}`)
-
-	got := pair(`{"id": "` + vps.ID + `", "token": "tok"}`)
-	assert.Equal(t, "VPS", got.Name, "an omitted name survives a re-pair")
-	assert.Equal(t, "https://vps.example.com", got.ServerURL, "an omitted server_url survives a re-pair")
-
-	got = pair(`{"id": "` + vps.ID + `", "token": "tok", "server_url": "https://vps2.example.com"}`)
-	assert.Equal(t, "VPS", got.Name)
-	assert.Equal(t, "https://vps2.example.com", exch.pairedURL)
-
-	got = pair(`{"id": "` + vps.ID + `", "token": "tok", "name": "Box"}`)
-	assert.Equal(t, vps.ID, got.ID)
-	assert.Equal(t, "Box", got.Name)
-	assert.Equal(t, "https://vps2.example.com", got.ServerURL)
-
-	tunnelID := tunnelComputer(t, svc)
-	_, err := callTool(t, ctx, svc, "computer_pair", `{"id": "`+tunnelID+`", "token": "tok", "server_url": "https://elsewhere.example.com"}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "a tunnel computer only pairs over its own hostname")
-}
-
-func TestComputerList_ShowsSetupTokenMetadataAndLiveTunnelStatus(t *testing.T) {
-	t.Parallel()
-	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{status: "inactive"})
+	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{})
 	id := tunnelComputer(t, svc)
 	ctx := actorCtx(t, "u1")
 	minted, err := callTool(t, ctx, svc, "computer_mcp_token_create", `{"computer_id": "`+id+`"}`)
@@ -332,7 +277,6 @@ func TestComputerList_ShowsSetupTokenMetadataAndLiveTunnelStatus(t *testing.T) {
 	require.Len(t, page.Items, 1)
 	listed := page.Items[0]
 	assert.Equal(t, id, listed.ID)
-	assert.Nil(t, listed.TunnelStatus, "the full list never calls Cloudflare")
 	require.NotNil(t, listed.Setup)
 	assert.Nil(t, listed.Setup.ConfirmedAt)
 	require.NotNil(t, listed.MCPToken)
@@ -340,27 +284,7 @@ func TestComputerList_ShowsSetupTokenMetadataAndLiveTunnelStatus(t *testing.T) {
 	raw, err := json.Marshal(page)
 	require.NoError(t, err)
 	assert.NotContains(t, string(raw), minted.(*MintedMCPToken).Token, "a list never carries the token")
-
-	out, err = callTool(t, ctx, svc, "computer_list", `{"id": "`+id+`"}`)
-	require.NoError(t, err)
-	one := out.(mcptool.Page[computerResult]).Items[0]
-	assert.Equal(t, &TunnelStatus{Tunnel: "inactive"}, one.TunnelStatus)
-}
-
-func TestComputerList_ALiveTunnelFailureStillReturnsTheComputer(t *testing.T) {
-	t.Parallel()
-	tunnels := &fakeTunnels{status: "inactive"}
-	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, tunnels)
-	id := tunnelComputer(t, svc)
-	tunnels.readErr = errors.New("cloudflare: 502 bad gateway")
-
-	out, err := callTool(t, actorCtx(t, "u1"), svc, "computer_list", `{"id": "`+id+`"}`)
-	require.NoError(t, err)
-	one := out.(mcptool.Page[computerResult]).Items[0]
-	assert.Nil(t, one.TunnelStatus)
-	require.NotNil(t, one.Setup, "the stored setup state still comes back")
-	assert.Contains(t, one.TunnelStatusError, "unavailable")
-	assert.NotContains(t, one.TunnelStatusError, "502", "a provider's raw error stays in the log")
+	assert.NotContains(t, string(raw), "tunnel", "a computer paired through a tunnel shows nothing of it")
 }
 
 func TestComputerList_OneComputerNamesItsT3Projects(t *testing.T) {
@@ -375,7 +299,7 @@ func TestComputerList_OneComputerNamesItsT3Projects(t *testing.T) {
 	}
 	svc := newTestService(newFakeRepo(), exch)
 	ctx := actorCtx(t, "u1")
-	c, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	c, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
 	out, err := callTool(t, ctx, svc, "computer_list", `{"id": "`+c.ID+`"}`)

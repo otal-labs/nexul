@@ -4,10 +4,10 @@ import { useState } from "react";
 import { CopyButton } from "@/components/settings/CopyButton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { detectTunnelOs, TUNNEL_OS_LABELS, TunnelOs, type OsCommand } from "@/utils/TunnelInstallCommands";
+import { detectCommandOs, COMMAND_OS_LABELS, CommandOs, type OsCommand } from "@/utils/InstallCommands";
 
 interface CommandSnippetProps {
-  commands: Record<TunnelOs, OsCommand>;
+  commands: Record<CommandOs, OsCommand>;
   // Names what the lines do, for the copy button and the screen reader.
   label: string;
   guide: { href: string; label: string };
@@ -15,8 +15,8 @@ interface CommandSnippetProps {
 
 // The site's install snippet: a system switch, one raised row whose long line scrolls under a faded edge, a note and a guide link.
 export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) => {
-  const [picked, setPicked] = useState<TunnelOs>();
-  const os = picked ?? detectTunnelOs(navigator.userAgent);
+  const [picked, setPicked] = useState<CommandOs>();
+  const os = picked ?? detectCommandOs(navigator.userAgent);
   const command = commands[os];
   return (
     <div className="min-w-0 space-y-2.5">
@@ -26,11 +26,11 @@ export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) 
         size="xs"
         aria-label="Operating system"
         value={os}
-        onValueChange={(next) => next && setPicked(next as TunnelOs)}
+        onValueChange={(next) => next && setPicked(next as CommandOs)}
       >
-        {Object.values(TunnelOs).map((value) => (
+        {Object.values(CommandOs).map((value) => (
           <ToggleGroupItem key={value} value={value}>
-            {TUNNEL_OS_LABELS[value]}
+            {COMMAND_OS_LABELS[value]}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -39,13 +39,13 @@ export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) 
         className={cn(
           "canvas-card flex min-w-0 items-center gap-1 py-1 pr-1 pl-3.5 has-[pre:focus-visible]:outline-2 has-[pre:focus-visible]:outline-offset-2 has-[pre:focus-visible]:outline-(--focus)",
           picked && "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-[160ms] motion-safe:ease-out",
-          picked === TunnelOs.Windows && "motion-safe:slide-in-from-right-[6px]",
-          picked === TunnelOs.Unix && "motion-safe:slide-in-from-left-[6px]",
+          picked === CommandOs.Windows && "motion-safe:slide-in-from-right-[6px]",
+          picked === CommandOs.Unix && "motion-safe:slide-in-from-left-[6px]",
         )}
       >
         <pre
           tabIndex={0}
-          aria-label={`${label}, ${TUNNEL_OS_LABELS[os]}`}
+          aria-label={`${label}, ${COMMAND_OS_LABELS[os]}`}
           className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs leading-6 [scrollbar-width:none] [mask-image:linear-gradient(to_left,transparent,#000_2rem)] quiet-focus [&::-webkit-scrollbar]:hidden"
         >
           {command.lines.map((line) => (

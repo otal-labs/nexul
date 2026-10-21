@@ -25,8 +25,12 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	// The sole occupancy feed on localhost/dev, where LiveKit's webhook can't reach back to this instance.
 	go svc.voiceSvc.RunReconciliation(ctx, logger)
 	go svc.repoHooks.ensureAll(ctx, store.Projects.ListAllRepos, logger)
-	// Cloudflare never pushes connector status, so a computer mid-pairing is polled and each change pushed live.
-	go svc.pairingSvc.RunTunnelWatch(ctx)
+	// Pairing through a tunnel is retired: whatever tunnels are left go from Cloudflare, retried on every boot until none is.
+	go func() {
+		if err := svc.pairingSvc.RetireTunnels(ctx); err != nil {
+			logger.Warn("computer tunnels not retired", "error", err)
+		}
+	}()
 	// Each owner of a computer still on a tunnel or an address is told once to move it; its receipt keeps restarts quiet.
 	if err := svc.pairingSvc.AnnounceMoves(ctx); err != nil {
 		logger.Warn("move notices not sent", "error", err)

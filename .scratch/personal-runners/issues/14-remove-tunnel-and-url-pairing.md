@@ -1,6 +1,6 @@
 # 14 — Remove tunnel and URL pairing
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 12, 13
 
@@ -35,3 +35,14 @@ days (their inbox receipt). The old computers' rows, links and setup are kept.
       finds nothing that pairs.
 - [ ] Upgrade test from the previous schema with a tunnel computer in it: the cleanup runs once and the
       row survives.
+
+## Resolution
+
+- The owner waived the 30 days on 2026-10-21, ten days after ticket 12's notice shipped; ADR 0146 records it.
+- `computer_pair` keeps `name` for renaming, the only rename over MCP; `token` and `server_url` are gone and `id` is
+  required.
+- A computer paired before the Nexul app holds no presence session, and the harness client dials only a runner's
+  address, so it runs nothing until it moves. The move flow, its notice and `retireTunnel` on a move stay.
+- `computer.tunnel_created` and `computer.tunnel_status_changed` stay in the event catalog, which only grows, but are no
+  longer published or pushed live.
+- A computer's first pairing through its runner no longer publishes `computer.harness_switched`.

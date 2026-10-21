@@ -15,7 +15,7 @@ export interface Computer {
   harness_version: string;
   created_at: string;
   updated_at: string;
-  // Absent for a computer paired by URL.
+  // A tunnel left from pairing through one, until the server's cleanup deletes it.
   tunnel?: ComputerTunnel;
   // Absent until the computer's runner first reports; facts_at is when they last changed.
   facts?: ComputerFacts;
@@ -60,14 +60,7 @@ export interface ComputerTunnel {
   hostname: string;
 }
 
-// A computer tunnel's two checks; tunnel is Cloudflare's connector status: inactive, healthy, degraded, or down.
-export interface TunnelStatus {
-  tunnel: string;
-  harness_reachable: boolean;
-  harness_version?: string;
-}
-
-// Go's zero time: a computer tunnel holds no session until T3 Code pairs over its hostname.
+// Go's zero time: a computer holds no session until T3 Code pairs through its runner.
 export const stillPairing = (computer: Computer) => !(Date.parse(computer.token_expires_at) > 0);
 
 // T3 Code lets no client end its own session, so a removed or replaced pairing's session lives on until it expires.
@@ -78,18 +71,6 @@ export const leftoverSessionNote = (computer: Computer, replaced = false): strin
   const until = new Date(expiresAt).toLocaleDateString();
   return `Nexul's ${which} on this computer stays valid until ${until}. Revoke it on the computer with \`t3 auth session list\`, then \`t3 auth session revoke <id>\`.`;
 };
-
-export const tunnelOnline = (status: TunnelStatus) => status.tunnel === "healthy" || status.tunnel === "degraded";
-export const tunnelConnected = (status: TunnelStatus) => tunnelOnline(status) && status.harness_reachable;
-
-// The pair-a-computer dialog's steps, in order.
-export const PAIRING_STEPS = [
-  { value: "connect", label: "Tunnel" },
-  { value: "pair", label: "Pair T3 Code" },
-  { value: "setup", label: "Set up" },
-] as const;
-
-export type PairingStep = (typeof PAIRING_STEPS)[number]["value"];
 
 export type SetupTurnState = "running" | "confirmed" | "failed";
 
@@ -437,55 +418,12 @@ export interface HarnessProvider {
   skipped: boolean;
 }
 
-export interface PairingLink {
-  token: string;
-  // The T3 server the link was made for; absent for a bare token.
-  origin?: string;
-}
-
-const httpOrigin = (value: string | null): string | undefined => {
-  if (!value || !URL.canParse(value)) return undefined;
-  const url = new URL(value);
-  return /^https?:$/.test(url.protocol) ? url.origin : undefined;
-};
-
-// A pairing link (`<origin>/pair#token=<token>`, from T3 Code's Share panel or `t3 pair`) or a bare token; undefined for a link with no token.
-// T3 Code's hosted-app link names the server in its `host` parameter instead of its own origin.
-export const parsePairingLink = (input: string): PairingLink | undefined => {
-  const value = input.trim();
-  if (!value) return undefined;
-  const linkOrigin = httpOrigin(value);
-  if (!linkOrigin) return { token: value };
-  const url = new URL(value);
-  const token = new URLSearchParams(url.hash.slice(1)).get("token")?.trim();
-  if (!token) return undefined;
-  return { token, origin: httpOrigin(url.searchParams.get("host")) ?? linkOrigin };
-};
-
-export const pairingToken = (input: string) => parsePairingLink(input)?.token ?? input.trim();
-
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-export const isLoopbackOrigin = (origin: string) => LOOPBACK_HOSTS.has(new URL(origin).hostname);
-
-export const PairComputerFormSchema = z.object({
-  name: z.string().trim().min(1, "Computer name is required"),
-  server_url: z.string().trim().url("Enter a valid URL, e.g. https://your-t3-host:port"),
-  token: z
-    .string()
-    .trim()
-    .min(1, "Paste the pairing link from T3 Code")
-    .refine((value) => parsePairingLink(value) !== undefined, "That link has no token. Create a new link in T3 Code and paste it whole."),
-});
-
-export type PairComputerFormData = z.infer<typeof PairComputerFormSchema>;
-
 export const RenameComputerFormSchema = z.object({ name: z.string().trim().min(1, "Name this computer") });
 
 export type RenameComputerFormData = z.infer<typeof RenameComputerFormSchema>;
 
 // The inputs the pairing routes key a failure under, so it shows on the field that caused it.
-export const PAIR_FIELDS = ["name", "server_url", "token"] as const satisfies readonly (keyof PairComputerFormData)[];
+export const PAIR_FIELDS = ["name"] as const satisfies readonly (keyof RenameComputerFormData)[];
 export type PairField = (typeof PAIR_FIELDS)[number];
 
 export const PairingDefaultsFormSchema = z.object({
@@ -509,9 +447,6 @@ export const ProjectLinkFormSchema = z.object({
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;
-
-// The settings UI's threshold for flagging a computer as about to act like unpaired.
-export const EXPIRY_WARNING_DAYS = 5;
 
 // Whether the caller can run a play right now: the resolved computer, provider, and model, or a reason it
 // can't, joined against presence. provider/model travel here so the run dialog's pill can preselect them

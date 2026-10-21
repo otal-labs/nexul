@@ -40,4 +40,4 @@ A Nexul release sometimes brings a newer Nexul skill. A provider set up with an 
 
 The row reads **Skills out of date**; press **Update skills** on it. One short turn rewrites the skills for every provider on the computer. Agents also check the skill's version once per session and refresh it themselves when it's behind.
 
-For pairing, tunnels, and where turns run, see [Paired computers](/docs/guide/paired-computers/).
+For pairing and where turns run, see [Paired computers](/docs/guide/paired-computers/).

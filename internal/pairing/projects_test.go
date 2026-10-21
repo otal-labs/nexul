@@ -35,7 +35,7 @@ func TestListProjects(t *testing.T) {
 			gotToken = c.BearerToken
 			return []harness.Project{{ID: "p1", Title: "App"}}, nil
 		})
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		projects, err := svc.ListProjects(context.Background(), "u1", c.ID)
 		require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestListProjects(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestServiceWithLister(repo, func(context.Context, harness.Session) ([]harness.Project, error) { return nil, nil })
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		_, err = svc.ListProjects(context.Background(), "u2", c.ID)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
@@ -57,7 +57,7 @@ func TestListProjects(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b", ExpiresIn: time.Hour}, version: "0.0.34"})
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		stored := repo.computers[c.ID]
 		stored.Kind = "opencode"
@@ -80,7 +80,7 @@ func TestListProviders(t *testing.T) {
 			return []harness.Provider{{ID: "claude", Name: "Claude Code", Models: []harness.ProviderModel{{Slug: "claude-sonnet-4-5", Name: "Sonnet 4.5", IsDefault: true}}}}, nil
 		}
 		svc := newTestService(repo, exch)
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		providers, err := svc.ListProviders(context.Background(), "u1", c.ID)
 		require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestListProviders(t *testing.T) {
 		t.Parallel()
 		repo := newFakeRepo()
 		svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b", ExpiresIn: time.Hour}, version: "0.0.34"})
-		c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+		c, err := pairAt(svc, context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		stored := repo.computers[c.ID]
 		stored.Kind = "opencode"

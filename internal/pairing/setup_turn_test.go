@@ -101,7 +101,7 @@ func newSetupFixture(t *testing.T) *setupFixture {
 		f.interrupted++
 		return nil
 	}
-	c, err := f.svc.Pair(t.Context(), "u1", harness.KindT3Code, "Laptop", "https://laptop.example.com", "tok")
+	c, err := pairAt(f.svc, t.Context(), "u1", harness.KindT3Code, "Laptop", "https://laptop.example.com", "tok")
 	require.NoError(t, err)
 	f.computer = c
 	return f

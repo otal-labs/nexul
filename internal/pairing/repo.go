@@ -25,6 +25,8 @@ type Repo interface {
 	DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error
 	// SetFacts replaces one of userID's own computers' facts and their time, with evt in one transaction, or ErrNotFound.
 	SetFacts(ctx context.Context, userID, computerID string, facts Facts, at time.Time, evt eventbus.OutboxEvent) error
+	// ListTunnelComputers returns every computer still holding a tunnel, whoever owns it, oldest first.
+	ListTunnelComputers(ctx context.Context) ([]Computer, error)
 	// ClearTunnel forgets one of userID's own computers' tunnel, with evt in one transaction, or ErrNotFound.
 	ClearTunnel(ctx context.Context, userID, computerID string, at time.Time, evt eventbus.OutboxEvent) error
 	// ComputersToMove returns, for each owner never told to move, their oldest computer still on a tunnel or an address.

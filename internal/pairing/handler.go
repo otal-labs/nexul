@@ -24,14 +24,14 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/pairing/computers", h.listComputers)
-	mux.HandleFunc("POST /api/pairing/computers", h.pair)
+	mux.HandleFunc("POST /api/pairing/computers", retired)
 	mux.HandleFunc("POST /api/pairing/computers/enrollments", h.enrollComputer)
 	mux.HandleFunc("PATCH /api/pairing/computers/{id}", h.renameComputer)
-	mux.HandleFunc("POST /api/pairing/computers/tunnel", h.createTunnel)
-	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", h.tunnelStatus)
-	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", h.tunnelToken)
+	mux.HandleFunc("POST /api/pairing/computers/tunnel", retired)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", retired)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", retired)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/pair", h.pairComputer)
-	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", h.repair)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", retired)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/mcp-token", h.getMCPToken)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/mcp-token", h.mintMCPToken)
@@ -194,43 +194,14 @@ func optionalJSON(r *http.Request, v any) error {
 	return httpx.DecodeJSON(r, v)
 }
 
-type pairRequest struct {
-	// Kind defaults to T3 Code: the pair form predates the field, and no other harness ships yet.
-	Kind      harness.Kind `json:"kind"`
-	Name      string       `json:"name"`
-	ServerURL string       `json:"server_url"`
-	Token     string       `json:"token"`
+// retired answers a route of pairing through a tunnel or by URL, kept mounted because the API only grows (ADR 0082).
+func retired(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusGone, httpx.Envelope{Message: "Pairing through a tunnel was retired; add the computer with the Nexul app", Code: "GONE"})
 }
 
-func (h *Handler) pair(w http.ResponseWriter, r *http.Request) {
-	var req pairRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	if req.Kind == "" {
-		req.Kind = harness.KindT3Code
-	}
-	c, err := h.svc.Pair(r.Context(), actorID(r), req.Kind, req.Name, req.ServerURL, req.Token)
-	if err != nil {
-		writePairError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusCreated, c)
-}
-
-type pairComputerRequest struct {
-	Token string `json:"token"`
-}
-
-// pairComputer pairs an existing computer now: through its runner with no body, or a computer tunnel with a token.
+// pairComputer pairs an existing computer now, through its runner.
 func (h *Handler) pairComputer(w http.ResponseWriter, r *http.Request) {
-	var req pairComputerRequest
-	if err := optionalJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	c, err := h.svc.PairComputer(r.Context(), actorID(r), r.PathValue("id"), req.Token)
+	c, err := h.svc.PairComputer(r.Context(), actorID(r), r.PathValue("id"))
 	if err != nil {
 		writePairError(w, err)
 		return
@@ -286,74 +257,6 @@ func (h *Handler) renameComputer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.svc.RenameComputer(r.Context(), actorID(r), r.PathValue("id"), req.Name)
-	if err != nil {
-		writePairError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, c)
-}
-
-type createTunnelRequest struct {
-	Kind harness.Kind `json:"kind"`
-	Name string       `json:"name"`
-	Port int          `json:"port"`
-}
-
-func (h *Handler) createTunnel(w http.ResponseWriter, r *http.Request) {
-	var req createTunnelRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	if req.Kind == "" {
-		req.Kind = harness.KindT3Code
-	}
-	if req.Port == 0 {
-		req.Port = DefaultT3CodePort
-	}
-	c, err := h.svc.CreateComputerTunnel(r.Context(), actorID(r), req.Kind, req.Name, req.Port)
-	if err != nil {
-		writeTunnelError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusCreated, c)
-}
-
-func (h *Handler) tunnelStatus(w http.ResponseWriter, r *http.Request) {
-	status, err := h.svc.ComputerTunnelStatus(r.Context(), actorID(r), r.PathValue("id"))
-	if err != nil {
-		writeTunnelError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, status)
-}
-
-func (h *Handler) tunnelToken(w http.ResponseWriter, r *http.Request) {
-	token, err := h.svc.ComputerTunnelToken(r.Context(), actorID(r), r.PathValue("id"))
-	if err != nil {
-		writeTunnelError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
-}
-
-// writeTunnelError adds the missing prerequisite's reason to the error envelope, so the dialog can show its fix.
-func writeTunnelError(w http.ResponseWriter, err error) {
-	var pe *PrerequisiteError
-	if errors.As(err, &pe) {
-		httpx.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": pe.Error(), "code": "INVALID", "reason": string(pe.Reason)})
-		return
-	}
-	httpx.WriteError(w, err)
-}
-
-func (h *Handler) repair(w http.ResponseWriter, r *http.Request) {
-	var req pairRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	c, err := h.svc.Repair(r.Context(), actorID(r), r.PathValue("id"), req.Name, req.ServerURL, req.Token)
 	if err != nil {
 		writePairError(w, err)
 		return

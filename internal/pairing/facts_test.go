@@ -153,7 +153,7 @@ func TestPairComputer_ThroughTheRunner_ReadsWhatT3CodeLists(t *testing.T) {
 	require.NoError(t, f.svc.HandleFactsReported(t.Context(), reportEvent(t, laptopReport("not_running", 5e10))))
 	require.Empty(t, f.stored(t).Facts.Providers)
 
-	_, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop", "")
+	_, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop")
 	require.NoError(t, err)
 
 	c := f.stored(t)

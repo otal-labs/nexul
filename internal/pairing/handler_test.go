@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,20 +38,12 @@ func doRequest(h http.Handler, method, path, userID string, body any) *httptest.
 	return rec
 }
 
-func TestHandler_PairAndList(t *testing.T) {
+func TestHandler_List(t *testing.T) {
 	t.Parallel()
 	h, _, _ := newTestHandler()
-	routes := h.Routes()
+	created := pairedComputer(t, h, "u1", "Home")
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "one-time",
-	})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	assert.Equal(t, "Home", created.Name)
-
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers", "u1", nil)
+	rec := doRequest(h.Routes(), http.MethodGet, "/api/pairing/computers", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var listed struct {
 		Computers []Computer `json:"computers"`
@@ -60,34 +53,24 @@ func TestHandler_PairAndList(t *testing.T) {
 	assert.Equal(t, created.ID, listed.Computers[0].ID)
 }
 
-func TestHandler_Pair_MissingBody(t *testing.T) {
+func TestHandler_RetiredPairingRoutes_AnswerGone(t *testing.T) {
 	t.Parallel()
 	h, _, _ := newTestHandler()
-	rec := doRequest(h.Routes(), http.MethodPost, "/api/pairing/computers", "u1", pairRequest{})
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestHandler_Repair(t *testing.T) {
-	t.Parallel()
-	h, _, exch := newTestHandler()
-	routes := h.Routes()
-
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok1",
-	})
-	require.Equal(t, http.StatusCreated, rec.Code)
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-
-	exch.version = "0.0.35"
-	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+created.ID+"/repair", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok2",
-	})
-	require.Equal(t, http.StatusOK, rec.Code)
-	var repaired Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &repaired))
-	assert.Equal(t, created.ID, repaired.ID)
-	assert.Equal(t, "0.0.35", repaired.HarnessVersion)
+	created := pairedComputer(t, h, "u1", "Home")
+	for _, route := range []struct{ method, path string }{
+		{http.MethodPost, "/api/pairing/computers"},
+		{http.MethodPost, "/api/pairing/computers/tunnel"},
+		{http.MethodGet, "/api/pairing/computers/" + created.ID + "/tunnel/status"},
+		{http.MethodGet, "/api/pairing/computers/" + created.ID + "/tunnel/token"},
+		{http.MethodPost, "/api/pairing/computers/" + created.ID + "/repair"},
+	} {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			t.Parallel()
+			rec := doRequest(h.Routes(), route.method, route.path, "u1", map[string]string{"name": "Home", "token": "tok"})
+			require.Equal(t, http.StatusGone, rec.Code)
+			assert.JSONEq(t, `{"message":"Pairing through a tunnel was retired; add the computer with the Nexul app","code":"GONE"}`, rec.Body.String())
+		})
+	}
 }
 
 func TestHandler_DeleteComputer(t *testing.T) {
@@ -95,13 +78,9 @@ func TestHandler_DeleteComputer(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	created := pairedComputer(t, h, "u1", "Home")
 
-	rec = doRequest(routes, http.MethodDelete, "/api/pairing/computers/"+created.ID, "u1", nil)
+	rec := doRequest(routes, http.MethodDelete, "/api/pairing/computers/"+created.ID, "u1", nil)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers", "u1", nil)
@@ -117,13 +96,9 @@ func TestHandler_Defaults_GetAndSet(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	created := pairedComputer(t, h, "u1", "Home")
 
-	rec = doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
+	rec := doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
 		DefaultComputerID: created.ID, FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet",
 	})
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -141,13 +116,9 @@ func TestHandler_ProjectLink_GetSetClear(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	created := pairedComputer(t, h, "u1", "Home")
 
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/projects/proj-1", "u1", nil)
+	rec := doRequest(routes, http.MethodGet, "/api/pairing/projects/proj-1", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	var empty ProjectLink
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &empty))
@@ -185,13 +156,9 @@ func TestHandler_ProjectLink_ForeignComputerRejected(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u2", pairRequest{
-		Name: "Their box", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var theirs Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &theirs))
+	theirs := pairedComputer(t, h, "u2", "Their box")
 
-	rec = doRequest(routes, http.MethodPut, "/api/pairing/projects/proj-1", "u1", projectLinkRequest{
+	rec := doRequest(routes, http.MethodPut, "/api/pairing/projects/proj-1", "u1", projectLinkRequest{
 		ComputerID: theirs.ID, HarnessProjectID: "p",
 	})
 	assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -202,12 +169,8 @@ func TestHandler_Resolve_Success(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	rec = doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
+	created := pairedComputer(t, h, "u1", "Home")
+	rec := doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
 		DefaultComputerID: created.ID, FallbackProjectID: "harness-proj", Provider: "claude", Model: "sonnet",
 	})
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -242,12 +205,8 @@ func TestHandler_Resolve_NotConfiguredReasons(t *testing.T) {
 		t.Parallel()
 		h, _, _ := newTestHandler()
 		routes := h.Routes()
-		doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-			Name: "Home", ServerURL: "https://home.example.com", Token: "tok1",
-		})
-		doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-			Name: "VPS", ServerURL: "https://vps.example.com", Token: "tok2",
-		})
+		pairedComputer(t, h, "u1", "Home")
+		pairedComputer(t, h, "u1", "VPS")
 
 		rec := doRequest(routes, http.MethodGet, "/api/pairing/resolve", "u1", nil)
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -261,12 +220,8 @@ func TestHandler_Resolve_NotConfiguredReasons(t *testing.T) {
 		t.Parallel()
 		h, _, _ := newTestHandler()
 		routes := h.Routes()
-		rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-			Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-		})
-		var created Computer
-		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-		rec = doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{DefaultComputerID: created.ID})
+		created := pairedComputer(t, h, "u1", "Home")
+		rec := doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{DefaultComputerID: created.ID})
 		require.Equal(t, http.StatusOK, rec.Code)
 
 		rec = doRequest(routes, http.MethodGet, "/api/pairing/resolve", "u1", nil)
@@ -284,12 +239,8 @@ func TestHandler_Resolve_NotConfiguredReasons(t *testing.T) {
 		svc := newTestService(repo, exch)
 		routes := NewHandler(svc).Routes()
 
-		rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-			Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-		})
-		var created Computer
-		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-		rec = doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
+		created := pairedComputer(t, NewHandler(svc), "u1", "Home")
+		rec := doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
 			DefaultComputerID: created.ID, FallbackProjectID: "p",
 		})
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -312,12 +263,8 @@ func TestHandler_Resolve_OnlyLeaksCallersOwnPairing(t *testing.T) {
 	h, _, _ := newTestHandler()
 	routes := h.Routes()
 
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers", "u1", pairRequest{
-		Name: "Home", ServerURL: "https://home.example.com", Token: "tok",
-	})
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	rec = doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
+	created := pairedComputer(t, h, "u1", "Home")
+	rec := doRequest(routes, http.MethodPut, "/api/pairing/defaults", "u1", defaultsRequest{
 		DefaultComputerID: created.ID, FallbackProjectID: "p",
 	})
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -330,61 +277,6 @@ func TestHandler_Resolve_OnlyLeaksCallersOwnPairing(t *testing.T) {
 	assert.Equal(t, string(ReasonUnpaired), body["reason"])
 }
 
-func TestHandler_ComputerTunnel_CreateStatusAndToken(t *testing.T) {
-	t.Parallel()
-	tunnels := &fakeTunnels{status: "inactive"}
-	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, tunnels)
-	routes := NewHandler(svc).Routes()
-
-	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers/tunnel", "u1", createTunnelRequest{Name: "Laptop"})
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	var created Computer
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	assert.Equal(t, harness.KindT3Code, created.Kind)
-	assert.Equal(t, "laptop-ab12cd34.example.com", created.Tunnel.Hostname)
-
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/status", "u1", nil)
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"tunnel":"inactive","harness_reachable":false}`, rec.Body.String())
-
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/token", "u1", nil)
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"token":"connector-token-tun-1"}`, rec.Body.String())
-
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/token", "u2", nil)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/status", "u2", nil)
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestHandler_ComputerTunnel_Errors(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		body       any
-		createErr  error
-		wantCode   int
-		wantReason string
-	}{
-		{"malformed body", "not json", nil, http.StatusBadRequest, ""},
-		{"blank name", createTunnelRequest{Name: " "}, nil, http.StatusBadRequest, ""},
-		{"zero trust disabled", createTunnelRequest{Name: "Laptop"}, &PrerequisiteError{Reason: ReasonZeroTrustDisabled, Err: errBoom}, http.StatusBadRequest, "zero_trust_disabled"},
-		{"cloudflare not connected", createTunnelRequest{Name: "Laptop"}, &PrerequisiteError{Reason: ReasonCloudflareNotConnected, Err: errBoom}, http.StatusBadRequest, "cloudflare_not_connected"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{createErr: tt.createErr})
-			rec := doRequest(NewHandler(svc).Routes(), http.MethodPost, "/api/pairing/computers/tunnel", "u1", tt.body)
-			require.Equal(t, tt.wantCode, rec.Code)
-			var body map[string]string
-			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-			assert.Equal(t, tt.wantReason, body["reason"])
-			assert.NotEmpty(t, body["message"])
-		})
-	}
-}
-
 func TestHandler_NoIdentity_Unauthorized(t *testing.T) {
 	t.Parallel()
 	for _, path := range []string{"/api/pairing/computers", "/api/pairing/resolve"} {
@@ -395,4 +287,12 @@ func TestHandler_NoIdentity_Unauthorized(t *testing.T) {
 			assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		})
 	}
+}
+
+// pairedComputer pairs one of userID's computers named name through the handler's service.
+func pairedComputer(t *testing.T, h *Handler, userID, name string) Computer {
+	t.Helper()
+	c, err := pairAt(h.svc, t.Context(), userID, harness.KindT3Code, name, "https://"+strings.ToLower(name)+".example.com", "tok")
+	require.NoError(t, err)
+	return *c
 }

@@ -3,7 +3,6 @@ package pairing
 
 import (
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -154,43 +153,7 @@ type ComputerTunnel struct {
 	AccessAppID string `json:"-"`
 }
 
-// TunnelStatus is a computer tunnel's two checks: Cloudflare's connector status and the harness answering through it.
-type TunnelStatus struct {
-	// Tunnel is Cloudflare's status: inactive, healthy, degraded, or down.
-	Tunnel           string `json:"tunnel"`
-	HarnessReachable bool   `json:"harness_reachable"`
-	HarnessVersion   string `json:"harness_version,omitempty"`
-}
-
-// Connected reports both checks passing: the connector is up and the harness answers behind it.
-func (t TunnelStatus) Connected() bool {
-	return (t.Tunnel == "healthy" || t.Tunnel == "degraded") && t.HarnessReachable
-}
-
-// DefaultT3CodePort is the port T3 Code serves on unless started with another.
-const DefaultT3CodePort = 3773
-
-// PrerequisiteReason names what the instance needs before any computer can be reached through a tunnel.
-type PrerequisiteReason string
-
-const (
-	// ReasonCloudflareNotConnected: the instance has no Cloudflare connection to create tunnels with.
-	ReasonCloudflareNotConnected PrerequisiteReason = "cloudflare_not_connected"
-	// ReasonZeroTrustDisabled: the Cloudflare account has never enabled Zero Trust, so no Access app can close a hostname.
-	ReasonZeroTrustDisabled PrerequisiteReason = "zero_trust_disabled"
-)
-
-// PrerequisiteError unwraps to ErrInvalid; Reason tells the caller which fix to show.
-type PrerequisiteError struct {
-	Reason PrerequisiteReason
-	Err    error
-}
-
-func (e *PrerequisiteError) Error() string { return e.Err.Error() }
-
-func (e *PrerequisiteError) Unwrap() error { return apperrs.ErrInvalid }
-
-// FieldError names the pairing input a failure belongs to (name, server_url, or token), so a form can show it on that field.
+// FieldError names the input a failure belongs to, so a form can show it on that field.
 type FieldError struct {
 	Field string
 	Err   error
@@ -200,21 +163,13 @@ func (e *FieldError) Error() string { return e.Err.Error() }
 
 func (e *FieldError) Unwrap() error { return e.Err }
 
-// Paired reports whether the computer holds a harness session; a computer tunnel has none until T3 Code pairs over it.
+// Paired reports whether the computer holds a harness session.
 func (c Computer) Paired() bool { return !c.TokenExpiresAt.IsZero() }
-
-// address is where the harness answers: the tunnel hostname when the computer has one, else its server URL.
-func (c Computer) address() string {
-	if c.Tunnel != nil {
-		return "https://" + c.Tunnel.Hostname
-	}
-	return c.ServerURL
-}
 
 // Session is the harness-facing view of a decrypted computer; one added with a runner is reached through it (ADR 0146).
 func (c Computer) Session() harness.Session {
 	serverURL := c.ServerURL
-	if serverURL == "" && c.Tunnel == nil {
+	if serverURL == "" {
 		serverURL = runnerAddress(c.ID)
 	}
 	return harness.Session{ComputerID: c.ID, Name: c.Name, ServerURL: serverURL, BearerToken: c.BearerToken}
@@ -573,36 +528,4 @@ func validateName(name string) (string, error) {
 		return "", fmt.Errorf("%w: computer name is required", apperrs.ErrInvalid)
 	}
 	return name, nil
-}
-
-// validatePort rejects a local harness port outside the TCP range.
-func validatePort(port int) error {
-	if port < 1 || port > 65535 {
-		return fmt.Errorf("%w: local harness port %d is not between 1 and 65535", apperrs.ErrInvalid, port)
-	}
-	return nil
-}
-
-// validateServerURL rejects non-http(s) origins and trims a trailing slash so clients can concatenate paths.
-func validateServerURL(raw string) (string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "", fmt.Errorf("%w: server URL is required", apperrs.ErrInvalid)
-	}
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return "", fmt.Errorf("%w: server URL %q is not a valid http(s) URL", apperrs.ErrInvalid, raw)
-	}
-	return strings.TrimRight(raw, "/"), nil
-}
-
-// pairingSecret reads the token out of a pasted pairing link (`<origin>/pair#token=<token>`, what `t3 pair` prints and T3 Code's Share panel copies); anything else is the token itself.
-func pairingSecret(raw string) string {
-	raw = strings.TrimSpace(raw)
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return raw
-	}
-	fragment, _ := url.ParseQuery(u.Fragment)
-	return strings.TrimSpace(fragment.Get("token"))
 }

@@ -3,7 +3,7 @@ import { ComputerChecks } from "@/components/pairing/ComputerChecks";
 import { ConnectionPanel } from "@/components/pairing/ConnectionPanel";
 import type { Computer, ComputerEnrollment } from "@/models/Pairing";
 import { formatClockTime } from "@/utils/TimeUtility";
-import { computerCommands, PAIRING_GUIDE } from "@/utils/TunnelInstallCommands";
+import { computerCommands, PAIRING_GUIDE } from "@/utils/InstallCommands";
 
 interface AddComputerStepProps {
   enrollment: ComputerEnrollment;

@@ -35,23 +35,20 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(TopicSetupTurnActivity, frame)
 	}
 
-	watch := newWatchFixture(t)
-	c, err := watch.svc.CreateComputerTunnel(ctx, "u1", harness.KindT3Code, "Laptop", 3773)
-	require.NoError(t, err)
-	watch.svc.pollTunnels(ctx)
-	require.NoError(t, watch.svc.DeleteComputer(ctx, "u1", c.ID))
-	for _, e := range watch.repo.outbox {
+	tunnelRepo := newFakeRepo()
+	tunnelSvc, _ := newTunnelService(tunnelRepo, &fakeExchanger{}, &fakeTunnels{})
+	tunnelComputer(t, tunnelSvc)
+	require.NoError(t, tunnelSvc.RetireTunnels(ctx))
+	require.NoError(t, tunnelSvc.DeleteComputer(ctx, "u1", tunnelComputer(t, tunnelSvc)))
+	for _, e := range tunnelRepo.outbox {
 		check(e.Topic, e.Payload)
-	}
-	for _, status := range watch.bus.published() {
-		check(TopicTunnelStatusChanged, status)
 	}
 
 	svc, repo, v1, _ := twoKinds(t)
-	paired, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Laptop", "https://h.example.com", "tok")
+	paired, err := pairAt(svc, ctx, "u1", harness.KindT3Code, "Laptop", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	v1.result.Kind = harness.KindT3CodeV2
-	_, err = svc.Repair(ctx, "u1", paired.ID, "Laptop", "https://h.example.com", "tok2")
+	_, err = svc.pair(ctx, *paired, "https://h.example.com", "tok2")
 	require.NoError(t, err)
 	for _, e := range repo.outbox {
 		check(e.Topic, e.Payload)
@@ -65,7 +62,7 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 
 	runner := newRunnerFixture(t, Computer{Name: "Laptop"})
 	runner.runners.tokenErr = errBoom
-	_, err = runner.svc.PairComputer(ctx, "u-alice", "c-laptop", "")
+	_, err = runner.svc.PairComputer(ctx, "u-alice", "c-laptop")
 	require.Error(t, err)
 	for _, failed := range runner.bus.pairFailed {
 		check(TopicPairFailed, failed)
@@ -78,7 +75,9 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(e.Topic, e.Payload)
 	}
 
+	// Retired with pairing through a tunnel, still declared because the published contract only grows (ADR 0044).
+	retired := map[string]bool{TopicTunnelCreated: true, TopicTunnelStatusChanged: true}
 	for _, topic := range Topics() {
-		assert.True(t, seen[topic.Name], "no flow here publishes %s; add one", topic.Name)
+		assert.True(t, seen[topic.Name] || retired[topic.Name], "no flow here publishes %s; add one", topic.Name)
 	}
 }

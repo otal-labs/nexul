@@ -81,7 +81,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 | Repositories and pull requests | `repository_list`, `repository_scan`, `pull_request_list`, `pull_request_get` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `trail_list`, `trail_update` |
 | Automations | `automation_list`, `automation_create`, `automation_update`, `automation_delete`, `automation_token_create` |
-| Paired computers and skills | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_tunnel_token_get`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete`, `skill_get` |
+| Paired computers and skills | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete`, `skill_get` |
 | Accounts and access | `account_get`, `account_list`, `account_update`, `account_delete`, `invitation_create`, `invitation_list`, `invitation_delete`, `permission_overwrite_list`, `permission_overwrite_update`, `role_update`, `role_delete` |
 | Failed events | `dead_letter_list`, `dead_letter_replay` |
 

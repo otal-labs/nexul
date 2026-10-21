@@ -65,7 +65,7 @@ func TestHandleFactsReported_ATunnelLeftAfterTheMoveIsRetiredOnTheNextReport(t *
 	f := newRunnerFixture(t, tunnelLaptop())
 	f.tunnels.deleteErr = errBoom
 
-	paired, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop", "")
+	paired, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop")
 
 	require.NoError(t, err)
 	assert.Equal(t, &laptopTunnel, paired.Tunnel, "the answer says the tunnel is still there")

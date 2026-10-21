@@ -41,9 +41,9 @@ type Config struct {
 	Now func() time.Time
 	// OnComputersChanged lets the presence keeper reconcile without waiting for a browser reconnect. Optional.
 	OnComputersChanged func(userID string)
-	// Tunnels creates and removes computer tunnels; nil leaves only URL pairing working.
+	// Tunnels tears down what pairing through a tunnel left at Cloudflare.
 	Tunnels Tunnels
-	// Bus carries the tunnel watch's status changes; nil keeps the watch silent.
+	// Bus carries ephemeral pairing events; nil keeps them silent.
 	Bus Publisher
 	// Tokens mints and revokes each computer's MCP token.
 	Tokens MCPTokens
@@ -51,7 +51,7 @@ type Config struct {
 	Instance InstanceSettings
 	// Projects keeps a person's project links to the projects they can open.
 	Projects ProjectGate
-	// Runners mints a computer's personal runner code and reads its runner; nil leaves only the old pairing paths.
+	// Runners mints a computer's personal runner code and reads its runner; nil pairs nothing.
 	Runners Runners
 	// Containers reads a computer's Docker containers and their logs through its runner; nil serves none.
 	Containers Containers
@@ -74,8 +74,6 @@ type Service struct {
 	runners        Runners
 	containers     Containers
 	computerAccess ComputerGate
-	watchMu        sync.Mutex
-	watching       map[string]tunnelWatch
 	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
 	settingUp map[string]bool
@@ -94,7 +92,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, settingUp: map[string]bool{},
 		pairFailures: map[string]string{},
 	}
 }
@@ -216,48 +214,23 @@ func (s *Service) harnessProviders(ctx context.Context, session Computer) ([]har
 	return providers, nil
 }
 
-// Pair trades a harness-specific secret (T3: the `t3 pair` token) for a bearer session; nothing persists until it succeeds.
-func (s *Service) Pair(ctx context.Context, userID string, kind harness.Kind, name, serverURL, secret string) (*Computer, error) {
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	return s.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
-}
-
-// PairComputer pairs a computer now: through its runner with no secret, which moves one paired by URL, or by tunnel once
-// a runner is enrolled for it, onto that runner; else at its address.
-func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret string) (*Computer, error) {
+// PairComputer pairs one of the caller's computers now, through its runner (ADR 0146).
+func (s *Service) PairComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
 	existing, err := s.ownComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(secret) == "" && (existing.Tunnel == nil || s.hasRunner(ctx, existing.ID)) {
-		paired, err := s.pairThroughRunner(ctx, *existing)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.recordFacts(ctx, userID, paired.ID, nil); err != nil {
-			logging.FromCtx(ctx).Warn("computer facts not read after pairing", "computer_id", paired.ID, "error", err)
-		}
-		return paired, nil
-	}
-	return s.pair(ctx, *existing, existing.address(), secret)
-}
-
-// Repair re-runs the pairing flow against an existing computer row, updating it in place; the kind only moves forward.
-func (s *Service) Repair(ctx context.Context, userID, id, name, serverURL, secret string) (*Computer, error) {
-	existing, err := s.ownComputer(ctx, userID, id)
+	paired, err := s.pairThroughRunner(ctx, *existing)
 	if err != nil {
 		return nil, err
 	}
-	if existing.Tunnel != nil && strings.TrimRight(strings.TrimSpace(serverURL), "/") != existing.address() {
-		return nil, &FieldError{Field: "server_url", Err: fmt.Errorf("%w: %s is reached through its tunnel at %s", apperrs.ErrInvalid, existing.Name, existing.address())}
+	if err := s.recordFacts(ctx, userID, paired.ID, nil); err != nil {
+		logging.FromCtx(ctx).Warn("computer facts not read after pairing", "computer_id", paired.ID, "error", err)
 	}
-	existing.Name = name
-	return s.pair(ctx, *existing, serverURL, secret)
+	return paired, nil
 }
 
-// pair exchanges the secret at serverURL and saves base with the new session; base keeps its id, tunnel, and setup.
+// pair exchanges the secret at serverURL and saves base with the new session; base keeps its id and setup.
 func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret string) (*Computer, error) {
 	client, ok := s.harnesses[base.Kind]
 	if !ok {
@@ -267,20 +240,16 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	if err != nil {
 		return nil, &FieldError{Field: "name", Err: err}
 	}
-	serverURL, err = validateServerURL(serverURL)
-	if err != nil {
-		return nil, &FieldError{Field: "server_url", Err: err}
-	}
-	secret = pairingSecret(secret)
+	secret = strings.TrimSpace(secret)
 	if secret == "" {
-		return nil, &FieldError{Field: "token", Err: fmt.Errorf("%w: pairing token is required", apperrs.ErrInvalid)}
+		return nil, fmt.Errorf("%w: pairing token is required", apperrs.ErrInvalid)
 	}
 	if len(s.key) == 0 {
 		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
 	}
 	result, err := client.Pair(ctx, serverURL, secret)
 	if err != nil {
-		return nil, pairFailure(serverURL, err)
+		return nil, pairFailure(err)
 	}
 	kind := base.Kind
 	if result.Kind != "" {
@@ -309,7 +278,8 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicComputerPaired, Payload: ComputerPairedEvent{
 		ComputerID: computer.ID, UserID: computer.UserID, ServerURL: serverURL, HarnessVersion: result.Version, TokenExpiresAt: computer.TokenExpiresAt, MembersOnly: true,
 	}}}
-	if base.ID != "" && kindStep(kind) > kindStep(base.Kind) {
+	// A computer's first pairing lands on whatever kind answers; only a paired one switches.
+	if base.Paired() && kindStep(kind) > kindStep(base.Kind) {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
 			ComputerID: computer.ID, UserID: computer.UserID, FromKind: base.Kind, ToKind: kind, HarnessVersion: result.Version, MembersOnly: true,
 		}})
@@ -322,15 +292,15 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	return &computer, nil
 }
 
-// pairFailure blames the address for a harness it could not reach or follow, and the token when the harness refused it.
-func pairFailure(serverURL string, err error) error {
+// pairFailure keeps a harness's own protocol message, else says whether T3 Code was unreachable or refused the token.
+func pairFailure(err error) error {
 	if errors.Is(err, harness.ErrProtocol) {
-		return &FieldError{Field: "server_url", Err: err}
+		return err
 	}
 	if errors.Is(err, apperrs.ErrRetryable) {
-		return &FieldError{Field: "server_url", Err: fmt.Errorf("couldn't reach the harness at %s: %w", serverURL, err)}
+		return fmt.Errorf("couldn't reach T3 Code through the Nexul app: %w", err)
 	}
-	return &FieldError{Field: "token", Err: fmt.Errorf("the harness refused this token, get a fresh one from T3 Code on the computer: %w", err)}
+	return fmt.Errorf("T3 Code refused the pairing token the Nexul app made: %w", err)
 }
 
 // kindOrder is the order a computer's kind moves in, one step at a time and never back (ADR 0113).
@@ -387,7 +357,8 @@ func (s *Service) ActiveSessions(ctx context.Context, userID string) ([]Computer
 	now := s.now()
 	out := make([]Computer, 0, len(cs))
 	for _, c := range cs {
-		if !c.TokenExpiresAt.After(now) {
+		// A computer paired the old way is reached only once it moves to its runner, so nothing holds it open.
+		if !c.TokenExpiresAt.After(now) || !onRunner(c) {
 			continue
 		}
 		decrypted, err := crypto.Decrypt(s.key, c.BearerToken)
