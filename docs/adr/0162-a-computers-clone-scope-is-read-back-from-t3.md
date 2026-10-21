@@ -10,9 +10,10 @@ list, and `scopes`, the subset with the older names. The list is read when the p
 when a clone starts. The picker says to pair again, with a button, before any click, and a clone without the scope is
 refused before T3 is asked to start one.
 
-- **Unknown is not lacking.** A T3 that has no such endpoint, answers neither field, or cannot be asked counts as able:
-  T3 itself refuses a clone it will not take, so a guess against a working computer would be the only wrong answer.
-  `permissions` wins over `scopes` when both are present, and an empty list is a grant of nothing.
+- **Unknown is not lacking.** A T3 that has no such endpoint, answers no `permissions`, or cannot be asked counts as
+  able: T3 itself refuses a clone it will not take, so a guess against a working computer would be the only wrong
+  answer. Only `permissions` is read, because `scopes` lists the older names alone and never names the clone scope;
+  an empty `permissions` is a grant of nothing.
 - **Harness-neutral.** The harness seam gains `CanClone`; the scope's name stays inside the T3 packages.
 
 Rejected: storing the granted scopes on the computer when it pairs. That needs a migration, leaves every computer

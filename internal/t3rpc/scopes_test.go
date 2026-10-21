@@ -34,9 +34,7 @@ func TestCanClone_ReadsTheScopesT3GrantedTheSession(t *testing.T) {
 		{"the full list names it", 200, `{"authenticated":true,"permissions":["orchestration:operate","source-control:write"],"scopes":["orchestration:operate"]}`, true},
 		{"the full list lacks it", 200, `{"authenticated":true,"permissions":["orchestration:operate","review:write"]}`, false},
 		{"an empty grant holds nothing", 200, `{"authenticated":true,"permissions":[]}`, false},
-		{"the full list wins over the legacy names", 200, `{"permissions":["orchestration:operate"],"scopes":["source-control:write"]}`, false},
-		{"only the legacy names, naming it", 200, `{"scopes":["source-control:write"]}`, true},
-		{"only the legacy names, lacking it", 200, `{"scopes":["orchestration:operate"]}`, false},
+		{"the legacy names alone say nothing", 200, `{"scopes":["orchestration:operate"]}`, true},
 		{"neither field is unknown, not lacking", 200, `{"authenticated":true}`, true},
 		{"a T3 without the endpoint is unknown", 404, `not found`, true},
 	}

@@ -27,7 +27,7 @@ func CanClone(ctx context.Context, client *http.Client, serverURL, bearerToken s
 	return scopes == nil || slices.Contains(scopes, sourceControlWrite), nil
 }
 
-// sessionScopes reads the scopes of the bearer session: nil when T3 names none, empty when it names an empty grant.
+// sessionScopes reads the scopes of the bearer session: nil when T3 does not say, empty when it names an empty grant.
 func sessionScopes(ctx context.Context, client *http.Client, serverURL, bearerToken string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(serverURL, "/")+sessionPath, nil)
 	if err != nil {
@@ -47,17 +47,15 @@ func sessionScopes(ctx context.Context, client *http.Client, serverURL, bearerTo
 	default:
 		return nil, fmt.Errorf("T3 session responded %d: %s", status, Snippet(body))
 	}
+	// Only permissions holds the whole grant; T3's scopes lists the legacy names alone, so it can never name the clone scope.
 	var out struct {
 		Permissions *[]string `json:"permissions"`
-		Scopes      *[]string `json:"scopes"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, fmt.Errorf("decode T3 session: %w", err)
 	}
-	for _, granted := range []*[]string{out.Permissions, out.Scopes} {
-		if granted != nil {
-			return append([]string{}, *granted...), nil
-		}
+	if out.Permissions == nil {
+		return nil, nil
 	}
-	return nil, nil
+	return *out.Permissions, nil
 }
