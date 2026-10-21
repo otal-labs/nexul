@@ -15,13 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AutomationTokenReveal } from "@/components/automation/AutomationTokenReveal";
+import { AutomationSdkSetup } from "@/components/automation/AutomationSdkSetup";
 import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { FormInput } from "@/components/FormInput";
 import { useCreateAutomation, useFetchScopeCatalog } from "@/hooks/AutomationHooks";
 import { CreateAutomationFormSchema, type CreateAutomationFormData } from "@/models/Automation";
 
-// The minted token shows exactly once with the SDK commands; closing the dialog drops it for good.
+// A host runs the automation on credentials of its own, so the token minted with it isn't shown; the Token tab can mint one.
 export const NewAutomationDialog = () => {
   const [open, setOpen] = useState(false);
   const create = useCreateAutomation();
@@ -70,7 +70,7 @@ export const NewAutomationDialog = () => {
                 control={form.control}
                 name="scopes"
                 render={({ field, fieldState }) => (
-                  <fieldset className="space-y-2">
+                  <fieldset className="@container space-y-2">
                     <legend className="text-sm font-medium">Scopes</legend>
                     <PermissionLevels entries={scopeCatalog} value={field.value} onChange={field.onChange} />
                     {fieldState.error && (
@@ -97,7 +97,7 @@ export const NewAutomationDialog = () => {
         {minted && (
           <DialogBody className="space-y-4">
             <p className="text-sm font-medium">{minted.automation.name} created</p>
-            <AutomationTokenReveal token={minted.token} />
+            <AutomationSdkSetup automationId={minted.automation.id} />
           </DialogBody>
         )}
         {minted && (

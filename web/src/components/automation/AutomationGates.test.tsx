@@ -43,6 +43,7 @@ const version = { id: "v2", automation_id: "a1", sequence: 2, code: "b", pusher_
 const rest = (url: string) => {
   if (url === "/api/automation-secrets") return [{ name: "API_KEY", created_at: "", updated_at: "" }];
   if (url === "/api/automation-hosts") return [{ id: "h1", name: "builder", machine: "m", version: "1", connected: true, last_seen: "" }];
+  if (url === "/api/team") return { people: [] };
   return [];
 };
 

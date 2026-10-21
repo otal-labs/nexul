@@ -8,11 +8,11 @@ import { AutomationVersionRow } from "@/components/automation/AutomationVersionR
 import { AutomationVersionStatus } from "@/enums/Automation";
 import type { AutomationVersion } from "@/models/AutomationVersion";
 
-const mocks = vi.hoisted(() => ({ post: vi.fn() }));
+const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
 
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
-  api: { post: mocks.post },
+  api: { post: mocks.post, get: mocks.get },
   errorMessage: () => "error",
 }));
 
@@ -45,6 +45,10 @@ const renderRow = (v: AutomationVersion) => {
 describe("AutomationVersionRow", () => {
   beforeEach(() => {
     mocks.post.mockReset();
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/team") return { data: { people: [{ id: "u1", display_name: "Lena Park", name: "", login: "lena" }] } };
+      return { data: { user: { id: "u-me" } } };
+    });
   });
 
   it("shows the sequence, status, message, and labels the seed pusher as Nexul", () => {
@@ -52,6 +56,12 @@ describe("AutomationVersionRow", () => {
     expect(screen.getByText("#3")).toBeInTheDocument();
     expect(screen.getByText("Upgrade default code")).toBeInTheDocument();
     expect(screen.getByText(/Nexul/)).toBeInTheDocument();
+  });
+
+  it("names a person who pushed instead of showing their account id", async () => {
+    renderRow(version({ pusher_id: "u1" }));
+    expect(await screen.findByText(/Lena Park/)).toBeInTheDocument();
+    expect(screen.queryByText(/u1/)).not.toBeInTheDocument();
   });
 
   it("hides rollback for the active version", () => {

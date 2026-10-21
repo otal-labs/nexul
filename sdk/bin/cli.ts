@@ -3,7 +3,7 @@
 // no separate global tool). Deliberately one file: five small commands, each
 // a handful of HTTP calls or fs writes — splitting them out would just be
 // more files to jump between for no reuse gained.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
@@ -16,6 +16,25 @@ import type { ConfigSchema } from "../src/config-schema.ts";
 const CONFIG_FILE = "nexul.config.json";
 const ENTRY_FILE = path.join("src", "index.ts");
 const PLAYS_FILE = path.join("src", "plays.generated.d.ts");
+
+// The SDK ships TypeScript sources with .ts imports, which an editor resolves only under bundler resolution.
+const TSCONFIG = `${JSON.stringify(
+  {
+    compilerOptions: {
+      target: "ESNext",
+      lib: ["ESNext", "DOM"],
+      module: "Preserve",
+      moduleResolution: "bundler",
+      allowImportingTsExtensions: true,
+      noEmit: true,
+      strict: true,
+      skipLibCheck: true,
+    },
+    include: ["src"],
+  },
+  null,
+  2,
+)}\n`;
 
 interface ProjectConfig {
   url: string;
@@ -55,13 +74,14 @@ function closePrompts(): void {
   sharedRl = undefined;
 }
 
-const SCAFFOLD = `/// <reference path="./plays.generated.d.ts" />
+// The host imports the pushed bundle in a worker, so nothing here may run on import beyond defining the handlers.
+export function scaffold(name: string, description: string): string {
+  return `/// <reference path="./plays.generated.d.ts" />
 import { defineAutomation } from "@otal-labs/nexul-sdk/automation";
-import { DialinClient } from "@otal-labs/nexul-sdk/client";
 
 const automation = defineAutomation({
-  name: "my-automation",
-  description: "Describe what this automation does.",
+  name: ${JSON.stringify(name)},
+  description: ${JSON.stringify(description)},
   config: {},
 });
 
@@ -71,27 +91,48 @@ automation.on("ticket.created", async (payload, ctx) => {
 });
 
 export default automation;
-
-if (import.meta.main) {
-  const config = JSON.parse(await Bun.file("nexul.config.json").text()) as { url: string; token: string };
-  await new DialinClient(automation, config).run();
-}
 `;
+}
 
-async function cmdInit(): Promise<void> {
-  const url = (await prompt("Nexul instance URL (e.g. https://deploy.example.com): ")).replace(/\/+$/, "");
-  console.log(`\nMint a personal access token at ${url}/settings/security?tab=tokens (Your settings -> Security -> Tokens), then paste it below.\n`);
-  const token = await prompt("Personal access token: ");
+// flag reads "--name value" from args, so the New automation dialog can pre-fill what init would ask.
+function flag(args: string[], name: string): string | undefined {
+  const at = args.indexOf(`--${name}`);
+  if (at === -1) return undefined;
+  return args[at + 1];
+}
+
+async function cmdInit(args: string[]): Promise<void> {
+  const url = (flag(args, "url") ?? (await prompt("Nexul instance URL (e.g. https://deploy.example.com): "))).replace(/\/+$/, "");
+  let token = flag(args, "token");
+  if (!token) {
+    console.log(`\nMint a personal access token at ${url}/settings/security?tab=tokens (Your settings -> Security -> Tokens), then paste it below.\n`);
+    token = await prompt("Personal access token: ");
+  }
   closePrompts();
+  // The code's name and description replace the automation's when it connects, so start from the automation's own.
+  const id = flag(args, "id");
+  const named = id
+    ? await new ApiClient({ baseUrl: url, token }).automations.get<{ name: string; description: string }>(id)
+    : { name: "my-automation", description: "Describe what this automation does." };
   writeFileSync(CONFIG_FILE, `${JSON.stringify({ url, token }, null, 2)}\n`);
+  ignoreConfig();
+  if (!existsSync("tsconfig.json")) writeFileSync("tsconfig.json", TSCONFIG);
   if (!existsSync("src")) mkdirSync("src");
-  if (!existsSync(ENTRY_FILE)) writeFileSync(ENTRY_FILE, SCAFFOLD);
+  if (!existsSync(ENTRY_FILE)) writeFileSync(ENTRY_FILE, scaffold(named.name, named.description));
   if (!existsSync(PLAYS_FILE)) writeFileSync(PLAYS_FILE, playsDeclaration([]));
   console.log(`\nWrote ${CONFIG_FILE} and ${ENTRY_FILE}.`);
-  console.log("Next: create the automation itself in the Nexul UI (New automation) to get its id, then:");
-  console.log("  nexul dev            # fire fixture events at your handlers, no live effects");
-  console.log("  nexul types <id>     # type ctx.runPlay against the workspace's play names");
-  console.log("  nexul push <id>      # bundle and upload as a pending version");
+  const target = id ?? "<automation-id>";
+  console.log("Next: try your handlers on sample events, with no live effects, then upload the code as a pending version:");
+  console.log("  bunx nexul dev");
+  console.log(`  bunx nexul push ${target} "message"`);
+}
+
+// ignoreConfig keeps the personal access token in nexul.config.json out of git.
+function ignoreConfig(): void {
+  const current = existsSync(".gitignore") ? readFileSync(".gitignore", "utf8") : "";
+  if (current.split("\n").some((line) => line.trim() === CONFIG_FILE)) return;
+  const lead = current === "" || current.endsWith("\n") ? "" : "\n";
+  appendFileSync(".gitignore", `${lead}${CONFIG_FILE}\n`);
 }
 
 async function loadAutomation(): Promise<Automation<ConfigSchema>> {
@@ -164,8 +205,8 @@ async function cmdPush(automationId: string | undefined, message: string | undef
   await writePlayNames(api, automationId).catch((err: unknown) => {
     console.error(`could not refresh ${PLAYS_FILE}: ${err instanceof Error ? err.message : String(err)}`);
   });
-  const version = await api.automations.versions.push(automationId, code, message);
-  console.log(`pushed pending version: ${JSON.stringify(version)}`);
+  const version = await api.automations.versions.push<{ sequence: number }>(automationId, code, message);
+  console.log(`Pushed version ${version.sequence} as pending. Merge it on the automation's Versions tab in Nexul.`);
 }
 
 async function cmdPull(automationId: string | undefined, versionId: string | undefined): Promise<void> {
@@ -229,7 +270,7 @@ async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   switch (command) {
     case "init":
-      await cmdInit();
+      await cmdInit(rest);
       return;
     case "dev":
       await cmdDev();
