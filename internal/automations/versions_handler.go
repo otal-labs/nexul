@@ -18,6 +18,7 @@ func (h *Handler) versionRoutes(mux *httpx.ServeMux) {
 
 type pushVersionRequest struct {
 	Code    string `json:"code"`
+	Source  string `json:"source"`
 	Message string `json:"message"`
 }
 
@@ -27,7 +28,7 @@ func (h *Handler) pushVersion(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	v, err := h.versions.Push(r.Context(), actorID(r), r.PathValue("id"), req.Code, req.Message)
+	v, err := h.versions.Push(r.Context(), actorID(r), r.PathValue("id"), req.Code, req.Source, req.Message)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

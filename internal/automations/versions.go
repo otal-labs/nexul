@@ -26,14 +26,16 @@ const seedPusherID = "nexul-seed"
 
 // Version is immutable; merge/rollback repoints which version is active.
 type Version struct {
-	ID           string        `json:"id"`
-	AutomationID string        `json:"automation_id"`
-	Sequence     int           `json:"sequence"`
-	Code         string        `json:"code"`
-	PusherID     string        `json:"pusher_id"`
-	Message      string        `json:"message,omitempty"`
-	Status       VersionStatus `json:"status"`
-	CreatedAt    time.Time     `json:"created_at"`
+	ID           string `json:"id"`
+	AutomationID string `json:"automation_id"`
+	Sequence     int    `json:"sequence"`
+	Code         string `json:"code"`
+	// Source is the file the bundle in Code was built from, so pull and the diff show what its author wrote.
+	Source    string        `json:"source,omitempty"`
+	PusherID  string        `json:"pusher_id"`
+	Message   string        `json:"message,omitempty"`
+	Status    VersionStatus `json:"status"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
 // VersionsRepo is the consumer-side persistence contract for automation code versions.
@@ -65,7 +67,7 @@ func NewVersionsService(repo VersionsRepo, automations Repo, perm PermissionGate
 }
 
 // Push lands code as a pending version; it never activates itself, so the diff against active catches mistakes.
-func (s *VersionsService) Push(ctx context.Context, actorID, automationID, code, message string) (*Version, error) {
+func (s *VersionsService) Push(ctx context.Context, actorID, automationID, code, source, message string) (*Version, error) {
 	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsWrite); err != nil {
 		return nil, err
 	}
@@ -76,6 +78,7 @@ func (s *VersionsService) Push(ctx context.Context, actorID, automationID, code,
 		ID:           ids.New(),
 		AutomationID: automationID,
 		Code:         code,
+		Source:       source,
 		PusherID:     actorID,
 		Message:      strings.TrimSpace(message),
 		Status:       VersionPending,

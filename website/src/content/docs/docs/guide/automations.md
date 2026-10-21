@@ -49,7 +49,7 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 6. On the automation's **Versions** tab, read the diff against the active code and press **Merge**. The automation restarts on the new code.
 7. A new automation starts switched off. Switch it on at the top of its page, and its next event runs your code; each run shows on the **Runs** tab with its logs.
 
-`bunx nexul pull <automation-id>` fetches the active code back into `src/index.ts`. Run these commands with `bunx` from the project folder: a bare `nexul` is the command that installs and runs your instance, not the SDK's.
+Nexul keeps your `src/index.ts` beside the bundle it runs, so the **Versions** diff compares what you wrote, and `bunx nexul pull <automation-id>` writes the active version's `src/index.ts` back. Other files you import go into the bundle only, and a version pushed before an SDK that keeps sources (0.1.2) has nothing to pull; its diff shows the bundled code. Run these commands with `bunx` from the project folder: a bare `nexul` is the command that installs and runs your instance, not the SDK's.
 
 For unit tests, `createMockContext` from `@otal-labs/nexul-sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
 

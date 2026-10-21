@@ -4,7 +4,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useMergeAutomationVersion } from "@/hooks/AutomationVersionHooks";
-import type { AutomationVersionDiff as VersionDiffData } from "@/models/AutomationVersion";
+import { diffSides, type AutomationVersionDiff as VersionDiffData } from "@/models/AutomationVersion";
 import { cn } from "@/lib/utils";
 import { diffLines } from "@/utils/DiffUtility";
 
@@ -25,7 +25,8 @@ const lineClass = (type: "context" | "add" | "remove") =>
 export const AutomationVersionDiff = ({ automationId, diff }: AutomationVersionDiffProps) => {
   const merge = useMergeAutomationVersion(automationId);
   const pending = diff.pending;
-  const lines = useMemo(() => diffLines(diff.active?.code ?? "", pending?.code ?? ""), [diff.active, pending]);
+  const sides = useMemo(() => diffSides(diff), [diff]);
+  const lines = useMemo(() => diffLines(sides.before, sides.after), [sides]);
 
   return (
     <SettingsCard
@@ -49,6 +50,7 @@ export const AutomationVersionDiff = ({ automationId, diff }: AutomationVersionD
             <span className="terminal-window__dot" aria-hidden />
             <span className="terminal-window__title">
               #{diff.active?.sequence ?? 0} → #{pending.sequence}
+              {sides.bySource ? "" : " · bundled code"}
             </span>
           </div>
           <pre className="terminal-window__body max-h-96 overflow-y-auto whitespace-pre-wrap break-words">

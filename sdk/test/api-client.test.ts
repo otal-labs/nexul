@@ -49,10 +49,10 @@ describe("ApiClient", () => {
   it("wires the automations version-push helper to the right path and payload", async () => {
     const fetchImpl = fakeFetch({ status: 201, body: { id: "v1" } });
     const api = new ApiClient({ baseUrl: "https://x", token: "t", fetchImpl });
-    await api.automations.versions.push("auto-1", "console.log(1)", "initial");
+    await api.automations.versions.push("auto-1", "console.log(1)", "initial", "src");
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe("https://x/api/automations/auto-1/versions");
-    expect(JSON.parse(init!.body as string)).toEqual({ code: "console.log(1)", message: "initial" });
+    expect(JSON.parse(init!.body as string)).toEqual({ code: "console.log(1)", message: "initial", source: "src" });
   });
 
   it("lists one workspace's automations when given one, and every readable workspace's without", async () => {

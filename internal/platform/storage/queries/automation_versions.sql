@@ -1,5 +1,5 @@
 -- name: InsertAutomationVersion :exec
-INSERT INTO automation_versions (id, automation_id, sequence, code, pusher_id, message, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO automation_versions (id, automation_id, sequence, code, source, pusher_id, message, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeletePendingAutomationVersion :exec
 DELETE FROM automation_versions WHERE automation_id = ? AND status = ?;

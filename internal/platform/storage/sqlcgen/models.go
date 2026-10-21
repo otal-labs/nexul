@@ -141,6 +141,7 @@ type AutomationVersion struct {
 	Message      string
 	Status       string
 	CreatedAt    int64
+	Source       string
 }
 
 type Botwebhook struct {
