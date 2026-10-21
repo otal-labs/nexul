@@ -56,12 +56,12 @@ const INSTALL_LABEL: Record<NonNullable<T3Facts["install"]>, string> = {
   desktop_app: "desktop app",
 };
 
-// T3 Code's state as the row shows it: a closed desktop app asks to be opened, and a running one names its port.
-export const t3Status = (t3: T3Facts): { tone: SettingsStatusTone; text: string; detail: string } => {
-  const state = T3_STATE[t3.state];
+// T3 Code's state as the row shows it; an offline computer's last report is stale, so only the install it described stays.
+export const t3Status = (t3: T3Facts, offline: boolean): { tone: SettingsStatusTone; text: string; detail: string } => {
+  const installed = [t3.port && `port ${t3.port}`, t3.version, t3.install && INSTALL_LABEL[t3.install]];
+  if (offline) return { tone: "muted", text: "Unknown while offline", detail: installed.filter(Boolean).join(" · ") };
   const opened = t3.state === "not_running" && t3.install === "desktop_app" ? "Open T3 Code" : "";
-  const detail = [opened, t3.port && `port ${t3.port}`, t3.version, t3.install && INSTALL_LABEL[t3.install]].filter(Boolean).join(" · ");
-  return { ...state, detail };
+  return { ...T3_STATE[t3.state], detail: [opened, ...installed].filter(Boolean).join(" · ") };
 };
 
 export const SIGN_IN: Record<ProviderFacts["sign_in"], { tone: SettingsStatusTone; text: string }> = {

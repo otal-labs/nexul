@@ -60,7 +60,7 @@ interface ComputerDetailsProps {
 export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const lines = setup ? providerSetupLines(setup) : [];
   const pairing = stillPairing(computer);
-  const t3 = computer.facts && t3Status(computer.facts.t3);
+  const t3 = computer.facts && t3Status(computer.facts.t3, computer.runner?.connected === false);
   const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
     <dl className="@container space-y-3 rounded-md bg-surface-2 p-3">
