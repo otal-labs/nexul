@@ -4,6 +4,8 @@ Amended by ADR 0095: an automation hears only the events of its own workspace, p
 
 Amended by ADR 0075: each automation is placed on one automations host, which fetches its assignments and the host-scoped tokens its workers dial in with.
 
+Amended: an automation runs only on an automations host. Code dialing in with the automation's own token competes with its host for the one connection, and every automation is placed on a host, so running it elsewhere means adding a host on that machine and placing it there. The SDK scaffolds no way to run it outside one.
+
 Amended: a disabled automation is delivered nothing, checked before every event, and enabling it moves its cursor to the newest event, so what happened while it was off is skipped rather than replayed. The cursor resumes downtime, not a deliberate pause.
 
 Amended: switching an automation off also refuses its credentials. Its token and its host tokens are refused on every `/api/` route, its own record included, and a host token cannot dial in. Its own token may still dial in, because a new automation is off until its code has announced itself: the announce is recorded and the hello carries its config, but no secrets, and no event is delivered. Switching it either way drops its live connection, and switching it back on lets the same token work again.
