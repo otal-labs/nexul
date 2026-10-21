@@ -49,7 +49,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotNil(t, tool.InputSchema, tool.Name)
 	}
 	assert.Equal(t, []string{
-		"computer_list", "computer_create", "computer_pair", "computer_delete",
+		"computer_list", "computer_create", "computer_pair", "computer_delete", "computer_project_create",
 		"computer_setup_run", "computer_setup_update", "computer_mcp_token_create", "computer_mcp_token_delete", "skill_get",
 	}, names)
 }
@@ -65,6 +65,7 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		{"pair without a computer", "computer_pair", `{"name": "VPS"}`},
 		{"pair with a token, as before the Nexul app", "computer_pair", `{"id": "c1", "token": "tok"}`},
 		{"delete without an id", "computer_delete", `{}`},
+		{"project create without a repository", "computer_project_create", `{"id": "c1"}`},
 		{"setup run without a computer", "computer_setup_run", `{}`},
 		{"setup run with model but no provider", "computer_setup_run", `{"computer_id": "c1", "model": "gpt-big"}`},
 		{"setup run with provider and models", "computer_setup_run", `{"computer_id": "c1", "provider": "codex", "models": {"codex": "gpt-mini"}}`},

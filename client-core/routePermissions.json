@@ -194,6 +194,7 @@
   "POST /api/pairing/computers/tunnel": ["none"],
   "POST /api/pairing/computers/{id}/mcp-token": ["none"],
   "POST /api/pairing/computers/{id}/pair": ["none"],
+  "POST /api/pairing/computers/{id}/projects": ["none"],
   "POST /api/pairing/computers/{id}/repair": ["none"],
   "POST /api/pairing/computers/{id}/setup/providers/{provider}/retry": ["none"],
   "POST /api/pairing/computers/{id}/setup/runs": ["none"],

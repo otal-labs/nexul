@@ -37,6 +37,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/pairing/computers/{id}/mcp-token", h.mintMCPToken)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}/mcp-token", h.revokeMCPToken)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/projects", h.cloneProject)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers", h.listContainers)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
@@ -73,6 +74,24 @@ func (h *Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"projects": projects})
+}
+
+type cloneProjectRequest struct {
+	Repository string `json:"repository"`
+}
+
+func (h *Handler) cloneProject(w http.ResponseWriter, r *http.Request) {
+	var req cloneProjectRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	project, err := h.svc.CloneProject(r.Context(), actorID(r), r.PathValue("id"), req.Repository)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, project)
 }
 
 func (h *Handler) listProviders(w http.ResponseWriter, r *http.Request) {

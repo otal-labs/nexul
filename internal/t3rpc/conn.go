@@ -561,6 +561,8 @@ type ExitCause struct {
 	Error struct {
 		Tag     string `json:"_tag"`
 		Message string `json:"message"`
+		// Detail is the human sentence some typed errors carry, such as a clone's "Destination path already exists".
+		Detail string `json:"detail"`
 	} `json:"error"`
 }
 
@@ -578,6 +580,16 @@ func (e *ExitError) Failed(errorTag string) bool {
 		}
 	}
 	return false
+}
+
+// Detail is the first typed failure's human sentence, empty when none carries one.
+func (e *ExitError) Detail() string {
+	for _, c := range e.Causes {
+		if c.Tag == "Fail" && c.Error.Detail != "" {
+			return c.Error.Detail
+		}
+	}
+	return ""
 }
 
 func newExitError(method string, cause json.RawMessage) *ExitError {

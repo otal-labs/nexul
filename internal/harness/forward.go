@@ -51,6 +51,10 @@ func (f forward) ListProjects(ctx context.Context, s Session) ([]Project, error)
 	return follow(ctx, f, s, func(c Client) ([]Project, error) { return c.ListProjects(ctx, s) })
 }
 
+func (f forward) CloneProject(ctx context.Context, s Session, title, remoteURL, path string) (Project, error) {
+	return follow(ctx, f, s, func(c Client) (Project, error) { return c.CloneProject(ctx, s, title, remoteURL, path) })
+}
+
 func (f forward) ListProviders(ctx context.Context, s Session) ([]Provider, error) {
 	return follow(ctx, f, s, func(c Client) ([]Provider, error) { return c.ListProviders(ctx, s) })
 }

@@ -179,6 +179,22 @@ export const useFetchHarnessProjects = (computerId: string) =>
     staleTime: 60_000,
   });
 
+// The new project lands in the cached list at once, since T3 registers it before the clone finishes.
+export const useCloneHarnessProject = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (repository: string) =>
+      (await api.post<HarnessProject>(`/api/pairing/computers/${computerId}/projects`, { repository })).data,
+    ),
+    onSuccess: (project, repository) => {
+      client.setQueryData<HarnessProject[]>([getHarnessProjectsKey, computerId], (old) => old && [...old, project]);
+      void client.invalidateQueries({ queryKey: [getHarnessProjectsKey, computerId], exact: true });
+      toast.success(`Cloning ${repository} into ${project.path}`);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // Same live-server caveat as useFetchHarnessProjects: falls back to manual provider/model entry on error.
 export const useFetchHarnessProviders = (computerId: string) =>
   useQuery({
