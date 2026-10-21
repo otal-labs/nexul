@@ -311,6 +311,18 @@ describe("ComputersSection", () => {
       expect(screen.queryByRole("button", { name: /add this computer again/i })).not.toBeInTheDocument();
     });
 
+    it("doesn't call T3 Code running from the last report of a computer that went offline", async () => {
+      const facts = { ...answering, t3: { ...answering.t3, version: "0.1.1", install: "command_line" } };
+      serveComputers([computer({ server_url: relay, runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" }, facts })]);
+      const user = userEvent.setup();
+      renderSection();
+
+      await user.click(await screen.findByRole("button", { name: "Home" }));
+      expect(screen.getByText("Unknown while offline")).toBeInTheDocument();
+      expect(screen.getByText("port 3773 · 0.1.1 · command line")).toBeInTheDocument();
+      expect(screen.queryByText("Running")).not.toBeInTheDocument();
+    });
+
     it("offers Add this computer again once its app is gone, with a fresh command for the same row", async () => {
       serveComputers([computer({ server_url: relay, runner: undefined, token_expires_at: "0001-01-01T00:00:00Z" })]);
       const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.fresh";
