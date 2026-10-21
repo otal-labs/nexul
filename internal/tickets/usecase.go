@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -32,6 +33,7 @@ type Service struct {
 	docs     SourceDocs
 	people   ProjectPeople
 	live     LiveSessions
+	prStates PRStates
 	now      func() time.Time
 }
 
@@ -43,6 +45,14 @@ type LiveSessions interface {
 
 // SetLiveSessions wires the editing rooms a body write must win over; without it a write touches only the ticket.
 func (s *Service) SetLiveSessions(live LiveSessions) { s.live = live }
+
+// PRStates reads a pull request's state from its git host, so a link made after the merge records it merged (ADR 0017).
+type PRStates interface {
+	PRState(ctx context.Context, owner, repo string, number int) (PRState, error)
+}
+
+// SetPRStates wires the git host lookup; without it every new link starts open and waits for its webhook.
+func (s *Service) SetPRStates(p PRStates) { s.prStates = p }
 
 // Gate is the permission check a ticket passes through before the caller touches it (the access domain, ADR 0042).
 type Gate interface {
@@ -884,10 +894,27 @@ func (s *Service) LinkPR(ctx context.Context, id string, ref PRRef) error {
 	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return fmt.Errorf("link pr to ticket %s: %w", id, err)
 	}
-	if err := s.repo.LinkPR(ctx, id, ref, PRStateOpen); err != nil {
+	state := s.currentPRState(ctx, ref)
+	if err := s.repo.LinkPR(ctx, id, ref, state); err != nil {
 		return fmt.Errorf("link pr to ticket %s: %w", id, err)
 	}
-	return nil
+	if state == PRStateOpen {
+		return nil
+	}
+	return s.evaluateCompletion(ctx, id)
+}
+
+// currentPRState falls back to open, since the merge webhook still finishes a ticket whose link exists by then.
+func (s *Service) currentPRState(ctx context.Context, ref PRRef) PRState {
+	if s.prStates == nil {
+		return PRStateOpen
+	}
+	state, err := s.prStates.PRState(ctx, ref.Owner, ref.Repo, ref.Number)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("read pull request state for a new link", "owner", ref.Owner, "repo", ref.Repo, "number", ref.Number, "error", err)
+		return PRStateOpen
+	}
+	return state
 }
 
 // LinkBranch allows a branch to link to multiple tickets; a duplicate link is a no-op.

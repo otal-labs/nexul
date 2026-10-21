@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -215,6 +216,27 @@ func TestTicketLinks_Integration_AMergedBlockerIsClearedBeforeDone(t *testing.T)
 	uncleared, err := f.svc.UnclearedBlockers(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, uncleared)
+}
+
+type mergedOnHost struct{}
+
+func (mergedOnHost) PRState(context.Context, string, string, int) (tickets.PRState, error) {
+	return tickets.PRStateMerged, nil
+}
+
+func TestTicketLinks_Integration_ABlockerLinkedAfterItsMergeIsCleared(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	f := newUnblockFixture(t, newTestStore(t), []string{"b"})
+	f.move(t, "b", workspace.StatusKindTesting)
+	f.svc.SetPRStates(mergedOnHost{})
+	require.NoError(t, f.svc.LinkPR(ctx, f.ids["b"], tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}))
+
+	set, err := f.svc.Links(ctx, f.ids["a"])
+	require.NoError(t, err)
+	assert.False(t, set.Blocked)
+	require.Len(t, set.BlockedBy, 1)
+	assert.True(t, set.BlockedBy[0].Finished)
 }
 
 func TestTicketsRepo_Integration_UnblockedFiresOncePerUnblock(t *testing.T) {

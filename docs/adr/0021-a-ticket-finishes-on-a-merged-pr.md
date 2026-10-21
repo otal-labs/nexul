@@ -14,3 +14,6 @@ the point: the "is this work done" rule lives in the domain, and automations
 only react to the answer, so a second automation can never disagree about
 what finished means. Re-evaluation runs on both merge and close events,
 because closing the last open PR is as much a state change as merging one.
+Linking a PR reads its state from the git host too, so a PR linked after it
+merged finishes the ticket then, instead of waiting for a webhook that
+already fired.

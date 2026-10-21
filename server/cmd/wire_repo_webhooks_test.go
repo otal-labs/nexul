@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -225,4 +226,21 @@ func TestHookedProjects_RemoveRepo_DeletesTheHookBeforeDetaching(t *testing.T) {
 
 	require.NoError(t, p.RemoveRepo(t.Context(), "acme", "app"))
 	assert.Equal(t, []string{"list", "delete", "detach"}, host.calls)
+}
+
+func TestTicketPRStates_MapsTheHostsAnswer(t *testing.T) {
+	t.Parallel()
+	host := &fakeHookHost{prs: map[int]*gitprovider.PR{
+		1: {State: gitprovider.PRStateClosed, Merged: true},
+		2: {State: gitprovider.PRStateClosed},
+		3: {State: gitprovider.PRStateOpen},
+	}}
+	states := ticketPRStates{git: host}
+	for number, want := range map[int]tickets.PRState{1: tickets.PRStateMerged, 2: tickets.PRStateClosed, 3: tickets.PRStateOpen} {
+		got, err := states.PRState(t.Context(), "acme", "app", number)
+		require.NoError(t, err)
+		assert.Equal(t, want, got, "pr %d", number)
+	}
+	_, err := states.PRState(t.Context(), "acme", "app", 9)
+	require.Error(t, err)
 }
