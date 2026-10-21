@@ -46,13 +46,16 @@ func (r *PairingRepo) SaveComputer(ctx context.Context, c pairing.Computer, evts
 	})
 }
 
-// ComputerTunnelHostnameExists reports whether host is a computer tunnel's hostname, the only hosts the Access headers go to.
-func (r *PairingRepo) ComputerTunnelHostnameExists(ctx context.Context, host string) (bool, error) {
-	exists, err := r.q.PairingComputerTunnelHostnameExists(ctx, host)
+func (r *PairingRepo) ListTunnelComputers(ctx context.Context) ([]pairing.Computer, error) {
+	rows, err := r.q.ListPairingTunnelComputers(ctx)
 	if err != nil {
-		return false, fmt.Errorf("look up computer tunnel hostname: %w", err)
+		return nil, fmt.Errorf("list computers on a tunnel: %w", err)
 	}
-	return exists, nil
+	out := make([]pairing.Computer, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toPairingComputer(row))
+	}
+	return out, nil
 }
 
 func (r *PairingRepo) GetComputer(ctx context.Context, userID, id string) (*pairing.Computer, error) {

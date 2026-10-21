@@ -366,9 +366,9 @@ installs the Nexul app there (a personal runner) and T3 Code when it is
 missing, and the dialog shows the computer connect, T3 Code found and the
 pairing done through the app's own connection, then setup. No Cloudflare
 tunnel or domain is involved, and the app keeps T3 Code paired and running.
-Linux, macOS and Windows work today, and a computer paired through a tunnel
-or by URL moves to the app from its row, keeping its links, setup and
-history; the tunnel is deleted once the app has paired it. Setup gives each
+Linux, macOS and Windows work today, and it is the only way to pair: a
+computer paired through a tunnel or by URL runs nothing until it moves to the
+app from its row, keeping its links, setup and history. Setup gives each
 provider its own switch and run, and sets them up side by side; a provider
 switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).

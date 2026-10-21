@@ -3,7 +3,7 @@ import { ChevronRight, Plus, RefreshCw, Wrench } from "lucide-react";
 import { useSearchParams } from "react-router";
 
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
-import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
+import { SetupComputerDialog } from "@/components/pairing/SetupComputerDialog";
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
@@ -167,7 +167,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
           </div>
         </div>
       </div>
-      {!pairing && <PairComputerDialog existing={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}
+      {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}
     </li>
   );
 };

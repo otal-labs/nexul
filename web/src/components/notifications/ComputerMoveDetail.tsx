@@ -9,7 +9,7 @@ export const ComputerMoveDetail = () => (
   <EmptyState
     icon={LaptopIcon}
     title="Move your computers to the Nexul app"
-    message="Pairing through a Cloudflare tunnel or by URL is going away. In Computers, press Move on each computer paired that way: one command installs the Nexul app, Nexul keeps the computer paired through it with no pairing link, then removes its tunnel."
+    message="Pairing through a Cloudflare tunnel or by URL was retired, so agent work runs only on computers added with the Nexul app. In Computers, press Move on each computer paired that way: one command installs the Nexul app, and Nexul pairs the computer through it, keeping its projects, setup and history."
     action={
       <Button asChild size="sm">
         <Link to="/settings/pairing">Open Computers</Link>

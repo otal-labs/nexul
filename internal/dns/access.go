@@ -21,18 +21,14 @@ type ServiceToken struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// AccessAppProvider guards one hostname with an Access app admitting only one service token.
+// AccessAppProvider removes the Access apps that closed computer tunnel hostnames (ADR 0062, retired by ADR 0146).
 type AccessAppProvider interface {
-	// CreateAccessApp creates a self-hosted app for hostname with an inline service-auth policy and returns its id.
-	CreateAccessApp(ctx context.Context, hostname, serviceTokenID string) (string, error)
 	// DeleteAccessApp removes the app and its inline policy; deleting an already-absent one is a no-op success.
 	DeleteAccessApp(ctx context.Context, appID string) error
 }
 
-// ServiceTokenProvider manages Access service tokens; the secret is only ever returned on create and rotate.
+// ServiceTokenProvider removes the instance's Access service token.
 type ServiceTokenProvider interface {
-	CreateServiceToken(ctx context.Context, name string) (*ServiceToken, error)
-	RotateServiceToken(ctx context.Context, tokenID string) (*ServiceToken, error)
 	// DeleteServiceToken removes a token; deleting an already-absent one is a no-op success.
 	DeleteServiceToken(ctx context.Context, tokenID string) error
 }

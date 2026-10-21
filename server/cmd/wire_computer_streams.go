@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync/atomic"
 
-	"github.com/otal-labs/nexul/internal/dns/cloudflare"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -141,24 +140,22 @@ func (r *runnerComputers) OpenRunnerLogs(ctx context.Context, computerID string,
 	return runnerLogFeed{feed: feed}, nil
 }
 
-// harnessHTTPClient is both T3 clients' client: a computer's address dials through its runner, the rest as before.
-func harnessHTTPClient(computers computerDialer, access cloudflare.AccessCredentials) *http.Client {
+// errNotThroughRunner refuses an address that is not a computer's runner, which is every computer paired before the
+// Nexul app until it moves (ADR 0146).
+var errNotThroughRunner = fmt.Errorf("%w: Nexul reaches T3 Code only through the Nexul app on the computer; add this computer with the Nexul app", apperrs.ErrInvalid)
+
+// harnessHTTPClient is both T3 clients' client: it dials a computer's T3 Code through its runner and nothing else.
+func harnessHTTPClient(computers computerDialer) *http.Client {
 	base := http.DefaultTransport.(*http.Transport).Clone()
-	dial, proxy := base.DialContext, base.Proxy
-	base.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	base.DialContext = func(ctx context.Context, _, addr string) (net.Conn, error) {
 		host, _, err := net.SplitHostPort(addr)
 		if id, ok := strings.CutSuffix(host, pairing.ComputerHostSuffix); ok && err == nil {
 			return computers.DialComputer(ctx, id)
 		}
-		return dial(ctx, network, addr)
+		return nil, errNotThroughRunner
 	}
-	base.Proxy = func(req *http.Request) (*url.URL, error) {
-		if isComputerHost(req) {
-			return nil, nil
-		}
-		return proxy(req)
-	}
-	return &http.Client{Transport: &cloudflare.AccessTransport{Base: asLoopback{base}, Credentials: access}}
+	base.Proxy = nil
+	return &http.Client{Transport: asLoopback{base}}
 }
 
 // asLoopback sends a computer's request with the Host a local client sends T3 Code.

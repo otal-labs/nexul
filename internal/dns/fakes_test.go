@@ -881,23 +881,11 @@ type fakeAccessProvider struct {
 	err     error
 	apps    map[string]string
 	tokens  map[string]string
-	minted  int
 	deleted []string
 }
 
 func newFakeAccessProvider() *fakeAccessProvider {
 	return &fakeAccessProvider{apps: map[string]string{}, tokens: map[string]string{}}
-}
-
-func (f *fakeAccessProvider) CreateAccessApp(_ context.Context, hostname, serviceTokenID string) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.err != nil {
-		return "", f.err
-	}
-	id := "app-" + hostname
-	f.apps[id] = serviceTokenID
-	return id, nil
 }
 
 func (f *fakeAccessProvider) DeleteAccessApp(_ context.Context, appID string) error {
@@ -908,31 +896,6 @@ func (f *fakeAccessProvider) DeleteAccessApp(_ context.Context, appID string) er
 	}
 	delete(f.apps, appID)
 	return nil
-}
-
-func (f *fakeAccessProvider) CreateServiceToken(_ context.Context, _ string) (*ServiceToken, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.err != nil {
-		return nil, f.err
-	}
-	f.minted++
-	id := "st-" + itoa(f.minted)
-	f.tokens[id] = "secret-" + itoa(f.minted)
-	return &ServiceToken{ID: id, ClientID: "cid-" + id, ClientSecret: f.tokens[id]}, nil
-}
-
-func (f *fakeAccessProvider) RotateServiceToken(_ context.Context, tokenID string) (*ServiceToken, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.err != nil {
-		return nil, f.err
-	}
-	if _, ok := f.tokens[tokenID]; !ok {
-		return nil, apperrs.ErrNotFound
-	}
-	f.tokens[tokenID] = "rotated-" + tokenID
-	return &ServiceToken{ID: tokenID, ClientID: "cid-" + tokenID, ClientSecret: f.tokens[tokenID]}, nil
 }
 
 func (f *fakeAccessProvider) DeleteServiceToken(_ context.Context, tokenID string) error {

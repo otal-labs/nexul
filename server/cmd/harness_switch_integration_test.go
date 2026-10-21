@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"net"
+	"net/url"
 	"testing"
 	"time"
 
@@ -45,13 +47,48 @@ func countSwitched(t *testing.T, s *storage.Store) int {
 	return n
 }
 
+// switchRunner is a laptop's connected runner whose T3 Code is f, reached on loopback as the relay would.
+type switchRunner struct{ f *t3rpctest.Server }
+
+func (switchRunner) EnrollComputer(context.Context, string, string) (pairing.Enrollment, error) {
+	return pairing.Enrollment{}, nil
+}
+
+func (switchRunner) ComputerRunner(context.Context, string) (pairing.ComputerRunner, error) {
+	return pairing.ComputerRunner{Connected: true}, nil
+}
+
+func (r switchRunner) PairingToken(context.Context, string) (string, error) {
+	return r.f.PairToken, nil
+}
+
+func (switchRunner) RetireComputerRunner(context.Context, string) error { return nil }
+
+func (r switchRunner) DialComputer(ctx context.Context, _ string) (net.Conn, error) {
+	u, err := url.Parse(r.f.URL)
+	if err != nil {
+		return nil, err
+	}
+	var d net.Dialer
+	return d.DialContext(ctx, "tcp", u.Host)
+}
+
 func TestIntegration_FreshPairOnProtocol2_StoresTheNewKindWithOneToken(t *testing.T) {
 	t.Parallel()
 	f := t3rpctest.New(t)
 	f.Protocol = 2
-	svc, s := pairingOverRegistry(t, f)
+	s := storage.New(migrated.DB(t), switchTestKey)
+	seedMentionsUser(t, s, "u1")
+	runner := switchRunner{f: f}
+	var svc *pairing.Service
+	harnesses := harnessRegistry(t3rpc.Options{HTTPClient: harnessHTTPClient(runner), RPCTimeout: 5 * time.Second}, func(ctx context.Context, sess harness.Session, to harness.Kind) error {
+		return svc.SwitchHarness(ctx, sess, to)
+	})
+	svc = pairing.NewService(pairing.Config{Repo: s.Pairing, Harnesses: harnesses, EncryptionKey: switchTestKey, Runners: runner})
+	now := time.Now().UTC()
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), pairing.Computer{ID: "c1", UserID: "u1", Kind: harness.KindT3Code, Name: "Laptop", CreatedAt: now, UpdatedAt: now}))
 
-	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Laptop", f.URL, f.PairToken)
+	c, err := svc.PairComputer(t.Context(), "u1", "c1")
 	require.NoError(t, err)
 
 	assert.Equal(t, harness.KindT3CodeV2, c.Kind)

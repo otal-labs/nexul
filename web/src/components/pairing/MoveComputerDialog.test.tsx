@@ -75,32 +75,28 @@ describe("MoveComputerDialog", () => {
     });
   });
 
-  it("moves a tunnel computer: the command for its own id, the checks, and only once its tunnel is gone the cloudflared removal", async () => {
+  it("moves a computer paired before the app: the command for its own id, the checks, then the cloudflared removal", async () => {
+    listed = [byURL];
     const user = userEvent.setup();
     const client = renderSection();
 
     expect(await screen.findByText("Move this computer to the Nexul app")).toBeInTheDocument();
-    expect(screen.getByText(/pairing through a tunnel is going away/i)).toBeInTheDocument();
+    expect(screen.getByText(/agent work can't run here until it moves/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Move" }));
     expect(await screen.findByText(command)).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/enrollments", { id: "c1" });
     expect(screen.getByRole("heading", { name: "Move alice-laptop to the Nexul app" })).toBeInTheDocument();
     expect(within(check("Paired")).getByText("Waiting")).toBeInTheDocument();
 
-    listed = [{ ...tunnelLaptop, runner: connected, facts: answering }];
+    listed = [{ ...byURL, runner: connected, facts: answering }];
     await act(() => followFrame(pairingFollower, "computer.facts_changed", { computer_id: "c1" }, client));
     expect(await within(check("T3 Code found")).findByText("Found")).toBeInTheDocument();
-    expect(within(check("Paired")).getByText("Pairing"), "its tunnel session is not the move").toBeInTheDocument();
-
-    listed = [{ ...moved, runner: connected, facts: answering, tunnel: tunnelLaptop.tunnel! }];
-    await act(() => followFrame(pairingFollower, "computer.paired", { computer_id: "c1" }, client));
-    expect(await within(check("Paired")).findByText("Paired")).toBeInTheDocument();
+    expect(within(check("Paired")).getByText("Pairing"), "its old session is not the move").toBeInTheDocument();
     expect(screen.queryByText("sudo cloudflared service uninstall")).not.toBeInTheDocument();
 
     listed = [{ ...moved, runner: connected, facts: answering }];
-    await act(() => followFrame(pairingFollower, "computer.tunnel_removed", { computer_id: "c1" }, client));
+    await act(() => followFrame(pairingFollower, "computer.paired", { computer_id: "c1" }, client));
     expect(await screen.findByRole("heading", { name: "alice-laptop moved to the Nexul app" })).toBeInTheDocument();
-    expect(screen.getByText(/tunnel, DNS record and Access app are deleted/)).toBeInTheDocument();
     expect(screen.getByText("sudo cloudflared service uninstall")).toBeInTheDocument();
     expect(screen.queryByText("Move this computer to the Nexul app"), "the row is the app's row now").not.toBeInTheDocument();
   });
@@ -118,20 +114,5 @@ describe("MoveComputerDialog", () => {
     expect(mocks.post, "the app is already there, so no new command").not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Pair now" }));
     expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/pair");
-  });
-
-  it("moves a computer paired by URL with nothing to remove afterwards", async () => {
-    listed = [byURL];
-    const user = userEvent.setup();
-    const client = renderSection();
-
-    expect(await screen.findByText(/pairing by url is going away/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(await screen.findByText(/nexul stops reaching it at its address/i)).toBeInTheDocument();
-
-    listed = [{ ...moved, runner: connected, facts: answering }];
-    await act(() => followFrame(pairingFollower, "computer.paired", { computer_id: "c1" }, client));
-    expect(await screen.findByRole("heading", { name: "alice-laptop moved to the Nexul app" })).toBeInTheDocument();
-    expect(screen.queryByText("sudo cloudflared service uninstall")).not.toBeInTheDocument();
   });
 });

@@ -410,17 +410,17 @@ func TestPairingRepo_ComputerTunnel_SurvivesRepairAndMarksItsHostname(t *testing
 	require.NoError(t, err)
 	assert.Nil(t, got.Tunnel)
 
-	for host, want := range map[string]bool{"laptop-ab12cd34.example.com": true, "vps.example.com": false, "": false} {
-		exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, host)
-		require.NoError(t, err)
-		assert.Equal(t, want, exists, host)
-	}
+	onTunnel, err := s.Pairing.ListTunnelComputers(ctx)
+	require.NoError(t, err)
+	require.Len(t, onTunnel, 1, "only the computer holding a tunnel, whoever owns it")
+	assert.Equal(t, "c1", onTunnel[0].ID)
+	assert.Equal(t, c.Tunnel, onTunnel[0].Tunnel)
 
 	removed := eventbus.OutboxEvent{ID: "evt-removed", Topic: pairing.TopicTunnelRemoved, Payload: map[string]string{"computer_id": "c1"}}
 	require.NoError(t, s.Pairing.DeleteComputer(ctx, "u1", "c1", removed))
-	exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, "laptop-ab12cd34.example.com")
+	onTunnel, err = s.Pairing.ListTunnelComputers(ctx)
 	require.NoError(t, err)
-	assert.False(t, exists)
+	assert.Empty(t, onTunnel)
 
 	pending, err := s.Outbox.Unpublished(ctx, 10)
 	require.NoError(t, err)
@@ -622,9 +622,9 @@ func TestPairingRepo_ClearTunnel_ForgetsTheTunnelAndKeepsTheComputer(t *testing.
 	assert.Nil(t, got.Tunnel)
 	assert.Equal(t, c.BearerToken, got.BearerToken)
 	assert.Equal(t, at, got.UpdatedAt)
-	exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, "laptop-ab12cd34.example.com")
+	onTunnel, err := s.Pairing.ListTunnelComputers(ctx)
 	require.NoError(t, err)
-	assert.False(t, exists, "Access headers no longer go to the old hostname")
+	assert.Empty(t, onTunnel, "the next boot's cleanup finds nothing left")
 	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-1'`))
 	assert.Zero(t, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-0'`))
 }

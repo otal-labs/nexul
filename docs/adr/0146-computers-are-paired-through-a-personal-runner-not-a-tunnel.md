@@ -1,6 +1,6 @@
 # Computers are paired through a personal runner, not a Cloudflare tunnel
 
-Status: proposed, with the personal runners effort (`.scratch/personal-runners/`).
+Status: accepted.
 
 Supersedes ADR 0062 and ADR 0142. Amends ADR 0031, ADR 0073, ADR 0074 and ADR 0102.
 
@@ -108,6 +108,9 @@ enrolled connection; the pasted command only installs.
   root-owned unit; on Windows everything is the person's, and the runner removes it itself.
 - A Windows computer is offline while its person is logged off, where Linux and macOS keep it connected from boot.
 - The retired tunnel routes stay mounted and answer 410, because ADR 0082 never removes a route.
+- The owner removed tunnel and URL pairing on 2026-10-21, ten days after the move notice shipped rather than 30: the
+  computers still paired that way keep their rows and run nothing until they move, and each boot deletes the tunnels left
+  at Cloudflare until none is.
 - The move notice is one inbox notification per owner, placed in the first workspace they joined because a computer
   belongs to no workspace. Each boot sends it to any owner of a tunnel or URL computer who has none yet, and its stored
   receipt is when that owner's 30 days start. A tunnel whose teardown Cloudflare refuses after the move is retried on

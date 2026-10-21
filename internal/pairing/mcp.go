@@ -1,7 +1,6 @@
 package pairing
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -17,17 +16,17 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// MCPTools returns the computer tools: pairing, the tunnel token, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
+// MCPTools returns the computer tools: pairing, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerTunnelTokenGetTool(s),
+		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s),
 		computerSetupRunTool(s), computerSetupUpdateTool(s), computerMCPTokenCreateTool(s), computerMCPTokenDeleteTool(s),
 		skillGetTool(),
 	}
 }
 
 type computerListIn struct {
-	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its tunnel's live status. Omit to list every computer you own."`
+	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its T3 projects and containers. Omit to list every computer you own."`
 	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also return the last lines one Docker container on that computer printed. Omit it for the computer alone."`
 	RunnerLogs    *computerRunnerLogsIn    `json:"runner_logs,omitzero" jsonschema:"With id only: also return the last lines the computer's Nexul app (its runner) logged. Omit it for the computer alone."`
 	mcptool.PageArgs
@@ -55,15 +54,12 @@ type computerContainerLogs struct {
 
 type computerCreateIn struct {
 	Name string `json:"name,omitempty" jsonschema:"The computer's name, for example Alice Laptop. Omit it to name the computer after the hostname it reports when its runner enrolls."`
-	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired, or to move a computer paired through a tunnel or by URL to the Nexul app. Omit it to add a new computer."`
-	Port int    `json:"port,omitzero" jsonschema:"Ignored: the runner finds the port T3 Code serves on by itself."`
+	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired, or to move a computer paired before the Nexul app onto it. Omit it to add a new computer."`
 }
 
 type computerPairIn struct {
-	Token     string `json:"token,omitempty" jsonschema:"Only for a computer added before the Nexul app, with a tunnel or by URL: the one-time token t3 pair prints on it, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients. Omit it for a computer added with computer_create, which pairs through its Nexul app."`
-	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair now; alone, it pairs a computer added with computer_create through its Nexul app. Omit it to pair a new computer by name and server_url."`
-	Name      string `json:"name,omitempty" jsonschema:"The computer's name, for example Onik Laptop. Required without id; with id it renames the computer, and omitting it keeps the name."`
-	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, for example https://vps.example.com:3773. Required without id; with id it moves a computer paired by URL, and omitting it keeps the address. A tunnel computer always pairs over its own hostname."`
+	ID   string `json:"id" jsonschema:"One of your computers, from computer_list, to pair or re-pair now through its Nexul app."`
+	Name string `json:"name,omitempty" jsonschema:"A new name for the computer, for example Alice Laptop; with it the call only renames the computer. Omit it to pair."`
 }
 
 type computerDeleteIn struct {
@@ -95,33 +91,30 @@ type computerSetupUpdateIn struct {
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
 type computerResult struct {
-	ID                string                 `json:"id"`
-	Name              string                 `json:"name"`
-	Kind              harness.Kind           `json:"kind"`
-	ServerURL         string                 `json:"server_url"`
-	Paired            bool                   `json:"paired"`
-	SessionExpiresAt  *time.Time             `json:"session_expires_at,omitempty"`
-	HarnessVersion    string                 `json:"harness_version,omitempty"`
-	Tunnel            *ComputerTunnel        `json:"tunnel,omitempty"`
-	TunnelStatus      *TunnelStatus          `json:"tunnel_status,omitempty"`
-	Runner            *ComputerRunner        `json:"runner,omitempty"`
-	PairError         string                 `json:"pair_error,omitempty"`
-	TunnelStatusError string                 `json:"tunnel_status_error,omitempty"`
-	Setup             *Setup                 `json:"setup,omitempty"`
-	MCPToken          *MCPToken              `json:"mcp_token,omitempty"`
-	T3Projects        []harness.Project      `json:"t3_projects,omitempty"`
-	T3ProjectsError   string                 `json:"t3_projects_error,omitempty"`
-	Facts             *Facts                 `json:"facts,omitempty"`
-	FactsAt           *time.Time             `json:"facts_at,omitempty"`
-	Containers        []Container            `json:"containers,omitempty"`
-	ContainersError   string                 `json:"containers_error,omitempty"`
-	ContainerLogs     *computerContainerLogs `json:"container_logs,omitempty"`
-	RunnerLogs        *computerRunnerLogs    `json:"runner_logs,omitempty"`
-	Shared            *SharedComputer        `json:"shared,omitempty"`
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	Kind             harness.Kind           `json:"kind"`
+	ServerURL        string                 `json:"server_url"`
+	Paired           bool                   `json:"paired"`
+	SessionExpiresAt *time.Time             `json:"session_expires_at,omitempty"`
+	HarnessVersion   string                 `json:"harness_version,omitempty"`
+	Runner           *ComputerRunner        `json:"runner,omitempty"`
+	PairError        string                 `json:"pair_error,omitempty"`
+	Setup            *Setup                 `json:"setup,omitempty"`
+	MCPToken         *MCPToken              `json:"mcp_token,omitempty"`
+	T3Projects       []harness.Project      `json:"t3_projects,omitempty"`
+	T3ProjectsError  string                 `json:"t3_projects_error,omitempty"`
+	Facts            *Facts                 `json:"facts,omitempty"`
+	FactsAt          *time.Time             `json:"facts_at,omitempty"`
+	Containers       []Container            `json:"containers,omitempty"`
+	ContainersError  string                 `json:"containers_error,omitempty"`
+	ContainerLogs    *computerContainerLogs `json:"container_logs,omitempty"`
+	RunnerLogs       *computerRunnerLogs    `json:"runner_logs,omitempty"`
+	Shared           *SharedComputer        `json:"shared,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
-	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner, PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt}
+	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner, PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
 	}
@@ -130,13 +123,12 @@ func toComputerResult(c Computer) computerResult {
 
 func computerListTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_list", "List paired computers",
-		"Lists the computers you own, each with its tunnel, its setup confirmation (overall and per provider, plus each "+
+		"Lists the computers you own, each with its setup confirmation (overall and per provider, plus each "+
 			"provider's newest setup turn), and its MCP token's metadata, never the token itself. Pass id to read one "+
-			"computer alone with its tunnel's live status: tunnel is Cloudflare's connector state (inactive, healthy, "+
-			"degraded, or down) and harness_reachable says whether T3 Code answers through the hostname; pairing can "+
-			"continue with computer_pair once both pass. One computer also lists its T3 projects as T3 Code reports them, "+
-			"the t3_project_id play_run takes. A computer with paired false has no harness session yet, and pair_error "+
-			"says why its last pairing through its Nexul app failed; one without setup.confirmed_at needs computer_setup_run "+
+			"computer alone with its T3 projects as T3 Code reports them, the t3_project_id play_run takes. A computer "+
+			"with paired false has no harness session yet, and pair_error says why its last pairing through its Nexul app "+
+			"failed; a computer with no runner was paired before the Nexul app and runs no agent work until computer_create "+
+			"with its id moves it. One without setup.confirmed_at needs computer_setup_run "+
 			"before agent work can use it. A computer with a runner carries its facts, which only you can read: its system, git "+
 			"name and email, free disk, T3 Code's state, install and port, and the providers (version, models, signed in or "+
 			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
@@ -186,7 +178,7 @@ func computerListTool(s *Service) mcptool.Tool {
 		})
 }
 
-// listedComputer adds the setup and MCP token reads, and the live tunnel status only when one computer was asked for.
+// listedComputer adds the setup and MCP token reads, and the T3 projects and containers only when one computer was asked for.
 func listedComputer(ctx context.Context, s *Service, userID string, c Computer, live bool) (computerResult, error) {
 	if c.Shared != nil {
 		r := computerResult{ID: c.ID, Name: c.SharedName(), Runner: c.Runner, Shared: c.Shared}
@@ -213,24 +205,10 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	if c.Facts != nil && c.Facts.Docker != nil && c.Facts.Docker.Available {
 		r.Containers, r.ContainersError = listedContainers(ctx, s, userID, c)
 	}
-	if c.Tunnel == nil {
-		return r, nil
-	}
-	status, err := s.ComputerTunnelStatus(ctx, userID, c.ID)
-	if err != nil {
-		// The live check is the one part that reaches Cloudflare; its failure must not hide the stored setup and token state.
-		logging.FromCtx(ctx).Warn("computer tunnel status unavailable", "computer_id", c.ID, "err", err)
-		r.TunnelStatusError = "Cloudflare tunnel status is unavailable right now; the rest of this computer's state is current."
-		if errors.Is(err, apperrs.ErrInvalid) {
-			r.TunnelStatusError = err.Error()
-		}
-		return r, nil
-	}
-	r.TunnelStatus = &status
 	return r, nil
 }
 
-// listedT3Projects asks the computer's harness for its projects; like the tunnel status, a failure is a line, not the call's.
+// listedT3Projects asks the computer's harness for its projects; a failure is a line, not the call's.
 func listedT3Projects(ctx context.Context, s *Service, userID, computerID string) ([]harness.Project, string) {
 	projects, err := s.ListProjects(ctx, userID, computerID)
 	if err != nil {
@@ -303,10 +281,9 @@ func computerCreateTool(s *Service) mcptool.Tool {
 			"administrator and installs a task that runs as them while they are logged in. Once the "+
 			"runner connects, computer_list shows runner.connected on the computer. Pass id instead of name for a "+
 			"fresh command when a computer of yours has no runner yet and its last code expired, or to move a computer "+
-			"paired through a tunnel or by URL to the Nexul app: once its runner connects it pairs through it, keeping its "+
-			"links, setup, MCP token and trails, and only then are its tunnel, DNS record and Access app deleted, after which "+
-			"sudo cloudflared service uninstall (cloudflared service uninstall in an administrator PowerShell on Windows) "+
-			"removes cloudflared from it. A failed move leaves the computer working as it was. Only you can see or use the computer.",
+			"paired before the Nexul app onto it: once its runner connects it pairs through it, keeping its links, setup, "+
+			"MCP token and trails. A computer that had a tunnel still runs cloudflared, which sudo cloudflared service "+
+			"uninstall (cloudflared service uninstall in an administrator PowerShell on Windows) removes. Only you can see or use the computer.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in computerCreateIn) (any, error) {
 			e, err := createComputer(ctx, s, in)
@@ -326,14 +303,11 @@ func createComputer(ctx context.Context, s *Service, in computerCreateIn) (*Comp
 
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
-		"Pairs T3 Code on one of your computers now, giving Nexul a harness session on it. A computer added with "+
-			"computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app connects; pass only "+
-			"its id to pair it again now, which mints a one-time token on the computer and exchanges it there, and a failure "+
-			"says why and leaves the computer as it was. The same call moves a computer paired through a tunnel or by URL "+
-			"whose Nexul app computer_create with its id installed. A computer added before the Nexul app takes the token t3 pair prints "+
-			"there: with id, over its tunnel hostname or its address, where name renames it and server_url moves one paired "+
-			"by URL; without id, name and server_url pair a new machine this server can already reach. With id and name "+
-			"alone it only renames the computer. Returns the paired computer; run computer_setup_run next so agent work can use it.",
+		"Pairs T3 Code on one of your computers now through its Nexul app, giving Nexul a harness session on it. A "+
+			"computer added with computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app "+
+			"connects; this pairs it again now, which mints a one-time token on the computer and exchanges it there, and a "+
+			"failure says why and leaves the computer as it was. With name it only renames the computer. Returns the paired "+
+			"computer; run computer_setup_run next so agent work can use it.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
 			c, err := pairComputer(ctx, s, in)
@@ -345,51 +319,23 @@ func computerPairTool(s *Service) mcptool.Tool {
 }
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
-	userID := mcpActorID(ctx)
-	if in.ID != "" && in.Name != "" && in.Token == "" && in.ServerURL == "" {
-		return s.RenameComputer(ctx, userID, in.ID, in.Name)
+	if in.Name != "" {
+		return s.RenameComputer(ctx, mcpActorID(ctx), in.ID, in.Name)
 	}
-	if in.ID == "" {
-		return s.Pair(ctx, userID, harness.KindT3Code, in.Name, in.ServerURL, in.Token)
-	}
-	if in.Name == "" && in.Token == "" && in.ServerURL == "" {
-		return s.PairComputer(ctx, userID, in.ID, "")
-	}
-	current, err := s.ownComputer(ctx, userID, in.ID)
-	if err != nil {
-		return nil, err
-	}
-	return s.Repair(ctx, userID, current.ID, cmp.Or(in.Name, current.Name), cmp.Or(in.ServerURL, current.address()), in.Token)
+	return s.PairComputer(ctx, mcpActorID(ctx), in.ID)
 }
 
 func computerDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_delete", "Delete computer",
-		"Removes one of your computers: revokes its MCP token, tears down its tunnel, DNS record, and Access app on "+
-			"Cloudflare, then deletes it. Agent work can no longer run there; pair it again with computer_create or "+
-			"computer_pair. A failed Cloudflare teardown keeps the computer, so calling this again retries it. "+
-			"Returns {id, deleted: true}.",
+		"Removes one of your computers: retires its Nexul app, which removes itself from the computer, revokes its MCP "+
+			"token, then deletes it. Agent work can no longer run there; add it again with computer_create. A failed step "+
+			"keeps the computer, so calling this again retries it. Returns {id, deleted: true}.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in computerDeleteIn) (any, error) {
 			if err := s.DeleteComputer(ctx, mcpActorID(ctx), in.ID); err != nil {
 				return nil, err
 			}
 			return mcptool.Gone(in.ID), nil
-		})
-}
-
-func computerTunnelTokenGetTool(s *Service) mcptool.Tool {
-	return mcptool.New("computer_tunnel_token_get", "Reveal tunnel token",
-		"Reveals the secret connector token one of your computers installs cloudflared with (cloudflared service "+
-			"install <token>); this tool exists only to hand it over, so show it to the computer's owner and nobody "+
-			"else. Only a computer added with a tunnel in the web app has one; a computer paired by URL or reached through its runner has none. "+
-			"computer_list shows the tunnel itself without its token.",
-		mcptool.Hints{ReadOnly: true},
-		func(ctx context.Context, in computerIDIn) (any, error) {
-			token, err := s.ComputerTunnelToken(ctx, mcpActorID(ctx), in.ComputerID)
-			if err != nil {
-				return nil, err
-			}
-			return map[string]string{"computer_id": in.ComputerID, "token": token}, nil
 		})
 }
 

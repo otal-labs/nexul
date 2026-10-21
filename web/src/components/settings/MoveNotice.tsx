@@ -5,8 +5,7 @@ import type { Computer } from "@/models/Pairing";
 const detailOf = (computer: Computer) => {
   if (computer.pair_error) return `Not moved yet: ${computer.pair_error}`;
   if (computer.runner) return "Moving: waiting for Nexul to pair through the app";
-  const way = computer.tunnel ? "through a tunnel" : "by URL";
-  return `Pairing ${way} is going away. One command moves it, keeping its projects, setup and history.`;
+  return "Pairing through a tunnel or by URL was retired, so agent work can't run here until it moves. One command moves it, keeping its projects, setup and history.";
 };
 
 interface MoveNoticeProps {
@@ -14,7 +13,7 @@ interface MoveNoticeProps {
   onMove: () => void;
 }
 
-// The notice on a computer paired the old way: one command moves it, and a move under way says how far it got.
+// The notice on a computer paired before the Nexul app: one command moves it, and a move under way says how far it got.
 export const MoveNotice = ({ computer, onMove }: MoveNoticeProps) => (
   <div className="mt-2 flex min-w-0 items-center gap-3 pl-6">
     <div className="min-w-0 flex-1 space-y-0.5">

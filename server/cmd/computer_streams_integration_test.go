@@ -19,6 +19,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -81,7 +82,7 @@ func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond)
 
 	dials := &countingDialer{next: svc.computers}
-	client := harnessHTTPClient(dials, func(context.Context, string) (string, string, bool, error) { return "", "", false, nil })
+	client := harnessHTTPClient(dials)
 	address := "http://c-laptop" + pairing.ComputerHostSuffix
 
 	desc, err := t3rpc.Describe(ctx, client, address)
@@ -96,4 +97,15 @@ func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 	t.Cleanup(func() { _ = session.Close() })
 	assert.Equal(t, int32(1), t3.ConfigCalls.Load(), "server.getConfig completed through the runner")
 	assert.Equal(t, int32(2), dials.dials.Load(), "the ticket reused the pool; the upgrade request pools apart, so the session socket opened the second stream")
+}
+
+func TestHarnessHTTPClient_RefusesAnAddressThatIsNotAComputersRunner(t *testing.T) {
+	t.Parallel()
+	dials := &countingDialer{}
+	t3 := t3rpctest.New(t)
+
+	_, err := t3rpc.Describe(t.Context(), harnessHTTPClient(dials), t3.URL)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer paired before the Nexul app is never dialled at its own address")
+	assert.Contains(t, err.Error(), "add this computer with the Nexul app")
+	assert.Zero(t, dials.dials.Load())
 }

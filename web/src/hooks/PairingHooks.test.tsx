@@ -100,14 +100,6 @@ describe("useHarnessReadiness", () => {
 });
 
 describe("the pairing follower", () => {
-  it("patches a computer's tunnel checks from the frame, dropping a version the frame no longer carries", async () => {
-    const client = seeded([]);
-    await followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", user_id: "u1", tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" }, client);
-    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" });
-    await followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", user_id: "u1", tunnel: "down", harness_reachable: false }, client);
-    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "down", harness_reachable: false });
-  });
-
   it("refetches the providers and MCP token of the computer a frame names, and no other computer's", async () => {
     const client = seeded([
       [["getHarnessProviders", "c1"], []],

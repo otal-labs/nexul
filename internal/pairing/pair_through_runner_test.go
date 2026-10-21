@@ -110,7 +110,7 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 			f.runners.tokenErr = errors.New("t3 auth pairing create failed (exit status 1): no database")
 		},
 			"T3 Code on Laptop made no pairing token: t3 auth pairing create failed (exit status 1): no database"},
-		{"exchange refused", func(f *runnerFixture) { f.exch.exchangeErr = errBoom }, "the harness refused this token"},
+		{"exchange refused", func(f *runnerFixture) { f.exch.exchangeErr = errBoom }, "T3 Code refused the pairing token the Nexul app made"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 			f := newRunnerFixture(t, before)
 			tt.spoil(f)
 
-			_, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop", "")
+			_, err := f.svc.PairComputer(t.Context(), "u-alice", "c-laptop")
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.why)
@@ -136,7 +136,7 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 
 			*f = *newRunnerFixture(t, before)
 			f.svc.pairFailures["c-laptop"] = "an older failure"
-			_, err = f.svc.PairComputer(t.Context(), "u-alice", "c-laptop", "")
+			_, err = f.svc.PairComputer(t.Context(), "u-alice", "c-laptop")
 			require.NoError(t, err)
 			listed, err = f.svc.ListComputers(t.Context(), "u-alice")
 			require.NoError(t, err)

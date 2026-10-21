@@ -28,10 +28,12 @@ vi.mock("@/components/settings/ComputerMCPToken", () => ({ ComputerMCPToken: () 
 
 const computerList = (computers: unknown[]) => ({ computers });
 
+// A computer added with its app, online; overrides reshape it.
 const computer = (overrides: Record<string, unknown> = {}) => ({
   id: "c1",
   name: "Home",
-  server_url: "https://home.example.com",
+  server_url: "http://c1.nexul-computer.invalid",
+  runner: { connected: true, last_seen: "2026-10-10T12:00:00Z" },
   token_expires_at: "2099-01-01T00:00:00Z",
   kind: "t3code",
   harness_version: "0.0.34",
@@ -39,6 +41,9 @@ const computer = (overrides: Record<string, unknown> = {}) => ({
   updated_at: "2026-08-01T00:00:00Z",
   ...overrides,
 });
+
+// A computer paired by URL before the Nexul app.
+const pairedBefore = (overrides: Record<string, unknown> = {}) => computer({ server_url: "https://home.example.com", runner: undefined, ...overrides });
 
 const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [] };
 let setup: Record<string, unknown> = unconfirmed;
@@ -81,7 +86,7 @@ describe("ComputersSection", () => {
 
   it("lists a computer someone shares with you under yours, by its owner's name and online state only", async () => {
     serveComputers([
-      computer(),
+      pairedBefore(),
       { id: "c-bob", name: "Laptop", runner: { connected: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:run_commands", "computers:see"] } },
     ]);
     renderSection();
@@ -97,8 +102,8 @@ describe("ComputersSection", () => {
     expect(await screen.findByText("No computers yet")).toBeInTheDocument();
   });
 
-  it("lists paired computers folded, with their address and version one click away", async () => {
-    serveComputers([computer()]);
+  it("lists a computer paired before the app folded, with its address and version one click away", async () => {
+    serveComputers([pairedBefore()]);
     const user = userEvent.setup();
     renderSection();
 
@@ -170,42 +175,17 @@ describe("ComputersSection", () => {
     expect(screen.getAllByText(/^restarted /)).toHaveLength(1);
   });
 
-  it("flags a computer expiring within the warning window", async () => {
-    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-    serveComputers([computer({ token_expires_at: soon })]);
-    renderSection();
-
-    expect(await screen.findByText(/expires in \dd/)).toBeInTheDocument();
-  });
-
-  it("flags an expired computer as acting like unpaired", async () => {
-    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    serveComputers([computer({ token_expires_at: past })]);
-    renderSection();
-
-    expect(await screen.findByText(/acts as unpaired/i)).toBeInTheDocument();
-  });
-
-  it("reads a computer tunnel with no session yet as pairing in progress, not expired", async () => {
+  it("offers a computer paired before the app only its move and Remove", async () => {
     const user = userEvent.setup();
-    serveComputers([
-      computer({
-        server_url: "https://laptop-ab12cd34.example.com",
-        token_expires_at: "0001-01-01T00:00:00Z",
-        harness_version: "",
-        tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" },
-      }),
-    ]);
+    serveComputers([pairedBefore({ token_expires_at: "0001-01-01T00:00:00Z", tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" } })]);
     renderSection();
 
-    expect(await screen.findByText(/pairing in progress/i)).toBeInTheDocument();
-    expect(screen.queryByText(/acts as unpaired/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^pair$/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /set up/i })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /^pair$/i }));
-    expect(await screen.findByRole("dialog", { name: /pair home/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/pairing link/i)).not.toBeInTheDocument();
+    expect(await screen.findByText("Move this computer to the Nexul app")).toBeInTheDocument();
+    expect(screen.getByText(/agent work can't run here until it moves/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^pair$|re-pair|set up/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Actions for Home" }));
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toContain("Remove");
+    expect(screen.queryByRole("button", { name: /re-pair|set up/i })).not.toBeInTheDocument();
   });
 
   it("badges an unconfirmed computer and opens the dialog straight at Set up for it", async () => {
@@ -332,7 +312,7 @@ describe("ComputersSection", () => {
     });
 
     it("offers Add this computer again once its app is gone, with a fresh command for the same row", async () => {
-      serveComputers([computer({ server_url: relay, token_expires_at: "0001-01-01T00:00:00Z" })]);
+      serveComputers([computer({ server_url: relay, runner: undefined, token_expires_at: "0001-01-01T00:00:00Z" })]);
       const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.fresh";
       mocks.post.mockResolvedValue({ data: { computer: computer({ server_url: relay }), token: "eyJ.fresh", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: "" } } });
       const user = userEvent.setup();
@@ -371,58 +351,6 @@ describe("ComputersSection", () => {
       await user.click(screen.getByRole("button", { name: /^rename$/i }));
       await waitFor(() => expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c1", { name: "Work laptop" }));
     });
-  });
-
-  it("re-pairs an existing computer from its menu, pre-filled with its name and URL", async () => {
-    serveComputers([computer()]);
-    mocks.post.mockResolvedValue({ data: computer({ harness_version: "0.0.35" }) });
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
-    await user.click(screen.getByRole("button", { name: /re-pair/i }));
-    const nameInput = screen.getByLabelText(/^name$/i) as HTMLInputElement;
-    const urlInput = screen.getByLabelText(/t3 server url/i) as HTMLInputElement;
-    expect(nameInput.value).toBe("Home");
-    expect(urlInput.value).toBe("https://home.example.com");
-
-    await user.type(screen.getByLabelText(/pairing link/i), "fresh-tok");
-    await user.click(screen.getByRole("button", { name: /^re-pair$/i }));
-
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/repair", {
-        name: "Home",
-        server_url: "https://home.example.com",
-        token: "fresh-tok",
-      }),
-    );
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenLastCalledWith(
-        "Computer re-paired",
-        expect.objectContaining({ description: expect.stringMatching(/previous session on this computer stays valid/) }),
-      ),
-    );
-  });
-
-  it("re-pairs with a pasted pairing link, sending its token and its address", async () => {
-    serveComputers([computer()]);
-    mocks.post.mockResolvedValue({ data: computer() });
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
-    await user.click(screen.getByRole("button", { name: /re-pair/i }));
-    await user.click(screen.getByLabelText(/pairing link/i));
-    await user.paste("http://192.168.1.107:3773/pair#token=fresh-tok");
-    await user.click(screen.getByRole("button", { name: /^re-pair$/i }));
-
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/repair", {
-        name: "Home",
-        server_url: "http://192.168.1.107:3773",
-        token: "fresh-tok",
-      }),
-    );
   });
 
   it("removes a computer from its menu only after the confirm", async () => {

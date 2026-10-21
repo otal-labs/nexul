@@ -1,5 +1,7 @@
 # The tunnel command installs T3 Code but never pairs it
 
+Superseded by ADR 0146: the tunnel command is gone; `nexul install computer` makes T3 Code answer instead.
+
 Pairing's first step runs `tunnel.sh` (or `tunnel.ps1`) and waits until the tunnel is online and the harness answers
 through it (ADR 0062). A computer with no T3 Code could never pass that second check, and the person had to find T3
 Code's installer on their own before step 2 made sense.

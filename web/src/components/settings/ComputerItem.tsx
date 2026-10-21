@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { MoveComputerDialog, type MoveFrom } from "@/components/pairing/MoveComputerDialog";
+import { MoveComputerDialog } from "@/components/pairing/MoveComputerDialog";
 import { ComputerRow } from "@/components/settings/ComputerRow";
 import { RunnerComputerRow } from "@/components/settings/RunnerComputerRow";
 import { useEnrollComputer } from "@/hooks/ComputerHooks";
@@ -12,25 +12,25 @@ interface ComputerItemProps {
   presence?: string | undefined;
 }
 
-// A computer added with its app reads by its lanes; one paired through a tunnel or by URL keeps its old row until it
-// moves. The move dialog lives here, so the row turning into the app's row as the move lands never closes it.
+// A computer added with its app reads by its lanes; one paired before the app keeps its old row until it moves. The
+// move dialog lives here, so the row turning into the app's row as the move lands never closes it.
 export const ComputerItem = ({ computer, presence }: ComputerItemProps) => {
-  const [moveFrom, setMoveFrom] = useState<MoveFrom>();
+  const [moving, setMoving] = useState(false);
   const enroll = useEnrollComputer();
   const startMove = () => {
-    setMoveFrom(computer.tunnel ? "tunnel" : "url");
+    setMoving(true);
     if (!computer.runner) enroll.mutate(computer.id);
   };
   const endMove = () => {
-    setMoveFrom(undefined);
+    setMoving(false);
     enroll.reset();
   };
 
   return (
     <>
       {addedWithRunner(computer) && <RunnerComputerRow computer={computer} presence={presence} />}
-      {!addedWithRunner(computer) && <ComputerRow computer={computer} presence={presence} onMove={startMove} />}
-      <MoveComputerDialog computer={computer} from={moveFrom} enroll={enroll} onClose={endMove} />
+      {!addedWithRunner(computer) && <ComputerRow computer={computer} onMove={startMove} />}
+      <MoveComputerDialog computer={computer} open={moving} enroll={enroll} onClose={endMove} />
     </>
   );
 };

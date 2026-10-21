@@ -98,24 +98,10 @@ func TestTunnelOperations_UseTheTunnelsAccount(t *testing.T) {
 	t.Run("an untracked tunnel is found in whichever account has it", func(t *testing.T) {
 		ta := newTwoAccounts(t)
 		ta.tunnels["acct-otal"].tunnels["found"] = &Tunnel{ID: "found", Name: "running", AccountID: "acct-otal"}
-		got, err := ta.svc.ComputerTunnelStatus(t.Context(), "found")
-		require.NoError(t, err)
-		assert.Empty(t, got)
+		require.NoError(t, ta.svc.DeleteComputerTunnel(t.Context(), ComputerTunnel{TunnelID: "found"}))
+		assert.NotContains(t, ta.tunnels["acct-otal"].tunnels, "found")
 		assert.Equal(t, []string{"acct-law", "acct-otal"}, ta.asked, "the account that answers is the one used")
 	})
-	t.Run("a computer tunnel is created in the instance zone's account", func(t *testing.T) {
-		ta := newTwoAccounts(t)
-		tp, err := ta.svc.tunnelProviderIn(t.Context(), ta.mustInstanceZone(t).AccountID)
-		require.NoError(t, err)
-		assert.Same(t, ta.tunnels["acct-otal"], tp)
-	})
-}
-
-func (ta *twoAccounts) mustInstanceZone(t *testing.T) Zone {
-	t.Helper()
-	z, err := ta.svc.instanceZone(t.Context(), ta.dns)
-	require.NoError(t, err)
-	return z
 }
 
 func TestRouteTunnelHostname_RefusesAnotherAccountsZone(t *testing.T) {

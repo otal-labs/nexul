@@ -56,7 +56,7 @@ func TestSwitchHarness_Failures_LeaveTheComputerWhereItWas(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			svc, repo, _, v2 := twoKinds(t)
-			c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+			c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 			require.NoError(t, err)
 			before := len(repo.outbox)
 			tt.breakIt(repo, v2)
@@ -76,7 +76,7 @@ func TestSwitchHarness_Failures_LeaveTheComputerWhereItWas(t *testing.T) {
 func TestSwitchHarness_MovesTheComputerOnce_WithTheNewVersion(t *testing.T) {
 	t.Parallel()
 	svc, repo, _, _ := twoKinds(t)
-	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+	c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 	require.NoError(t, err)
 	var changed []string
 	svc.changed = func(userID string) { changed = append(changed, userID) }
@@ -102,12 +102,12 @@ func TestPair_KindOnlyMovesForward(t *testing.T) {
 		t.Parallel()
 		svc, repo, v1, v2 := twoKinds(t)
 		v1.result.Kind = harness.KindT3CodeV2
-		c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+		c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		require.Equal(t, harness.KindT3CodeV2, c.Kind)
 
 		v2.result.Kind = harness.KindT3Code
-		_, err = svc.Repair(t.Context(), "u1", c.ID, "Onik's laptop", "https://h.example.com", "tok2")
+		_, err = svc.pair(t.Context(), *c, "https://h.example.com", "tok2")
 		require.ErrorIs(t, err, apperrs.ErrConflict)
 		stored, err := repo.GetComputer(t.Context(), "u1", c.ID)
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestPair_KindOnlyMovesForward(t *testing.T) {
 		t.Parallel()
 		svc, repo, v1, _ := twoKinds(t)
 		v1.result.Kind = harness.KindT3CodeV2
-		c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+		c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 		require.NoError(t, err)
 		assert.Equal(t, harness.KindT3CodeV2, c.Kind)
 		assert.Equal(t, []string{TopicComputerPaired}, topics(repo.outbox), "a new computer never switched")
@@ -127,11 +127,11 @@ func TestPair_KindOnlyMovesForward(t *testing.T) {
 	t.Run("a re-pair that lands on a higher kind raises it and says so", func(t *testing.T) {
 		t.Parallel()
 		svc, repo, v1, _ := twoKinds(t)
-		c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
+		c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 		require.NoError(t, err)
 
 		v1.result.Kind, v1.version = harness.KindT3CodeV2, "0.0.46-nightly.20261003.2632"
-		updated, err := svc.Repair(t.Context(), "u1", c.ID, "Onik's laptop", "https://h.example.com", "tok2")
+		updated, err := svc.pair(t.Context(), *c, "https://h.example.com", "tok2")
 		require.NoError(t, err)
 		assert.Equal(t, harness.KindT3CodeV2, updated.Kind)
 		assert.Equal(t, []string{TopicComputerPaired, TopicComputerPaired, TopicHarnessSwitched}, topics(repo.outbox))
@@ -141,22 +141,18 @@ func TestPair_KindOnlyMovesForward(t *testing.T) {
 	})
 }
 
-func TestPair_HarnessItCannotFollow_ShowsItsOwnMessageUnderTheAddress(t *testing.T) {
+func TestPair_HarnessItCannotFollow_ShowsItsOwnMessage(t *testing.T) {
 	t.Parallel()
-	exch := pairedExchanger()
-	exch.exchangeErr = harness.ProtocolRefusal(wentBack)
-	svc, _ := newTunnelService(newFakeRepo(), exch, &fakeTunnels{})
-	id := tunnelComputer(t, svc)
+	f := newRunnerFixture(t, Computer{Name: "Laptop"})
+	f.exch.exchangeErr = harness.ProtocolRefusal(wentBack)
 
-	rec := doRequest(NewHandler(svc).Routes(), http.MethodPost, "/api/pairing/computers/"+id+"/pair", "u1", pairComputerRequest{Token: "tok"})
+	rec := doRequest(NewHandler(f.svc).Routes(), http.MethodPost, "/api/pairing/computers/c-laptop/pair", "u-alice", nil)
 	require.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
 	var body struct {
-		Message string              `json:"message"`
-		Errors  map[string][]string `json:"errors"`
+		Message string `json:"message"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-	assert.Equal(t, wentBack, body.Message, "no fresh t3 pair token can fix this, so none is asked for")
-	assert.Equal(t, []string{wentBack}, body.Errors["server_url"])
+	assert.Equal(t, wentBack, body.Message, "no fresh pairing token can fix this, so none is blamed")
 }
 
 func TestRequireSetup_HarnessMovedOnDuringTheCheck_TargetsWhatTheComputerHoldsNow(t *testing.T) {

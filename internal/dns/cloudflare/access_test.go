@@ -61,59 +61,22 @@ const (
 	// Assumed shape of the pre-onboarding answer; the phrase is what zeroTrustMissing keys on.
 	zeroTrustOff = `{"success":false,"errors":[{"code":9999,"message":"access.api.error.not_found: Unable to find your Access organization"}]}`
 	forbidden    = `{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}`
-	tokenResult  = `{"success":true,"errors":[],"result":{"id":"st-1","name":"Nexul","client_id":"cid.access","client_secret":"sec-1","expires_at":null}}`
 )
 
 var _ dns.AccessProvider = (*Client)(nil)
 
 func TestAccess_ZeroTrustDisabled_ReturnsDistinctError(t *testing.T) {
 	c, _ := newAccessClient(t, map[string]recorded{
-		"POST " + appsPath:   {http.StatusNotFound, zeroTrustOff},
-		"POST " + tokensPath: {http.StatusBadRequest, zeroTrustOff},
+		"DELETE " + appsPath + "/app-1":  {http.StatusNotFound, zeroTrustOff},
+		"DELETE " + tokensPath + "/st-1": {http.StatusBadRequest, zeroTrustOff},
 	})
-	_, err := c.CreateAccessApp(t.Context(), "laptop-ab12cd34.example.com", "st-1")
+	err := c.DeleteAccessApp(t.Context(), "app-1")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, dns.ErrZeroTrustDisabled)
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	assert.Contains(t, err.Error(), "enable Zero Trust")
 
-	_, err = c.CreateServiceToken(t.Context(), "Nexul")
-	assert.ErrorIs(t, err, dns.ErrZeroTrustDisabled)
-}
-
-func TestAccess_ErrorPaths(t *testing.T) {
-	tests := []struct {
-		name  string
-		reply recorded
-		call  func(c *Client) error
-		want  error
-	}{
-		{"create app forbidden", recorded{http.StatusForbidden, forbidden},
-			func(c *Client) error { _, err := c.CreateAccessApp(t.Context(), "h.example.com", "st-1"); return err }, apperrs.ErrInvalid},
-		{"create app empty id", recorded{http.StatusOK, `{"success":true,"result":{}}`},
-			func(c *Client) error { _, err := c.CreateAccessApp(t.Context(), "h.example.com", "st-1"); return err }, apperrs.ErrRetryable},
-		{"create app bad result", recorded{http.StatusOK, `{"success":true,"result":"nope"}`},
-			func(c *Client) error { _, err := c.CreateAccessApp(t.Context(), "h.example.com", "st-1"); return err }, nil},
-		{"create token missing secret", recorded{http.StatusOK, `{"success":true,"result":{"id":"st-1","client_id":"cid"}}`},
-			func(c *Client) error { _, err := c.CreateServiceToken(t.Context(), "Nexul"); return err }, apperrs.ErrRetryable},
-		{"create token bad result", recorded{http.StatusOK, `{"success":true,"result":[]}`},
-			func(c *Client) error { _, err := c.CreateServiceToken(t.Context(), "Nexul"); return err }, nil},
-		{"create token server error", recorded{http.StatusInternalServerError, `{"success":false,"errors":[{"code":1,"message":"boom"}]}`},
-			func(c *Client) error { _, err := c.CreateServiceToken(t.Context(), "Nexul"); return err }, apperrs.ErrRetryable},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c, _ := newAccessClient(t, map[string]recorded{
-				"POST " + appsPath:   tt.reply,
-				"POST " + tokensPath: tt.reply,
-			})
-			err := tt.call(c)
-			require.Error(t, err)
-			if tt.want != nil {
-				assert.ErrorIs(t, err, tt.want)
-			}
-		})
-	}
+	assert.ErrorIs(t, c.DeleteServiceToken(t.Context(), "st-1"), dns.ErrZeroTrustDisabled)
 }
 
 func TestAccess_DeleteForbidden_IsNotSwallowed(t *testing.T) {
@@ -134,52 +97,19 @@ func TestAccess_NoAccount_FailsBeforeAnyAccessCall(t *testing.T) {
 	t.Cleanup(srv.Close)
 	base, err := url.Parse(srv.URL + "/client/v4")
 	require.NoError(t, err)
-	_, err = New("tok", WithBaseURL(base)).CreateServiceToken(t.Context(), "Nexul")
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorIs(t, New("tok", WithBaseURL(base)).DeleteServiceToken(t.Context(), "st-1"), apperrs.ErrInvalid)
 }
 
-func TestAccess_AppLifecycle(t *testing.T) {
-	c, f := newAccessClient(t, map[string]recorded{
-		"POST " + appsPath:              {http.StatusOK, `{"success":true,"errors":[],"result":{"id":"app-1","type":"self_hosted","domain":"laptop-ab12cd34.example.com"}}`},
-		"DELETE " + appsPath + "/app-1": {http.StatusOK, `{"success":true,"errors":[],"result":{"id":"app-1"}}`},
-		"DELETE " + appsPath + "/gone":  {http.StatusNotFound, `{"success":false,"errors":[{"code":12135,"message":"access.api.error.not_found"}]}`},
-	})
-
-	id, err := c.CreateAccessApp(t.Context(), "laptop-ab12cd34.example.com", "st-1")
-	require.NoError(t, err)
-	assert.Equal(t, "app-1", id)
-
-	body := f.bodies["POST "+appsPath]
-	assert.Equal(t, "self_hosted", body["type"])
-	assert.Equal(t, "laptop-ab12cd34.example.com", body["domain"])
-	assert.Equal(t, true, body["service_auth_401_redirect"])
-	policy := body["policies"].([]any)[0].(map[string]any)
-	assert.Equal(t, "non_identity", policy["decision"])
-	include := policy["include"].([]any)[0].(map[string]any)
-	assert.Equal(t, map[string]any{"token_id": "st-1"}, include["service_token"])
-
-	require.NoError(t, c.DeleteAccessApp(t.Context(), "app-1"))
-	require.NoError(t, c.DeleteAccessApp(t.Context(), "gone"), "an already-absent app deletes cleanly")
-}
-
-func TestAccess_ServiceTokenLifecycle(t *testing.T) {
-	c, f := newAccessClient(t, map[string]recorded{
-		"POST " + tokensPath:                  {http.StatusOK, tokenResult},
-		"POST " + tokensPath + "/st-1/rotate": {http.StatusOK, `{"success":true,"errors":[],"result":{"id":"st-1","client_id":"cid.access","client_secret":"sec-2"}}`},
+func TestAccess_Deletes_TreatAnAbsentOneAsDone(t *testing.T) {
+	c, _ := newAccessClient(t, map[string]recorded{
+		"DELETE " + appsPath + "/app-1":       {http.StatusOK, `{"success":true,"errors":[],"result":{"id":"app-1"}}`},
+		"DELETE " + appsPath + "/gone":        {http.StatusNotFound, `{"success":false,"errors":[{"code":12135,"message":"access.api.error.not_found"}]}`},
 		"DELETE " + tokensPath + "/st-1":      {http.StatusOK, `{"success":true,"errors":[],"result":{"id":"st-1"}}`},
 		"DELETE " + tokensPath + "/st-absent": {http.StatusNotFound, `{"success":false,"errors":[{"code":12135,"message":"access.api.error.not_found"}]}`},
 	})
 
-	tok, err := c.CreateServiceToken(t.Context(), "Nexul")
-	require.NoError(t, err)
-	assert.Equal(t, dns.ServiceToken{ID: "st-1", ClientID: "cid.access", ClientSecret: "sec-1"}, *tok)
-	assert.Equal(t, map[string]any{"name": "Nexul", "duration": "forever"}, f.bodies["POST "+tokensPath])
-
-	rotated, err := c.RotateServiceToken(t.Context(), "st-1")
-	require.NoError(t, err)
-	assert.Equal(t, "sec-2", rotated.ClientSecret)
-	assert.Equal(t, "cid.access", rotated.ClientID)
-
+	require.NoError(t, c.DeleteAccessApp(t.Context(), "app-1"))
+	require.NoError(t, c.DeleteAccessApp(t.Context(), "gone"), "an already-absent app deletes cleanly")
 	require.NoError(t, c.DeleteServiceToken(t.Context(), "st-1"))
 	require.NoError(t, c.DeleteServiceToken(t.Context(), "st-absent"))
 }
