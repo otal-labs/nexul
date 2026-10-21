@@ -529,6 +529,27 @@ func TestClient_DropAfterAConnection_StartsTheBackoffOver(t *testing.T) {
 	assert.NoError(t, <-done)
 }
 
+func TestClient_ServerThatStopsAnswering_IsDroppedAndDialledAgain(t *testing.T) {
+	stalled := make(chan struct{})
+	accepts := make(chan struct{}, 4)
+	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+		accepts <- struct{}{}
+		<-stalled // never reads, so a ping from the runner never gets its pong, as with a host that slept
+	})
+	t.Cleanup(func() { close(stalled) })
+	client := newTestClient(wsURL(srv), &fakeExecutor{})
+	cancel, done := runClient(t, client)
+
+	<-accepts
+	select {
+	case <-accepts:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the runner kept waiting on a server that stopped answering")
+	}
+	cancel()
+	assert.NoError(t, <-done)
+}
+
 func TestClient_RemovedRunner_UninstallsItselfAndStops(t *testing.T) {
 	t.Run("an uninstall frame from the server", func(t *testing.T) {
 		srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
