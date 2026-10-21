@@ -94,6 +94,7 @@ describe("HarnessProjectField", () => {
       </QueryClientProvider>,
     );
 
+    expect(screen.queryByRole("button", { name: "Create empty project" })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole("button", { name: "Clone acme/api" }));
 
     expect(screen.queryByRole("button", { name: "Clone acme/web" })).not.toBeInTheDocument();
@@ -127,5 +128,55 @@ describe("HarnessProjectField", () => {
     expect(screen.getByRole("button", { name: "Pair again" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Clone acme/api" })).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("offers an empty project when there is nothing to clone, and picks the one it makes", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p1/repos") return { data: [] } as never;
+      return { data: { projects: [], can_clone: true } } as never;
+    });
+    const post = vi.spyOn(api, "post").mockResolvedValue({ data: { id: "t3-notes", title: "notes", path: "~/Code/notes" } } as never);
+    const Picked = () => {
+      const form = useForm<{ harness_project_id: string }>({ defaultValues: { harness_project_id: "" } });
+      const picked = useWatch({ control: form.control, name: "harness_project_id" });
+      return (
+        <>
+          <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId="comp-1" projectId="p1" />
+          <output>picked:{picked}</output>
+        </>
+      );
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Picked />
+      </QueryClientProvider>,
+    );
+
+    const create = await screen.findByRole("button", { name: "Create empty project" });
+    expect(create).toBeDisabled();
+    await userEvent.type(screen.getByRole("textbox", { name: "Folder name" }), " notes ");
+    await userEvent.click(create);
+
+    expect(post).toHaveBeenCalledWith("/api/pairing/computers/comp-1/projects", { name: "notes" });
+    expect(await screen.findByText("picked:t3-notes")).toBeInTheDocument();
+  });
+
+  it("holds the empty project back until the project's repositories are known", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p1/repos") return new Promise(() => {});
+      return { data: { projects: [], can_clone: true } } as never;
+    });
+    const Field = () => {
+      const form = useForm<{ harness_project_id: string }>({ defaultValues: { harness_project_id: "" } });
+      return <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId="comp-1" projectId="p1" />;
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Field />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/has no T3 projects yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create empty project" })).not.toBeInTheDocument();
   });
 });

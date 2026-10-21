@@ -430,7 +430,7 @@ func TestStartSetup_SessionFailures_FailTheProvider(t *testing.T) {
 		}, "Could not start the setup turn: boom", 0},
 		{"no project to run in", func(f *setupFixture) {
 			f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return nil, nil }
-		}, "open any project in T3 Code on Laptop first", 0},
+		}, "Laptop has no T3 project and setup runs its turns inside one; create one under Settings → Computers → Projects → Create empty project, or run computer_project_create with a name", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

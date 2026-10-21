@@ -99,3 +99,37 @@ func (c *Conn) CloneProject(ctx context.Context, title, remoteURL, path string) 
 	}
 	return harness.Project{ID: out.ProjectID, Title: title, Path: out.Cwd}, nil
 }
+
+// projectsMutate carries T3's project create, update and delete commands; create needs only orchestration:operate.
+const projectsMutate = "projects.mutate"
+
+type projectCreate struct {
+	Type                         string `json:"type"`
+	CommandID                    string `json:"commandId"`
+	ProjectID                    string `json:"projectId"`
+	Title                        string `json:"title"`
+	WorkspaceRoot                string `json:"workspaceRoot"`
+	CreateWorkspaceRootIfMissing bool   `json:"createWorkspaceRootIfMissing"`
+}
+
+// CreateProject registers path as a new project titled title; T3 makes the folder when it is missing.
+func (c *Conn) CreateProject(ctx context.Context, title, path string) (harness.Project, error) {
+	raw, err := c.Call(ctx, projectsMutate, projectCreate{
+		Type: "project.create", CommandID: ids.New(), ProjectID: ids.New(), Title: title, WorkspaceRoot: path, CreateWorkspaceRootIfMissing: true,
+	})
+	var exit *ExitError
+	if errors.As(err, &exit) && exit.Message("ProjectMutationError") != "" {
+		return harness.Project{}, fmt.Errorf("%w: %s", apperrs.ErrInvalid, exit.Message("ProjectMutationError"))
+	}
+	if err != nil {
+		return harness.Project{}, err
+	}
+	var out struct {
+		ID            string `json:"id"`
+		WorkspaceRoot string `json:"workspaceRoot"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil || out.ID == "" {
+		return harness.Project{}, fmt.Errorf("%s: unexpected result %s", projectsMutate, Snippet(raw))
+	}
+	return harness.Project{ID: out.ID, Title: title, Path: out.WorkspaceRoot}, nil
+}

@@ -727,7 +727,7 @@ func (s *Service) setupTurnInFirstProject(ctx context.Context, userID, computerI
 		return nil, fmt.Errorf("list projects on %s: %w", session.Name, err)
 	}
 	if len(projects) == 0 {
-		return nil, fmt.Errorf("%w: open any project in T3 Code on %s first; setup runs its turns inside one", apperrs.ErrInvalid, session.Name)
+		return nil, fmt.Errorf("%w: %s has no T3 project and setup runs its turns inside one; create one under Settings → Computers → Projects → Create empty project, or run computer_project_create with a name", apperrs.ErrInvalid, session.Name)
 	}
 	return &ResolvedTarget{Computer: session, HarnessProjectID: projects[0].ID, Provider: strings.TrimSpace(provider)}, nil
 }

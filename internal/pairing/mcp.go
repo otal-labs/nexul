@@ -68,7 +68,8 @@ type computerDeleteIn struct {
 
 type computerProjectCreateIn struct {
 	ID         string `json:"id" jsonschema:"The computer's id, from computer_list."`
-	Repository string `json:"repository" jsonschema:"The GitHub repository to clone, as owner/name, for example acme/api; project_get lists a project's repositories."`
+	Repository string `json:"repository,omitempty" jsonschema:"The GitHub repository to clone, as owner/name, for example acme/api; project_get lists a project's repositories. Give this or name, not both."`
+	Name       string `json:"name,omitempty" jsonschema:"The folder name of a new empty project, with no slashes, for example acme-notes. Give this or repository, not both."`
 }
 
 type computerIDIn struct {
@@ -345,17 +346,19 @@ func computerDeleteTool(s *Service) mcptool.Tool {
 }
 
 func computerProjectCreateTool(s *Service) mcptool.Tool {
-	return mcptool.New("computer_project_create", "Clone a repository onto a computer",
-		"Clones a GitHub repository onto one of your paired computers as a new T3 project, so plays and @Agent turns "+
-			"can run in it there; use it when computer_list with the computer's id lists no T3 project for the code. "+
-			"It lands in the folder most of the computer's T3 projects share, or ~/Code when it has none, and the "+
-			"computer clones over https with its own git credentials. Returns the new project's id, the t3_project_id "+
-			"play_run takes, while the clone still runs in the background; a clone that fails leaves the project in T3 "+
-			"Code to retry or remove there. Fails when the folder already exists and is not empty, and on a "+
-			"computer paired before cloning existed until computer_pair pairs it again.",
+	return mcptool.New("computer_project_create", "Add a project to a computer",
+		"Adds a new T3 project to one of your paired computers so plays and @Agent turns can run in it there; use it "+
+			"when computer_list with the computer's id lists no T3 project for the work. With repository, a GitHub "+
+			"repository as owner/name, the computer clones it over https with its own git credentials; with name it makes "+
+			"an empty folder, for a project with no repository or a computer with no T3 project at all, which setup also "+
+			"needs. Either lands in the folder most of the computer's T3 projects share, or ~/Code when it has none. "+
+			"Returns the new project's id, the t3_project_id play_run takes; a clone keeps running in the background, and "+
+			"one that fails leaves the project in T3 Code to retry or remove there. A clone fails when the folder "+
+			"already exists and is not empty, and on a computer paired before cloning existed until computer_pair pairs "+
+			"it again; an empty project does not need that.",
 		mcptool.Hints{Additive: true},
 		func(ctx context.Context, in computerProjectCreateIn) (any, error) {
-			return s.CloneProject(ctx, mcpActorID(ctx), in.ID, in.Repository)
+			return s.AddProject(ctx, mcpActorID(ctx), in.ID, in.Repository, in.Name)
 		})
 }
 

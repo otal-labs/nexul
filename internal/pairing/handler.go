@@ -37,7 +37,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/pairing/computers/{id}/mcp-token", h.mintMCPToken)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}/mcp-token", h.revokeMCPToken)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
-	mux.HandleFunc("POST /api/pairing/computers/{id}/projects", h.cloneProject)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/projects", h.addProject)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers", h.listContainers)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
@@ -81,17 +81,19 @@ func (h *Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"projects": projects, "can_clone": canClone})
 }
 
-type cloneProjectRequest struct {
+// addProjectRequest names a repository to clone or, without one, the folder of an empty project.
+type addProjectRequest struct {
 	Repository string `json:"repository"`
+	Name       string `json:"name"`
 }
 
-func (h *Handler) cloneProject(w http.ResponseWriter, r *http.Request) {
-	var req cloneProjectRequest
+func (h *Handler) addProject(w http.ResponseWriter, r *http.Request) {
+	var req addProjectRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	project, err := h.svc.CloneProject(r.Context(), actorID(r), r.PathValue("id"), req.Repository)
+	project, err := h.svc.AddProject(r.Context(), actorID(r), r.PathValue("id"), req.Repository, req.Name)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

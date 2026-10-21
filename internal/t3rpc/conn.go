@@ -592,6 +592,16 @@ func (e *ExitError) Detail() string {
 	return ""
 }
 
+// Message is the message of the first Fail cause typed errorTag, empty when none carries one.
+func (e *ExitError) Message(errorTag string) string {
+	for _, c := range e.Causes {
+		if c.Tag == "Fail" && c.Error.Tag == errorTag && c.Error.Message != "" {
+			return c.Error.Message
+		}
+	}
+	return ""
+}
+
 func newExitError(method string, cause json.RawMessage) *ExitError {
 	e := &ExitError{Method: method, cause: cause}
 	// An undecodable cause still fails the call; only the typed checks lose it, and Error keeps the raw text.
