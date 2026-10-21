@@ -9,7 +9,7 @@ interface AutomationTokenRevealProps {
 export const AutomationTokenReveal = ({ token }: AutomationTokenRevealProps) => {
   const { data: settings } = useFetchSettings();
   const instanceUrl = settings?.instance_url || "https://your-instance.example.com";
-  const initCommand = `npx @nexul/sdk init --url ${instanceUrl} --token ${token}`;
+  const initCommand = `bunx @otal-labs/nexul-sdk init --url ${instanceUrl} --token ${token}`;
 
   return (
     <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-3 rounded-md bg-muted p-4 duration-200 ease-out">
@@ -29,7 +29,7 @@ export const AutomationTokenReveal = ({ token }: AutomationTokenRevealProps) => 
         </div>
         <pre className="terminal-window__body whitespace-pre-wrap break-all">
           {initCommand}
-          {"\n"}npx @nexul/sdk push
+          {"\n"}bunx @otal-labs/nexul-sdk push
         </pre>
       </div>
     </div>

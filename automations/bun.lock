@@ -5,7 +5,7 @@
     "": {
       "name": "@nexul/automations",
       "dependencies": {
-        "@nexul/sdk": "file:../sdk",
+        "@otal-labs/nexul-sdk": "file:../sdk",
       },
       "devDependencies": {
         "@types/bun": "^1.1.0",
@@ -14,7 +14,7 @@
     },
   },
   "packages": {
-    "@nexul/sdk": ["@nexul/sdk@file:../sdk", { "devDependencies": { "@types/bun": "^1.1.0", "typescript": "^5.6.0", "vitest": "^3.0.0" }, "bin": { "nexul": "./bin/cli.ts" } }],
+    "@otal-labs/nexul-sdk": ["@otal-labs/nexul-sdk@file:../sdk", { "devDependencies": { "@types/bun": "^1.1.0", "typescript": "^5.6.0", "vitest": "^3.0.0" }, "bin": { "nexul": "./bin/cli.ts" } }],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.28.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ=="],
 

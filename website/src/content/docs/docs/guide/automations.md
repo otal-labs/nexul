@@ -23,11 +23,11 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 ## Write your own
 
 1. On the **Automations** page, press **New automation**. Name it and pick its **Scopes**: what its token may read and change, from the same [permissions](/docs/guide/api-and-tokens/) integrations use.
-2. Add the SDK to an empty project. It's the `sdk/` package in the Nexul repository, not published to npm, so add it from a checkout; its commands need Bun. Then run `nexul init`. It asks for your instance URL and a personal access token from **Settings → Security → Tokens**, and writes `src/index.ts`.
+2. In an empty project, run `bun add @otal-labs/nexul-sdk`; its commands need Bun. Then run `bunx nexul init`. It asks for your instance URL and a personal access token from **Settings → Security → Tokens**, and writes `src/index.ts`.
 3. Write your handlers:
 
    ```ts
-   import { defineAutomation } from "@nexul/sdk/automation";
+   import { defineAutomation } from "@otal-labs/nexul-sdk/automation";
 
    const automation = defineAutomation({
      name: "my-automation",
@@ -50,7 +50,7 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 
 `nexul pull <automation-id>` fetches the active code back into `src/index.ts`. This `nexul` comes with the SDK; it's not the `nexul` that installs your instance.
 
-For unit tests, `createMockContext` from `@nexul/sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
+For unit tests, `createMockContext` from `@otal-labs/nexul-sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
 
 Two events mark a moment rather than one change. `ticket.unblocked` fires when a ticket's last open blocker gets its pull request merged, reaches a done column, has its blocked-by link removed, or is deleted, with `cause` saying which (`blocker_finished`, `blocker_done`, `link_deleted`, `blocker_deleted`). `doc.settled` fires once a person's edits to a doc have stopped for ten minutes, with `first` true for a doc created inside that window; edits an agent makes through MCP, or an automation makes, never start the wait.
 

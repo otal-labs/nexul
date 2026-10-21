@@ -1,4 +1,4 @@
-import { defineAutomation } from "@nexul/sdk/automation";
+import { defineAutomation } from "@otal-labs/nexul-sdk/automation";
 
 // Narrows the one field this automation reads instead of trusting the whole payload.
 function ticketID(ticket: unknown): string | undefined {

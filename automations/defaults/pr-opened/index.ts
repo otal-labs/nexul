@@ -1,4 +1,4 @@
-import { defineAutomation } from "@nexul/sdk/automation";
+import { defineAutomation } from "@otal-labs/nexul-sdk/automation";
 
 // Narrows linked_ticket_ids, the one field this automation reads, which may be null on a PR that names no ticket.
 function linkedTicketIDs(pr: unknown): string[] {

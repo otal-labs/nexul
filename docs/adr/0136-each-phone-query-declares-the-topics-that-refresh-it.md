@@ -22,7 +22,7 @@ the topics that refresh it and how each frame finds its entry:
   written into the cache with no request (chat messages).
 
 Topic names and payload shapes are the generated event catalog's
-(`@nexul/sdk/events`, ADR 0045), imported as types only: a misspelled topic or
+(`@otal-labs/nexul-sdk/events`, ADR 0045), imported as types only: a misspelled topic or
 a payload field the catalog does not carry is a type error. `tsconfig.json`
 maps the specifier to `sdk/src/events.generated.ts`; Metro never resolves it,
 because Babel erases a type import and `no-restricted-imports` rejects a value

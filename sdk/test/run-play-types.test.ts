@@ -23,7 +23,7 @@ function typecheck(files: Record<string, string>): { exitCode: number; output: s
         noEmit: true,
         skipLibCheck: true,
         types: [],
-        paths: { "@nexul/sdk/context": [path.join(sdk, "src", "context.ts")] },
+        paths: { "@otal-labs/nexul-sdk/context": [path.join(sdk, "src", "context.ts")] },
       },
       include: ["*.ts"],
     };
@@ -36,7 +36,7 @@ function typecheck(files: Record<string, string>): { exitCode: number; output: s
   }
 }
 
-const handler = `import type { Ctx } from "@nexul/sdk/context";
+const handler = `import type { Ctx } from "@otal-labs/nexul-sdk/context";
 export const run = async (ctx: Ctx) => {
   await ctx.runPlay("Fix with AI", "ticket-1", { runOn: "tester", priority: "high" });
   await ctx.runPlay('Say "hi"', "ticket-1");
@@ -49,7 +49,7 @@ export const run = async (ctx: Ctx) => {
 
 describe("runPlay's play names", () => {
   it("accept any label before nexul types has run", () => {
-    const fresh = `import type { Ctx } from "@nexul/sdk/context";
+    const fresh = `import type { Ctx } from "@otal-labs/nexul-sdk/context";
 export const run = (ctx: Ctx) => ctx.runPlay("Anything at all", "ticket-1");
 `;
     const result = typecheck({ "index.ts": fresh, "plays.generated.d.ts": playsDeclaration([]) });

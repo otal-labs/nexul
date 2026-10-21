@@ -1,4 +1,4 @@
-import { eventFixtures, TOPICS } from "@nexul/sdk/events";
+import { eventFixtures, TOPICS } from "@otal-labs/nexul-sdk/events";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react-native";
 import { readdirSync } from "node:fs";
