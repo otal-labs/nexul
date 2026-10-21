@@ -2,6 +2,8 @@
 # Adds this computer to Nexul, with the command Add a computer shows, run from your own account with sudo:
 #   curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token> [--no-t3]
 # sudo only places a system service; the runner it starts runs as you, the person who typed sudo, never as root.
+# On a host with no systemd, such as a container, add --foreground: nothing is registered, so there is no sudo, and the
+# runner and T3 Code run under `nexul run computer` as whoever runs the command.
 # The token is signed by your instance and carries its address, a one-time code and the computer. This script reads
 # only the address, to say where it connects; it cannot check the signature, and needs not: only the instance that
 # signed the token accepts it, once. It hands over to install.sh, which fetches and verifies the nexul command and
@@ -18,13 +20,20 @@ case "$(uname -s)" in
   *) fail "this script adds a Linux computer or a Mac; on Windows, run Add a computer's Windows command in PowerShell" ;;
 esac
 
-if [ "$(id -u)" -ne 0 ]; then
-  command -v sudo >/dev/null 2>&1 ||
-    fail "this computer has no sudo, which adding it needs: install sudo, add your account to the sudo group, then run the command again"
-  fail "run the command with sudo in front of sh: curl -fsSL .../computer.sh | sudo sh -s -- <token>"
+case " $* " in
+  *" --foreground "*) foreground=1 ;;
+  *) foreground="" ;;
+esac
+
+if [ -z "$foreground" ]; then
+  if [ "$(id -u)" -ne 0 ]; then
+    command -v sudo >/dev/null 2>&1 ||
+      fail "this computer has no sudo, which adding it needs: install sudo, add your account to the sudo group, then run the command again; on a host with no systemd, add --foreground to the command instead"
+    fail "run the command with sudo in front of sh: curl -fsSL .../computer.sh | sudo sh -s -- <token>"
+  fi
+  [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] ||
+    fail "run the command from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
 fi
-[ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ] ||
-  fail "run the command from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
 
 token=${1:-}
 [ -n "$token" ] || fail "run the whole command Add a computer shows: it ends in one token"

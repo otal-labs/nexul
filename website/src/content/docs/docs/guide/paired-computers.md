@@ -9,7 +9,7 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 ## Add a computer
 
-Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS with an account that can use `sudo`, or Windows, and a way out to the internet. On a Mac, T3 Code answers only while you are logged in at it, and on Windows the Nexul app itself runs only while you are logged on (see [What the command does on the computer](#what-the-command-does-on-the-computer)).
+Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS with an account that can use `sudo`, Windows, or a Linux host with no systemd such as a container (see [A computer with no systemd](#a-computer-with-no-systemd)), and a way out to the internet. On a Mac, T3 Code answers only while you are logged in at it, and on Windows the Nexul app itself runs only while you are logged on (see [What the command does on the computer](#what-the-command-does-on-the-computer)).
 
 1. Open your settings, **Computers**, and press **Add a computer**. The [Welcome wizard](/docs/guide/welcome-wizard/)'s **Your computer** step runs the same steps.
 2. Copy the command under **macOS / Linux** and run it in a terminal on that computer, from your own account (not as root):
@@ -49,6 +49,24 @@ On Windows the command needs no administrator, because everything it installs is
 - T3 Code's desktop app through `winget` when no T3 Code is found; open it once, and Nexul pairs it.
 
 Its log is `%LOCALAPPDATA%\Nexul\computer\service.log`. To remove it, remove the computer in Nexul, or run `nexul uninstall computer`: it tells Nexul, ends and deletes the task, and deletes `%LOCALAPPDATA%\Nexul` and its Path entry once the command ends.
+
+### A computer with no systemd
+
+A container, or any Linux host that isn't running systemd, has no service manager to register the Nexul app or T3 Code with. There the command registers nothing: it detects that systemd isn't running, or you force it with `--foreground`, and it needs no `sudo`. Run it as the account the app is for (a root login in a container is that account), from a shell you can leave open:
+
+```sh
+curl -fsSL https://nexul.io/computer.sh | sh -s -- <token> --foreground
+```
+
+It lays out the same files in that account's home as above, and installs T3 Code's command line when it's missing, with T3 Code's own installer. T3 Code needs `libatomic1`, which only root can add, so install it first (`apt-get install libatomic1` on Debian and Ubuntu). It then stays running in that terminal as `nexul run computer`, Nexul's own supervisor, which:
+
+- runs the Nexul app, and `t3 serve` on port 3773 bound to `127.0.0.1` when the command installed or found a `t3` command, with the same settings a service would give them. A T3 Code that already answers is left to you, and the supervisor starts no second one. `--no-t3` leaves T3 Code out, as everywhere else;
+- starts either one again 5 seconds after it exits, so a crash costs a few seconds of **Offline**. The app leaves T3 Code's restarts to it and never runs `t3 service restart`;
+- passes Ctrl-C and `SIGTERM` to both and exits once they have stopped, and logs what it does to the terminal as JSON lines; the Nexul app keeps its own `runner.log` as before.
+
+Nothing starts it after a reboot: the command prints, once, the line that does (`~/.local/bin/nexul run computer`). Put that in a container's entrypoint, or in an `@reboot` crontab entry, for the account. The app still updates itself in place, and the supervisor keeps going through it; it also takes the new binary the next time it starts the app. Only one supervisor runs per account: a second `nexul run computer` says which pid holds the first.
+
+Removing the computer in Nexul makes the app ask its supervisor to clean up: once the app exits, the supervisor stops T3 Code, deletes the folder and the `nexul` command, and exits. `nexul uninstall computer` from the same account does the same on demand, stopping a supervisor that's running first. If the supervisor is killed with `SIGKILL`, the app and T3 Code it started keep running, so stop them before starting it again. `nexul status` doesn't list a computer, with or without systemd.
 
 ### What the command installs
 

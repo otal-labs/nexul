@@ -38,6 +38,10 @@ type Unit struct {
 	Env     map[string]string `json:"env"`
 	// User is the Linux account the unit runs as; empty is root.
 	User string `json:"user,omitempty"`
+	// Foreground marks a computer's runner that `nexul run computer` runs, with no service manager (ADR 0163).
+	Foreground bool `json:"foreground,omitempty"`
+	// T3 is the command line the supervisor runs T3 Code with; empty when T3 Code is left to its person.
+	T3 []string `json:"t3,omitempty"`
 }
 
 // unitName is the service name for a kind: nexul-server, nexul-openobserve, nexul-runner-<host>.

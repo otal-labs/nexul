@@ -296,6 +296,9 @@ func newTestHost(t *testing.T) *testHost {
 			}
 			return &user.User{Username: "alice", Uid: "1000", Gid: "1000", HomeDir: filepath.Join(root, "home")}, nil
 		},
+		CurrentUser: func() (*user.User, error) {
+			return &user.User{Username: "alice", Uid: "1000", Gid: "1000", HomeDir: filepath.Join(root, "home")}, nil
+		},
 		LocalPort: func() (int, error) {
 			nextPort++
 			return nextPort - 1, nil

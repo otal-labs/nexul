@@ -48,6 +48,8 @@ type ClientConfig struct {
 	StreamURL string
 	// T3Home is T3 Code's base directory, whose runtime file names the port it listens on.
 	T3Home string
+	// T3Supervised means a supervisor on the computer restarts T3 Code, so the runner never does.
+	T3Supervised bool
 	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
 	RunnerLog *RunnerLog
 	// Containers is how a machine runner reads its host's containers; nil, and any personal runner, watches none.
@@ -112,6 +114,7 @@ func NewClient(cfg ClientConfig) *Client {
 	}
 	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
+	c.t3.supervised = cfg.T3Supervised
 	return c
 }
 

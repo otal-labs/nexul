@@ -33,7 +33,7 @@ internal/
   eventcatalog/          # aggregates every domain's published event topics
   gitprovider/           # git provider interface + GitHub impl
   harness/               # harness.Client interface, one implementation per agent harness kind
-  install/               # the nexul command: services on systemd, launchd, Windows
+  install/               # the nexul command: services on systemd, launchd, Windows; a supervisor with no systemd
   integrations/          # external service integrations, scoped tokens
   livekit/               # minimal stdlib LiveKit client
   mcp/                   # MCP server adapter (tools/resources/prompts)
@@ -383,7 +383,7 @@ A package that starts goroutines (a hub, a relay, a protocol client, a
 session) has a `main_test.go` with
 `func TestMain(m *testing.M) { goleak.VerifyTestMain(m) }`
 (`go.uber.org/goleak`), so a goroutine still running after the package's
-tests fail the run. `internal/platform/live`, `collab`, `runner`, `t3client`,
+tests fail the run. `internal/platform/live`, `collab`, `runner`, `install`, `t3client`,
 `t3clientv2`, `t3rpc`, `plays` and `agent` carry it. A leak found any other
 way shows up in production as a goroutine count that only grows.
 

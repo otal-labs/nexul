@@ -2,6 +2,8 @@
 
 Supersedes ADR 0072, the compose stack in ADR 0069, and what was left of ADR 0015.
 
+Amended by ADR 0163: a computer on a Linux host with no systemd runs under a supervisor the `nexul` command ships.
+
 `nexul install` puts every component on the machine as a process under the OS service manager: systemd on Linux,
 launchd on macOS, the Service Control Manager on Windows. A release is four binaries named by component: `nexul`
 (the small install and management command), `nexul-server` (the server with the web UI embedded), `nexul-runner`,

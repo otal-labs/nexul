@@ -282,6 +282,9 @@ type t3Keeper struct {
 	// changed wakes the connection's facts loop to report a change at once.
 	changed chan struct{}
 
+	// supervised is set once at construction: a supervisor restarts T3 Code, so there is no service to restart.
+	supervised bool
+
 	// Only run's goroutine touches these.
 	misses         int
 	serviceManaged bool
@@ -325,7 +328,7 @@ func (k *t3Keeper) check(ctx context.Context) {
 		k.restartErr = ""
 		k.mu.Unlock()
 	}
-	if k.misses >= t3MissesToRestart && k.serviceManaged && (k.attemptedAt.IsZero() || time.Since(k.attemptedAt) >= t3RestartGap) {
+	if k.misses >= t3MissesToRestart && k.serviceManaged && !k.supervised && (k.attemptedAt.IsZero() || time.Since(k.attemptedAt) >= t3RestartGap) {
 		k.attemptedAt = time.Now()
 		k.restartService(ctx)
 	}

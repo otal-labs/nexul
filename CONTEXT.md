@@ -90,6 +90,12 @@ disabling or removing its person's account, revokes it, and it uninstalls
 itself.
 _Avoid_: agent, relay, daemon, helper, connector
 
+**Foreground supervisor**:
+`nexul run computer`: on a Linux host with no systemd, such as a container, the process that runs a computer's personal
+runner and T3 Code as its children, in the foreground. It starts either one again 5 seconds after it exits, passes
+SIGINT and SIGTERM to both, and removes the install once the runner was removed. It starts nothing at boot.
+_Avoid_: daemon, service, init
+
 **Agent**:
 The LLM participant in chat, mentioned as `@Agent`. Runs on the mentioning
 user's own paired Harness and acts with only that user's permissions. Never a

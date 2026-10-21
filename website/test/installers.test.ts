@@ -275,6 +275,22 @@ test('computer.sh without sudo says to put sudo in front of sh', async () => {
   expect(await exists(directory, 'urls')).toBe(false);
 });
 
+for (const [name, uid] of [['a plain account', 1000], ['a root login', 0]] as const) {
+  test(`computer.sh --foreground installs for ${name} with no sudo, into its own ~/.local/bin`, async () => {
+    const { directory, env } = setup({ uid });
+    const home = join(directory, 'home');
+    const result = spawnSync('/bin/sh', [computerScript, token, '--foreground'], {
+      env: { ...env, HOME: home, SUDO_USER: undefined, NEXUL_BIN_DIR: undefined },
+      input: '',
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(0);
+    expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token, '--foreground'].join('\n') + '\n');
+    expect(await exists(directory, 'home/.local/bin/nexul')).toBe(true);
+    expect(await exists(directory, 'sudo')).toBe(false);
+  });
+}
+
 test('computer.sh on a machine with no sudo says how to get it', async () => {
   const { directory, env } = setup({ uid: 1000 });
   rmSync(join(directory, 'fake-bin', 'sudo'));

@@ -48,6 +48,11 @@ func Run(ctx context.Context, cmd string, args []string) error {
 		return h.Status(ctx)
 	case "uninstall":
 		return h.runUninstall(ctx, args)
+	case "run":
+		if len(args) == 0 || args[0] != kindComputer {
+			return errors.New("usage: nexul run computer")
+		}
+		return h.runRunComputer(ctx, args[1:])
 	case "service-host":
 		if len(args) != 1 {
 			return errors.New("usage: nexul service-host <unit>")
