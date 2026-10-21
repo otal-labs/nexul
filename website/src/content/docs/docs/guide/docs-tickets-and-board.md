@@ -86,5 +86,6 @@ A stack you watch adds a row when one of its services crashes and another when i
 - Drag a card between columns to change its status.
 - Group cards into swimlanes by category, such as a sprint. Dragging a card to another swimlane changes its category.
 - **Filter** by category, label, type, and status, or **Search**.
+- **Playing** narrows the board to tickets with a play running or waiting on an answer. It shows while at least one is.
 
 Columns, ticket types with their icons and body templates, labels, and categories are set per project, in the project's **Settings → Board** and **Categories**.

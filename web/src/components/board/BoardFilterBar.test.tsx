@@ -63,6 +63,7 @@ const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
   statusIds: [],
   developers: [],
   waitingForMeToTest: false,
+  playing: false,
   search: "",
   ...overrides,
 });
@@ -71,6 +72,7 @@ const baseProps = {
   projectId: "p-1",
   developers: [] as string[],
   showWaitingForMeToTest: false,
+  showPlaying: false,
   filters: filters(),
   onToggleProject: () => {},
   onToggleCategory: () => {},
@@ -79,6 +81,7 @@ const baseProps = {
   onToggleStatus: () => {},
   onToggleDeveloper: () => {},
   onToggleWaitingForMeToTest: () => {},
+  onTogglePlaying: () => {},
   onSearch: () => {},
   onClear: () => {},
   onNewTicket: () => {},

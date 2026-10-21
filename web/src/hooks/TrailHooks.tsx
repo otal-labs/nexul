@@ -265,6 +265,12 @@ export const useTicketRunCounts = (projectId: string | undefined, ticketIds: str
   );
 };
 
+// The board's Playing filter: which of these tickets have a run going or waiting on an answer.
+export const useTicketsWithActiveRun = (projectId: string | undefined, ticketIds: string[]): string[] => {
+  const known = useFetchActiveTrails(projectId).data;
+  return usePlayRunStore(useShallow((s) => ticketIds.filter((id) => runStateOf(s, "ticket", id, known) !== undefined)));
+};
+
 // The doc list row's question.
 export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);

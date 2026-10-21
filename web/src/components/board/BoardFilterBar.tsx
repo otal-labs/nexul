@@ -1,4 +1,4 @@
-import { FilterIcon, FlaskConicalIcon, SearchIcon } from "lucide-react";
+import { FilterIcon, FlaskConicalIcon, SearchIcon, SparklesIcon } from "lucide-react";
 
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
@@ -33,6 +33,7 @@ interface BoardFilterBarProps {
   /** Derived client-side from the page's own ticket set (useBoardFilters); shown as the avatar stack, not as popover chips. */
   developers: string[];
   showWaitingForMeToTest: boolean;
+  showPlaying: boolean;
   filters: BoardFilters;
   onToggleProject: (projectId: string) => void;
   onToggleCategory: (categoryId: string | null) => void;
@@ -41,6 +42,7 @@ interface BoardFilterBarProps {
   onToggleStatus: (statusId: string) => void;
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
+  onTogglePlaying: () => void;
   onSearch: (search: string) => void;
   onClear: () => void;
   onNewTicket: () => void;
@@ -53,6 +55,7 @@ export const BoardFilterBar = ({
   hideProjectFilter = false,
   developers,
   showWaitingForMeToTest,
+  showPlaying,
   filters,
   onToggleProject,
   onToggleCategory,
@@ -61,6 +64,7 @@ export const BoardFilterBar = ({
   onToggleStatus,
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
+  onTogglePlaying,
   onSearch,
   onClear,
   onNewTicket,
@@ -116,6 +120,18 @@ export const BoardFilterBar = ({
             >
               <FlaskConicalIcon className="size-3.5" />
               Mine to test
+            </Button>
+          )}
+          {showPlaying && (
+            <Button
+              variant={filters.playing ? "default" : "outline"}
+              size="sm"
+              aria-pressed={filters.playing}
+              onClick={onTogglePlaying}
+              className="h-9 px-3 text-xs"
+            >
+              <SparklesIcon className="size-3.5" />
+              Playing
             </Button>
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}

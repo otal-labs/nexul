@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { BoardFilters } from "@/components/board/BoardFilterBar";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { useTicketsWithActiveRun } from "@/hooks/TrailHooks";
 import { StatusKind } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
@@ -14,6 +15,7 @@ const EMPTY_FILTERS: BoardFilters = {
   statusIds: [],
   developers: [],
   waitingForMeToTest: false,
+  playing: false,
   search: "",
 };
 
@@ -38,6 +40,7 @@ const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: Filte
   (filters.labels.length === 0 || (ticket.labels ?? []).some((l) => sets.labels.has(l))) &&
   (filters.developers.length === 0 || sets.developers.has(ticket.developer)) &&
   (!filters.waitingForMeToTest || (ticket.tester === sets.myLogin && sets.testingStatusIds.has(ticket.status))) &&
+  (!filters.playing || sets.playingIds.has(ticket.id)) &&
   matchesSearch(ticket, filters.search);
 
 interface FilterSets {
@@ -46,6 +49,7 @@ interface FilterSets {
   statusIds: Set<string>;
   developers: Set<string>;
   testingStatusIds: Set<string>;
+  playingIds: Set<string>;
   myLogin: string;
 }
 
@@ -72,6 +76,10 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   const showWaitingForMeToTest =
     filters.waitingForMeToTest || (myLogin !== "" && projectTickets.some((t) => t.tester === myLogin));
 
+  const playingIds = useTicketsWithActiveRun(projectId, projectTickets.map((t) => t.id));
+  // Offered while a play runs here, and kept while on so it can be switched off.
+  const showPlaying = filters.playing || playingIds.length > 0;
+
   const filteredTickets = useMemo(() => {
     const sets: FilterSets = {
       projectIds: new Set(filters.projectIds),
@@ -79,10 +87,11 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
       statusIds: new Set(filters.statusIds),
       developers: new Set(filters.developers),
       testingStatusIds: new Set((statuses ?? []).filter((s) => s.kind === StatusKind.Testing).map((s) => s.id)),
+      playingIds: new Set(playingIds),
       myLogin,
     };
     return (tickets ?? []).filter((t) => ticketMatchesFilters(t, filters, sets));
-  }, [tickets, filters, statuses, myLogin]);
+  }, [tickets, filters, statuses, myLogin, playingIds]);
 
   const toggleProject = (projectId: string) =>
     setFilters((current) => ({
@@ -128,6 +137,8 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   const toggleWaitingForMeToTest = () =>
     setFilters((current) => ({ ...current, waitingForMeToTest: !current.waitingForMeToTest }));
 
+  const togglePlaying = () => setFilters((current) => ({ ...current, playing: !current.playing }));
+
   const setSearch = (search: string) => setFilters((current) => ({ ...current, search }));
 
   const clearAll = () => setFilters(EMPTY_FILTERS);
@@ -136,6 +147,7 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
     filters,
     developers,
     showWaitingForMeToTest,
+    showPlaying,
     filteredTickets,
     toggleProject,
     toggleCategory,
@@ -144,6 +156,7 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
     toggleStatus,
     toggleDeveloper,
     toggleWaitingForMeToTest,
+    togglePlaying,
     setSearch,
     clearAll,
   };

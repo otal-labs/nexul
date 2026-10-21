@@ -23,6 +23,7 @@ interface ProjectBoardSectionProps {
   filters: BoardFilters;
   developers: string[];
   showWaitingForMeToTest: boolean;
+  showPlaying: boolean;
   onToggleProject: (projectId: string) => void;
   onToggleCategory: (categoryId: string | null) => void;
   onToggleLabel: (label: string) => void;
@@ -30,6 +31,7 @@ interface ProjectBoardSectionProps {
   onToggleStatus: (statusId: string) => void;
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
+  onTogglePlaying: () => void;
   onSearch: (search: string) => void;
   onClear: () => void;
   onNewTicket: () => void;
@@ -51,6 +53,7 @@ export const ProjectBoardSection = ({
   filters,
   developers,
   showWaitingForMeToTest,
+  showPlaying,
   onToggleProject,
   onToggleCategory,
   onToggleLabel,
@@ -58,6 +61,7 @@ export const ProjectBoardSection = ({
   onToggleStatus,
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
+  onTogglePlaying,
   onSearch,
   onClear,
   onNewTicket,
@@ -101,6 +105,7 @@ export const ProjectBoardSection = ({
           hideProjectFilter
           developers={developers}
           showWaitingForMeToTest={showWaitingForMeToTest}
+          showPlaying={showPlaying}
           filters={filters}
           onToggleProject={onToggleProject}
           onToggleCategory={onToggleCategory}
@@ -109,6 +114,7 @@ export const ProjectBoardSection = ({
           onToggleStatus={onToggleStatus}
           onToggleDeveloper={onToggleDeveloper}
           onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
+          onTogglePlaying={onTogglePlaying}
           onSearch={onSearch}
           onClear={onClear}
           onNewTicket={onNewTicket}
