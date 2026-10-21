@@ -136,13 +136,17 @@ func (c *Client) Run(ctx context.Context) error {
 		rand.New(rand.NewSource(time.Now().UnixNano())))
 	attempt := 0
 	for {
-		err := c.runOnce(ctx)
+		connected, err := c.runOnce(ctx)
 		if errors.Is(err, errRemoved) {
 			c.uninstall(ctx)
 			return nil
 		}
 		if ctx.Err() != nil {
 			return nil
+		}
+		// A drop after a connection that came up starts the backoff over; only failed dials in a row grow it.
+		if connected {
+			attempt = 0
 		}
 		attempt++
 		c.log.Warn("runner connection lost; reconnecting", "error", err, "attempt", attempt)
@@ -153,7 +157,8 @@ func (c *Client) Run(ctx context.Context) error {
 }
 
 // runOnce maintains one connection: heartbeats on a ticker, assigns run in goroutines, cancels abort the job.
-func (c *Client) runOnce(ctx context.Context) (err error) {
+// connected reports whether the dial succeeded, whatever ended the connection afterwards.
+func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
 	dialCtx, cancel := context.WithTimeout(ctx, c.cfg.ConnectTimeout)
 	conn, resp, dialErr := websocket.Dial(dialCtx, c.wsURL(), &websocket.DialOptions{
 		HTTPHeader: http.Header{"Authorization": {"Bearer " + c.cfg.Credential}},
@@ -161,10 +166,11 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	cancel()
 	if dialErr != nil {
 		if refusedAsRemoved(resp) {
-			return errRemoved
+			return false, errRemoved
 		}
-		return fmt.Errorf("dial %s: %w", c.cfg.URL, dialErr)
+		return false, fmt.Errorf("dial %s: %w", c.cfg.URL, dialErr)
 	}
+	connected = true
 	defer func() {
 		err = errors.Join(err, conn.CloseNow())
 	}()
@@ -196,7 +202,7 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	for {
 		var raw json.RawMessage
 		if err := wsjson.Read(ctx, conn, &raw); err != nil {
-			return err
+			return true, err
 		}
 		frame, err := ParseFrame(raw)
 		if err != nil {
@@ -204,7 +210,7 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 			continue
 		}
 		if frame.Type == FrameUninstall {
-			return errRemoved
+			return true, errRemoved
 		}
 		c.handleFrame(streamCtx, ctx, conn, *frame)
 	}

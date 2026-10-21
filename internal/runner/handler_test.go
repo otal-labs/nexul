@@ -484,6 +484,43 @@ func TestHandler_Disconnect_WritesDisconnectedAfterRequestContextEnds(t *testing
 	}
 }
 
+// TestHandler_Reconnect_ReplacedConnectionLeavesTheRunnerConnected covers a runner that reconnects before the server
+// saw its old connection drop: tearing the old one down must not mark the new one offline.
+func TestHandler_Reconnect_ReplacedConnectionLeavesTheRunnerConnected(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	bus := newFakeBus()
+	h := newTestHandler(bus, repo)
+	served := make(chan struct{}, 2)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+		served <- struct{}{}
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	credential := repo.enrolled("r-1", "r-1", "")
+	old, _, err := dialRunner(ctx, srv, credential, "")
+	require.NoError(t, err)
+	defer func() { _ = old.CloseNow() }() // the server closes it on replacement; a second close errors
+	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicRunnerConnected)) == 1 })
+
+	replacement, _, err := dialRunner(ctx, srv, credential, "")
+	require.NoError(t, err)
+	defer func() { _ = replacement.CloseNow() }() // closed by the server at cleanup; a second close errors
+
+	select {
+	case <-served:
+	case <-ctx.Done():
+		t.Fatal("the replaced connection was never torn down")
+	}
+	got, err := repo.GetByID(t.Context(), "r-1")
+	require.NoError(t, err)
+	assert.True(t, got.Connected, "the replacement is still connected")
+	assert.Empty(t, bus.topicEvents(TopicRunnerDisconnected), "no client may be told the runner went offline")
+	assert.Len(t, h.Runners(), 1)
+}
+
 func TestHandler_ServeHTTP_RecordsRunnerVersion(t *testing.T) {
 	repo := newFakeRunnerRepo()
 	bus := newFakeBus()

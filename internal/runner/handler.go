@@ -530,7 +530,7 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		// c.cancel() just ended ctx; SQLite refuses a cancelled ctx, so the teardown writes get one that outlives it.
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), h.cfg.WriteTimeout)
 		defer cancel()
-		h.removeConn(c)
+		current := h.removeConn(c)
 		h.endLogSubs(c)
 		if job := c.jobSnapshot(); job != nil {
 			h.publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
@@ -540,12 +540,16 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		if id := c.upgradeSnapshot(); id != "" {
 			h.failPendingUpgrade(ctx, id)
 		}
+		_ = c.ws.Close(websocket.StatusNormalClosure, "")
+		// A connection its runner already replaced must not mark the new one offline.
+		if !current {
+			return
+		}
 		// A removed runner's row is already gone, so there is nothing to mark disconnected.
 		if err := h.repo.SetConnected(ctx, c.id, false); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			h.log.Warn("runner disconnect repo update failed", "runner_id", c.id, "error", err)
 		}
 		h.publishPresence(ctx, c, false)
-		_ = c.ws.Close(websocket.StatusNormalClosure, "")
 	}()
 	for {
 		var raw json.RawMessage
@@ -812,12 +816,15 @@ func (h *Handler) closeAll(reason string) {
 	h.closeStreams("")
 }
 
-func (h *Handler) removeConn(c *runnerConn) {
+// removeConn drops c from the live set and reports whether it was still the runner's current connection.
+func (h *Handler) removeConn(c *runnerConn) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.conns[c.id] == c {
-		delete(h.conns, c.id)
+	if h.conns[c.id] != c {
+		return false
 	}
+	delete(h.conns, c.id)
+	return true
 }
 
 // Runners returns the live connection set with each runner's running job.
