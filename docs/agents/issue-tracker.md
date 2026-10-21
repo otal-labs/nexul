@@ -63,8 +63,6 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/t3-remote-over-443/` — opening T3 Code's own interface through Nexul for a computer that
-  only reaches out on port 443; what exists, the options, and open questions for the owner, `needs-info`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
