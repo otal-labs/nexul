@@ -64,6 +64,9 @@ func New[In any](name, title, description string, hints Hints, h func(ctx contex
 	}
 }
 
+// staleSchemaHint: a stateless server can't tell a client holding a pre-upgrade tool list that the tools changed.
+const staleSchemaHint = "If they match the schema you were given, your tool list is from an older Nexul: reconnect to its MCP server to load the current tools"
+
 func decode[In any](resolved *jsonschema.Resolved, args json.RawMessage) (In, error) {
 	var in In
 	args = bytes.TrimSpace(args)
@@ -75,7 +78,7 @@ func decode[In any](resolved *jsonschema.Resolved, args json.RawMessage) (In, er
 		return in, fmt.Errorf("%w: arguments are not valid JSON: %v", apperrs.ErrInvalid, err)
 	}
 	if err := resolved.Validate(instance); err != nil {
-		return in, fmt.Errorf("%w: the arguments do not match this tool's input schema: %v", apperrs.ErrInvalid, err)
+		return in, fmt.Errorf("%w: the arguments do not match this tool's input schema: %v. %s", apperrs.ErrInvalid, err, staleSchemaHint)
 	}
 	if err := json.Unmarshal(args, &in); err != nil {
 		return in, fmt.Errorf("%w: %v", apperrs.ErrInvalid, err)
