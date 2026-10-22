@@ -141,7 +141,7 @@ func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects
 	return c.ListProjects(ctx)
 }
 
-// CloneProject implements harness.Client: connect, start the clone, close.
+// CloneProject implements harness.Client: connect, clone and wait for it, close.
 func (h *Harness) CloneProject(ctx context.Context, s harness.Session, title, remoteURL, path string) (project harness.Project, err error) {
 	c, err := dial(ctx, s, h.Options)
 	if err != nil {
