@@ -29,6 +29,9 @@ const (
 	TopicPairFailed = "computer.pair_failed"
 	// TopicMoveRequested tells an owner, once, to move their computers paired through a tunnel or by URL to the Nexul app.
 	TopicMoveRequested = "computer.move_requested"
+	// TopicPlacementChanged is ephemeral: a person's computer order, runs at once, defaults or a project link changed,
+	// so their waiting runs may now land.
+	TopicPlacementChanged = "computer.placement_changed"
 )
 
 // Topics returns every topic the pairing domain publishes.
@@ -48,6 +51,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicFactsChanged, Payload: FactsChangedEvent{}},
 		{Name: TopicPairFailed, Payload: PairFailedEvent{}},
 		{Name: TopicMoveRequested, Payload: MoveRequestedEvent{}},
+		{Name: TopicPlacementChanged, Payload: PlacementChangedEvent{}},
 	}
 }
 
@@ -180,5 +184,11 @@ type FactsChangedEvent struct {
 type MoveRequestedEvent struct {
 	ComputerID  string `json:"computer_id" jsonschema:"The owner's oldest computer still paired through a tunnel or by URL."`
 	UserID      string `json:"user_id" jsonschema:"The computer's owner, the one person told."`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// PlacementChangedEvent names the person whose runs may land somewhere new, and nothing about their computers.
+type PlacementChangedEvent struct {
+	UserID      string `json:"user_id"`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }

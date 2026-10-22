@@ -43,6 +43,14 @@ type Computer struct {
 	FactsAt *time.Time `json:"facts_at,omitempty"`
 	// Shared is set on another person's computer shared with the caller by name (ADR 0148).
 	Shared *SharedComputer `json:"shared,omitempty"`
+	// Position is the computer's place in its owner's order, first runs first (ADR 0165).
+	Position int `json:"position"`
+	// RunsAtOnce is how many play runs the computer takes at a time (ADR 0166).
+	RunsAtOnce int `json:"runs_at_once"`
+	// ChatProjectID is the T3 project a chat outside any project runs in on this computer.
+	ChatProjectID string `json:"chat_project_id"`
+	// Running is how many play runs are going on it; set on a list only.
+	Running int `json:"running"`
 }
 
 // SharedComputer is whose a shared computer is and what the caller holds on it.
@@ -62,7 +70,7 @@ func (c Computer) SharedName() string {
 
 // sharedView is c with only its name, who shares it and its runner's connection: whether it is connected, and since when it last was.
 func sharedView(c Computer) Computer {
-	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared}
+	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared, RunsAtOnce: c.RunsAtOnce}
 	if c.Runner != nil {
 		out.Runner = &ComputerRunner{Connected: c.Runner.Connected, LastSeen: c.Runner.LastSeen}
 	}
@@ -353,31 +361,106 @@ func switchedOff(c Computer, driver string) bool {
 	return slices.ContainsFunc(c.SetupChoices.Skipped, func(d string) bool { return strings.EqualFold(d, strings.TrimSpace(driver)) })
 }
 
-// Defaults are a user's pairing-settings defaults for non-project chat contexts; every field is optional.
+// Defaults are what a person's runs use wherever a project link says nothing; every field is optional.
 type Defaults struct {
-	UserID            string `json:"-"`
-	DefaultComputerID string `json:"default_computer_id,omitempty"`
-	FallbackProjectID string `json:"fallback_project_id,omitempty"`
-	Provider          string `json:"provider,omitempty"`
-	Model             string `json:"model,omitempty"`
+	UserID   string `json:"-"`
+	Provider string `json:"provider,omitempty"`
+	Model    string `json:"model,omitempty"`
 	// ModelOptions are the options picked with Model; unset ones are the harness's defaults.
 	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 	// StartIn is where new harness threads start; empty is the T3 project's folder.
 	StartIn StartIn `json:"start_in,omitempty"`
+	// Placement is how a run picks among ready computers; empty is in order.
+	Placement Placement `json:"placement"`
+	// CloneAutomatically clones a project's repository onto a computer that has no checkout of it, before a run there.
+	CloneAutomatically bool `json:"clone_automatically"`
 }
 
-// ProjectLink is one person's pairing config for one project (ADR 0102); a zero value falls through to their defaults.
+// ProjectLink is one person's settings for one project (ADRs 0102, 0165); a zero value follows their defaults and order.
 type ProjectLink struct {
-	UserID           string                  `json:"-"`
-	ProjectID        string                  `json:"project_id"`
-	ComputerID       string                  `json:"computer_id,omitempty"`
-	HarnessProjectID string                  `json:"harness_project_id,omitempty"`
-	Provider         string                  `json:"provider,omitempty"`
-	Model            string                  `json:"model,omitempty"`
-	ModelOptions     []harness.OptionSetting `json:"model_options,omitempty"`
+	UserID       string                  `json:"-"`
+	ProjectID    string                  `json:"project_id"`
+	Provider     string                  `json:"provider,omitempty"`
+	Model        string                  `json:"model,omitempty"`
+	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 	// StartIn overrides the defaults' StartIn for this project; empty falls through to them.
-	StartIn   StartIn   `json:"start_in,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	StartIn StartIn `json:"start_in,omitempty"`
+	// Placement overrides the defaults' for a project with its own Computers; empty follows them.
+	Placement Placement `json:"placement,omitempty"`
+	// Computers is the project's own order of the person's computers; empty follows their order.
+	Computers []string `json:"computers"`
+	// Checkouts are the T3 projects the person picked for this project, one per computer.
+	Checkouts []Checkout `json:"checkouts"`
+	UpdatedAt time.Time  `json:"updated_at,omitempty"`
+}
+
+// Checkout is the T3 project a person picked for a project on one computer.
+type Checkout struct {
+	ComputerID       string `json:"computer_id"`
+	HarnessProjectID string `json:"harness_project_id"`
+}
+
+// checkoutOn is the checkout picked on computerID, "" when none was.
+func (l ProjectLink) checkoutOn(computerID string) string {
+	for _, c := range l.Checkouts {
+		if c.ComputerID == computerID {
+			return c.HarnessProjectID
+		}
+	}
+	return ""
+}
+
+// Placement is how a run picks among a person's ready computers (ADR 0165).
+type Placement string
+
+const (
+	// PlacementInOrder takes the first ready computer with room.
+	PlacementInOrder Placement = "in_order"
+	// PlacementSpread takes the ready computer least busy for its runs at once, ties by order.
+	PlacementSpread Placement = "spread"
+)
+
+// validatePlacement accepts the two placements and empty, which defers to the next level down.
+func validatePlacement(p Placement) (Placement, error) {
+	p = Placement(strings.TrimSpace(string(p)))
+	if p == "" || p == PlacementInOrder || p == PlacementSpread {
+		return p, nil
+	}
+	return "", fmt.Errorf("%w: placement must be %q or %q", apperrs.ErrInvalid, PlacementInOrder, PlacementSpread)
+}
+
+// MinRunsAtOnce and MaxRunsAtOnce bound a computer's runs at once (ADR 0166).
+const (
+	MinRunsAtOnce = 1
+	MaxRunsAtOnce = 5
+)
+
+// PassOverReason is why a computer could not take a run.
+type PassOverReason string
+
+const (
+	PassOverOffline           PassOverReason = "offline"
+	PassOverExpiredToken      PassOverReason = "expired_token"
+	PassOverSetupRequired     PassOverReason = "setup_required"
+	PassOverNoModel           PassOverReason = "no_model"
+	PassOverNoCheckout        PassOverReason = "no_checkout"
+	PassOverAmbiguousCheckout PassOverReason = "ambiguous_checkout"
+	PassOverNoChatFolder      PassOverReason = "no_chat_folder"
+	PassOverFull              PassOverReason = "full"
+	PassOverCloneFailed       PassOverReason = "clone_failed"
+)
+
+// PassOver is one computer a run passed over and why; Text says it in a line every client shows as is.
+type PassOver struct {
+	ComputerID string         `json:"computer_id"`
+	Name       string         `json:"name"`
+	Why        PassOverReason `json:"why"`
+	Text       string         `json:"text"`
+}
+
+// missingProject is whether the computer was passed over only for not having the project.
+func (p PassOver) missingProject() bool {
+	return p.Why == PassOverNoCheckout || p.Why == PassOverAmbiguousCheckout || p.Why == PassOverCloneFailed
 }
 
 // StartIn is where a new harness thread starts: the T3 project's own folder, or a fresh git worktree of it.
@@ -405,15 +488,13 @@ const (
 	ReasonUnpaired NotConfiguredReason = "unpaired"
 	// ReasonExpiredToken: a computer resolved, but its bearer session expired; the fix is re-pairing.
 	ReasonExpiredToken NotConfiguredReason = "expired_token"
-	// ReasonNoDefault: a valid computer resolved, but no harness project is configured for it.
-	ReasonNoDefault NotConfiguredReason = "no_default"
-	// ReasonNoDefaultComputer: several paired computers, none picked as default; the fix is choosing one.
-	ReasonNoDefaultComputer NotConfiguredReason = "no_default_computer"
+	// ReasonNoComputerReady: none of the person's computers can take the run; PassedOver says why for each (ADR 0165).
+	ReasonNoComputerReady NotConfiguredReason = "no_computer_ready"
 	// ReasonSetupRequired: the computer or the provider the run lands on has no setup confirmation (ADR 0063).
 	ReasonSetupRequired NotConfiguredReason = "setup_required"
 	// ReasonOffline: the resolved computer's harness did not answer, so the setup gate could not check its providers.
 	ReasonOffline NotConfiguredReason = "offline"
-	// ReasonNeedsLocation: a person's run in a project they never linked asks where to run instead of using their defaults (ADR 0145).
+	// ReasonNeedsLocation: no computer of the person's has the project, so their run asks where (ADR 0165).
 	ReasonNeedsLocation NotConfiguredReason = "needs_location"
 )
 
@@ -431,6 +512,8 @@ type NotConfiguredError struct {
 	// Why says what is offline for ReasonOffline when Nexul knows more than that T3 Code did not answer, and for
 	// ReasonSetupRequired that the provider is switched off rather than not set up.
 	Why string
+	// PassedOver names every computer the run could not land on and why.
+	PassedOver []PassOver
 }
 
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
@@ -449,8 +532,11 @@ func (e *NotConfiguredError) Error() string {
 		return fmt.Sprintf("%s is offline: %s.", e.Computer, why)
 	}
 	if e.Reason == ReasonNeedsLocation {
-		return "Pick where plays run in this project: a computer and its T3 project. It's saved as your link for this project, " +
-			"which Settings → Computers → Projects can change."
+		return "None of your computers has this project. Pick a computer and its T3 project; it's remembered for this project, " +
+			"and Settings → Computers → Projects can change it."
+	}
+	if e.Reason == ReasonNoComputerReady {
+		return "none of your computers can take it: " + passOverLines(e.PassedOver)
 	}
 	if text, ok := notConfiguredText[e.Reason]; ok {
 		return text
@@ -460,10 +546,17 @@ func (e *NotConfiguredError) Error() string {
 
 // notConfiguredText reads after "didn't run:" on a ticket and alone in the run dialog alike, so it names no person.
 var notConfiguredText = map[NotConfiguredReason]string{
-	ReasonUnpaired:          "no computer is paired to run it on; add one in Settings → Computers",
-	ReasonExpiredToken:      "the paired computer's session expired; pair it again in Settings → Computers",
-	ReasonNoDefault:         "no T3 project is picked for this project on the paired computer; link one in Settings → Computers → Projects, or set a fallback under Defaults",
-	ReasonNoDefaultComputer: "several computers are paired and none is the default; pick one under Defaults in Settings → Computers",
+	ReasonUnpaired:     "no computer is paired to run it on; add one in Settings → Computers",
+	ReasonExpiredToken: "the paired computer's session expired; pair it again in Settings → Computers",
+}
+
+// passOverLines joins each computer's reason into one sentence's worth: "laptop is offline; build-box is full (2 of 2)."
+func passOverLines(ps []PassOver) string {
+	lines := make([]string, 0, len(ps))
+	for _, p := range ps {
+		lines = append(lines, p.Text)
+	}
+	return strings.Join(lines, "; ") + "."
 }
 
 // RefusalDetails is a NotConfiguredError's machine-readable side, carried beside the message in the error envelope.
@@ -473,11 +566,12 @@ type RefusalDetails struct {
 	Computer   string              `json:"computer,omitempty"`
 	ProviderID string              `json:"provider_id,omitempty"`
 	Provider   string              `json:"provider,omitempty"`
+	PassedOver []PassOver          `json:"passed_over,omitempty"`
 }
 
 // ErrorDetails satisfies httpx.DetailedError.
 func (e *NotConfiguredError) ErrorDetails() any {
-	return RefusalDetails{Reason: e.Reason, ComputerID: e.ComputerID, Computer: e.Computer, ProviderID: e.ProviderID, Provider: e.Provider}
+	return RefusalDetails{Reason: e.Reason, ComputerID: e.ComputerID, Computer: e.Computer, ProviderID: e.ProviderID, Provider: e.Provider, PassedOver: e.PassedOver}
 }
 
 func (e *NotConfiguredError) Unwrap() []error {

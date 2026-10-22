@@ -46,15 +46,14 @@ func TestHandler_AutoPlayLimits(t *testing.T) {
 
 	rec := do(t, routes, http.MethodGet, path, "", "editor")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"daily_cap_per_ticket":5,"runs_at_once_per_person":1}`, rec.Body.String())
+	assert.JSONEq(t, `{"daily_cap_per_ticket":5}`, rec.Body.String())
 
 	rec = do(t, routes, http.MethodPatch, path, `{"daily_cap_per_ticket":8}`, "editor")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"daily_cap_per_ticket":8,"runs_at_once_per_person":1}`, rec.Body.String())
+	assert.JSONEq(t, `{"daily_cap_per_ticket":8}`, rec.Body.String())
 
 	rec = do(t, routes, http.MethodPatch, path, `{"runs_at_once_per_person":3}`, "editor")
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"daily_cap_per_ticket":8,"runs_at_once_per_person":3}`, rec.Body.String())
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "runs at once is set on each computer now")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{"daily_cap_per_ticket":0}`, "editor").Code)
 	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{`, "editor").Code)

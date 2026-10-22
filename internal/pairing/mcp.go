@@ -58,8 +58,11 @@ type computerCreateIn struct {
 }
 
 type computerPairIn struct {
-	ID   string `json:"id" jsonschema:"One of your computers, from computer_list, to pair or re-pair now through its Nexul app."`
-	Name string `json:"name,omitempty" jsonschema:"A new name for the computer, for example Alice Laptop; with it the call only renames the computer. Omit it to pair."`
+	ID            string  `json:"id" jsonschema:"One of your computers, from computer_list, to pair or re-pair now through its Nexul app."`
+	Name          string  `json:"name,omitempty" jsonschema:"A new name for the computer, for example Alice Laptop. With it, or any field below, the call only changes those and does not pair."`
+	Position      *int    `json:"position,omitempty" jsonschema:"Where the computer goes in your order, 0 for first: runs go to the first of your computers that can take them. Omit to keep it."`
+	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"How many play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full. Omit to keep it."`
+	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in here; empty clears it. Omit to keep it."`
 }
 
 type computerDeleteIn struct {
@@ -117,10 +120,18 @@ type computerResult struct {
 	ContainerLogs    *computerContainerLogs `json:"container_logs,omitempty"`
 	RunnerLogs       *computerRunnerLogs    `json:"runner_logs,omitempty"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`
+	Position         int                    `json:"position"`
+	RunsAtOnce       int                    `json:"runs_at_once"`
+	Running          int                    `json:"running"`
+	ChatProjectID    string                 `json:"chat_project_id,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
-	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner, PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt}
+	r := computerResult{
+		ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner,
+		PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt, Position: c.Position, RunsAtOnce: c.RunsAtOnce, Running: c.Running,
+		ChatProjectID: c.ChatProjectID,
+	}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
 	}
@@ -129,7 +140,8 @@ func toComputerResult(c Computer) computerResult {
 
 func computerListTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_list", "List paired computers",
-		"Lists the computers you own, each with its setup confirmation (overall and per provider, plus each "+
+		"Lists the computers you own in your order, where runs go to the first that can take them, each with its "+
+			"position, runs_at_once, how many play runs are running on it, its chat_project_id, its setup confirmation (overall and per provider, plus each "+
 			"provider's newest setup turn), and its MCP token's metadata, never the token itself. Pass id to read one "+
 			"computer alone with its T3 projects as T3 Code reports them, the t3_project_id play_run takes. A computer "+
 			"with paired false has no harness session yet, and pair_error says why its last pairing through its Nexul app "+
@@ -312,8 +324,8 @@ func computerPairTool(s *Service) mcptool.Tool {
 		"Pairs T3 Code on one of your computers now through its Nexul app, giving Nexul a harness session on it. A "+
 			"computer added with computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app "+
 			"connects; this pairs it again now, which mints a one-time token on the computer and exchanges it there, and a "+
-			"failure says why and leaves the computer as it was. With name it only renames the computer. Returns the paired "+
-			"computer; run computer_setup_run next so agent work can use it.",
+			"failure says why and leaves the computer as it was. With name, position, runs_at_once or chat_project_id it only "+
+			"changes those and pairs nothing. Returns the computer; after pairing, run computer_setup_run next so agent work can use it.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
 			c, err := pairComputer(ctx, s, in)
@@ -325,10 +337,20 @@ func computerPairTool(s *Service) mcptool.Tool {
 }
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
-	if in.Name != "" {
-		return s.RenameComputer(ctx, mcpActorID(ctx), in.ID, in.Name)
+	userID := mcpActorID(ctx)
+	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil {
+		return s.PairComputer(ctx, userID, in.ID)
 	}
-	return s.PairComputer(ctx, mcpActorID(ctx), in.ID)
+	if in.Position != nil {
+		if err := s.MoveComputer(ctx, userID, in.ID, *in.Position); err != nil {
+			return nil, err
+		}
+	}
+	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID}
+	if in.Name != "" {
+		patch.Name = &in.Name
+	}
+	return s.UpdateComputer(ctx, userID, in.ID, patch)
 }
 
 func computerDeleteTool(s *Service) mcptool.Tool {

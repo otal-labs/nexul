@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
+import { useComputerOrder } from "@/components/settings/ComputerOrderContext";
 import { MoveNotice } from "@/components/settings/MoveNotice";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
@@ -21,6 +22,7 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
   const remove = useDeleteComputer();
   const { open: confirm } = useConfirmationDialog();
   const [folded, setFolded] = useState(true);
+  const { grip, moveActions } = useComputerOrder();
 
   const removeComputer = async () => {
     const ok = await confirm({
@@ -30,11 +32,12 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
     });
     if (ok) remove.mutate(computer);
   };
-  const actions: RowAction[] = [{ label: "Remove", destructive: true, onSelect: () => void removeComputer() }];
+  const actions: RowAction[] = [...moveActions, { label: "Remove", destructive: true, onSelect: () => void removeComputer() }];
 
   return (
-    <li className="bg-card px-3 py-3">
+    <div className="px-3 py-3">
       <div className="flex items-center gap-2">
+        {grip}
         <button
           type="button"
           aria-expanded={!folded}
@@ -57,11 +60,11 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
       <MoveNotice computer={computer} onMove={onMove} />
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>
-          <div className="pt-3 pl-6">
+          <div className={cn("pt-3", grip ? "pl-12" : "pl-6")}>
             <ComputerDetails computer={computer} setup={setup} />
           </div>
         </div>
       </div>
-    </li>
+    </div>
   );
 };

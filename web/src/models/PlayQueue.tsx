@@ -1,3 +1,4 @@
+import type { PassOver } from "@/models/Pairing";
 import type { PlayType } from "@/models/Play";
 
 export type PlayQueueStatus = "queued" | "dispatching" | "started" | "skipped" | "didnt_run" | "cancelled";
@@ -19,20 +20,21 @@ export interface PlayQueueItem {
   moment: string;
   priority: "high" | "normal" | "low";
   status: PlayQueueStatus;
-  // While queued: offline, ticket busy, paused, no free slot, a computer setup gap (unpaired, expired_token, no_default,
-  // no_default_computer, setup_required), or "" until first tried; once decided, why.
+  // While queued: ticket busy, paused, why none of its person's computers can take it (unpaired, expired_token,
+  // setup_required, offline, no_computer_ready), or "" until first tried; once decided, why.
   reason: string;
   trail_id: string;
   via: "web" | "mcp" | "automation";
   queued_at: string;
   decided_at: string | null;
   not_before: string;
-  // The computer it runs on: the one its auto play names for "computer", else the one its person picked when several
-  // are paired and none is the default; "" until picked.
+  // The computer its auto play names for "computer"; "" when it goes to its person's first ready computer.
   computer_id: string;
   // For a stack moment, the service that went down or came back and its outage; "" otherwise.
   service: string;
   outage_id: string;
+  // While queued, to its person alone: each of their computers and why it can't take the run.
+  waiting_on?: PassOver[];
 }
 
 // Mirrors internal/plays.Queue: a ticket's, doc's or stack's auto runs, newest first, and whether the daily cap paused them.

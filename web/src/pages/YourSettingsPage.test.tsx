@@ -110,15 +110,14 @@ describe("YourSettingsPage", () => {
   });
 
   it("lands a computer setup link on the Computers tab with its setup param intact", async () => {
-    const user = userEvent.setup();
     renderPage("/settings/pairing?setup=c1");
 
     expect(await screen.findByRole("tab", { name: "Computers", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Computers card")).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent("setup=c1");
 
-    await user.click(screen.getByRole("tab", { name: "Defaults" }));
-    expect(screen.getByText("Defaults card")).toBeInTheDocument();
+    expect(screen.getByText("Defaults card"), "the defaults sit under the computers they pick between").toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Defaults" })).not.toBeInTheDocument();
   });
 
   it("opens the personal access tokens from their path", async () => {

@@ -1,8 +1,8 @@
 -- name: SavePairingComputer :exec
--- The tunnel columns are written on insert only, so re-pairing never drops a computer's tunnel.
+-- The tunnel columns and position are written on insert only, so re-pairing never drops a computer's tunnel or moves it.
 INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at,
-  tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, position)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   kind = excluded.kind, name = excluded.name, server_url = excluded.server_url, bearer_token = excluded.bearer_token,
   token_expires_at = excluded.token_expires_at, harness_version = excluded.harness_version, updated_at = excluded.updated_at;
@@ -11,7 +11,23 @@ ON CONFLICT(id) DO UPDATE SET
 SELECT * FROM pairing_computers WHERE id = ? AND user_id = ?;
 
 -- name: ListPairingComputers :many
-SELECT * FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC;
+SELECT * FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC;
+
+-- name: NextPairingComputerPosition :one
+-- The place after the last of a person's computers, where a new one goes.
+SELECT CAST(COALESCE(MAX(position) + 1, 0) AS INTEGER) FROM pairing_computers WHERE user_id = ?;
+
+-- name: SetPairingComputerPosition :execrows
+UPDATE pairing_computers SET position = ? WHERE id = ? AND user_id = ?;
+
+-- name: SetPairingComputerPlacement :execrows
+UPDATE pairing_computers SET runs_at_once = ?, chat_project_id = ?, updated_at = ? WHERE id = ? AND user_id = ?;
+
+-- name: CountPairingComputerRuns :many
+-- The play runs going on each computer, for its runs at once (ADR 0166).
+SELECT computer_id, COUNT(*) AS running FROM play_trails
+WHERE computer_id IN (SELECT value FROM json_each(sqlc.arg(computer_ids))) AND state IN ('starting', 'running', 'waiting')
+GROUP BY computer_id;
 
 -- name: ListPairingTunnelComputers :many
 SELECT * FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id;
@@ -31,25 +47,45 @@ SELECT * FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
 SELECT * FROM pairing_project_links WHERE user_id = ? ORDER BY project_id;
 
 -- name: SavePairingProjectLink :exec
-INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, start_in, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_project_links (user_id, project_id, provider, model, model_options, start_in, placement, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, project_id) DO UPDATE SET
-  computer_id = excluded.computer_id, harness_project_id = excluded.harness_project_id,
   provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in,
-  updated_at = excluded.updated_at;
+  placement = excluded.placement, updated_at = excluded.updated_at;
+
+-- name: ListPairingProjectComputers :many
+-- A person's computers for one project: those in its own order by position, then the ones only holding a checkout.
+SELECT * FROM pairing_project_computers WHERE user_id = ? AND project_id = ? ORDER BY position IS NULL, position, computer_id;
+
+-- name: ListPairingProjectComputersByUser :many
+SELECT * FROM pairing_project_computers WHERE user_id = ? ORDER BY project_id, position IS NULL, position, computer_id;
+
+-- name: ClearPairingProjectOrder :exec
+UPDATE pairing_project_computers SET position = NULL WHERE user_id = ? AND project_id = ?;
+
+-- name: SetPairingProjectComputerPosition :exec
+INSERT INTO pairing_project_computers (user_id, project_id, computer_id, position) VALUES (?, ?, ?, ?)
+ON CONFLICT(user_id, project_id, computer_id) DO UPDATE SET position = excluded.position;
+
+-- name: SetPairingProjectCheckout :exec
+INSERT INTO pairing_project_computers (user_id, project_id, computer_id, harness_project_id) VALUES (?, ?, ?, ?)
+ON CONFLICT(user_id, project_id, computer_id) DO UPDATE SET harness_project_id = excluded.harness_project_id;
+
+-- name: PrunePairingProjectComputers :exec
+DELETE FROM pairing_project_computers WHERE user_id = ? AND project_id = ? AND position IS NULL AND harness_project_id = '';
 
 -- name: DeletePairingProjectLink :exec
 DELETE FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
 
 -- name: GetPairingDefaults :one
-SELECT default_computer_id, fallback_project_id, provider, model, model_options, start_in FROM pairing_user_defaults WHERE user_id = ?;
+SELECT * FROM pairing_user_defaults WHERE user_id = ?;
 
 -- name: SavePairingDefaults :exec
-INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options, start_in)
+INSERT INTO pairing_user_defaults (user_id, provider, model, model_options, start_in, placement, clone_automatically)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id) DO UPDATE SET
-  default_computer_id = excluded.default_computer_id, fallback_project_id = excluded.fallback_project_id,
-  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in;
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in,
+  placement = excluded.placement, clone_automatically = excluded.clone_automatically;
 
 -- name: SetPairingComputerSetupConfirmedAt :execrows
 UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?;
@@ -118,7 +154,7 @@ WHERE c.user_id = sqlc.arg(user_id)
        AND EXISTS (SELECT 1 FROM users me WHERE me.id = sqlc.arg(user_id) AND me.account_status = 'active')
        AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
                    WHERE a.user_id = sqlc.arg(user_id) AND b.user_id = c.user_id))
-ORDER BY po.allow IS NOT NULL, c.created_at DESC;
+ORDER BY po.allow IS NOT NULL, c.position, c.created_at DESC;
 
 -- name: ListUsersWithReadyComputer :many
 SELECT DISTINCT user_id FROM pairing_computers

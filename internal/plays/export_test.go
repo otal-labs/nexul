@@ -1,7 +1,9 @@
 package plays
 
 import (
+	"cmp"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -26,7 +28,7 @@ type QueueRig struct {
 // NewQueueRig wires a runner whose plays, trails, and queue are the given stores; projectID is in workspaceID.
 func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID, projectID string, now func() time.Time) *QueueRig {
 	q := &QueueRig{
-		harness:  &switchableHarness{links: map[string][2]string{}},
+		harness:  &switchableHarness{},
 		perm:     &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:    &fakeFacts{byID: map[string]Facts{}},
 		targets:  &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
@@ -125,23 +127,20 @@ func (q *QueueRig) Hide(userID, playID string) { q.perm.hide(userID, playID) }
 func (q *QueueRig) Offline(offline bool) {
 	reason := ""
 	if offline {
-		reason = RefusalOffline
+		reason = ReasonOffline
 	}
 	q.harness.refuse(reason)
 }
 
-// Refuse makes every computer refuse with reason, such as setup_required; "" answers again.
-func (q *QueueRig) Refuse(reason string) { q.harness.refuse(reason) }
-
-// FailLinkSave makes saving a project link fail with err; nil saves again.
-func (q *QueueRig) FailLinkSave(err error) {
+// CountRunningWith makes each person's computer take runsAtOnce queued runs, counting what goes on it with running.
+func (q *QueueRig) CountRunningWith(runsAtOnce int, running func(ctx context.Context, computerID string) (int, error)) {
 	q.harness.mu.Lock()
 	defer q.harness.mu.Unlock()
-	q.harness.saveErr = err
+	q.harness.runsAtOnce, q.harness.running = runsAtOnce, running
 }
 
-// Link is userID's saved link for projectID: its computer and T3 project, empty when unset.
-func (q *QueueRig) Link(userID, projectID string) [2]string { return q.harness.Link(userID, projectID) }
+// Refuse makes every computer refuse with reason, such as setup_required; "" answers again.
+func (q *QueueRig) Refuse(reason string) { q.harness.refuse(reason) }
 
 // Resolves counts the harness readiness checks, one per start tried.
 func (q *QueueRig) Resolves() int { return q.harness.count() }
@@ -205,16 +204,16 @@ func (f *fakeFacts) Facts(_ context.Context, _ TargetType, id string) (Facts, er
 	return facts, nil
 }
 
-// switchableHarness answers every start, or refuses each with a reason. It also keeps project links, which answer
-// for their person and project without a default computer, as pairing reads a link before the defaults.
+// switchableHarness answers every start, or refuses each with a reason. Each person has one computer, c-<person>, that
+// takes as many queued runs at once as runsAtOnce, counted by running, the way pairing counts a computer's room.
 type switchableHarness struct {
-	mu       sync.Mutex
-	reason   string
-	resolves int
-	links    map[string][2]string // user id + "/" + project id -> computer id, T3 project id
-	saveErr  error
-	next     func()
-	last     HarnessChoice
+	mu         sync.Mutex
+	reason     string
+	resolves   int
+	runsAtOnce int
+	running    func(ctx context.Context, computerID string) (int, error)
+	next       func()
+	last       HarnessChoice
 }
 
 func (h *switchableHarness) lastChoice() HarnessChoice {
@@ -247,60 +246,63 @@ func (h *switchableHarness) count() int {
 	return h.resolves
 }
 
-func (h *switchableHarness) ResolveTarget(_ context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+func (h *switchableHarness) ResolveTarget(_ context.Context, userID, _ string, choice HarnessChoice) (HarnessChoice, error) {
 	h.takeNext()()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++
 	h.last = choice
-	if link, ok := h.links[userID+"/"+projectID]; ok && h.reason == RefusalNoDefaultComputer {
-		return HarnessChoice{ComputerID: link[0], HarnessProjectID: link[1], Provider: "codex"}, nil
-	}
+	computerID := cmp.Or(choice.ComputerID, "c-"+userID)
 	if h.reason != "" {
-		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: "c-1", Err: apperrs.ErrInvalid}
+		pass := PassedOver{ComputerID: computerID, Name: computerID, Why: h.reason, Text: computerID + " can't: " + h.reason}
+		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: computerID, PassedOver: []PassedOver{pass}, Err: apperrs.ErrInvalid}
 	}
-	return HarnessChoice{ComputerID: "c-1", Provider: "codex"}, nil
+	return HarnessChoice{ComputerID: computerID, Provider: "codex"}, nil
+}
+
+// ResolveQueuedTarget refuses while the person's computer is full, naming it, as pairing's no_computer_ready does.
+func (h *switchableHarness) ResolveQueuedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	computerID := cmp.Or(choice.ComputerID, "c-"+userID)
+	h.mu.Lock()
+	limit, running := max(h.runsAtOnce, 1), h.running
+	h.mu.Unlock()
+	if running == nil {
+		return h.ResolveTarget(ctx, userID, projectID, choice)
+	}
+	n, err := running(ctx, computerID)
+	if err != nil {
+		return HarnessChoice{}, err
+	}
+	if n < limit {
+		return h.ResolveTarget(ctx, userID, projectID, choice)
+	}
+	text := fmt.Sprintf("%s is full (%d of %d running)", computerID, n, limit)
+	pass := PassedOver{ComputerID: computerID, Name: computerID, Why: "full", Text: text}
+	return HarnessChoice{}, &HarnessRefusal{Reason: "no_computer_ready", PassedOver: []PassedOver{pass}, Err: apperrs.ErrInvalid}
 }
 
 func (h *switchableHarness) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
 	return h.ResolveTarget(ctx, userID, projectID, choice)
 }
 
-// ResolveRecordedTarget runs a picked computer and T3 project as given: a pinned location needs no default computer.
+// ResolveRecordedTarget runs a recorded computer and T3 project as given.
 func (h *switchableHarness) ResolveRecordedTarget(_ context.Context, _, _ string, choice HarnessChoice) (HarnessChoice, error) {
 	h.takeNext()()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++
-	if h.reason != "" && h.reason != RefusalNoDefaultComputer {
+	if h.reason != "" {
 		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: choice.ComputerID, Err: apperrs.ErrInvalid}
 	}
 	return choice, nil
 }
 
-func (h *switchableHarness) LinkedProject(_ context.Context, userID, projectID string) (string, string, error) {
-	link := h.Link(userID, projectID)
-	return link[0], link[1], nil
+func (h *switchableHarness) CheckoutOn(context.Context, string, string, string) (string, error) {
+	return "", nil
 }
 
 func (h *switchableHarness) ListProjects(context.Context, string, string) ([]harness.Project, error) {
 	return nil, nil
-}
-
-func (h *switchableHarness) SaveLink(_ context.Context, userID, projectID, computerID, harnessProjectID string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.saveErr != nil {
-		return h.saveErr
-	}
-	h.links[userID+"/"+projectID] = [2]string{computerID, harnessProjectID}
-	return nil
-}
-
-func (h *switchableHarness) Link(userID, projectID string) [2]string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.links[userID+"/"+projectID]
 }
 
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.

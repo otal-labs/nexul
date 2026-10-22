@@ -3,12 +3,13 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
+
 	"fmt"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/plays"
 
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -33,7 +34,7 @@ func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evt
 			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, AutomationID: it.AutomationID, PersonID: it.PersonID, RunOn: string(it.RunOn),
 			Moment: string(it.Moment), Via: string(it.Via), Priority: levelPriority[it.Priority], Status: string(it.Status),
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID,
+			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID,
 			Service: it.Service, OutageID: it.OutageID,
 		})
 		if err != nil {
@@ -58,31 +59,19 @@ func (r *PlayQueueRepo) GetQueueItem(ctx context.Context, id string) (*plays.Que
 
 func (r *PlayQueueRepo) MoveQueueItem(ctx context.Context, it *plays.QueueItem, from plays.QueueStatus, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		row, err := r.q.WithTx(tx).UpdatePlayQueueItem(ctx, sqlcgen.UpdatePlayQueueItemParams{
-			Status: string(it.Status), Reason: it.Reason, TrailID: it.TrailID, DecidedAt: nullUnixPtr(it.DecidedAt),
+		waitingOn, err := jsonx.Marshal(it.WaitingOn)
+		if err != nil {
+			return fmt.Errorf("encode what queue item %s waits on: %w", it.ID, err)
+		}
+		n, err := r.q.WithTx(tx).UpdatePlayQueueItem(ctx, sqlcgen.UpdatePlayQueueItemParams{
+			Status: string(it.Status), Reason: it.Reason, WaitingOn: string(waitingOn), TrailID: it.TrailID, DecidedAt: nullUnixPtr(it.DecidedAt),
 			NotBefore: it.NotBefore.Unix(), ID: it.ID, FromStatus: string(from),
 		})
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("update queue item %s: no longer %s: %w", it.ID, from, apperrs.ErrConflict)
-		}
 		if err != nil {
 			return fmt.Errorf("update queue item %s: %w", it.ID, classifyWriteErr(err))
 		}
-		it.ComputerID, it.HarnessProjectID = row.ComputerID, row.HarnessProjectID
-		return enqueuePlaysOutbox(ctx, tx, evts)
-	})
-}
-
-func (r *PlayQueueRepo) PickQueueItem(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).PickPlayQueueItem(ctx, sqlcgen.PickPlayQueueItemParams{
-			ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID, NotBefore: it.NotBefore.Unix(), ID: it.ID,
-		})
-		if err != nil {
-			return fmt.Errorf("pick a computer for queue item %s: %w", it.ID, classifyWriteErr(err))
-		}
 		if n == 0 {
-			return fmt.Errorf("pick a computer for queue item %s: no longer queued: %w", it.ID, apperrs.ErrConflict)
+			return fmt.Errorf("update queue item %s: no longer %s: %w", it.ID, from, apperrs.ErrConflict)
 		}
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})
@@ -153,11 +142,6 @@ func (r *PlayQueueRepo) NextNotBefore(ctx context.Context, after time.Time) (tim
 	return time.Unix(n, 0).UTC(), true, nil
 }
 
-func (r *PlayQueueRepo) CountActiveRuns(ctx context.Context, personID string) (int, error) {
-	n, err := r.q.CountActivePlayTrailsByStarter(ctx, personID)
-	return int(n), err
-}
-
 func (r *PlayQueueRepo) CountAutoRuns(ctx context.Context, targetType plays.TargetType, targetID string, since time.Time) (int, time.Time, error) {
 	row, err := r.q.CountPlayQueueStarted(ctx, sqlcgen.CountPlayQueueStartedParams{TargetType: string(targetType), TargetID: targetID, Since: since.Unix()})
 	if err != nil {
@@ -209,6 +193,6 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 		RunOn: plays.RunOn(row.RunOn), Moment: plays.Moment(row.Moment), Priority: level, Status: plays.QueueStatus(row.Status),
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),
-		ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID, Service: row.Service, OutageID: row.OutageID,
+		ComputerID: row.ComputerID, Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
 	}
 }

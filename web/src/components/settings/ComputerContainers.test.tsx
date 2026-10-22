@@ -22,6 +22,10 @@ const laptop = (docker: ComputerFacts["docker"]): Computer =>
     token_expires_at: "2099-01-01T00:00:00Z",
     harness_version: "0.0.46",
     created_at: "2026-10-01T00:00:00Z",
+    position: 0,
+    runs_at_once: 1,
+    running: 0,
+    chat_project_id: "",
     updated_at: "2026-10-01T00:00:00Z",
     facts: { t3: { state: "answering" }, providers: [], projects: [], ...(docker && { docker }) },
   }) as Computer;

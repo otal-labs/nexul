@@ -303,14 +303,11 @@ func TestAutoPlayLimits_StayInTheirBounds(t *testing.T) {
 	s, repo, _ := autoPlayFixture(t)
 	limits, err := s.AutoPlayLimits(ctxAs("editor"), workspaceID)
 	require.NoError(t, err)
-	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap, RunsAtOncePerPerson: DefaultAutoPlayRunsAtOnce}, limits)
+	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap}, limits)
 	for name, bad := range map[string]AutoPlayLimitsPatch{
-		"nothing":              {},
-		"no daily cap":         {DailyCapPerTicket: ptr(0)},
-		"too high a cap":       {DailyCapPerTicket: ptr(MaxAutoPlayDailyCap + 1)},
-		"no runs at once":      {RunsAtOncePerPerson: ptr(0)},
-		"too many at once":     {RunsAtOncePerPerson: ptr(MaxAutoPlayRunsAtOnce + 1)},
-		"a good cap, bad runs": {DailyCapPerTicket: ptr(3), RunsAtOncePerPerson: ptr(0)},
+		"nothing":        {},
+		"no daily cap":   {DailyCapPerTicket: ptr(0)},
+		"too high a cap": {DailyCapPerTicket: ptr(MaxAutoPlayDailyCap + 1)},
 	} {
 		_, err := s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, bad)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, name)
@@ -318,13 +315,10 @@ func TestAutoPlayLimits_StayInTheirBounds(t *testing.T) {
 	repo.published = nil
 	limits, err = s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, AutoPlayLimitsPatch{DailyCapPerTicket: ptr(12)})
 	require.NoError(t, err)
-	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: 12, RunsAtOncePerPerson: DefaultAutoPlayRunsAtOnce}, limits)
-	limits, err = s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, AutoPlayLimitsPatch{RunsAtOncePerPerson: ptr(3)})
-	require.NoError(t, err)
-	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: 12, RunsAtOncePerPerson: 3}, limits, "a patch keeps the limit it leaves out")
-	require.Len(t, repo.published, 2)
-	assert.Equal(t, TopicAutoPlayLimitsUpdated, repo.published[1].Topic)
-	assert.Equal(t, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: 12, RunsAtOncePerPerson: 3}, repo.published[1].Payload)
+	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: 12}, limits)
+	require.Len(t, repo.published, 1)
+	assert.Equal(t, TopicAutoPlayLimitsUpdated, repo.published[0].Topic)
+	assert.Equal(t, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: 12}, repo.published[0].Payload)
 
 	repo.autoPlayErr = errors.New("disk full")
 	_, err = s.AutoPlayLimits(ctxAs("editor"), workspaceID)

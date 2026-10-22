@@ -113,23 +113,18 @@ var fieldOps = map[Type]map[Field][]Op{
 
 // Bounds on what one auto play may hold, so a pasted tree cannot grow without limit.
 const (
-	MaxAutoPlayRules          = 20
-	MaxAutoPlayRuleValues     = 50
-	MaxOnceWithinMinutes      = 30 * 24 * 60
-	MinAutoPlayDailyCap       = 1
-	MaxAutoPlayDailyCap       = 50
-	DefaultAutoPlayDailyCap   = 5
-	MinAutoPlayRunsAtOnce     = 1
-	MaxAutoPlayRunsAtOnce     = 5
-	DefaultAutoPlayRunsAtOnce = 1
-	MaxAutoPlayMemories       = 50
+	MaxAutoPlayRules        = 20
+	MaxAutoPlayRuleValues   = 50
+	MaxOnceWithinMinutes    = 30 * 24 * 60
+	MinAutoPlayDailyCap     = 1
+	MaxAutoPlayDailyCap     = 50
+	DefaultAutoPlayDailyCap = 5
+	MaxAutoPlayMemories     = 50
 )
 
 // AutoPlayLimits are a workspace's bounds on automatic runs, shared by every play's auto plays.
 type AutoPlayLimits struct {
 	DailyCapPerTicket int `json:"daily_cap_per_ticket"`
-	// RunsAtOncePerPerson counts every run a person has going, pressed or automatic, in any workspace.
-	RunsAtOncePerPerson int `json:"runs_at_once_per_person"`
 }
 
 // Conditions is a stack nested one level: the top matches all or any of its groups, each group all or any of its rules.

@@ -58,8 +58,15 @@ func readableRuns[T any](ctx context.Context, r *Runner, list []T, owner func(T)
 	})
 }
 
+// readable is readableRuns for trails, with the computers a run passed over left to its starter alone, since they are theirs.
 func (r *Runner) readable(ctx context.Context, list []*Trail) []*Trail {
-	return readableRuns(ctx, r, list, func(t *Trail) runOwner { return runOwner{t.WorkspaceID, t.ProjectID, t.PlayID, t.StarterID} })
+	out := readableRuns(ctx, r, list, func(t *Trail) runOwner { return runOwner{t.WorkspaceID, t.ProjectID, t.PlayID, t.StarterID} })
+	for _, t := range out {
+		if t.StarterID != actorID(ctx) {
+			t.PassedOver = nil
+		}
+	}
+	return out
 }
 
 // ListTrails returns a target's trails newest first, under the same gate as GetTrail; a playID keeps that play's alone.

@@ -134,7 +134,7 @@ func (f *fakeRepo) AutoPlayLimits(_ context.Context, workspaceID string) (AutoPl
 	if limits, ok := f.limits[workspaceID]; ok {
 		return limits, nil
 	}
-	return AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap, RunsAtOncePerPerson: DefaultAutoPlayRunsAtOnce}, nil
+	return AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap}, nil
 }
 
 func (f *fakeRepo) SetAutoPlayLimits(_ context.Context, workspaceID string, limits AutoPlayLimits, evts ...eventbus.OutboxEvent) error {

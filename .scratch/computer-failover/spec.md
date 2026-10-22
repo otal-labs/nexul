@@ -105,7 +105,7 @@ once, ties by order. A pressed run with every ready computer full takes the firs
   checkout picker when needed); it no longer saves a link. Order and project lists are edited in settings.
 - **Queued auto play.** The queue item carries no computer until it starts (a chosen-computer auto play carries its
   list). At the front of the queue the dispatcher resolves with room counting; nothing ready holds the item with
-  reason `no_computer_ready` and a `computers` list beside it, one `{computer_id, name, why}` per candidate. The
+  reason `no_computer_ready` and a `waiting_on` list beside it, one `{computer_id, name, why, text}` per candidate, shown only to the run's own person. The
   person's pass no longer stops at one offline computer. A run that starts records the computers passed over.
 - **Waking.** Today `HandleSlotsFreed` wakes on a run finishing and on the workspace limit changing. It now also wakes
   on a computer's runs at once, order, project list, checkout or clone switch changing, and on a computer connecting
@@ -152,13 +152,13 @@ Migrations, then `make sqlc`:
   `GET /api/pairing/computers` adds `position`, `runs_at_once`, `running` and `chat_project_id`. The workspace
   auto-play limits route keeps the daily cap only. Each new writing route names its permission in
   `route_permissions.go` (`none`, a person's own settings) and `make permission-catalog`.
-- **MCP.** `computer_list` gains `position`, `runs_at_once`, `running`. `computer_setup_update` gains `position` and
-  `runs_at_once` for the caller's own computer (no new tool). `workspace_update` and `workspace_list` lose
+- **MCP.** `computer_list` gains `position`, `runs_at_once`, `running`. `computer_pair` gains `position`, `runs_at_once` and
+  `chat_project_id` for the caller's own computer (no new tool). `workspace_update` and `workspace_list` lose
   `auto_play_runs_at_once`. `play_run`'s `computer_id` and `t3_project_id` pick for one run and remember the checkout.
-  `trail_list` with `queue` returns `computers` on a waiting run. Pairing defaults and project links stay HTTP-only;
+  `trail_list` with `queue` returns `waiting_on` on a waiting run. Pairing defaults and project links stay HTTP-only;
   add that gap to `.scratch/mcp-parity/`.
-- **Events.** `play.queued` and `play.queue_updated` carry the item, so `computers` joins it beside `reason`
-  (additive). A trail gains `passed_over` (`[{computer_id, name, why}]`, `[]` when none). `auto_play.limits_updated`
+- **Events.** `play.queued` and `play.queue_updated` carry the item, so `waiting_on` joins it beside `reason`
+  (additive). A trail gains `passed_over` (`[{computer_id, name, why, text}]`, left out when none and for anyone but the starter). `auto_play.limits_updated`
   keeps `runs_at_once_per_person` in the contract, tagged `deprecated`, and is no longer published for it. `make
   event-schemas`.
 - **Live.** A computer's `running` follows `play.run_started` and `play.run_finished`, which already reach its owner;
@@ -167,7 +167,7 @@ Migrations, then `make sqlc`:
   reorder, each computer's runs at once, running count, chat folder and its existing facts; the defaults (model,
   start-in, placement, clone automatically). Projects: each project row says "Follows your computers" or its own list,
   and shows per computer whether it has the checkout, with **Add to <computer>** (clone or create, the existing
-  pickers). Queue rows show `computers`; `PickComputerMenu` and `no_default_computer` copy go. The run dialog's **Where
+  pickers). Queue rows show `waiting_on`; `PickComputerMenu` and `no_default_computer` copy go. The run dialog's **Where
   to run** as above. Built in auto design mode, then animation mode (the reorder and a failover line are the motion
   candidates), at 768, 1024 and 1440px.
 - **Phone.** Nothing; the phone app has no computer settings or queue.

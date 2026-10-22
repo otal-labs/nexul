@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -27,8 +28,10 @@ type fakeRepo struct {
 	outbox       []eventbus.OutboxEvent
 	toMove       []Computer
 	// sharedWith is, per person, the computers others share with them, as the list query returns them.
-	sharedWith   map[string][]Computer
-	moveNotices  map[string]time.Time
+	sharedWith  map[string][]Computer
+	moveNotices map[string]time.Time
+	// running is how many play runs are going on each computer.
+	running      map[string]int
 	factWrites   int
 	saveErr      error
 	getErr       error
@@ -92,6 +95,47 @@ func (f *fakeRepo) ListComputers(_ context.Context, userID string) ([]Computer, 
 	for _, c := range f.computers {
 		if c.UserID == userID {
 			out = append(out, c)
+		}
+	}
+	slices.SortFunc(out, func(a, b Computer) int {
+		return cmp.Or(cmp.Compare(a.Position, b.Position), b.CreatedAt.Compare(a.CreatedAt), strings.Compare(a.ID, b.ID))
+	})
+	return out, nil
+}
+
+func (f *fakeRepo) ReorderComputers(_ context.Context, userID string, ids []string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i, id := range ids {
+		c, ok := f.computers[id]
+		if !ok || c.UserID != userID {
+			return apperrs.ErrNotFound
+		}
+		c.Position = i
+		f.computers[id] = c
+	}
+	return nil
+}
+
+func (f *fakeRepo) SetComputerPlacement(_ context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.RunsAtOnce, c.ChatProjectID = runsAtOnce, chatProjectID
+	f.computers[computerID] = c
+	return nil
+}
+
+func (f *fakeRepo) CountRunning(_ context.Context, computerIDs []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]int{}
+	for _, id := range computerIDs {
+		if n := f.running[id]; n > 0 {
+			out[id] = n
 		}
 	}
 	return out, nil
@@ -230,7 +274,24 @@ func (f *fakeRepo) SaveProjectLink(_ context.Context, link ProjectLink) error {
 func (f *fakeRepo) DeleteProjectLink(_ context.Context, userID, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.projectLinks, linkKey(userID, projectID))
+	key := linkKey(userID, projectID)
+	link, ok := f.projectLinks[key]
+	delete(f.projectLinks, key)
+	if ok && len(link.Checkouts) > 0 {
+		f.projectLinks[key] = ProjectLink{UserID: userID, ProjectID: projectID, Checkouts: link.Checkouts}
+	}
+	return nil
+}
+
+func (f *fakeRepo) SaveCheckout(_ context.Context, userID, projectID, computerID, harnessProjectID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := linkKey(userID, projectID)
+	link := f.projectLinks[key]
+	link.UserID, link.ProjectID = userID, projectID
+	link.Checkouts = slices.DeleteFunc(link.Checkouts, func(c Checkout) bool { return c.ComputerID == computerID })
+	link.Checkouts = append(link.Checkouts, Checkout{ComputerID: computerID, HarnessProjectID: harnessProjectID})
+	f.projectLinks[key] = link
 	return nil
 }
 

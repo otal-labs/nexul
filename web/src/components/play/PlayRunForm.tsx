@@ -12,7 +12,7 @@ import { useFetchHarnessProjects } from "@/hooks/PairingHooks";
 import { useRunPlay } from "@/hooks/TrailHooks";
 import { useConfirmBlockedRun } from "@/hooks/useConfirmBlockedRun";
 import type { Memory } from "@/models/Memory";
-import { isNeedsLocationRefusal } from "@/models/Pairing";
+import { isNeedsLocationRefusal, type PassOver } from "@/models/Pairing";
 import type { Play, PlayType } from "@/models/Play";
 import type { LatestChoices } from "@/models/Trail";
 
@@ -24,9 +24,10 @@ interface PlayRunFormProps {
   memories: Memory[] | undefined;
   choices: LatestChoices;
   resolvedHarness: HarnessPick;
-  // The person's project link, else their defaults as the suggestion; linked says which.
+  // Where the run would land now and the computers it would pass over; mustPick when none of them has the project.
   where: RunWhere;
-  linked: boolean;
+  passedOver: PassOver[];
+  mustPick: boolean;
   instructions: string;
   askWhere: boolean;
   onDone: () => void;
@@ -41,7 +42,8 @@ export const PlayRunForm = ({
   choices,
   resolvedHarness,
   where: seedWhere,
-  linked,
+  passedOver,
+  mustPick,
   instructions: seedInstructions,
   askWhere,
   onDone,
@@ -60,7 +62,7 @@ export const PlayRunForm = ({
       ? { computer_id: choices.computer_id, provider: choices.provider, model: choices.model, model_options: choices.model_options ?? [] }
       : { ...resolvedHarness, computer_id: seedWhere.computer_id },
   );
-  const asking = !linked || changing || isNeedsLocationRefusal(runPlay.error);
+  const asking = mustPick || changing || isNeedsLocationRefusal(runPlay.error);
   // Shares RunWhereSection's cache, so this adds no request.
   const projectsLoading = useFetchHarnessProjects(where.computer_id).isPending && where.computer_id !== "";
   const whereUnready = projectsLoading || (asking && (where.computer_id === "" || where.harness_project_id === ""));
@@ -88,8 +90,7 @@ export const PlayRunForm = ({
           target_id: targetId,
           memory_ids: selected,
           custom_instructions: instructions,
-          computer_id: where.computer_id,
-          ...(asking && { harness_project_id: where.harness_project_id }),
+          ...(asking && { computer_id: where.computer_id, harness_project_id: where.harness_project_id }),
           provider: harness.provider,
           model: harness.model,
           model_options: harness.model_options,
@@ -134,8 +135,9 @@ export const PlayRunForm = ({
 
       <RunWhereSection
         value={where}
+        passedOver={passedOver}
         asking={asking}
-        firstRun={!linked}
+        mustPick={mustPick}
         onChange={pickWhere}
         onChangeRequested={() => setChanging(true)}
       />

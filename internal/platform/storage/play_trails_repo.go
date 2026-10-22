@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/plays"
 
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -40,6 +41,10 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 	if err != nil {
 		return fmt.Errorf("encode model options for trail %s: %w", t.ID, err)
 	}
+	passedOver, err := jsonx.Marshal(t.PassedOver)
+	if err != nil {
+		return fmt.Errorf("encode the computers trail %s passed over: %w", t.ID, err)
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreatePlayTrail(ctx, sqlcgen.CreatePlayTrailParams{
 			ID: t.ID, WorkspaceID: t.WorkspaceID, PlayID: t.PlayID, PlayLabel: t.PlayLabel,
@@ -49,6 +54,7 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 			StartedAt: t.StartedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt), LastError: t.LastError,
 			ReplyMessageID: t.ReplyMessageID, Activity: activity, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: options,
 			Question: question, FailureReason: t.FailureReason, HarnessProjectID: t.HarnessProjectID, Worktree: boolToInt(t.Worktree),
+			PassedOver: string(passedOver),
 		})
 		if err != nil {
 			return fmt.Errorf("insert trail %s: %w", t.ID, classifyWriteErr(err))
@@ -218,7 +224,8 @@ func toTrail(row sqlcgen.PlayTrail) (*plays.Trail, error) {
 		ConversationID: row.ConversationID, StarterID: row.StarterID, Via: plays.Via(row.Via),
 		SelectedMemoryIDs: memories, CustomInstructions: row.CustomInstructions,
 		ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID, Worktree: row.Worktree != 0,
-		Provider: row.Provider, Model: row.Model, ModelOptions: options,
+		PassedOver: decodePassedOver(row.PassedOver),
+		Provider:   row.Provider, Model: row.Model, ModelOptions: options,
 		HarnessSessionID: row.HarnessSessionID, State: plays.TrailState(row.State),
 		StartedAt: time.Unix(row.StartedAt, 0).UTC(), EndedAt: endedAt, LastError: row.LastError, FailureReason: row.FailureReason,
 		ReplyMessageID: row.ReplyMessageID, Activity: activity, Question: question,

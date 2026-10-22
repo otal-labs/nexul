@@ -265,6 +265,33 @@ func TestComputerPair_WithName_OnlyRenames(t *testing.T) {
 	assert.Empty(t, f.exch.pairedURL, "a rename pairs nothing")
 }
 
+func TestComputerPair_OrderRunsAtOnceAndChatFolder_ChangeOnlyThose(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "a", nil)
+	f.add(t, "b", nil)
+	f.add(t, "c", nil)
+	ctx := actorCtx(t, "u1")
+
+	out, err := callTool(t, ctx, f.svc, "computer_pair", `{"id": "c", "position": 0, "runs_at_once": 3, "chat_project_id": "t3-notes"}`)
+	require.NoError(t, err)
+	got := out.(computerResult)
+	assert.Equal(t, []any{"c", 3, "t3-notes"}, []any{got.Name, got.RunsAtOnce, got.ChatProjectID}, "the name is kept")
+	_, err = callTool(t, ctx, f.svc, "computer_pair", `{"id": "a", "position": 99}`)
+	require.NoError(t, err, "a position past the end puts it last")
+
+	out, err = callTool(t, ctx, f.svc, "computer_list", `{}`)
+	require.NoError(t, err)
+	var order []string
+	for _, c := range out.(mcptool.Page[computerResult]).Items {
+		order = append(order, c.ID)
+	}
+	assert.Equal(t, []string{"c", "b", "a"}, order)
+	_, err = callTool(t, ctx, f.svc, "computer_pair", `{"id": "a", "runs_at_once": 6}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Empty(t, f.exch.pairedURL, "nothing was paired")
+}
+
 func TestComputerList_ShowsSetupAndTokenMetadata(t *testing.T) {
 	t.Parallel()
 	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{})

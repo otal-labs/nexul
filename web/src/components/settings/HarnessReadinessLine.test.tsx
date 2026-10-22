@@ -24,17 +24,17 @@ describe("HarnessReadinessLine", () => {
   });
 
   it("names the computer when ready", () => {
-    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [] });
+    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] });
     mocks.useListComputers.mockReturnValue({ data: [{ id: "c1", name: "Home" }] });
     render(<HarnessReadinessLine />);
-    expect(screen.getByText("Ready to run plays on Home")).toBeInTheDocument();
+    expect(screen.getByText("Ready: @Agent starts on Home")).toBeInTheDocument();
   });
 
   it("falls back to a plain ready line when the computer name isn't loaded yet", () => {
-    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [] });
+    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] });
     mocks.useListComputers.mockReturnValue({ data: undefined });
     render(<HarnessReadinessLine />);
-    expect(screen.getByText("Ready to run plays")).toBeInTheDocument();
+    expect(screen.getByText("Ready: @Agent starts on your first computer")).toBeInTheDocument();
   });
 
   it("shows the reason message when not ready", () => {

@@ -47,6 +47,7 @@ func (f *fakeTunnels) DeleteAccessServiceToken(context.Context) error {
 type fakeBus struct {
 	mu         sync.Mutex
 	pairFailed []PairFailedEvent
+	placements []PlacementChangedEvent
 }
 
 func (b *fakeBus) Publish(_ context.Context, topic string, payload any) error {
@@ -54,6 +55,9 @@ func (b *fakeBus) Publish(_ context.Context, topic string, payload any) error {
 	defer b.mu.Unlock()
 	if topic == TopicPairFailed {
 		b.pairFailed = append(b.pairFailed, payload.(PairFailedEvent))
+	}
+	if topic == TopicPlacementChanged {
+		b.placements = append(b.placements, payload.(PlacementChangedEvent))
 	}
 	return nil
 }

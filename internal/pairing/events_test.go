@@ -75,6 +75,15 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(e.Topic, e.Payload)
 	}
 
+	placed := newPlacementFixture(t)
+	placedBus := &fakeBus{}
+	placed.svc.bus = placedBus
+	placed.add(t, "a", nil)
+	require.NoError(t, placed.svc.ReorderComputers(ctx, "u1", []string{"a"}))
+	for _, p := range placedBus.placements {
+		check(TopicPlacementChanged, p)
+	}
+
 	// Retired with pairing through a tunnel, still declared because the published contract only grows (ADR 0044).
 	retired := map[string]bool{TopicTunnelCreated: true, TopicTunnelStatusChanged: true}
 	for _, topic := range Topics() {

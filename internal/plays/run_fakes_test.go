@@ -422,6 +422,10 @@ func (f *fakeHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, p
 	return f.ResolveTarget(ctx, userID, projectID, choice)
 }
 
+func (f *fakeHarnessResolver) ResolveQueuedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	return f.ResolveTarget(ctx, userID, projectID, choice)
+}
+
 func (f *fakeHarnessResolver) ResolveRecordedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
 	f.recorded = true
 	return f.ResolveTarget(ctx, userID, projectID, choice)
@@ -477,24 +481,25 @@ func (f *fakeAnswers) ClearSuggestions(_ context.Context, projectID string) erro
 
 // fakeCheckouts serves the starter's project links and the computer's T3 projects, counting list calls.
 type fakeCheckouts struct {
-	links    map[string][2]string // project id -> computer id, T3 project id
+	links    map[string][2]string // project id -> the computer with its checkout, and that T3 project id
 	linkErr  error
 	projects []harness.Project
 	listErr  error
 	lists    int
 }
 
-func (f *fakeCheckouts) LinkedProject(_ context.Context, _, projectID string) (string, string, error) {
+func (f *fakeCheckouts) CheckoutOn(_ context.Context, _, projectID, computerID string) (string, error) {
 	l := f.links[projectID]
-	return l[0], l[1], f.linkErr
+	if l[0] != computerID {
+		return "", f.linkErr
+	}
+	return l[1], f.linkErr
 }
 
 func (f *fakeCheckouts) ListProjects(context.Context, string, string) ([]harness.Project, error) {
 	f.lists++
 	return f.projects, f.listErr
 }
-
-func (f *fakeCheckouts) SaveLink(context.Context, string, string, string, string) error { return nil }
 
 type fakeRound struct {
 	projectID, answeredBy string

@@ -161,7 +161,7 @@ Setup gives the computer its own personal access token, "Nexul MCP on <computer>
 A computer is yours alone until you share it: nobody else sees it, a workspace Owner and the instance's Owner included. To let someone use it, open **Share…** in its row's **…** menu, press **Add a person**, pick them, and set what they may do, then **Save**:
 
 - **See this computer**: it shows in their **Computers** list under **Shared with you**, as "<you>'s <computer> (shared)", with its name and whether it is online. Its facts, setup, containers, MCP token and everything else stay yours.
-- **Run agents** and **Run commands**: allowing either also lets them see it. A shared computer shows in their run dialog and project links, where it can't be picked yet.
+- **Run agents** and **Run commands**: allowing either also lets them see it. A shared computer shows in their run dialog, where it can't be picked yet, and stays out of their order of computers, so it takes none of their runs.
 - **Read logs**: this runner's logs and its Docker containers' logs. It is off unless you allow it, and allowing it also lets them see the computer. They then read the Nexul app's own log, list the computer's containers and read each one's logs; the values of a container's own environment that are six characters or longer show as `••••` in what they read, which your own reads never do. A container's output can still show a secret the app derives or fetches by itself, so allow it only for people you would trust with that.
 
 Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the other three away too, and the bin beside a person in the list, pressed twice, takes them off. **Check access** shows what each person can do on it.
@@ -176,18 +176,36 @@ An agent shares a computer with [`permission_overwrite_update`](/docs/guide/mcp-
 
 ## Choose where turns run
 
-Two tabs in **Computers** decide which computer, T3 project, provider, and model a turn uses.
+The **Computers** settings page has two tabs, **Computers** and **Projects**.
 
-**Defaults** apply to `@Agent` in a channel or direct message, to `@Agent` and runs nobody presses (auto plays, the decisions check) in a project you haven't linked, and as the suggestion when a play asks where to run:
+### Your computers, in order
 
-- **Default computer**, needed once you have more than one.
-- **Fallback T3 project**, the T3 project to work in when no link applies.
-- Provider, model, and model options. Leave them empty for the computer's or provider's default.
+**Your computers** on the Computers tab is one ordered list, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer by its grip to change the order, or use **Move up** and **Move down** in its **…** menu. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
+
+Each computer's details set two things for it:
+
+- **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 running". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer.
+- **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.
+
+**Defaults**, under the list, apply wherever a project says nothing of its own:
+
+- **When several computers can take a run**: **The first in the order** keeps your first computer the main one and uses the rest only when it can't; **The least busy** sends each run to the computer with the smallest share of its runs at once in use, in order on a tie.
+- Provider, model, and model options. Leave them empty for the computer's or provider's default. A computer that doesn't offer the model is passed over.
 - **New threads start in**: **Project folder**, or **New worktree per thread** so runs side by side never edit the same files.
 
-**Projects** lists every project you can open. Each row reads back what your turns there use, or **Uses your defaults**. Open one to pick a **Computer**, a **T3 project**, a model, and where new threads start, then **Save**. When the computer has no T3 project for one of the project's repositories, a **Clone owner/name** button under **T3 project** clones it there and picks it. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none, and uses the computer's own git credentials, so a private repository needs the computer signed in to GitHub (`gh auth login`, for one). A computer paired before cloning existed shows "Pair it again to clone" next to the button, with a **Pair again** button that fixes it in one click. When there is no repository to clone, because the project has none or the computer already holds them all, **Create empty project** takes a folder name and makes it as a new T3 project in the same place, so a computer with no T3 project at all can still run setup and plays; it needs no GitHub credentials, and a computer paired before cloning existed can use it. **Use my defaults** clears the link, and the next play you run there asks where again. Your link is yours alone: each teammate links the same project to their own computer.
+### A project's computers and checkouts
 
-A play never falls back to your defaults when you press it. The first run in a project you haven't linked asks where, and saves your answer here as the project's link; **Change** in the run dialog updates it. The dialog can also override the provider and model for one run; the link keeps its own model. The trail keeps what the run used, so changing your settings later never rewrites history.
+**Projects** lists every project you can open, and each row reads back what your turns there use, or **Follows your computers and defaults**. Open one to see, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to a repository of the project, so a folder can have any name. When a computer holds several checkouts of the project, **Pick a checkout** says which one, and the pick is remembered. A computer that has none reads **Not on this computer**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none, and uses the computer's own git credentials, so a private repository needs the computer signed in to GitHub (`gh auth login`, for one). A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
+
+Turn on **Its own computers** to give the project its own list instead of following yours: only the computers in it, in its own order, with its own **When several can take a run**. Use the **…** menu to move or remove one, and **Add a computer** to put another in. The project can also pick its own model and where its new threads start. **Save** keeps the changes; **Follow my computers and defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
+
+### When it is chosen
+
+A computer is chosen when a run starts, never moved after: a run that has started stays on its computer through its answers, **Continue this run**, and a Nexul restart, even if you change the order meanwhile. A run that waits in the queue is placed when its turn comes, so it goes to whichever computer can take it then. In a chat, `@Agent` on a ticket's or doc's thread works in that project's checkout; in a channel or direct message, and in a project none of your computers holds, it works in the first ready computer's **Chat folder**. A thread that already exists keeps its computer.
+
+The trail of a run that passed computers over lists them under **Passed over**, with why, such as "laptop is offline". Only you see it, on your own runs.
+
+When Nexul was upgraded to this order, your old default computer went first and the rest followed newest first; each computer's runs at once took the workspace's old setting, and your old fallback T3 project became that computer's chat folder. Your project links kept their model and where threads start, and now follow your order instead of one computer.
 
 ## When a turn can't start
 
@@ -195,8 +213,22 @@ The page says why once, above or beside its play buttons, and each button repeat
 
 | Message | Fix |
 |---|---|
-| Add a computer in Settings to run plays. | Add a computer, or finish adding one. |
-| Your computer's pairing has expired or was revoked. Re-pair it in Settings. | Press **Re-pair now** on the computer's row. |
-| Link this project in Settings → Computers → Projects, or set a fallback under Defaults. | Link the project, or set a **Fallback T3 project**. |
-| Several computers are paired. Pick a default in Settings. | Set a **Default computer**. |
+| No computer is paired to run plays. | Add a computer, or finish adding one. |
+| Your computer's pairing has expired or was revoked. | Press **Re-pair now** on the computer's row. |
+| None of your computers has this project yet. | Pick a computer and its T3 project in the run dialog, or **Add** it to a computer on the Projects tab. |
+| None of your computers can take a run right now. | Fix one of the reasons it lists for each computer, below. |
+| @Agent can't use a provider on a computer until its setup is done. | Run setup for that computer. |
 | T3 Code on your computer is offline. | Check the computer is **Online** and T3 Code is running on it. |
+
+A run that none of your computers can take says why for each one:
+
+| Reason | Fix |
+|---|---|
+| laptop is offline | Start the computer, or check T3 Code is running on it. |
+| laptop is full (2 of 2 running) | Wait for a run to end, or raise its **Runs at once**. |
+| laptop isn't set up for claude | Run setup for that provider on it. |
+| laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |
+| laptop doesn't have this project | **Add** it on the Projects tab. |
+| laptop has several checkouts of this project; pick one | **Pick a checkout** on the Projects tab. |
+| laptop has no chat folder | Set its **Chat folder**. |
+| laptop needs pairing again | Press **Re-pair now** on its row. |

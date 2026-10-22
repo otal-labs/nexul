@@ -2,7 +2,6 @@ package plays
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -26,45 +25,42 @@ const (
 	QueueCancelled   QueueStatus = "cancelled"
 )
 
-// Why a queued item waits; a decided item's reason is a sentence for the ticket instead. A gap in its person's computer
-// setup waits under the harness refusal's own reason (unpaired, expired_token, no_default, no_default_computer,
-// setup_required) until it is fixed.
+// Why a queued item waits; a decided item's reason is a sentence for the ticket instead. A run none of its person's
+// computers can take waits under the harness refusal's own reason (unpaired, expired_token, setup_required, offline,
+// no_computer_ready), with WaitingOn naming each computer, until one can.
 const (
 	ReasonOffline    = "offline"
 	ReasonTicketBusy = "ticket busy"
 	ReasonPaused     = "paused"
-	// ReasonNoFreeSlot: its person already has as many runs going as their queue lets go at once.
-	ReasonNoFreeSlot = "no free slot"
 )
 
 // QueueItem is one match of an auto play's moment on a ticket or doc, or an automation's runPlay call (ADR 0132),
 // queued on the person it runs on and kept once decided, so the target shows it and the daily cap counts it.
 type QueueItem struct {
-	ID           string      `json:"id"`
-	WorkspaceID  string      `json:"workspace_id"`
-	ProjectID    string      `json:"project_id"`
-	TargetType   TargetType  `json:"target_type" enum:"ticket,doc,stack"`
-	TargetID     string      `json:"target_id"`
-	PlayID       string      `json:"play_id"`
-	PlayLabel    string      `json:"play_label"`
-	AutoPlayID   string      `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
-	AutomationID string      `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
-	PersonID     string      `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
-	RunOn        RunOn       `json:"run_on" enum:"developer,tester,causer,computer"`
-	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,automation"`
-	Priority     Level       `json:"priority" enum:"high,normal,low"`
-	Status       QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
-	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."`
-	TrailID      string      `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
-	Via          Via         `json:"via" enum:"web,mcp,automation"`
-	QueuedAt     time.Time   `json:"queued_at"`
-	DecidedAt    *time.Time  `json:"decided_at"`
-	NotBefore    time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
-	ComputerID   string      `json:"computer_id" jsonschema:"The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."`
-	Service      string      `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
-	OutageID     string      `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
-	// HarnessProjectID is the T3 project picked with ComputerID; like a trail's, it stays off the wire.
-	HarnessProjectID string `json:"-"`
+	ID           string       `json:"id"`
+	WorkspaceID  string       `json:"workspace_id"`
+	ProjectID    string       `json:"project_id"`
+	TargetType   TargetType   `json:"target_type" enum:"ticket,doc,stack"`
+	TargetID     string       `json:"target_id"`
+	PlayID       string       `json:"play_id"`
+	PlayLabel    string       `json:"play_label"`
+	AutoPlayID   string       `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
+	AutomationID string       `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
+	PersonID     string       `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
+	RunOn        RunOn        `json:"run_on" enum:"developer,tester,causer,computer"`
+	Moment       Moment       `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,automation"`
+	Priority     Level        `json:"priority" enum:"high,normal,low"`
+	Status       QueueStatus  `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
+	Reason       string       `json:"reason" jsonschema:"While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."`
+	TrailID      string       `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
+	Via          Via          `json:"via" enum:"web,mcp,automation"`
+	QueuedAt     time.Time    `json:"queued_at"`
+	DecidedAt    *time.Time   `json:"decided_at"`
+	NotBefore    time.Time    `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
+	ComputerID   string       `json:"computer_id" jsonschema:"The computer its auto play names for run_on computer; empty when the run goes to its person's first ready computer."`
+	Service      string       `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
+	OutageID     string       `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
+	WaitingOn    []PassedOver `json:"waiting_on,omitempty" jsonschema:"While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."`
 }
 
 // Queue is a target's auto runs as its page shows them: every item newest first, and whether the daily cap paused it.
@@ -139,7 +135,7 @@ func (r *Runner) QueuedForPlay(ctx context.Context, playID string) ([]*QueueItem
 	if err != nil {
 		return nil, fmt.Errorf("list the queued runs of play %s: %w", play.ID, err)
 	}
-	return items, nil
+	return ownersOnly(ctx, items), nil
 }
 
 // CancelQueued drops a queued item before it starts: the person it runs on or an autoplays:write holder may.
@@ -164,63 +160,6 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	}
 	r.Kick()
 	return it, nil
-}
-
-// PickComputer runs a waiting item on computerID and the T3 project on it, replacing an earlier pick, for the person it
-// lands on only, and saves the pick as their link for its project, so their later runs there need no pick; their
-// defaults stay as they are. Once the dispatcher has claimed the run, the pick is refused, never dropped.
-func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjectID string) (*QueueItem, error) {
-	id, computerID, harnessProjectID = strings.TrimSpace(id), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
-	if id == "" || computerID == "" || harnessProjectID == "" {
-		return nil, fmt.Errorf("%w: a queued run's id, a computer, and a T3 project on it are required", apperrs.ErrInvalid)
-	}
-	it, err := r.queuedItem(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if actorID(ctx) != it.PersonID {
-		return nil, fmt.Errorf("%w: only the person a queued run lands on can pick its computer", apperrs.ErrForbidden)
-	}
-	if it.Status != QueueQueued {
-		return nil, pickRefused(it.Status)
-	}
-	it.ComputerID, it.HarnessProjectID, it.Reason, it.NotBefore = computerID, harnessProjectID, "", r.now().UTC()
-	err = r.queue.PickQueueItem(ctx, it, r.queueEvent(TopicQueueUpdated, it))
-	if errors.Is(err, apperrs.ErrConflict) {
-		return nil, pickRefused(QueueDispatching)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("pick a computer for queue item %s: %w", id, err)
-	}
-	r.rememberPick(ctx, it)
-	r.Kick()
-	return it, nil
-}
-
-// pickRefused says why a run that left the queue takes no pick; a run that left it mid-pick was claimed to start.
-func pickRefused(status QueueStatus) error {
-	if status == QueueStarted {
-		return fmt.Errorf("%w: the run already started, so its computer can no longer change", apperrs.ErrConflict)
-	}
-	if status == QueueSkipped || status == QueueDidntRun || status == QueueCancelled {
-		return fmt.Errorf("%w: the run is %s, not waiting", apperrs.ErrConflict, status)
-	}
-	return fmt.Errorf("%w: the run is already starting, so its computer can no longer change", apperrs.ErrConflict)
-}
-
-// rememberPick saves a picked item's location as its person's project link and makes their held runs due, so those
-// resolve through it; a failed save leaves the pick on this item alone.
-func (r *Runner) rememberPick(ctx context.Context, it *QueueItem) {
-	if r.checkouts == nil {
-		return
-	}
-	if err := r.checkouts.SaveLink(ctx, it.PersonID, it.ProjectID, it.ComputerID, it.HarnessProjectID); err != nil {
-		r.log.Warn("plays: save a picked computer as the project link failed", "queue_item", it.ID, "project", it.ProjectID, "error", err)
-		return
-	}
-	if err := r.queue.WakePerson(ctx, it.PersonID, r.now().UTC()); err != nil {
-		r.log.Warn("plays: wake the queue after a pick failed", "queue_item", it.ID, "person", it.PersonID, "error", err)
-	}
 }
 
 // ResumeAutoPlays restarts a paused target's daily count of automatic runs from now; an autoplays:write holder or the
@@ -276,7 +215,17 @@ func (r *Runner) seenItems(ctx context.Context, workspaceID string, items []*Que
 		playIDs = append(playIDs, it.PlayID)
 	}
 	sees := r.perm.PlaysWith(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, playIDs)
-	return slices.DeleteFunc(slices.Clone(items), func(it *QueueItem) bool { return !sees[it.PlayID] })
+	return ownersOnly(ctx, slices.DeleteFunc(slices.Clone(items), func(it *QueueItem) bool { return !sees[it.PlayID] }))
+}
+
+// ownersOnly leaves why each computer can't take a run to the person whose computers they are (ADR 0165).
+func ownersOnly(ctx context.Context, items []*QueueItem) []*QueueItem {
+	for _, it := range items {
+		if it.PersonID != actorID(ctx) {
+			it.WaitingOn = nil
+		}
+	}
+	return items
 }
 
 // queueTarget reads a ticket or doc for the queue's surfaces and checks the caller may read its trails.
@@ -329,6 +278,9 @@ func (r *Runner) decide(ctx context.Context, it *QueueItem, from, to QueueStatus
 func (r *Runner) move(ctx context.Context, it *QueueItem, from, to QueueStatus, reason string, announce bool) error {
 	prev := *it
 	it.Status, it.Reason, it.DecidedAt = to, reason, nil
+	if to != QueueQueued && to != QueueDispatching {
+		it.WaitingOn = nil
+	}
 	if to != QueueQueued {
 		now := r.now().UTC()
 		it.DecidedAt = &now
@@ -345,6 +297,9 @@ func (r *Runner) move(ctx context.Context, it *QueueItem, from, to QueueStatus, 
 	return nil
 }
 
+// queueEvent carries the item without what its computers are: everyone who can see the play hears of it.
 func (r *Runner) queueEvent(topic string, it *QueueItem) eventbus.OutboxEvent {
-	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: *it}
+	payload := *it
+	payload.WaitingOn = nil
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: payload}
 }

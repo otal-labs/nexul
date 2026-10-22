@@ -38,6 +38,7 @@ type trailDetail struct {
 	SelectedMemoryIDs  []string                `json:"selected_memory_ids"`
 	CustomInstructions string                  `json:"custom_instructions,omitempty"`
 	ComputerID         string                  `json:"computer_id"`
+	PassedOver         []PassedOver            `json:"passed_over,omitempty" jsonschema:"To the run's starter alone: the computers it could not land on, and why."`
 	Provider           string                  `json:"provider"`
 	Model              string                  `json:"model"`
 	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty"`
@@ -69,7 +70,7 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 	tail := t.Activity[max(len(t.Activity)-steps, 0):]
 	out := trailDetail{
 		trailSummary: toTrailSummary(t), SelectedMemoryIDs: t.SelectedMemoryIDs, CustomInstructions: t.CustomInstructions,
-		ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
+		ComputerID: t.ComputerID, PassedOver: t.PassedOver, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
 		ReplyMessageID: t.ReplyMessageID, Question: t.Question, Steps: make([]trailStep, 0, len(tail)), StepsTotal: len(t.Activity),
 	}
 	for _, e := range tail {
@@ -86,8 +87,8 @@ type playRunIn struct {
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
-	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the caller's own link for this project."`
-	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project on that computer to run in, from computer_list with that computer's id. Saved as the caller's link for the target's project, so later runs there need neither. Required the first time the caller runs a play in a project they have not linked."`
+	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list, to run on this time. Omit to run on the first of the caller's computers that can take it."`
+	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project on that computer to run in, from computer_list with that computer's id, remembered as the target project's checkout there. Required when none of the caller's computers has a checkout of the project."`
 	Provider           string                  `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
 	Model              string                  `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
 	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies with model; an option left out keeps the harness default."`
@@ -110,13 +111,11 @@ type answerIn struct {
 }
 
 type trailUpdateIn struct {
-	ID          string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
-	Answer      map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
-	Stop        bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
-	Continue    string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
-	Cancel      bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
-	ComputerID  string              `json:"computer_id,omitempty" jsonschema:"With t3_project_id, runs a queued auto run of the caller's on this computer of theirs; id is then the queued run's id from trail_list with queue true. computer_list lists the caller's computers."`
-	T3ProjectID string              `json:"t3_project_id,omitempty" jsonschema:"The T3 project on computer_id the queued run runs in, from computer_list with that computer's id. Required with computer_id."`
+	ID       string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
+	Answer   map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
+	Stop     bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
+	Continue string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
+	Cancel   bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
 }
 
 // queuePage is a target's auto runs as trail_list with queue returns them: one page of items and the paused state.
@@ -200,20 +199,11 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"trail. Pass exactly one of the three; trail_list with the trail's id shows the question and its ids. "+
 				"Returns the trail. Allowed for the run's starter or someone holding plays:write on its play; a run the caller can't read is not found. "+
 				"With cancel true instead, id names a queued auto run from trail_list with queue true, which is dropped "+
-				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder. "+
-				"With computer_id and t3_project_id instead, id names a queued auto run of the caller's, such as one "+
-				"waiting with reason no_default_computer, which then runs on that computer and T3 project; the pick is "+
-				"saved as the caller's link for its project, as a first play_run there saves one, so their other runs "+
-				"in that project start through it, and their defaults stay as they are; allowed for the person it runs on only. "+
-				"A run that still waits after a pick, such as one whose picked computer went offline, takes a new pick in "+
-				"place of the old; once the run is starting, a pick is refused with a conflict.",
+				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
 				if in.Cancel {
 					return cancelQueued(ctx, r, in)
-				}
-				if in.ComputerID != "" || in.T3ProjectID != "" {
-					return pickComputer(ctx, r, in)
 				}
 				t, err := steerTrail(ctx, r, in)
 				if err != nil {
@@ -237,13 +227,6 @@ func cancelQueued(ctx context.Context, r *Runner, in trailUpdateIn) (any, error)
 		return nil, fmt.Errorf("%w: cancel takes only id, a queued run's id", apperrs.ErrInvalid)
 	}
 	return r.CancelQueued(ctx, in.ID)
-}
-
-func pickComputer(ctx context.Context, r *Runner, in trailUpdateIn) (any, error) {
-	if len(in.Answer) > 0 || in.Stop || in.Continue != "" {
-		return nil, fmt.Errorf("%w: computer_id and t3_project_id take only id, a queued run's id", apperrs.ErrInvalid)
-	}
-	return r.PickComputer(ctx, in.ID, in.ComputerID, in.T3ProjectID)
 }
 
 func toQueuePage(q *Queue, page mcptool.PageArgs) queuePage {

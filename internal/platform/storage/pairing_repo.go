@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
@@ -14,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
+	"github.com/otal-labs/nexul/internal/plays"
 )
 
 var _ pairing.Repo = (*PairingRepo)(nil)
@@ -32,12 +34,17 @@ func (r *PairingRepo) SaveComputer(ctx context.Context, c pairing.Computer, evts
 		t = *c.Tunnel
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).SavePairingComputer(ctx, sqlcgen.SavePairingComputerParams{
+		q := r.q.WithTx(tx)
+		next, err := q.NextPairingComputerPosition(ctx, c.UserID)
+		if err != nil {
+			return fmt.Errorf("place computer %s: %w", c.ID, err)
+		}
+		err = q.SavePairingComputer(ctx, sqlcgen.SavePairingComputerParams{
 			ID: c.ID, UserID: c.UserID, Kind: string(c.Kind), Name: c.Name, ServerUrl: c.ServerURL, BearerToken: c.BearerToken,
 			TokenExpiresAt: c.TokenExpiresAt.Unix(), HarnessVersion: c.HarnessVersion,
 			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(),
 			TunnelID: t.TunnelID, TunnelHostname: t.Hostname, TunnelZoneID: t.ZoneID, TunnelRecordID: t.RecordID,
-			TunnelAccessAppID: t.AccessAppID,
+			TunnelAccessAppID: t.AccessAppID, Position: next,
 		})
 		if err != nil {
 			return fmt.Errorf("save computer %s: %w", c.ID, classifyWriteErr(err))
@@ -187,15 +194,71 @@ func (r *PairingRepo) SwitchComputerKind(ctx context.Context, id string, from, t
 	})
 }
 
-func (r *PairingRepo) GetProjectLink(ctx context.Context, userID, projectID string) (pairing.ProjectLink, error) {
-	row, err := r.q.GetPairingProjectLink(ctx, sqlcgen.GetPairingProjectLinkParams{UserID: userID, ProjectID: projectID})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return pairing.ProjectLink{}, nil
+func (r *PairingRepo) ReorderComputers(ctx context.Context, userID string, ids []string, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		for i, id := range ids {
+			n, err := q.SetPairingComputerPosition(ctx, sqlcgen.SetPairingComputerPositionParams{Position: int64(i), ID: id, UserID: userID})
+			if err != nil {
+				return fmt.Errorf("move computer %s: %w", id, err)
+			}
+			if n == 0 {
+				return fmt.Errorf("move computer %s: %w", id, apperrs.ErrNotFound)
+			}
 		}
+		return nil
+	})
+}
+
+func (r *PairingRepo) SetComputerPlacement(ctx context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerPlacement(ctx, sqlcgen.SetPairingComputerPlacementParams{
+			RunsAtOnce: int64(runsAtOnce), ChatProjectID: chatProjectID, UpdatedAt: at.Unix(), ID: computerID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set runs at once of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set runs at once of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+func (r *PairingRepo) CountRunning(ctx context.Context, computerIDs []string) (map[string]int, error) {
+	out := map[string]int{}
+	if len(computerIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.CountPairingComputerRuns(ctx, idsJSON(computerIDs))
+	if err != nil {
+		return nil, fmt.Errorf("count the runs on computers: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ComputerID] = int(row.Running)
+	}
+	return out, nil
+}
+
+func (r *PairingRepo) GetProjectLink(ctx context.Context, userID, projectID string) (pairing.ProjectLink, error) {
+	link := pairing.ProjectLink{UserID: userID, ProjectID: projectID}
+	row, err := r.q.GetPairingProjectLink(ctx, sqlcgen.GetPairingProjectLinkParams{UserID: userID, ProjectID: projectID})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return pairing.ProjectLink{}, fmt.Errorf("get project link %s: %w", projectID, err)
 	}
-	return toProjectLink(row)
+	if err == nil {
+		if link, err = toProjectLink(row); err != nil {
+			return pairing.ProjectLink{}, err
+		}
+	}
+	computers, err := r.q.ListPairingProjectComputers(ctx, sqlcgen.ListPairingProjectComputersParams{UserID: userID, ProjectID: projectID})
+	if err != nil {
+		return pairing.ProjectLink{}, fmt.Errorf("list the computers of project link %s: %w", projectID, err)
+	}
+	for _, c := range computers {
+		link = withProjectComputer(link, c)
+	}
+	return link, nil
 }
 
 func (r *PairingRepo) ListProjectLinks(ctx context.Context, userID string) ([]pairing.ProjectLink, error) {
@@ -203,15 +266,46 @@ func (r *PairingRepo) ListProjectLinks(ctx context.Context, userID string) ([]pa
 	if err != nil {
 		return nil, fmt.Errorf("list project links: %w", err)
 	}
-	out := make([]pairing.ProjectLink, 0, len(rows))
+	computers, err := r.q.ListPairingProjectComputersByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list the computers of project links: %w", err)
+	}
+	byProject := map[string]pairing.ProjectLink{}
+	var order []string
 	for _, row := range rows {
 		link, err := toProjectLink(row)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, link)
+		byProject[link.ProjectID] = link
+		order = append(order, link.ProjectID)
+	}
+	for _, c := range computers {
+		link, ok := byProject[c.ProjectID]
+		if !ok {
+			link = pairing.ProjectLink{UserID: userID, ProjectID: c.ProjectID}
+			order = append(order, c.ProjectID)
+		}
+		byProject[c.ProjectID] = withProjectComputer(link, c)
+	}
+	slices.Sort(order)
+	out := make([]pairing.ProjectLink, 0, len(order))
+	for _, id := range order {
+		out = append(out, byProject[id])
 	}
 	return out, nil
+}
+
+// withProjectComputer adds one project computer row to link: a position places it in the project's order, and a T3
+// project is the checkout picked there.
+func withProjectComputer(link pairing.ProjectLink, c sqlcgen.PairingProjectComputer) pairing.ProjectLink {
+	if c.Position.Valid {
+		link.Computers = append(link.Computers, c.ComputerID)
+	}
+	if c.HarnessProjectID != "" {
+		link.Checkouts = append(link.Checkouts, pairing.Checkout{ComputerID: c.ComputerID, HarnessProjectID: c.HarnessProjectID})
+	}
+	return link
 }
 
 func toProjectLink(row sqlcgen.PairingProjectLink) (pairing.ProjectLink, error) {
@@ -220,8 +314,8 @@ func toProjectLink(row sqlcgen.PairingProjectLink) (pairing.ProjectLink, error) 
 		return pairing.ProjectLink{}, fmt.Errorf("decode model options for project link %s: %w", row.ProjectID, err)
 	}
 	return pairing.ProjectLink{
-		UserID: row.UserID, ProjectID: row.ProjectID, ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
-		Provider: row.Provider, Model: row.Model, ModelOptions: options, StartIn: pairing.StartIn(row.StartIn), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		UserID: row.UserID, ProjectID: row.ProjectID, Provider: row.Provider, Model: row.Model, ModelOptions: options,
+		StartIn: pairing.StartIn(row.StartIn), Placement: pairing.Placement(row.Placement), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
 
@@ -231,12 +325,35 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 		return fmt.Errorf("encode model options for project link %s: %w", l.ProjectID, err)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).SavePairingProjectLink(ctx, sqlcgen.SavePairingProjectLinkParams{
-			UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: l.ComputerID, HarnessProjectID: l.HarnessProjectID,
-			Provider: l.Provider, Model: l.Model, ModelOptions: options, StartIn: string(l.StartIn), UpdatedAt: l.UpdatedAt.Unix(),
+		q := r.q.WithTx(tx)
+		err := q.SavePairingProjectLink(ctx, sqlcgen.SavePairingProjectLinkParams{
+			UserID: l.UserID, ProjectID: l.ProjectID, Provider: l.Provider, Model: l.Model, ModelOptions: options,
+			StartIn: string(l.StartIn), Placement: string(l.Placement), UpdatedAt: l.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("save project link %s: %w", l.ProjectID, classifyWriteErr(err))
+		}
+		if err := q.ClearPairingProjectOrder(ctx, sqlcgen.ClearPairingProjectOrderParams{UserID: l.UserID, ProjectID: l.ProjectID}); err != nil {
+			return fmt.Errorf("clear the order of project link %s: %w", l.ProjectID, err)
+		}
+		for i, id := range l.Computers {
+			err := q.SetPairingProjectComputerPosition(ctx, sqlcgen.SetPairingProjectComputerPositionParams{
+				UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: id, Position: sql.NullInt64{Int64: int64(i), Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("place computer %s in project link %s: %w", id, l.ProjectID, classifyWriteErr(err))
+			}
+		}
+		for _, c := range l.Checkouts {
+			err := q.SetPairingProjectCheckout(ctx, sqlcgen.SetPairingProjectCheckoutParams{
+				UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: c.ComputerID, HarnessProjectID: c.HarnessProjectID,
+			})
+			if err != nil {
+				return fmt.Errorf("save the checkout on %s for project link %s: %w", c.ComputerID, l.ProjectID, classifyWriteErr(err))
+			}
+		}
+		if err := q.PrunePairingProjectComputers(ctx, sqlcgen.PrunePairingProjectComputersParams{UserID: l.UserID, ProjectID: l.ProjectID}); err != nil {
+			return fmt.Errorf("prune project link %s: %w", l.ProjectID, err)
 		}
 		return nil
 	})
@@ -244,8 +361,27 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 
 func (r *PairingRepo) DeleteProjectLink(ctx context.Context, userID, projectID string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).DeletePairingProjectLink(ctx, sqlcgen.DeletePairingProjectLinkParams{UserID: userID, ProjectID: projectID}); err != nil {
+		q := r.q.WithTx(tx)
+		if err := q.DeletePairingProjectLink(ctx, sqlcgen.DeletePairingProjectLinkParams{UserID: userID, ProjectID: projectID}); err != nil {
 			return fmt.Errorf("clear project link %s: %w", projectID, err)
+		}
+		if err := q.ClearPairingProjectOrder(ctx, sqlcgen.ClearPairingProjectOrderParams{UserID: userID, ProjectID: projectID}); err != nil {
+			return fmt.Errorf("clear the order of project link %s: %w", projectID, err)
+		}
+		if err := q.PrunePairingProjectComputers(ctx, sqlcgen.PrunePairingProjectComputersParams{UserID: userID, ProjectID: projectID}); err != nil {
+			return fmt.Errorf("prune project link %s: %w", projectID, err)
+		}
+		return nil
+	})
+}
+
+func (r *PairingRepo) SaveCheckout(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).SetPairingProjectCheckout(ctx, sqlcgen.SetPairingProjectCheckoutParams{
+			UserID: userID, ProjectID: projectID, ComputerID: computerID, HarnessProjectID: harnessProjectID,
+		})
+		if err != nil {
+			return fmt.Errorf("save the checkout on %s for project %s: %w", computerID, projectID, classifyWriteErr(err))
 		}
 		return nil
 	})
@@ -264,12 +400,8 @@ func (r *PairingRepo) GetDefaults(ctx context.Context, userID string) (pairing.D
 		return pairing.Defaults{}, fmt.Errorf("decode model options for defaults: %w", err)
 	}
 	return pairing.Defaults{
-		DefaultComputerID: row.DefaultComputerID.String,
-		FallbackProjectID: row.FallbackProjectID,
-		Provider:          row.Provider,
-		Model:             row.Model,
-		ModelOptions:      options,
-		StartIn:           pairing.StartIn(row.StartIn),
+		Provider: row.Provider, Model: row.Model, ModelOptions: options, StartIn: pairing.StartIn(row.StartIn),
+		Placement: pairing.Placement(row.Placement), CloneAutomatically: row.CloneAutomatically != 0,
 	}, nil
 }
 
@@ -278,15 +410,14 @@ func (r *PairingRepo) SaveDefaults(ctx context.Context, d pairing.Defaults) erro
 	if err != nil {
 		return fmt.Errorf("encode model options for %s: %w", d.UserID, err)
 	}
+	clone := int64(0)
+	if d.CloneAutomatically {
+		clone = 1
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingDefaults(ctx, sqlcgen.SavePairingDefaultsParams{
-			UserID:            d.UserID,
-			DefaultComputerID: sql.NullString{String: d.DefaultComputerID, Valid: d.DefaultComputerID != ""},
-			FallbackProjectID: d.FallbackProjectID,
-			Provider:          d.Provider,
-			Model:             d.Model,
-			ModelOptions:      options,
-			StartIn:           string(d.StartIn),
+			UserID: d.UserID, Provider: d.Provider, Model: d.Model, ModelOptions: options, StartIn: string(d.StartIn),
+			Placement: string(d.Placement), CloneAutomatically: clone,
 		})
 		if err != nil {
 			return fmt.Errorf("save defaults for %s: %w", d.UserID, classifyWriteErr(err))
@@ -432,6 +563,7 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		},
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		Tunnel: toComputerTunnel(row), Facts: toFacts(row), FactsAt: unixPtrFromNull(row.FactsAt),
+		Position: int(row.Position), RunsAtOnce: int(row.RunsAtOnce), ChatProjectID: row.ChatProjectID,
 	}
 }
 
@@ -491,4 +623,13 @@ func unmarshalModelOptions(raw string) ([]harness.OptionSetting, error) {
 		return nil, nil
 	}
 	return options, nil
+}
+
+// decodePassedOver reads a stored list of passed-over computers; empty reads back as none.
+func decodePassedOver(raw string) []plays.PassedOver {
+	out := decodeJSON(raw, []plays.PassedOver(nil))
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

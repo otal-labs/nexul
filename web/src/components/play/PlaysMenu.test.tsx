@@ -111,12 +111,11 @@ beforeEach(() => {
 });
 
 describe("PlaysMenu", () => {
-  it.each(["no_default", "no_default_computer", "offline", "expired_token"])("opens the location question when its suggestion needs attention (%s)", async (reason) => {
+  it("opens the location question when none of the person's computers has the project", async () => {
     const user = userEvent.setup();
-    mockApi({ resolve: reason === "offline" ? { ok: true, computer_id: "c-1" } : { ok: false, reason }, presence: {} });
+    mockApi({ resolve: { ok: false, reason: "needs_location" }, presence: {} });
     const base = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) => {
-      if (args[0] === "/api/pairing/projects") return { data: { links: [] } };
       if (args[0] === "/api/memories") return { data: [] };
       return base(...args);
     });
@@ -125,7 +124,7 @@ describe("PlaysMenu", () => {
     const run = await screen.findByRole("button", { name: /To tickets via AI/ });
     await waitFor(() => expect(run).toBeEnabled());
     await user.click(run);
-    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
+    expect(await screen.findByText(/None of your computers has this project yet/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run To tickets via AI" })).toBeDisabled();
   });
 

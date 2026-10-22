@@ -66,7 +66,7 @@ func TestIntegration_PlayLocation_SettingsChangedBeforeRunTurn_UsesConfirmedTarg
 				require.NoError(t, svc.ClearProjectLink(ctx, uOwner, f.ticket.ProjectID))
 			}
 			if change == "changed" {
-				_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{ComputerID: "computer", HarnessProjectID: "checkout-b", Provider: "provider", Model: "model-b", StartIn: pairing.StartInFolder})
+				_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{Checkouts: []pairing.Checkout{{ComputerID: "computer", HarnessProjectID: "checkout-b"}}, Provider: "provider", Model: "model-b", StartIn: pairing.StartInFolder})
 				require.NoError(t, err)
 			}
 			if change == "computer removed" {
@@ -102,9 +102,9 @@ func newPlayLocationFixture(t *testing.T, client *harnesstest.Client, session ha
 	require.NoError(t, f.store.Pairing.SetSetupConfirmedAt(ctx, uOwner, "computer", &now, eventbus.OutboxEvent{ID: "setup-overall", Topic: "test.setup", Payload: map[string]string{"computer_id": "computer"}}))
 	require.NoError(t, f.store.Pairing.SaveProviderSetup(ctx, "computer", pairing.ProviderSetup{Provider: "provider", ConfirmedAt: &now}, now, eventbus.OutboxEvent{ID: "setup-provider", Topic: "test.setup", Payload: map[string]string{"computer_id": "computer"}}))
 	svc := pairing.NewService(pairing.Config{Repo: f.store.Pairing, Harnesses: registry, EncryptionKey: switchTestKey, Projects: f.svc.accessSvc})
-	_, err = svc.SetDefaults(ctx, uOwner, pairing.Defaults{DefaultComputerID: "computer", FallbackProjectID: "fallback", Provider: "provider", StartIn: pairing.StartInFolder})
+	_, err = svc.SetDefaults(ctx, uOwner, pairing.Defaults{Provider: "provider", StartIn: pairing.StartInFolder})
 	require.NoError(t, err)
-	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{ComputerID: "computer", HarnessProjectID: "checkout-a", Provider: "provider", Model: "model-a", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}, StartIn: pairing.StartInWorktree})
+	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{Checkouts: []pairing.Checkout{{ComputerID: "computer", HarnessProjectID: "checkout-a"}}, Provider: "provider", Model: "model-a", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}, StartIn: pairing.StartInWorktree})
 	require.NoError(t, err)
 	turn := &pausedPlayTurn{Service: agent.NewService(agent.Config{Live: noopPublisher{}, Conversations: agentConversations{svc: f.svc.chatSvc}, Targets: svc, Harnesses: registry, Tickets: agentTicketReader{svc: f.svc.ticketsSvc, projects: f.store.Projects, statuses: f.store.Statuses}}), ready: make(chan struct{}, 4), resume: make(chan struct{}), done: make(chan struct{}, 4)}
 	stage := plays.StageBacklog
@@ -139,7 +139,7 @@ func TestIntegration_PlayLocation_FailedChangeReopened_RetryLeavesTheOldThread(t
 	assert.Equal(t, string(pairing.ReasonOffline), refusal.Reason)
 	link, err := svc.GetProjectLink(ctx, uOwner, f.ticket.ProjectID)
 	require.NoError(t, err)
-	assert.Equal(t, "checkout-b", link.HarnessProjectID)
+	assert.Equal(t, []pairing.Checkout{{ComputerID: "computer", HarnessProjectID: "checkout-b"}}, link.Checkouts, "the pick is remembered once the computer lists it")
 	require.NoError(t, f.svc.chatSvc.SetAgentThread(ctx, conv.ID, "thread-checkout-a"))
 	offline.Store(false)
 	in.ComputerID, in.HarnessProjectID = "", ""
@@ -212,7 +212,7 @@ func TestIntegration_PlayLocation_LinkChangedWhileARunWaits_TheAnswerGoesToTheRu
 	require.NoError(t, err)
 	require.Equal(t, plays.TrailWaiting, waiting.State)
 
-	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{ComputerID: "computer", HarnessProjectID: "checkout-b", Provider: "provider", Model: "model-b", StartIn: pairing.StartInFolder})
+	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{Checkouts: []pairing.Checkout{{ComputerID: "computer", HarnessProjectID: "checkout-b"}}, Provider: "provider", Model: "model-b", StartIn: pairing.StartInFolder})
 	require.NoError(t, err)
 	_, err = runner.Answer(ctx, trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "Yes"}}})
 	require.NoError(t, err)

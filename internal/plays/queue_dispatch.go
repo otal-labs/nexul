@@ -14,15 +14,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
-// RefusalOffline is the harness refusal for a computer that did not answer; a queued run waits on it rather than failing.
-const RefusalOffline = "offline"
-
-// RefusalNoDefaultComputer is the refusal of a person with several computers and no default; a queued run waits on it
-// until they pick one for it.
-const RefusalNoDefaultComputer = "no_default_computer"
-
 const (
-	// heldRetry is when an item held by its person's computer is tried again: offline, or a gap in its setup.
+	// heldRetry is when an item none of its person's computers could take is tried again.
 	heldRetry = time.Minute
 	// dispatchTimeout bounds one start, so a hung tunnel cannot stall everyone's queue.
 	dispatchTimeout = 30 * time.Second
@@ -40,15 +33,16 @@ func (r *Runner) Kick() {
 	}
 }
 
-// HandleSlotsFreed is registered on play.run_finished, where a run ending frees its person's slot and its target, and on
-// auto_play.limits_updated, where a workspace may now let more runs go at once.
+// HandleSlotsFreed is registered on play.run_finished, where a run ending frees its computer's room and its target, and on
+// auto_play.limits_updated, where a workspace's daily cap may now let a paused target go.
 func (r *Runner) HandleSlotsFreed(context.Context, eventbus.Event) error {
 	r.Kick()
 	return nil
 }
 
-// ComputerTopics are the pairing changes that may close a person's setup gap; HandleComputerChanged is subscribed to each.
-var ComputerTopics = []string{"computer.paired", "computer.setup_confirmed"}
+// ComputerTopics are the pairing changes that may let one of a person's computers take a waiting run;
+// HandleComputerChanged is subscribed to each.
+var ComputerTopics = []string{"computer.paired", "computer.setup_confirmed", "computer.facts_changed", "computer.placement_changed"}
 
 // HandleComputerChanged makes the person's queued runs due now and wakes the dispatcher, so a fixed gap need not wait
 // out the minute.
@@ -184,76 +178,53 @@ func (r *Runner) dispatch(ctx context.Context) (time.Duration, error) {
 	return max(pass.next.Sub(r.now().UTC()), 0), nil
 }
 
-// dispatchPerson starts a person's due items, highest priority then oldest first, while they have fewer runs going than
-// each item's workspace lets go at once; every active trail of theirs counts, in any workspace.
+// dispatchPerson starts a person's due items, highest priority then oldest first, each on the first of their computers
+// that can take it (ADR 0165); a started run takes its computer's room, which the next item's count sees.
 func (r *Runner) dispatchPerson(ctx context.Context, pass *queuePass, person string) error {
-	active, err := r.queue.CountActiveRuns(ctx, person)
-	if err != nil {
-		return fmt.Errorf("count the runs of %s: %w", person, err)
-	}
 	items, err := r.queue.ListDue(ctx, person, pass.now)
 	if err != nil {
 		return fmt.Errorf("list the queue of %s: %w", person, err)
 	}
-	limits := map[string]AutoPlayLimits{}
 	for _, it := range items {
-		limit, ok := limits[it.WorkspaceID]
-		if !ok {
-			if limit, err = r.plays.AutoPlayLimits(ctx, it.WorkspaceID); err != nil {
-				r.log.Error("plays: read a queued run's workspace limits", "item", it.ID, "error", err)
-				continue
-			}
-			limits[it.WorkspaceID] = limit
-		}
-		if active >= limit.RunsAtOncePerPerson {
-			r.hold(ctx, it, ReasonNoFreeSlot)
-			continue
-		}
-		started, offline := r.dispatchItem(ctx, pass, it)
-		if offline {
-			return nil
-		}
-		if started {
-			active++
-		}
+		r.dispatchItem(ctx, pass, it)
 	}
 	return nil
 }
 
-// dispatchItem starts it, holds it, or decides it; offline says the person's computer did not answer, so their pass stops.
-func (r *Runner) dispatchItem(ctx context.Context, pass *queuePass, it *QueueItem) (started, offline bool) {
+// dispatchItem starts it, holds it, or decides it.
+func (r *Runner) dispatchItem(ctx context.Context, pass *queuePass, it *QueueItem) {
 	trails, err := r.trails.ListTrailsByTarget(ctx, it.TargetType, it.TargetID)
 	if err != nil {
 		r.log.Error("plays: read the trails of a queued run's target", "item", it.ID, "error", err)
-		return false, false
+		return
 	}
 	if slices.ContainsFunc(trails, func(t *Trail) bool { return t.State.Active() }) {
 		r.hold(ctx, it, ReasonTicketBusy)
-		return false, false
+		return
 	}
 	count, limit, frees, err := r.autoRunsToday(ctx, it.WorkspaceID, it.TargetType, it.TargetID)
 	if err != nil {
 		r.log.Error("plays: count a queued run's target's automatic runs", "item", it.ID, "error", err)
-		return false, false
+		return
 	}
 	if count >= limit {
 		pass.wakeAt(frees)
 		r.hold(ctx, it, ReasonPaused)
-		return false, false
+		return
 	}
 	play, tgt, v, err := r.recheck(ctx, it, trails)
 	if err != nil {
 		r.log.Error("plays: check a queued run again", "item", it.ID, "error", err)
-		return false, false
+		return
 	}
 	if v.status == QueueDidntRun {
 		r.failedTrail(ctx, it, v.reason)
 	}
 	if v.status != QueueQueued {
 		r.logDecide(ctx, it, QueueQueued, v.status, v.reason)
-		return false, false
+		return
 	}
-	return r.startQueued(ctx, it, play, tgt, pass.now)
+	r.startQueued(ctx, it, play, tgt, pass.now)
 }
 
 // hold keeps it queued with reason, writing only when the reason changed so a pass over a busy ticket costs no write.
@@ -270,17 +241,17 @@ func (r *Runner) logDecide(ctx context.Context, it *QueueItem, from, to QueueSta
 	}
 }
 
-// startQueued launches it on its person's computer under a trail id written onto the row first, so a crash mid-start
-// leaves no second run behind.
-func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt target, now time.Time) (started, offline bool) {
-	held := it.Reason
+// startQueued launches it on its person's first ready computer under a trail id written onto the row first, so a crash
+// mid-start leaves no second run behind.
+func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt target, now time.Time) {
+	held := *it
 	it.TrailID = ids.New()
 	if err := r.move(ctx, it, QueueQueued, QueueDispatching, "", false); err != nil {
 		it.TrailID = ""
 		if !errors.Is(err, apperrs.ErrConflict) {
 			r.log.Error("plays: mark a queued run dispatching", "item", it.ID, "error", err)
 		}
-		return false, false
+		return
 	}
 	runCtx, cancel := context.WithTimeout(identity.WithActor(ctx, identity.Actor{ID: it.PersonID}), dispatchTimeout)
 	defer cancel()
@@ -289,37 +260,44 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: normalizeIDs(tgt.memoryIDs),
 		State: TrailStarting, StartedAt: now,
 	}
-	pick := HarnessChoice{ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID}
-	_, err := r.launch(runCtx, play, trail, tgt, pick, launchQueued)
+	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{ComputerID: it.ComputerID}, launchQueued)
 	if err == nil {
 		r.logDecide(ctx, it, QueueDispatching, QueueStarted, "")
-		return true, false
+		return
 	}
 	var refusal *HarnessRefusal
-	if errors.As(err, &refusal) && refusal.Reason == RefusalOffline {
-		r.requeue(ctx, it, ReasonOffline, held, now.Add(heldRetry))
-		return false, true
+	if errors.As(err, &refusal) && onlyFull(refusal.PassedOver) {
+		it.WaitingOn = refusal.PassedOver
+		r.requeue(ctx, it, refusal.Reason, held, now)
+		return
 	}
 	if refusal != nil {
+		it.WaitingOn = refusal.PassedOver
 		r.requeue(ctx, it, refusal.Reason, held, now.Add(heldRetry))
-		return false, false
+		return
 	}
 	if errors.Is(err, apperrs.ErrConflict) {
 		r.requeue(ctx, it, ReasonTicketBusy, held, now)
-		return false, false
+		return
 	}
 	if _, gerr := r.trails.GetTrail(ctx, it.TrailID); gerr != nil {
 		it.TrailID = ""
 	}
 	r.logDecide(ctx, it, QueueDispatching, QueueDidntRun, err.Error())
-	return false, false
+}
+
+// onlyFull is whether every computer that could not take a run was only full: a run ending frees one and kicks the
+// queue, so the run waits for that rather than a retry.
+func onlyFull(passed []PassedOver) bool {
+	return len(passed) > 0 && !slices.ContainsFunc(passed, func(p PassedOver) bool { return p.Why != "full" })
 }
 
 // requeue puts a dispatching item back in its queue without the trail it never got, announcing it only when it waits
-// for a new reason, so a held computer's retry every minute stays quiet.
-func (r *Runner) requeue(ctx context.Context, it *QueueItem, reason, held string, notBefore time.Time) {
+// for a new reason or on different computers, so a held run's retry every minute stays quiet.
+func (r *Runner) requeue(ctx context.Context, it *QueueItem, reason string, held QueueItem, notBefore time.Time) {
 	it.TrailID, it.NotBefore = "", notBefore
-	if err := r.move(ctx, it, QueueDispatching, QueueQueued, reason, reason != held); err != nil {
+	changed := reason != held.Reason || !slices.Equal(it.WaitingOn, held.WaitingOn)
+	if err := r.move(ctx, it, QueueDispatching, QueueQueued, reason, changed); err != nil {
 		r.log.Error("plays: put a queued run back", "item", it.ID, "error", err)
 	}
 }

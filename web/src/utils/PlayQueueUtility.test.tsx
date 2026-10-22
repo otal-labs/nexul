@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { queueItem } from "@/test/playQueueItem";
-import { outcomeText, pickingComputer, waitingLink, waitingSentence, waitingWhy } from "@/utils/PlayQueueUtility";
+import { outcomeText, waitingLink, waitingSentence, waitingWhy } from "@/utils/PlayQueueUtility";
 
 describe("outcomeText", () => {
   it.each([
@@ -29,33 +29,36 @@ describe("outcomeText", () => {
 describe("waitingWhy and waitingSentence", () => {
   it.each([
     ["", "waiting its turn", "waiting its turn"],
-    ["no free slot", "busy with another run", "busy with another run"],
-    ["offline", "computer offline", "computer offline"],
+    ["offline", "computer offline", "their computer is offline"],
     ["unpaired", "no computer paired", "no computer is paired to run it on"],
     ["expired_token", "computer session expired", "the paired computer's session expired"],
-    ["no_default", "no T3 project linked", "no T3 project is picked for this project"],
-    ["no_default_computer", "no default computer", "several computers are paired and none is the default; pick one, and this project's runs use it from now on"],
+    ["no_computer_ready", "no computer can take it", "none of their computers can take it"],
     ["setup_required", "computer setup not done", "the computer's setup isn't done"],
   ])("says the held reason %j in plain words", (reason, why, sentence) => {
     const item = queueItem({ reason });
     expect([waitingWhy(item), waitingSentence(item)]).toEqual([why, sentence]);
   });
 
-  it("sends a missing T3 project to the Projects tab and links nothing for a hold settings can't fix", () => {
-    expect(waitingLink(queueItem({ reason: "no_default" }))?.to).toBe("/settings/pairing/projects");
-    expect(waitingLink(queueItem({ reason: "offline" }))).toBeUndefined();
-    expect(waitingLink(queueItem({ reason: "no_default_computer" }))).toBeUndefined();
+  it("names each computer the run waits on, to its person", () => {
+    const item = queueItem({
+      reason: "no_computer_ready",
+      waiting_on: [
+        { computer_id: "c-1", name: "laptop", why: "offline", text: "laptop is offline" },
+        { computer_id: "c-2", name: "build-box", why: "no_checkout", text: "build-box doesn't have this project" },
+      ],
+    });
+    expect(waitingSentence(item)).toBe("laptop is offline; build-box doesn't have this project");
+    expect(waitingLink(item)?.to).toBe("/settings/pairing");
   });
 
-  it.each([
-    [{ reason: "no_default_computer" }, true],
-    [{ reason: "offline", computer_id: "c-laptop" }, true],
-    [{ reason: "ticket busy", computer_id: "c-laptop" }, true],
-    [{ reason: "no_default_computer", status: "dispatching" as const }, false],
-    [{ reason: "", computer_id: "c-laptop", status: "dispatching" as const }, false],
-    [{ reason: "unpaired" }, false],
-    [{ reason: "offline" }, false],
-  ])("asks for a computer while a run waits for no default computer or on its pick (%j)", (overrides, want) => {
-    expect(pickingComputer(queueItem(overrides))).toBe(want);
+  it("reads a run waiting only for room as busy, with nothing to fix", () => {
+    const full = { computer_id: "c-1", name: "laptop", why: "full" as const, text: "laptop is full (2 of 2 running)" };
+    const item = queueItem({ reason: "no_computer_ready", waiting_on: [full] });
+    expect([waitingWhy(item), waitingLink(item)]).toEqual(["computers busy", undefined]);
+  });
+
+  it("links nothing for a hold settings can't fix", () => {
+    expect(waitingLink(queueItem({ reason: "ticket busy" }))).toBeUndefined();
+    expect(waitingLink(queueItem({ reason: "offline", status: "dispatching" }))).toBeUndefined();
   });
 });

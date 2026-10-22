@@ -10,9 +10,9 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
-// TestMigration0096_AQueuedRunFromBeforeHasNoPickAndTakesOne upgrades a database with a run already waiting: it keeps
-// every field, starts with no computer picked, and a pick then sticks to it.
-func TestMigration0096_AQueuedRunFromBeforeHasNoPickAndTakesOne(t *testing.T) {
+// TestMigration0096_AQueuedRunFromBeforeKeepsItsFieldsAndWakes upgrades a database with a run already waiting: it keeps
+// every field, names no computer, and wakes.
+func TestMigration0096_AQueuedRunFromBeforeKeepsItsFieldsAndWakes(t *testing.T) {
 	db := migrateBefore(t, "0096")
 	_, err := db.Exec(`
 INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id,
@@ -25,13 +25,8 @@ VALUES ('q-1', 'workspace-default', 'p-1', 'ticket', 't-1', 'play-1', 'Fix it', 
 
 	it, err := s.PlayQueue.GetQueueItem(t.Context(), "q-1")
 	require.NoError(t, err)
-	assert.Equal(t, []any{plays.QueueQueued, "no_default_computer", "Fix it", "", ""}, []any{it.Status, it.Reason, it.PlayLabel, it.ComputerID, it.HarnessProjectID})
-
-	it.ComputerID, it.HarnessProjectID = "c-laptop", "t3-project"
-	require.NoError(t, s.PlayQueue.PickQueueItem(t.Context(), it))
-	it, err = s.PlayQueue.GetQueueItem(t.Context(), "q-1")
-	require.NoError(t, err)
-	assert.Equal(t, []any{"c-laptop", "t3-project"}, []any{it.ComputerID, it.HarnessProjectID})
+	assert.Equal(t, []any{plays.QueueQueued, "no_default_computer", "Fix it", ""}, []any{it.Status, it.Reason, it.PlayLabel, it.ComputerID})
+	assert.Empty(t, it.WaitingOn)
 
 	require.NoError(t, s.PlayQueue.WakePerson(t.Context(), "u-dev", time.Unix(120, 0)))
 	it, err = s.PlayQueue.GetQueueItem(t.Context(), "q-1")

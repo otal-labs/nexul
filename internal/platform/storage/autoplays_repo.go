@@ -117,14 +117,14 @@ func (r *PlaysRepo) AutoPlayLimits(ctx context.Context, workspaceID string) (pla
 	if err != nil {
 		return plays.AutoPlayLimits{}, fmt.Errorf("get auto play limits for workspace %s: %w", workspaceID, notFoundIfNoRows(err))
 	}
-	return plays.AutoPlayLimits{DailyCapPerTicket: int(row.AutoPlayDailyCap), RunsAtOncePerPerson: int(row.AutoPlayRunsAtOnce)}, nil
+	return plays.AutoPlayLimits{DailyCapPerTicket: int(row)}, nil
 }
 
 // SetAutoPlayLimits changes workspaceID's bounds on automatic runs.
 func (r *PlaysRepo) SetAutoPlayLimits(ctx context.Context, workspaceID string, limits plays.AutoPlayLimits, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetAutoPlayLimits(ctx, sqlcgen.SetAutoPlayLimitsParams{
-			AutoPlayDailyCap: int64(limits.DailyCapPerTicket), AutoPlayRunsAtOnce: int64(limits.RunsAtOncePerPerson), ID: workspaceID,
+			AutoPlayDailyCap: int64(limits.DailyCapPerTicket), ID: workspaceID,
 		})
 		if err != nil {
 			return classifyWriteErr(err)

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/plays"
 )
 
 func newTestComputer(id, userID, name string) pairing.Computer {
@@ -90,25 +92,79 @@ func TestPairingRepo_SaveComputer_UpsertUpdatesInPlace(t *testing.T) {
 	assert.Len(t, all, 1, "upsert must not create a duplicate row")
 }
 
-func TestPairingRepo_ListComputers_NewestFirst(t *testing.T) {
+func TestPairingRepo_ListComputers_InTheirOwnersOrder(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	for _, u := range []string{"u1", "u2"} {
+		_, _, err := s.Users.UpsertUser(ctx, newTestUser(u, u, u))
+		require.NoError(t, err)
+	}
+	for _, c := range []pairing.Computer{newTestComputer("c1", "u1", "home"), newTestComputer("c2", "u1", "vps"), newTestComputer("c3", "u2", "theirs")} {
+		require.NoError(t, s.Pairing.SaveComputer(ctx, c))
+	}
+	ids := func() []string {
+		list, err := s.Pairing.ListComputers(ctx, "u1")
+		require.NoError(t, err)
+		out := []string{}
+		for _, c := range list {
+			out = append(out, c.ID)
+		}
+		return out
+	}
+	assert.Equal(t, []string{"c1", "c2"}, ids(), "a new computer goes last")
+
+	require.NoError(t, s.Pairing.ReorderComputers(ctx, "u1", []string{"c2", "c1"}, time.Now()))
+	assert.Equal(t, []string{"c2", "c1"}, ids())
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home-renamed")))
+	assert.Equal(t, []string{"c2", "c1"}, ids(), "saving a computer again never moves it")
+	require.ErrorIs(t, s.Pairing.ReorderComputers(ctx, "u1", []string{"c3"}, time.Now()), apperrs.ErrNotFound, "another person's computer")
+	theirs, err := s.Pairing.ListComputers(ctx, "u2")
+	require.NoError(t, err)
+	assert.Equal(t, 0, theirs[0].Position, "a refused order changes nothing")
+}
+
+func TestPairingRepo_SetComputerPlacement_OwnerOnly(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := context.Background()
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
 	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
 
-	older := newTestComputer("c1", "u1", "home")
-	older.CreatedAt = time.Unix(1_000_000_000, 0).UTC()
-	newer := newTestComputer("c2", "u1", "vps")
-	newer.CreatedAt = time.Unix(2_000_000_000, 0).UTC()
-	require.NoError(t, s.Pairing.SaveComputer(ctx, older))
-	require.NoError(t, s.Pairing.SaveComputer(ctx, newer))
-
-	list, err := s.Pairing.ListComputers(ctx, "u1")
+	got, err := s.Pairing.GetComputer(ctx, "u1", "c1")
 	require.NoError(t, err)
-	require.Len(t, list, 2)
-	assert.Equal(t, "c2", list[0].ID)
-	assert.Equal(t, "c1", list[1].ID)
+	assert.Equal(t, []any{1, ""}, []any{got.RunsAtOnce, got.ChatProjectID}, "one run at once and no chat folder until set")
+
+	require.NoError(t, s.Pairing.SetComputerPlacement(ctx, "u1", "c1", 4, "t3-chat", time.Now()))
+	got, err = s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []any{4, "t3-chat"}, []any{got.RunsAtOnce, got.ChatProjectID})
+	require.ErrorIs(t, s.Pairing.SetComputerPlacement(ctx, "u2", "c1", 2, "", time.Now()), apperrs.ErrNotFound)
+}
+
+func TestPairingRepo_CountRunning_CountsTheRunsGoingOnEachComputer(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedPlays(t, s, "play-1")
+	for i, tc := range []struct {
+		computer string
+		state    plays.TrailState
+	}{{"c1", plays.TrailRunning}, {"c1", plays.TrailWaiting}, {"c1", plays.TrailDone}, {"c2", plays.TrailStarting}, {"c3", plays.TrailRunning}} {
+		require.NoError(t, s.PlayTrails.CreateTrail(ctx, &plays.Trail{
+			ID: fmt.Sprintf("tr-%d", i), WorkspaceID: "ws-1", PlayID: "play-1", TargetType: plays.TargetTicket, TargetID: "t-1",
+			StarterID: "u1", Via: plays.ViaWeb, SelectedMemoryIDs: []string{}, State: tc.state, StartedAt: time.Now(), ComputerID: tc.computer,
+		}))
+	}
+
+	running, err := s.Pairing.CountRunning(ctx, []string{"c1", "c2", "c-idle"})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{"c1": 2, "c2": 1}, running, "an ended run frees its room, and another computer's runs are not counted")
+	none, err := s.Pairing.CountRunning(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
 }
 
 func TestPairingRepo_ListComputers_Empty(t *testing.T) {
@@ -156,23 +212,30 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
 	require.NoError(t, err)
 	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c2", "u1", "vps")))
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
 
 	empty, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
-	assert.Equal(t, pairing.ProjectLink{}, empty, "unlinked project is a zero value, not an error")
+	assert.Equal(t, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1"}, empty, "unlinked project is a zero value, not an error")
 
 	link := pairing.ProjectLink{
-		UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
-		Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
+		UserID: "u1", ProjectID: "proj-1", Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
 		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}},
-		StartIn:      pairing.StartInWorktree,
+		StartIn:      pairing.StartInWorktree, Placement: pairing.PlacementSpread, Computers: []string{"c2", "c1"},
+		Checkouts: []pairing.Checkout{{ComputerID: "c1", HarnessProjectID: "t3-home"}},
 	}
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
 
 	got, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
-	assert.Equal(t, link, got, "a switch reads back as a bool, a choice as a string")
+	assert.Equal(t, link, got, "a switch reads back as a bool, a choice as a string, the computers in their order")
+
+	link.Computers = []string{"c1"}
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
+	got, err = s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c1"}, got.Computers, "a saved list replaces the old one")
 }
 
 func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
@@ -188,26 +251,29 @@ func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
 	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c3", "u2", "theirs")))
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-2", "Project Two", 1)))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-3", "Project Three", 2)))
 
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-2", ComputerID: "c1", HarnessProjectID: "p2"}))
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "p1"}))
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u2", ProjectID: "proj-1", ComputerID: "c3", HarnessProjectID: "theirs"}))
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", ComputerID: "c2", HarnessProjectID: "p1-moved"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-2", Model: "sonnet"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", Computers: []string{"c1"}}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u2", ProjectID: "proj-1", Computers: []string{"c3"}}))
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-3", "c2", "t3-three"))
 
 	links, err := s.Pairing.ListProjectLinks(ctx, "u1")
 	require.NoError(t, err)
-	require.Len(t, links, 2)
-	assert.Equal(t, "proj-1", links[0].ProjectID)
-	assert.Equal(t, "c2", links[0].ComputerID, "saving again updates the person's own row in place")
-	assert.Equal(t, "proj-2", links[1].ProjectID)
+	require.Len(t, links, 3)
+	assert.Equal(t, []string{"proj-1", "proj-2", "proj-3"}, []string{links[0].ProjectID, links[1].ProjectID, links[2].ProjectID})
+	assert.Equal(t, []string{"c1"}, links[0].Computers)
+	assert.Equal(t, []pairing.Checkout{{ComputerID: "c2", HarnessProjectID: "t3-three"}}, links[2].Checkouts, "a picked checkout alone is listed too")
 
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-1", "c1", "t3-one"))
 	require.NoError(t, s.Pairing.DeleteProjectLink(ctx, "u1", "proj-1"))
 	mine, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
-	assert.Empty(t, mine.ComputerID)
+	assert.Empty(t, mine.Computers, "clearing drops the project's own order")
+	assert.Equal(t, []pairing.Checkout{{ComputerID: "c1", HarnessProjectID: "t3-one"}}, mine.Checkouts, "and keeps where the code is")
 	theirs, err := s.Pairing.GetProjectLink(ctx, "u2", "proj-1")
 	require.NoError(t, err)
-	assert.Equal(t, "c3", theirs.ComputerID, "neither a save nor a clear touches another person's link")
+	assert.Equal(t, []string{"c3"}, theirs.Computers, "neither a save nor a clear touches another person's link")
 }
 
 func TestPairingRepo_DeleteProjectLink_NeverLinkedIsNoop(t *testing.T) {
@@ -222,24 +288,19 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
 	require.NoError(t, err)
-	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
 
 	empty, err := s.Pairing.GetDefaults(ctx, "u1")
 	require.NoError(t, err)
 	assert.Equal(t, pairing.Defaults{}, empty, "no row yet is a zero value, not an error")
 
-	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet",
-		ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}}, StartIn: pairing.StartInWorktree}
+	d := pairing.Defaults{UserID: "u1", Provider: "claude", Model: "sonnet", ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}},
+		StartIn: pairing.StartInWorktree, Placement: pairing.PlacementSpread, CloneAutomatically: true}
 	require.NoError(t, s.Pairing.SaveDefaults(ctx, d))
 
 	got, err := s.Pairing.GetDefaults(ctx, "u1")
 	require.NoError(t, err)
-	assert.Equal(t, "c1", got.DefaultComputerID)
-	assert.Equal(t, "proj-1", got.FallbackProjectID)
-	assert.Equal(t, "claude", got.Provider)
-	assert.Equal(t, "sonnet", got.Model)
-	assert.Equal(t, d.ModelOptions, got.ModelOptions)
-	assert.Equal(t, pairing.StartInWorktree, got.StartIn)
+	d.UserID = ""
+	assert.Equal(t, d, got)
 }
 
 func TestPairingRepo_SaveDefaults_UpsertUpdatesInPlace(t *testing.T) {

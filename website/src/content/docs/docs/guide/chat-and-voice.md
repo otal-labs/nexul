@@ -39,7 +39,7 @@ Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation
 
 Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation.
 
-On a ticket's or doc's thread the agent works in that project, through your project link. In a channel or direct message it uses your defaults. When the agent hands work to another agent, a pill under its reply opens that agent's conversation.
+On a ticket's or doc's thread the agent works in that project's checkout on the first of [your computers](/docs/guide/paired-computers/#your-computers-in-order) that can take it. In a channel or direct message it works in that computer's chat folder, with your defaults. When the agent hands work to another agent, a pill under its reply opens that agent's conversation.
 
 ### Notes on a ticket
 

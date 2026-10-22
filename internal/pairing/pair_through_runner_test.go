@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -178,10 +179,10 @@ func (h *recordingHarness) ListProviders(_ context.Context, s harness.Session) (
 	return []harness.Provider{{ID: "codex", Driver: "codex", Name: "Codex"}}, nil
 }
 
-// TestResolveTarget_OfflineComputerIsNeverSwapped: with a laptop and a desktop, a run aimed at the laptop while it is
-// offline fails at once naming it and why, whether a project link, the defaults or the run's own pick aimed it there,
-// and nothing is asked of the desktop.
-func TestResolveTarget_OfflineComputerIsNeverSwapped(t *testing.T) {
+// TestResolveTarget_OfflineComputer_FailsOverUnlessPinned guards ADR 0165: with the laptop first and offline, a run that
+// follows the order lands on the desktop and names the laptop and why, while a run pinned to the laptop, by its own
+// pick or the project's own list, fails naming it.
+func TestResolveTarget_OfflineComputer_FailsOverUnlessPinned(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	h := &recordingHarness{fakeExchanger: &fakeExchanger{}, offline: "c-laptop"}
@@ -190,34 +191,38 @@ func TestResolveTarget_OfflineComputerIsNeverSwapped(t *testing.T) {
 		Projects: fakeProjects{}, Runners: runners, Now: func() time.Time { return testNow }})
 	sealed, err := crypto.Encrypt(testEncKey, []byte("bearer"))
 	require.NoError(t, err)
-	for id, name := range map[string]string{"c-laptop": "Laptop", "c-desktop": "Desktop"} {
-		repo.computers[id] = Computer{ID: id, UserID: "u-alice", Kind: harness.KindT3Code, Name: name, ServerURL: runnerAddress(id),
-			BearerToken: sealed, TokenExpiresAt: testNow.Add(20 * day), SetupConfirmedAt: &testNow}
+	for i, id := range []string{"c-laptop", "c-desktop"} {
+		repo.computers[id] = Computer{ID: id, UserID: "u-alice", Kind: harness.KindT3Code, Name: strings.TrimPrefix(id, "c-"), ServerURL: runnerAddress(id),
+			BearerToken: sealed, TokenExpiresAt: testNow.Add(20 * day), SetupConfirmedAt: &testNow, Position: i}
 		repo.setups[id] = []ProviderSetup{{Provider: "codex", ConfirmedAt: &testNow}}
+		require.NoError(t, repo.SaveCheckout(t.Context(), "u-alice", "p-acme", id, "t3-acme-"+id))
 	}
 	ctx := t.Context()
-	_, err = svc.SetProjectLink(ctx, "u-alice", "p-acme", ProjectLink{ComputerID: "c-laptop", HarnessProjectID: "t3-acme"})
-	require.NoError(t, err)
 
-	runs := map[string]func() (*ResolvedTarget, error){
-		"project link": func() (*ResolvedTarget, error) { return svc.ResolveTarget(ctx, "u-alice", "p-acme") },
+	target, err := svc.ResolveTarget(ctx, "u-alice", "p-acme")
+	require.NoError(t, err)
+	assert.Equal(t, "c-desktop", target.Computer.ID)
+	assert.Equal(t, "t3-acme-c-desktop", target.HarnessProjectID, "the run uses the desktop's own checkout")
+	assert.Equal(t, []PassOver{{ComputerID: "c-laptop", Name: "laptop", Why: PassOverOffline, Text: "laptop is offline: it isn't connected to Nexul"}}, target.PassedOver)
+	assert.False(t, slices.Contains(h.asked, "c-laptop"), "a computer known to be offline is not asked")
+
+	pinned := map[string]func() (*ResolvedTarget, error){
 		"run's own pick": func() (*ResolvedTarget, error) {
 			return svc.ResolveTargetOverride(ctx, "u-alice", "p-acme", "c-laptop", "", "", nil)
 		},
-		"defaults": func() (*ResolvedTarget, error) {
-			_, err := svc.SetDefaults(ctx, "u-alice", Defaults{DefaultComputerID: "c-laptop", FallbackProjectID: "t3-acme"})
+		"project's own list": func() (*ResolvedTarget, error) {
+			_, err := svc.SetProjectLink(ctx, "u-alice", "p-acme", ProjectLink{Computers: []string{"c-laptop"}})
 			require.NoError(t, err)
-			return svc.ResolveTarget(ctx, "u-alice", "")
+			return svc.ResolveTarget(ctx, "u-alice", "p-acme")
 		},
 	}
-	for _, name := range []string{"project link", "run's own pick", "defaults"} {
-		target, err := runs[name]()
+	for _, name := range []string{"run's own pick", "project's own list"} {
+		target, err := pinned[name]()
 
 		assert.Nil(t, target, name)
 		var nc *NotConfiguredError
 		require.ErrorAs(t, err, &nc, name)
 		assert.Equal(t, ReasonOffline, nc.Reason, name)
-		assert.Equal(t, "Laptop is offline: it isn't connected to Nexul.", err.Error(), name)
+		assert.Equal(t, "laptop is offline: it isn't connected to Nexul.", err.Error(), name)
 	}
-	assert.False(t, slices.Contains(h.asked, "c-desktop"), "nothing ran on the desktop: %v", h.asked)
 }

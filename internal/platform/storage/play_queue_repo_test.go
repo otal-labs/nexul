@@ -73,7 +73,7 @@ func TestPlayQueueRepo_KeepsTheStackServiceAndOutageARunWasQueuedFor(t *testing.
 	assert.Equal(t, []*plays.QueueItem{it}, listed)
 }
 
-func TestPlayQueueRepo_PickAndMove_NeverOverwriteEachOther(t *testing.T) {
+func TestPlayQueueRepo_Move_KeepsWhatTheRunWaitsOnOnlyWhileItWaits(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	seedPlays(t, s)
@@ -81,22 +81,21 @@ func TestPlayQueueRepo_PickAndMove_NeverOverwriteEachOther(t *testing.T) {
 	at := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
 	_, err := s.PlayQueue.EnqueueRun(ctx, newTestQueueItem("q-1", "ap-1", "t-1", "u-1", plays.LevelNormal, at))
 	require.NoError(t, err)
-	stale, err := s.PlayQueue.GetQueueItem(ctx, "q-1")
+	it, err := s.PlayQueue.GetQueueItem(ctx, "q-1")
 	require.NoError(t, err)
-	picked := *stale
-	picked.ComputerID, picked.HarnessProjectID = "c-laptop", "t3-laptop"
-	require.NoError(t, s.PlayQueue.PickQueueItem(ctx, &picked))
+	stale := *it
 
-	stale.Status = plays.QueueDispatching
-	require.NoError(t, s.PlayQueue.MoveQueueItem(ctx, stale, plays.QueueQueued))
+	it.Status, it.Reason = plays.QueueDispatching, ""
+	require.NoError(t, s.PlayQueue.MoveQueueItem(ctx, it, plays.QueueQueued))
+	waiting := []plays.PassedOver{{ComputerID: "c-laptop", Name: "laptop", Why: "full", Text: "laptop is full (1 of 1 running)"}}
+	it.Status, it.Reason, it.WaitingOn = plays.QueueQueued, "no_computer_ready", waiting
+	require.NoError(t, s.PlayQueue.MoveQueueItem(ctx, it, plays.QueueDispatching))
 
-	assert.Equal(t, []string{"c-laptop", "t3-laptop"}, []string{stale.ComputerID, stale.HarnessProjectID}, "the claim reads the pick it raced")
 	got, err := s.PlayQueue.GetQueueItem(ctx, "q-1")
 	require.NoError(t, err)
-	assert.Equal(t, "c-laptop", got.ComputerID, "a move never writes the pick")
-	picked.ComputerID = "c-desk"
-	require.ErrorIs(t, s.PlayQueue.PickQueueItem(ctx, &picked), apperrs.ErrConflict, "a claimed run takes no pick")
-	require.ErrorIs(t, s.PlayQueue.PickQueueItem(ctx, &plays.QueueItem{ID: "missing"}), apperrs.ErrConflict)
+	assert.Equal(t, waiting, got.WaitingOn)
+	stale.Status = plays.QueueCancelled
+	require.ErrorIs(t, s.PlayQueue.MoveQueueItem(ctx, &stale, plays.QueueDispatching), apperrs.ErrConflict, "a move from a status the row left is refused")
 }
 
 func TestPlayQueueRepo_DueByPriorityThenAge(t *testing.T) {
@@ -191,10 +190,6 @@ func TestPlayQueueRepo_RecoverDispatching_StartedOnlyWhenTheTrailExists(t *testi
 		_, err := s.PlayQueue.EnqueueRun(ctx, item)
 		require.NoError(t, err)
 	}
-	active, err := s.PlayQueue.CountActiveRuns(ctx, "u-1")
-	require.NoError(t, err)
-	assert.Equal(t, 1, active)
-
 	require.NoError(t, s.PlayQueue.RecoverDispatching(ctx))
 
 	started, err := s.PlayQueue.GetQueueItem(ctx, "q-1")

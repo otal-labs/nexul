@@ -1,61 +1,50 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
-import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { useUpdatePairingDefaults } from "@/hooks/PairingHooks";
 import { useFlash } from "@/hooks/useFlash";
 import {
   PairingDefaultsFormSchema,
+  PLACEMENT_OPTIONS,
   START_IN_OPTIONS,
   StartIn,
-  type Computer,
   type PairingDefaults,
   type PairingDefaultsFormData,
 } from "@/models/Pairing";
 
 const FORM_ID = "pairing-defaults-form";
 
-export const DEFAULTS_DESCRIPTION = "What @Agent uses outside a project, and in any project you haven't linked on the Projects tab.";
+export const DEFAULTS_DESCRIPTION = "What every run uses unless its project says otherwise on the Projects tab.";
+
+const formValues = (d: PairingDefaults): PairingDefaultsFormData => ({
+  provider: d.provider ?? "",
+  model: d.model ?? "",
+  model_options: d.model_options ?? [],
+  start_in: d.start_in ?? StartIn.Folder,
+  placement: d.placement,
+  clone_automatically: d.clone_automatically,
+});
 
 interface PairingDefaultsFormProps {
   defaults: PairingDefaults;
-  computers: Computer[];
+  // The computer whose models the picker lists: the first in the person's order.
+  computerId: string;
 }
 
-// Split out so defaultValues only seed from a loaded `defaults` — avoids the F2 "= [] trap".
-export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsFormProps) => {
+// Split out so defaultValues only seed from a loaded `defaults`, avoiding the F2 "= [] trap".
+export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFormProps) => {
   const update = useUpdatePairingDefaults();
-
-  const form = useForm<PairingDefaultsFormData>({
-    defaultValues: {
-      default_computer_id: defaults.default_computer_id ?? "",
-      fallback_project_id: defaults.fallback_project_id ?? "",
-      provider: defaults.provider ?? "",
-      model: defaults.model ?? "",
-      model_options: defaults.model_options ?? [],
-      start_in: defaults.start_in ?? StartIn.Folder,
-    },
-    resolver: zodResolver(PairingDefaultsFormSchema),
-  });
-  const defaultComputerId = useWatch({ control: form.control, name: "default_computer_id" });
-
+  const form = useForm<PairingDefaultsFormData>({ defaultValues: formValues(defaults), resolver: zodResolver(PairingDefaultsFormSchema) });
   const [saved, flash] = useFlash();
 
   const onSubmit = async (data: PairingDefaultsFormData) => {
     try {
-      const stored = await update.mutateAsync(data);
-      form.reset({
-        default_computer_id: stored.default_computer_id ?? "",
-        fallback_project_id: stored.fallback_project_id ?? "",
-        provider: stored.provider ?? "",
-        model: stored.model ?? "",
-        model_options: stored.model_options ?? [],
-        start_in: stored.start_in ?? StartIn.Folder,
-      });
+      form.reset(formValues(await update.mutateAsync(data)));
       flash();
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
@@ -78,35 +67,31 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         />
       }
     >
-    <form id={FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <FormSelect
-        control={form.control}
-        name="default_computer_id"
-        label="Default computer"
-        placeholder="No default"
-        options={computers.map((c) => ({ value: c.id, label: c.name }))}
-      />
-      <HarnessProjectField
-        control={form.control}
-        name="fallback_project_id"
-        label="Fallback T3 project"
-        computerId={defaultComputerId}
-      />
-      <HarnessProviderModelFields
-        control={form.control}
-        providerName="provider"
-        modelName="model"
-        optionsName="model_options"
-        computerId={defaultComputerId}
-        description="Default model for chats and runs with no project link"
-        onPick={(provider, model, options) => {
-          form.setValue("provider", provider, { shouldDirty: true });
-          form.setValue("model", model, { shouldDirty: true });
-          form.setValue("model_options", options, { shouldDirty: true });
-        }}
-      />
-      <FormSelect control={form.control} name="start_in" label="New threads start in" options={START_IN_OPTIONS} />
-    </form>
+      <form id={FORM_ID} onSubmit={form.handleSubmit(onSubmit)}>
+        <SettingsRows>
+          <SettingsRow label="When several computers can take a run" description="In order keeps your first computer the main one; least busy spreads runs out.">
+            <FormSelect control={form.control} name="placement" label="When several computers can take a run" hideLabel options={PLACEMENT_OPTIONS} />
+          </SettingsRow>
+          <div className="py-4">
+            <HarnessProviderModelFields
+              control={form.control}
+              providerName="provider"
+              modelName="model"
+              optionsName="model_options"
+              computerId={computerId}
+              description="For chats and runs whose project picks none"
+              onPick={(provider, model, options) => {
+                form.setValue("provider", provider, { shouldDirty: true });
+                form.setValue("model", model, { shouldDirty: true });
+                form.setValue("model_options", options, { shouldDirty: true });
+              }}
+            />
+          </div>
+          <SettingsRow label="New threads start in" description="A worktree each keeps runs going side by side out of each other's files.">
+            <FormSelect control={form.control} name="start_in" label="New threads start in" hideLabel options={START_IN_OPTIONS} />
+          </SettingsRow>
+        </SettingsRows>
+      </form>
     </SettingsCard>
   );
 };

@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -57,6 +58,8 @@ type Config struct {
 	Containers Containers
 	// ComputerAccess lets a person a computer is shared with read its logs; nil leaves them to the owner.
 	ComputerAccess ComputerGate
+	// Repositories finds a project's checkout on a computer by its git remote; nil finds only picked ones.
+	Repositories ProjectRemotes
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -74,6 +77,7 @@ type Service struct {
 	runners        Runners
 	containers     Containers
 	computerAccess ComputerGate
+	repositories   ProjectRemotes
 	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
 	settingUp map[string]bool
@@ -92,7 +96,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, settingUp: map[string]bool{},
 		pairFailures: map[string]string{},
 	}
 }
@@ -126,6 +130,9 @@ func (s *Service) ListComputers(ctx context.Context, userID string) ([]Computer,
 	}
 	cs, err = s.withRunners(ctx, cs)
 	if err != nil {
+		return nil, err
+	}
+	if cs, err = s.withRunning(ctx, cs); err != nil {
 		return nil, err
 	}
 	for i := range cs {
@@ -381,22 +388,16 @@ func (s *Service) GetDefaults(ctx context.Context, userID string) (Defaults, err
 		return Defaults{}, fmt.Errorf("get defaults: %w", err)
 	}
 	d.UserID = userID
+	d.Placement = cmp.Or(d.Placement, PlacementInOrder)
 	return d, nil
 }
 
-// SetDefaults stores the caller's pairing defaults; a default computer must be one of their own.
+// SetDefaults stores the caller's pairing defaults and wakes their waiting runs, which may now land somewhere.
 func (s *Service) SetDefaults(ctx context.Context, userID string, d Defaults) (Defaults, error) {
 	if strings.TrimSpace(userID) == "" {
 		return Defaults{}, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
 	}
 	d.UserID = userID
-	d.DefaultComputerID = strings.TrimSpace(d.DefaultComputerID)
-	if d.DefaultComputerID != "" {
-		if _, err := s.repo.GetComputer(ctx, userID, d.DefaultComputerID); err != nil {
-			return Defaults{}, fmt.Errorf("default computer %s: %w", d.DefaultComputerID, err)
-		}
-	}
-	d.FallbackProjectID = strings.TrimSpace(d.FallbackProjectID)
 	d.Provider = strings.TrimSpace(d.Provider)
 	d.Model = strings.TrimSpace(d.Model)
 	options, err := harness.CleanOptions(d.ModelOptions)
@@ -407,9 +408,14 @@ func (s *Service) SetDefaults(ctx context.Context, userID string, d Defaults) (D
 	if d.StartIn, err = validateStartIn(d.StartIn); err != nil {
 		return Defaults{}, err
 	}
+	if d.Placement, err = validatePlacement(d.Placement); err != nil {
+		return Defaults{}, err
+	}
+	d.Placement = cmp.Or(d.Placement, PlacementInOrder)
 	if err := s.repo.SaveDefaults(ctx, d); err != nil {
 		return Defaults{}, fmt.Errorf("save defaults: %w", err)
 	}
+	s.placementChanged(ctx, userID)
 	return d, nil
 }
 
@@ -450,42 +456,71 @@ func (s *Service) ListProjectLinks(ctx context.Context, userID string) ([]Projec
 	return out, nil
 }
 
-// SetProjectLink sets the caller's own link for a project they can open; the computer must be one of theirs.
+// SetProjectLink sets the caller's own link for a project they can open; its computers and checkouts must be theirs.
 func (s *Service) SetProjectLink(ctx context.Context, userID, projectID string, link ProjectLink) (ProjectLink, error) {
 	projectID, err := s.openProject(ctx, userID, projectID)
 	if err != nil {
 		return ProjectLink{}, err
 	}
-	link.ComputerID = strings.TrimSpace(link.ComputerID)
-	if link.ComputerID == "" {
-		return ProjectLink{}, fmt.Errorf("%w: computer is required", apperrs.ErrInvalid)
-	}
-	if _, err := s.repo.GetComputer(ctx, userID, link.ComputerID); err != nil {
-		return ProjectLink{}, fmt.Errorf("link computer %s: %w", link.ComputerID, err)
-	}
-	harnessProjectID, err := validateHarnessProjectID(link.HarnessProjectID)
-	if err != nil {
+	link.UserID, link.ProjectID = userID, projectID
+	if link.Computers, link.Checkouts, err = s.ownLinkComputers(ctx, userID, link.Computers, link.Checkouts); err != nil {
 		return ProjectLink{}, err
 	}
-	link.UserID, link.ProjectID = userID, projectID
-	link.HarnessProjectID = harnessProjectID
 	link.Provider = strings.TrimSpace(link.Provider)
 	link.Model = strings.TrimSpace(link.Model)
-	link.ModelOptions, err = harness.CleanOptions(link.ModelOptions)
-	if err != nil {
+	if link.ModelOptions, err = harness.CleanOptions(link.ModelOptions); err != nil {
 		return ProjectLink{}, err
 	}
 	if link.StartIn, err = validateStartIn(link.StartIn); err != nil {
+		return ProjectLink{}, err
+	}
+	if link.Placement, err = validatePlacement(link.Placement); err != nil {
 		return ProjectLink{}, err
 	}
 	link.UpdatedAt = s.now().UTC()
 	if err := s.repo.SaveProjectLink(ctx, link); err != nil {
 		return ProjectLink{}, fmt.Errorf("save project link %s: %w", projectID, err)
 	}
+	s.placementChanged(ctx, userID)
 	return link, nil
 }
 
-// ClearProjectLink removes the caller's own link; their turns in that project fall back to their defaults.
+// ownLinkComputers trims a link's computers and checkouts, refusing a computer that is not the caller's or named twice.
+func (s *Service) ownLinkComputers(ctx context.Context, userID string, ids []string, checkouts []Checkout) ([]string, []Checkout, error) {
+	own := func(id string) error {
+		_, err := s.repo.GetComputer(ctx, userID, id)
+		if err != nil {
+			return fmt.Errorf("link computer %s: %w", id, err)
+		}
+		return nil
+	}
+	outIDs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if slices.Contains(outIDs, id) {
+			return nil, nil, fmt.Errorf("%w: computer %s is listed twice", apperrs.ErrInvalid, id)
+		}
+		if err := own(id); err != nil {
+			return nil, nil, err
+		}
+		outIDs = append(outIDs, id)
+	}
+	outCheckouts := make([]Checkout, 0, len(checkouts))
+	for _, c := range checkouts {
+		c.ComputerID = strings.TrimSpace(c.ComputerID)
+		harnessProjectID, err := validateHarnessProjectID(c.HarnessProjectID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := own(c.ComputerID); err != nil {
+			return nil, nil, err
+		}
+		outCheckouts = append(outCheckouts, Checkout{ComputerID: c.ComputerID, HarnessProjectID: harnessProjectID})
+	}
+	return outIDs, outCheckouts, nil
+}
+
+// ClearProjectLink removes the caller's own link and project order; the checkouts they picked stay where the code is.
 func (s *Service) ClearProjectLink(ctx context.Context, userID, projectID string) error {
 	projectID, err := s.openProject(ctx, userID, projectID)
 	if err != nil {
@@ -494,6 +529,7 @@ func (s *Service) ClearProjectLink(ctx context.Context, userID, projectID string
 	if err := s.repo.DeleteProjectLink(ctx, userID, projectID); err != nil {
 		return fmt.Errorf("clear project link %s: %w", projectID, err)
 	}
+	s.placementChanged(ctx, userID)
 	return nil
 }
 
@@ -524,6 +560,8 @@ type ResolvedTarget struct {
 	ModelOptions     []harness.OptionSetting
 	// Worktree starts a new harness thread in a fresh git worktree instead of the T3 project's folder.
 	Worktree bool
+	// PassedOver are the computers before this one that could not take the turn, and why.
+	PassedOver []PassOver
 }
 
 // modelPick keeps a model's options beside it: they only mean something for the model they were picked with.
@@ -533,22 +571,18 @@ type modelPick struct {
 	options  []harness.OptionSetting
 }
 
-// ResolveTarget picks the computer/harness project/provider/model a mention runs against, behind the setup gate.
+// ResolveTarget lands a chat turn on the caller's first ready computer, behind the setup gate.
 func (s *Service) ResolveTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
-	target, err := s.resolveTarget(ctx, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-	return s.requireSetup(ctx, target)
+	return s.ResolveRun(ctx, RunRequest{UserID: userID, ProjectID: projectID, Chat: true})
 }
 
-// ResolveTargetOverride resolves a run's pinned computer, provider, model and its options, behind the same setup gate.
+// ResolveTargetOverride lands a chat turn on one computer, with a provider, model and options, behind the same gate.
 func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
-	target, err := s.resolveTargetOverride(ctx, userID, projectID, computerID, modelPick{provider: provider, model: model, options: options})
-	if err != nil {
-		return nil, err
+	req := RunRequest{UserID: userID, ProjectID: projectID, Provider: provider, Model: model, ModelOptions: options, Chat: true}
+	if computerID = strings.TrimSpace(computerID); computerID != "" {
+		req.ComputerIDs = []string{computerID}
 	}
-	return s.requireSetup(ctx, target)
+	return s.ResolveRun(ctx, req)
 }
 
 // ResolveConfirmedTarget rechecks the same computer and setup without reading mutable location or model settings.
@@ -580,85 +614,6 @@ func (s *Service) resolveConfirmedTarget(ctx context.Context, userID string, tar
 	return &target, nil
 }
 
-// ResolvePersonRun requires a project link or saves the caller's explicit location before checking setup (ADR 0145).
-func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
-	target, err := s.resolvePersonRun(ctx, userID, projectID, computerID, harnessProjectID, modelPick{provider: provider, model: model, options: options})
-	if err != nil {
-		return nil, err
-	}
-	return s.requireSetup(ctx, target)
-}
-
-func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) (*ResolvedTarget, error) {
-	projectID, computerID, harnessProjectID = strings.TrimSpace(projectID), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
-	if harnessProjectID != "" && computerID == "" {
-		return nil, fmt.Errorf("%w: a T3 project needs the computer it is on", apperrs.ErrInvalid)
-	}
-	link, err := s.repo.GetProjectLink(ctx, userID, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("get project link %s: %w", projectID, err)
-	}
-	if harnessProjectID == "" && (link.ComputerID == "" || (computerID != "" && computerID != link.ComputerID)) {
-		return nil, &NotConfiguredError{Reason: ReasonNeedsLocation}
-	}
-	defaults, err := s.repo.GetDefaults(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get defaults: %w", err)
-	}
-	if harnessProjectID != "" {
-		if link, err = s.savePickedLocation(ctx, userID, projectID, computerID, harnessProjectID, link, defaults); err != nil {
-			return nil, err
-		}
-	}
-	pick = fillPick(pick, modelPick{link.Provider, link.Model, link.ModelOptions})
-	if defaults.DefaultComputerID == link.ComputerID {
-		pick = fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions})
-	}
-	startIn := link.StartIn
-	if startIn == "" {
-		startIn = defaults.StartIn
-	}
-	return s.resolveConfirmedTarget(ctx, userID, ResolvedTarget{
-		Computer: Computer{ID: link.ComputerID}, HarnessProjectID: link.HarnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: startIn == StartInWorktree,
-	})
-}
-
-// SaveRunLocation saves a computer and T3 project picked for a run as the caller's link, as their first run there does.
-func (s *Service) SaveRunLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string) (ProjectLink, error) {
-	link, err := s.repo.GetProjectLink(ctx, userID, projectID)
-	if err != nil {
-		return ProjectLink{}, fmt.Errorf("get project link %s: %w", projectID, err)
-	}
-	defaults, err := s.repo.GetDefaults(ctx, userID)
-	if err != nil {
-		return ProjectLink{}, fmt.Errorf("get defaults: %w", err)
-	}
-	return s.savePickedLocation(ctx, userID, projectID, computerID, harnessProjectID, link, defaults)
-}
-
-// savePickedLocation saves a picked location the computer lists as the link, never the run's own model (ADR 0145).
-func (s *Service) savePickedLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, link ProjectLink, defaults Defaults) (ProjectLink, error) {
-	if err := s.requireListedProject(ctx, userID, computerID, harnessProjectID); err != nil {
-		return ProjectLink{}, err
-	}
-	keep := linkModel(link, defaults, computerID)
-	return s.SetProjectLink(ctx, userID, projectID, ProjectLink{
-		ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: keep.provider, Model: keep.model, ModelOptions: keep.options, StartIn: link.StartIn,
-	})
-}
-
-// linkModel is the model a link moved to computerID keeps: its own on the same computer, else the defaults on the default one.
-func linkModel(link ProjectLink, defaults Defaults, computerID string) modelPick {
-	if link.ComputerID == computerID {
-		return modelPick{link.Provider, link.Model, link.ModelOptions}
-	}
-	if defaults.DefaultComputerID == computerID {
-		return modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}
-	}
-	return modelPick{}
-}
-
-// requireListedProject refuses a T3 project the computer does not list, or cannot be asked about, so no typo becomes a link.
 func (s *Service) requireListedProject(ctx context.Context, userID, computerID, harnessProjectID string) error {
 	target, err := s.resolveConfirmedTarget(ctx, userID, ResolvedTarget{Computer: Computer{ID: computerID}})
 	if err != nil {
@@ -682,37 +637,32 @@ func (s *Service) requireListedProject(ctx context.Context, userID, computerID, 
 }
 
 // PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.
+
+// PreviewTarget is where a play pressed in projectID would land now, without the gate or bearer token, so readiness
+// never greys a play that would start on press.
 func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
-	target, err := s.resolveTarget(ctx, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-	target.Computer.BearerToken = ""
-	return target, nil
+	return s.PreviewRun(ctx, RunRequest{UserID: userID, ProjectID: projectID, Room: RoomPreferred, Person: true})
 }
 
 // ResolveSetupTurnTarget skips the setup gate for the wizard's setup turn only; TestResolveSetupTurnTarget_OnlyTheWizardCallsIt guards it.
-// A picked projectID wins over the defaults.
+// A picked projectID wins over the computer's chat folder, which wins over its first T3 project.
 func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID, provider, projectID string) (*ResolvedTarget, error) {
 	if strings.TrimSpace(computerID) == "" {
 		return nil, fmt.Errorf("%w: a setup turn needs its computer", apperrs.ErrInvalid)
 	}
-	if projectID != "" {
-		session, err := s.sessionComputer(ctx, userID, computerID)
-		if err != nil {
-			return nil, err
-		}
-		return &ResolvedTarget{Computer: session, HarnessProjectID: projectID, Provider: strings.TrimSpace(provider)}, nil
+	if _, err := s.fetchTargetComputer(ctx, userID, computerID); err != nil {
+		return nil, err
 	}
-	target, err := s.resolveTargetOverride(ctx, userID, "", computerID, modelPick{provider: provider})
-	var nc *NotConfiguredError
-	if !errors.As(err, &nc) || nc.Reason != ReasonNoDefault {
-		return target, err
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	if projectID = cmp.Or(projectID, session.ChatProjectID); projectID != "" {
+		return &ResolvedTarget{Computer: session, HarnessProjectID: projectID, Provider: strings.TrimSpace(provider)}, nil
 	}
 	return s.setupTurnInFirstProject(ctx, userID, computerID, provider)
 }
 
-// setupTurnInFirstProject runs a setup turn in the harness's first project when none is linked: it only touches user-level files.
 func (s *Service) setupTurnInFirstProject(ctx context.Context, userID, computerID, provider string) (*ResolvedTarget, error) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if err != nil {
@@ -801,168 +751,6 @@ func pickProvider(providers []harness.Provider, id string, usable func(harness.P
 }
 
 // resolveTarget is the resolution order with no setup gate; only the gated and preview entry points call it.
-func (s *Service) resolveTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	if len(s.key) == 0 {
-		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
-	}
-
-	computerID, harnessProjectID, pick, err := s.resolveTargetSource(ctx, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	computer, err := s.fetchTargetComputer(ctx, userID, computerID)
-	if err != nil {
-		return nil, err
-	}
-	if harnessProjectID == "" {
-		return nil, &NotConfiguredError{Reason: ReasonNoDefault}
-	}
-
-	decrypted, err := crypto.Decrypt(s.key, computer.BearerToken)
-	if err != nil {
-		return nil, fmt.Errorf("decrypt bearer token for computer %s: %w", computer.ID, err)
-	}
-	worktree, err := s.startsInWorktree(ctx, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-	resolved := *computer
-	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{
-		Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: worktree,
-	}, nil
-}
-
-// startsInWorktree is the caller's project link's start_in, else their defaults'; a run's pinned computer keeps it.
-func (s *Service) startsInWorktree(ctx context.Context, userID, projectID string) (bool, error) {
-	if projectID = strings.TrimSpace(projectID); projectID != "" {
-		link, err := s.repo.GetProjectLink(ctx, userID, projectID)
-		if err != nil {
-			return false, fmt.Errorf("get project link %s: %w", projectID, err)
-		}
-		if link.StartIn != "" {
-			return link.StartIn == StartInWorktree, nil
-		}
-	}
-	defaults, err := s.repo.GetDefaults(ctx, userID)
-	if err != nil {
-		return false, fmt.Errorf("get defaults: %w", err)
-	}
-	return defaults.StartIn == StartInWorktree, nil
-}
-
-// resolveTargetSource: the user's own project link, then their defaults, then their sole paired computer if unambiguous.
-func (s *Service) resolveTargetSource(ctx context.Context, userID, projectID string) (computerID, harnessProjectID string, pick modelPick, err error) {
-	if projectID = strings.TrimSpace(projectID); projectID != "" {
-		link, err := s.repo.GetProjectLink(ctx, userID, projectID)
-		if err != nil {
-			return "", "", modelPick{}, fmt.Errorf("get project link %s: %w", projectID, err)
-		}
-		if link.ComputerID != "" {
-			return link.ComputerID, link.HarnessProjectID, modelPick{link.Provider, link.Model, link.ModelOptions}, nil
-		}
-	}
-
-	defaults, err := s.repo.GetDefaults(ctx, userID)
-	if err != nil {
-		return "", "", modelPick{}, fmt.Errorf("get defaults: %w", err)
-	}
-	computerID, harnessProjectID = defaults.DefaultComputerID, defaults.FallbackProjectID
-	pick = modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}
-	if computerID != "" {
-		return computerID, harnessProjectID, pick, nil
-	}
-
-	computers, err := s.repo.ListComputers(ctx, userID)
-	if err != nil {
-		return "", "", modelPick{}, fmt.Errorf("list computers: %w", err)
-	}
-	if len(computers) == 0 {
-		return "", "", modelPick{}, &NotConfiguredError{Reason: ReasonUnpaired}
-	}
-	if len(computers) > 1 {
-		return "", "", modelPick{}, &NotConfiguredError{Reason: ReasonNoDefaultComputer}
-	}
-	return computers[0].ID, harnessProjectID, pick, nil
-}
-
-// resolveTargetOverride resolves a pinned computer, provider, and model with no setup gate: the computer must
-// be the caller's own; the harness project and any blank provider/model come from their own project link when it
-// names this computer, else the caller's own fallback when this is their default computer — the same sources
-// resolveTarget's own resolution order reads, just checked against the caller's explicit choice of computer.
-func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, computerID string, pick modelPick) (*ResolvedTarget, error) {
-	computerID = strings.TrimSpace(computerID)
-	if computerID == "" {
-		return s.resolveTarget(ctx, userID, projectID)
-	}
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	if len(s.key) == 0 {
-		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
-	}
-	computer, err := s.fetchTargetComputer(ctx, userID, computerID)
-	if err != nil {
-		return nil, err
-	}
-	pick.provider, pick.model = strings.TrimSpace(pick.provider), strings.TrimSpace(pick.model)
-	harnessProjectID, pick, err := s.overrideProjectAndModel(ctx, userID, strings.TrimSpace(projectID), computerID, pick)
-	if err != nil {
-		return nil, err
-	}
-	if harnessProjectID == "" {
-		return nil, &NotConfiguredError{Reason: ReasonNoDefault}
-	}
-	decrypted, err := crypto.Decrypt(s.key, computer.BearerToken)
-	if err != nil {
-		return nil, fmt.Errorf("decrypt bearer token for computer %s: %w", computer.ID, err)
-	}
-	worktree, err := s.startsInWorktree(ctx, userID, projectID)
-	if err != nil {
-		return nil, err
-	}
-	resolved := *computer
-	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{
-		Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: worktree,
-	}, nil
-}
-
-// overrideProjectAndModel fills in the harness project and any blank provider/model from the caller's project link
-// (when it names computerID) and the caller's own defaults (when computerID is their default computer).
-func (s *Service) overrideProjectAndModel(ctx context.Context, userID, projectID, computerID string, pick modelPick) (string, modelPick, error) {
-	harnessProjectID := ""
-	if projectID != "" {
-		link, err := s.repo.GetProjectLink(ctx, userID, projectID)
-		if err != nil {
-			return "", modelPick{}, fmt.Errorf("get project link %s: %w", projectID, err)
-		}
-		if link.ComputerID == computerID {
-			harnessProjectID = link.HarnessProjectID
-			pick = fillPick(pick, modelPick{link.Provider, link.Model, link.ModelOptions})
-		}
-	}
-	if harnessProjectID != "" && pick.provider != "" && pick.model != "" {
-		return harnessProjectID, pick, nil
-	}
-	defaults, err := s.repo.GetDefaults(ctx, userID)
-	if err != nil {
-		return "", modelPick{}, fmt.Errorf("get defaults: %w", err)
-	}
-	if defaults.DefaultComputerID != computerID {
-		return harnessProjectID, pick, nil
-	}
-	if harnessProjectID == "" {
-		harnessProjectID = defaults.FallbackProjectID
-	}
-	return harnessProjectID, fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}), nil
-}
-
-// fillPick fills a blank provider or model from fallback; a filled-in model brings its own options along.
 func fillPick(pick, fallback modelPick) modelPick {
 	if pick.provider == "" {
 		pick.provider = fallback.provider

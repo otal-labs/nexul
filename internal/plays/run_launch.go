@@ -77,6 +77,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		return nil, err
 	}
 	trail.ComputerID, trail.Provider, trail.Model, trail.ModelOptions = choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions
+	trail.PassedOver = choice.PassedOver
 	trail.HarnessProjectID, trail.Worktree = choice.HarnessProjectID, choice.Worktree
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
@@ -138,10 +139,13 @@ func (m launchMode) keeps(err error) bool {
 // run its person picked a computer and T3 project for runs exactly there, as a run started again does.
 func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle string, pick HarnessChoice, mode launchMode) (HarnessChoice, error) {
 	resolve := r.harness.ResolveTarget
+	if mode == launchQueued {
+		resolve = r.harness.ResolveQueuedTarget
+	}
 	if mode == launchPerson {
 		resolve = r.harness.ResolvePersonTarget
 	}
-	if mode == launchAgain || (mode == launchQueued && pick.HarnessProjectID != "") {
+	if mode == launchAgain {
 		resolve = r.harness.ResolveRecordedTarget
 	}
 	choice, err := resolve(ctx, trail.StarterID, trail.ProjectID, pick)
@@ -153,7 +157,7 @@ func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle s
 		return HarnessChoice{}, err
 	}
 	if refusal != nil {
-		trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
+		trail.FailureReason, trail.ComputerID, trail.Provider, trail.PassedOver = refusal.Reason, refusal.ComputerID, refusal.Provider, refusal.PassedOver
 	}
 	if mode != launchQueued || refusal == nil {
 		r.createFailed(ctx, trail, targetTitle, err.Error())
@@ -251,20 +255,20 @@ func (r *Runner) projectSourcesBlock(ctx context.Context, trail *Trail, stance s
 	return fmt.Sprintf("Project sources with stance %s:\n%s", stance, strings.Join(lines, "\n"))
 }
 
-// checkoutPaths returns a lookup of a project's checkout path on the run's computer: the starter's project link for it
-// must name that computer and a T3 project the computer still lists. The computer's list is read once, on first need.
+// checkoutPaths returns a lookup of a project's checkout path on the run's computer, the one the starter's runs there
+// use, while the computer still lists it. The computer's list is read once, on first need.
 func (r *Runner) checkoutPaths(ctx context.Context, trail *Trail) func(projectID string) string {
 	var listed map[string]string
 	return func(projectID string) string {
 		if r.checkouts == nil || trail.ComputerID == "" {
 			return ""
 		}
-		computerID, harnessProjectID, err := r.checkouts.LinkedProject(ctx, trail.StarterID, projectID)
+		harnessProjectID, err := r.checkouts.CheckoutOn(ctx, trail.StarterID, projectID, trail.ComputerID)
 		if err != nil {
-			r.log.Warn("plays: read project link failed", "trail", trail.ID, "project", projectID, "error", err)
+			r.log.Warn("plays: read the project's checkout failed", "trail", trail.ID, "project", projectID, "error", err)
 			return ""
 		}
-		if computerID != trail.ComputerID || harnessProjectID == "" {
+		if harnessProjectID == "" {
 			return ""
 		}
 		if listed == nil {

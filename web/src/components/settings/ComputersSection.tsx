@@ -2,26 +2,24 @@ import { PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyRow } from "@/components/EmptyRow";
-import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
-import { ComputerItem } from "@/components/settings/ComputerItem";
+import { ComputerOrderList } from "@/components/settings/ComputerOrderList";
 import { OpenComputerCodes } from "@/components/settings/OpenComputerCodes";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SharedComputersSection } from "@/components/settings/SharedComputersSection";
-import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
+import { useListComputers } from "@/hooks/PairingHooks";
 
 export const ComputersSection = () => {
   const { data: computers, isPending, error } = useListComputers();
-  const presence = useFetchPresence();
 
   return (
     <SettingsCard
       id="pairing-computers"
       title="Your computers"
-      description="The computers @Agent works through, each running T3 Code and the Nexul app. Nexul keeps them paired."
+      description="Runs go to the first computer that can take one: online, set up, holding the project, with room. Drag to change the order."
       footer={
         <AddComputerDialog
           trigger={
@@ -39,11 +37,7 @@ export const ComputersSection = () => {
         {error && <ErrorDisplay error={error} />}
         {computers && computers.length === 0 && <EmptyRow flush>No computers yet</EmptyRow>}
         {computers && computers.length > 0 && (
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-            {computers.map((computer) => (
-              <ComputerItem key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
-            ))}
-          </EnterList>
+          <ComputerOrderList computers={computers} />
         )}
         <OpenComputerCodes />
         <SharedComputersSection />

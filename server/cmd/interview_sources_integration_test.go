@@ -83,10 +83,10 @@ func TestIntegration_DraftingRunThroughTheWiredSeams(t *testing.T) {
 	assert.Contains(t, srcs, plays.InterviewSource{ID: projectSrc, Kind: plays.SourceKindProject, Ref: "p-standards", Label: "Standards", Stance: plays.StanceFollow})
 	now := time.Now().UTC()
 	require.NoError(t, f.store.Pairing.SaveComputer(ctx, pairing.Computer{ID: "c-1", UserID: uOwner, Kind: harness.KindT3Code, Name: "Laptop", CreatedAt: now, UpdatedAt: now}))
-	require.NoError(t, f.store.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: uOwner, ProjectID: "p-standards", ComputerID: "c-1", HarnessProjectID: "t3-standards"}))
-	computer, t3Project, err := playsCheckouts{svc: f.svc.pairingSvc}.LinkedProject(owner, uOwner, "p-standards")
+	require.NoError(t, f.store.Pairing.SaveCheckout(ctx, uOwner, "p-standards", "c-1", "t3-standards"))
+	t3Project, err := playsCheckouts{svc: f.svc.pairingSvc}.CheckoutOn(owner, uOwner, "p-standards", "c-1")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"c-1", "t3-standards"}, []string{computer, t3Project})
+	assert.Equal(t, "t3-standards", t3Project)
 
 	require.NoError(t, answers.ClearSuggestions(owner, pGeneral))
 	ds, err := mem.ListDrafts(owner, pGeneral)

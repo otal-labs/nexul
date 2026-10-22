@@ -6,12 +6,11 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
-import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { getActiveTrailsKey } from "@/hooks/TrailHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
-import { hasPlayQueue, threadQueueEvents, withoutErrorPrefix, type ThreadQueueEvent } from "@/utils/PlayQueueUtility";
+import { hasPlayQueue, threadQueueEvents, type ThreadQueueEvent } from "@/utils/PlayQueueUtility";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getPlayQueueKey = "getPlayQueue";
@@ -63,31 +62,6 @@ export const useCancelQueuedRun = () => {
       toast.success(`${item.play_label} cancelled`);
     },
     onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-interface PickComputerInput {
-  itemId: string;
-  computerId: string;
-  harnessProjectId: string;
-}
-
-// Runs a queued run on one of its person's computers and a T3 project there, saved as their link for its project.
-export const usePickQueuedComputer = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("none", async ({ itemId, computerId, harnessProjectId }: PickComputerInput) =>
-      (
-        await api.post<PlayQueueItem>(`/api/plays/queue/${itemId}/computer`, {
-          computer_id: computerId,
-          harness_project_id: harnessProjectId,
-        })
-      ).data),
-    onSuccess: async (item) => {
-      await Promise.all([refreshQueues(client, item), invalidateProjectLinks(client)]);
-      toast.success(`${item.play_label} starts on the picked computer, now linked for this project`);
-    },
-    onError: (error) => toast.error(withoutErrorPrefix(errorMessage(error))),
   });
 };
 

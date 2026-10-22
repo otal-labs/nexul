@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { stepLabel } from "@nexul/client-core/agentSteps";
 
-import type { OptionSetting } from "@/models/Pairing";
+import type { OptionSetting, PassOver } from "@/models/Pairing";
 import type { PlayType } from "@/models/Play";
 import type { HarnessQuestion, QuestionAnswer } from "@/models/Question";
 
@@ -59,6 +59,8 @@ export interface Trail {
   last_error: string;
   // Mirrors plays.Trail.FailureReason: the harness refusal's reason (pairing's NotConfiguredReason), "" otherwise.
   failure_reason: string;
+  // The computers it could not land on, before the one it ran on or when it ran on none (ADR 0165); its starter alone gets them.
+  passed_over?: PassOver[];
   reply_message_id: string;
   activity: ActivityEntry[];
   question?: TrailQuestion | null;
@@ -98,8 +100,9 @@ export interface RunPlayInput {
   target_id: string;
   memory_ids: string[];
   custom_instructions: string;
-  computer_id: string;
-  // Sent when the person picks where to run; the server saves it with computer_id as their project link (ADR 0145).
+  // Sent when the person picks where this run goes; the server remembers the T3 project as the project's checkout on
+  // that computer (ADR 0165). Left out, the run goes to their first ready computer.
+  computer_id?: string;
   harness_project_id?: string;
   provider: string;
   model: string;

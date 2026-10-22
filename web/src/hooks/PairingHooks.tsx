@@ -21,10 +21,13 @@ import {
   type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
+  type PassOver,
+  passOverLines,
 } from "@/models/Pairing";
 import { ownComputers } from "@/models/SharedComputer";
 import { notViewing } from "@/stores/viewAsStore";
 import { followEach, type LiveFollower } from "@/lib/live";
+import type { RunFrame } from "@/models/Trail";
 
 export const getComputersKey = "getComputers";
 export const getPairingDefaultsKey = "getPairingDefaults";
@@ -34,12 +37,13 @@ export const getHarnessProvidersKey = "getHarnessProviders";
 export const getHarnessResolveKey = "getHarnessResolve";
 export const getMCPTokenKey = "getMCPToken";
 
-// The four NotConfiguredReason values internal/pairing.ResolveTarget can fail with, mapped onto HarnessReadiness states.
-const RESOLVE_REASON_TO_STATE: Record<string, Exclude<HarnessReadiness["state"], "ready" | "offline">> = {
+// The NotConfiguredReason values a pressed play's preview can fail with, mapped onto HarnessReadiness states; any other
+// reason names one computer that can't take it, which reads like none can.
+const RESOLVE_REASON_TO_STATE: Record<string, Exclude<HarnessReadiness["state"], "ready">> = {
   unpaired: "unpaired",
   expired_token: "expired",
-  no_default: "no_harness_project",
-  no_default_computer: "no_default_computer",
+  needs_location: "needs_location",
+  offline: "offline",
 };
 
 interface ResolveResponse {
@@ -50,7 +54,17 @@ interface ResolveResponse {
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
+  passed_over?: PassOver[];
 }
+
+// The blocked state for a refused preview: its own copy, with every computer's reason after it when the server named them.
+const blockedReadiness = (data: ResolveResponse): HarnessReadiness => {
+  const state = RESOLVE_REASON_TO_STATE[data.reason ?? ""] ?? "no_computer_ready";
+  const copy = HARNESS_READINESS_COPY[state];
+  const passes = state === "needs_location" ? [] : (data.passed_over ?? []);
+  const message = passes.length > 0 ? `${copy.message} ${passOverLines(passes)}.` : copy.message;
+  return { state, message, ...(copy.link && { link: copy.link }) };
+};
 
 // One request lists the viewer's computers and those shared with them; each hook selects its half.
 export const computersQuery = queryOptions({
@@ -136,7 +150,8 @@ export const useFetchPresence = () =>
     enabled: notViewing,
   });
 
-// Joins the read-only resolve route with presence: ready needs both a resolved computer and a connected session.
+// Joins the read-only resolve route, where a pressed play would land now (ADR 0165), with presence: ready needs both a
+// computer and a connected session.
 // Returns undefined while either query is loading, so callers never flash "offline" before presence has an answer.
 export const useHarnessReadiness = (projectId?: string): HarnessReadiness | undefined => {
   const resolve = useQuery({
@@ -150,8 +165,7 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
     return undefined;
   }
   if (!resolve.data.ok) {
-    const state = RESOLVE_REASON_TO_STATE[resolve.data.reason ?? ""] ?? "unpaired";
-    return { state, ...HARNESS_READINESS_COPY[state] };
+    return blockedReadiness(resolve.data);
   }
   const computerId = resolve.data.computer_id ?? "";
   if (presence.data?.[computerId] === "rejected") {
@@ -167,6 +181,7 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
     provider: resolve.data.provider ?? "",
     model: resolve.data.model ?? "",
     modelOptions: resolve.data.model_options ?? [],
+    passedOver: resolve.data.passed_over ?? [],
   };
 };
 
@@ -236,6 +251,57 @@ export const useUpdatePairingDefaults = () => {
   });
 };
 
+// The order is the person's alone and every runs-at-once row reads from it, so it lands in the list at once and rolls
+// back if the server refuses it.
+export const useReorderComputers = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (ids: string[]) => {
+      await api.put("/api/pairing/computers/order", { computer_ids: ids });
+    }),
+    onMutate: async (ids) => {
+      await client.cancelQueries({ queryKey: [getComputersKey] });
+      const before = client.getQueryData<Computer[]>([getComputersKey]);
+      client.setQueryData<Computer[]>([getComputersKey], (old) =>
+        old && [...old].sort((a, b) => rank(ids, a.id) - rank(ids, b.id)).map((c) => (c.shared ? c : { ...c, position: ids.indexOf(c.id) })),
+      );
+      return { before };
+    },
+    onError: (error, _ids, context) => {
+      client.setQueryData([getComputersKey], context?.before);
+      toast.error(errorMessage(error));
+    },
+    onSettled: () => Promise.all([client.invalidateQueries({ queryKey: [getComputersKey] }), client.invalidateQueries({ queryKey: [getHarnessResolveKey] })]),
+  });
+};
+
+// Shared computers sort after the person's own, as the server lists them.
+const rank = (ids: string[], id: string) => {
+  const i = ids.indexOf(id);
+  return i < 0 ? ids.length : i;
+};
+
+export interface ComputerSettingsInput {
+  runs_at_once?: number;
+  chat_project_id?: string;
+}
+
+// A computer's runs at once and chat folder apply the moment they are picked, like the appearance settings.
+export const useUpdateComputerSettings = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (input: ComputerSettingsInput) =>
+      (await api.patch<Computer>(`/api/pairing/computers/${computerId}`, input)).data),
+    onSuccess: (computer) => {
+      client.setQueryData<Computer[]>([getComputersKey], (old) => old?.map((c) => (c.id === computer.id ? { ...c, ...pick(computer) } : c)));
+      void client.invalidateQueries({ queryKey: [getHarnessResolveKey] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id });
+
 // Pairing frames name the computer they are about (internal/pairing/events.go).
 interface ComputerPayload {
   computer_id: string;
@@ -260,6 +326,9 @@ export const pairingFollower: LiveFollower = {
   ...followEach(["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_finished"], ({ computer_id }: ComputerPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
   ),
+  // A computer's "n of m running" follows a run starting and ending; the frames between carry only its steps.
+  "play.run": ({ state, ended_at }: RunFrame, { client }) =>
+    (state === "starting" || ended_at !== null) && client.invalidateQueries({ queryKey: [getComputersKey] }),
   // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.
   ...followEach(["personal_access_token.minted", "personal_access_token.revoked"], ({ computer_id }: Partial<ComputerPayload>, { client }) =>
     computer_id && client.invalidateQueries({ queryKey: [getMCPTokenKey, computer_id], exact: true }),

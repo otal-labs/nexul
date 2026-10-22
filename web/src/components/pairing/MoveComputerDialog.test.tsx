@@ -28,6 +28,10 @@ const byURL: Computer = {
   kind: "t3code",
   harness_version: "0.0.45",
   created_at: "2026-08-01T00:00:00Z",
+  position: 0,
+  runs_at_once: 1,
+  running: 0,
+  chat_project_id: "",
   updated_at: "2026-08-01T00:00:00Z",
 };
 

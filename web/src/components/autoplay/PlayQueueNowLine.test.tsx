@@ -37,11 +37,11 @@ describe("PlayQueueNowLine", () => {
     renderLine([
       queueItem({ id: "q-1", reason: "offline" }),
       queueItem({ id: "q-2", target_id: "t-2", reason: "offline" }),
-      queueItem({ id: "q-3", person_id: "u-bob", reason: "no free slot" }),
+      queueItem({ id: "q-3", person_id: "u-bob", reason: "no_computer_ready" }),
       queueItem({ id: "q-4", person_id: "u-sam", reason: "paused" }),
     ]);
     expect(await screen.findByText(/Right now:/)).toHaveTextContent(
-      "Right now: 4 queued · 2 waiting on Alice Moreau (computer offline) · 1 waiting on bob (busy with another run) · 1 more waiting",
+      "Right now: 4 queued · 2 waiting on Alice Moreau (computer offline) · 1 waiting on bob (no computer can take it) · 1 more waiting",
     );
     expect(api.get).toHaveBeenCalledWith("/api/plays/queued", { params: { play_id: "play-1" } });
   });

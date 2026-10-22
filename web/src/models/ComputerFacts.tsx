@@ -14,7 +14,8 @@ export interface ComputerFacts {
   // Absent from a runner older than container logs.
   docker?: { available: boolean; version?: string };
   providers: ProviderFacts[];
-  projects: { id: string; title: string; path: string }[];
+  // repository is the checkout's git remote as T3 normalizes it, such as github.com/acme/api; absent until T3 resolved it.
+  projects: { id: string; title: string; path: string; repository?: string }[];
 }
 
 export type T3State = "answering" | "not_running" | "missing" | "not_loopback";

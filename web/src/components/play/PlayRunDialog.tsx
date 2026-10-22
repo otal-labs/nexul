@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHarnessReadiness } from "@/hooks/PairingHooks";
-import { useFetchProjectLinks } from "@/hooks/PairingProjectHooks";
 import { useFetchLatestChoices } from "@/hooks/TrailHooks";
 import type { Play, PlayType } from "@/models/Play";
 
@@ -40,9 +39,8 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
   const choices = useFetchLatestChoices(play.id, projectId);
   // Shares the resolve query's cache with the play button that gated this dialog open, so this costs no extra call.
   const readiness = useHarnessReadiness(projectId);
-  const links = useFetchProjectLinks();
-  const isPending = canReadMemories === undefined || (canReadMemories && memories.isPending) || choices.isPending || links.isPending || readiness === undefined;
-  const error = memories.error ?? choices.error ?? links.error;
+  const isPending = canReadMemories === undefined || (canReadMemories && memories.isPending) || choices.isPending || readiness === undefined;
+  const error = memories.error ?? choices.error;
   const ready = readiness?.state === "ready" ? readiness : undefined;
   const resolvedHarness = {
     computer_id: ready?.computerId ?? "",
@@ -50,18 +48,15 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
     model: ready?.model ?? "",
     model_options: ready?.modelOptions ?? [],
   };
-  const link = links.data?.find((l) => l.project_id === projectId);
-  // Unlinked, readiness resolved the person's defaults: offered as the suggestion, never run on unasked (ADR 0145).
-  const where = link?.computer_id
-    ? { computer_id: link.computer_id, harness_project_id: link.harness_project_id ?? "" }
-    : { computer_id: resolvedHarness.computer_id, harness_project_id: ready?.harnessProjectId ?? "" };
+  // Where the run would land now, from the person's computers in order (ADR 0165).
+  const where = { computer_id: resolvedHarness.computer_id, harness_project_id: ready?.harnessProjectId ?? "" };
 
   return (
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Loading choices…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the run choices." />}
       {(play.builtin_key === "clarify" || play.builtin_key === "update-doc") && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
-      {(canReadMemories === false || memories.data) && choices.data && links.data && readiness && (
+      {(canReadMemories === false || memories.data) && choices.data && readiness && (
         <PlayRunForm
           play={play}
           targetType={targetType}
@@ -70,7 +65,8 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
           choices={choices.data}
           resolvedHarness={resolvedHarness}
           where={where}
-          linked={!!link?.computer_id}
+          passedOver={ready?.passedOver ?? []}
+          mustPick={readiness.state === "needs_location"}
           instructions={instructions}
           askWhere={askWhere}
           onDone={onDone}
