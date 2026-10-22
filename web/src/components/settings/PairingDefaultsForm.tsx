@@ -1,12 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
+import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
-import { SettingsCard } from "@/components/settings/SettingsCard";
-import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
-import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
+import { RunSettingField } from "@/components/settings/RunSettingField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
-import { useUpdatePairingDefaults } from "@/hooks/PairingHooks";
+import { useModelComputerId, useUpdatePairingDefaults } from "@/hooks/PairingHooks";
 import { useFlash } from "@/hooks/useFlash";
 import {
   PairingDefaultsFormSchema,
@@ -16,10 +16,6 @@ import {
   type PairingDefaults,
   type PairingDefaultsFormData,
 } from "@/models/Pairing";
-
-const FORM_ID = "pairing-defaults-form";
-
-export const DEFAULTS_DESCRIPTION = "Used unless a project sets its own.";
 
 const formValues = (d: PairingDefaults): PairingDefaultsFormData => ({
   provider: d.provider ?? "",
@@ -32,13 +28,12 @@ const formValues = (d: PairingDefaults): PairingDefaultsFormData => ({
 
 interface PairingDefaultsFormProps {
   defaults: PairingDefaults;
-  // The computer whose models the picker lists: the first in the person's order.
-  computerId: string;
 }
 
 // Split out so defaultValues only seed from a loaded `defaults`, avoiding the F2 "= [] trap".
-export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFormProps) => {
+export const PairingDefaultsForm = ({ defaults }: PairingDefaultsFormProps) => {
   const update = useUpdatePairingDefaults();
+  const modelComputer = useModelComputerId();
   const form = useForm<PairingDefaultsFormData>({ defaultValues: formValues(defaults), resolver: zodResolver(PairingDefaultsFormSchema) });
   const [saved, flash] = useFlash();
 
@@ -52,46 +47,35 @@ export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFor
   };
 
   return (
-    <SettingsCard
-      id="pairing-defaults"
-      title="Defaults"
-      description={DEFAULTS_DESCRIPTION}
-      footer={
-        <SettingsSaveBar
-          form={FORM_ID}
-          dirty={form.formState.isDirty}
-          saving={form.formState.isSubmitting}
-          saved={saved}
-          onDiscard={() => form.reset()}
-          saveLabel="Save defaults"
-        />
-      }
-    >
-      <form id={FORM_ID} onSubmit={form.handleSubmit(onSubmit)}>
-        <SettingsRows>
-          <SettingsRow label="Send runs to">
-            <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel options={PLACEMENT_OPTIONS} />
-          </SettingsRow>
-          <div className="py-4">
-            <HarnessProviderModelFields
-              control={form.control}
-              providerName="provider"
-              modelName="model"
-              optionsName="model_options"
-              computerId={computerId}
-              description="Unless a project picks one"
-              onPick={(provider, model, options) => {
-                form.setValue("provider", provider, { shouldDirty: true });
-                form.setValue("model", model, { shouldDirty: true });
-                form.setValue("model_options", options, { shouldDirty: true });
-              }}
-            />
-          </div>
-          <SettingsRow label="New threads start in" description="Worktrees let runs work side by side.">
-            <FormSelect control={form.control} name="start_in" label="New threads start in" hideLabel options={START_IN_OPTIONS} />
-          </SettingsRow>
-        </SettingsRows>
-      </form>
-    </SettingsCard>
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <div>
+        <RunSettingField label="Send runs to">
+          <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel options={PLACEMENT_OPTIONS} />
+        </RunSettingField>
+        <RunSettingField label="Model">
+          <HarnessProviderModelFields
+            control={form.control}
+            providerName="provider"
+            modelName="model"
+            optionsName="model_options"
+            computerId={modelComputer}
+            onPick={(provider, model, options) => {
+              form.setValue("provider", provider, { shouldDirty: true });
+              form.setValue("model", model, { shouldDirty: true });
+              form.setValue("model_options", options, { shouldDirty: true });
+            }}
+          />
+        </RunSettingField>
+        <RunSettingField label="Threads start in">
+          <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel options={START_IN_OPTIONS} />
+        </RunSettingField>
+      </div>
+      <div className="flex justify-end pt-3">
+        <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} loading={form.formState.isSubmitting} disabled={!form.formState.isDirty && !saved}>
+          {saved && <CheckIcon className="size-4" aria-hidden />}
+          {saved ? "Saved" : "Save"}
+        </Button>
+      </div>
+    </form>
   );
 };

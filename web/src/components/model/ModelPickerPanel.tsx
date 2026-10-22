@@ -13,20 +13,21 @@ interface ModelPickerPanelProps {
   providers: HarnessProvider[];
   value: ModelPick;
   allowDefault: boolean;
+  defaultLabel?: string;
   label: string;
   onPick: (pick: ModelPick) => void;
 }
 
 // The picker's popover body: the provider rail, the search field, and the rows, the legacy ones grouped last.
-export const ModelPickerPanel = ({ providers, value, allowDefault, label, onPick }: ModelPickerPanelProps) => {
+export const ModelPickerPanel = ({ providers, value, allowDefault, defaultLabel, label, onPick }: ModelPickerPanelProps) => {
   const favourites = useModelFavouritesStore((s) => s.favourites);
   const [filter, setFilter] = useState<RailFilter>({ kind: "all" });
   const [query, setQuery] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const listId = useId();
   const entries = useMemo(
-    () => pickerEntries(providers, filter, query, favourites, allowDefault),
-    [providers, filter, query, favourites, allowDefault],
+    () => pickerEntries(providers, filter, query, favourites, allowDefault, defaultLabel),
+    [providers, filter, query, favourites, allowDefault, defaultLabel],
   );
   const railProviders = providers.filter((p) => !p.skipped);
   const current = entries.filter((e) => !e.legacy);

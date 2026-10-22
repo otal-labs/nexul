@@ -23,7 +23,7 @@ export const PairingProjectsSection = () => {
     <SettingsCard
       id="pairing-projects"
       title="Projects"
-      description="Computers, checkouts and model per project. Left alone, a project uses your defaults."
+      description="Each project uses your defaults until you change it."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

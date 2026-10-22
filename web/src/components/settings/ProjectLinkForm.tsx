@@ -5,9 +5,19 @@ import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { ProjectComputersField } from "@/components/settings/ProjectComputersField";
-import { useListComputers } from "@/hooks/PairingHooks";
+import { RunSettingField } from "@/components/settings/RunSettingField";
+import { useModelComputerId } from "@/hooks/PairingHooks";
 import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHooks";
-import { linkSaysSomething, ProjectLinkFormSchema, START_IN_OPTIONS, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
+import {
+  linkSaysSomething,
+  PLACEMENT_OPTIONS,
+  ProjectLinkFormSchema,
+  START_IN_OPTIONS,
+  type ProjectLink,
+  type ProjectLinkFormData,
+} from "@/models/Pairing";
+
+const SAME_AS_DEFAULTS = "Same as defaults";
 
 const formValues = (link: ProjectLink): ProjectLinkFormData => ({
   provider: link.provider ?? "",
@@ -27,12 +37,11 @@ interface ProjectLinkFormProps {
 
 // Split out so defaultValues only seed from a loaded `link`, the same F2 "= [] trap" fix.
 export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFormProps) => {
-  const { data: computers } = useListComputers();
   const setLink = useSetProjectLink(projectId, projectName);
   const clearLink = useClearProjectLink(projectId, projectName);
   const form = useForm<ProjectLinkFormData>({ defaultValues: formValues(link), resolver: zodResolver(ProjectLinkFormSchema) });
   const ids = useWatch({ control: form.control, name: "computers" });
-  const modelComputer = ids[0] ?? computers?.[0]?.id ?? "";
+  const modelComputer = useModelComputerId(ids);
 
   const onSubmit = async (data: ProjectLinkFormData) => {
     try {
@@ -53,31 +62,42 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-        <ProjectComputersField projectId={projectId} />
-        <HarnessProviderModelFields
-          control={form.control}
-          providerName="provider"
-          modelName="model"
-          optionsName="model_options"
-          computerId={modelComputer}
-          description="For your turns in this project"
-          onPick={(provider, model, options) => {
-            form.setValue("provider", provider, { shouldDirty: true });
-            form.setValue("model", model, { shouldDirty: true });
-            form.setValue("model_options", options, { shouldDirty: true });
-          }}
-        />
-        <FormSelect control={form.control} name="start_in" label="New threads start in" placeholder="Same as your defaults" options={START_IN_OPTIONS} />
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
-            Save
-          </Button>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div>
+          <ProjectComputersField projectId={projectId} />
+          {ids.length > 0 && (
+            <RunSettingField label="Send runs to">
+              <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel placeholder={SAME_AS_DEFAULTS} options={PLACEMENT_OPTIONS} />
+            </RunSettingField>
+          )}
+          <RunSettingField label="Model">
+            <HarnessProviderModelFields
+              control={form.control}
+              providerName="provider"
+              modelName="model"
+              optionsName="model_options"
+              computerId={modelComputer}
+              defaultLabel={SAME_AS_DEFAULTS}
+              onPick={(provider, model, options) => {
+                form.setValue("provider", provider, { shouldDirty: true });
+                form.setValue("model", model, { shouldDirty: true });
+                form.setValue("model_options", options, { shouldDirty: true });
+              }}
+            />
+          </RunSettingField>
+          <RunSettingField label="Threads start in">
+            <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel placeholder={SAME_AS_DEFAULTS} options={START_IN_OPTIONS} />
+          </RunSettingField>
+        </div>
+        <div className="flex items-center gap-2 pt-3">
           {linkSaysSomething(link) && (
-            <Button type="button" variant="outline" onClick={onClear} loading={clearLink.isPending}>
-              Follow my computers and defaults
+            <Button type="button" variant="ghost" size="sm" onClick={onClear} loading={clearLink.isPending}>
+              Use defaults
             </Button>
           )}
+          <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} className="ml-auto" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
+            Save
+          </Button>
         </div>
       </form>
     </FormProvider>

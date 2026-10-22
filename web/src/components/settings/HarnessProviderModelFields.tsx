@@ -1,10 +1,9 @@
 import { useWatch, type Control, type FieldValues, type Path } from "react-hook-form";
 
-import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ModelChoice } from "@/components/model/ModelChoice";
-import { ModelSettingRow } from "@/components/model/ModelSettingRow";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
+import { COMPUTER_DEFAULT } from "@/models/ModelPick";
 import type { OptionSetting } from "@/models/Pairing";
 
 interface HarnessProviderModelFieldsProps<T extends FieldValues> {
@@ -13,19 +12,21 @@ interface HarnessProviderModelFieldsProps<T extends FieldValues> {
   modelName: Path<T>;
   optionsName: Path<T>;
   computerId: string;
-  description: string;
+  // What the empty pick reads as, such as "Same as defaults" inside a project.
+  defaultLabel?: string;
   // Options only mean something for their model, so a new model arrives with none set.
   onPick: (provider: string, model: string, options: OptionSetting[]) => void;
 }
 
-// Fed by the computer's live provider registry; an empty model means the provider's default, an empty provider the computer's.
+// Fed by the computer's live provider registry; an empty model means the provider's default, an empty provider the
+// computer's. With no computer answering it shows the saved pick and offers no field, because a typed model can't be checked.
 export const HarnessProviderModelFields = <T extends FieldValues>({
   control,
   providerName,
   modelName,
   optionsName,
   computerId,
-  description,
+  defaultLabel = COMPUTER_DEFAULT,
   onPick,
 }: HarnessProviderModelFieldsProps<T>) => {
   const providers = useFetchHarnessProviders(computerId);
@@ -34,34 +35,31 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
   const options = (useWatch({ control, name: optionsName }) as OptionSetting[] | undefined) ?? [];
 
   const loaded = providers.data && providers.data.length > 0 ? providers.data : undefined;
+  const loading = providers.isPending && !!computerId;
 
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 flex-1">
+      {loading && <LoadingDisplay label="Loading models" className="justify-start p-0" />}
       {loaded && (
-        <ModelSettingRow label="Model" description={description}>
-          <ModelChoice
-            providers={loaded}
-            value={{ provider, model }}
-            options={options}
-            onPick={(next) => onPick(next.provider, next.model, [])}
-            onOptions={(next) => onPick(provider, model, next)}
-            label="Model"
-            allowDefault
-            className="w-full md:w-96"
-          />
-        </ModelSettingRow>
+        <ModelChoice
+          providers={loaded}
+          value={{ provider, model }}
+          options={options}
+          onPick={(next) => onPick(next.provider, next.model, [])}
+          onOptions={(next) => onPick(provider, model, next)}
+          label="Model"
+          allowDefault
+          defaultLabel={defaultLabel}
+          className="h-9 w-full"
+        />
       )}
-      {!loaded && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormInput control={control} name={providerName} label="Provider" placeholder="e.g. claude, opencode" />
-          <FormInput control={control} name={modelName} label="Model" placeholder="e.g. claude-sonnet-4-5" />
+      {!loaded && !loading && (
+        <div className="space-y-1.5">
+          <p className="flex h-9 items-center truncate rounded-md border border-input px-3 text-sm text-muted-foreground">
+            {model || provider || defaultLabel}
+          </p>
+          <p className="text-xs text-muted-foreground">Turn on a computer to change it.</p>
         </div>
-      )}
-      {providers.isPending && !!computerId && <LoadingDisplay label="Loading providers" className="justify-start p-0" />}
-      {providers.isError && (
-        <p className="text-xs text-muted-foreground">
-          Couldn't load this computer's providers. Check it's online, or type them in.
-        </p>
       )}
     </div>
   );

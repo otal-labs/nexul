@@ -189,17 +189,21 @@ Each computer's details set two things for it:
 - **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 running". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer.
 - **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.
 
-**Defaults**, under the list, apply wherever a project says nothing of its own:
+### Defaults and each project
+
+The Projects tab is one list. **Defaults** comes first and applies wherever a project says nothing of its own; every project you can open follows, from all your workspaces, each reading back what your runs there use, or **Uses defaults**. Open a row to change it; one row is open at a time.
+
+Defaults set:
 
 - **Send runs to**: **First in order** keeps your first computer the main one and uses the rest only when it can't; **Least busy** sends each run to the computer with the smallest share of its runs at once in use, in order on a tie.
-- Provider, model, and model options. Leave them empty for the computer's or provider's default. A computer that doesn't offer the model is passed over.
-- **New threads start in**: **Project folder**, or **New worktree per thread** so runs side by side never edit the same files.
+- **Model**, with its options. **Computer default** leaves it to the computer. A computer that doesn't offer the model is passed over.
+- **Threads start in**: **Project folder**, or **New worktree per thread** so runs side by side never edit the same files.
 
-### A project's computers and checkouts
+The model list comes from the first of your computers that is online. When none is, the model shows what is saved and reads "Turn on a computer to change it."
 
-**Projects** lists every project you can open, and each row reads back what your turns there use, or **Follows your computers and defaults**. Open one to see, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to a repository of the project, so a folder can have any name. When a computer holds several checkouts of the project, **Pick a checkout** says which one, and the pick is remembered. A computer that has none reads **Not on this computer**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none. The Nexul app on the computer clones it with a short-lived, read-only token for that one repository, so the computer needs no GitHub sign-in to clone a private one; pushing from it later still does (`gh auth login`, for one). Without the GitHub App's private key, or with a Nexul app older than this, T3 Code clones with the computer's own git sign-in instead. A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
+A project's row shows, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to a repository of the project, so a folder can have any name. When a computer holds several checkouts of the project, **Pick a checkout** says which one, and the pick is remembered. A computer that has none reads **No checkout**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none. The Nexul app on the computer clones it with a short-lived, read-only token for that one repository, so the computer needs no GitHub sign-in to clone a private one; pushing from it later still does (`gh auth login`, for one). Without the GitHub App's private key, or with a Nexul app older than this, T3 Code clones with the computer's own git sign-in instead. A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
 
-Turn on **Its own computers** to give the project its own list instead of following yours: only the computers in it, in its own order, with its own **Send runs to**. Use the **…** menu to move or remove one, and **Add a computer** to put another in. The project can also pick its own model and where its new threads start. **Save** keeps the changes; **Follow my computers and defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
+**Computers** is **Your order** until you pick **Custom**, which gives the project its own list: only the computers in it, in its own order, with its own **Send runs to**. Use the **…** menu to move or remove one, and **Add a computer** to put another in. The project can also pick its own model and where its threads start; anything left on **Same as defaults** follows them. **Save** keeps the changes; **Use defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
 
 ### When it is chosen
 

@@ -29,7 +29,7 @@ export const ProjectCheckoutCell = ({ computerName, checkout, onPick }: ProjectC
         </SelectContent>
       </Select>
     )}
-    {checkout.state === "missing" && <span className="text-xs text-muted-foreground">Not on this computer</span>}
-    {checkout.state === "unknown" && <span className="text-xs text-muted-foreground">Not reported yet</span>}
+    {checkout.state === "missing" && <span className="text-xs text-muted-foreground">No checkout</span>}
+    {checkout.state === "unknown" && <span className="text-xs text-muted-foreground">Not reported</span>}
   </div>
 );

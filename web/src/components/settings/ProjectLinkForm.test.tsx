@@ -70,7 +70,7 @@ describe("ProjectLinkForm", () => {
     renderForm();
     await screen.findByText("t3-app");
 
-    await user.click(screen.getByRole("switch", { name: /its own computers/i }));
+    await user.click(screen.getByRole("radio", { name: "Custom" }));
     await pickOption(user, /pick the checkout on build-box/i, /t3-app-b/);
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
@@ -87,20 +87,20 @@ describe("ProjectLinkForm", () => {
     renderForm();
     await screen.findByText("t3-app");
 
-    expect(screen.getByRole("combobox", { name: /new threads start in/i })).toHaveTextContent("Same as your defaults");
-    await pickOption(user, /new threads start in/i, "New worktree per thread");
+    expect(screen.getByRole("combobox", { name: /threads start in/i })).toHaveTextContent("Same as defaults");
+    await pickOption(user, /threads start in/i, "New worktree per thread");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
     await waitFor(() =>
       expect(mocks.put).toHaveBeenLastCalledWith("/api/pairing/projects/proj-1", expect.objectContaining({ start_in: "worktree", computers: [] })),
     );
   });
 
-  it("goes back to following the person's computers and defaults", async () => {
+  it("goes back to the person's defaults", async () => {
     const user = userEvent.setup();
     mocks.del.mockResolvedValue({});
     renderForm({ project_id: "proj-1", computers: ["c2"], checkouts: [] });
 
-    await user.click(await screen.findByRole("button", { name: /follow my computers and defaults/i }));
+    await user.click(await screen.findByRole("button", { name: "Use defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/proj-1"));
   });

@@ -233,6 +233,16 @@ export const useFetchHarnessProviders = (computerId: string) =>
     staleTime: 60_000,
   });
 
+// The computer to list models from: the first of `ids`, or of the person's order, that is online, because an offline
+// one can't answer; the first of them when none is.
+export const useModelComputerId = (ids: string[] = []) => {
+  const { data: computers } = useListComputers();
+  const { data: presence } = useFetchPresence();
+  const order = ids.length > 0 ? ids : (computers ?? []).map((c) => c.id);
+  const online = (id: string) => presence?.[id] === "connected" || computers?.find((c) => c.id === id)?.runner?.connected === true;
+  return order.find(online) ?? order[0] ?? "";
+};
+
 export const useFetchPairingDefaults = () =>
   useQuery({
     queryKey: [getPairingDefaultsKey],

@@ -1,6 +1,5 @@
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { ComputersSection } from "@/components/settings/ComputersSection";
-import { PairingDefaultsSection } from "@/components/settings/PairingDefaultsSection";
 import { PairingProjectsSection } from "@/components/settings/PairingProjectsSection";
 import { useSkillsOutdated } from "@/hooks/ComputerSetupHooks";
 import { SKILLS_OUTDATED } from "@/models/Pairing";
@@ -18,7 +17,6 @@ export const PairingPanel = () => {
     >
       <PageTabsContent value="computers">
         <ComputersSection />
-        <PairingDefaultsSection />
       </PageTabsContent>
       <PageTabsContent value="projects">
         <PairingProjectsSection />

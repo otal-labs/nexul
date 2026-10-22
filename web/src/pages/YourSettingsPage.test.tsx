@@ -20,7 +20,6 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/settings/ComputersSection", () => ({ ComputersSection: () => <p>Computers card</p> }));
-vi.mock("@/components/settings/PairingDefaultsSection", () => ({ PairingDefaultsSection: () => <p>Defaults card</p> }));
 
 const me = {
   user: { id: "u1", login: "onik97", name: "Onik", avatar_url: "", display_name: "Onik N" },
@@ -115,9 +114,6 @@ describe("YourSettingsPage", () => {
     expect(await screen.findByRole("tab", { name: "Computers", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Computers card")).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent("setup=c1");
-
-    expect(screen.getByText("Defaults card"), "the defaults sit under the computers they pick between").toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Defaults" })).not.toBeInTheDocument();
   });
 
   it("opens the personal access tokens from their path", async () => {
