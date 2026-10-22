@@ -18,7 +18,7 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 
 **Done** keeps your model and folder choices without running anything; **Cancel** drops them. The switches are already saved.
 
-Each turn connects the provider to Nexul with the computer's own MCP token, installs the default skill set and the nexul-memory and [nexul-triage](/docs/guide/triage/) skills into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others.
+Each turn connects the provider to Nexul with the computer's own MCP token (written into the provider's own config file, never onto a command line), installs the default skill set and the nexul-memory and [nexul-triage](/docs/guide/triage/) skills into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others.
 
 ## Switch a provider off
 

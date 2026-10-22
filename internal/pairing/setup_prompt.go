@@ -44,7 +44,7 @@ func setupBlocker(p harness.Provider) string {
 func prepareInstructions(p setupPrompt) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are running Nexul's setup for %s on this computer (%s). Work unattended: never ask a question; if a step fails, stop and say which step failed and why.\n\n", p.ProviderName, p.ComputerName)
-	fmt.Fprintf(&b, "1. Connect Nexul's MCP server to %s at user level, named `nexul`, replacing any existing `nexul` entry so the token below is the one it uses. It is a Streamable HTTP server at %s, authenticated with the header `Authorization: Bearer %s`.\n", p.ProviderName, p.MCPURL, p.Token)
+	fmt.Fprintf(&b, "1. Connect Nexul's MCP server to %s at user level, named `nexul`, replacing any existing `nexul` entry so the token below is the one it uses. It is a Streamable HTTP server at %s, authenticated with the header `Authorization: Bearer %s`. Write the token only into the config file; never put it in a shell command, a log, or your reply.\n", p.ProviderName, p.MCPURL, p.Token)
 	b.WriteString(mcpConfigStep(p))
 	fmt.Fprintf(&b, "\n2. Install the default skill set, mattpocock/skills, into both %s Never overwrite a skill directory that already exists in either location: the user may have edited it.\n", skillLocations)
 	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
@@ -94,7 +94,7 @@ func skillsUpdateInstructions(p setupPrompt) string {
 func mcpConfigStep(p setupPrompt) string {
 	driver := strings.ToLower(p.Driver)
 	if strings.HasPrefix(driver, "claude") {
-		return fmt.Sprintf("   Use the CLI: `claude mcp remove --scope user nexul` (ignore a not-found error), then `claude mcp add --scope user --transport http nexul %s --header \"Authorization: Bearer %s\"`.\n", p.MCPURL, p.Token)
+		return fmt.Sprintf("   Edit ~/.claude.json, keeping everything else in it, so its top-level `mcpServers` object has exactly one `nexul` entry:\n\n   ```json\n   \"nexul\": { \"type\": \"http\", \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" } }\n   ```\n", p.MCPURL, p.Token)
 	}
 	if driver == "codex" {
 		return fmt.Sprintf("   Edit ~/.codex/config.toml so it has exactly one `[mcp_servers.nexul]` table:\n\n   ```toml\n   [mcp_servers.nexul]\n   url = \"%s\"\n   http_headers = { Authorization = \"Bearer %s\" }\n   ```\n", p.MCPURL, p.Token)
@@ -103,15 +103,15 @@ func mcpConfigStep(p setupPrompt) string {
 		return fmt.Sprintf("   Edit ~/.config/opencode/opencode.json, keeping everything else in it, so its `mcp` object has this `nexul` entry:\n\n   ```json\n   \"nexul\": { \"type\": \"remote\", \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" }, \"enabled\": true }\n   ```\n", p.MCPURL, p.Token)
 	}
 	if driver == "pi" {
-		return fmt.Sprintf("   Use the CLI: `pi mcp add nexul --url %s --header \"Authorization=Bearer %s\" --exposure direct`, then `pi mcp list` and check that `nexul` is listed and connects. Keep `--exposure direct`: it declares the tools to the model.\n", p.MCPURL, p.Token)
+		return fmt.Sprintf("   Edit ~/.pi/agent/mcp.json, keeping everything else in it, so its `mcpServers` object has this `nexul` entry, then run `pi mcp list` and check that `nexul` is listed and connects. Keep `\"exposure\": \"direct\"`: it declares the tools to the model.\n\n   ```json\n   \"nexul\": { \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" }, \"exposure\": \"direct\" }\n   ```\n", p.MCPURL, p.Token)
 	}
 	if driver == "grok" {
-		return fmt.Sprintf("   Use the CLI: `grok mcp remove nexul` (ignore a not-found error), then `grok mcp add --transport http nexul %s --header \"Authorization: Bearer %s\"`.\n", p.MCPURL, p.Token)
+		return fmt.Sprintf("   Edit ~/.grok/config.toml so it has exactly one `[mcp_servers.nexul]` table:\n\n   ```toml\n   [mcp_servers.nexul]\n   url = \"%s\"\n   headers = { Authorization = \"Bearer %s\" }\n   ```\n", p.MCPURL, p.Token)
 	}
 	if strings.HasPrefix(driver, "cursor") {
 		return fmt.Sprintf("   Edit ~/.cursor/mcp.json, keeping everything else in it, so its `mcpServers` object has this `nexul` entry:\n\n   ```json\n   \"nexul\": { \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" } }\n   ```\n", p.MCPURL, p.Token)
 	}
-	return fmt.Sprintf("   Add it to %s's own user-level MCP configuration, through its CLI if it has an MCP command, else its config file, keeping every other entry.\n", p.ProviderName)
+	return fmt.Sprintf("   Add it to %s's own user-level MCP configuration by editing its config file, keeping every other entry; do not use a CLI command, which would put the token on a command line.\n", p.ProviderName)
 }
 
 // confirmInstructions is the second, fresh session: it loads the new MCP entry and skills, so what it reports is what the provider sees.

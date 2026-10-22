@@ -14,14 +14,7 @@ A [paired computer](/docs/guide/paired-computers/) needs none of this: its [setu
 1. Open **Settings → Security → Tokens** and create a token. Copy it now; the raw token (`dep_…`) is shown once.
 2. Add the server to your tool, with your instance's URL and the token.
 
-**Claude Code:**
-
-```sh
-claude mcp add --transport http nexul https://nexul.example.com/mcp \
-  --header "Authorization: Bearer dep_your_token_here"
-```
-
-Or in `.mcp.json`:
+**Claude Code**, in the top-level `mcpServers` object of `~/.claude.json` (your user scope, every project):
 
 ```json
 {
@@ -34,6 +27,24 @@ Or in `.mcp.json`:
   }
 }
 ```
+
+For one project, use `.mcp.json` in its root. That file is usually committed, so keep the token out of it: Claude Code expands `${VAR}` in `headers`, so set `NEXUL_TOKEN` in your shell and write the header as `"Authorization": "Bearer ${NEXUL_TOKEN}"`.
+
+**A client that starts the server through `mcp-remote`** takes the token from its environment, so it never shows in the process list:
+
+```json
+{
+  "mcpServers": {
+    "nexul": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://nexul.example.com/mcp", "--header", "Authorization:${NEXUL_AUTH}"],
+      "env": { "NEXUL_AUTH": "Bearer dep_your_token_here" }
+    }
+  }
+}
+```
+
+Never put a token in a command's arguments, such as `claude mcp add --header` or a literal `--header` for `mcp-remote`: any local user can read it with `ps`, and your shell history keeps it.
 
 **opencode**, in `opencode.json`:
 
