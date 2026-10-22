@@ -63,6 +63,9 @@ const (
 	// FrameT3PairTokenRequest asks a personal runner to mint a one-time T3 Code pairing token, answered by FrameT3PairToken.
 	FrameT3PairTokenRequest FrameType = "t3_pair_token_request"
 	FrameT3PairToken        FrameType = "t3_pair_token"
+	// FrameGitClone asks a personal runner to clone repo into path with git_token, answered by FrameGitCloneResult.
+	FrameGitClone       FrameType = "git_clone"
+	FrameGitCloneResult FrameType = "git_clone_result"
 	// FrameContainerEvent (runner -> server) is one die, oom or start of a container on a machine runner's host, and
 	// FrameContainerStates a snapshot of that host's containers sent when the event stream (re)starts. The runner
 	// does not know which containers are Nexul's; the server matches them to stacks.
@@ -175,6 +178,8 @@ type Frame struct {
 	Tail      int                `json:"tail,omitempty"`
 	Follow    bool               `json:"follow,omitempty"`
 	Lines     []ContainerLogLine `json:"lines,omitempty"`
+	// Path is where a git_clone lands on the computer; its result names the folder with ~ expanded.
+	Path string `json:"path,omitempty"`
 	// Token carries a t3_pair_token's one-time T3 Code pairing token; it is never logged.
 	Token string `json:"token,omitempty"`
 	// Facts carries a facts frame's report.
@@ -267,6 +272,8 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameHarnessDialRefused:  (*Frame).validateHarnessDialRefused,
 	FrameT3PairTokenRequest:  (*Frame).validateID,
 	FrameT3PairToken:         (*Frame).validateT3PairToken,
+	FrameGitClone:            (*Frame).validateGitClone,
+	FrameGitCloneResult:      (*Frame).validateGitCloneResult,
 	FrameFacts:               (*Frame).validateFacts,
 	FrameContainerEvent:      (*Frame).validateContainerEvent,
 	FrameContainerStates:     (*Frame).validateContainerStates,
@@ -475,6 +482,20 @@ func (f *Frame) validateHarnessDialRefused() error {
 func (f *Frame) validateT3PairToken() error {
 	if f.ID == "" || (f.Token == "") == (f.Error == "") {
 		return fmt.Errorf("%w: t3_pair_token requires id and either token or error", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateGitClone() error {
+	if f.ID == "" || f.Repo == "" || f.Path == "" {
+		return fmt.Errorf("%w: git_clone requires id, repo and path", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateGitCloneResult() error {
+	if f.ID == "" || (f.Path == "") == (f.Error == "") {
+		return fmt.Errorf("%w: git_clone_result requires id and either path or error", apperrs.ErrInvalid)
 	}
 	return nil
 }

@@ -91,8 +91,8 @@ type T3Facts struct {
 
 // ---- server side ----
 
-// pairWaiter is PairingToken waiting on the runner it asked for a token.
-type pairWaiter struct {
+// replyWaiter is a server request waiting on the answer of the runner it asked.
+type replyWaiter struct {
 	runnerID string
 	result   chan Frame
 }
@@ -103,44 +103,53 @@ func (h *Handler) PairingToken(ctx context.Context, computerID string) (string, 
 	if err != nil {
 		return "", err
 	}
-	id := ids.New()
-	w := pairWaiter{runnerID: c.id, result: make(chan Frame, 1)}
-	h.pairMu.Lock()
-	h.pairWaiters[id] = w
-	h.pairMu.Unlock()
-	defer func() {
-		h.pairMu.Lock()
-		delete(h.pairWaiters, id)
-		h.pairMu.Unlock()
-	}()
-	if err := h.sendFrame(ctx, c, Frame{Type: FrameT3PairTokenRequest, ID: id}); err != nil {
-		return "", apperrs.Retryable(fmt.Errorf("ask the runner of computer %s for a pairing token: %w", computerID, err))
+	f, err := h.ask(ctx, c, Frame{Type: FrameT3PairTokenRequest}, pairTokenTimeout)
+	if err != nil {
+		return "", fmt.Errorf("ask the runner of computer %s for a pairing token: %w", computerID, err)
 	}
-	timer := time.NewTimer(pairTokenTimeout)
+	if f.Error != "" {
+		return "", apperrs.Retryable(errors.New(f.Error))
+	}
+	return f.Token, nil
+}
+
+// ask sends c the request frame under a new id and waits up to timeout for the frame answering it.
+func (h *Handler) ask(ctx context.Context, c *runnerConn, request Frame, timeout time.Duration) (Frame, error) {
+	request.ID = ids.New()
+	w := replyWaiter{runnerID: c.id, result: make(chan Frame, 1)}
+	h.replyMu.Lock()
+	h.replyWaiters[request.ID] = w
+	h.replyMu.Unlock()
+	defer func() {
+		h.replyMu.Lock()
+		delete(h.replyWaiters, request.ID)
+		h.replyMu.Unlock()
+	}()
+	if err := h.sendFrame(ctx, c, request); err != nil {
+		return Frame{}, apperrs.Retryable(err)
+	}
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
 	case f := <-w.result:
-		if f.Error != "" {
-			return "", apperrs.Retryable(errors.New(f.Error))
-		}
-		return f.Token, nil
+		return f, nil
 	case <-timer.C:
-		return "", apperrs.Retryable(fmt.Errorf("the runner of computer %s sent no pairing token within %s", computerID, pairTokenTimeout))
+		return Frame{}, apperrs.Retryable(fmt.Errorf("no answer within %s", timeout))
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return Frame{}, ctx.Err()
 	}
 }
 
-// deliverPairToken hands a t3_pair_token to the PairingToken waiting on it, only if this runner was the one asked.
-func (h *Handler) deliverPairToken(c *runnerConn, f Frame) {
-	h.pairMu.Lock()
-	w, ok := h.pairWaiters[f.ID]
+// deliverAnswer hands a runner's answer to the request waiting on it, only if this runner was the one asked.
+func (h *Handler) deliverAnswer(c *runnerConn, f Frame) {
+	h.replyMu.Lock()
+	w, ok := h.replyWaiters[f.ID]
 	if ok && w.runnerID == c.id {
-		delete(h.pairWaiters, f.ID)
+		delete(h.replyWaiters, f.ID)
 	}
-	h.pairMu.Unlock()
+	h.replyMu.Unlock()
 	if !ok || w.runnerID != c.id {
-		h.log.Warn("pairing token answer refused", "runner_id", c.id, "id", f.ID)
+		h.log.Warn("runner answer refused", "runner_id", c.id, "type", f.Type, "id", f.ID)
 		return
 	}
 	w.result <- f

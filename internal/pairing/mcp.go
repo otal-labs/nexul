@@ -371,11 +371,13 @@ func computerProjectCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_project_create", "Add a project to a computer",
 		"Adds a new T3 project to one of your paired computers so plays and @Agent turns can run in it there; use it "+
 			"when computer_list with the computer's id lists no T3 project for the work. With repository, a GitHub "+
-			"repository as owner/name, the computer clones it over https with its own git credentials; with name it makes "+
+			"repository as owner/name of one of your projects, the Nexul app there clones it with a read-only token for that "+
+			"repository, so the computer needs no GitHub sign-in (an older app, or no GitHub App key, leaves it to the "+
+			"computer's own git credentials); with name it makes "+
 			"an empty folder, for a project with no repository or a computer with no T3 project at all, which setup also "+
 			"needs. Either lands in the folder most of the computer's T3 projects share, or ~/Code when it has none. "+
-			"Returns the new project's id, the t3_project_id play_run takes; a clone keeps running in the background, and "+
-			"one that fails leaves the project in T3 Code to retry or remove there. A clone fails when the folder "+
+			"Returns the new project's id, the t3_project_id play_run takes, once the clone is done; a clone T3 Code makes "+
+			"keeps running in the background, and one that fails leaves the project in T3 Code to retry or remove there. A clone fails when the folder "+
 			"already exists and is not empty, and on a computer paired before cloning existed until computer_pair pairs "+
 			"it again; an empty project does not need that.",
 		mcptool.Hints{Additive: true},

@@ -318,13 +318,14 @@ server never dials the runner, so a runner behind NAT works. Frames are JSON
 with a `type` discriminator, declared in `internal/runner/protocol.go`:
 
 - Server to runner: `assign_build`, `assign_deploy`, `cancel`,
-  `logs_request`, `logs_cancel`, `harness_dial`, and to a machine runner
+  `logs_request`, `logs_cancel`, `harness_dial`, to a personal runner
+  `git_clone`, a clone with a token for the one repository (ADR 0167), and to a machine runner
   `join_networks`, `gateway_routes`, which rewrites a running proxy
   gateway's exposure routes (ADR 0157), and `stack_teardown`, which removes a
   deleted managed stack's containers (ADR 0158).
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
   `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`,
-  `harness_dial_refused`, `join_networks_result`, `gateway_routes_result`, `stack_teardown_result`, and from a machine runner `container_event` and
+  `harness_dial_refused`, `git_clone_result`, `join_networks_result`, `gateway_routes_result`, `stack_teardown_result`, and from a machine runner `container_event` and
   `container_states`, Docker's die, oom, start, kill and stop events and a
   snapshot taken whenever its event stream (re)starts, `request_counts`, the
   requests each proxy router served since its previous 30-second read, and `log`, a

@@ -2,10 +2,12 @@ package pairing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/otal-labs/nexul/internal/harness"
@@ -14,6 +16,18 @@ import (
 )
 
 var githubRepository = regexp.MustCompile(`^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$`)
+
+// cloneTimeout bounds a clone through a computer's runner, which goes on when the person who asked stops waiting.
+const cloneTimeout = 12 * time.Minute
+
+// ErrCloneThroughT3 means the runner cannot clone the repository, so T3 Code clones it with the computer's own git sign-in.
+var ErrCloneThroughT3 = errors.New("clone through T3 Code")
+
+// RepositoryCloner clones a GitHub repository onto a computer through its runner, so the computer needs no git sign-in.
+type RepositoryCloner interface {
+	// CloneRepository clones repository ("owner/name") into path on computerID and returns the folder, or ErrCloneThroughT3.
+	CloneRepository(ctx context.Context, computerID, repository, path string) (string, error)
+}
 
 // defaultCloneParent is where a clone or an empty project lands on a computer with no T3 projects to sit beside.
 const defaultCloneParent = "~/Code"
@@ -34,16 +48,41 @@ func (s *Service) CloneProject(ctx context.Context, userID, computerID, reposito
 	if err != nil {
 		return harness.Project{}, err
 	}
-	if !s.mayClone(ctx, client, session) {
-		return harness.Project{}, harness.ErrPairAgainToClone
-	}
 	path, _, err := s.newProjectPath(ctx, client, session, name)
 	if err != nil {
 		return harness.Project{}, err
 	}
+	if project, err := s.cloneThroughRunner(ctx, client, session, repository, name, path); !errors.Is(err, ErrCloneThroughT3) {
+		return project, err
+	}
+	if !s.mayClone(ctx, client, session) {
+		return harness.Project{}, harness.ErrPairAgainToClone
+	}
 	project, err := client.CloneProject(ctx, session.Session(), name, "https://github.com/"+repository+".git", path)
 	if err != nil {
 		return harness.Project{}, fmt.Errorf("clone %s on %s: %w", repository, session.Name, err)
+	}
+	return project, nil
+}
+
+// cloneThroughRunner clones with a token for the repository alone, then makes the checkout a T3 project; it finishes
+// even when the person stops waiting, so a slow clone still becomes a project.
+func (s *Service) cloneThroughRunner(ctx context.Context, client harness.Client, session Computer, repository, name, path string) (harness.Project, error) {
+	if s.cloner == nil {
+		return harness.Project{}, ErrCloneThroughT3
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cloneTimeout)
+	defer cancel()
+	dir, err := s.cloner.CloneRepository(ctx, session.ID, repository, path)
+	if errors.Is(err, ErrCloneThroughT3) {
+		return harness.Project{}, err
+	}
+	if err != nil {
+		return harness.Project{}, fmt.Errorf("clone %s on %s: %w", repository, session.Name, err)
+	}
+	project, err := client.CreateProject(ctx, session.Session(), name, dir)
+	if err != nil {
+		return harness.Project{}, fmt.Errorf("add the clone of %s on %s to T3 Code: %w", repository, session.Name, err)
 	}
 	return project, nil
 }

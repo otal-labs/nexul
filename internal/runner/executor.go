@@ -267,8 +267,12 @@ func (e *ShellExecutor) authArgs(req DeployRequestedEvent, args []string) []stri
 	if token == "" {
 		return args
 	}
-	basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
-	return append([]string{"-c", "http.extraheader=Authorization: Basic " + basic}, args...)
+	return append([]string{"-c", "http.extraheader=" + basicAuthHeader(token)}, args...)
+}
+
+// basicAuthHeader is the header git sends GitHub to clone with an App or connector token.
+func basicAuthHeader(token string) string {
+	return "Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token))
 }
 
 // cloneStep injects the git token via http.extraheader, never the URL, so it can't leak into process listings.

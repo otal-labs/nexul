@@ -99,9 +99,9 @@ type Handler struct {
 	streamWaiters map[string]*streamWaiter
 	openStreams   map[string]map[string]context.CancelFunc
 
-	// pairMu/pairWaiters correlate a pairing token request with the runner asked for it (t3code.go).
-	pairMu      sync.Mutex
-	pairWaiters map[string]pairWaiter
+	// replyMu/replyWaiters correlate a request with the runner asked for it, such as a pairing token (t3code.go).
+	replyMu      sync.Mutex
+	replyWaiters map[string]replyWaiter
 
 	// updateMu guards updateSettings/updateRelease: set once by SetUpdateSource after runnerSvc (and its release
 	// client) exist, since that happens after the handler is constructed in server/cmd/workers.go.
@@ -162,7 +162,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		logSubs:         make(map[string]logSub),
 		streamWaiters:   make(map[string]*streamWaiter),
 		openStreams:     make(map[string]map[string]context.CancelFunc),
-		pairWaiters:     make(map[string]pairWaiter),
+		replyWaiters:    make(map[string]replyWaiter),
 	}
 }
 
@@ -591,7 +591,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Commit: f.Commit, Services: f.Services,
 		})
-	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken:
+	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken, FrameGitCloneResult:
 		h.deliverReply(c, f)
 		return nil
 	case FrameFacts:
@@ -685,8 +685,8 @@ func (h *Handler) deliverReply(c *runnerConn, f Frame) {
 		h.deliverLogs(f)
 	case FrameHarnessDialRefused:
 		h.deliverRefusal(c, f)
-	case FrameT3PairToken:
-		h.deliverPairToken(c, f)
+	case FrameT3PairToken, FrameGitCloneResult:
+		h.deliverAnswer(c, f)
 	}
 }
 
