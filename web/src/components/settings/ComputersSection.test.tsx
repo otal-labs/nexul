@@ -150,6 +150,25 @@ describe("ComputersSection", () => {
     expect(screen.getByText("50.0 GB")).toBeInTheDocument();
   });
 
+  it("warns when a computer has no GitHub sign-in, says so quietly when it has one, and shows nothing for an older runner", async () => {
+    const t3 = { state: "answering" };
+    serveComputers([
+      computer({ facts: { t3, github_sign_in: "none", providers: [], projects: [] } }),
+      computer({ id: "c2", name: "Desk", facts: { t3, github_sign_in: "gh", providers: [], projects: [] } }),
+      computer({ id: "c3", name: "Old", facts: { t3, providers: [], projects: [] } }),
+    ]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    expect(screen.getByText("Not signed in")).toBeInTheDocument();
+    expect(screen.getByText(/Plays can't push\. Run gh auth login\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Desk" }));
+    expect(screen.getByText("Signed in")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Old" }));
+    expect(screen.getAllByRole("term").filter((t) => t.textContent === "GitHub")).toHaveLength(2);
+  });
+
   it("asks to open a closed desktop app", async () => {
     serveComputers([computer({ server_url: "", facts: { t3: { state: "not_running", install: "desktop_app" }, providers: [], projects: [] } })]);
     const user = userEvent.setup();

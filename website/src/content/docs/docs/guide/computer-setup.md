@@ -34,6 +34,8 @@ The computer's row reads **Setup confirmed** with the providers it covers, **Nee
 
 Press **Re-run setup** in the row's **…** menu, or **Run all again** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it never overwrites an installed skill and keeps the token the providers hold.
 
+Plays that push a branch or open a pull request use the computer's own GitHub sign-in, `gh auth login` or a git credential helper, because Nexul never gives a run write access to your repositories. The computer's details show whether one is set under **GitHub** (see [the computer's facts](/docs/guide/paired-computers/#the-computers-facts)).
+
 ## Keep the skills current
 
 A Nexul release sometimes brings a newer Nexul skill. A provider set up with an older one shows **skills out of date**, and a yellow dot appears on the settings gear and on **Computers**. Nothing stops working; the agent just follows the rules in its prompt until the skill is refreshed.

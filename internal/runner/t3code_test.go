@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -106,6 +107,46 @@ func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
 	assert.Equal(t, "Alice Example", got.GitName)
 	assert.Equal(t, "alice@example.com", got.GitEmail)
 	assert.Positive(t, got.FreeDiskBytes, "free space in the home folder")
+}
+
+// TestPersonalRunner_ReportsHowItSignsInToGitHub: a computer reports the GitHub CLI's sign-in before a credential
+// helper, a signed-out CLI falls back to the helper, and a computer with neither says none so plays that push can be
+// warned about.
+func TestPersonalRunner_ReportsHowItSignsInToGitHub(t *testing.T) {
+	gitPath, err := exec.LookPath("git")
+	require.NoError(t, err)
+	tests := []struct {
+		name   string
+		ghExit string // "" for no gh on the computer
+		helper bool
+		want   string
+	}{
+		{"gh signed in beats a helper", "0", true, GitHubSignInCLI},
+		{"gh signed out, helper configured", "1", true, GitHubSignInHelper},
+		{"no gh, helper configured", "", true, GitHubSignInHelper},
+		{"gh signed out, no helper", "1", false, GitHubSignInNone},
+		{"no gh, no helper", "", false, GitHubSignInNone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			home, bin := t.TempDir(), t.TempDir()
+			t.Setenv("HOME", home)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+			t.Setenv("PATH", bin)
+			require.NoError(t, os.Symlink(gitPath, filepath.Join(bin, "git")))
+			if tt.helper {
+				require.NoError(t, os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[credential]\n\thelper = store\n"), 0o600))
+			}
+			if tt.ghExit != "" {
+				gh := "#!/bin/sh\n[ \"$*\" = \"auth status --hostname github.com\" ] || exit 2\nexit " + tt.ghExit + "\n"
+				require.NoError(t, os.WriteFile(filepath.Join(bin, "gh"), []byte(gh), 0o700))
+			}
+
+			got := firstFacts(t, writeRuntimeFile(t, `{"host":"127.0.0.1","port":1}`), "")
+			assert.Equal(t, tt.want, got.GitHubSignIn)
+		})
+	}
 }
 
 func TestPersonalRunner_ReportsT3CodesStateAndInstall(t *testing.T) {

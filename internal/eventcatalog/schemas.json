@@ -5989,6 +5989,15 @@
             "type": "string",
             "description": "git's global user.email for the person the runner runs as."
           },
+          "github_sign_in": {
+            "type": "string",
+            "description": "How the person's own account can authenticate to GitHub for a push or a pull request: gh: the GitHub CLI is signed in; helper: a git credential helper is configured; none: neither. Absent from runners older than this report.",
+            "enum": [
+              "gh",
+              "helper",
+              "none"
+            ]
+          },
           "free_disk_bytes": {
             "type": "integer",
             "description": "Free disk space in the person's home folder, in bytes."

@@ -46,7 +46,7 @@ func reportEvent(t *testing.T, facts map[string]any) eventbus.Event {
 func laptopReport(state string, freeDisk int64) map[string]any {
 	return map[string]any{
 		"hostname": "alice-laptop", "os": "linux", "arch": "amd64", "runner_version": "v0.3.40", "cloudflared": "2025.9.1",
-		"git_name": "Alice Example", "git_email": "alice@example.com", "free_disk_bytes": freeDisk,
+		"git_name": "Alice Example", "git_email": "alice@example.com", "github_sign_in": "none", "free_disk_bytes": freeDisk,
 		"t3": map[string]any{"state": state, "install": "service", "port": 3773, "version": "0.0.46"},
 	}
 }
@@ -70,7 +70,7 @@ func TestHandleFactsReported_StoresTheReportAndWhatT3CodeLists(t *testing.T) {
 	require.NotNil(t, c.Facts)
 	assert.Equal(t, Facts{
 		Hostname: "alice-laptop", OS: "linux", Arch: "amd64", RunnerVersion: "v0.3.40", Cloudflared: "2025.9.1",
-		GitName: "Alice Example", GitEmail: "alice@example.com", FreeDiskBytes: 46 << 30,
+		GitName: "Alice Example", GitEmail: "alice@example.com", GitHubSignIn: "none", FreeDiskBytes: 46 << 30,
 		T3: T3Facts{State: "answering", Install: "service", Port: 3773, Version: "0.0.46"},
 		Providers: []ProviderFacts{{ID: "claudeAgent", Driver: "claudeAgent", Name: "Claude", Version: "2.1.0", SignIn: harness.SignedIn,
 			Models: []ModelFacts{{Slug: "claude-opus-5-5", Name: "Claude Opus 5.5"}}}},

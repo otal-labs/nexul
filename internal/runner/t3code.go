@@ -69,6 +69,7 @@ type Facts struct {
 	Cloudflared   string       `json:"cloudflared,omitempty" jsonschema:"The version of cloudflared, sent only when it is installed."`
 	GitName       string       `json:"git_name,omitempty" jsonschema:"git's global user.name for the person the runner runs as."`
 	GitEmail      string       `json:"git_email,omitempty" jsonschema:"git's global user.email for the person the runner runs as."`
+	GitHubSignIn  string       `json:"github_sign_in,omitempty" enum:"gh,helper,none" jsonschema:"How the person's own account can authenticate to GitHub for a push or a pull request: gh: the GitHub CLI is signed in; helper: a git credential helper is configured; none: neither. Absent from runners older than this report."`
 	FreeDiskBytes int64        `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
 	Docker        *DockerFacts `json:"docker,omitempty" jsonschema:"Docker as the person the runner runs as reaches it; absent from runners older than container logs."`
 }
@@ -78,6 +79,13 @@ type DockerFacts struct {
 	Available bool   `json:"available" jsonschema:"Whether docker version reached a Docker daemon as the person the runner runs as."`
 	Version   string `json:"version,omitempty" jsonschema:"The Docker daemon's version; sent while available."`
 }
+
+// How the person's own account signs in to GitHub, as its runner tells.
+const (
+	GitHubSignInCLI    = "gh"
+	GitHubSignInHelper = "helper"
+	GitHubSignInNone   = "none"
+)
 
 // T3Facts is T3 Code on the computer as its runner found it.
 type T3Facts struct {
@@ -195,10 +203,11 @@ func (c *Client) facts(ctx context.Context) *Facts {
 	}
 	f := &Facts{
 		Hostname: hostname, OS: runtime.GOOS, Arch: runtime.GOARCH, RunnerVersion: version.Version, T3: c.t3.withRestart(c.t3Probe(ctx).facts),
-		Cloudflared: cloudflaredVersion(commandLine(ctx, "cloudflared", "--version")),
-		GitName:     commandLine(ctx, "git", "config", "--global", "user.name"),
-		GitEmail:    commandLine(ctx, "git", "config", "--global", "user.email"),
-		Docker:      c.dockerFacts(ctx),
+		Cloudflared:  cloudflaredVersion(commandLine(ctx, "cloudflared", "--version")),
+		GitName:      commandLine(ctx, "git", "config", "--global", "user.name"),
+		GitEmail:     commandLine(ctx, "git", "config", "--global", "user.email"),
+		GitHubSignIn: githubSignIn(ctx),
+		Docker:       c.dockerFacts(ctx),
 	}
 	c.dockerAvailable.Store(f.Docker.Available)
 	if home, err := os.UserHomeDir(); err == nil {
@@ -231,20 +240,35 @@ func t3Install(serviceManaged bool, home, t3 string) string {
 	return T3InstallCommandLine
 }
 
+// githubSignIn is how plays on the computer can push and open pull requests: through the GitHub CLI's sign-in, through
+// a git credential helper of any scope (Git for Windows and Xcode configure theirs system-wide), or not at all.
+func githubSignIn(ctx context.Context) string {
+	if _, ok := runCommand(ctx, "gh", "auth", "status", "--hostname", "github.com"); ok {
+		return GitHubSignInCLI
+	}
+	if commandLine(ctx, "git", "config", "credential.helper") != "" {
+		return GitHubSignInHelper
+	}
+	return GitHubSignInNone
+}
+
 // commandLine is the first line a command prints, "" when it is not installed or fails.
 func commandLine(ctx context.Context, name string, args ...string) string {
+	out, _ := runCommand(ctx, name, args...)
+	line, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
+	return strings.TrimSpace(line)
+}
+
+// runCommand is what a command prints and whether it ran and exited 0, bounded by factCommandTimeout.
+func runCommand(ctx context.Context, name string, args ...string) (string, bool) {
 	path, err := exec.LookPath(name)
 	if err != nil {
-		return ""
+		return "", false
 	}
 	ctx, cancel := context.WithTimeout(ctx, factCommandTimeout)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, path, args...).Output()
-	if err != nil {
-		return ""
-	}
-	line, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
-	return strings.TrimSpace(line)
+	return string(out), err == nil
 }
 
 // cloudflaredVersion is the version in cloudflared's "cloudflared version 2025.9.1 (built ...)" line.
