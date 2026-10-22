@@ -42,6 +42,13 @@ func TestNew_ValidatesBeforeTheHandlerRuns(t *testing.T) {
 	}
 }
 
+func TestNew_ArgumentsOffTheSchema_SayHowToLoadTheCurrentTools(t *testing.T) {
+	_, err := echoTool().Call(context.Background(), json.RawMessage(`{"id": "x", "computer_id": "c1"}`))
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "computer_id")
+	assert.Contains(t, err.Error(), "reconnect to its MCP server", "a client with a pre-upgrade tool list learns why its call fails")
+}
+
 func TestNew_DecodesValidArguments(t *testing.T) {
 	out, err := echoTool().Call(context.Background(), json.RawMessage(`{"id":"t-1","title":"x","limit":5}`))
 	require.NoError(t, err)
