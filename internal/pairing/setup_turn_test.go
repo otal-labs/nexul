@@ -298,7 +298,7 @@ func TestStartSetup_Instructions_EveryConfirmSessionConfirmsTheComputer(t *testi
 	assert.Regexp(t, `Bearer dep_\d{43}`, codexPrepare)
 	assert.Contains(t, codexPrepare, "https://nexul.example.com/mcp")
 	assert.Contains(t, codexPrepare, "[mcp_servers.nexul]")
-	assert.Contains(t, prompts["Nexul setup: Claude"], "claude mcp add --scope user --transport http nexul")
+	assert.Contains(t, prompts["Nexul setup: Claude"], "Edit ~/.claude.json")
 	assert.Contains(t, codexPrepare, "name: nexul-memory")
 	assert.Contains(t, codexPrepare, "move it into place with one rename", "turns side by side never see a half-copied skill")
 	assert.Contains(t, codexCheck, "confirm the computer itself")
@@ -680,12 +680,12 @@ func TestSetupInstructions_PerDriver(t *testing.T) {
 		name   string
 		want   string
 	}{
-		{"claudeAgent", "Claude", "claude mcp add --scope user --transport http nexul https://n.example.com/mcp --header \"Authorization: Bearer dep_x\""},
+		{"claudeAgent", "Claude", "\"nexul\": { \"type\": \"http\", \"url\": \"https://n.example.com/mcp\", \"headers\": { \"Authorization\": \"Bearer dep_x\" } }"},
 		{"codex", "Codex", "[mcp_servers.nexul]"},
 		{"opencode", "OpenCode", "~/.config/opencode/opencode.json"},
 		{"cursor", "Cursor", "~/.cursor/mcp.json"},
-		{"pi", "Pi", "`pi mcp add nexul --url https://n.example.com/mcp --header \"Authorization=Bearer dep_x\" --exposure direct`, then `pi mcp list`"},
-		{"grok", "Grok", "`grok mcp remove nexul` (ignore a not-found error), then `grok mcp add --transport http nexul https://n.example.com/mcp --header \"Authorization: Bearer dep_x\"`"},
+		{"pi", "Pi", "Edit ~/.pi/agent/mcp.json"},
+		{"grok", "Grok", "Edit ~/.grok/config.toml so it has exactly one `[mcp_servers.nexul]` table"},
 		{"antigravity", "Antigravity", "Add it to Antigravity's own user-level MCP configuration"},
 	}
 	for _, tt := range tests {
@@ -694,6 +694,7 @@ func TestSetupInstructions_PerDriver(t *testing.T) {
 			p := setupPrompt{ComputerID: "c1", ComputerName: "Laptop", Driver: tt.driver, ProviderName: tt.name, MCPURL: "https://n.example.com/mcp", Token: "dep_x"}
 			prepare := prepareInstructions(p)
 			assert.Contains(t, prepare, tt.want)
+			assert.NotContains(t, prepare, "mcp add", "the token never goes on a command line, where any local user can read it")
 			assert.Contains(t, prepare, "~/.claude/skills/ and ~/.agents/skills/")
 			assert.Contains(t, prepare, "npx -y skills@latest add mattpocock/skills")
 			assert.Contains(t, prepare, "Never overwrite a skill directory that already exists")
