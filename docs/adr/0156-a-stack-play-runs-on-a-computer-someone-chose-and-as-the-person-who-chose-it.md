@@ -1,5 +1,7 @@
 # A stack play runs on a computer someone chose, as the person who chose it
 
+Amended by ADR 0165: a chosen-computer auto play names an ordered list of computers and runs on the first ready one.
+
 Succeeds ADR 0132 for the third play type and for whose computer a run lands on. ADR 0091 is why a crashed service's
 output is read live by the agent and never carried in an event.
 
