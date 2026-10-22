@@ -2,6 +2,7 @@ package pairing
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -89,6 +90,75 @@ func TestCloneProject_LandsBesideTheComputersProjects(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, []cloneCall{{"api", "https://github.com/acme/api.git", tt.want}}, *calls)
 			assert.Equal(t, "t3-new", project.ID)
+		})
+	}
+}
+
+// clonerFunc clones through a runner the way a test says.
+type clonerFunc func(ctx context.Context, computerID, repository, path string) (string, error)
+
+func (f clonerFunc) CloneRepository(ctx context.Context, computerID, repository, path string) (string, error) {
+	return f(ctx, computerID, repository, path)
+}
+
+// TestCloneProject_ThroughTheRunnerNeedsNoGitSignInOnTheComputer: the runner clones with a token for the repository and
+// T3 Code adds the checkout as a project, so T3 Code's own clone, which uses the computer's git sign-in, never runs.
+func TestCloneProject_ThroughTheRunnerNeedsNoGitSignInOnTheComputer(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		gaveUp    bool
+		runner    func(ctx context.Context) (string, error)
+		wantCalls []cloneCall
+		wantErr   string
+	}{
+		{
+			name:      "cloned by the runner",
+			runner:    func(context.Context) (string, error) { return "/home/box/Code/api", nil },
+			wantCalls: []cloneCall{{title: "api", path: "/home/box/Code/api"}},
+		},
+		{
+			name:      "the runner cannot clone it",
+			runner:    func(context.Context) (string, error) { return "", ErrCloneThroughT3 },
+			wantCalls: []cloneCall{{"api", "https://github.com/acme/api.git", "~/Code/api"}},
+		},
+		{
+			name: "git failed on the computer",
+			runner: func(context.Context) (string, error) {
+				return "", fmt.Errorf("%w: destination path already exists", apperrs.ErrInvalid)
+			},
+			wantErr: "clone acme/api on Box: invalid: destination path already exists",
+		},
+		{
+			name:   "the person stopped waiting",
+			gaveUp: true,
+			runner: func(ctx context.Context) (string, error) {
+				return "/home/box/Code/api", ctx.Err()
+			},
+			wantCalls: []cloneCall{{title: "api", path: "/home/box/Code/api"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, c, calls := newCloneService(t)
+			svc.cloner = clonerFunc(func(ctx context.Context, computerID, repository, path string) (string, error) {
+				assert.Equal(t, []string{c.ID, "acme/api", "~/Code/api"}, []string{computerID, repository, path})
+				return tt.runner(ctx)
+			})
+			ctx, cancel := context.WithCancel(t.Context())
+			if tt.gaveUp {
+				cancel()
+			}
+			defer cancel()
+			_, err := svc.CloneProject(ctx, "u1", c.ID, "acme/api")
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				assert.Empty(t, *calls, "T3 Code never clones")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantCalls, *calls)
 		})
 	}
 }

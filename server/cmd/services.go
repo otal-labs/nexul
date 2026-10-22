@@ -259,6 +259,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Containers:         computers,
 		ComputerAccess:     accessSvc,
 		Repositories:       pairingProjectRemotes{projects: store.Projects},
+		Cloner:             computers,
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,
@@ -334,6 +335,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetCrashTickets(crashTicketDesk{tickets: ticketsSvc, chat: chatSvc, statuses: store.Statuses, types: store.TicketTypes, projects: store.Projects, users: store.Users}, store.CrashTickets)
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
 	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope}
+	computers.tokens = cloneTokens{repos: workspaceSvc, access: accessSvc, git: gitRouter}
 	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,

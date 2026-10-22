@@ -250,8 +250,8 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 		c.stopLogs(frame.ID)
 	case FrameHarnessDial:
 		c.startStream(streamCtx, ctx, conn, frame.ID)
-	case FrameT3PairTokenRequest:
-		c.answerPairToken(ctx, conn, frame.ID)
+	case FrameT3PairTokenRequest, FrameGitClone:
+		c.answerForComputer(ctx, conn, frame)
 	default:
 		c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 	}

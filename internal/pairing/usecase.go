@@ -60,6 +60,8 @@ type Config struct {
 	ComputerAccess ComputerGate
 	// Repositories finds a project's checkout on a computer by its git remote; nil finds only picked ones.
 	Repositories ProjectRemotes
+	// Cloner clones through a computer's runner with a token for the repository; nil leaves every clone to T3 Code.
+	Cloner RepositoryCloner
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -78,6 +80,7 @@ type Service struct {
 	containers     Containers
 	computerAccess ComputerGate
 	repositories   ProjectRemotes
+	cloner         RepositoryCloner
 	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
 	settingUp map[string]bool
@@ -96,7 +99,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, settingUp: map[string]bool{},
 		pairFailures: map[string]string{},
 	}
 }

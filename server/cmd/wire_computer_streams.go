@@ -13,6 +13,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -26,6 +28,7 @@ type computerDialer interface {
 type runnerComputers struct {
 	handler atomic.Pointer[runner.Handler]
 	svc     atomic.Pointer[runner.Service]
+	tokens  cloneTokens
 }
 
 func (r *runnerComputers) service() (*runner.Service, error) {
@@ -69,6 +72,55 @@ func (r *runnerComputers) PairingToken(ctx context.Context, computerID string) (
 		return "", apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
 	return h.PairingToken(ctx, computerID)
+}
+
+// CloneRepository is pairing's seam for cloning onto a computer through its runner; without a token for the repository,
+// or with a runner too old to clone, the clone is left to T3 Code.
+func (r *runnerComputers) CloneRepository(ctx context.Context, computerID, repository, path string) (string, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return "", apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	token, err := r.tokens.token(ctx, repository)
+	if err != nil {
+		logging.FromCtx(ctx).Info("clone left to T3 Code", "computer_id", computerID, "repo", repository, "reason", err)
+		return "", pairing.ErrCloneThroughT3
+	}
+	dir, err := h.CloneRepository(ctx, computerID, repository, path, token)
+	if errors.Is(err, runner.ErrCannotClone) {
+		return "", pairing.ErrCloneThroughT3
+	}
+	return dir, err
+}
+
+// cloneTokens mints the token a person's computer clones with: one for that repository alone, only when it belongs to
+// a project the person may open, and never the instance's own connector token.
+type cloneTokens struct {
+	repos  gitRepoResolver
+	access pairing.ProjectGate
+	git    runner.GitTokenLookup
+}
+
+func (c cloneTokens) token(ctx context.Context, repository string) (string, error) {
+	if c.git == nil {
+		return "", errors.New("no git tokens")
+	}
+	owner, name, _ := strings.Cut(repository, "/")
+	ref, err := c.repos.GetRepoByFullName(ctx, owner, name)
+	if err != nil {
+		return "", err
+	}
+	if err := c.access.RequireProject(ctx, ref.ProjectID, permissions.Member); err != nil {
+		return "", err
+	}
+	credentials, err := c.git.RepoToken(ctx, repository)
+	if err != nil {
+		return "", err
+	}
+	if credentials.AllowFallback || credentials.Token == "" {
+		return "", errors.New("no token for this repository alone")
+	}
+	return credentials.Token, nil
 }
 
 // RetireComputerRunner is pairing's seam for revoking a removed computer's runner.
