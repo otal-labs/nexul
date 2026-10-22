@@ -93,10 +93,19 @@ func (s *Service) AddProject(ctx context.Context, userID, computerID, repository
 	if (repository == "") == (name == "") {
 		return harness.Project{}, fmt.Errorf("%w: give either a repository to clone or a name for an empty project", apperrs.ErrInvalid)
 	}
+	add, what := s.CloneProject, repository
 	if name != "" {
-		return s.CreateEmptyProject(ctx, userID, computerID, name)
+		add, what = s.CreateEmptyProject, name
 	}
-	return s.CloneProject(ctx, userID, computerID, repository)
+	project, err := add(ctx, userID, computerID, what)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	// Placement reads the stored facts, so a project they don't list yet would leave its runs waiting with no_checkout.
+	if err := s.recordFacts(ctx, userID, computerID, nil); err != nil {
+		logging.FromCtx(ctx).Warn("computer facts not read after adding a project", "computer_id", computerID, "error", err)
+	}
+	return project, nil
 }
 
 // CreateEmptyProject makes a new empty folder called name as a T3 project on one of the caller's computers, beside the

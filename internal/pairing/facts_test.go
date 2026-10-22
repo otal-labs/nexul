@@ -160,3 +160,22 @@ func TestPairComputer_ThroughTheRunner_ReadsWhatT3CodeLists(t *testing.T) {
 	assert.Len(t, c.Facts.Providers, 1)
 	assert.Equal(t, "alice-laptop", c.Facts.Hostname, "the runner's part stays")
 }
+
+// TestAddProject_TheStoredFactsListTheNewProject: placement reads the stored facts, so a project added through Nexul is
+// in them at once rather than after the runner's next report.
+func TestAddProject_TheStoredFactsListTheNewProject(t *testing.T) {
+	t.Parallel()
+	f := newFactsFixture(t)
+	require.NoError(t, f.svc.HandleFactsReported(t.Context(), reportEvent(t, laptopReport("answering", 5e10))))
+	listed := []harness.Project{{ID: "p1", Title: "app", Path: "/home/alice/code/app"}}
+	f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return listed, nil }
+	f.exch.CreateProjectFn = func(_ context.Context, _ harness.Session, title, path string) (harness.Project, error) {
+		listed = append(listed, harness.Project{ID: "p2", Title: title, Path: path})
+		return listed[1], nil
+	}
+
+	_, err := f.svc.AddProject(t.Context(), "u-alice", "c-laptop", "", "notes")
+	require.NoError(t, err)
+
+	assert.Equal(t, listed, f.stored(t).Facts.Projects)
+}
