@@ -2,6 +2,7 @@ import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
+import { cn } from "@/lib/utils";
 import { MAX_RUNS_AT_ONCE, MIN_RUNS_AT_ONCE, type Computer } from "@/models/Pairing";
 
 const RUNS = Array.from({ length: MAX_RUNS_AT_ONCE - MIN_RUNS_AT_ONCE + 1 }, (_, i) => String(MIN_RUNS_AT_ONCE + i));
@@ -17,6 +18,7 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
   const update = useUpdateComputerSettings(computer.id);
   const projects = computer.facts?.projects ?? [];
   const folder = computer.chat_project_id || NO_FOLDER;
+  const picked = projects.find((p) => p.id === computer.chat_project_id);
 
   return (
     <>
@@ -39,8 +41,11 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
       </Fact>
       <Fact label="Chat folder">
         <Select value={folder} onValueChange={(v) => update.mutate({ chat_project_id: v === NO_FOLDER ? "" : v })}>
-          <SelectTrigger aria-label={`Chat folder on ${computer.name}`} className="h-7 w-full max-w-72 text-xs">
-            <SelectValue />
+          <SelectTrigger aria-label={`Chat folder on ${computer.name}`} title={picked?.path} className="h-7 w-full max-w-72 text-xs">
+            {/* The list shows each folder's path; the button shows the name alone, so a long path never overflows it. */}
+            <SelectValue>
+              <span className={cn("min-w-0 truncate", !picked && "text-muted-foreground")}>{picked?.title ?? (computer.chat_project_id ? "Not found" : "None")}</span>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_FOLDER} className="text-xs text-muted-foreground">
