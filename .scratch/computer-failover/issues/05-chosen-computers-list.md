@@ -1,7 +1,7 @@
 # 05 — Run on chosen computers, in order
 
 **Status:** ready-for-agent
-**Blocked by:** 02
+**Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, decision 11. ADRs 0156, 0165.
 

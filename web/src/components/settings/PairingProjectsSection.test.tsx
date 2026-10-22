@@ -25,6 +25,11 @@ const computer = (id: string, name: string) => ({
   harness_version: "0.0.34",
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
+  position: 0,
+  runs_at_once: 1,
+  running: 0,
+  chat_project_id: "",
+  facts: { t3: { state: "answering" }, providers: [], projects: [{ id: "t3-app", title: "app", path: "/src/app", repository: "github.com/acme/web" }] },
 });
 
 const workspace = (id: string, name: string) => ({ id, name, slug: id, mention_chip_template: "", created_at: "", updated_at: "" });
@@ -43,6 +48,8 @@ const serve = ({ computers, workspaces, projects, links }: Fixture) =>
     if (url === "/api/workspaces") return { data: workspaces };
     if (url === "/api/projects") return { data: projects[config?.params?.workspace_id ?? ""] ?? [] };
     if (url === "/api/pairing/projects") return { data: { links } };
+    if (url === "/api/pairing/defaults") return { data: { placement: "in_order", clone_automatically: false } };
+    if (url.startsWith("/api/projects/") && url.endsWith("/repos")) return { data: [{ owner: "acme", name: "web", full_name: "acme/web", connector_id: "github", role: "app" }] };
     if (url === "/api/pairing/computers/c1/projects") return { data: { projects: [{ id: "t3-app", title: "app", path: "/src/app" }] } };
     if (url === "/api/pairing/computers/c1/providers") {
       return { data: { providers: [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }] }] } };
@@ -67,7 +74,7 @@ const oneWorkspace: Fixture = {
   computers: [computer("c1", "home")],
   workspaces: [workspace("w1", "Acme")],
   projects: { w1: [project("p-web", "Web"), project("p-api", "Api")] },
-  links: [{ project_id: "p-web", computer_id: "c1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5", start_in: "worktree" }],
+  links: [{ project_id: "p-web", computers: ["c1"], checkouts: [], provider: "claude", model: "sonnet-5", start_in: "worktree" }],
 };
 
 const row = (name: string) => screen.getByText(name, { selector: "p" }).closest("li") as HTMLElement;
@@ -80,12 +87,12 @@ describe("PairingProjectsSection", () => {
     vi.mocked(toast.success).mockClear();
   });
 
-  it("reads each project's own link back by name, and the rest as using your defaults", async () => {
+  it("reads each project's own computers and model back by name, and the rest as following yours", async () => {
     serve(oneWorkspace);
     renderTab();
 
-    expect(await screen.findByText("home · app · Sonnet 5 · New worktree")).toBeInTheDocument();
-    expect(within(row("Api")).getByText("Uses your defaults")).toBeInTheDocument();
+    expect(await screen.findByText("home · Sonnet 5 · New worktree")).toBeInTheDocument();
+    expect(within(row("Api")).getByText("Follows your computers and defaults")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Acme" }), "one workspace needs no group label").not.toBeInTheDocument();
   });
 
@@ -99,40 +106,37 @@ describe("PairingProjectsSection", () => {
     expect(within(screen.getByRole("region", { name: "Acme projects" })).getByText("Web")).toBeInTheDocument();
   });
 
-  it("opens one project at a time and saves the link to that project", async () => {
+  it("opens one project at a time and saves its own computers", async () => {
     serve(oneWorkspace);
-    mocks.put.mockResolvedValue({ data: { project_id: "p-api", computer_id: "c1", harness_project_id: "t3-app" } });
+    mocks.put.mockImplementation(async (_url: string, body: object) => ({ data: { project_id: "p-api", ...body } }));
     const user = userEvent.setup();
     renderTab();
 
     await user.click(await screen.findByRole("button", { name: "Open Web's link" }));
-    expect(within(row("Web")).getByRole("button", { name: "Use my defaults" })).toBeInTheDocument();
+    expect(within(row("Web")).getByRole("button", { name: "Follow my computers and defaults" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Open Api's link" }));
     expect(within(row("Web")).queryByRole("button", { name: "Save" }), "opening another project closes this one").not.toBeInTheDocument();
 
     const api = within(row("Api"));
-    expect(api.queryByRole("button", { name: "Use my defaults" }), "nothing to clear on an unlinked project").not.toBeInTheDocument();
-    await user.click(api.getByRole("combobox", { name: /computer/i }));
-    await user.click(await screen.findByRole("option", { name: "home" }));
-    await user.click(await api.findByRole("combobox", { name: /t3 project/i }));
-    await user.click(await screen.findByRole("option", { name: /app/ }));
+    expect(api.queryByRole("button", { name: "Follow my computers and defaults" }), "nothing to clear on a project that follows yours").not.toBeInTheDocument();
+    await user.click(await api.findByRole("switch", { name: /its own computers/i }));
     await user.click(api.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/p-api", expect.objectContaining({ computer_id: "c1", harness_project_id: "t3-app" })));
-    expect(toast.success).toHaveBeenCalledWith("Api linked");
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/p-api", expect.objectContaining({ computers: ["c1"] })));
+    expect(toast.success).toHaveBeenCalledWith("Api saved");
   });
 
-  it("goes back to your defaults by clearing the project's link", async () => {
+  it("goes back to following your computers and defaults by clearing the project's link", async () => {
     serve(oneWorkspace);
     mocks.del.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
     renderTab();
 
     await user.click(await screen.findByRole("button", { name: "Open Web's link" }));
-    await user.click(within(row("Web")).getByRole("button", { name: "Use my defaults" }));
+    await user.click(within(row("Web")).getByRole("button", { name: "Follow my computers and defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/p-web"));
-    expect(toast.success).toHaveBeenCalledWith("Web uses your defaults");
+    expect(toast.success).toHaveBeenCalledWith("Web follows your computers and defaults");
   });
 
   it("points to the Computers tab while no computer is paired", async () => {

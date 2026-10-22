@@ -5,6 +5,7 @@ import { personLabel } from "@nexul/client-core/person";
 import { microheaderClass } from "@/components/Microheader";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
+import { passOverLines } from "@/models/Pairing";
 import type { Trail } from "@/models/Trail";
 
 interface TrailFactsProps {
@@ -47,6 +48,13 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
       <Fact label="Ended">
         <span className="font-mono text-xs tabular-nums">{trail.ended_at ? formatTimestamp(trail.ended_at) : "—"}</span>
       </Fact>
+      {trail.passed_over && trail.passed_over.length > 0 && (
+        <div className="sm:col-span-2">
+          <Fact label="Passed over">
+            <span className="text-xs text-muted-foreground">{passOverLines(trail.passed_over)}</span>
+          </Fact>
+        </div>
+      )}
       <Fact label="Memories">
         {memoryTitles.length === 0 && <span className="text-muted-foreground">None</span>}
         {memoryTitles.length > 0 && memoryTitles.join(", ")}

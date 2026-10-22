@@ -28,6 +28,10 @@ const waiting: Computer = {
   kind: "t3code",
   harness_version: "",
   created_at: "2026-10-10T00:00:00Z",
+  position: 0,
+  runs_at_once: 1,
+  running: 0,
+  chat_project_id: "",
   updated_at: "2026-10-10T00:00:00Z",
 };
 

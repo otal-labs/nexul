@@ -1,5 +1,5 @@
 import type { PlayType } from "@/models/Play";
-import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, type ReadinessLink } from "@/models/Pairing";
+import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, passOverLines, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
 
@@ -13,8 +13,10 @@ export const waitingRuns = (queue: PlayQueue | undefined): PlayQueueItem[] =>
 
 export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!queue && (queue.paused || waitingRuns(queue).length > 0);
 
-// A gap in the person's computer setup: a few words for the editor's line, a sentence for the rail, and where the
-// person fixes it (internal/pairing NotConfiguredError).
+const YOUR_COMPUTERS_LINK: ReadinessLink = { to: COMPUTERS_SETTINGS_PATH, label: "Your computers" };
+
+// Why none of the person's computers can take the run: a few words for the editor's line, a sentence for the rail, and
+// where the person fixes it (internal/pairing NotConfiguredError).
 const setupGaps: Record<string, { why: string; sentence: string; link?: ReadinessLink }> = {
   unpaired: { why: "no computer paired", sentence: "no computer is paired to run it on", link: ADD_COMPUTER_LINK },
   expired_token: {
@@ -22,15 +24,8 @@ const setupGaps: Record<string, { why: string; sentence: string; link?: Readines
     sentence: "the paired computer's session expired",
     link: { to: COMPUTERS_SETTINGS_PATH, label: "Pair it again" },
   },
-  no_default: {
-    why: "no T3 project linked",
-    sentence: "no T3 project is picked for this project",
-    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Link one" },
-  },
-  no_default_computer: {
-    why: "no default computer",
-    sentence: "several computers are paired and none is the default; pick one, and this project's runs use it from now on",
-  },
+  no_computer_ready: { why: "no computer can take it", sentence: "none of their computers can take it", link: YOUR_COMPUTERS_LINK },
+  offline: { why: "computer offline", sentence: "their computer is offline", link: YOUR_COMPUTERS_LINK },
   setup_required: {
     why: "computer setup not done",
     sentence: "the computer's setup isn't done",
@@ -38,27 +33,29 @@ const setupGaps: Record<string, { why: string; sentence: string; link?: Readines
   },
 };
 
-// Several computers and no default: the run's person picks where it runs, and picks again while it still waits.
-export const pickingComputer = (item: PlayQueueItem): boolean =>
-  item.status === "queued" && (item.reason === "no_default_computer" || item.computer_id !== "");
-
 // Why a queued run waits, from the server's hold reasons (internal/plays/queue.go).
 export const waitingWhy = (item: PlayQueueItem): string => {
   if (item.status === "dispatching") return "starting";
-  if (item.reason === "offline") return "computer offline";
   if (item.reason === "ticket busy") return `${item.target_type} busy`;
   if (item.reason === "paused") return "paused";
-  if (item.reason === "no free slot") return "busy with another run";
+  if (onlyFull(item)) return "computers busy";
   return setupGaps[item.reason]?.why ?? "waiting its turn";
 };
 
-// waitingWhy, with a setup gap as the sentence that says how to fix it.
-export const waitingSentence = (item: PlayQueueItem): string =>
-  (item.status === "queued" && setupGaps[item.reason]?.sentence) || waitingWhy(item);
+// Every computer that couldn't take the run was only busy, so it starts once one of them frees up.
+const waitingOn = (item: PlayQueueItem) => item.waiting_on ?? [];
+const onlyFull = (item: PlayQueueItem) => waitingOn(item).length > 0 && waitingOn(item).every((p) => p.why === "full");
+
+// waitingWhy as a sentence: each computer and why it can't take the run when the server named them, else the gap.
+export const waitingSentence = (item: PlayQueueItem): string => {
+  if (item.status !== "queued") return waitingWhy(item);
+  if (waitingOn(item).length > 0) return passOverLines(waitingOn(item));
+  return setupGaps[item.reason]?.sentence || waitingWhy(item);
+};
 
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
 export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined =>
-  item.status === "queued" ? setupGaps[item.reason]?.link : undefined;
+  item.status === "queued" && !onlyFull(item) ? setupGaps[item.reason]?.link : undefined;
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^nobody to run it on: no one has picked a computer for it$/, () => "no one has picked a computer for it"],

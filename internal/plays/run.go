@@ -93,36 +93,51 @@ type ProjectLookup interface {
 }
 
 // HarnessChoice is the computer, provider, and model a run uses: either the caller's pick from the run
-// dialog, or what the resolution picked from their project link or pairing defaults when they picked none.
+// dialog, or what the resolution picked from their computers and project link when they picked none.
 type HarnessChoice struct {
 	ComputerID string
 	Worktree   bool
-	// HarnessProjectID is the T3 project a person picked beside ComputerID, saved as their project link as the run starts.
+	// HarnessProjectID is the T3 project a person picked beside ComputerID, remembered for the project as the run starts.
 	HarnessProjectID string
 	Provider         string
 	Model            string
 	ModelOptions     []harness.OptionSetting
+	// PassedOver are the computers the run could not land on before ComputerID, for its trail.
+	PassedOver []PassedOver
 }
 
 // HarnessResolver is the runner's seam onto pairing: the readiness check before a run is started, given the
-// caller's pick (a zero HarnessChoice means none), and what it actually resolved to for the trail to record.
+// caller's pick (a zero HarnessChoice means none), and what it actually resolved to for the trail to record. Each lands
+// the run on the starter's first ready computer (ADR 0165) unless the choice names one.
 type HarnessResolver interface {
-	// ResolveTarget resolves a run nobody is there to ask, falling back to the starter's pairing defaults.
+	// ResolveTarget resolves a run nobody is there to ask, whatever its computers' runs at once.
 	ResolveTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
-	// ResolvePersonTarget requires an explicit location or the caller's project link (ADR 0145).
+	// ResolveQueuedTarget resolves a queued auto run, which waits while none of the computers has room (ADR 0166).
+	ResolveQueuedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
+	// ResolvePersonTarget resolves a pressed run, which asks where only when no computer has the project.
 	ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
-	// ResolveRecordedTarget rechecks the location an earlier run recorded, reading and saving no link.
+	// ResolveRecordedTarget rechecks the location an earlier run recorded, reading and saving nothing.
 	ResolveRecordedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 }
 
-// RefusalNeedsLocation is the refusal of a person's run in a project they have not linked: a question, not a failure.
+// RefusalNeedsLocation is the refusal of a person's run no computer of theirs has the project for: a question, not a failure.
 const RefusalNeedsLocation = "needs_location"
+
+// PassedOver is one computer a run could not land on and why (ADR 0165).
+type PassedOver struct {
+	ComputerID string `json:"computer_id"`
+	Name       string `json:"name"`
+	Why        string `json:"why" enum:"offline,expired_token,setup_required,no_model,no_checkout,ambiguous_checkout,no_chat_folder,full,clone_failed"`
+	Text       string `json:"text" jsonschema:"Why, as a line to show as is."`
+}
 
 // HarnessRefusal is a resolver refusal naming its computer and provider, kept on the failed trail so the web can offer the fix.
 type HarnessRefusal struct {
 	Reason     string
 	ComputerID string
 	Provider   string
+	// PassedOver names each computer that could not take the run.
+	PassedOver []PassedOver
 	Err        error
 }
 
@@ -184,11 +199,9 @@ type InterviewAnswers interface {
 
 // Checkouts is the runner's seam onto pairing for where a project's checkout is on a computer.
 type Checkouts interface {
-	// LinkedProject is userID's project link for projectID: its computer and T3 project, empty when unset.
-	LinkedProject(ctx context.Context, userID, projectID string) (computerID, harnessProjectID string, err error)
+	// CheckoutOn is the T3 project userID's runs in projectID use on computerID, empty when it has none (ADR 0165).
+	CheckoutOn(ctx context.Context, userID, projectID, computerID string) (string, error)
 	ListProjects(ctx context.Context, userID, computerID string) ([]harness.Project, error)
-	// SaveLink saves a computer and T3 project as userID's link for projectID, as their first run there does (ADR 0145).
-	SaveLink(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error
 }
 
 // Threads is the runner's seam onto chat: the target's thread, the starter's request in it, and the run's notes.

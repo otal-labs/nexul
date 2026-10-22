@@ -100,19 +100,16 @@ export const useFetchAutoPlayLimits = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-const limitsToast = (limits: AutoPlayLimits, patch: Partial<AutoPlayLimits>) => {
-  if (patch.runs_at_once_per_person !== undefined) return `Each person now has at most ${limits.runs_at_once_per_person} runs going at once`;
-  return `Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`;
-};
+const limitsToast = (limits: AutoPlayLimits) => `Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`;
 
 export const useSetAutoPlayLimits = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires("autoplays:write", async (patch: Partial<AutoPlayLimits>) =>
       (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), patch)).data),
-    onSuccess: (limits, patch) => {
+    onSuccess: (limits) => {
       client.setQueryData([getAutoPlayLimitsKey, workspaceId], limits);
-      toast.success(limitsToast(limits, patch));
+      toast.success(limitsToast(limits));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

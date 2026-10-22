@@ -16,10 +16,10 @@ WHERE id = ?;
 DELETE FROM auto_plays WHERE id = ?;
 
 -- name: GetAutoPlayLimits :one
-SELECT auto_play_daily_cap, auto_play_runs_at_once FROM workspaces WHERE id = ?;
+SELECT auto_play_daily_cap FROM workspaces WHERE id = ?;
 
 -- name: SetAutoPlayLimits :execrows
-UPDATE workspaces SET auto_play_daily_cap = ?, auto_play_runs_at_once = ? WHERE id = ?;
+UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?;
 
 -- name: ListEnabledAutoPlaysByMoment :many
 SELECT * FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1

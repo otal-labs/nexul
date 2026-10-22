@@ -52,7 +52,15 @@ const computers = [
 const providers = [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }, { slug: "haiku", name: "Haiku" }] }];
 
 let choices: LatestChoices;
-let resolve: { ok: boolean; computer_id?: string; harness_project_id?: string; provider?: string; model?: string; reason?: string };
+let resolve: {
+  ok: boolean;
+  computer_id?: string;
+  harness_project_id?: string;
+  provider?: string;
+  model?: string;
+  reason?: string;
+  passed_over?: { computer_id: string; name: string; why: string; text: string }[];
+};
 let presence: Record<string, string>;
 let links: { project_id: string; computer_id: string; harness_project_id: string }[];
 
@@ -151,7 +159,7 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByText("Reads the ticket and opens a pull request. Runs on your paired harness as you.")).toBeInTheDocument();
   });
 
-  it("posts the chosen memories, footer memories, and instructions to the linked project, then pre-selects them on the next open", async () => {
+  it("posts the chosen memories, footer memories, and instructions, leaves the computer to the server, then pre-selects them on the next open", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
@@ -177,7 +185,6 @@ describe("PlayRunDialog", () => {
       target_id: "t-1",
       memory_ids: ["m-go", "m-conclude"],
       custom_instructions: "React-only fix",
-      computer_id: "c-1",
       provider: "claude",
       model: "sonnet-5",
       model_options: [],
@@ -267,11 +274,10 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByRole("button", { name: "Claude · Haiku" })).toBeInTheDocument();
   });
 
-  it("reopens a failed location change with the saved checkout and retries there", async () => {
+  it("after a failed change, reopens on where the next run lands and runs it without pinning a computer", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockImplementationOnce(async () => {
-      links = [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-home" }];
       resolve.harness_project_id = "t3-home";
       throw { response: { status: 400, data: { message: "The computer is offline", code: "INVALID", details: { reason: "offline" } } } };
     });
@@ -285,47 +291,50 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByText(/· Home$/)).toBeInTheDocument();
     vi.mocked(api.post).mockResolvedValue({ data: { id: "tr-2", play_id: play.id, play_label: play.label, target_type: "ticket", target_id: "t-1", project_id: "p-1", state: "starting" } });
     await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
-    expect(api.post).toHaveBeenLastCalledWith("/api/plays/play-1/run", expect.objectContaining({ computer_id: "c-1" }));
+    expect(vi.mocked(api.post).mock.lastCall?.[1]).not.toHaveProperty("computer_id");
   });
 
-  it("asks where on the first run in a project, suggesting the defaults, and runs there without asking once saved", async () => {
-    const user = userEvent.setup();
-    links = [];
-    resolve.harness_project_id = "t3-home";
+  it("names the computers a run would pass over before the one it lands on", async () => {
+    resolve = { ...resolve, passed_over: [{ computer_id: "c-2", name: "VPS", why: "offline", text: "VPS is offline" }] };
     mockApi(["plays:run", "tickets:write", "memories:read"]);
-    vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
-      const input = body as { computer_id: string; harness_project_id?: string };
-      if (input.harness_project_id) links = [{ project_id: "p-1", computer_id: input.computer_id, harness_project_id: input.harness_project_id }];
+    renderDialog();
+
+    expect(await screen.findByText("Skipping: VPS is offline.")).toBeInTheDocument();
+  });
+
+  it("asks where when none of the person's computers has the project, and runs there without asking once it does", async () => {
+    const user = userEvent.setup();
+    resolve = { ok: false, reason: "needs_location" };
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
+    vi.mocked(api.post).mockImplementation(async () => {
+      resolve = { ok: true, computer_id: "c-1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5" };
       return { data: { id: "tr-2", play_id: "play-1", play_label: "Fix with AI", target_type: "ticket", target_id: "t-1", project_id: "p-1", state: "starting" } };
     });
     const { onClose, close, reopen } = renderDialog();
 
-    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
-    expect(await screen.findByRole("combobox", { name: "Computer" })).toHaveTextContent("Onik's PC");
-    expect(await screen.findByRole("combobox", { name: "T3 project" })).toHaveTextContent("Home");
+    expect(await screen.findByText(/None of your computers has this project yet/)).toBeInTheDocument();
+    await pickOption(user, "Computer", "Onik's PC");
     await pickOption(user, "T3 project", "App");
     await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
 
-    expect(api.post).toHaveBeenCalledWith(
-      "/api/plays/play-1/run",
-      expect.objectContaining({ computer_id: "c-1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5" }),
-    );
+    expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ computer_id: "c-1", harness_project_id: "t3-app" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
     close();
     reopen();
     expect(await screen.findByText("Onik's PC · App")).toBeInTheDocument();
-    expect(screen.queryByText(/Your first run in this project/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/None of your computers has this project yet/)).not.toBeInTheDocument();
   });
 
   it("keeps Run disabled while the computer's projects load", async () => {
-    links = [];
-    resolve.harness_project_id = "t3-home";
+    const user = userEvent.setup();
+    resolve = { ok: false, reason: "needs_location" };
     mockApi(["plays:run", "tickets:write", "memories:read"]);
     const mocked = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/pairing/computers/c-1/projects" ? new Promise(() => {}) : mocked(url)));
     renderDialog();
 
+    await pickOption(user, "Computer", "Onik's PC");
     expect(await screen.findByText("Loading projects")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
   });
@@ -351,14 +360,14 @@ describe("PlayRunDialog", () => {
     expect(screen.queryByText(/t3-app/)).not.toBeInTheDocument();
   });
 
-  it("changes where from the run, which sends the new place to be saved", async () => {
+  it("changes where this one run goes, sending the computer and checkout picked", async () => {
     const user = userEvent.setup();
     presence["c-2"] = "connected";
     mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
 
     await user.click(await screen.findByRole("button", { name: "Change" }));
-    expect(screen.getByText("What you pick here replaces your link for this project.")).toBeInTheDocument();
+    expect(screen.getByText("This run goes here. Your order of computers stays as it is.")).toBeInTheDocument();
     await pickOption(user, "Computer", "VPS");
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
     await pickOption(user, "T3 project", "Box");

@@ -2,6 +2,7 @@ import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
 import { ComputerContainers } from "@/components/settings/ComputerContainers";
 import { ComputerFactRows } from "@/components/settings/ComputerFactRows";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
+import { ComputerRunFacts } from "@/components/settings/ComputerRunFacts";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner, t3Status } from "@/models/ComputerFacts";
 import {
@@ -55,8 +56,8 @@ interface ComputerDetailsProps {
   setup: ComputerSetup | undefined;
 }
 
-// Everything a computer row folds away: where it is, what runs there, each provider's confirmation, its facts, and its
-// MCP token. A computer reached through its runner shows its T3 Code instead of the relay address.
+// Everything a computer row folds away: what it takes, where it is, what runs there, each provider's confirmation, its
+// facts, and its MCP token. A computer reached through its runner shows its T3 Code instead of the relay address.
 export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const lines = setup ? providerSetupLines(setup) : [];
   const pairing = stillPairing(computer);
@@ -64,6 +65,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
     <dl className="@container space-y-3 rounded-md bg-surface-2 p-3">
+      {!pairing && <ComputerRunFacts computer={computer} />}
       {computer.server_url && !reachedThroughRunner(computer.server_url) && (
         <Fact label="Address">
           <span className="font-mono break-all">{computer.server_url}</span>

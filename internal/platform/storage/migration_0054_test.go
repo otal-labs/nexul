@@ -33,16 +33,18 @@ INSERT INTO pairing_project_links (project_id, computer_id, harness_project_id, 
 	owner, err := s.Pairing.GetProjectLink(ctx, "u-owner", "p-web")
 	require.NoError(t, err)
 	assert.Equal(t, pairing.ProjectLink{
-		UserID: "u-owner", ProjectID: "p-web", ComputerID: "c-owner", HarnessProjectID: "t3-web", Provider: "claude", Model: "sonnet-5",
+		UserID: "u-owner", ProjectID: "p-web", Provider: "claude", Model: "sonnet-5",
 		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}, UpdatedAt: time.Unix(1000, 0).UTC(),
-	}, owner, "the person who set the link keeps every column of it")
+		Checkouts: []pairing.Checkout{{ComputerID: "c-owner", HarnessProjectID: "t3-web"}},
+	}, owner, "the person who set the link keeps every column of it, its T3 project as that computer's checkout")
 
 	mate, err := s.Pairing.GetProjectLink(ctx, "u-mate", "p-web")
 	require.NoError(t, err)
-	assert.Empty(t, mate.ComputerID, "a teammate is given no copy and falls back to their own defaults")
+	assert.Empty(t, mate.Checkouts, "a teammate is given no copy")
 
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u-mate", ProjectID: "p-web", ComputerID: "c-mate", HarnessProjectID: "t3-mine"}))
+	mine := []pairing.Checkout{{ComputerID: "c-mate", HarnessProjectID: "t3-mine"}}
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u-mate", ProjectID: "p-web", Checkouts: mine}))
 	owner, err = s.Pairing.GetProjectLink(ctx, "u-owner", "p-web")
 	require.NoError(t, err)
-	assert.Equal(t, "c-owner", owner.ComputerID, "the teammate's own link sits beside the owner's, never over it")
+	assert.Equal(t, []pairing.Checkout{{ComputerID: "c-owner", HarnessProjectID: "t3-web"}}, owner.Checkouts, "the teammate's own link sits beside the owner's, never over it")
 }

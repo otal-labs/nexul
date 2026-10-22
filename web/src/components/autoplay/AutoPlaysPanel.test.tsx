@@ -122,11 +122,7 @@ describe("a play's auto plays", () => {
     mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 1 } });
     await pickOption(user, "Auto plays per ticket a day", "7");
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 });
-
-    mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 3 } });
-    await pickOption(user, "Runs at once per person", "3");
-    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { runs_at_once_per_person: 3 });
-    expect(screen.getByRole("combobox", { name: "Runs at once per person" })).toHaveTextContent("3");
+    expect(screen.queryByRole("combobox", { name: /runs at once/i })).not.toBeInTheDocument();
   });
 
   it("opens one in place of the list, and Cancel with an edit asks before going back", async () => {

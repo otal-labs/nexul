@@ -45,8 +45,6 @@ type QueueRepo interface {
 	GetQueueItem(ctx context.Context, id string) (*QueueItem, error)
 	// MoveQueueItem saves it's status, reason, trail, and times if the row is still in status from, reading its pick back.
 	MoveQueueItem(ctx context.Context, it *QueueItem, from QueueStatus, evts ...eventbus.OutboxEvent) error
-	// PickQueueItem saves it's computer and T3 project, due at its NotBefore, if the row is still queued; ErrConflict otherwise.
-	PickQueueItem(ctx context.Context, it *QueueItem, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
 	// ListQueuedByTargets returns the queued items on any of the given targets, highest priority then oldest first.
@@ -66,8 +64,6 @@ type QueueDispatchRepo interface {
 	ListDue(ctx context.Context, personID string, now time.Time) ([]*QueueItem, error)
 	// NextNotBefore is the earliest not_before of a queued item still held back after now; false when there is none.
 	NextNotBefore(ctx context.Context, after time.Time) (time.Time, bool, error)
-	// CountActiveRuns counts a person's starting, running, and waiting trails, pressed or automatic.
-	CountActiveRuns(ctx context.Context, personID string) (int, error)
 	// CountAutoRuns counts the target's started items since since or its last resume, whichever is later, with the oldest's time.
 	CountAutoRuns(ctx context.Context, targetType TargetType, targetID string, since time.Time) (int, time.Time, error)
 	// QueuedSince reports whether autoPlayID queued, or started, a run on the target at or after since.

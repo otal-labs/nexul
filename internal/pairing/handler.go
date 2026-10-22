@@ -26,7 +26,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers", h.listComputers)
 	mux.HandleFunc("POST /api/pairing/computers", retired)
 	mux.HandleFunc("POST /api/pairing/computers/enrollments", h.enrollComputer)
-	mux.HandleFunc("PATCH /api/pairing/computers/{id}", h.renameComputer)
+	mux.HandleFunc("PATCH /api/pairing/computers/{id}", h.updateComputer)
+	mux.HandleFunc("PUT /api/pairing/computers/order", h.reorderComputers)
 	mux.HandleFunc("POST /api/pairing/computers/tunnel", retired)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", retired)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", retired)
@@ -272,22 +273,42 @@ func (h *Handler) enrollment(r *http.Request, req enrollComputerRequest) (*Compu
 	return h.svc.AddComputer(r.Context(), actorID(r), req.Name)
 }
 
-type renameComputerRequest struct {
-	Name string `json:"name"`
-}
-
-func (h *Handler) renameComputer(w http.ResponseWriter, r *http.Request) {
-	var req renameComputerRequest
+// updateComputer patches a computer's name, runs at once and chat folder; an omitted field keeps its value.
+func (h *Handler) updateComputer(w http.ResponseWriter, r *http.Request) {
+	var req updateComputerRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.RenameComputer(r.Context(), actorID(r), r.PathValue("id"), req.Name)
+	c, err := h.svc.UpdateComputer(r.Context(), actorID(r), r.PathValue("id"), ComputerPatch(req))
 	if err != nil {
 		writePairError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, c)
+}
+
+type updateComputerRequest struct {
+	Name          *string `json:"name"`
+	RunsAtOnce    *int    `json:"runs_at_once"`
+	ChatProjectID *string `json:"chat_project_id"`
+}
+
+type reorderRequest struct {
+	ComputerIDs []string `json:"computer_ids"`
+}
+
+func (h *Handler) reorderComputers(w http.ResponseWriter, r *http.Request) {
+	var req reorderRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.ReorderComputers(r.Context(), actorID(r), req.ComputerIDs); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string][]string{"computer_ids": req.ComputerIDs})
 }
 
 func (h *Handler) deleteComputer(w http.ResponseWriter, r *http.Request) {
@@ -331,7 +352,7 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var nc *NotConfiguredError
 		if errors.As(err, &nc) {
-			httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": false, "reason": nc.Reason})
+			httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": false, "reason": nc.Reason, "passed_over": nc.PassedOver})
 			return
 		}
 		httpx.WriteError(w, err)
@@ -344,6 +365,7 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 		"provider":           target.Provider,
 		"model":              target.Model,
 		"model_options":      target.ModelOptions,
+		"passed_over":        target.PassedOver,
 	})
 }
 
@@ -357,12 +379,12 @@ func (h *Handler) getDefaults(w http.ResponseWriter, r *http.Request) {
 }
 
 type defaultsRequest struct {
-	DefaultComputerID string                  `json:"default_computer_id"`
-	FallbackProjectID string                  `json:"fallback_project_id"`
-	Provider          string                  `json:"provider"`
-	Model             string                  `json:"model"`
-	ModelOptions      []harness.OptionSetting `json:"model_options"`
-	StartIn           StartIn                 `json:"start_in"`
+	Provider           string                  `json:"provider"`
+	Model              string                  `json:"model"`
+	ModelOptions       []harness.OptionSetting `json:"model_options"`
+	StartIn            StartIn                 `json:"start_in"`
+	Placement          Placement               `json:"placement"`
+	CloneAutomatically bool                    `json:"clone_automatically"`
 }
 
 func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
@@ -372,12 +394,8 @@ func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d, err := h.svc.SetDefaults(r.Context(), actorID(r), Defaults{
-		DefaultComputerID: req.DefaultComputerID,
-		FallbackProjectID: req.FallbackProjectID,
-		Provider:          req.Provider,
-		Model:             req.Model,
-		ModelOptions:      req.ModelOptions,
-		StartIn:           req.StartIn,
+		Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, StartIn: req.StartIn,
+		Placement: req.Placement, CloneAutomatically: req.CloneAutomatically,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)
@@ -405,12 +423,13 @@ func (h *Handler) getProjectLink(w http.ResponseWriter, r *http.Request) {
 }
 
 type projectLinkRequest struct {
-	ComputerID       string                  `json:"computer_id"`
-	HarnessProjectID string                  `json:"harness_project_id"`
-	Provider         string                  `json:"provider"`
-	Model            string                  `json:"model"`
-	ModelOptions     []harness.OptionSetting `json:"model_options"`
-	StartIn          StartIn                 `json:"start_in"`
+	Provider     string                  `json:"provider"`
+	Model        string                  `json:"model"`
+	ModelOptions []harness.OptionSetting `json:"model_options"`
+	StartIn      StartIn                 `json:"start_in"`
+	Placement    Placement               `json:"placement"`
+	Computers    []string                `json:"computers"`
+	Checkouts    []Checkout              `json:"checkouts"`
 }
 
 func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
@@ -420,12 +439,8 @@ func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	link, err := h.svc.SetProjectLink(r.Context(), actorID(r), r.PathValue("id"), ProjectLink{
-		ComputerID:       req.ComputerID,
-		HarnessProjectID: req.HarnessProjectID,
-		Provider:         req.Provider,
-		Model:            req.Model,
-		ModelOptions:     req.ModelOptions,
-		StartIn:          req.StartIn,
+		Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, StartIn: req.StartIn,
+		Placement: req.Placement, Computers: req.Computers, Checkouts: req.Checkouts,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

@@ -1019,10 +1019,8 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 		msg = "@Agent needs a paired computer — add one in Settings → Computers."
 	case pairing.ReasonExpiredToken:
 		msg = "@Agent's paired computer's session has expired — re-pair it in Settings → Computers."
-	case pairing.ReasonNoDefault:
-		msg = "@Agent needs a project on the paired computer to run against — link this project in Settings → Computers → Projects, or set a fallback under Defaults."
-	case pairing.ReasonNoDefaultComputer:
-		msg = "@Agent found several paired computers — pick a default one in Settings → Computers."
+	case pairing.ReasonNoComputerReady:
+		msg = "@Agent couldn't start: " + strings.TrimPrefix(nc.Error(), "none of your computers can take it: ")
 	case pairing.ReasonSetupRequired, pairing.ReasonOffline:
 		msg = nc.Error()
 	}

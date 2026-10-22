@@ -14,17 +14,14 @@ export const PairingPanel = () => {
       tabs={[
         { value: "computers", label: "Computers", dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
         { value: "projects", label: "Projects" },
-        { value: "defaults", label: "Defaults" },
       ]}
     >
       <PageTabsContent value="computers">
         <ComputersSection />
+        <PairingDefaultsSection />
       </PageTabsContent>
       <PageTabsContent value="projects">
         <PairingProjectsSection />
-      </PageTabsContent>
-      <PageTabsContent value="defaults">
-        <PairingDefaultsSection />
       </PageTabsContent>
     </PageTabs>
   );

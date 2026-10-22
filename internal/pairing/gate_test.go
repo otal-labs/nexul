@@ -39,10 +39,10 @@ func newGateFixture(t *testing.T) *gateFixture {
 	svc := newTestService(repo, exch)
 	c, err := pairAt(svc, t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 	require.NoError(t, err)
-	_, err = svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj"})
+	chat := "default-proj"
+	_, err = svc.UpdateComputer(t.Context(), "u1", c.ID, ComputerPatch{ChatProjectID: &chat})
 	require.NoError(t, err)
-	_, err = svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj"})
-	require.NoError(t, err)
+	require.NoError(t, repo.SaveCheckout(t.Context(), "u1", "proj-1", c.ID, "linked-proj"))
 	return &gateFixture{repo: repo, exch: exch, svc: svc, computer: c}
 }
 
@@ -66,7 +66,10 @@ func requireSetupRefusal(t *testing.T, err error, provider string) {
 	assert.Equal(t, provider, nc.Provider)
 	assert.Equal(t, "Onik's laptop", nc.Computer)
 	assert.NotEmpty(t, nc.ComputerID)
-	assert.Equal(t, RefusalDetails{Reason: ReasonSetupRequired, ComputerID: nc.ComputerID, Computer: "Onik's laptop", ProviderID: "codex-main", Provider: provider}, nc.ErrorDetails())
+	assert.Equal(t, RefusalDetails{
+		Reason: ReasonSetupRequired, ComputerID: nc.ComputerID, Computer: "Onik's laptop", ProviderID: "codex-main", Provider: provider,
+		PassedOver: []PassOver{{ComputerID: nc.ComputerID, Name: "Onik's laptop", Why: PassOverSetupRequired, Text: "Onik's laptop isn't set up for " + provider}},
+	}, nc.ErrorDetails())
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 

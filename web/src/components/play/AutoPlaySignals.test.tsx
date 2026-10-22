@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
-import { getProjectLinksKey } from "@/hooks/PairingProjectHooks";
 import { playQueueFollower } from "@/hooks/PlayQueueHooks";
 import type { PlayQueue } from "@/models/PlayQueue";
 import type { Ticket } from "@/models/Ticket";
@@ -38,18 +37,14 @@ const mockApi = (queue: () => PlayQueue, viewer = "u-bob", permissions: string[]
     return { data: [] };
   });
 
-const noDefault = queueItem({ reason: "no_default_computer" });
-
-// Alice's two computers: the workstation answers with its T3 projects, the laptop is offline.
-const mockComputers = (queue: () => PlayQueue, viewer: string, permissions: string[] = []) => {
-  const base = mockApi(queue, viewer, permissions).getMockImplementation()!;
-  vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
-    if (url === "/api/pairing/computers") return { data: { computers: [{ id: "c-desk", name: "Workstation" }, { id: "c-laptop", name: "Laptop" }] } };
-    if (url === "/api/pairing/presence") return { data: { computers: { "c-desk": "connected", "c-laptop": "offline" } } };
-    if (url === "/api/pairing/computers/c-desk/projects") return { data: { projects: [{ id: "t3-web", title: "web", path: "/src/web" }] } };
-    return base(url, config as never);
-  });
-};
+// Alice's run waits on both of her computers, each for its own reason; only she is told which.
+const waiting = queueItem({
+  reason: "no_computer_ready",
+  waiting_on: [
+    { computer_id: "c-laptop", name: "Laptop", why: "offline", text: "Laptop is offline" },
+    { computer_id: "c-desk", name: "Workstation", why: "no_checkout", text: "Workstation doesn't have this project" },
+  ],
+});
 
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -76,7 +71,7 @@ describe("PlaysRailSection auto play signals", () => {
     renderSection();
     expect(await screen.findByRole("heading", { name: "Plays" })).toBeInTheDocument();
     expect(screen.getByText("Fix with AI queued")).toBeInTheDocument();
-    expect(await screen.findByText("Alice Moreau · computer offline")).toBeInTheDocument();
+    expect(await screen.findByText("Alice Moreau · their computer is offline")).toBeInTheDocument();
     expect(screen.getByText("Bob Tanaka · ticket busy")).toBeInTheDocument();
   });
 
@@ -152,53 +147,10 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("link", { name: "Pair it again" })).not.toBeInTheDocument();
   });
 
-  it("offers a pick of computer only to the person the run lands on, and only when no computer is the default", async () => {
-    mockApi(() => playQueue({ items: [noDefault] }), "u-bob", ["autoplays:write"]);
+  it("names each computer the run waits on and why, and sends its person to their computers", async () => {
+    mockApi(() => playQueue({ items: [waiting] }), "u-alice");
     renderSection();
-    expect(await screen.findByRole("button", { name: "Cancel Fix with AI" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
-  });
-
-  it("offers no pick when the run waits on another gap", async () => {
-    mockApi(() => playQueue({ items: [queueItem({ reason: "unpaired" })] }), "u-alice");
-    renderSection();
-    expect(await screen.findByRole("button", { name: "Cancel Fix with AI" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
-  });
-
-  it("offers its person a change of computer while a picked run waits, and nobody else", async () => {
-    const picked = queueItem({ reason: "offline", computer_id: "c-laptop" });
-    mockComputers(() => playQueue({ items: [picked] }), "u-alice");
-    vi.mocked(api.post).mockResolvedValue({ data: { ...picked, reason: "", computer_id: "c-desk" } });
-    renderSection();
-    expect(await screen.findByText("Alice Moreau · computer offline")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
-    await userEvent.click(await screen.findByRole("button", { name: "Change computer" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "web" }));
-    expect(api.post).toHaveBeenCalledWith("/api/plays/queue/q-1/computer", { computer_id: "c-desk", harness_project_id: "t3-web" });
-  });
-
-  it.each([
-    ["another person", queueItem({ reason: "offline", computer_id: "c-laptop" }), "u-bob"],
-    ["a run already starting", queueItem({ status: "dispatching", computer_id: "c-laptop" }), "u-alice"],
-  ])("offers no change of computer to %s", async (_, item, viewer) => {
-    mockApi(() => playQueue({ items: [item] }), viewer, ["autoplays:write"]);
-    renderSection();
-    expect(await screen.findByText("Fix with AI queued")).toBeInTheDocument();
-    expect(await screen.findByText(/^Alice Moreau · /)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Change computer" })).not.toBeInTheDocument();
-  });
-
-  it("runs the queued run on the computer and T3 project its person picks, and refreshes their links", async () => {
-    mockComputers(() => playQueue({ items: [noDefault] }), "u-alice");
-    vi.mocked(api.post).mockResolvedValue({ data: { ...noDefault, reason: "", computer_id: "c-desk" } });
-    const client = renderSection();
-    client.setQueryData([getProjectLinksKey], []);
-    await userEvent.click(await screen.findByRole("button", { name: "Pick a computer" }));
-    expect(await screen.findByText("Laptop")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Offline" })).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(await screen.findByRole("menuitem", { name: "web" }));
-    expect(api.post).toHaveBeenCalledWith("/api/plays/queue/q-1/computer", { computer_id: "c-desk", harness_project_id: "t3-web" });
-    await waitFor(() => expect(client.getQueryState([getProjectLinksKey])?.isInvalidated).toBe(true));
+    expect(await screen.findByText(/Laptop is offline; Workstation doesn't have this project/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Your computers" })).toHaveAttribute("href", "/settings/pairing");
   });
 });

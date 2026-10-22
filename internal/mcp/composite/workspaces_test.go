@@ -88,9 +88,6 @@ func (f *fakeLimits) SetAutoPlayLimits(_ context.Context, workspaceID string, pa
 	if patch.DailyCapPerTicket != nil {
 		limits.DailyCapPerTicket = *patch.DailyCapPerTicket
 	}
-	if patch.RunsAtOncePerPerson != nil {
-		limits.RunsAtOncePerPerson = *patch.RunsAtOncePerPerson
-	}
 	f.caps[workspaceID] = limits
 	return limits, nil
 }
@@ -201,14 +198,13 @@ func newWorkspaceUpdateCall(ws *fakeWorkspaces) func(context.Context, json.RawMe
 
 func TestWorkspaceList_WithIDShowsTheAutoPlayLimitsToItsReaders(t *testing.T) {
 	ws := &fakeWorkspaces{byUser: map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme"}}}}
-	limits := map[string]plays.AutoPlayLimits{"ws-1": {DailyCapPerTicket: 7, RunsAtOncePerPerson: 2}}
+	limits := map[string]plays.AutoPlayLimits{"ws-1": {DailyCapPerTicket: 7}}
 	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: limits}, &fakeAccounts{}, nil)[0].Call
 	out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
 	require.NoError(t, err)
 	got := out.(mcptool.Page[workspaceResult]).Items[0]
 	require.NotNil(t, got.AutoPlayDailyCap)
-	require.NotNil(t, got.AutoPlayRunsAtOnce)
-	assert.Equal(t, []int{7, 2}, []int{*got.AutoPlayDailyCap, *got.AutoPlayRunsAtOnce})
+	assert.Equal(t, 7, *got.AutoPlayDailyCap)
 
 	call = WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: errors.New("db down")}, &fakeAccounts{}, nil)[0].Call
 	_, err = call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
@@ -221,17 +217,9 @@ func TestWorkspaceUpdate_DailyCap(t *testing.T) {
 		ws := &fakeWorkspaces{byUser: member}
 		out, err := newWorkspaceUpdateCall(ws)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))
 		require.NoError(t, err)
-		nine, none := 9, 0
-		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &nine, AutoPlayRunsAtOnce: &none}, out)
+		nine := 9
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &nine}, out)
 		assert.Nil(t, ws.renamed, "no name or slug passed, so nothing is renamed")
-	})
-	t.Run("runs at once alone keeps the cap", func(t *testing.T) {
-		limits := &fakeLimits{caps: map[string]plays.AutoPlayLimits{"ws-1": {DailyCapPerTicket: 5, RunsAtOncePerPerson: 1}}}
-		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, limits, &fakeAccounts{}, nil)[1].Call
-		out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_runs_at_once":3}`))
-		require.NoError(t, err)
-		five, three := 5, 3
-		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &five, AutoPlayRunsAtOnce: &three}, out)
 	})
 	t.Run("in a workspace the caller is not in it is not found", func(t *testing.T) {
 		_, err := newWorkspaceUpdateCall(&fakeWorkspaces{byUser: member})(actorCtx("u-2"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))

@@ -773,6 +773,9 @@ type PairingComputer struct {
 	SetupFolder           string
 	Facts                 string
 	FactsAt               sql.NullInt64
+	Position              int64
+	RunsAtOnce            int64
+	ChatProjectID         string
 }
 
 type PairingMoveNotice struct {
@@ -780,16 +783,23 @@ type PairingMoveNotice struct {
 	NotifiedAt int64
 }
 
-type PairingProjectLink struct {
+type PairingProjectComputer struct {
 	UserID           string
 	ProjectID        string
 	ComputerID       string
+	Position         sql.NullInt64
 	HarnessProjectID string
-	Provider         string
-	Model            string
-	ModelOptions     string
-	UpdatedAt        int64
-	StartIn          string
+}
+
+type PairingProjectLink struct {
+	UserID       string
+	ProjectID    string
+	Provider     string
+	Model        string
+	ModelOptions string
+	StartIn      string
+	Placement    string
+	UpdatedAt    int64
 }
 
 type PairingProviderSetup struct {
@@ -818,13 +828,13 @@ type PairingSetupTurn struct {
 }
 
 type PairingUserDefault struct {
-	UserID            string
-	DefaultComputerID sql.NullString
-	FallbackProjectID string
-	Provider          string
-	Model             string
-	ModelOptions      string
-	StartIn           string
+	UserID             string
+	Provider           string
+	Model              string
+	ModelOptions       string
+	StartIn            string
+	Placement          string
+	CloneAutomatically int64
 }
 
 type PendingStackTeardown struct {
@@ -899,6 +909,7 @@ type PlayQueue struct {
 	HarnessProjectID string
 	Service          string
 	OutageID         string
+	WaitingOn        string
 }
 
 type PlayQueueResume struct {
@@ -936,6 +947,7 @@ type PlayTrail struct {
 	ModelOptions       string
 	HarnessProjectID   string
 	Worktree           int64
+	PassedOver         string
 }
 
 type ProcessedEvent struct {
@@ -1249,7 +1261,6 @@ type Workspace struct {
 	AccessSetupBy         string
 	AccessSetupAt         int64
 	ArchivedAt            sql.NullInt64
-	AutoPlayRunsAtOnce    int64
 }
 
 type WorkspaceInvite struct {

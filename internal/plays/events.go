@@ -63,7 +63,7 @@ type AutoPlayDeletedEvent struct {
 type AutoPlayLimitsEvent struct {
 	WorkspaceID         string `json:"workspace_id"`
 	DailyCapPerTicket   int    `json:"daily_cap_per_ticket" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day."`
-	RunsAtOncePerPerson int    `json:"runs_at_once_per_person" jsonschema:"How many runs a person may have going, pressed or automatic, before their next auto run in this workspace waits."`
+	RunsAtOncePerPerson int    `json:"runs_at_once_per_person" deprecated:"true" jsonschema:"Always 0: runs at once is set on each computer now, not per person by the workspace."`
 }
 
 // CreatedEvent is the payload for play.created; field names are part of the event contract (ADR 0044).

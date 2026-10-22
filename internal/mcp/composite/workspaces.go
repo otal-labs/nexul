@@ -58,15 +58,14 @@ type workspaceListIn struct {
 
 // workspaceResult carries roles and the catalog only when one workspace is asked for by id.
 type workspaceResult struct {
-	ID                 string              `json:"id"`
-	Name               string              `json:"name"`
-	Slug               string              `json:"slug"`
-	YourRoles          []*tenancy.TeamRole `json:"your_roles"`
-	People             []tenancy.Person    `json:"people,omitempty"`
-	Roles              []roles.RoleResult  `json:"roles,omitempty"`
-	PermissionCatalog  []permissions.Info  `json:"permission_catalog,omitempty"`
-	AutoPlayDailyCap   *int                `json:"auto_play_daily_cap,omitempty"`
-	AutoPlayRunsAtOnce *int                `json:"auto_play_runs_at_once,omitempty"`
+	ID                string              `json:"id"`
+	Name              string              `json:"name"`
+	Slug              string              `json:"slug"`
+	YourRoles         []*tenancy.TeamRole `json:"your_roles"`
+	People            []tenancy.Person    `json:"people,omitempty"`
+	Roles             []roles.RoleResult  `json:"roles,omitempty"`
+	PermissionCatalog []permissions.Info  `json:"permission_catalog,omitempty"`
+	AutoPlayDailyCap  *int                `json:"auto_play_daily_cap,omitempty"`
 	// AccessSetupFinished is false until an Owner finishes the one-time access setup.
 	AccessSetupFinished bool       `json:"access_setup_finished"`
 	ArchivedAt          *time.Time `json:"archived_at,omitempty"`
@@ -77,7 +76,6 @@ type workspaceUpdateIn struct {
 	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
 	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
 	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
-	AutoPlayRunsAtOnce   *int     `json:"auto_play_runs_at_once,omitempty" jsonschema:"How many runs a person may have going, pressed or automatic and in any workspace, before their next auto run in this workspace waits in their queue, 1 to 5. Omit to keep it."`
 	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach from this workspace: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update. Needs projects:create in this workspace."`
 	Archived             *bool    `json:"archived,omitempty" jsonschema:"true archives the workspace: it leaves every list, search and live update for its members until the instance Owner restores it, and needs workspaces:delete there; false restores an archived workspace for everyone who was in it and needs instance:write, the instance Owner's. The instance's own workspace can't be archived. Omit to leave it as is."`
 	FinishAccessSetup    bool     `json:"finish_access_setup,omitempty" jsonschema:"true ends the workspace's one-time access setup, after an upgrade wiped who is in each project: the Owners' Set up access prompt goes and members waiting on their projects stop waiting. List roles and people on projects first with permission_overwrite_update (projects:open allow); a project left listing nobody is seen only by Owners. Needs the Owner role."`
@@ -88,7 +86,6 @@ type workspaceUpdateResult struct {
 	Name                  string   `json:"name"`
 	Slug                  string   `json:"slug"`
 	AutoPlayDailyCap      *int     `json:"auto_play_daily_cap,omitempty"`
-	AutoPlayRunsAtOnce    *int     `json:"auto_play_runs_at_once,omitempty"`
 	GitHubAccountsChanged []string `json:"github_accounts_changed,omitempty"`
 	AccessSetupFinished   bool     `json:"access_setup_finished,omitempty"`
 	Archived              *bool    `json:"archived,omitempty"`
@@ -136,7 +133,7 @@ func (in workspaceUpdateIn) changesSettings() bool {
 }
 
 func (in workspaceUpdateIn) changesLimits() bool {
-	return in.AutoPlayDailyCap != nil || in.AutoPlayRunsAtOnce != nil
+	return in.AutoPlayDailyCap != nil
 }
 
 // changeSettings applies every field but archived, in the order the tool's description gives.
@@ -166,7 +163,7 @@ func finishAccessSetup(ctx context.Context, w WorkspaceService, setup AccessSetu
 		if err != nil {
 			return nil, err
 		}
-		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug, AutoPlayDailyCap: out.AutoPlayDailyCap, AutoPlayRunsAtOnce: out.AutoPlayRunsAtOnce, GitHubAccountsChanged: out.GitHubAccountsChanged}
+		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug, AutoPlayDailyCap: out.AutoPlayDailyCap, GitHubAccountsChanged: out.GitHubAccountsChanged}
 	}
 	if err := setup.SaveGrid(ctx, userID, in.ID, access.GridSave{Finish: true}); err != nil {
 		if in.Name != nil || in.Slug != nil || in.AutoPlayDailyCap != nil || len(in.RemoveGitHubAccounts) > 0 {
@@ -227,14 +224,14 @@ func updateWorkspace(ctx context.Context, w WorkspaceService, limits AutoPlayLim
 		}
 		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug}
 	}
-	set, err := limits.SetAutoPlayLimits(ctx, in.ID, plays.AutoPlayLimitsPatch{DailyCapPerTicket: in.AutoPlayDailyCap, RunsAtOncePerPerson: in.AutoPlayRunsAtOnce})
+	set, err := limits.SetAutoPlayLimits(ctx, in.ID, plays.AutoPlayLimitsPatch{DailyCapPerTicket: in.AutoPlayDailyCap})
 	if err != nil && len(applied) > 0 {
 		return out, nil, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("auto play limits: %w", err)}
 	}
 	if err != nil {
 		return out, nil, err
 	}
-	out.AutoPlayDailyCap, out.AutoPlayRunsAtOnce = &set.DailyCapPerTicket, &set.RunsAtOncePerPerson
+	out.AutoPlayDailyCap = &set.DailyCapPerTicket
 	return out, append(applied, "auto play limits"), nil
 }
 
@@ -317,7 +314,7 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceService, r RoleReader, l
 			return nil, err
 		}
 		if err == nil {
-			res.AutoPlayDailyCap, res.AutoPlayRunsAtOnce = &limit.DailyCapPerTicket, &limit.RunsAtOncePerPerson
+			res.AutoPlayDailyCap = &limit.DailyCapPerTicket
 		}
 		return mcptool.Paginate([]workspaceResult{res}, in.PageArgs), nil
 	}

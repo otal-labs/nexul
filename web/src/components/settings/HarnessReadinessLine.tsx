@@ -1,7 +1,7 @@
 import { useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
 
-// The same "can this user run a play right now" line the ticket page's button states will read from.
+// Where a chat outside any project would go right now, read the way the ticket page's buttons read readiness.
 export const HarnessReadinessLine = () => {
   const readiness = useHarnessReadiness();
   const { data: computers } = useListComputers();
@@ -15,7 +15,7 @@ export const HarnessReadinessLine = () => {
             aria-hidden
             className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", readiness.state === "ready" ? "bg-success" : "bg-warning")}
           />
-          {readiness.state === "ready" && `Ready to run plays${computerName ? ` on ${computerName}` : ""}`}
+          {readiness.state === "ready" && `Ready: @Agent starts on ${computerName ?? "your first computer"}`}
           {readiness.state !== "ready" && <span className="text-muted-foreground">{readiness.message}</span>}
         </p>
       )}

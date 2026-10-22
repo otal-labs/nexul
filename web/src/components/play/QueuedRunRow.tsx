@@ -5,7 +5,6 @@ import { personLabel } from "@nexul/client-core/person";
 
 import { Button } from "@/components/ui/button";
 import { FixLink } from "@/components/FixLink";
-import { PickComputerMenu } from "@/components/play/PickComputerMenu";
 import { signalActionClass, signalRowClass } from "@/components/play/signalRowClass";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
@@ -14,7 +13,7 @@ import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useActionState } from "@/hooks/useActionState";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
-import { pickingComputer, waitingLink, waitingSentence } from "@/utils/PlayQueueUtility";
+import { waitingLink, waitingSentence } from "@/utils/PlayQueueUtility";
 
 interface QueuedRunRowProps {
   item: PlayQueueItem;
@@ -22,8 +21,7 @@ interface QueuedRunRowProps {
   onLeave: () => void;
 }
 
-// Cancel is for the person the run lands on or an autoplays:write holder, as the server checks; picking its computer is
-// theirs alone.
+// Cancel is for the person the run lands on or an autoplays:write holder, as the server checks.
 export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const person = personLabel(usePerson(item.person_id));
   const { data: me } = useFetchMe();
@@ -54,7 +52,6 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
             </>
           )}
         </p>
-        {mine && pickingComputer(item) && <PickComputerMenu item={item} />}
       </div>
       {canCancel && (
         <Button variant="ghost" size="sm" className={signalActionClass} aria-label={`Cancel ${item.play_label}`} disabled={leaving} onClick={onCancel}>

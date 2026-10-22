@@ -29,6 +29,10 @@ const created = {
   kind: "t3code",
   harness_version: "",
   created_at: "2026-09-24T00:00:00Z",
+  position: 0,
+  runs_at_once: 1,
+  running: 0,
+  chat_project_id: "",
   updated_at: "2026-09-24T00:00:00Z",
 };
 
@@ -73,6 +77,7 @@ describe("SetupComputerDialog", () => {
   let setup: ComputerSetup;
   let providers: HarnessProvider[];
   let defaults: PairingDefaults;
+  let chatFolder: string;
   let projects: HarnessProject[];
 
   beforeEach(() => {
@@ -87,13 +92,15 @@ describe("SetupComputerDialog", () => {
       { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, skipped: false, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
       { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, skipped: false, models: [{ slug: "pickle", name: "Pickle", is_default: true }] },
     ];
-    defaults = {};
+    defaults = { placement: "in_order", clone_automatically: false };
+    chatFolder = "";
     projects = [];
     mocks.get.mockImplementation(async (url: string) => {
       if (url.endsWith("/setup")) return { data: setup };
       if (url.endsWith("/projects")) return { data: { projects } };
       if (url.endsWith("/providers")) return { data: { providers } };
       if (url.endsWith("/defaults")) return { data: defaults };
+      if (url === "/api/pairing/computers") return { data: { computers: [{ ...paired, chat_project_id: chatFolder }] } };
       return { data: { computers: [] } };
     });
     mocks.put.mockImplementation(async (_url: string, body: Partial<ComputerSetup>) => {
@@ -207,7 +214,7 @@ describe("SetupComputerDialog", () => {
       { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, skipped: false, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
       { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, skipped: false, models: [{ slug: "pickle", name: "Pickle", is_default: true }, { slug: "gpt", name: "GPT", options: [effort] }] },
     ];
-    defaults = { provider: "claude", model: "claude-big" };
+    defaults = { provider: "claude", model: "claude-big", placement: "in_order", clone_automatically: false };
     mocks.post.mockImplementation(async () => {
       setup = { ...emptySetup, turns: [turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t2"), turn("opencode", "OpenCode", "failed", "npx: command not found", "r1", "t3")] };
       return run(["claudeagent", "Claude"], ["opencode", "OpenCode"]);
@@ -291,13 +298,13 @@ describe("SetupComputerDialog", () => {
     });
   });
 
-  it("runs setup in the default project's folder, or the one picked, and retries in it too", async () => {
+  it("runs setup in the computer's chat folder, or the one picked, and retries in it too", async () => {
     providers = [providers[0]!];
     projects = [
       { id: "t3-gone", title: "StreamerBotChat", path: "/home/me/StreamerBotChat" },
       { id: "t3-app", title: "App", path: "/home/me/app" },
     ];
-    defaults = { default_computer_id: "c1", fallback_project_id: "t3-gone" };
+    chatFolder = "t3-gone";
     mocks.post.mockImplementation(async () => {
       setup = { ...emptySetup, turns: [turn("codex", "Codex", "failed", "workspace folder no longer exists", "r1", "t2")] };
       return run(["codex", "Codex"]);

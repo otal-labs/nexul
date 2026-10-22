@@ -34,7 +34,7 @@ describe("useHarnessReadiness", () => {
   it("is ready when the resolved computer is connected", async () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [] }));
+    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] }));
   });
 
   it("carries the resolved T3 project, provider, model, and model options when ready", async () => {
@@ -46,6 +46,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "ready", computerId: "c1", harnessProjectId: "t3-home", provider: "claude", model: "sonnet-5", modelOptions: [{ id: "effort", value: "high" }],
+        passedOver: [],
       }),
     );
   });
@@ -77,18 +78,28 @@ describe("useHarnessReadiness", () => {
   it.each([
     ["unpaired", "unpaired", "/settings/pairing"],
     ["expired_token", "expired", "/settings/pairing"],
-    ["no_default", "no_harness_project", "/settings/pairing/projects"],
-    ["no_default_computer", "no_default_computer", "/settings/pairing/defaults"],
+    ["needs_location", "needs_location", "/settings/pairing/projects"],
+    ["no_computer_ready", "no_computer_ready", "/settings/pairing"],
+    ["setup_required", "no_computer_ready", "/settings/pairing"],
   ])("maps the %s refusal to %s with a link to fix it", async (reason, state, to) => {
     mockRoutes({ resolve: { ok: false, reason }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() => expect(result.current).toMatchObject({ state, link: { to } }));
   });
 
+  it("names each computer a refused run passed over, and where it would land when one takes it", async () => {
+    const offline = { computer_id: "c1", name: "laptop", why: "offline", text: "laptop is offline" };
+    mockRoutes({ resolve: { ok: false, reason: "no_computer_ready", passed_over: [offline, { ...offline, computer_id: "c2", name: "box", text: "box is full (1 of 1 running)" }] }, presence: {} });
+    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
+    await waitFor(() =>
+      expect(result.current).toMatchObject({ message: "None of your computers can take a run right now. laptop is offline; box is full (1 of 1 running)." }),
+    );
+  });
+
   it("passes project_id through to the resolve call when given", async () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness("proj-1"), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [] }));
+    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] }));
     expect(api.get).toHaveBeenCalledWith("/api/pairing/resolve", { params: { project_id: "proj-1" } });
   });
 
@@ -100,6 +111,15 @@ describe("useHarnessReadiness", () => {
 });
 
 describe("the pairing follower", () => {
+  it("refetches the computers' running counts when a run starts or ends, and not on its steps", async () => {
+    const run = { trail_id: "tr-1", play_id: "p-1", target_type: "ticket", target_id: "t-1", activity: null, last_error: "" };
+    const client = seeded([[["getComputers"], []]]);
+    await followFrame(pairingFollower, "play.run", { ...run, state: "running", ended_at: null }, client);
+    expect(isStale(client, ["getComputers"])).toBe(false);
+    await followFrame(pairingFollower, "play.run", { ...run, state: "done", ended_at: "2026-10-22T12:00:00Z" }, client);
+    expect(isStale(client, ["getComputers"])).toBe(true);
+  });
+
   it("refetches the providers and MCP token of the computer a frame names, and no other computer's", async () => {
     const client = seeded([
       [["getHarnessProviders", "c1"], []],

@@ -182,7 +182,10 @@ type Trail struct {
 	EndedAt          *time.Time              `json:"ended_at"`
 	LastError        string                  `json:"last_error"`
 	// FailureReason is the harness refusal's reason (HarnessRefusal), "" for a run that failed any other way.
-	FailureReason  string          `json:"failure_reason"`
+	FailureReason string `json:"failure_reason"`
+	// PassedOver are the computers the run could not land on, before the one it ran on or when it ran on none; read by
+	// its starter alone.
+	PassedOver     []PassedOver    `json:"passed_over,omitempty"`
 	ReplyMessageID string          `json:"reply_message_id"`
 	Activity       []ActivityEntry `json:"activity"`
 	// Question is the latest question the run stopped on, nil for a run that never asked one.

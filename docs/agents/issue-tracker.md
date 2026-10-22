@@ -65,7 +65,8 @@ git history, and anything durable it decided is an ADR.
   written 2026-10-10.
 - `.scratch/computer-failover/` — a person's computers in one order, runs going to the
   first ready one, runs at once per computer, and the Computers and Projects tabs
-  rebuilt around them (ADRs 0165, 0166). Spec and tickets 01–07 written 2026-10-22.
+  rebuilt around them (ADRs 0165, 0166). Left: 04, clone automatically, and 05,
+  a chosen-computer auto play's ordered list.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

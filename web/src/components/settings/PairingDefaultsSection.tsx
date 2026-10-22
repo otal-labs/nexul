@@ -22,7 +22,7 @@ export const PairingDefaultsSection = () => {
           <ErrorDisplay error={error} />
         </SettingsCard>
       )}
-      {computers && defaults && <PairingDefaultsForm defaults={defaults} computers={computers} />}
+      {computers && defaults && <PairingDefaultsForm defaults={defaults} computerId={computers[0]?.id ?? ""} />}
     </>
   );
 };

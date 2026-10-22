@@ -205,10 +205,11 @@ func (f *setupFixture) finished(t *testing.T, runID string) SetupFinishedEvent {
 	return SetupFinishedEvent{}
 }
 
-// resolveForPlay is a play's own gated resolution, once the user has picked a fallback project to run it in.
+// resolveForPlay is a play's own gated resolution, once the user has picked a chat folder to run it in.
 func (f *setupFixture) resolveForPlay(t *testing.T, provider string) error {
 	t.Helper()
-	_, err := f.svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: f.computer.ID, FallbackProjectID: "t3-home"})
+	chat := "t3-home"
+	_, err := f.svc.UpdateComputer(t.Context(), "u1", f.computer.ID, ComputerPatch{ChatProjectID: &chat})
 	require.NoError(t, err)
 	_, err = f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, provider, "", nil)
 	return err
@@ -789,7 +790,7 @@ func (f *setupFixture) sessionModels() []string {
 func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)
-	_, err := f.svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: f.computer.ID, FallbackProjectID: "t3-home", Provider: "claude", Model: "claude-default"})
+	_, err := f.svc.SetDefaults(t.Context(), "u1", Defaults{Provider: "claude", Model: "claude-default"})
 	require.NoError(t, err)
 
 	options := map[string][]harness.OptionSetting{

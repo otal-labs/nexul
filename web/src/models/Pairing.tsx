@@ -26,7 +26,28 @@ export interface Computer {
   pair_error?: string;
   // Set on another person's computer they share with the viewer, which then carries only its name and runner.connected.
   shared?: SharedComputer;
+  // Its place in its owner's order, first runs first (ADR 0165).
+  position: number;
+  // How many play runs it takes at a time, and how many are going on it now (ADR 0166).
+  runs_at_once: number;
+  running: number;
+  // The T3 project an @Agent chat outside any project runs in here; "" when none is picked.
+  chat_project_id: string;
 }
+
+// Mirrors pairing.PassOver: one computer a run could not land on, with the line every surface shows as is.
+export interface PassOver {
+  computer_id: string;
+  name: string;
+  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed";
+  text: string;
+}
+
+// "laptop is offline; build-box is full (2 of 2 running)".
+export const passOverLines = (passes: PassOver[]) => passes.map((p) => p.text).join("; ");
+
+export const MIN_RUNS_AT_ONCE = 1;
+export const MAX_RUNS_AT_ONCE = 5;
 
 export interface ComputerRunner {
   connected: boolean;
@@ -307,6 +328,7 @@ export interface RefusalDetails {
   computer?: string;
   provider_id?: string;
   provider?: string;
+  passed_over?: PassOver[];
 }
 
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
@@ -316,7 +338,7 @@ export const SETUP_REQUIRED_REASON = "setup_required";
 export const computerSetupPath = (computerId: string) =>
   `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
-// Mirrors pairing.ReasonNeedsLocation: a person's run in a project they never linked asks where to run (ADR 0145).
+// Mirrors pairing.ReasonNeedsLocation: no computer of the person's has the project, so their run asks where (ADR 0165).
 export const NEEDS_LOCATION_REASON = "needs_location";
 
 export const isNeedsLocationRefusal = (error: unknown) =>
@@ -344,27 +366,49 @@ export const START_IN_OPTIONS = [
 
 export const START_IN_SHORT_LABELS: Record<StartIn, string> = { [StartIn.Folder]: "Project folder", [StartIn.Worktree]: "New worktree" };
 
-// A user's pairing defaults, for chats outside a project and projects they haven't linked.
+// How a run picks among the person's ready computers: the first with room, or the least busy for its size (ADR 0165).
+export const Placement = { InOrder: "in_order", Spread: "spread" } as const;
+export type Placement = (typeof Placement)[keyof typeof Placement];
+
+export const PLACEMENT_OPTIONS = [
+  { value: Placement.InOrder, label: "The first in the order" },
+  { value: Placement.Spread, label: "The least busy" },
+];
+
+// What a person's runs use wherever a project link says nothing.
 export interface PairingDefaults {
-  default_computer_id?: string;
-  fallback_project_id?: string;
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
   start_in?: StartIn;
+  placement: Placement;
+  // Clones a project's repository onto a computer without a checkout of it, before a run there.
+  clone_automatically: boolean;
 }
 
-// The caller's own link for one project (ADR 0102); an empty computer_id means they never set one.
+// The T3 project the person picked for a project on one computer.
+export interface Checkout {
+  computer_id: string;
+  harness_project_id: string;
+}
+
+// The caller's own settings for one project (ADR 0102, ADR 0165); empty computers follows their order.
 export interface ProjectLink {
-  project_id?: string;
-  computer_id?: string;
-  harness_project_id?: string;
+  project_id: string;
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
-  // Unset falls through to the person's pairing defaults.
+  // Unset falls through to the person's defaults.
   start_in?: StartIn;
+  // Only with its own computers; unset follows the person's.
+  placement?: Placement;
+  computers: string[];
+  checkouts: Checkout[];
 }
+
+// A project link that changes anything a run there would otherwise take from the person's defaults and order.
+export const linkSaysSomething = (link: ProjectLink | undefined) =>
+  !!link && (link.computers.length > 0 || !!link.provider || !!link.model || !!link.start_in);
 
 export interface HarnessProject {
   id: string;
@@ -435,38 +479,45 @@ export const PAIR_FIELDS = ["name"] as const satisfies readonly (keyof RenameCom
 export type PairField = (typeof PAIR_FIELDS)[number];
 
 export const PairingDefaultsFormSchema = z.object({
-  default_computer_id: z.string(),
-  fallback_project_id: z.string(),
   provider: z.string(),
   model: z.string(),
   model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
   start_in: z.enum([StartIn.Folder, StartIn.Worktree]),
+  placement: z.enum([Placement.InOrder, Placement.Spread]),
+  clone_automatically: z.boolean(),
 });
 
 export type PairingDefaultsFormData = z.infer<typeof PairingDefaultsFormSchema>;
 
 export const ProjectLinkFormSchema = z.object({
-  computer_id: z.string().trim().min(1, "Pick a computer"),
-  harness_project_id: z.string().trim().min(1, "T3 project id is required"),
   provider: z.string().trim(),
   model: z.string().trim(),
   model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
   start_in: z.enum(["", StartIn.Folder, StartIn.Worktree]),
+  placement: z.enum(["", Placement.InOrder, Placement.Spread]),
+  computers: z.array(z.string()),
+  checkouts: z.array(z.object({ computer_id: z.string(), harness_project_id: z.string() })),
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;
 
-// Whether the caller can run a play right now: the resolved computer, provider, and model, or a reason it
-// can't, joined against presence. provider/model travel here so the run dialog's pill can preselect them
-// without a second call to the same resolve endpoint.
+// Whether the caller can run a play right now: the computer it would land on, with its checkout, provider, model and the
+// computers passed over before it, or a reason it can't. provider/model travel here so the run dialog's pill can preselect
+// them without a second call to the same resolve endpoint.
 export type HarnessReadiness =
-  | { state: "ready"; computerId: string; harnessProjectId: string; provider: string; model: string; modelOptions: OptionSetting[] }
-  | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string; link?: ReadinessLink };
+  | {
+      state: "ready";
+      computerId: string;
+      harnessProjectId: string;
+      provider: string;
+      model: string;
+      modelOptions: OptionSetting[];
+      passedOver: PassOver[];
+    }
+  | { state: "unpaired" | "expired" | "needs_location" | "no_computer_ready" | "offline"; message: string; link?: ReadinessLink };
 
-// A run asks where instead of refusing when no link answers it (ADR 0145); a linked computer's offline or expired state is the reason.
-export const canChooseRunLocation = (readiness: HarnessReadiness, linked: boolean): boolean =>
-  readiness.state === "no_harness_project" || readiness.state === "no_default_computer" ||
-  (!linked && (readiness.state === "offline" || readiness.state === "expired"));
+// A run asks where instead of refusing when no computer of the person's has the project (ADR 0165).
+export const canChooseRunLocation = (readiness: HarnessReadiness): boolean => readiness.state === "needs_location";
 
 // Where a blocked state is fixed, kept beside its sentence so the sentence still reads alone as a tooltip.
 export interface ReadinessLink {
@@ -484,13 +535,13 @@ export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "
     message: "Your computer's pairing has expired or was revoked.",
     link: { to: COMPUTERS_SETTINGS_PATH, label: "Re-pair it" },
   },
-  no_harness_project: {
-    message: "This project has no T3 project linked and no fallback is set.",
-    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Link this project" },
+  needs_location: {
+    message: "None of your computers has this project yet.",
+    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Add it to a computer" },
   },
-  no_default_computer: {
-    message: "Several computers are paired and none is the default.",
-    link: { to: `${COMPUTERS_SETTINGS_PATH}/defaults`, label: "Pick a default" },
+  no_computer_ready: {
+    message: "None of your computers can take a run right now.",
+    link: { to: COMPUTERS_SETTINGS_PATH, label: "Your computers" },
   },
   offline: { message: "T3 Code on your computer is offline." },
 };

@@ -6,14 +6,9 @@ ON CONFLICT DO NOTHING;
 -- name: GetPlayQueueItem :one
 SELECT * FROM play_queue WHERE id = ?;
 
--- name: UpdatePlayQueueItem :one
-UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?
-WHERE id = ? AND status = sqlc.arg(from_status)
-RETURNING computer_id, harness_project_id;
-
--- name: PickPlayQueueItem :execrows
-UPDATE play_queue SET computer_id = ?, harness_project_id = ?, reason = '', not_before = ?
-WHERE id = ? AND status = 'queued';
+-- name: UpdatePlayQueueItem :execrows
+UPDATE play_queue SET status = ?, reason = ?, waiting_on = ?, trail_id = ?, decided_at = ?, not_before = ?
+WHERE id = ? AND status = sqlc.arg(from_status);
 
 -- name: ListPlayQueueByTarget :many
 SELECT * FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC;
@@ -67,6 +62,3 @@ UPDATE play_queue SET
     trail_id = CASE WHEN EXISTS (SELECT 1 FROM play_trails t WHERE t.id = play_queue.trail_id) THEN trail_id ELSE '' END,
     decided_at = CASE WHEN EXISTS (SELECT 1 FROM play_trails t WHERE t.id = play_queue.trail_id) THEN decided_at ELSE NULL END
 WHERE status = 'dispatching';
-
--- name: CountActivePlayTrailsByStarter :one
-SELECT COUNT(*) FROM play_trails WHERE starter_id = ? AND state IN ('starting', 'running', 'waiting');

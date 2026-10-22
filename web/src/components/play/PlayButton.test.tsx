@@ -100,12 +100,11 @@ beforeEach(() => {
 });
 
 describe("PlayButton", () => {
-  it.each(["no_default", "no_default_computer", "offline", "expired_token"])("opens the location question when its suggestion needs attention (%s)", async (reason) => {
+  it("opens the location question when none of the person's computers has the project", async () => {
     const user = userEvent.setup();
-    mockApi({ resolve: reason === "offline" ? { ok: true, computer_id: "c-1" } : { ok: false, reason }, presence: {} });
+    mockApi({ resolve: { ok: false, reason: "needs_location" }, presence: {} });
     const base = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) => {
-      if (args[0] === "/api/pairing/projects") return { data: { links: [] } };
       if (args[0] === "/api/memories") return { data: [] };
       return base(...args);
     });
@@ -113,7 +112,7 @@ describe("PlayButton", () => {
     const run = await screen.findByRole("button", { name: "Fix with AI" });
     await waitFor(() => expect(run).toBeEnabled());
     await user.click(run);
-    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
+    expect(await screen.findByText(/None of your computers has this project yet/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
   });
 
@@ -141,7 +140,12 @@ describe("PlayButton", () => {
   it.each([
     ["offline", { ok: true, computer_id: "c-1" }, "T3 Code on your computer is offline."],
     ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired or was revoked."],
-  ])("is disabled with the reason when the project's linked computer is %s", async (_, resolve, reason) => {
+    [
+      "one of several that can't take it",
+      { ok: false, reason: "no_computer_ready", passed_over: [{ computer_id: "c-1", name: "laptop", why: "offline", text: "laptop is offline" }] },
+      "None of your computers can take a run right now. laptop is offline.",
+    ],
+  ])("is disabled with the reason when the computer a run would land on is %s", async (_, resolve, reason) => {
     mockApi({ resolve, presence: {}, links: [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-app" }] });
     renderButton();
     await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription(reason));

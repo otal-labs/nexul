@@ -5,6 +5,8 @@ import { useSearchParams } from "react-router";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { SetupComputerDialog } from "@/components/pairing/SetupComputerDialog";
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
+import { ComputerLoad } from "@/components/settings/ComputerLoad";
+import { useComputerOrder } from "@/components/settings/ComputerOrderContext";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
@@ -43,6 +45,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const { open: confirm } = useConfirmationDialog();
   const openPermissions = usePermissionsDialog();
   const [folded, setFolded] = useState(true);
+  const { grip, moveActions } = useComputerOrder();
   const [setupOpen, setSetupOpen] = useState(!pairing && searchParams.get("setup") === computer.id);
 
   const name = computer.name || UNNAMED;
@@ -87,17 +90,19 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
     ...(connected && primary !== "repair" ? [{ label: "Re-pair now", onSelect: () => pairNow.mutate() }] : []),
     { label: "Share…", onSelect: () => void openPermissions(computerEntity({ id: computer.id, name })) },
     { label: "Rename", onSelect: () => void rename() },
+    ...moveActions,
     { label: "Remove", destructive: true, onSelect: () => void removeComputer() },
   ];
 
   return (
-    <li className="bg-card px-3 py-3">
-      <div className="flex items-center gap-2">
+    <div className="px-3 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {grip}
         <button
           type="button"
           aria-expanded={!folded}
           onClick={() => setFolded(!folded)}
-          className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:outline-2 focus-visible:outline-focus"
+          className="group -ml-1 flex min-w-[min(12rem,100%)] flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:outline-2 focus-visible:outline-focus"
         >
           <ChevronRight
             aria-hidden
@@ -148,7 +153,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
         )}
         <RowActionsMenu subject={name} actions={actions} />
       </div>
-      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 pl-6">
+      <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-12" : "pl-6")}>
         {computerLanes(computer, presence).map((lane) => (
           <SettingsStatus key={lane.text} tone={lane.tone} detail={lane.detail}>
             {lane.text}
@@ -159,15 +164,16 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
             {summary.text}
           </SettingsStatus>
         )}
+        {!pairing && <ComputerLoad computer={computer} />}
       </p>
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>
-          <div className="pt-3 pl-6">
+          <div className={cn("pt-3", grip ? "pl-12" : "pl-6")}>
             <ComputerDetails computer={computer} setup={setup} />
           </div>
         </div>
       </div>
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}
-    </li>
+    </div>
   );
 };

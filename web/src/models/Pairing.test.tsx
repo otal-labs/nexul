@@ -124,7 +124,7 @@ describe("setupModelChoices", () => {
   ];
 
   it("offers one choice per driver, the defaults' model on the default provider and each other provider's own default", () => {
-    const choices = setupModelChoices(providers, { provider: "claude", model: "claude-big" });
+    const choices = setupModelChoices(providers, { provider: "claude", model: "claude-big", placement: "in_order", clone_automatically: false });
     expect(choices.map((c) => [c.provider, c.preselected])).toEqual([
       ["claudeagent", "claude-big"],
       ["opencode", "pickle"],
@@ -134,7 +134,7 @@ describe("setupModelChoices", () => {
 
   it("prefers what the computer saved, even a saved provider default, and carries the options picked with each model", () => {
     const saved = { skipped_providers: [], models: { claudeagent: "" }, model_options: { claudeagent: [{ id: "effort", value: "high" }] }, folder: "" };
-    const choices = setupModelChoices(providers, { provider: "opencode", model: "gpt", model_options: [{ id: "variant", value: "low" }] }, saved);
+    const choices = setupModelChoices(providers, { provider: "opencode", model: "gpt", model_options: [{ id: "variant", value: "low" }], placement: "in_order", clone_automatically: false }, saved);
     expect(choices.map((c) => [c.provider, c.preselected, c.preselectedOptions])).toEqual([
       ["claudeagent", "", [{ id: "effort", value: "high" }]],
       ["opencode", "gpt", [{ id: "variant", value: "low" }]],
@@ -143,7 +143,7 @@ describe("setupModelChoices", () => {
   });
 
   it("falls back to the provider's own default when the defaults name a model it does not list", () => {
-    expect(setupModelChoices(providers, { provider: "claude", model: "gone" })[0]?.preselected).toBe("claude-small");
+    expect(setupModelChoices(providers, { provider: "claude", model: "gone", placement: "in_order", clone_automatically: false })[0]?.preselected).toBe("claude-small");
     expect(setupModelChoices(providers, undefined)[0]?.preselected).toBe("claude-small");
   });
 });

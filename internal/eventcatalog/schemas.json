@@ -489,7 +489,8 @@
       },
       "runs_at_once_per_person": {
         "type": "integer",
-        "description": "How many runs a person may have going, pressed or automatic, before their next auto run in this workspace waits."
+        "description": "Always 0: runs at once is set on each computer now, not per person by the workspace.",
+        "deprecated": true
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1932,6 +1933,23 @@
       "user_id",
       "server_url",
       "token_expires_at",
+      "members_only"
+    ]
+  },
+  "computer.placement_changed": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
       "members_only"
     ]
   },
@@ -5103,7 +5121,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."
+        "description": "While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -5135,7 +5153,7 @@
       },
       "computer_id": {
         "type": "string",
-        "description": "The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."
+        "description": "The computer its auto play names for run_on computer; empty when the run goes to its person's first ready computer."
       },
       "service": {
         "type": "string",
@@ -5144,6 +5162,45 @@
       "outage_id": {
         "type": "string",
         "description": "For a stack moment, the outage it opened or closed; empty otherwise."
+      },
+      "waiting_on": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "computer_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string",
+              "enum": [
+                "offline",
+                "expired_token",
+                "setup_required",
+                "no_model",
+                "no_checkout",
+                "ambiguous_checkout",
+                "no_chat_folder",
+                "full",
+                "clone_failed"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "description": "Why, as a line to show as is."
+            }
+          },
+          "required": [
+            "computer_id",
+            "name",
+            "why",
+            "text"
+          ]
+        },
+        "description": "While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5262,7 +5319,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."
+        "description": "While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -5294,7 +5351,7 @@
       },
       "computer_id": {
         "type": "string",
-        "description": "The computer it runs on: the one its auto play names for run_on computer, else the one its person picked when several are paired and none is the default; empty until picked."
+        "description": "The computer its auto play names for run_on computer; empty when the run goes to its person's first ready computer."
       },
       "service": {
         "type": "string",
@@ -5303,6 +5360,45 @@
       "outage_id": {
         "type": "string",
         "description": "For a stack moment, the outage it opened or closed; empty otherwise."
+      },
+      "waiting_on": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "computer_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string",
+              "enum": [
+                "offline",
+                "expired_token",
+                "setup_required",
+                "no_model",
+                "no_checkout",
+                "ambiguous_checkout",
+                "no_chat_folder",
+                "full",
+                "clone_failed"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "description": "Why, as a line to show as is."
+            }
+          },
+          "required": [
+            "computer_id",
+            "name",
+            "why",
+            "text"
+          ]
+        },
+        "description": "While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

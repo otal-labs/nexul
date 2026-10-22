@@ -150,8 +150,7 @@ func (s *Service) AutoPlayLimits(ctx context.Context, workspaceID string) (AutoP
 
 // AutoPlayLimitsPatch names the limits to change; a nil field keeps its value.
 type AutoPlayLimitsPatch struct {
-	DailyCapPerTicket   *int `json:"daily_cap_per_ticket"`
-	RunsAtOncePerPerson *int `json:"runs_at_once_per_person"`
+	DailyCapPerTicket *int `json:"daily_cap_per_ticket"`
 }
 
 // SetAutoPlayLimits changes workspaceID's bounds on automatic runs (autoplays:write).
@@ -160,14 +159,11 @@ func (s *Service) SetAutoPlayLimits(ctx context.Context, workspaceID string, pat
 	if err := s.require(ctx, workspaceID, permissions.AutoplaysWrite); err != nil {
 		return AutoPlayLimits{}, err
 	}
-	if patch.DailyCapPerTicket == nil && patch.RunsAtOncePerPerson == nil {
-		return AutoPlayLimits{}, fmt.Errorf("%w: send daily_cap_per_ticket, runs_at_once_per_person, or both", apperrs.ErrInvalid)
+	if patch.DailyCapPerTicket == nil {
+		return AutoPlayLimits{}, fmt.Errorf("%w: send daily_cap_per_ticket", apperrs.ErrInvalid)
 	}
 	if c := patch.DailyCapPerTicket; c != nil && (*c < MinAutoPlayDailyCap || *c > MaxAutoPlayDailyCap) {
 		return AutoPlayLimits{}, fmt.Errorf("%w: the daily cap on automatic runs per ticket is %d to %d", apperrs.ErrInvalid, MinAutoPlayDailyCap, MaxAutoPlayDailyCap)
-	}
-	if n := patch.RunsAtOncePerPerson; n != nil && (*n < MinAutoPlayRunsAtOnce || *n > MaxAutoPlayRunsAtOnce) {
-		return AutoPlayLimits{}, fmt.Errorf("%w: the runs at once per person are %d to %d", apperrs.ErrInvalid, MinAutoPlayRunsAtOnce, MaxAutoPlayRunsAtOnce)
 	}
 	limits, err := s.repo.AutoPlayLimits(ctx, workspaceID)
 	if err != nil {
@@ -176,12 +172,7 @@ func (s *Service) SetAutoPlayLimits(ctx context.Context, workspaceID string, pat
 	if patch.DailyCapPerTicket != nil {
 		limits.DailyCapPerTicket = *patch.DailyCapPerTicket
 	}
-	if patch.RunsAtOncePerPerson != nil {
-		limits.RunsAtOncePerPerson = *patch.RunsAtOncePerPerson
-	}
-	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{
-		WorkspaceID: workspaceID, DailyCapPerTicket: limits.DailyCapPerTicket, RunsAtOncePerPerson: limits.RunsAtOncePerPerson,
-	})
+	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: limits.DailyCapPerTicket})
 	if err := s.repo.SetAutoPlayLimits(ctx, workspaceID, limits, evt); err != nil {
 		return AutoPlayLimits{}, fmt.Errorf("set the auto play limits of workspace %s: %w", workspaceID, err)
 	}

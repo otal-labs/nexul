@@ -11,8 +11,9 @@ import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
 import { useHarnessPlaceNames } from "@/hooks/PairingProjectHooks";
 import { cn } from "@/lib/utils";
+import { passOverLines, type PassOver } from "@/models/Pairing";
 
-// Where a run goes: one of the person's computers and a T3 project on it, saved as their project link (ADR 0145).
+// Where a run goes: one of the person's computers and a T3 project on it (ADR 0165).
 export interface RunWhere {
   computer_id: string;
   harness_project_id: string;
@@ -20,9 +21,11 @@ export interface RunWhere {
 
 interface RunWhereSectionProps {
   value: RunWhere;
-  // Open pickers instead of the one-line summary: a first run, a Change, or a refusal that asked where.
+  // The computers the run would pass over before the one it lands on, and why.
+  passedOver: PassOver[];
+  // Open pickers instead of the one-line summary: no computer has the project, a Change, or a refusal that asked where.
   asking: boolean;
-  firstRun: boolean;
+  mustPick: boolean;
   onChange: (next: RunWhere) => void;
   onChangeRequested: () => void;
 }
@@ -58,11 +61,11 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
   );
 };
 
-export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeRequested }: RunWhereSectionProps) => {
+export const RunWhereSection = ({ value, passedOver, asking, mustPick, onChange, onChangeRequested }: RunWhereSectionProps) => {
   const { computer, project, isPending } = useHarnessPlaceNames(value.computer_id, value.harness_project_id);
-  const note = firstRun
-    ? "Your first run in this project. Pick where it runs and it's saved as your link here, so later runs skip this."
-    : "What you pick here replaces your link for this project.";
+  const note = mustPick
+    ? "None of your computers has this project yet. Pick a computer and its T3 project; it's remembered there for this project."
+    : "This run goes here. Your order of computers stays as it is.";
 
   return (
     <section className="space-y-2">
@@ -78,8 +81,9 @@ export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeReq
           </Button>
         </div>
       )}
+      {!asking && passedOver.length > 0 && <p className="text-xs text-muted-foreground">Skipping: {passOverLines(passedOver)}.</p>}
       {asking && (
-        <div className={cn("space-y-3", !firstRun && "settle-in")}>
+        <div className={cn("space-y-3", !mustPick && "settle-in")}>
           <p className="text-xs text-muted-foreground">{note}</p>
           <RunWhereForm value={value} onChange={onChange} />
         </div>

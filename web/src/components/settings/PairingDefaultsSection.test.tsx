@@ -30,6 +30,10 @@ const computer = (id: string, name: string) => ({
   kind: "t3code",
   harness_version: "0.0.34",
   created_at: "2026-08-01T00:00:00Z",
+  position: 0,
+  runs_at_once: 1,
+  running: 0,
+  chat_project_id: "",
   updated_at: "2026-08-01T00:00:00Z",
 });
 
@@ -63,46 +67,40 @@ describe("PairingDefaultsSection", () => {
   it("seeds the form from the loaded defaults", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/defaults") {
-        return Promise.resolve({
-          data: { default_computer_id: "c1", fallback_project_id: "proj-1", provider: "claude", model: "sonnet" },
-        });
+        return Promise.resolve({ data: { provider: "claude", model: "sonnet", placement: "spread", clone_automatically: true } });
       }
       return mockGet(url);
     });
     renderSection();
 
-    expect(await screen.findByText(/back online/)).toBeInTheDocument();
-    expect(screen.getByDisplayValue("claude")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("claude")).toBeInTheDocument();
     expect(screen.getByDisplayValue("sonnet")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: /default computer/i })).toHaveTextContent("home");
+    expect(screen.getByRole("combobox", { name: /when several computers can take a run/i })).toHaveTextContent("The least busy");
   });
 
   it("saves updated defaults", async () => {
     mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/pairing/defaults") return Promise.resolve({ data: {} });
+      if (url === "/api/pairing/defaults") return Promise.resolve({ data: { placement: "in_order", clone_automatically: false } });
       return mockGet(url);
     });
-    mocks.put.mockResolvedValue({
-      data: { default_computer_id: "c2", fallback_project_id: "proj-9", provider: "opencode", model: "" },
-    });
+    mocks.put.mockResolvedValue({ data: { provider: "opencode", model: "", placement: "spread", clone_automatically: true, start_in: "worktree" } });
     const user = userEvent.setup();
     renderSection();
 
     await screen.findByRole("button", { name: /save defaults/i });
-    await pickOption(user, /default computer/i, "vps");
-    await user.type(screen.getByLabelText(/fallback t3 project/i), "proj-9");
+    await pickOption(user, /when several computers can take a run/i, "The least busy");
     await user.type(screen.getByLabelText(/^provider$/i), "opencode");
     await pickOption(user, /new threads start in/i, "New worktree per thread");
     await user.click(screen.getByRole("button", { name: /save defaults/i }));
 
     await waitFor(() =>
       expect(mocks.put).toHaveBeenCalledWith("/api/pairing/defaults", {
-        default_computer_id: "c2",
-        fallback_project_id: "proj-9",
         provider: "opencode",
         model: "",
         model_options: [],
         start_in: "worktree",
+        placement: "spread",
+        clone_automatically: false,
       }),
     );
   });

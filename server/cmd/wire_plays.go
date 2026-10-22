@@ -116,17 +116,33 @@ func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (p
 	return plays.ProjectTarget{Name: p.Name, TestsLocation: string(p.TestsLocation)}, nil
 }
 
-// playsHarnessResolver preserves fallback for unattended runs and requires location for a person's run (ADR 0145).
+// playsHarnessResolver lands each kind of run on the starter's first ready computer (ADR 0165).
 type playsHarnessResolver struct {
 	svc *pairing.Service
 }
 
 func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
-	return toHarnessChoice(a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions))
+	return toHarnessChoice(a.svc.ResolveRun(ctx, runRequest(userID, projectID, choice, pairing.RoomIgnored)))
+}
+
+func (a playsHarnessResolver) ResolveQueuedTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
+	return toHarnessChoice(a.svc.ResolveRun(ctx, runRequest(userID, projectID, choice, pairing.RoomRequired)))
 }
 
 func (a playsHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
-	return toHarnessChoice(a.svc.ResolvePersonRun(ctx, userID, projectID, choice.ComputerID, choice.HarnessProjectID, choice.Provider, choice.Model, choice.ModelOptions))
+	req := runRequest(userID, projectID, choice, pairing.RoomPreferred)
+	req.Person, req.HarnessProjectID = true, choice.HarnessProjectID
+	return toHarnessChoice(a.svc.ResolveRun(ctx, req))
+}
+
+func runRequest(userID, projectID string, choice plays.HarnessChoice, room pairing.Room) pairing.RunRequest {
+	req := pairing.RunRequest{
+		UserID: userID, ProjectID: projectID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions, Room: room,
+	}
+	if choice.ComputerID != "" {
+		req.ComputerIDs = []string{choice.ComputerID}
+	}
+	return req
 }
 
 func (a playsHarnessResolver) ResolveRecordedTarget(ctx context.Context, userID, _ string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
@@ -139,12 +155,25 @@ func (a playsHarnessResolver) ResolveRecordedTarget(ctx context.Context, userID,
 func toHarnessChoice(target *pairing.ResolvedTarget, err error) (plays.HarnessChoice, error) {
 	var nc *pairing.NotConfiguredError
 	if errors.As(err, &nc) {
-		return plays.HarnessChoice{}, &plays.HarnessRefusal{Reason: string(nc.Reason), ComputerID: nc.ComputerID, Provider: nc.ProviderID, Err: err}
+		return plays.HarnessChoice{}, &plays.HarnessRefusal{
+			Reason: string(nc.Reason), ComputerID: nc.ComputerID, Provider: nc.ProviderID, PassedOver: toPassedOver(nc.PassedOver), Err: err,
+		}
 	}
 	if err != nil {
 		return plays.HarnessChoice{}, err
 	}
-	return plays.HarnessChoice{Worktree: target.Worktree, ComputerID: target.Computer.ID, HarnessProjectID: target.HarnessProjectID, Provider: target.Provider, Model: target.Model, ModelOptions: target.ModelOptions}, nil
+	return plays.HarnessChoice{
+		Worktree: target.Worktree, ComputerID: target.Computer.ID, HarnessProjectID: target.HarnessProjectID, Provider: target.Provider,
+		Model: target.Model, ModelOptions: target.ModelOptions, PassedOver: toPassedOver(target.PassedOver),
+	}, nil
+}
+
+func toPassedOver(ps []pairing.PassOver) []plays.PassedOver {
+	out := make([]plays.PassedOver, 0, len(ps))
+	for _, p := range ps {
+		out = append(out, plays.PassedOver{ComputerID: p.ComputerID, Name: p.Name, Why: string(p.Why), Text: p.Text})
+	}
+	return out
 }
 
 // playsMemoryReader adapts memories to the runner's MemoryReader seam.
@@ -208,21 +237,12 @@ type playsCheckouts struct {
 	svc *pairing.Service
 }
 
-func (a playsCheckouts) LinkedProject(ctx context.Context, userID, projectID string) (string, string, error) {
-	link, err := a.svc.GetProjectLink(ctx, userID, projectID)
-	if err != nil {
-		return "", "", err
-	}
-	return link.ComputerID, link.HarnessProjectID, nil
+func (a playsCheckouts) CheckoutOn(ctx context.Context, userID, projectID, computerID string) (string, error) {
+	return a.svc.CheckoutOn(ctx, userID, projectID, computerID)
 }
 
 func (a playsCheckouts) ListProjects(ctx context.Context, userID, computerID string) ([]harness.Project, error) {
 	return a.svc.ListProjects(ctx, userID, computerID)
-}
-
-func (a playsCheckouts) SaveLink(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error {
-	_, err := a.svc.SaveRunLocation(ctx, userID, projectID, computerID, harnessProjectID)
-	return err
 }
 
 // playsThreads adapts chat to the runner's Threads seam (ADR 0017: plays never imports chat).

@@ -286,8 +286,8 @@ question with no answer or a skip gets a draft where a source speaks to it,
 and an answered one gets a suggested change only where the sources now
 disagree with the answer. A draft is not an answer until a person confirms
 it. A source is pointed at, never copied in; another project is read
-through its memories and answers, plus its checkout when the person's
-project link for it is on the run's computer.
+through its memories and answers, plus its checkout when the person has a
+project checkout of it on the run's computer.
 _Avoid_: Import, context, reference material
 
 **Interview memory**:
