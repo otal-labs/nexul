@@ -35,6 +35,20 @@ func TestAutomationCursorsRepo_Set_Overwrites(t *testing.T) {
 	assert.Equal(t, second.CreatedAt, got.CreatedAt)
 }
 
+func TestAutomationCursorsRepo_Set_NeverMovesBack(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	at := time.Now().Truncate(time.Second).UTC()
+	require.NoError(t, s.AutomationCursors.Set(context.Background(), "a1", automations.Cursor{CreatedAt: at, ID: "ev-2"}))
+	require.NoError(t, s.AutomationCursors.Set(context.Background(), "a1", automations.Cursor{CreatedAt: at, ID: "ev-1"}))
+	require.NoError(t, s.AutomationCursors.Set(context.Background(), "a1", automations.Cursor{CreatedAt: at.Add(-time.Minute), ID: "ev-9"}))
+
+	got, ok, err := s.AutomationCursors.Get(context.Background(), "a1")
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "ev-2", got.ID, "a late run report must not rewind past a skip")
+}
+
 func TestAutomationCursorsRepo_Set_IsolatedPerAutomation(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
