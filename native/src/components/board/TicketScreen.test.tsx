@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react-query";
 import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
@@ -42,6 +42,7 @@ const ticket = {
 };
 let currentTicket: typeof ticket = ticket;
 let myRole: MyWorkspaceInfo;
+notifyManager.setScheduler((callback) => callback());
 
 const mockGet = (url: string) => {
   if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1" }]);
