@@ -722,6 +722,9 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 	return target, nil
 }
 
+// notConnected is why a computer whose Nexul app has no live connection is offline.
+const notConnected = "it isn't connected to Nexul"
+
 // offline is the refusal for a computer whose harness did not answer; a run aimed at it never moves to another computer.
 func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfiguredError {
 	nc := &NotConfiguredError{Reason: ReasonOffline, Computer: c.Name, ComputerID: c.ID, Err: err}
@@ -729,7 +732,7 @@ func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfig
 		return nc
 	}
 	if r, rerr := s.runners.ComputerRunner(ctx, c.ID); rerr == nil && !r.Connected {
-		nc.Why = "it isn't connected to Nexul"
+		nc.Why = notConnected
 	}
 	return nc
 }

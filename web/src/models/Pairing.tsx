@@ -300,19 +300,20 @@ export interface SetupSummary {
   state: "running" | "failed" | "missing" | "outdated" | "confirmed";
   tone: SetupSummaryTone;
   text: string;
-  detail?: string;
+  // The providers the status is about, shown as their marks after it.
+  providers?: ProviderSetupLine[];
 }
 
 // A computer's setup in one status: what is running, then what failed, then what is missing, then stale skills.
 export const setupSummary = (setup: ComputerSetup): SetupSummary => {
   const lines = providerSetupLines(setup);
-  const names = (state: ProviderSetupLine["state"]) => lines.filter((l) => l.state === state).map((l) => l.name).join(", ");
+  const only = (state: ProviderSetupLine["state"]) => lines.filter((l) => l.state === state);
   const running = lines.find((l) => l.state === "running");
   if (running) return { state: "running", tone: "warning", text: running.kind === "skills" ? "Updating skills" : `Setting up ${running.name}` };
-  if (lines.some((l) => l.state === "failed")) return { state: "failed", tone: "destructive", text: "Setup failed", detail: names("failed") };
+  if (lines.some((l) => l.state === "failed")) return { state: "failed", tone: "destructive", text: "Setup failed", providers: only("failed") };
   if (setup.confirmed_at === null) return { state: "missing", tone: "warning", text: "Needs setup" };
   if (lines.some((l) => l.skillsOutdated)) return { state: "outdated", tone: "info", text: "Skills out of date" };
-  return { state: "confirmed", tone: "success", text: "Setup confirmed", detail: names("confirmed") };
+  return { state: "confirmed", tone: "success", text: "Setup confirmed", providers: only("confirmed") };
 };
 
 // Update skills fits only a confirmed computer whose every provider line is confirmed and where skills are what is left.
@@ -371,8 +372,8 @@ export const Placement = { InOrder: "in_order", Spread: "spread" } as const;
 export type Placement = (typeof Placement)[keyof typeof Placement];
 
 export const PLACEMENT_OPTIONS = [
-  { value: Placement.InOrder, label: "The first in the order" },
-  { value: Placement.Spread, label: "The least busy" },
+  { value: Placement.InOrder, label: "First in order" },
+  { value: Placement.Spread, label: "Least busy" },
 ];
 
 // What a person's runs use wherever a project link says nothing.
@@ -514,7 +515,12 @@ export type HarnessReadiness =
       modelOptions: OptionSetting[];
       passedOver: PassOver[];
     }
-  | { state: "unpaired" | "expired" | "needs_location" | "no_computer_ready" | "offline"; message: string; link?: ReadinessLink };
+  | {
+      state: "unpaired" | "expired" | "needs_location" | "no_computer_ready" | "offline";
+      message: string;
+      link?: ReadinessLink;
+      passedOver?: PassOver[];
+    };
 
 // A run asks where instead of refusing when no computer of the person's has the project (ADR 0165).
 export const canChooseRunLocation = (readiness: HarnessReadiness): boolean => readiness.state === "needs_location";

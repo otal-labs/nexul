@@ -19,7 +19,7 @@ import {
 
 const FORM_ID = "pairing-defaults-form";
 
-export const DEFAULTS_DESCRIPTION = "What every run uses unless its project says otherwise on the Projects tab.";
+export const DEFAULTS_DESCRIPTION = "Used unless a project sets its own.";
 
 const formValues = (d: PairingDefaults): PairingDefaultsFormData => ({
   provider: d.provider ?? "",
@@ -69,8 +69,8 @@ export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFor
     >
       <form id={FORM_ID} onSubmit={form.handleSubmit(onSubmit)}>
         <SettingsRows>
-          <SettingsRow label="When several computers can take a run" description="In order keeps your first computer the main one; least busy spreads runs out.">
-            <FormSelect control={form.control} name="placement" label="When several computers can take a run" hideLabel options={PLACEMENT_OPTIONS} />
+          <SettingsRow label="Send runs to">
+            <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel options={PLACEMENT_OPTIONS} />
           </SettingsRow>
           <div className="py-4">
             <HarnessProviderModelFields
@@ -79,7 +79,7 @@ export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFor
               modelName="model"
               optionsName="model_options"
               computerId={computerId}
-              description="For chats and runs whose project picks none"
+              description="Unless a project picks one"
               onPick={(provider, model, options) => {
                 form.setValue("provider", provider, { shouldDirty: true });
                 form.setValue("model", model, { shouldDirty: true });
@@ -87,7 +87,7 @@ export const PairingDefaultsForm = ({ defaults, computerId }: PairingDefaultsFor
               }}
             />
           </div>
-          <SettingsRow label="New threads start in" description="A worktree each keeps runs going side by side out of each other's files.">
+          <SettingsRow label="New threads start in" description="Worktrees let runs work side by side.">
             <FormSelect control={form.control} name="start_in" label="New threads start in" hideLabel options={START_IN_OPTIONS} />
           </SettingsRow>
         </SettingsRows>

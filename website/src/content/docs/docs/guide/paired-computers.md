@@ -182,6 +182,8 @@ The **Computers** settings page has two tabs, **Computers** and **Projects**.
 
 **Your computers** on the Computers tab is one ordered list, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer by its grip to change the order, or use **Move up** and **Move down** in its **…** menu. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
 
+Above the list, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own row says whether it can take a project's runs.
+
 Each computer's details set two things for it:
 
 - **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 running". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer.
@@ -189,7 +191,7 @@ Each computer's details set two things for it:
 
 **Defaults**, under the list, apply wherever a project says nothing of its own:
 
-- **When several computers can take a run**: **The first in the order** keeps your first computer the main one and uses the rest only when it can't; **The least busy** sends each run to the computer with the smallest share of its runs at once in use, in order on a tie.
+- **Send runs to**: **First in order** keeps your first computer the main one and uses the rest only when it can't; **Least busy** sends each run to the computer with the smallest share of its runs at once in use, in order on a tie.
 - Provider, model, and model options. Leave them empty for the computer's or provider's default. A computer that doesn't offer the model is passed over.
 - **New threads start in**: **Project folder**, or **New worktree per thread** so runs side by side never edit the same files.
 
@@ -197,7 +199,7 @@ Each computer's details set two things for it:
 
 **Projects** lists every project you can open, and each row reads back what your turns there use, or **Follows your computers and defaults**. Open one to see, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to a repository of the project, so a folder can have any name. When a computer holds several checkouts of the project, **Pick a checkout** says which one, and the pick is remembered. A computer that has none reads **Not on this computer**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none, and uses the computer's own git credentials, so a private repository needs the computer signed in to GitHub (`gh auth login`, for one). A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
 
-Turn on **Its own computers** to give the project its own list instead of following yours: only the computers in it, in its own order, with its own **When several can take a run**. Use the **…** menu to move or remove one, and **Add a computer** to put another in. The project can also pick its own model and where its new threads start. **Save** keeps the changes; **Follow my computers and defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
+Turn on **Its own computers** to give the project its own list instead of following yours: only the computers in it, in its own order, with its own **Send runs to**. Use the **…** menu to move or remove one, and **Add a computer** to put another in. The project can also pick its own model and where its new threads start. **Save** keeps the changes; **Follow my computers and defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
 
 ### When it is chosen
 
@@ -224,7 +226,8 @@ A run that none of your computers can take says why for each one:
 
 | Reason | Fix |
 |---|---|
-| laptop is offline | Start the computer, or check T3 Code is running on it. |
+| laptop is offline | Start the computer, or check the Nexul app is running on it. |
+| T3 Code isn't answering on laptop | Check T3 Code is running on it. |
 | laptop is full (2 of 2 running) | Wait for a run to end, or raise its **Runs at once**. |
 | laptop isn't set up for claude | Run setup for that provider on it. |
 | laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |

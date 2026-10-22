@@ -27,14 +27,14 @@ describe("HarnessReadinessLine", () => {
     mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] });
     mocks.useListComputers.mockReturnValue({ data: [{ id: "c1", name: "Home" }] });
     render(<HarnessReadinessLine />);
-    expect(screen.getByText("Ready: @Agent starts on Home")).toBeInTheDocument();
+    expect(screen.getByText("Chats outside a project start on Home.")).toBeInTheDocument();
   });
 
   it("falls back to a plain ready line when the computer name isn't loaded yet", () => {
     mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", harnessProjectId: "", provider: "", model: "", modelOptions: [], passedOver: [] });
     mocks.useListComputers.mockReturnValue({ data: undefined });
     render(<HarnessReadinessLine />);
-    expect(screen.getByText("Ready: @Agent starts on your first computer")).toBeInTheDocument();
+    expect(screen.getByText("Chats outside a project start on your first computer.")).toBeInTheDocument();
   });
 
   it("shows the reason message when not ready", () => {
@@ -45,5 +45,19 @@ describe("HarnessReadinessLine", () => {
     mocks.useListComputers.mockReturnValue({ data: [] });
     render(<HarnessReadinessLine />);
     expect(screen.getByText("Add a computer in Settings to run plays.")).toBeInTheDocument();
+  });
+
+  it("says a blocked line is about chats outside a project, with each computer's reason", () => {
+    mocks.useHarnessReadiness.mockReturnValue({
+      state: "no_computer_ready",
+      message: "None of your computers can take a run right now.",
+      passedOver: [
+        { computer_id: "c1", name: "laptop", why: "offline", text: "laptop is offline" },
+        { computer_id: "c2", name: "Home", why: "no_chat_folder", text: "Home has no chat folder" },
+      ],
+    });
+    mocks.useListComputers.mockReturnValue({ data: [] });
+    render(<HarnessReadinessLine />);
+    expect(screen.getByText("Chats outside a project can't start: laptop is offline; Home has no chat folder.")).toBeInTheDocument();
   });
 });

@@ -1,24 +1,28 @@
 import { useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
+import { passOverLines } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
-// Where a chat outside any project would go right now, read the way the ticket page's buttons read readiness.
+const CHATS = "Chats outside a project";
+
+// Where a chat outside any project would start right now; a project's runs are each computer's own line below.
 export const HarnessReadinessLine = () => {
   const readiness = useHarnessReadiness();
   const { data: computers } = useListComputers();
-  const computerName = readiness?.state === "ready" ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
+  if (!readiness) return null;
 
+  const ready = readiness.state === "ready";
+  const computerName = ready ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
+  const passes = readiness.state === "no_computer_ready" ? (readiness.passedOver ?? []) : [];
   return (
-    <div>
-      {readiness && (
-        <p className="flex items-start gap-2 text-sm">
-          <span
-            aria-hidden
-            className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", readiness.state === "ready" ? "bg-success" : "bg-warning")}
-          />
-          {readiness.state === "ready" && `Ready: @Agent starts on ${computerName ?? "your first computer"}`}
-          {readiness.state !== "ready" && <span className="text-muted-foreground">{readiness.message}</span>}
-        </p>
+    <p className="flex items-start gap-2 text-sm">
+      <span aria-hidden className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", ready ? "bg-success" : "bg-warning")} />
+      {ready && `${CHATS} start on ${computerName ?? "your first computer"}.`}
+      {readiness.state === "no_computer_ready" && (
+        <span className="text-muted-foreground">
+          {CHATS} can't start{passes.length > 0 && `: ${passOverLines(passes)}`}.
+        </span>
       )}
-    </div>
+      {readiness.state !== "ready" && readiness.state !== "no_computer_ready" && <span className="text-muted-foreground">{readiness.message}</span>}
+    </p>
   );
 };

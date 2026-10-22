@@ -1,5 +1,6 @@
 import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
 import { MAX_RUNS_AT_ONCE, MIN_RUNS_AT_ONCE, type Computer } from "@/models/Pairing";
 
@@ -20,18 +21,21 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
   return (
     <>
       <Fact label="Runs at once">
-        <Select value={String(computer.runs_at_once)} onValueChange={(v) => update.mutate({ runs_at_once: Number(v) })}>
-          <SelectTrigger aria-label={`Runs at once on ${computer.name}`} className="h-7 w-20 font-mono text-xs tabular-nums">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RUNS.map((n) => (
-              <SelectItem key={n} value={n} className="font-mono text-xs tabular-nums">
-                {n}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="xs"
+          value={String(computer.runs_at_once)}
+          // Radix reports "" when the chosen item is clicked again; keep the current count.
+          onValueChange={(v) => v && update.mutate({ runs_at_once: Number(v) })}
+          aria-label={`Runs at once on ${computer.name}`}
+        >
+          {RUNS.map((n) => (
+            <ToggleGroupItem key={n} value={n} aria-label={n} className="h-6 w-8 px-0 font-mono tabular-nums">
+              {n}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </Fact>
       <Fact label="Chat folder">
         <Select value={folder} onValueChange={(v) => update.mutate({ chat_project_id: v === NO_FOLDER ? "" : v })}>
@@ -40,7 +44,7 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_FOLDER} className="text-xs text-muted-foreground">
-              None: chats outside a project go to your next computer
+              None
             </SelectItem>
             {projects.map((p) => (
               <SelectItem key={p.id} value={p.id} className="text-xs">
@@ -49,6 +53,7 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
             ))}
           </SelectContent>
         </Select>
+        <p className="mt-1.5 text-muted-foreground">Where chats outside a project run.</p>
       </Fact>
     </>
   );

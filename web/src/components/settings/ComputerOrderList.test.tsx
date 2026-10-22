@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ComputersSection } from "@/components/settings/ComputersSection";
 import type { Computer } from "@/models/Pairing";
-import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), post: vi.fn(), del: vi.fn() }));
 
@@ -106,7 +105,7 @@ describe("Your computers", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: "laptop", expanded: false }));
-    await pickOption(user, "Runs at once on laptop", "4");
+    await user.click(within(await screen.findByRole("radiogroup", { name: "Runs at once on laptop" })).getByRole("radio", { name: "4" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });
     expect(await screen.findByText("1 of 4 running")).toBeInTheDocument();

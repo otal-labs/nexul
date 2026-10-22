@@ -57,7 +57,7 @@ describe("ProjectLinkForm", () => {
   it("lists the person's computers in order with the checkout a run would use on each", async () => {
     renderForm();
 
-    const list = await screen.findByRole("list", { name: /computers this project's runs try/i });
+    const list = await screen.findByRole("list", { name: /this project's computers/i });
     const rows = await within(list).findAllByRole("listitem");
     expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining("laptop"), expect.stringContaining("build-box")]);
     expect(within(rows[0]!).getByText("t3-app")).toBeInTheDocument();

@@ -61,7 +61,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
           modelName="model"
           optionsName="model_options"
           computerId={modelComputer}
-          description="Model for your agent turns in this project, on every computer"
+          description="For your turns in this project"
           onPick={(provider, model, options) => {
             form.setValue("provider", provider, { shouldDirty: true });
             form.setValue("model", model, { shouldDirty: true });

@@ -23,7 +23,7 @@ export const PairingProjectsSection = () => {
     <SettingsCard
       id="pairing-projects"
       title="Projects"
-      description="Which of your computers each project's runs try, the checkout they use on each, and the model. Only your own turns read these; a project you leave alone follows your computers and defaults."
+      description="Computers, checkouts and model per project. Left alone, a project uses your defaults."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
