@@ -376,8 +376,8 @@ func computerProjectCreateTool(s *Service) mcptool.Tool {
 			"computer's own git credentials); with name it makes "+
 			"an empty folder, for a project with no repository or a computer with no T3 project at all, which setup also "+
 			"needs. Either lands in the folder most of the computer's T3 projects share, or ~/Code when it has none. "+
-			"Returns the new project's id, the t3_project_id play_run takes, once the clone is done; a clone T3 Code makes "+
-			"keeps running in the background, and one that fails leaves the project in T3 Code to retry or remove there. A clone fails when the folder "+
+			"Returns the new project's id, the t3_project_id play_run takes, once the clone is done; a clone that fails "+
+			"leaves no project behind and says why, such as a computer with no GitHub sign-in. A clone fails when the folder "+
 			"already exists and is not empty, and on a computer paired before cloning existed until computer_pair pairs "+
 			"it again; an empty project does not need that.",
 		mcptool.Hints{Additive: true},
