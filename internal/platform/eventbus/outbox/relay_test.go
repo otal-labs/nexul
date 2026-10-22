@@ -204,16 +204,18 @@ func TestRelay_CrashRedelivery_DedupeEndToEnd(t *testing.T) {
 	runCtx2, cancel2 := context.WithCancel(context.Background())
 	done2 := make(chan error, 1)
 	go func() { done2 <- relay.Run(runCtx2) }()
+	// Delivery and the mark finish in either order; cancelling before the mark fails it on a dead context.
 	require.Eventually(t, func() bool { return b.Load() == 1 }, time.Second, 5*time.Millisecond)
+	require.Eventually(t, func() bool {
+		var n int
+		require.NoError(t, db.QueryRow(`SELECT COUNT(1) FROM outbox WHERE id = 'row-1' AND published = 1`).Scan(&n))
+		return n == 1
+	}, time.Second, 5*time.Millisecond, "row must be marked published after the successful re-publish")
 	cancel2()
 	require.NoError(t, <-done2)
 
 	assert.Equal(t, int32(1), a.Load(), "consumer that already processed the row must not process it again")
 	assert.Equal(t, int32(1), b.Load(), "consumer that had not processed the row must process the redelivery")
-
-	var n int
-	require.NoError(t, db.QueryRow(`SELECT COUNT(1) FROM outbox WHERE id = 'row-1' AND published = 1`).Scan(&n))
-	assert.Equal(t, 1, n, "row must be marked published after the successful re-publish")
 }
 
 type memStore struct {
