@@ -123,7 +123,7 @@ _Avoid_: Backend (that is the Go server), Runtime, Driver
 The per-model settings a turn runs with, such as reasoning level, context
 window, and fast mode: whatever the harness lists for that model, with its
 defaults, read live from the harness and never kept as a list in Nexul. They
-are picked beside a model and stored with it (pairing defaults, a project link,
+are picked beside a model and stored with it (the defaults on Your computers, a project link,
 a play's trail, a computer's setup choices); an option left unset runs on the
 harness default, and picking another model starts it on its own defaults. A
 run's pick also holds on a thread that already exists: on T3 Code's
@@ -172,21 +172,44 @@ and its owner's alone: no workspace Owner and no one the computer is shared
 with reads it.
 _Avoid_: inventory, telemetry, specs
 
+**Your computers**:
+One person's own paired computers in their order, set by dragging in Your
+settings → Computers. A run goes to the first ready one: online, set up for
+its provider, offering its model, holding a project checkout, and with room
+for a queued run; every computer it passed over is named with why (ADR 0165).
+Placement is fill in order (the first ready) or spread (the least busy for its
+size). A computer shared with the person is never in it.
+_Avoid_: Default computer, pool, failover group
+
+**Runs at once**:
+How many play runs one paired computer takes at a time, 1 to 5, set by its
+owner; pressed or automatic and whoever started them, never `@Agent` chats.
+A queued run waits when no ready computer has room; a pressed run never waits
+(ADR 0166).
+_Avoid_: Slots per person, concurrency limit
+
+**Project checkout**:
+The T3 project on one computer that a project's runs use there: the one the
+person picked for it, else the one whose git remote matches a repository of
+the project. A computer with none is passed over, unless the person's Clone
+automatically is on, which clones the repository there first. Outside a
+project a computer uses its chat folder instead.
+_Avoid_: Checkout (that is a stack's on a machine), fallback T3 project
+
 **Project link**:
-One person's choice of paired computer, T3 project, provider, model, model
-options, and start-in for one project they can open, set in Your settings →
-Computers → Projects. Each person has their own; nobody else's turns use it.
-A play a person starts in a project they have not linked asks where to run,
-their defaults filled in, and saves the answer as their link (ADR 0145); so
-does picking a computer for an auto run waiting on no default computer;
-`@Agent` and runs nobody presses use their own pairing defaults there (ADR 0102).
+One person's provider, model, model options, and start-in for one project
+they can open, set in Your settings → Computers → Projects, used on whichever
+computer the run lands on. It follows Your computers or names its own list in
+its own order (ADR 0165). Each person has their own; nobody else's turns use
+it. A play pressed in a project no computer of theirs has asks where to run,
+and remembers the answer as that computer's project checkout.
 _Avoid_: Project pairing, shared link
 
 **Start-in**:
 Where a T3 thread Nexul creates for a person begins: the T3 project's folder,
 or a new git worktree off the branch that folder is on, so play runs and
-chats running side by side never edit the same files. Set in the pairing
-defaults; a project link can override it or follow the defaults. A reused
+chats running side by side never edit the same files. Set in the defaults on Your
+computers; a project link can override it or follow the defaults. A reused
 thread stays where it began, and a T3 Code that cannot launch a worktree
 starts the thread in the folder and says so.
 _Avoid_: Workspace (that is the tenant boundary), env mode
@@ -344,21 +367,19 @@ play type offers and a stack play offers alone (see **Run on a chosen
 computer**), and memories each run reads beside the always-included ones,
 only those in its target's project. The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
-priority then oldest first, until they have a free slot (one run going at
-once by default, up to five as the workspace sets it) and their computer
-is online and set up, and is checked again before it starts; with several
-computers and none the default, the waiting run asks them to pick one, saved
-as their project link so the project's next runs need no pick. A ticket past the daily
+priority then oldest first, until a ready computer of theirs has room
+(Runs at once), and is checked again before it starts; a waiting run names
+each of their computers and why it could not take the run. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`.
 _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
 
 **Run on a chosen computer**:
-A choice of whose computer an auto play's run lands on, offered on every play
+A choice of whose computers, in order, an auto play's run lands on, offered on every play
 type and the only one a stack play has, since a stack has no developer, tester
-or causer. The auto play stores the computer and the person who picked it,
-who must own the computer or hold `computers:run_agents` on its share, and
+or causer. The auto play stores the computers and the person who picked them,
+who must own each or hold `computers:run_agents` on its share, and
 the run acts as that person: the trail is theirs and the run waits in their
 queue. The right is checked again when the moment matches and at the front of
 the queue; a person who has lost it leaves the run as "didn't run" with the
@@ -409,9 +430,9 @@ the harness's own outcome (ADR 0119); a `starting` one, which no thread
 accepted yet, ends `interrupted`, and a `waiting` one stays for its answer.
 Also records the computer, T3 project, start-in, provider, and model the run
 used, whether the starter picked them in the run dialog or they came from the
-starter's own project link, or for a run nobody pressed their pairing defaults
-(ADR 0058, ADR 0145); its answers and continues go there, whatever the link
-says later.
+starter's own project link and Your computers (ADR 0058, ADR 0165), and the
+computers it passed over and why; its answers and continues go there,
+whatever the link says later.
 _Avoid_: Run history, log, execution
 
 **Doc thread**:

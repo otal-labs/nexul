@@ -1,5 +1,9 @@
 # A pressed play asks where to run instead of falling back
 
+Superseded in part by ADR 0165: a pressed play asks where to run only when no computer of the person's has the
+project; otherwise it goes to the first ready computer in their order, and a pick is remembered as that computer's
+checkout, not saved as a link that pins it.
+
 A person with no project link for a project ran every play there on their pairing defaults: their default computer
 and fallback T3 project (ADR 0102). The fallback T3 project is one checkout, so a play pressed in any unlinked project
 ran in that checkout, and nothing in the run dialog said so. The owner kept finding runs in the wrong checkout.

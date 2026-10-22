@@ -3,6 +3,9 @@
 Superseded in part by ADR 0156: a stack play is a third play type with moments of its own, and a run may land on a chosen
 computer, as the person who picked it, in place of the developer, the tester or whoever caused the moment.
 
+Amended by ADR 0165 and ADR 0166: a queued run goes to the first ready computer in its person's order instead of one
+default, and runs at once is set per computer, not per person by the workspace.
+
 ADR 0055 says nothing fires a play but a person, and ADR 0066 makes the decisions check the one exception. Teams want
 more of them: "run Fix with AI when the ticket becomes unblocked, bugs first, once per unblock". Automations can
 already do anything in code, but writing SDK code for "when X, if Y, run this play" is too much for a team that only
