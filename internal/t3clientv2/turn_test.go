@@ -562,9 +562,9 @@ func TestStartTurn_Worktree_LaunchesOnTheFoldersBranchWithThePromptAndWatchesIts
 		"commandId": launch["commandId"], "creationSource": "web", "threadId": threadID, "projectId": "proj-live", "title": "Fix login",
 		"modelSelection": map[string]any{"instanceId": "claudeAgent", "model": "claude-opus-5-5"},
 		"runtimeMode":    "full-access", "interactionMode": "default",
-		"workspaceStrategy": map[string]any{"type": "worktree", "baseRef": "master"},
+		"workspaceStrategy": map[string]any{"type": "worktree", "baseRef": "master", "branch": "fix-login-" + threadID[len(threadID)-6:]},
 		"initialMessage":    map[string]any{"messageId": messageID, "text": "full prompt", "attachments": []any{}},
-	}, launch, "T3 holds back only a launched message until the worktree is ready")
+	}, launch, "T3 holds back only a launched message until the worktree is ready, and is told the branch so it asks no provider to name it")
 
 	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
 	f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
@@ -581,6 +581,25 @@ func TestStartTurn_Worktree_LaunchesOnTheFoldersBranchWithThePromptAndWatchesIts
 		event(6, "run.updated", runOf(messageID, runWaiting)),
 	))
 	assert.Equal(t, []harness.Update{snapshotOf(codexMessage, "Done.", false), ended(harness.TurnDone, "")}, drainUpdates(t, s.result.Updates))
+}
+
+func TestWorktreeBranch_SlugsTheTitleIntoAValidRefName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name, title, want string
+	}{
+		{"punctuation and case collapse to single dashes", "  Fix: Login -- crash!! ", "fix-login-crash-0a1b2c"},
+		{"non-ASCII is dropped like any other separator", "Café résumé 日本語 #42", "caf-r-sum-42-0a1b2c"},
+		{"nothing sluggable falls back to nexul", "日本語 ...", "nexul-0a1b2c"},
+		{"a long title is cut without leaving a dangling dash", strings.Repeat("abcd efgh ", 10), "abcd-efgh-abcd-efgh-abcd-efgh-abcd-efgh-abcd-efgh-0a1b2c"},
+		{"a title that is T3's own name for a temporary branch still differs from it", "t3", "t3-0a1b2c"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, worktreeBranch(tt.title, "019a0000-0000-7000-8000-0000000a1b2c"))
+		})
+	}
 }
 
 func TestStartTurn_WorktreeButFolderOnNoBranch_StartsInTheFolderWithANote(t *testing.T) {

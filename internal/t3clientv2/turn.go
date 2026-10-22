@@ -29,6 +29,8 @@ const (
 	noBranchNote  = "Started in the T3 project's folder: it is not on a git branch, so there is nothing to base a worktree on"
 	// defaultTitle stands in for an empty title, which thread.create refuses.
 	defaultTitle = "Nexul chat"
+	// maxBranchSlug keeps a worktree branch and its path short enough to read in a terminal.
+	maxBranchSlug = 50
 	// cancelWithin bounds cancelling the queued run of a turn that stopped watching, whose own context may be over.
 	cancelWithin = 10 * time.Second
 	// nexulMessagePrefix marks the messages Nexul sends, so a message without it on a followed run was typed in T3.
@@ -81,6 +83,7 @@ type threadLaunch struct {
 type workspaceStrategy struct {
 	Type    string `json:"type"`
 	BaseRef string `json:"baseRef"`
+	Branch  string `json:"branch,omitempty"`
 }
 
 type launchMessage struct {
@@ -394,7 +397,7 @@ func (t *turn) launch(ctx context.Context, title, base string, selection modelSe
 	_, err = t.conn.Call(ctx, launchThread, threadLaunch{
 		CommandID: ids.New(), CreationSource: "web", ThreadID: t.threadID, ProjectID: t.target.ProjectID, Title: title,
 		ModelSelection: selection, RuntimeMode: fullAccess, InteractionMode: "default",
-		WorkspaceStrategy: workspaceStrategy{Type: "worktree", BaseRef: base},
+		WorkspaceStrategy: workspaceStrategy{Type: "worktree", BaseRef: base, Branch: worktreeBranch(title, t.threadID)},
 		InitialMessage:    launchMessage{MessageID: t.messageID, Text: prompts.Full, Attachments: refs},
 	})
 	if err != nil {
@@ -402,6 +405,29 @@ func (t *turn) launch(ctx context.Context, title, base string, selection modelSe
 	}
 	t.prompted = true
 	return notes, nil
+}
+
+// worktreeBranch names a run's worktree branch so T3 skips asking a text-generation provider to; the thread id's tail keeps two runs on one title apart.
+func worktreeBranch(title, threadID string) string {
+	var slug strings.Builder
+	for _, r := range strings.ToLower(title) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			slug.WriteRune(r)
+			continue
+		}
+		if s := slug.String(); s != "" && !strings.HasSuffix(s, "-") {
+			slug.WriteByte('-')
+		}
+	}
+	name := strings.Trim(slug.String(), "-")
+	if len(name) > maxBranchSlug {
+		name = strings.TrimRight(name[:maxBranchSlug], "-")
+	}
+	if name == "" {
+		name = "nexul"
+	}
+	// Six characters, never T3's eight-hex temporary-name shape, which T3 would still rename through its provider.
+	return name + "-" + threadID[max(0, len(threadID)-6):]
 }
 
 // worktreeBase is the branch the T3 project's folder is on, which T3 bases its own new worktrees on; "" when there is none.
