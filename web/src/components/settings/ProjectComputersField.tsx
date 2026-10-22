@@ -43,13 +43,13 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
     <div className="space-y-3">
       <SettingsRow
         label="Its own computers"
-        description={ownOrder ? "Runs here try only these, in this order." : "Runs here follow your order of computers."}
+        description={ownOrder ? "Only these, in this order." : "Follows your order."}
         htmlFor={`own-order-${projectId}`}
         className="py-0"
       >
         <Switch id={`own-order-${projectId}`} checked={ownOrder} onCheckedChange={(on) => setIds(on ? own.map((c) => c.id) : [])} />
       </SettingsRow>
-      <ul aria-label="Computers this project's runs try" className="ml-10 divide-y divide-border rounded-md border">
+      <ul aria-label="This project's computers" className="ml-10 divide-y divide-border rounded-md border">
         {listed.map((computer, index) => (
           <ProjectComputerRow
             key={computer.id}
@@ -77,7 +77,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
         </Select>
       )}
       {ownOrder && (
-        <FormSelect control={control} name="placement" label="When several can take a run" placeholder="Same as your defaults" options={PLACEMENT_OPTIONS} />
+        <FormSelect control={control} name="placement" label="Send runs to" placeholder="Same as your defaults" options={PLACEMENT_OPTIONS} />
       )}
     </div>
   );

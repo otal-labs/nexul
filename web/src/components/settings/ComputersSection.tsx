@@ -19,7 +19,7 @@ export const ComputersSection = () => {
     <SettingsCard
       id="pairing-computers"
       title="Your computers"
-      description="Runs go to the first computer that can take one: online, set up, holding the project, with room. Drag to change the order."
+      description="Runs go to the first ready computer. Drag to reorder."
       footer={
         <AddComputerDialog
           trigger={

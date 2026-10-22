@@ -11,7 +11,7 @@ export const ComputerLoad = ({ computer }: ComputerLoadProps) => {
   return (
     <span
       className={cn("shrink-0 font-mono text-xs tabular-nums", computer.running > 0 ? "text-foreground" : "text-muted-foreground")}
-      title={full ? "Full: a queued run waits for one of these to end, or goes to your next computer" : undefined}
+      title={full ? "Full: new runs wait or go to your next computer" : undefined}
     >
       {computer.running} of {computer.runs_at_once} running
     </span>

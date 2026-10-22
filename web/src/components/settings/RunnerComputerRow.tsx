@@ -10,6 +10,7 @@ import { useComputerOrder } from "@/components/settings/ComputerOrderContext";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { usePairNow } from "@/hooks/ComputerHooks";
@@ -112,6 +113,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
             {name}
           </span>
         </button>
+        {!pairing && <ComputerLoad computer={computer} />}
         {/* Mounted whatever the row shows, so the row changing as the computer connects can't close the dialog. */}
         <AddComputerDialog
           again={{ id: computer.id, name: computer.name }}
@@ -160,11 +162,10 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
           </SettingsStatus>
         ))}
         {summary && (
-          <SettingsStatus tone={summary.tone} detail={summary.detail}>
+          <SettingsStatus tone={summary.tone} detail={summary.providers && <SetupProviderMarks lines={summary.providers} />}>
             {summary.text}
           </SettingsStatus>
         )}
-        {!pairing && <ComputerLoad computer={computer} />}
       </p>
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>

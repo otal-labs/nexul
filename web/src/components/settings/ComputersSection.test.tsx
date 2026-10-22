@@ -223,7 +223,7 @@ describe("ComputersSection", () => {
     const { client } = renderSection();
 
     expect(await screen.findByText("Setup confirmed")).toBeInTheDocument();
-    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(screen.getByTitle("Codex")).toBeInTheDocument();
     expect(screen.getByText("confirmed 2d ago")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Actions for Home" }));
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();

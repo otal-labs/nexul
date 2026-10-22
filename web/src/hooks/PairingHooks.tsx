@@ -63,7 +63,7 @@ const blockedReadiness = (data: ResolveResponse): HarnessReadiness => {
   const copy = HARNESS_READINESS_COPY[state];
   const passes = state === "needs_location" ? [] : (data.passed_over ?? []);
   const message = passes.length > 0 ? `${copy.message} ${passOverLines(passes)}.` : copy.message;
-  return { state, message, ...(copy.link && { link: copy.link }) };
+  return { state, message, passedOver: passes, ...(copy.link && { link: copy.link }) };
 };
 
 // One request lists the viewer's computers and those shared with them; each hook selects its half.

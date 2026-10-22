@@ -203,7 +203,7 @@ func TestResolveTarget_OfflineComputer_FailsOverUnlessPinned(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "c-desktop", target.Computer.ID)
 	assert.Equal(t, "t3-acme-c-desktop", target.HarnessProjectID, "the run uses the desktop's own checkout")
-	assert.Equal(t, []PassOver{{ComputerID: "c-laptop", Name: "laptop", Why: PassOverOffline, Text: "laptop is offline: it isn't connected to Nexul"}}, target.PassedOver)
+	assert.Equal(t, []PassOver{{ComputerID: "c-laptop", Name: "laptop", Why: PassOverOffline, Text: "laptop is offline"}}, target.PassedOver)
 	assert.False(t, slices.Contains(h.asked, "c-laptop"), "a computer known to be offline is not asked")
 
 	pinned := map[string]func() (*ResolvedTarget, error){

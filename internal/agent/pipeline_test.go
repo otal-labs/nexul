@@ -480,9 +480,9 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonExpiredToken}, "re-pair it"},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonNoComputerReady, PassedOver: []pairing.PassOver{
-				{Text: "laptop is offline: it isn't connected to Nexul"}, {Text: "build-box has no chat folder"},
+				{Text: "laptop is offline"}, {Text: "build-box has no chat folder"},
 			}},
-			"@Agent couldn't start: laptop is offline: it isn't connected to Nexul; build-box has no chat folder.",
+			"@Agent couldn't start: laptop is offline; build-box has no chat folder.",
 		},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"},

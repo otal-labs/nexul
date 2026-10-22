@@ -75,7 +75,7 @@ describe("PairingDefaultsSection", () => {
 
     expect(await screen.findByDisplayValue("claude")).toBeInTheDocument();
     expect(screen.getByDisplayValue("sonnet")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: /when several computers can take a run/i })).toHaveTextContent("The least busy");
+    expect(screen.getByRole("combobox", { name: /send runs to/i })).toHaveTextContent("Least busy");
   });
 
   it("saves updated defaults", async () => {
@@ -88,7 +88,7 @@ describe("PairingDefaultsSection", () => {
     renderSection();
 
     await screen.findByRole("button", { name: /save defaults/i });
-    await pickOption(user, /when several computers can take a run/i, "The least busy");
+    await pickOption(user, /send runs to/i, "Least busy");
     await user.type(screen.getByLabelText(/^provider$/i), "opencode");
     await pickOption(user, /new threads start in/i, "New worktree per thread");
     await user.click(screen.getByRole("button", { name: /save defaults/i }));

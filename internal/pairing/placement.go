@@ -307,7 +307,7 @@ func (s *Service) reachable(ctx context.Context, c Computer) *miss {
 	if onRunner(c) && s.runners != nil {
 		r, err := s.runners.ComputerRunner(ctx, c.ID)
 		if err != nil || !r.Connected {
-			return offline("it isn't connected to Nexul")
+			return offline(notConnected)
 		}
 	}
 	if c.Facts != nil && c.Facts.T3.State != "" && c.Facts.T3.State != t3Answering {
@@ -433,7 +433,10 @@ func passOf(c Computer, nc *NotConfiguredError) PassOver {
 		}
 		return pass
 	}
-	pass.Why, pass.Text = PassOverOffline, c.Name+" is offline: "+cmp.Or(nc.Why, "T3 Code isn't answering there")
+	pass.Why, pass.Text = PassOverOffline, c.Name+" is offline"
+	if nc.Why != notConnected {
+		pass.Text = "T3 Code isn't answering on " + c.Name
+	}
 	return pass
 }
 

@@ -83,7 +83,7 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 	}{
 		{name: "the first ready computer takes it", want: "a", checkout: "t3-app-a"},
 		{name: "an offline computer is passed over", edits: map[string]func(*Computer){"a": offline}, want: "b", checkout: "t3-app-b",
-			passed: []string{"a is offline: T3 Code isn't answering there"}},
+			passed: []string{"T3 Code isn't answering on a"}},
 		{name: "a session that ran out is passed over", edits: map[string]func(*Computer){"a": func(c *Computer) { c.TokenExpiresAt = placementNow.Add(-time.Hour) }},
 			want: "b", passed: []string{"a needs pairing again"}},
 		{name: "a computer not set up for the provider is passed over", noSetup: "a", want: "b", passed: []string{"a isn't set up for Claude"}},
@@ -129,9 +129,9 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 			edits:  map[string]func(*Computer){"a": func(c *Computer) { c.Facts.Projects = nil }, "b": func(c *Computer) { c.Facts.Projects = nil }},
 			reason: ReasonNeedsLocation, passed: []string{"a doesn't have this project", "b doesn't have this project"}},
 		{name: "a run pinned to one offline computer is that computer's refusal", req: RunRequest{ComputerIDs: []string{"a"}},
-			edits: map[string]func(*Computer){"a": offline}, reason: ReasonOffline, passed: []string{"a is offline: T3 Code isn't answering there"}},
+			edits: map[string]func(*Computer){"a": offline}, reason: ReasonOffline, passed: []string{"T3 Code isn't answering on a"}},
 		{name: "a computer that does not answer is passed over", answerless: "a", want: "b",
-			passed: []string{"a is offline: T3 Code isn't answering there"}},
+			passed: []string{"T3 Code isn't answering on a"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -310,7 +310,7 @@ func TestPreviewRun_SaysWhereARunWouldLandWithoutAskingAComputer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "b", target.Computer.ID)
 	assert.Empty(t, target.Computer.BearerToken)
-	assert.Equal(t, []PassOver{{ComputerID: "a", Name: "a", Why: PassOverOffline, Text: "a is offline: T3 Code isn't answering there"}}, target.PassedOver)
+	assert.Equal(t, []PassOver{{ComputerID: "a", Name: "a", Why: PassOverOffline, Text: "T3 Code isn't answering on a"}}, target.PassedOver)
 }
 
 func TestReorderComputers_TakesEveryOwnComputerOnce(t *testing.T) {
