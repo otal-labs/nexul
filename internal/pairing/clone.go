@@ -17,7 +17,10 @@ import (
 
 var githubRepository = regexp.MustCompile(`^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$`)
 
-// cloneTimeout bounds a clone through a computer's runner, which goes on when the person who asked stops waiting.
+// gitSignInFailure matches what git says when the computer holds no credentials for the repository.
+var gitSignInFailure = regexp.MustCompile(`(?i)could not read username|authentication failed|terminal prompts disabled|repository not found`)
+
+// cloneTimeout bounds a clone, through a computer's runner or T3 Code, which goes on when the person who asked stops waiting.
 const cloneTimeout = 12 * time.Minute
 
 // ErrCloneThroughT3 means the runner cannot clone the repository, so T3 Code clones it with the computer's own git sign-in.
@@ -58,7 +61,22 @@ func (s *Service) CloneProject(ctx context.Context, userID, computerID, reposito
 	if !s.mayClone(ctx, client, session) {
 		return harness.Project{}, harness.ErrPairAgainToClone
 	}
+	return s.cloneThroughT3(ctx, client, session, repository, name, path)
+}
+
+// cloneThroughT3 has T3 Code clone with the computer's own git sign-in and waits for the outcome; it finishes even when
+// the person stops waiting, so a slow clone still becomes a project.
+func (s *Service) cloneThroughT3(ctx context.Context, client harness.Client, session Computer, repository, name, path string) (harness.Project, error) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cloneTimeout)
+	defer cancel()
 	project, err := client.CloneProject(ctx, session.Session(), name, "https://github.com/"+repository+".git", path)
+	var failed *harness.CloneFailedError
+	if errors.As(err, &failed) && gitSignInFailure.MatchString(failed.Detail) {
+		return harness.Project{}, fmt.Errorf("%w: %s has no GitHub sign-in, so it couldn't clone %s: sign in with `gh auth login` on it, or update the Nexul app on it so Nexul can clone with a token", apperrs.ErrInvalid, session.Name, repository)
+	}
+	if errors.As(err, &failed) {
+		return harness.Project{}, fmt.Errorf("%w: couldn't clone %s on %s: %s", apperrs.ErrInvalid, repository, session.Name, failed.Detail)
+	}
 	if err != nil {
 		return harness.Project{}, fmt.Errorf("clone %s on %s: %w", repository, session.Name, err)
 	}

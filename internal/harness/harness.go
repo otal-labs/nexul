@@ -32,6 +32,16 @@ var ErrSessionRejected = fmt.Errorf("%w: T3 Code no longer accepts this computer
 // ErrPairAgainToClone is a session paired before Nexul asked for the scope a clone needs; pairing again grants it.
 var ErrPairAgainToClone = fmt.Errorf("%w: this computer was paired before Nexul could clone there; pair it again and retry", apperrs.ErrInvalid)
 
+// CloneFailedError is a clone the harness started and could not finish; the harness has removed the half-made project.
+type CloneFailedError struct {
+	// Detail is the harness's own sentence for why, such as git's last words.
+	Detail string
+}
+
+func (e *CloneFailedError) Error() string { return "clone failed: " + e.Detail }
+
+func (e *CloneFailedError) Unwrap() error { return apperrs.ErrInvalid }
+
 // ErrSessionGone marks a session the harness no longer has, deleted there or never kept.
 var ErrSessionGone = errors.New("the harness session is gone")
 
@@ -446,7 +456,8 @@ type Client interface {
 	// Version is the unauthenticated probe, re-checked at turn start to warn about drift since pairing.
 	Version(ctx context.Context, serverURL string) (string, error)
 	ListProjects(ctx context.Context, s Session) ([]Project, error)
-	// CloneProject clones remoteURL into path as a new project; it returns once the project exists, the clone still running.
+	// CloneProject clones remoteURL into path as a new project and returns once the clone finished; a clone that
+	// fails leaves no project behind and returns a *CloneFailedError.
 	CloneProject(ctx context.Context, s Session, title, remoteURL, path string) (Project, error)
 	// CreateProject registers path as a new project titled title, creating the folder when it is missing.
 	CreateProject(ctx context.Context, s Session, title, path string) (Project, error)

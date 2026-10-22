@@ -57,6 +57,10 @@ type Server struct {
 	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload, the thread
 	// launch, the clone or the project mutation when it names that RPC; set it before connect.
 	CommandCauses map[string]any
+	// CloneError ends each clone in phase failed with this error; empty ends it done. Set it before connect.
+	CloneError string
+	// CloneRetired lists no clones at all, as T3 does once a finished clone is retired; set it before connect.
+	CloneRetired bool
 	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
 	Projections     map[string]any
 	ProjectionCause any
@@ -75,6 +79,9 @@ type Server struct {
 	// IdleDrop cuts a socket that sends nothing for this long without a close frame, as a tunnel does; set it before connect.
 	IdleDrop time.Duration
 
+	// clonedID is the project of the clone last started; only the socket's reader goroutine touches it.
+	clonedID string
+
 	connMu sync.Mutex
 	conn   *websocket.Conn
 
@@ -87,6 +94,7 @@ const (
 	launchRPC  = "orchestration.launchThread"
 	cloneRPC   = "projectClone.start"
 	mutateRPC  = "projects.mutate"
+	clonesRPC  = "subscribeProjectClones"
 )
 
 type clientEnv struct {
@@ -262,6 +270,8 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.handleClone(env)
 	case mutateRPC:
 		f.handleMutate(env)
+	case clonesRPC:
+		f.writeClones(env)
 	case "vcs.refreshStatus":
 		f.handleStatus(env)
 	case "orchestration.subscribeThread":
@@ -408,6 +418,7 @@ func (f *Server) handleClone(env clientEnv) {
 		f.t.Errorf("fake: undecodable clone payload: %v", err)
 		return
 	}
+	f.clonedID = fmt.Sprint(in["projectId"])
 	f.Cloned <- in
 	if cause, ok := f.CommandCauses[cloneRPC]; ok {
 		f.writeFailure(env, cause)
@@ -508,4 +519,30 @@ func WaitFor[T any](t testing.TB, ch <-chan T, what string) T {
 		t.Fatalf("timeout waiting for %s", what)
 		panic("unreachable")
 	}
+}
+
+// writeClones answers a subscribeProjectClones stream the way T3 does for the clone last started: its running snapshot,
+// then the one it ended with, and the stream stays open.
+func (f *Server) writeClones(env clientEnv) {
+	id := idString(env.ID)
+	snapshot := func(phase, errText string) []any {
+		return []any{map[string]any{"projectId": f.clonedID, "phase": phase, "error": nullable(errText)}}
+	}
+	if f.CloneRetired {
+		f.Write(Chunk(id, []any{}))
+		return
+	}
+	f.Write(Chunk(id, snapshot("running", "")))
+	if f.CloneError != "" {
+		f.Write(Chunk(id, snapshot("failed", f.CloneError)))
+		return
+	}
+	f.Write(Chunk(id, snapshot("done", "")))
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }

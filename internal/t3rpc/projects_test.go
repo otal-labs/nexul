@@ -1,9 +1,11 @@
 package t3rpc
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,4 +106,47 @@ func TestCreateProject_FailsWithT3sOwnSentence(t *testing.T) {
 	_, err := c.CreateProject(testCtx(t), "notes", "/home/me/notes")
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	assert.Equal(t, "invalid: Project directory is not empty.", err.Error())
+}
+
+func TestCloneProject_AFailedCloneRemovesItsProjectAndReturnsGitsReason(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	f.CloneError = "fatal: could not read Username for 'https://github.com': terminal prompts disabled"
+	c := connectFake(t, f)
+
+	_, err := c.CloneProject(testCtx(t), "api", "https://github.com/acme/api.git", "/home/me/api")
+	var failed *harness.CloneFailedError
+	require.ErrorAs(t, err, &failed)
+	assert.Equal(t, f.CloneError, failed.Detail)
+	sent := <-f.Cloned
+	deleted := t3rpctest.WaitFor(t, f.Mutated, "the project delete")
+	assert.Equal(t, map[string]any{"type": "project.delete", "projectId": sent["projectId"], "commandId": deleted["commandId"]}, deleted)
+	assert.NotEmpty(t, deleted["commandId"])
+}
+
+func TestCloneProject_AFailedCloneStillFailsWhenItsProjectCannotBeRemoved(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	f.CloneError = "Repository not found."
+	f.CommandCauses = map[string]any{"projects.mutate": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+		"_tag": "ProjectMutationError", "message": "Project is busy."}}}}
+	c := connectFake(t, f)
+
+	_, err := c.CloneProject(testCtx(t), "api", "https://github.com/acme/api.git", "/home/me/api")
+	var failed *harness.CloneFailedError
+	require.ErrorAs(t, err, &failed)
+	assert.Equal(t, "Repository not found.", failed.Detail)
+}
+
+func TestCloneProject_ACloneT3NoLongerListsHasFinished(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	f.CloneRetired = true
+	c := connectFake(t, f)
+	ctx, cancel := context.WithTimeout(testCtx(t), time.Second)
+	defer cancel()
+
+	project, err := c.CloneProject(ctx, "api", "https://github.com/acme/api.git", "/home/me/api")
+	require.NoError(t, err)
+	assert.Equal(t, "api", project.Title)
 }

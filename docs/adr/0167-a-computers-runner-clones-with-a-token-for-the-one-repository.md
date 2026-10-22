@@ -15,7 +15,8 @@ Code's `projects.mutate` registers the checkout as a project.
 - **Only what the person may open.** The server mints it only for a repository of a project the person can open, and
   never hands a computer the connector token an instance without the App key falls back to.
 - **T3 Code still clones when the runner cannot.** A runner older than this, a repository with no such token, or an
-  instance without the App key leaves the clone to T3 Code and the computer's own sign-in, as before.
+  instance without the App key leaves the clone to T3 Code and the computer's own sign-in. Nexul waits for that clone to
+  end; one that fails has its project removed again and is reported as a missing GitHub sign-in or with T3 Code's reason.
 - **The clone outlives the request.** It is synchronous, bounded at ten minutes, and finishes even when the browser
   stops waiting, so a slow clone still becomes a project.
 

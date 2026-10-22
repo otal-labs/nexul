@@ -1,6 +1,7 @@
 package t3rpc
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -130,8 +131,27 @@ type cloneStart struct {
 	DestinationPath string `json:"destinationPath"`
 }
 
-// CloneProject has T3 clone remoteURL into path as a new project titled title; the clone finishes in the background.
+// CloneProject has T3 clone remoteURL into path as a new project titled title and waits for the clone to end; a clone
+// that fails has its project removed again and comes back as a *harness.CloneFailedError.
 func (c *Conn) CloneProject(ctx context.Context, title, remoteURL, path string) (harness.Project, error) {
+	project, err := c.startClone(ctx, title, remoteURL, path)
+	if err != nil {
+		return harness.Project{}, err
+	}
+	detail, err := c.awaitClone(ctx, project.ID)
+	if err != nil {
+		return harness.Project{}, fmt.Errorf("wait for the clone of %s: %w", remoteURL, err)
+	}
+	if detail == "" {
+		return project, nil
+	}
+	if err := c.deleteProject(ctx, project.ID); err != nil {
+		c.log.Warn("t3rpc: remove the project of a failed clone", "project_id", project.ID, "error", err)
+	}
+	return harness.Project{}, &harness.CloneFailedError{Detail: detail}
+}
+
+func (c *Conn) startClone(ctx context.Context, title, remoteURL, path string) (harness.Project, error) {
 	raw, err := c.Call(ctx, projectCloneStart, cloneStart{
 		ProjectID: ids.New(), Title: title, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), RemoteURL: remoteURL, DestinationPath: path,
 	})
@@ -155,7 +175,56 @@ func (c *Conn) CloneProject(ctx context.Context, title, remoteURL, path string) 
 	return harness.Project{ID: out.ProjectID, Title: title, Path: out.Cwd}, nil
 }
 
-// projectsMutate carries T3's project create, update and delete commands; create needs only orchestration:operate.
+// subscribeProjectClones streams the list of clones T3 tracks, once at the start and again on every change.
+const subscribeProjectClones = "subscribeProjectClones"
+
+type cloneSnapshot struct {
+	ProjectID string `json:"projectId"`
+	Phase     string `json:"phase"`
+	Error     string `json:"error"`
+}
+
+// awaitClone follows projectID's clone until it ends and returns why it did not finish, empty when it did.
+func (c *Conn) awaitClone(ctx context.Context, projectID string) (string, error) {
+	stream, err := c.Stream(ctx, subscribeProjectClones, nil)
+	if err != nil {
+		return "", err
+	}
+	defer stream.Close()
+	for {
+		values, err := stream.Next(ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, raw := range values {
+			var snapshots []cloneSnapshot
+			if err := json.Unmarshal(raw, &snapshots); err != nil {
+				continue
+			}
+			listed := false
+			for _, s := range snapshots {
+				if s.ProjectID != projectID {
+					continue
+				}
+				listed = true
+				switch s.Phase {
+				case "done":
+					return "", nil
+				case "cancelled":
+					return "The clone was cancelled.", nil
+				case "failed":
+					return cmp.Or(s.Error, "The repository could not be cloned."), nil
+				}
+			}
+			// T3 drops a finished clone 30 seconds after it ends, and a failed one stays, so a list without it means it finished.
+			if !listed {
+				return "", nil
+			}
+		}
+	}
+}
+
+// projectsMutate carries T3's project create, update and delete commands; create and delete need only orchestration:operate.
 const projectsMutate = "projects.mutate"
 
 type projectCreate struct {
@@ -187,4 +256,10 @@ func (c *Conn) CreateProject(ctx context.Context, title, path string) (harness.P
 		return harness.Project{}, fmt.Errorf("%s: unexpected result %s", projectsMutate, Snippet(raw))
 	}
 	return harness.Project{ID: out.ID, Title: title, Path: out.WorkspaceRoot}, nil
+}
+
+// deleteProject removes projectID; T3 discards the folder of a clone that did not finish.
+func (c *Conn) deleteProject(ctx context.Context, projectID string) error {
+	_, err := c.Call(ctx, projectsMutate, map[string]string{"type": "project.delete", "commandId": ids.New(), "projectId": projectID})
+	return err
 }

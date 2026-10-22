@@ -295,3 +295,30 @@ func TestCreateEmptyProject_AFolderThatIsAlreadyAProjectIsAConflict(t *testing.T
 	assert.Contains(t, err.Error(), "/home/me/Code/notes")
 	assert.Empty(t, *calls, "T3 would register the same folder twice")
 }
+
+func TestCloneProject_ThroughT3_AFailedCloneComesBackAsAnErrorThePersonCanActOn(t *testing.T) {
+	t.Parallel()
+	const signIn = "invalid: Box has no GitHub sign-in, so it couldn't clone acme/api: sign in with `gh auth login` on it, or update the Nexul app on it so Nexul can clone with a token"
+	tests := []struct {
+		name    string
+		failure error
+		want    string
+	}{
+		{"git has no credentials", &harness.CloneFailedError{Detail: "fatal: could not read Username for 'https://github.com': terminal prompts disabled"}, signIn},
+		{"git refused the credentials", &harness.CloneFailedError{Detail: "remote: Invalid username or password.\nfatal: Authentication failed for 'https://github.com/acme/api.git/'"}, signIn},
+		{"a private repository git cannot see", &harness.CloneFailedError{Detail: "remote: Repository not found.\nfatal: repository 'https://github.com/acme/api.git/' not found"}, signIn},
+		{"any other failure", &harness.CloneFailedError{Detail: "fatal: unable to access 'https://github.com/acme/api.git/': Could not resolve host: github.com"}, "invalid: couldn't clone acme/api on Box: fatal: unable to access 'https://github.com/acme/api.git/': Could not resolve host: github.com"},
+		{"T3 itself failed", assert.AnError, "clone acme/api on Box: " + assert.AnError.Error()},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, c, _ := newCloneService(t)
+			svc.harnesses[harness.KindT3Code].(*fakeExchanger).CloneProjectFn = func(context.Context, harness.Session, string, string, string) (harness.Project, error) {
+				return harness.Project{}, tt.failure
+			}
+			_, err := svc.CloneProject(t.Context(), "u1", c.ID, "acme/api")
+			require.EqualError(t, err, tt.want)
+		})
+	}
+}
