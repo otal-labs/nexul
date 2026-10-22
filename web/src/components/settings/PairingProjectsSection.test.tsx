@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PairingProjectsSection } from "@/components/settings/PairingProjectsSection";
+import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), del: vi.fn(), errorMessage: vi.fn() }));
 
@@ -40,19 +41,24 @@ interface Fixture {
   workspaces: unknown[];
   projects: Record<string, unknown[]>;
   links: unknown[];
+  presence?: Record<string, string>;
 }
 
-const serve = ({ computers, workspaces, projects, links }: Fixture) =>
+const SONNET = { data: { providers: [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }] }] } };
+
+const serve = ({ computers, workspaces, projects, links, presence = { c1: "connected" } }: Fixture) =>
   mocks.get.mockImplementation(async (url: string, config?: { params?: { workspace_id?: string } }) => {
     if (url === "/api/pairing/computers") return { data: { computers } };
+    if (url === "/api/pairing/presence") return { data: { computers: presence } };
     if (url === "/api/workspaces") return { data: workspaces };
     if (url === "/api/projects") return { data: projects[config?.params?.workspace_id ?? ""] ?? [] };
     if (url === "/api/pairing/projects") return { data: { links } };
     if (url === "/api/pairing/defaults") return { data: { placement: "in_order", clone_automatically: false } };
     if (url.startsWith("/api/projects/") && url.endsWith("/repos")) return { data: [{ owner: "acme", name: "web", full_name: "acme/web", connector_id: "github", role: "app" }] };
     if (url === "/api/pairing/computers/c1/projects") return { data: { projects: [{ id: "t3-app", title: "app", path: "/src/app" }] } };
-    if (url === "/api/pairing/computers/c1/providers") {
-      return { data: { providers: [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }] }] } };
+    if (url.endsWith("/providers")) {
+      if (presence[url.split("/")[4] ?? ""] !== "connected") throw new Error("the computer is offline");
+      return SONNET;
     }
     throw new Error(`unexpected GET ${url}`);
   });
@@ -77,7 +83,7 @@ const oneWorkspace: Fixture = {
   links: [{ project_id: "p-web", computers: ["c1"], checkouts: [], provider: "claude", model: "sonnet-5", start_in: "worktree" }],
 };
 
-const row = (name: string) => screen.getByText(name, { selector: "p" }).closest("li") as HTMLElement;
+const row = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}`) }).closest("li") as HTMLElement;
 
 describe("PairingProjectsSection", () => {
   beforeEach(() => {
@@ -87,56 +93,92 @@ describe("PairingProjectsSection", () => {
     vi.mocked(toast.success).mockClear();
   });
 
-  it("reads each project's own computers and model back by name, and the rest as following yours", async () => {
+  it("leads with Defaults and reads each project's own computers and model back by name, the rest as using defaults", async () => {
     serve(oneWorkspace);
     renderTab();
 
     expect(await screen.findByText("home · Sonnet 5 · New worktree")).toBeInTheDocument();
-    expect(within(row("Api")).getByText("Follows your computers and defaults")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Acme" }), "one workspace needs no group label").not.toBeInTheDocument();
+    expect(within(row("Api")).getByText("Uses defaults")).toBeInTheDocument();
+    const rows = within(screen.getByRole("list", { name: "Defaults and projects" })).getAllByRole("button", { expanded: false });
+    expect(rows[0]).toHaveTextContent("DefaultsFirst in order · Computer default · Project folder");
   });
 
-  it("groups projects under each workspace when there are several", async () => {
+  it("names a model from the first computer that is online when the first in order is not", async () => {
+    const links = [{ project_id: "p-web", computers: [], checkouts: [], provider: "claude", model: "sonnet-5", start_in: "worktree" }];
+    serve({ ...oneWorkspace, computers: [computer("c1", "home"), computer("c2", "vps")], links, presence: { c2: "connected" } });
+    renderTab();
+
+    expect(await screen.findByText("Sonnet 5 · New worktree")).toBeInTheDocument();
+  });
+
+  it("lists every workspace's projects in one list, with no group per workspace", async () => {
     serve({ ...oneWorkspace, workspaces: [workspace("w1", "Acme"), workspace("w2", "Otal")], projects: { w1: [project("p-web", "Web")], w2: [project("p-site", "Site")] } });
     renderTab();
 
-    const otal = await screen.findByRole("region", { name: "Otal projects" });
-    expect(within(otal).getByRole("heading", { name: "Otal" })).toBeInTheDocument();
-    expect(await within(otal).findByText("Site")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Acme projects" })).getByText("Web")).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: "Defaults and projects" });
+    expect(await within(list).findByRole("button", { name: /^Site/ })).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /^Web/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Otal" })).not.toBeInTheDocument();
   });
 
-  it("opens one project at a time and saves its own computers", async () => {
+  it("opens one row at a time and saves a project's own computers", async () => {
     serve(oneWorkspace);
     mocks.put.mockImplementation(async (_url: string, body: object) => ({ data: { project_id: "p-api", ...body } }));
     const user = userEvent.setup();
     renderTab();
 
-    await user.click(await screen.findByRole("button", { name: "Open Web's link" }));
-    expect(within(row("Web")).getByRole("button", { name: "Follow my computers and defaults" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Open Api's link" }));
+    await user.click(await screen.findByRole("button", { name: /^Web/ }));
+    expect(within(row("Web")).getByRole("button", { name: "Use defaults" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Api/ }));
     expect(within(row("Web")).queryByRole("button", { name: "Save" }), "opening another project closes this one").not.toBeInTheDocument();
 
     const api = within(row("Api"));
-    expect(api.queryByRole("button", { name: "Follow my computers and defaults" }), "nothing to clear on a project that follows yours").not.toBeInTheDocument();
-    await user.click(await api.findByRole("switch", { name: /its own computers/i }));
+    expect(api.queryByRole("button", { name: "Use defaults" }), "nothing to clear on a project that uses the defaults").not.toBeInTheDocument();
+    await user.click(await api.findByRole("radio", { name: "Custom" }));
     await user.click(api.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/p-api", expect.objectContaining({ computers: ["c1"] })));
     expect(toast.success).toHaveBeenCalledWith("Api saved");
   });
 
-  it("goes back to following your computers and defaults by clearing the project's link", async () => {
+  it("goes back to the defaults by clearing the project's link", async () => {
     serve(oneWorkspace);
     mocks.del.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
     renderTab();
 
-    await user.click(await screen.findByRole("button", { name: "Open Web's link" }));
-    await user.click(within(row("Web")).getByRole("button", { name: "Follow my computers and defaults" }));
+    await user.click(await screen.findByRole("button", { name: /^Web/ }));
+    await user.click(within(row("Web")).getByRole("button", { name: "Use defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/p-web"));
-    expect(toast.success).toHaveBeenCalledWith("Web follows your computers and defaults");
+    expect(toast.success).toHaveBeenCalledWith("Web uses your defaults");
+  });
+
+  it("saves the defaults from the first row", async () => {
+    serve(oneWorkspace);
+    mocks.put.mockResolvedValue({ data: { provider: "claude", model: "sonnet-5", placement: "spread", clone_automatically: false, start_in: "worktree" } });
+    const user = userEvent.setup();
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: /^Defaults/ }));
+    const defaults = within(row("Defaults"));
+    await pickOption(user, /send runs to/i, "Least busy");
+    await user.click(await defaults.findByRole("combobox", { name: "Model" }));
+    await user.click(await screen.findByRole("option", { name: "Sonnet 5" }));
+    await pickOption(user, /threads start in/i, "New worktree per thread");
+    await user.click(defaults.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(mocks.put).toHaveBeenCalledWith("/api/pairing/defaults", {
+        provider: "claude",
+        model: "sonnet-5",
+        model_options: [],
+        start_in: "worktree",
+        placement: "spread",
+        clone_automatically: false,
+      }),
+    );
+    expect(await defaults.findByRole("button", { name: "Saved" })).toBeInTheDocument();
   });
 
   it("points to the Computers tab while no computer is paired", async () => {

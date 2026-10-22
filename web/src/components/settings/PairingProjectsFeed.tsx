@@ -1,25 +1,30 @@
 import { useState } from "react";
 
 import { EmptyRow } from "@/components/EmptyRow";
+import { PairingDefaultsRow } from "@/components/settings/PairingDefaultsRow";
 import { PairingProjectGroup } from "@/components/settings/PairingProjectGroup";
 import type { Workspace } from "@/models/Workspace";
+
+const DEFAULTS = "defaults";
 
 interface PairingProjectsFeedProps {
   workspaces: Workspace[];
 }
 
-// One project's form open at a time, across every workspace's group.
+// Defaults, then every project of every workspace in one list, one row open at a time.
 export const PairingProjectsFeed = ({ workspaces }: PairingProjectsFeedProps) => {
   const [openId, setOpenId] = useState<string>();
-  const labelled = workspaces.length > 1;
-  const toggle = (projectId: string) => setOpenId((current) => (current === projectId ? undefined : projectId));
+  const toggle = (id: string) => setOpenId((current) => (current === id ? undefined : id));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      <ul aria-label="Defaults and projects" className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        <PairingDefaultsRow open={openId === DEFAULTS} onToggle={() => toggle(DEFAULTS)} />
+        {workspaces.map((workspace) => (
+          <PairingProjectGroup key={workspace.id} workspace={workspace} openId={openId} onToggle={toggle} />
+        ))}
+      </ul>
       {workspaces.length === 0 && <EmptyRow>No projects you can open yet.</EmptyRow>}
-      {workspaces.map((workspace) => (
-        <PairingProjectGroup key={workspace.id} workspace={workspace} labelled={labelled} openId={openId} onToggle={toggle} />
-      ))}
     </div>
   );
 };

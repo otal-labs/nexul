@@ -58,6 +58,8 @@ export interface PickerEntry {
   blocked?: boolean;
 }
 
+export const COMPUTER_DEFAULT = "Computer default";
+
 // The default row: the provider's own when one provider is in view, else the computer's.
 const providerInView = (providers: HarnessProvider[], filter: RailFilter) => {
   if (filter.kind === "provider") return providers.find((p) => p.id === filter.id);
@@ -65,9 +67,9 @@ const providerInView = (providers: HarnessProvider[], filter: RailFilter) => {
   return undefined;
 };
 
-const defaultEntry = (providers: HarnessProvider[], filter: RailFilter): PickerEntry => {
+const defaultEntry = (providers: HarnessProvider[], filter: RailFilter, defaultLabel: string): PickerEntry => {
   const provider = providerInView(providers, filter);
-  if (!provider) return { key: "default", pick: { provider: "", model: "" }, name: "Computer default", legacy: false };
+  if (!provider) return { key: "default", pick: { provider: "", model: "" }, name: defaultLabel, legacy: false };
   const fallback = provider.models.find((m) => m.is_default)?.name;
   return {
     key: `default::${provider.id}`,
@@ -88,6 +90,7 @@ export const pickerEntries = (
   query: string,
   favourites: string[],
   allowDefault: boolean,
+  defaultLabel = COMPUTER_DEFAULT,
 ): PickerEntry[] => {
   const visible = providers.filter((p) => !p.skipped);
   const { current, legacy } = pickerRows(visible, filter, query, favourites);
@@ -103,7 +106,7 @@ export const pickerEntries = (
     ...(row.provider.needs_setup && { blocked: true }),
   });
   const offerDefault = allowDefault && !query.trim() && filter.kind !== "favourites";
-  return [...(offerDefault ? [defaultEntry(visible, filter)] : []), ...current.map(toEntry), ...legacy.map(toEntry)];
+  return [...(offerDefault ? [defaultEntry(visible, filter, defaultLabel)] : []), ...current.map(toEntry), ...legacy.map(toEntry)];
 };
 
 export const optionDefault = (option: ModelOption): string | boolean | undefined =>

@@ -15,12 +15,13 @@ interface ModelChoiceProps {
   // The model button's accessible name, such as "Claude model"; the options button adds "options".
   label: string;
   allowDefault?: boolean;
+  defaultLabel?: string;
   disabled?: boolean;
   className?: string;
 }
 
 // The model button, a hairline, then its options button, in one frame; a model with no options shows the model alone.
-export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, disabled = false, className }: ModelChoiceProps) => {
+export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, defaultLabel, disabled = false, className }: ModelChoiceProps) => {
   const modelOptions = findModel(providers, value)?.options ?? [];
   return (
     <div className={cn("inline-flex h-8 min-w-0 items-center rounded-md border border-input shadow-xs dark:bg-input/20", className)}>
@@ -30,6 +31,7 @@ export const ModelChoice = ({ providers, value, options, onPick, onOptions, labe
         onChange={onPick}
         label={label}
         allowDefault={allowDefault}
+        {...(defaultLabel && { defaultLabel })}
         disabled={disabled}
         className={cn(INNER, "min-w-0 flex-1")}
       />

@@ -2,14 +2,16 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { ProjectComputerRow } from "@/components/settings/ProjectComputerRow";
-import { SettingsRow } from "@/components/settings/SettingsRow";
-import { FormSelect } from "@/components/ticket/FormSelect";
+import { RunSettingField } from "@/components/settings/RunSettingField";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
-import { PLACEMENT_OPTIONS, type Computer, type ProjectLinkFormData } from "@/models/Pairing";
+import type { Computer, ProjectLinkFormData } from "@/models/Pairing";
 import { projectCheckout, projectRemotes, withCheckout } from "@/models/ProjectCheckout";
+
+const YOUR_ORDER = "yours";
+const CUSTOM = "custom";
 
 interface ProjectComputersFieldProps {
   projectId: string;
@@ -40,16 +42,23 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
       : [];
 
   return (
-    <div className="space-y-3">
-      <SettingsRow
-        label="Its own computers"
-        description={ownOrder ? "Only these, in this order." : "Follows your order."}
-        htmlFor={`own-order-${projectId}`}
-        className="py-0"
-      >
-        <Switch id={`own-order-${projectId}`} checked={ownOrder} onCheckedChange={(on) => setIds(on ? own.map((c) => c.id) : [])} />
-      </SettingsRow>
-      <ul aria-label="This project's computers" className="ml-10 divide-y divide-border rounded-md border">
+    <div className="pb-2">
+      <RunSettingField label="Computers">
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="xs"
+          value={ownOrder ? CUSTOM : YOUR_ORDER}
+          // Radix reports "" when the chosen item is clicked again; keep the current choice.
+          onValueChange={(v) => v && setIds(v === CUSTOM ? own.map((c) => c.id) : [])}
+          aria-label="Computers for this project"
+          className="justify-self-start"
+        >
+          <ToggleGroupItem value={YOUR_ORDER}>Your order</ToggleGroupItem>
+          <ToggleGroupItem value={CUSTOM}>Custom</ToggleGroupItem>
+        </ToggleGroup>
+      </RunSettingField>
+      <ul aria-label="This project's computers" className="mt-1 divide-y divide-border rounded-md border border-border bg-card">
         {listed.map((computer, index) => (
           <ProjectComputerRow
             key={computer.id}
@@ -64,7 +73,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
       </ul>
       {ownOrder && rest.length > 0 && (
         <Select value="" onValueChange={(id) => setIds([...ids, id])}>
-          <SelectTrigger aria-label="Add a computer to this project" className="ml-10 h-8 w-52 text-xs">
+          <SelectTrigger aria-label="Add a computer to this project" className="mt-2 h-8 w-52 text-xs">
             <SelectValue placeholder="Add a computer" />
           </SelectTrigger>
           <SelectContent>
@@ -75,9 +84,6 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
             ))}
           </SelectContent>
         </Select>
-      )}
-      {ownOrder && (
-        <FormSelect control={control} name="placement" label="Send runs to" placeholder="Same as your defaults" options={PLACEMENT_OPTIONS} />
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
+import { ModelSettingRow } from "@/components/model/ModelSettingRow";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
@@ -29,19 +30,20 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
   useEffect(() => form.subscribe({ formState: { values: true }, callback: ({ values }) => onChange(values) }), [form, onChange]);
 
   return (
-    <HarnessProviderModelFields
-      control={form.control}
-      providerName="provider"
-      modelName="model"
-      optionsName="model_options"
-      computerId={computerId}
-      description="For this run only"
-      onPick={(provider, model, options) => {
-        form.setValue("provider", provider);
-        form.setValue("model", model);
-        form.setValue("model_options", options);
-      }}
-    />
+    <ModelSettingRow label="Model" description="For this run only">
+      <HarnessProviderModelFields
+        control={form.control}
+        providerName="provider"
+        modelName="model"
+        optionsName="model_options"
+        computerId={computerId}
+        onPick={(provider, model, options) => {
+          form.setValue("provider", provider);
+          form.setValue("model", model);
+          form.setValue("model_options", options);
+        }}
+      />
+    </ModelSettingRow>
   );
 };
 

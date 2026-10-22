@@ -31,13 +31,15 @@ export const ProjectComputerRow = ({ projectId, computer, rank, checkout, action
       layout={!reduced && !lastInputWasKeyboard() ? "position" : false}
       layoutDependency={rank}
       transition={{ layout: ROW_GLIDE }}
-      className="relative bg-card first:rounded-t-md last:rounded-b-md"
+      className="first:rounded-t-md last:rounded-b-md"
     >
-      <span aria-hidden className="absolute top-3 -left-10 w-8 text-right font-mono text-xs text-muted-foreground tabular-nums">
-        #{rank}
-      </span>
-      <div className="flex min-h-11 items-center gap-3 px-3 py-1.5">
-        <p className="min-w-0 flex-1 truncate text-sm">{computer.name}</p>
+      <div className="flex min-h-10 items-center gap-3 px-3 py-1.5">
+        <span aria-hidden className="w-4 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+          {rank}
+        </span>
+        <p className="min-w-0 flex-1 truncate text-sm" title={computer.name}>
+          {computer.name}
+        </p>
         <ProjectCheckoutCell computerName={computer.name} checkout={checkout} onPick={onPick} />
         {missing && (
           <Button type="button" variant="ghost" size="sm" aria-expanded={adding} onClick={() => setAdding(!adding)}>

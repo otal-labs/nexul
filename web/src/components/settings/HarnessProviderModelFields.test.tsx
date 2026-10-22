@@ -26,7 +26,6 @@ const Harness = ({ computerId }: { computerId: string }) => {
         modelName="model"
         optionsName="model_options"
         computerId={computerId}
-        description="Default model"
         onPick={(provider, model, options) => {
           form.setValue("provider", provider);
           form.setValue("model", model);
@@ -188,11 +187,11 @@ describe("HarnessProviderModelFields", () => {
     expect(screen.queryByRole("button", { name: "Model options" })).not.toBeInTheDocument();
   });
 
-  it("falls back to free-text inputs when the computer is unreachable", async () => {
+  it("shows the saved pick and offers no field to type in when the computer can't answer", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("down"));
     renderFields();
-    expect(await screen.findByText(/type them in/)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("e.g. claude, opencode")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("e.g. claude-sonnet-4-5")).toBeInTheDocument();
+    expect(await screen.findByText("Turn on a computer to change it.")).toBeInTheDocument();
+    expect(screen.getByText("Computer default")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });

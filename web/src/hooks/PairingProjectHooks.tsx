@@ -4,9 +4,27 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
-import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
-import { findModel } from "@/models/ModelPick";
-import { canChooseRunLocation, linkSaysSomething, START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData, type ReadinessLink } from "@/models/Pairing";
+import {
+  getHarnessResolveKey,
+  useFetchHarnessProjects,
+  useFetchHarnessProviders,
+  useHarnessReadiness,
+  useListComputers,
+  useModelComputerId,
+} from "@/hooks/PairingHooks";
+import { COMPUTER_DEFAULT, findModel, type ModelPick } from "@/models/ModelPick";
+import {
+  canChooseRunLocation,
+  linkSaysSomething,
+  PLACEMENT_OPTIONS,
+  START_IN_SHORT_LABELS,
+  StartIn,
+  type HarnessProvider,
+  type PairingDefaults,
+  type ProjectLink,
+  type ProjectLinkFormData,
+  type ReadinessLink,
+} from "@/models/Pairing";
 
 export const getProjectLinksKey = "getProjectLinks";
 
@@ -57,7 +75,7 @@ export const useClearProjectLink = (projectId: string, projectName: string) => {
     }),
     onSuccess: async () => {
       await invalidateProjectLinks(client);
-      toast.success(`${projectName} follows your computers and defaults`);
+      toast.success(`${projectName} uses your defaults`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -74,18 +92,33 @@ export const useHarnessPlaceNames = (computerId: string, harnessProjectId: strin
   };
 };
 
-// "Follows your computers · Sonnet 5 · New worktree", or the project's own computers by name; undefined while names load.
+const USES_DEFAULTS = "Uses defaults";
+
+// A pick by its model's name once the computer lists it, else its slug; an empty pick is the computer's default.
+const modelName = (providers: HarnessProvider[] | undefined, pick: ModelPick) =>
+  pick.model ? (findModel(providers ?? [], pick)?.name ?? pick.model) : "";
+
+// "Build box, laptop · Sonnet 5 · New worktree": what the link changes, the computers by name; undefined while names load.
 export const useProjectLinkSummary = (link: ProjectLink | undefined): string | undefined => {
   const computers = useListComputers();
-  const firstComputer = link?.computers[0] ?? computers.data?.[0]?.id ?? "";
-  const { data: providers, isPending } = useFetchHarnessProviders(firstComputer);
-  if (!linkSaysSomething(link)) return "Follows your computers and defaults";
-  if (computers.isPending || (link?.model && firstComputer !== "" && isPending)) return undefined;
+  const modelComputer = useModelComputerId(link?.computers);
+  const { data: providers, isPending } = useFetchHarnessProviders(modelComputer);
+  if (!linkSaysSomething(link)) return USES_DEFAULTS;
+  if (computers.isPending || (link?.model && modelComputer !== "" && isPending)) return undefined;
 
   const names = link?.computers.map((id) => computers.data?.find((c) => c.id === id)?.name ?? "Unknown computer") ?? [];
-  const where = names.length > 0 ? names.join(", ") : "Follows your computers";
-  const pick = { provider: link?.provider ?? "", model: link?.model ?? "" };
-  const model = pick.model && (findModel(providers ?? [], pick)?.name ?? pick.model);
+  const model = modelName(providers, { provider: link?.provider ?? "", model: link?.model ?? "" });
   const startIn = link?.start_in && START_IN_SHORT_LABELS[link.start_in];
-  return [where, model, startIn].filter(Boolean).join(" · ");
+  return [names.join(", "), model, startIn].filter(Boolean).join(" · ");
+};
+
+// "First in order · Sonnet 5 · New worktree"; undefined while the model's name loads.
+export const useDefaultsSummary = (defaults: PairingDefaults | undefined): string | undefined => {
+  const modelComputer = useModelComputerId();
+  const { data: providers, isPending } = useFetchHarnessProviders(modelComputer);
+  if (!defaults || (defaults.model && modelComputer !== "" && isPending)) return undefined;
+
+  const placement = PLACEMENT_OPTIONS.find((o) => o.value === defaults.placement)?.label;
+  const model = modelName(providers, { provider: defaults.provider ?? "", model: defaults.model ?? "" }) || COMPUTER_DEFAULT;
+  return [placement, model, START_IN_SHORT_LABELS[defaults.start_in ?? StartIn.Folder]].filter(Boolean).join(" · ");
 };
