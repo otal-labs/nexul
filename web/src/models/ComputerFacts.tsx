@@ -10,6 +10,8 @@ export interface ComputerFacts {
   cloudflared?: string;
   git_name?: string;
   git_email?: string;
+  // How the person's own account authenticates to GitHub for a push; absent from a runner that does not report it.
+  github_sign_in?: GitHubSignIn;
   free_disk_bytes?: number;
   // Absent from a runner older than container logs.
   docker?: { available: boolean; version?: string };
@@ -17,6 +19,8 @@ export interface ComputerFacts {
   // repository is the checkout's git remote as T3 normalizes it, such as github.com/acme/api; absent until T3 resolved it.
   projects: { id: string; title: string; path: string; repository?: string }[];
 }
+
+export type GitHubSignIn = "gh" | "helper" | "none";
 
 export type T3State = "answering" | "not_running" | "missing" | "not_loopback";
 
@@ -69,4 +73,10 @@ export const SIGN_IN: Record<ProviderFacts["sign_in"], { tone: SettingsStatusTon
   signed_in: { tone: "success", text: "Signed in" },
   signed_out: { tone: "warning", text: "Signed out" },
   unknown: { tone: "muted", text: "Sign-in unknown" },
+};
+
+export const GITHUB_SIGN_IN: Record<GitHubSignIn, { tone: SettingsStatusTone; text: string; detail?: string }> = {
+  gh: { tone: "success", text: "Signed in", detail: "GitHub CLI" },
+  helper: { tone: "success", text: "Credential helper" },
+  none: { tone: "warning", text: "Not signed in", detail: "Plays can't push. Run gh auth login." },
 };

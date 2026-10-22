@@ -134,7 +134,9 @@ An agent can move a computer too: [`computer_create`](/docs/guide/mcp-server/) w
 
 ### The computer's facts
 
-A computer's Nexul app reports on it when it connects and every 6 hours: its hostname, OS and architecture, the app's version, T3 Code's state, port, version and how it is installed, `cloudflared`'s version when it is there, whether Docker answers you there and its version, your git name and email, and the free disk space in your home folder. Nexul adds what T3 Code lists through the app: each provider's CLI version, whether it is signed in, its models, and T3 Code's projects with their folders. They are stored only when something changed, and **Facts changed** says when that was.
+A computer's Nexul app reports on it when it connects and every 6 hours: its hostname, OS and architecture, the app's version, T3 Code's state, port, version and how it is installed, `cloudflared`'s version when it is there, whether Docker answers you there and its version, your git name and email, whether the computer can sign in to GitHub, and the free disk space in your home folder. Nexul adds what T3 Code lists through the app: each provider's CLI version, whether it is signed in, its models, and T3 Code's projects with their folders. They are stored only when something changed, and **Facts changed** says when that was.
+
+**GitHub** reads **Signed in** when the GitHub CLI is signed in, **Credential helper** when git has one configured, and **Not signed in** when the computer has neither. Nexul gives a play no GitHub write access of its own: a play that pushes a branch or opens a pull request does it with the computer's own sign-in, so run `gh auth login` on the computer (or set up a git credential helper) before you rely on one. A computer whose app is older than this report shows no **GitHub** line.
 
 Facts are yours alone. Nobody else sees them, a workspace Owner included, and an agent reads them through `computer_list` only when it acts for you.
 

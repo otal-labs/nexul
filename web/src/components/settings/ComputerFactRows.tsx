@@ -1,7 +1,7 @@
 import { ComputerFact } from "@/components/settings/ComputerFact";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { formatBytes } from "@/models/Attachment";
-import { SIGN_IN, type ComputerFacts, type ProviderFacts } from "@/models/ComputerFacts";
+import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts } from "@/models/ComputerFacts";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 // Past this many, a computer's T3 Code projects end in a count, so the fold stays a glance.
@@ -44,6 +44,7 @@ interface ComputerFactRowsProps {
 export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
   const system = [facts.os, facts.arch].filter(Boolean).join(" · ");
   const git = [facts.git_name, facts.git_email && `<${facts.git_email}>`].filter(Boolean).join(" ");
+  const github = facts.github_sign_in && GITHUB_SIGN_IN[facts.github_sign_in];
   const hidden = facts.projects.length - SHOWN_PROJECTS;
   return (
     <>
@@ -75,6 +76,13 @@ export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
       {git && (
         <ComputerFact label="Git identity">
           <span className="break-all">{git}</span>
+        </ComputerFact>
+      )}
+      {github && (
+        <ComputerFact label="GitHub">
+          <SettingsStatus tone={github.tone} detail={github.detail}>
+            {github.text}
+          </SettingsStatus>
         </ComputerFact>
       )}
       {facts.free_disk_bytes !== undefined && (

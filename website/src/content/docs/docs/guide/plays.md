@@ -43,7 +43,7 @@ Every workspace starts with ten. They are ordinary plays: rename, edit, or delet
 
 | Play | Runs on | What it does |
 |---|---|---|
-| **Fix with AI** | a ticket in an In progress column | Reads the ticket, fixes it on its own branch, and opens a pull request. |
+| **Fix with AI** | a ticket in an In progress column | Reads the ticket, fixes it on its own branch, and opens a pull request with the computer's own GitHub sign-in. |
 | **Test with AI** | a ticket in a Testing column | Tests the ticket against its acceptance criteria, then passes or fails it. |
 | **To tickets via AI** | a doc | Splits the doc into tickets a developer could pick up on their own. |
 | **Clarify via AI** | a doc | Asks the doc's authors about what it leaves open, a round at a time. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |

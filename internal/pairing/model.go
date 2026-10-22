@@ -88,6 +88,7 @@ type Facts struct {
 	Cloudflared   string            `json:"cloudflared,omitempty"`
 	GitName       string            `json:"git_name,omitempty"`
 	GitEmail      string            `json:"git_email,omitempty"`
+	GitHubSignIn  string            `json:"github_sign_in,omitempty"`
 	FreeDiskBytes int64             `json:"free_disk_bytes,omitempty"`
 	Docker        *DockerFacts      `json:"docker,omitempty"`
 	Providers     []ProviderFacts   `json:"providers"`
