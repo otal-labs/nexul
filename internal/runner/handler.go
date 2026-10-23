@@ -530,6 +530,8 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		// c.cancel() just ended ctx; SQLite refuses a cancelled ctx, so the teardown writes get one that outlives it.
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), h.cfg.WriteTimeout)
 		defer cancel()
+		// Close last: its handshake waits up to 5s on a peer that stopped reading, and the writes below must not.
+		defer func() { _ = c.ws.Close(websocket.StatusNormalClosure, "") }()
 		current := h.removeConn(c)
 		h.endLogSubs(c)
 		if job := c.jobSnapshot(); job != nil {
@@ -540,7 +542,6 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		if id := c.upgradeSnapshot(); id != "" {
 			h.failPendingUpgrade(ctx, id)
 		}
-		_ = c.ws.Close(websocket.StatusNormalClosure, "")
 		// A connection its runner already replaced must not mark the new one offline.
 		if !current {
 			return
