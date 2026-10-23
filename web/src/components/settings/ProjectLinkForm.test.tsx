@@ -82,6 +82,24 @@ describe("ProjectLinkForm", () => {
     );
   });
 
+  it("takes a computer out of its own order with the X on its row and offers it again from Add computer", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("t3-app");
+
+    await user.click(screen.getByRole("radio", { name: "Custom" }));
+    const list = screen.getByRole("list", { name: /this project's computers/i });
+    expect(within(list).getAllByRole("button", { name: /^Reorder/ })).toHaveLength(2);
+    await user.click(within(list).getByRole("button", { name: "Remove build-box" }));
+    expect(within(list).queryByRole("button", { name: /^Remove|^Reorder/ })).not.toBeInTheDocument();
+    await user.click(within(list).getByRole("button", { name: "Add computer" }));
+    expect((await screen.findAllByRole("menuitem")).map((i) => i.textContent)).toEqual(["build-box"]);
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/proj-1", expect.objectContaining({ computers: ["c1"] })));
+  });
+
   it("leaves where threads start to the defaults until the person picks a place", async () => {
     const user = userEvent.setup();
     renderForm();

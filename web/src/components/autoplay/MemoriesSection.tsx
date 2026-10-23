@@ -12,8 +12,7 @@ export const MemoriesSection = () => {
 
   return (
     <ComposerSection title="Memories">
-      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        Also read
+      <div className="flex max-w-xl">
         <ValuesPicker
           label="Memories"
           values={memoryIds}
@@ -22,9 +21,7 @@ export const MemoriesSection = () => {
           disabled={formState.disabled}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        Each run reads the picked memories from its own project, beside the ones always included.
-      </p>
+      <p className="text-xs text-muted-foreground">Read from each run's own project, on top of the memories every run gets.</p>
     </ComposerSection>
   );
 };
