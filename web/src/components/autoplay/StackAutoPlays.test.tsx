@@ -45,8 +45,9 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 0,
   run_on: "computer",
-  computer_id: "",
   run_as: "",
+  computer_ids: [],
+  computer_id: "",
   memory_ids: [],
   created_by: "",
   created_at: "",
@@ -56,6 +57,7 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
 
 const computers = [
   { id: "c-1", name: "Alice laptop" },
+  { id: "c-4", name: "Home server" },
   { id: "c-2", name: "Build box", shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see", "computers:run_agents"] } },
   { id: "c-3", name: "Phone", shared: { owner_id: "u-carol", owner_name: "Carol", permissions: ["computers:see", "computers:read_logs"] } },
 ];
@@ -76,6 +78,7 @@ const serve = () =>
     if (url === "/api/memories") return { data: [] };
     if (url === "/api/stacks") return { data: [{ id: "st-1", name: "acme-web", project_id: projectId ?? "p-1" }] };
     if (url === "/api/stacks/st-1/services") return { data: [{ id: "sv-1", stack_id: "st-1", name: "api" }, { id: "sv-2", stack_id: "st-1", name: "worker" }] };
+    if (url === "/api/auth/me") return { data: { user: { id: "u-me" } } };
     if (url === "/api/pairing/computers") return { data: { computers } };
     if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url.startsWith("/api/permissions")) return { data: { grants: [] } };
@@ -100,17 +103,26 @@ beforeEach(() => {
 });
 
 describe("a stack play's auto plays", () => {
-  it("reads a row as a sentence about a stack, and says which computer it runs on or that nobody picked one", async () => {
-    autoPlays = [autoPlay(), autoPlay({ id: "ap-2", moment: "stack.service_recovered", computer_id: "c-2", run_as: "u-me", enabled: true })];
+  it("reads a row as a sentence about a stack, naming its computers in order, whose order it follows, or that nobody picked one", async () => {
+    autoPlays = [
+      autoPlay(),
+      autoPlay({ id: "ap-2", moment: "stack.service_recovered", computer_ids: ["c-2", "c-gone", "c-1"], run_as: "u-me", enabled: true }),
+      autoPlay({ id: "ap-3", moment: "stack.error_rate_crossed", computer_ids: [], run_as: "u-me", enabled: true }),
+      autoPlay({ id: "ap-4", moment: "stack.error_rate_crossed", computer_ids: [], run_as: "u-bob", enabled: true }),
+    ];
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
     await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes → Normal, runs on a computer nobody has picked yet"));
-    await waitFor(() => expect(rows[1]).toHaveTextContent("When a stack service recovers → Normal, runs on Bob's Build box (shared)"));
+    await waitFor(() =>
+      expect(rows[1]).toHaveTextContent("When a stack service recovers → Normal, runs on Bob's Build box (shared), then a computer you can't see, then Alice laptop"),
+    );
+    await waitFor(() => expect(rows[2]).toHaveTextContent("runs on your computers in your order"));
+    expect(rows[3]).toHaveTextContent("runs on u-bob's computers in their order");
     expect(screen.queryByText(/auto plays a day/)).not.toBeInTheDocument();
   });
 
-  it("offers the stack moments and conditions, runs on a chosen computer, and saves the pick", async () => {
+  it("offers the stack moments and conditions, runs on your order by default, and saves that", async () => {
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: "Add auto play" }));
 
@@ -120,17 +132,10 @@ describe("a stack play's auto plays", () => {
     await user.keyboard("{Escape}");
 
     const runOn = screen.getByRole("region", { name: "Run on" });
-    expect(runOn).toHaveTextContent("A chosen computer");
+    expect(runOn).toHaveTextContent("Chosen computers");
     expect(within(runOn).queryByRole("combobox", { name: "Run on" })).not.toBeInTheDocument();
-    await user.click(within(runOn).getByRole("combobox", { name: "Computer" }));
-    const options = await screen.findAllByRole("option");
-    expect(options.map((o) => o.textContent)).toEqual([
-      "Alice laptop",
-      "Bob's Build box (shared) · can't run here yet",
-      "Carol's Phone (shared) · can't run here yet",
-    ]);
-    expect(options.map((o) => o.getAttribute("aria-disabled"))).toEqual([null, "true", "true"]);
-    await user.click(screen.getByRole("option", { name: "Alice laptop" }));
+    expect(await within(runOn).findByRole("radio", { name: "Your order" })).toBeChecked();
+    expect(within(runOn).queryByRole("combobox", { name: "Add a computer to this auto play" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add a condition" }));
     await user.click(screen.getByRole("combobox", { name: "Field" }));
@@ -151,24 +156,96 @@ describe("a stack play's auto plays", () => {
         priority: { rules: [], otherwise: "normal" },
         once_within_minutes: 1440,
         run_on: "computer",
-        computer_id: "c-1",
+        computer_ids: [],
         memory_ids: [],
       }),
     );
   });
 
-  it("keeps a computer picked by someone else that the viewer can't see, so a save never drops it", async () => {
-    autoPlays = [autoPlay({ computer_id: "c-gone", run_as: "u-other" })];
+  it("seeds Custom with the viewer's computers in their order, saves the order after a move, and lists shared computers as not pickable", async () => {
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
+    const runOn = screen.getByRole("region", { name: "Run on" });
+
+    await user.click(await within(runOn).findByRole("radio", { name: "Custom" }));
+    const list = within(runOn).getByRole("list", { name: "This auto play's computers" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["1Alice laptop", "2Home server"]);
+    expect(within(runOn).queryByRole("combobox", { name: "Add a computer to this auto play" })).not.toBeInTheDocument();
+
+    await user.click(within(list).getByRole("button", { name: "Actions for Alice laptop" }));
+    await user.click(await screen.findByRole("button", { name: "Move down" }));
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["1Home server", "2Alice laptop"]);
+
+    await user.click(within(list).getByRole("button", { name: "Actions for Alice laptop" }));
+    await user.click(await screen.findByRole("button", { name: "Remove from this auto play" }));
+    await user.click(within(runOn).getByRole("combobox", { name: "Add a computer to this auto play" }));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual([
+      "Alice laptop",
+      "Bob's Build box (shared) · can't run here yet",
+      "Carol's Phone (shared) · can't run here yet",
+    ]);
+    expect(options.map((o) => o.getAttribute("aria-disabled"))).toEqual([null, "true", "true"]);
+    await user.click(screen.getByRole("option", { name: "Alice laptop" }));
+
+    mocks.post.mockResolvedValue({ data: autoPlay({ id: "ap-2" }) });
+    await user.click(footer("Save"));
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays", expect.objectContaining({ run_on: "computer", computer_ids: ["c-4", "c-1"] })),
+    );
+  });
+
+  it("keeps a computer picked by someone else that the viewer can't see as a row, so a save never drops it", async () => {
+    autoPlays = [autoPlay({ computer_ids: ["c-gone"], run_as: "u-other" })];
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
-    expect(await screen.findByRole("combobox", { name: "Computer" })).toHaveTextContent("A computer you can't see");
+    const list = await screen.findByRole("list", { name: "This auto play's computers" });
+    expect(list).toHaveTextContent("A computer you can't see");
+    await user.click(within(list).getByRole("button", { name: "Actions for A computer you can't see" }));
+    expect(await screen.findByRole("button", { name: "Remove from this auto play" })).toBeDisabled();
+    await user.keyboard("{Escape}");
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
     await user.click(footer("Save"));
     await waitFor(() =>
-      expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1", expect.objectContaining({ run_on: "computer", computer_id: "c-gone" })),
+      expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1", expect.objectContaining({ run_on: "computer", computer_ids: ["c-gone"] })),
     );
+  });
+
+  it("leaves a seeded auto play nobody has picked for unpicked through a save, and picking either choice saves it", async () => {
+    autoPlays = [autoPlay()];
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /When a stack/ }));
+
+    const runOn = screen.getByRole("region", { name: "Run on" });
+    expect(await within(runOn).findByRole("radio", { name: "Your order" })).not.toBeChecked();
+    expect(within(runOn).getByRole("radio", { name: "Custom" })).not.toBeChecked();
+    expect(within(runOn).queryByRole("list", { name: "This auto play's computers" })).not.toBeInTheDocument();
+
+    mocks.patch.mockResolvedValue({ data: autoPlays[0] });
+    await user.click(footer("Save"));
+    await waitFor(() => expect(mocks.patch).toHaveBeenCalledTimes(1));
+    expect(mocks.patch.mock.calls[0]?.[1]).not.toHaveProperty("computer_ids");
+
+    await user.click(await screen.findByRole("button", { name: /When a stack/ }));
+    await user.click(await within(screen.getByRole("region", { name: "Run on" })).findByRole("radio", { name: "Your order" }));
+    await user.click(footer("Save"));
+    await waitFor(() => expect(mocks.patch).toHaveBeenCalledTimes(2));
+    expect(mocks.patch.mock.calls[1]?.[1]).toMatchObject({ computer_ids: [] });
+  });
+
+  it("switches a picked auto play with its list as it is, and an unpicked one without any, so the server still refuses it", async () => {
+    autoPlays = [autoPlay(), autoPlay({ id: "ap-2", moment: "stack.service_recovered", computer_ids: ["c-4", "c-1"], run_as: "u-me", enabled: true })];
+    const { user } = await openAutoPlays();
+    mocks.patch.mockResolvedValue({ data: autoPlays[0] });
+
+    await user.click(await screen.findByRole("switch", { name: "Switch auto play ap-2 on or off" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-2", expect.objectContaining({ enabled: false, computer_ids: ["c-4", "c-1"] }));
+
+    await user.click(screen.getByRole("switch", { name: "Switch auto play ap-1 on or off" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1", expect.objectContaining({ enabled: true }));
+    expect(mocks.patch.mock.calls.at(-1)?.[1]).not.toHaveProperty("computer_ids");
   });
 
   it("says so when the viewer has no computer to pick", async () => {
@@ -178,10 +255,11 @@ describe("a stack play's auto plays", () => {
       await user.click(await screen.findByRole("button", { name: "Add auto play" }));
 
       expect(await screen.findByText(/You have no computer to pick yet/)).toBeInTheDocument();
-      expect(screen.queryByRole("combobox", { name: "Computer" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: "Custom" })).not.toBeInTheDocument();
     } finally {
       computers.push(
         { id: "c-1", name: "Alice laptop" },
+        { id: "c-4", name: "Home server" },
         { id: "c-2", name: "Build box", shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see", "computers:run_agents"] } },
         { id: "c-3", name: "Phone", shared: { owner_id: "u-carol", owner_name: "Carol", permissions: ["computers:see", "computers:read_logs"] } },
       );
@@ -190,15 +268,15 @@ describe("a stack play's auto plays", () => {
 });
 
 describe("a chosen computer for the other play types", () => {
-  it("is a run-on choice of a ticket play, which then asks for the computer", async () => {
+  it("is a run-on choice of a ticket play, which then offers the computers in order", async () => {
     current = play({ label: "Fix with AI", type: "ticket", show_when_stage: "progress", builtin_key: "" });
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: "Add auto play" }));
 
     const runOn = screen.getByRole("region", { name: "Run on" });
-    expect(within(runOn).queryByRole("combobox", { name: "Computer" })).not.toBeInTheDocument();
-    await pickOption(user, "Run on", "A chosen computer");
-    expect(await within(runOn).findByRole("combobox", { name: "Computer" })).toBeInTheDocument();
+    expect(within(runOn).queryByRole("radio", { name: "Your order" })).not.toBeInTheDocument();
+    await pickOption(user, "Run on", "Chosen computers");
+    expect(await within(runOn).findByRole("radio", { name: "Your order" })).toBeChecked();
   });
 
   it("is the one other run-on choice of a doc play, beside whoever caused it", async () => {
@@ -209,7 +287,7 @@ describe("a chosen computer for the other play types", () => {
     const runOn = screen.getByRole("region", { name: "Run on" });
     expect(within(runOn).getByRole("combobox", { name: "Run on" })).toHaveTextContent("Whoever caused it");
     await user.click(within(runOn).getByRole("combobox", { name: "Run on" }));
-    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Whoever caused it", "A chosen computer"]);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Whoever caused it", "Chosen computers"]);
     await user.keyboard("{Escape}");
   });
 });

@@ -431,7 +431,7 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 	it := &QueueItem{
 		ID: ids.From("auto-play-match:" + m.eventID + ":" + a.ID), WorkspaceID: workspaceID, ProjectID: f.ProjectID,
 		TargetType: m.targetType, TargetID: m.targetID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
-		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
+		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerIDs: slices.Clone(a.ComputerIDs), ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
 	}
 	if reason := r.whyNobody(ctx, it); reason != "" {
@@ -462,20 +462,28 @@ func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 	return r.whyNoComputer(ctx, it)
 }
 
-// whyNoComputer says why a run on a chosen computer can't start there: its person no longer owns the computer or holds
-// computers:run_agents on its share. A run on anything else has no such limit.
+// whyNoComputer says why a run on chosen computers can't start on any: its person no longer owns them or holds
+// computers:run_agents on their shares. Computers they lost are dropped from the run's list; an empty list is their own
+// order and has no such limit, as has a run on anything else.
 func (r *Runner) whyNoComputer(ctx context.Context, it *QueueItem) string {
-	if it.RunOn != RunOnComputer {
+	if it.RunOn != RunOnComputer || len(it.ComputerIDs) == 0 {
 		return ""
 	}
-	ok, err := mayRunAgents(ctx, r.computers, it.PersonID, it.ComputerID)
-	if err != nil {
-		r.log.Error("plays: check who may run agents on a computer", "item", it.ID, "computer", it.ComputerID, "error", err)
-		return fmt.Sprintf("could not check whether %s may run agents on the computer picked for it", r.login(ctx, it.PersonID))
+	allowed := make([]string, 0, len(it.ComputerIDs))
+	for _, id := range it.ComputerIDs {
+		ok, err := mayRunAgents(ctx, r.computers, it.PersonID, id)
+		if err != nil {
+			r.log.Error("plays: check who may run agents on a computer", "item", it.ID, "computer", id, "error", err)
+			return fmt.Sprintf("could not check whether %s may run agents on the computer picked for it", r.login(ctx, it.PersonID))
+		}
+		if ok {
+			allowed = append(allowed, id)
+		}
 	}
-	if !ok {
+	if len(allowed) == 0 {
 		return fmt.Sprintf("%s may not run agents on the computer picked for it", r.login(ctx, it.PersonID))
 	}
+	it.ComputerIDs, it.ComputerID = allowed, allowed[0]
 	return ""
 }
 

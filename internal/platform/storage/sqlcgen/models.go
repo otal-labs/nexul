@@ -53,6 +53,7 @@ type AutoPlay struct {
 	ComputerID        string
 	RunAs             string
 	MemoryIds         string
+	ComputerIds       string
 }
 
 type Automation struct {
@@ -910,6 +911,7 @@ type PlayQueue struct {
 	Service          string
 	OutageID         string
 	WaitingOn        string
+	ComputerIds      string
 }
 
 type PlayQueueResume struct {

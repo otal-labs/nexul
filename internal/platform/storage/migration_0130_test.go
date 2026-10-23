@@ -2,7 +2,6 @@ package storage
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,12 +19,10 @@ func TestMigration0130_AutoPlaysDropMemoriesDeletedBeforeIt(t *testing.T) {
 		m.WorkspaceID = "ws-1"
 		require.NoError(t, s.Memories.Create(ctx, m, ""))
 	}
-	untouched := newTestAutoPlay("ap-kept", "play-1", time.Now())
-	untouched.MemoryIDs = []string{"mem-2", "mem-1"}
-	require.NoError(t, s.Plays.CreateAutoPlay(ctx, untouched))
-	stale := newTestAutoPlay("ap-stale", "play-1", time.Now())
-	stale.MemoryIDs = []string{"mem-gone", "mem-2", "mem-also-gone"}
-	require.NoError(t, s.Plays.CreateAutoPlay(ctx, stale))
+	_, err := db.Exec(`INSERT INTO auto_plays (id, play_id, workspace_id, moment, run_on, memory_ids, created_at, updated_at) VALUES
+    ('ap-kept', 'play-1', 'ws-1', 'doc.changed', 'causer', '["mem-2","mem-1"]', 1, 1),
+    ('ap-stale', 'play-1', 'ws-1', 'doc.changed', 'causer', '["mem-gone","mem-2","mem-also-gone"]', 1, 1)`)
+	require.NoError(t, err)
 
 	require.NoError(t, Migrate(db))
 

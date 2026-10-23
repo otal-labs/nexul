@@ -362,7 +362,7 @@ by an agent; a stack's service crashes, or recovers), conditions on the
 ticket's, doc's or stack's existing fields in all/any groups (a stack's are
 its project, the stack and the service by name), a priority, limits, and whom
 it runs on: the developer, the tester, whoever caused the moment (a doc has
-no developer, so it offers only that), or a chosen computer, which every
+no developer, so it offers only that), or chosen computers, which every
 play type offers and a stack play offers alone (see **Run on a chosen
 computer**), and memories each run reads beside the always-included ones,
 only those in its target's project. The play's show-when stage does not apply; a
@@ -379,11 +379,13 @@ _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
 A choice of whose computers, in order, an auto play's run lands on, offered on every play
 type and the only one a stack play has, since a stack has no developer, tester
 or causer. The auto play stores the computers and the person who picked them,
-who must own each or hold `computers:run_agents` on its share, and
-the run acts as that person: the trail is theirs and the run waits in their
+who must own each or hold `computers:run_agents` on its share; with none
+named it is **Your order**, the picker's own computers as they are ordered. The
+person is whoever last saved a new list, and the run acts as them: the trail is theirs and the run waits in their
 queue. The right is checked again when the moment matches and at the front of
-the queue; a person who has lost it leaves the run as "didn't run" with the
-reason. An auto play that runs on a computer stays off until one is picked.
+the queue, which drops a computer they have lost and leaves the run as
+"didn't run" with the reason when none is left. An auto play that runs on a
+computer stays off until someone has picked.
 _Avoid_: Shared computer run, service account
 
 **Investigate a crash**:

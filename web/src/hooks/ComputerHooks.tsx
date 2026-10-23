@@ -13,16 +13,16 @@ import { sharedComputerName, sharedComputers } from "@/models/SharedComputer";
 // The computers other people share with the viewer by name, from the same request as their own.
 export const useListSharedComputers = () => useQuery({ ...computersQuery, select: sharedComputers, enabled: notViewing });
 
-// A computer's name as the viewer reads it; "" while unknown, or for one nobody shared with them.
-export const useComputerName = (computerId: string) =>
+// The names of these computers as the viewer reads them, in order; "" for one nobody shared with them, and none while unknown.
+export const useComputerNames = (computerIds: string[]) =>
   useQuery({
     ...computersQuery,
-    select: (computers) => {
-      const computer = computers.find((c) => c.id === computerId);
+    select: (computers) => computerIds.map((id) => {
+      const computer = computers.find((c) => c.id === id);
       return computer ? sharedComputerName(computer) : "";
-    },
-    enabled: computerId !== "" && notViewing(),
-  }).data ?? "";
+    }),
+    enabled: computerIds.length > 0 && notViewing(),
+  }).data ?? [];
 
 // Adds a computer waiting for its runner, or with an id mints a fresh command for one that has none; the dialog shows failures.
 export const useEnrollComputer = () => {

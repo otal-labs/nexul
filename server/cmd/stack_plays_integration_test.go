@@ -44,7 +44,7 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 	play, err := c.svc.playsSvc.Create(as("u-carol"), "workspace-default", plays.CreateInput{Label: "Look into crashes", Type: plays.TypeStack, Enabled: true})
 	require.NoError(t, err)
 	pick := func(user string) (*plays.AutoPlay, error) {
-		return c.svc.playsSvc.CreateAutoPlay(as(user), "workspace-default", play.ID, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed, ComputerID: c.laptop})
+		return c.svc.playsSvc.CreateAutoPlay(as(user), "workspace-default", play.ID, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed, ComputerIDs: &[]string{c.laptop}})
 	}
 
 	_, err = pick("u-dave")
@@ -62,7 +62,7 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 	require.NoError(t, err)
 	assert.Equal(t, []any{"u-alice", "u-dave"}, []any{own.RunAs, shared.RunAs})
 	_, err = c.svc.playsSvc.UpdateAutoPlay(as("u-dave"), "workspace-default", play.ID, shared.ID, true, plays.AutoPlayInput{
-		Moment: plays.MomentStackServiceCrashed, ComputerID: c.laptop,
+		Moment: plays.MomentStackServiceCrashed, ComputerIDs: &[]string{c.laptop},
 	})
 	require.NoError(t, err)
 
@@ -79,6 +79,7 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, []any{plays.QueueQueued, "u-dave", c.laptop, "api"}, []any{items[0].Status, items[0].PersonID, items[0].ComputerID, items[0].Service}, items[0].Reason)
+	assert.Equal(t, []string{c.laptop}, items[0].ComputerIDs)
 
 	code, body = c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:see"],"state":"fallback"`)
 	require.Equal(t, 204, code, body)
@@ -127,7 +128,7 @@ func TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt(t *testing
 		ID: ids.New(), PlayID: play.ID, WorkspaceID: play.WorkspaceID, Enabled: true, Moment: plays.MomentStackServiceCrashed,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}},
 		Priority:   plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal},
-		RunOn:      plays.RunOnComputer, ComputerID: "c-1", RunAs: uOwner, CreatedAt: now, UpdatedAt: now,
+		RunOn:      plays.RunOnComputer, ComputerIDs: []string{"c-1"}, RunAs: uOwner, CreatedAt: now, UpdatedAt: now,
 	}))
 
 	require.NoError(t, bus.Publish(ctx, runner.TopicContainerEvent, runner.ContainerEvent{Machine: "m1", Container: "web", Action: runner.ContainerActionDie, ExitCode: 137}))
