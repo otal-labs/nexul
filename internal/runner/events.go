@@ -14,7 +14,7 @@ const (
 	TopicRunnerConnected    = "runner.connected"
 	TopicRunnerDisconnected = "runner.disconnected"
 	TopicRunnerHeartbeat    = "runner.heartbeat"
-	// TopicPersonalChanged is ephemeral: a personal runner enrolling, connecting, disconnecting or removed, in place of
+	// TopicPersonalChanged is ephemeral: a personal runner enrolling, connecting, reconnecting, disconnecting or removed, in place of
 	// runner.connected and runner.disconnected, which everyone who sees the runner's machine hears (ADR 0146).
 	TopicPersonalChanged = "runner.personal_changed"
 	// TopicFactsReported is ephemeral and never bridged to a socket: a personal runner's report, for pairing.
@@ -127,6 +127,8 @@ const (
 	PersonalEnrolled     = "enrolled"
 	PersonalConnected    = "connected"
 	PersonalDisconnected = "disconnected"
+	// PersonalReconnecting is a dropped runner inside its reconnect grace; disconnected follows if it does not return.
+	PersonalReconnecting = "reconnecting"
 	PersonalRemoved      = "removed"
 )
 
@@ -135,7 +137,7 @@ type PersonalChangedEvent struct {
 	RunnerID   string `json:"runner_id"`
 	ComputerID string `json:"computer_id" jsonschema:"The computer the runner reaches."`
 	UserID     string `json:"user_id" jsonschema:"The person who installed the runner and owns the computer."`
-	State      string `json:"state" enum:"enrolled,connected,disconnected,removed"`
+	State      string `json:"state" enum:"enrolled,connected,reconnecting,disconnected,removed"`
 	// Hostname is the computer's hostname as its installer reported it, sent only when the runner enrolls.
 	Hostname    string `json:"hostname,omitempty" jsonschema:"The computer's hostname as its installer reported it; sent only with state enrolled."`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`

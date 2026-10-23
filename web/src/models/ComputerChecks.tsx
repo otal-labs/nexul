@@ -1,6 +1,6 @@
 import type { SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner } from "@/models/ComputerFacts";
-import { stillPairing, type Computer } from "@/models/Pairing";
+import { stillPairing, type Computer, type ComputerRunner } from "@/models/Pairing";
 import { formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
 
 export type CheckState = "waiting" | "passed" | "warning" | "failed";
@@ -27,6 +27,7 @@ const t3Answering = (computer: Computer) => runnerConnected(computer) && compute
 const connectedCheck = (computer: Computer): Check => {
   const base = { name: "Computer connected" };
   if (!computer.runner) return { ...base, detail: "Run the command on the computer", state: "waiting", label: "Waiting" };
+  if (computer.runner.reconnecting) return { ...base, detail: "Its connection dropped; waiting for it to come back", state: "waiting", label: "Reconnecting" };
   if (!computer.runner.connected) return { ...base, detail: "It went offline · journalctl -u nexul-computer", state: "warning", label: "Offline" };
   const { hostname, os, arch } = computer.facts ?? {};
   const detail = [hostname, [os, arch].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
@@ -81,6 +82,14 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
 // A runner computer's health, one lane at a time: the computer's own connection, then T3 Code through it.
 export const computerLanes = (computer: Computer, presence: string | undefined): Lane[] => {
   if (!computer.runner) return [{ tone: "muted", text: "Nexul app not installed" }];
+  if (computer.runner.reconnecting) return [{ tone: "warning", text: "Reconnecting", detail: `dropped ${formatRelativeTime(computer.runner.last_seen)}` }];
   if (!computer.runner.connected) return [{ tone: "muted", text: "Offline", detail: `last seen ${formatRelativeTime(computer.runner.last_seen)}` }];
   return [{ tone: "success", text: "Online" }, t3Lane(computer, presence)];
+};
+
+// A computer's runner in a word: online, back any moment after a drop, or offline.
+export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
+  if (runner?.connected) return { tone: "success", text: "Online" };
+  if (runner?.reconnecting) return { tone: "warning", text: "Reconnecting" };
+  return { tone: "muted", text: "Offline" };
 };

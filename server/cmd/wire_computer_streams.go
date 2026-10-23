@@ -62,7 +62,9 @@ func (r *runnerComputers) ComputerRunner(ctx context.Context, computerID string)
 	if err != nil {
 		return pairing.ComputerRunner{}, err
 	}
-	return pairing.ComputerRunner{Connected: rn.Connected, LastSeen: rn.LastSeen}, nil
+	h := r.handler.Load()
+	reconnecting := !rn.Connected && h != nil && h.Reconnecting(rn.ID)
+	return pairing.ComputerRunner{Connected: rn.Connected, LastSeen: rn.LastSeen, Reconnecting: reconnecting}, nil
 }
 
 // PairingToken is pairing's seam for a one-time T3 Code pairing token minted on the computer by its runner.

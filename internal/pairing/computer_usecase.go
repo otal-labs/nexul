@@ -64,6 +64,8 @@ type ComputerEnrollment struct {
 type ComputerRunner struct {
 	Connected bool      `json:"connected"`
 	LastSeen  time.Time `json:"last_seen"`
+	// Reconnecting is a runner that dropped moments ago and is expected back; it reads as offline once the grace ends.
+	Reconnecting bool `json:"reconnecting"`
 }
 
 // AddComputer makes a computer waiting for its runner and the command that installs the runner there. It takes no

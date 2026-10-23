@@ -6105,6 +6105,7 @@
         "enum": [
           "enrolled",
           "connected",
+          "reconnecting",
           "disconnected",
           "removed"
         ]

@@ -52,6 +52,8 @@ export const MAX_RUNS_AT_ONCE = 5;
 export interface ComputerRunner {
   connected: boolean;
   last_seen: string;
+  // Dropped moments ago and expected back; it reads as offline once the server's grace ends.
+  reconnecting: boolean;
 }
 
 // A computer waiting for its runner, with the one-time command that installs it; Windows stays empty until it installs there.

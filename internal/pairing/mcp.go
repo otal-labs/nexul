@@ -147,13 +147,14 @@ func computerListTool(s *Service) mcptool.Tool {
 			"with paired false has no harness session yet, and pair_error says why its last pairing through its Nexul app "+
 			"failed; a computer with no runner was paired before the Nexul app and runs no agent work until computer_create "+
 			"with its id moves it. One without setup.confirmed_at needs computer_setup_run "+
-			"before agent work can use it. A computer with a runner carries its facts, which only you can read: its system, git "+
+			"before agent work can use it. A runner whose connection dropped reads runner.reconnecting true for up to a minute "+
+			"before it counts as offline. A computer with a runner carries its facts, which only you can read: its system, git "+
 			"name and email, free disk, T3 Code's state, install and port, and the providers (version, models, signed in or "+
 			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
 			"available also lists its Docker containers (name, image, status); pass container_logs with a container's name "+
 			"to read its last lines (200 by default, at most 1000, each cut at 2000 characters), which needs the computer's "+
 			"Nexul app connected. Pass runner_logs to read the last lines the computer's Nexul app itself logged, the same way. After yours come the computers other people share with you by name, each named "+
-			"\"<owner>'s <computer> (shared)\" with runner.connected and shared (its owner, and the permissions you hold: "+
+			"\"<owner>'s <computer> (shared)\" with runner.connected, runner.reconnecting and shared (its owner, and the permissions you hold: "+
 			"computers:see, computers:run_agents, computers:run_commands, computers:read_logs) and little else; with "+
 			"computers:read_logs it also lists the computer's containers and answers container_logs and runner_logs, with "+
 			"the container's own env values hidden. Its owner shares or stops sharing one with permission_overwrite_update "+

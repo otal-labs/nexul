@@ -69,6 +69,8 @@ type HandlerConfig struct {
 	HeartbeatInterval time.Duration
 	// MissedHeartbeats disconnects a runner after this many missed beats. Defaults to 3.
 	MissedHeartbeats int
+	// ReconnectGrace is how long a dropped personal runner shows as reconnecting before it is offline. Defaults to 60s.
+	ReconnectGrace time.Duration
 	// WriteTimeout bounds each frame write to a runner. Defaults to 10s.
 	WriteTimeout time.Duration
 	// ReadLimit caps a single inbound frame. Defaults to 64KiB.
@@ -102,6 +104,11 @@ type Handler struct {
 	// replyMu/replyWaiters correlate a request with the runner asked for it, such as a pairing token (t3code.go).
 	replyMu      sync.Mutex
 	replyWaiters map[string]replyWaiter
+
+	// graceMu guards the personal runners waiting out their reconnect grace (reconnect.go).
+	graceMu     sync.Mutex
+	grace       map[string]*graceHold
+	graceClosed bool
 
 	// updateMu guards updateSettings/updateRelease: set once by SetUpdateSource after runnerSvc (and its release
 	// client) exist, since that happens after the handler is constructed in server/cmd/workers.go.
@@ -146,6 +153,9 @@ func NewHandler(cfg HandlerConfig) *Handler {
 	if cfg.MissedHeartbeats <= 0 {
 		cfg.MissedHeartbeats = 3
 	}
+	if cfg.ReconnectGrace <= 0 {
+		cfg.ReconnectGrace = 60 * time.Second
+	}
 	if cfg.WriteTimeout <= 0 {
 		cfg.WriteTimeout = 10 * time.Second
 	}
@@ -163,6 +173,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		streamWaiters:   make(map[string]*streamWaiter),
 		openStreams:     make(map[string]map[string]context.CancelFunc),
 		replyWaiters:    make(map[string]replyWaiter),
+		grace:           make(map[string]*graceHold),
 	}
 }
 
@@ -759,12 +770,13 @@ func (h *Handler) failPendingUpgrade(ctx context.Context, id string) {
 
 // publishPresence announces a runner connecting or going away; a personal runner's reaches only its owner.
 func (h *Handler) publishPresence(ctx context.Context, c *runnerConn, connected bool) {
+	if c.personal && !connected {
+		h.holdOffline(ctx, c)
+		return
+	}
 	if c.personal {
-		state := PersonalDisconnected
-		if connected {
-			state = PersonalConnected
-		}
-		h.publish(ctx, TopicPersonalChanged, personalChanged(c.record, state, ""))
+		h.releaseHold(c.id)
+		h.publish(ctx, TopicPersonalChanged, personalChanged(c.record, PersonalConnected, ""))
 		return
 	}
 	if connected {
@@ -804,6 +816,7 @@ func (h *Handler) watchdog(c *runnerConn) {
 }
 
 func (h *Handler) closeAll(reason string) {
+	h.stopHolds()
 	h.mu.Lock()
 	conns := make([]*runnerConn, 0, len(h.conns))
 	for _, c := range h.conns {

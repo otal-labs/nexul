@@ -33,7 +33,7 @@ const computer = (overrides: Record<string, unknown> = {}) => ({
   id: "c1",
   name: "Home",
   server_url: "http://c1.nexul-computer.invalid",
-  runner: { connected: true, last_seen: "2026-10-10T12:00:00Z" },
+  runner: { connected: true, last_seen: "2026-10-10T12:00:00Z", reconnecting: false },
   token_expires_at: "2099-01-01T00:00:00Z",
   kind: "t3code",
   harness_version: "0.0.34",
@@ -95,6 +95,13 @@ describe("ComputersSection", () => {
     expect(screen.getByText("Online")).toBeInTheDocument();
     expect(screen.getByText("· Run commands")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Actions for Laptop" })).not.toBeInTheDocument();
+  });
+
+  it("shows a shared computer that just dropped as reconnecting, not offline", async () => {
+    serveComputers([{ id: "c-bob", name: "Laptop", runner: { connected: false, reconnecting: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see"] } }]);
+    renderSection();
+    expect(await screen.findByText("Reconnecting")).toBeInTheDocument();
+    expect(screen.queryByText("Offline")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when there are no computers", async () => {
@@ -309,13 +316,14 @@ describe("ComputersSection", () => {
   describe("a computer added with its app", () => {
     const relay = "http://c1.nexul-computer.invalid";
     const answering = { t3: { state: "answering", install: "service", port: 3773 }, providers: [], projects: [] };
-    const online = { connected: true, last_seen: "2026-10-10T12:00:00Z" };
+    const online = { connected: true, last_seen: "2026-10-10T12:00:00Z", reconnecting: false };
 
     it.each([
       ["online and answering", { runner: online, facts: answering }, "connected", ["Online", "T3 Code answering"]],
       ["online with its desktop app closed", { runner: online, facts: { ...answering, t3: { state: "not_running", install: "desktop_app" } } }, undefined, ["Online", "Open T3 Code"]],
       ["online but refused pairing", { runner: online, facts: answering, pair_error: "T3 Code made no pairing token" }, undefined, ["Online", "Pairing failed"]],
       ["online with its session refused by T3 Code", { runner: online, facts: answering }, "rejected", ["Online", "T3 Code refused the session"]],
+      ["back any moment after a drop", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: true } }, undefined, ["Reconnecting"]],
       ["offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, undefined, ["Offline"]],
     ])("reads each lane on its own when %s", async (_, state, presence, lanes) => {
       serveComputers([computer({ server_url: relay, ...state })]);
