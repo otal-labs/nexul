@@ -27,8 +27,11 @@ const (
 	updatedNote = "T3 Code was updated during this turn; ask again"
 )
 
-// resubscribeBackoff is the wait before each resubscribe in a row; its length is how many are tried.
+// resubscribeBackoff is the wait before each resubscribe in a row; the last wait repeats until resubscribeFor is up.
 var resubscribeBackoff = []time.Duration{time.Second, 5 * time.Second, 25 * time.Second}
+
+// resubscribeFor is how long resubscribes in a row go on before the turn ends, a play's silence window (ADR 0114).
+const resubscribeFor = 15 * time.Minute
 
 // resubscribeGrace is how long a stream stays up before its end no longer counts toward the resubscribes in a row.
 const resubscribeGrace = time.Minute
@@ -44,6 +47,8 @@ type pump struct {
 	live      *runningTurn
 	// failures counts resubscribes since the stream last delivered anything or stayed up past resubscribeGrace.
 	failures int
+	// lostAt is when the resubscribes in a row began.
+	lostAt time.Time
 	// note is the standing note last shown, due when it is shown again.
 	note string
 	due  time.Time
@@ -211,11 +216,14 @@ func (p *pump) stopped(ctx context.Context, out chan<- harness.Update) bool {
 
 // resubscribe opens the stream again after the cursor, ending the turn when it cannot or once Stop halted it.
 func (p *pump) resubscribe(ctx context.Context, cause error, out chan<- harness.Update) source {
-	for p.failures < len(resubscribeBackoff) {
+	if p.failures == 0 {
+		p.lostAt = time.Now()
+	}
+	for time.Since(p.lostAt) < resubscribeFor {
 		// halted ends with ctx too.
 		select {
 		case <-p.live.halted.Done():
-		case <-time.After(resubscribeBackoff[p.failures]):
+		case <-time.After(resubscribeBackoff[min(p.failures, len(resubscribeBackoff)-1)]):
 		}
 		if ctx.Err() != nil || p.stopped(ctx, out) {
 			return nil
