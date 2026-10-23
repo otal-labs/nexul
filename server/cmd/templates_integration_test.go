@@ -222,6 +222,20 @@ func TestIntegration_TemplatesClone(t *testing.T) {
 		assert.Equal(t, "Test like the default workspace.", f.play(t, wsB.ID, "test-with-ai").Instructions)
 	})
 
+	t.Run("a built-in play renamed in the target is named as it is there", func(t *testing.T) {
+		p := f.play(t, wsB.ID, "fix-with-ai")
+		_, err := f.svc.playsSvc.Update(as(uOwner), wsB.ID, p.ID, plays.UpdateInput{
+			Label: "Implement with AI", Description: p.Description, Instructions: p.Instructions, Enabled: p.Enabled, ShowWhenStage: p.ShowWhenStage,
+		})
+		require.NoError(t, err)
+		got, err := f.tpl.Get(as(uOwner), plays.TemplateKind, "fix-with-ai", atB)
+		require.NoError(t, err)
+		assert.Equal(t, "Implement with AI", got.Name)
+		got, err = f.tpl.Clone(as(uOwner), plays.TemplateKind, "fix-with-ai", atDefault, atB)
+		require.NoError(t, err)
+		assert.Equal(t, "Implement with AI", got.Name)
+	})
+
 	t.Run("a mention chip from a workspace to the instance", func(t *testing.T) {
 		_, err := f.svc.tenancySvc.SetMentionChipTemplate(as(uOwner), uOwner, wsDefault, "{ticket.Ticket}")
 		require.NoError(t, err)

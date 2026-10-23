@@ -263,6 +263,11 @@ func (s *Service) view(ctx context.Context, k *Kind, key string, at Location) (*
 			return nil, err
 		}
 	}
+	if n, ok := k.Layer.(Namer); ok {
+		if t.Name, err = n.Name(ctx, at, key); err != nil {
+			return nil, err
+		}
+	}
 	t.Edited = own
 	if !k.Follows {
 		t.Edited = body != t.DefaultBody

@@ -39,7 +39,7 @@ export const CloneTemplateForm = ({ source }: CloneTemplateFormProps) => {
     const to = cloneTarget(input);
     const current = await client.fetchQuery({ ...templateQuery(source.kind, source.key, to), staleTime: 0 });
     if (current.edited) {
-      const ok = await confirm({ title: "Overwrite its text?", message: OVERWRITE_MESSAGE[to.scope], confirmLabel: "Overwrite" });
+      const ok = await confirm({ title: `Overwrite ${current.name}?`, message: OVERWRITE_MESSAGE[to.scope], confirmLabel: "Overwrite" });
       if (!ok) {
         setStayOpen(true);
         return input;
