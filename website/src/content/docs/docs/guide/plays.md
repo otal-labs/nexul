@@ -30,7 +30,7 @@ While a run is going:
 
 - **The agent asks you something.** A question card shows on the trail and in the thread, and a dot on the ticket's **Thread** tab marks it until it is answered. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer.
 - **You want it to stop.** Press stop on the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
-- **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable.
+- **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable for 15 minutes; until then it keeps its place in the computer's **Runs at once**.
 - **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.
 
 When a run has ended, type into **Continue this run** to send the agent its next step on the same thread. The play's instructions are not sent again. Mentioning **@Agent** in the target's thread does the same once its newest run has ended, so the board card shows the run going again; while a run is still going, or if you can't steer it, the mention gets a plain agent reply instead. If you keep working on the thread in T3 Code itself, the trail picks up those turns while you have Nexul open. If the thread is gone from T3 Code, the play starts again as a new run in the same place, with your message added to its instructions. When Nexul doesn't know where an older run ran, the run dialog opens on **Where to run** instead, with your message filled in.

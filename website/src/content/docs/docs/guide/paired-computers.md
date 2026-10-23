@@ -188,7 +188,7 @@ Above the list, one line says where `@Agent` chats outside a project start, or w
 
 Each computer's details set two things for it:
 
-- **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 running". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer.
+- **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 running". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer. Lowering it stops no run already going: new runs wait until fewer than the new number are running.
 - **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.
 
 ### Defaults and each project

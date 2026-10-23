@@ -131,6 +131,7 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 	die := &t3rpc.ExitError{Method: subscribeThread, Causes: []t3rpc.ExitCause{{Tag: "Die"}}}
 	lost := fmt.Errorf("orchestration.subscribeThread: %w", t3rpc.ErrConnectionLost)
 	refused := errors.New("dial T3 websocket: connection refused")
+	refusedOpen := func() (source, error) { return nil, refused }
 	waitingSnapshot := items(snapshotItem(40, map[string]any{
 		"thread": map[string]any{"id": "th-1", "runtimeMode": "full-access", "deletedAt": nil},
 		"runs":   []any{runOf("msg-1", runWaiting)}, "turnItems": []any{}, "providerSessions": []any{},
@@ -157,14 +158,13 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 				func() (source, error) { return newFakeSource(waitingSnapshot), nil },
 			},
 			ended(harness.TurnDone, ""), 6 * time.Second, runOne},
-		{"three failed resubscribes end the turn", die,
-			[]func() (source, error){
-				func() (source, error) { return nil, refused },
-				func() (source, error) { return newFakeSource(chunkOrEnd{err: die}), nil },
-				func() (source, error) { return nil, refused },
-			},
-			ended(harness.TurnError, "Lost the connection to T3 Code and couldn't resume the turn after 3 tries: dial T3 websocket: connection refused"),
-			31 * time.Second, ""},
+		{"a computer away for three minutes keeps the turn", lost,
+			append(repeatOpen(8, refusedOpen), func() (source, error) { return newFakeSource(waitingSnapshot), nil }),
+			ended(harness.TurnDone, ""), 181 * time.Second, runOne},
+		{"fifteen minutes of failed resubscribes end the turn", die,
+			append([]func() (source, error){refusedOpen, func() (source, error) { return newFakeSource(chunkOrEnd{err: die}), nil }}, repeatOpen(36, refusedOpen)...),
+			ended(harness.TurnError, "Lost the connection to T3 Code and couldn't resume the turn after 38 tries: dial T3 websocket: connection refused"),
+			906 * time.Second, ""},
 		{"reconnects that stay up and drop later keep the turn", lost,
 			[]func() (source, error){
 				quietDrop(2*time.Minute, lost), quietDrop(2*time.Minute, lost), quietDrop(2*time.Minute, lost),
@@ -210,6 +210,14 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 			})
 		})
 	}
+}
+
+func repeatOpen(n int, open func() (source, error)) []func() (source, error) {
+	out := make([]func() (source, error), n)
+	for i := range out {
+		out[i] = open
+	}
+	return out
 }
 
 func TestPump_StopDuringAResubscribeBackoff_EndsInterruptedAtOnceWithItsNote(t *testing.T) {
