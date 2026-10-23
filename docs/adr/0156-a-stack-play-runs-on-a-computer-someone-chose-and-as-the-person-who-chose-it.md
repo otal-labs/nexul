@@ -20,16 +20,20 @@ Decision: a play has a third type, **stack**, and every auto play may run on **a
 - **The prompt names, it does not carry** (ADR 0111). It names the stack by name and id, and for an auto run the service
   and the outage, and tells the agent to read the rest with `stack_get`, passing `logs` with the service's name.
 - **Run on: a chosen computer** is a fourth choice beside developer, tester and whoever caused it, offered on every play
-  type. A stack play offers only this one; a doc play offers it beside whoever caused it. The auto play stores the
-  computer and the person who picked it, and the run takes that person's identity: the trail is theirs, the permissions
-  are theirs, and it takes their slot in the queue. Whoever saves the auto play with a new computer becomes that person;
-  saving it with the same computer keeps who picked it.
-- **The right is checked three times**: when the computer is picked, when the moment matches, and again at the front of
-  the queue. The person must own the computer or hold `computers:run_agents` on its share (ADR 0148). If they no longer
-  do, the run does not start and says "didn't run" with the reason, as a play with nobody to run on does; if someone else
-  has picked the computer since, the queued run is skipped. A computer the picker cannot see reads as not shared at all.
-- **Off until a computer is set.** An auto play that runs on a computer cannot be switched on without one, so the seeded
-  "Investigate a crash" waits for a person to pick it.
+  type. A stack play offers only this one; a doc play offers it beside whoever caused it. The auto play stores an
+  ordered list of computers and the person who picked them, and the run takes that person's identity: the trail is
+  theirs, the permissions are theirs, and it takes their slot in the queue. The run goes to the first computer of the
+  list that can take it (ADR 0165); one computer is a list of one. An empty list is **Your order**: the run goes to the
+  picker's own computers as they are ordered. The person is whoever last saved a new list or a new order; saving the
+  same list again, or saving without naming computers, keeps who picked it.
+- **The right is checked three times**: when the computers are picked, when the moment matches, and again at the front of
+  the queue. The person must own each computer or hold `computers:run_agents` on its share (ADR 0148). A computer they
+  no longer have the right on is left out of the run; if that leaves none, the run does not start and says "didn't run"
+  with the reason, as a play with nobody to run on does. If someone else has picked the computers since, the queued run
+  is skipped. A computer the picker cannot see reads as not shared at all.
+- **Off until computers are picked.** An auto play that runs on a computer cannot be switched on until someone has
+  picked, which an empty list (Your order) also counts as, so the seeded "Investigate a crash" waits for a person to
+  pick it.
 - **"Investigate a crash"** is a shipped stack play with an auto play on `stack.service_crashed`, in every workspace like
   the other shipped plays. It reads the service's logs and the stack's recent deploys, diagnoses against the project's
   repository, writes the findings on the crash's ticket or a new one, and never deploys, restarts or edits the stack. It
