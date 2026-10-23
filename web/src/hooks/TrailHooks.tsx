@@ -49,7 +49,7 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
 
 // Target id to trail id; waiting holds the subset stopped on a question to the user, started each run's start time,
 // queued the targets with a run waiting in the queue, to its queue item id.
-interface ActiveTargets {
+export interface ActiveTargets {
   active: Record<string, string>;
   waiting: Record<string, string>;
   started: Record<string, string>;
@@ -236,20 +236,13 @@ const runStateOf = (s: PlayRunStore, targetType: PlayType, targetId: string, kno
   return isTrailActive(state) ? state : undefined;
 };
 
-const useRunState = (targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined =>
+// The board passes its own batch answer, so its cards hold no query of their own.
+export const useRunState = (targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined =>
   usePlayRunStore((s) => runStateOf(s, targetType, targetId, known));
 
-// The board card's question: no run, a run going, or a run waiting on an answer.
+// A ticket page's question: no run, a run going, or a run waiting on an answer.
 export const useTicketRunState = (projectId: string, ticketId: string): TrailState | undefined =>
   useRunState("ticket", ticketId, useFetchActiveTrails(projectId).data);
-
-// When the ticket's run started, for the card's timer; undefined until the batch answer carries it.
-export const useTicketRunStartedAt = (projectId: string, ticketId: string): string | undefined =>
-  useFetchActiveTrails(projectId).data?.started[ticketId];
-
-// Whether the ticket has a run waiting in the queue, for the card's clock.
-export const useTicketRunQueued = (projectId: string, ticketId: string): boolean =>
-  useFetchActiveTrails(projectId).data?.queued[ticketId] !== undefined;
 
 // A swimlane header's question: how many of its tickets have a run going, and how many wait on an answer.
 export const useTicketRunCounts = (projectId: string | undefined, ticketIds: string[]) => {

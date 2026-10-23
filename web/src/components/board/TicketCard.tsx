@@ -12,14 +12,10 @@ import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
-import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
-import { useActionState } from "@/hooks/useActionState";
-import { usePerson } from "@/hooks/PeopleHooks";
-import { getProjectKey, useFetchProject } from "@/hooks/ProjectHooks";
-import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchLabelColors } from "@/hooks/TicketHooks";
-import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import { useTicketRunQueued, useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
+import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
+import { findPerson } from "@/hooks/PeopleHooks";
+import { getProjectKey } from "@/hooks/ProjectHooks";
+import { useRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
@@ -36,19 +32,13 @@ interface TicketCardBodyProps {
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
 export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
-  // All five queries are cached/deduped across every mounted TicketCard, so a column of 50 fires one request each.
-  const { data: project } = useFetchProject(ticket.project_id);
-  const { data: ticketTypes } = useFetchProjectTicketTypes(ticket.project_id);
-  const { data: labelColors } = useFetchLabelColors(ticket.project_id);
-  const { data: threadIndicators } = useFetchChatThreadIndicators(ticket.project_id);
-  const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
+  const { prefix, ticketTypes, labelColors, threadIndicators, statuses, activeTrails, people } = useBoardCardData();
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
-  const shown = usePerson(person.login);
+  const shown = findPerson(people, person.login);
   const hasThread = threadIndicators?.[ticket.id] === true;
-  const runState = useTicketRunState(ticket.project_id, ticket.id);
-  const runStartedAt = useTicketRunStartedAt(ticket.project_id, ticket.id);
-  const runQueued = useTicketRunQueued(ticket.project_id, ticket.id);
-  const prefix = project?.prefix ?? "";
+  const runState = useRunState("ticket", ticket.id, activeTrails);
+  const runStartedAt = activeTrails?.started[ticket.id];
+  const runQueued = activeTrails?.queued[ticket.id] !== undefined;
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
@@ -127,7 +117,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
   const open = () =>
     navigate(wsPath(ticketPath(ticket, queryClient.getQueryData<Project>([getProjectKey, ticket.project_id])?.prefix)));
   // A card moves by dragging it, so a viewer who can't write the ticket gets a card that only opens.
-  const draggable = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
+  const draggable = useCanMoveTickets();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
     disabled: { draggable: !draggable, droppable: collapsed },

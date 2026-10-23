@@ -137,6 +137,7 @@ export const ProjectBoardSection = ({
       )}
       {tickets && swimlanes.length > 0 && (
         <KanbanBoard
+          projectId={projectId}
           columns={columns}
           swimlanes={swimlanes}
           onDrop={onDrop}

@@ -36,10 +36,14 @@ export const useFetchProjectRoleIds = (projectId: string | undefined) =>
     enabled: !!projectId,
   });
 
-// One shared directory fetch; chat holds user ids and tickets hold logins, so either resolves.
+// Chat holds user ids and tickets hold logins, so either resolves.
+export const findPerson = (people: Person[] | undefined, key: string): Person =>
+  people?.find((p) => p.user_id === key || p.login === key) ?? unknownPerson(key);
+
+// One shared directory fetch.
 export const usePersonLookup = (workspaceId: string | undefined) => {
   const { data: people } = useFetchWorkspacePeople(workspaceId);
-  return (key: string): Person => people?.find((p) => p.user_id === key || p.login === key) ?? unknownPerson(key);
+  return (key: string): Person => findPerson(people, key);
 };
 
 // For surfaces that carry no workspace id of their own (tickets, memories): they belong to the selected workspace.
