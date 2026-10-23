@@ -11,8 +11,8 @@ import (
 )
 
 const createAutoPlay = `-- name: CreateAutoPlay :exec
-INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, computer_id, run_as, memory_ids, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, computer_id, computer_ids, run_as, memory_ids, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateAutoPlayParams struct {
@@ -27,6 +27,7 @@ type CreateAutoPlayParams struct {
 	OnceWithinMinutes int64
 	RunOn             string
 	ComputerID        string
+	ComputerIds       string
 	RunAs             string
 	MemoryIds         string
 	CreatedBy         string
@@ -47,6 +48,7 @@ func (q *Queries) CreateAutoPlay(ctx context.Context, arg CreateAutoPlayParams) 
 		arg.OnceWithinMinutes,
 		arg.RunOn,
 		arg.ComputerID,
+		arg.ComputerIds,
 		arg.RunAs,
 		arg.MemoryIds,
 		arg.CreatedBy,
@@ -69,7 +71,7 @@ func (q *Queries) DeleteAutoPlay(ctx context.Context, id string) (int64, error) 
 }
 
 const getAutoPlay = `-- name: GetAutoPlay :one
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids FROM auto_plays WHERE id = ?
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE id = ?
 `
 
 func (q *Queries) GetAutoPlay(ctx context.Context, id string) (AutoPlay, error) {
@@ -92,6 +94,7 @@ func (q *Queries) GetAutoPlay(ctx context.Context, id string) (AutoPlay, error) 
 		&i.ComputerID,
 		&i.RunAs,
 		&i.MemoryIds,
+		&i.ComputerIds,
 	)
 	return i, err
 }
@@ -108,7 +111,7 @@ func (q *Queries) GetAutoPlayLimits(ctx context.Context, id string) (int64, erro
 }
 
 const listAutoPlaysByPlays = `-- name: ListAutoPlaysByPlays :many
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(?1)) ORDER BY play_id, created_at, id
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(?1)) ORDER BY play_id, created_at, id
 `
 
 func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{}) ([]AutoPlay, error) {
@@ -137,6 +140,7 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 			&i.ComputerID,
 			&i.RunAs,
 			&i.MemoryIds,
+			&i.ComputerIds,
 		); err != nil {
 			return nil, err
 		}
@@ -152,7 +156,7 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 }
 
 const listEnabledAutoPlaysByMoment = `-- name: ListEnabledAutoPlaysByMoment :many
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
   AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = auto_plays.workspace_id AND w.archived_at IS NOT NULL)
 ORDER BY created_at, id
 `
@@ -188,6 +192,7 @@ func (q *Queries) ListEnabledAutoPlaysByMoment(ctx context.Context, arg ListEnab
 			&i.ComputerID,
 			&i.RunAs,
 			&i.MemoryIds,
+			&i.ComputerIds,
 		); err != nil {
 			return nil, err
 		}
@@ -220,7 +225,7 @@ func (q *Queries) SetAutoPlayLimits(ctx context.Context, arg SetAutoPlayLimitsPa
 }
 
 const updateAutoPlay = `-- name: UpdateAutoPlay :execrows
-UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, run_as = ?, memory_ids = ?, updated_at = ?
+UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, computer_ids = ?, run_as = ?, memory_ids = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -233,6 +238,7 @@ type UpdateAutoPlayParams struct {
 	OnceWithinMinutes int64
 	RunOn             string
 	ComputerID        string
+	ComputerIds       string
 	RunAs             string
 	MemoryIds         string
 	UpdatedAt         int64
@@ -249,6 +255,7 @@ func (q *Queries) UpdateAutoPlay(ctx context.Context, arg UpdateAutoPlayParams) 
 		arg.OnceWithinMinutes,
 		arg.RunOn,
 		arg.ComputerID,
+		arg.ComputerIds,
 		arg.RunAs,
 		arg.MemoryIds,
 		arg.UpdatedAt,

@@ -16,7 +16,7 @@ func newTestQueueItem(id, autoPlayID, targetID, person string, level plays.Level
 	return &plays.QueueItem{
 		ID: id, WorkspaceID: "ws-1", ProjectID: "p-1", TargetType: plays.TargetTicket, TargetID: targetID, PlayID: "play-1",
 		PlayLabel: "Fix", AutoPlayID: autoPlayID, PersonID: person, RunOn: plays.RunOnDeveloper, Moment: plays.MomentTicketUnblocked,
-		Priority: level, Status: plays.QueueQueued, Via: plays.ViaWeb, QueuedAt: at, NotBefore: at,
+		Priority: level, Status: plays.QueueQueued, Via: plays.ViaWeb, QueuedAt: at, NotBefore: at, ComputerIDs: []string{},
 	}
 }
 
@@ -61,7 +61,7 @@ func TestPlayQueueRepo_KeepsTheStackServiceAndOutageARunWasQueuedFor(t *testing.
 	at := time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
 	it := newTestQueueItem("q-1", "ap-1", "st-1", "u-alice", plays.LevelNormal, at)
 	it.TargetType, it.RunOn, it.Moment = plays.TargetStack, plays.RunOnComputer, plays.MomentStackServiceCrashed
-	it.ComputerID, it.Service, it.OutageID = "c-1", "api", "o-1"
+	it.ComputerIDs, it.ComputerID, it.Service, it.OutageID = []string{"c-2", "c-1"}, "c-2", "api", "o-1"
 	_, err := s.PlayQueue.EnqueueRun(t.Context(), it)
 	require.NoError(t, err)
 

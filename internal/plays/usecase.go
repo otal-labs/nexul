@@ -569,3 +569,22 @@ func normalizeIDs(raw []string) []string {
 	slices.Sort(out)
 	return out
 }
+
+// orderedIDs trims, drops empties and dedupes like normalizeIDs, but keeps the order, which is the point of a list of computers.
+func orderedIDs(raw []string) []string {
+	out := make([]string, 0, len(raw))
+	for _, id := range raw {
+		if id = strings.TrimSpace(id); id != "" && !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// firstID is the head of an ordered id list, "" when it is empty.
+func firstID(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
+}

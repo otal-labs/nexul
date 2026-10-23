@@ -15,7 +15,7 @@ import (
 )
 
 func (r *PlaysRepo) CreateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts ...eventbus.OutboxEvent) error {
-	conditions, priority, memories, err := encodeAutoPlayTrees(a)
+	conditions, priority, memories, computers, err := encodeAutoPlayTrees(a)
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func (r *PlaysRepo) CreateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 		err := r.q.WithTx(tx).CreateAutoPlay(ctx, sqlcgen.CreateAutoPlayParams{
 			ID: a.ID, PlayID: a.PlayID, WorkspaceID: a.WorkspaceID, Enabled: int64(boolInt(a.Enabled)),
 			Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage), Conditions: conditions, Priority: priority,
-			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), ComputerID: a.ComputerID, RunAs: a.RunAs, MemoryIds: memories, CreatedBy: a.CreatedBy,
+			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, CreatedBy: a.CreatedBy,
 			CreatedAt: a.CreatedAt.Unix(), UpdatedAt: a.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -61,7 +61,7 @@ func (r *PlaysRepo) ListAutoPlays(ctx context.Context, playIDs []string) ([]*pla
 }
 
 func (r *PlaysRepo) UpdateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts ...eventbus.OutboxEvent) error {
-	conditions, priority, memories, err := encodeAutoPlayTrees(a)
+	conditions, priority, memories, computers, err := encodeAutoPlayTrees(a)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (r *PlaysRepo) UpdateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 		n, err := r.q.WithTx(tx).UpdateAutoPlay(ctx, sqlcgen.UpdateAutoPlayParams{
 			Enabled: int64(boolInt(a.Enabled)), Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage),
 			Conditions: conditions, Priority: priority, OnceWithinMinutes: int64(a.OnceWithinMinutes),
-			RunOn: string(a.RunOn), ComputerID: a.ComputerID, RunAs: a.RunAs, MemoryIds: memories, UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
+			RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update auto play %s: %w", a.ID, classifyWriteErr(err))
@@ -136,27 +136,31 @@ func (r *PlaysRepo) SetAutoPlayLimits(ctx context.Context, workspaceID string, l
 	})
 }
 
-func encodeAutoPlayTrees(a *plays.AutoPlay) (conditions, priority, memories string, err error) {
+func encodeAutoPlayTrees(a *plays.AutoPlay) (conditions, priority, memories, computers string, err error) {
 	c, err := json.Marshal(a.Conditions)
 	if err != nil {
-		return "", "", "", fmt.Errorf("encode conditions of auto play %s: %w", a.ID, err)
+		return "", "", "", "", fmt.Errorf("encode conditions of auto play %s: %w", a.ID, err)
 	}
 	p, err := json.Marshal(a.Priority)
 	if err != nil {
-		return "", "", "", fmt.Errorf("encode priority of auto play %s: %w", a.ID, err)
+		return "", "", "", "", fmt.Errorf("encode priority of auto play %s: %w", a.ID, err)
 	}
 	memories, err = marshalStringList(a.MemoryIDs)
 	if err != nil {
-		return "", "", "", fmt.Errorf("encode memories of auto play %s: %w", a.ID, err)
+		return "", "", "", "", fmt.Errorf("encode memories of auto play %s: %w", a.ID, err)
 	}
-	return string(c), string(p), memories, nil
+	computers, err = marshalStringList(a.ComputerIDs)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("encode computers of auto play %s: %w", a.ID, err)
+	}
+	return string(c), string(p), memories, computers, nil
 }
 
 func toAutoPlay(row sqlcgen.AutoPlay) (*plays.AutoPlay, error) {
 	a := &plays.AutoPlay{
 		ID: row.ID, PlayID: row.PlayID, WorkspaceID: row.WorkspaceID, Enabled: row.Enabled != 0,
 		Moment: plays.Moment(row.Moment), OnceWithinMinutes: int(row.OnceWithinMinutes), RunOn: plays.RunOn(row.RunOn),
-		ComputerID: row.ComputerID, RunAs: row.RunAs, CreatedBy: row.CreatedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		RunAs: row.RunAs, CreatedBy: row.CreatedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if row.MomentStage.Valid {
 		s := plays.Stage(row.MomentStage.String)
@@ -173,5 +177,19 @@ func toAutoPlay(row sqlcgen.AutoPlay) (*plays.AutoPlay, error) {
 		return nil, fmt.Errorf("decode memories of auto play %s: %w", row.ID, err)
 	}
 	a.MemoryIDs = append([]string{}, memories...)
+	computers, err := decodeStringList([]byte(row.ComputerIds))
+	if err != nil {
+		return nil, fmt.Errorf("decode computers of auto play %s: %w", row.ID, err)
+	}
+	a.ComputerIDs = append([]string{}, computers...)
+	a.ComputerID = firstID(a.ComputerIDs)
 	return a, nil
+}
+
+// firstID is the head of an ordered id list, the one older readers of a computer_id column still see.
+func firstID(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
 }

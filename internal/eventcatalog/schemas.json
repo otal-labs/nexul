@@ -408,6 +408,13 @@
               "computer"
             ]
           },
+          "computer_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."
+          },
           "computer_id": {
             "type": "string"
           },
@@ -443,6 +450,7 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "computer_ids",
           "computer_id",
           "run_as",
           "memory_ids",
@@ -755,6 +763,13 @@
               "computer"
             ]
           },
+          "computer_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."
+          },
           "computer_id": {
             "type": "string"
           },
@@ -790,6 +805,7 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "computer_ids",
           "computer_id",
           "run_as",
           "memory_ids",
@@ -5151,9 +5167,16 @@
         "description": "The item is not tried before this; an offline computer or a setup gap is tried again a minute later.",
         "format": "date-time"
       },
+      "computer_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."
+      },
       "computer_id": {
         "type": "string",
-        "description": "The computer its auto play names for run_on computer; empty when the run goes to its person's first ready computer."
+        "description": "The first of computer_ids, for readers that predate the list; empty when it is empty."
       },
       "service": {
         "type": "string",
@@ -5226,6 +5249,7 @@
       "queued_at",
       "decided_at",
       "not_before",
+      "computer_ids",
       "computer_id",
       "service",
       "outage_id"
@@ -5349,9 +5373,16 @@
         "description": "The item is not tried before this; an offline computer or a setup gap is tried again a minute later.",
         "format": "date-time"
       },
+      "computer_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."
+      },
       "computer_id": {
         "type": "string",
-        "description": "The computer its auto play names for run_on computer; empty when the run goes to its person's first ready computer."
+        "description": "The first of computer_ids, for readers that predate the list; empty when it is empty."
       },
       "service": {
         "type": "string",
@@ -5424,6 +5455,7 @@
       "queued_at",
       "decided_at",
       "not_before",
+      "computer_ids",
       "computer_id",
       "service",
       "outage_id"

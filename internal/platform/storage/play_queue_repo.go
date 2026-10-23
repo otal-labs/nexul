@@ -28,13 +28,17 @@ var levelPriority = map[plays.Level]int64{plays.LevelLow: 0, plays.LevelNormal: 
 
 func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) (bool, error) {
 	inserted := false
-	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+	computers, err := marshalStringList(it.ComputerIDs)
+	if err != nil {
+		return false, fmt.Errorf("encode computers of queue item %s: %w", it.ID, err)
+	}
+	err = r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).InsertPlayQueueItem(ctx, sqlcgen.InsertPlayQueueItemParams{
 			ID: it.ID, WorkspaceID: it.WorkspaceID, ProjectID: it.ProjectID, TargetType: string(it.TargetType), TargetID: it.TargetID,
 			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, AutomationID: it.AutomationID, PersonID: it.PersonID, RunOn: string(it.RunOn),
 			Moment: string(it.Moment), Via: string(it.Via), Priority: levelPriority[it.Priority], Status: string(it.Status),
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID,
+			NotBefore: it.NotBefore.Unix(), ComputerID: firstID(it.ComputerIDs), ComputerIds: computers,
 			Service: it.Service, OutageID: it.OutageID,
 		})
 		if err != nil {
@@ -187,12 +191,13 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 			level = l
 		}
 	}
+	computers := decodeJSON(row.ComputerIds, []string{})
 	return &plays.QueueItem{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, TargetType: plays.TargetType(row.TargetType),
 		TargetID: row.TargetID, PlayID: row.PlayID, PlayLabel: row.PlayLabel, AutoPlayID: row.AutoPlayID, AutomationID: row.AutomationID, PersonID: row.PersonID,
 		RunOn: plays.RunOn(row.RunOn), Moment: plays.Moment(row.Moment), Priority: level, Status: plays.QueueStatus(row.Status),
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),
-		ComputerID: row.ComputerID, Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
+		ComputerIDs: computers, ComputerID: firstID(computers), Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
 	}
 }

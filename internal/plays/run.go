@@ -96,7 +96,9 @@ type ProjectLookup interface {
 // dialog, or what the resolution picked from their computers and project link when they picked none.
 type HarnessChoice struct {
 	ComputerID string
-	Worktree   bool
+	// ComputerIDs is an ordered list the run may land on, the first that can take it; empty takes ComputerID, else the starter's own order.
+	ComputerIDs []string
+	Worktree    bool
 	// HarnessProjectID is the T3 project a person picked beside ComputerID, remembered for the project as the run starts.
 	HarnessProjectID string
 	Provider         string

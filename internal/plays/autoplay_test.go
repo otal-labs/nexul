@@ -54,7 +54,7 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		{"a ticket moment on a stack play", TypeStack, AutoPlay{Moment: MomentTicketCreated}, "belongs to ticket plays"},
 		{"a stack moment on a ticket play", TypeTicket, AutoPlay{Moment: MomentStackServiceCrashed}, "belongs to stack plays"},
 		{"an error-rate crossing on a ticket play", TypeTicket, AutoPlay{Moment: MomentStackErrorRateCrossed}, "belongs to stack plays"},
-		{"a switched-on run on a computer nobody picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true}, "pick the computer"},
+		{"a switched-on run on a computer nobody picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true}, "pick the computers"},
 		{"a ticket field on a stack play", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldLabel, OpIs, "bug"))}}}, `field "label" is not one a stack play reads`},
 		{"a stack field on a ticket play", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"))}}}, `field "service" is not one a ticket play reads`},
 		{"an op a stack field does not take", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpSet))}}}, "takes the ops is, is_not"},
@@ -96,14 +96,15 @@ func TestAutoPlayValidate_AcceptsWhatTheComposerBuilds(t *testing.T) {
 		{"a bare moment", TypeTicket, AutoPlay{Moment: MomentTicketUnblocked}},
 		{"a stage moment", TypeTicket, AutoPlay{Moment: MomentTicketEnteredStage, MomentStage: stagePtr(StageDone), RunOn: RunOnCauser}},
 		{"a doc moment", TypeDoc, AutoPlay{Moment: MomentDocChanged, Conditions: Conditions{Match: MatchAny, Groups: []Group{when(rule(FieldFolder, OpIsNot, "f-1"))}}}},
-		{"a doc moment on a chosen computer", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnComputer, ComputerID: "c-1"}},
+		{"a doc moment on a chosen computer", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnComputer, ComputerIDs: []string{"c-1"}, RunAs: "u-alice"}},
+		{"a stack moment on the picker's own order", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true, RunAs: "u-alice"}},
 		{"a stack moment off until a computer is picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed}},
 		{"an error-rate crossing on a computer", TypeStack, AutoPlay{
-			Moment: MomentStackErrorRateCrossed, Enabled: true, ComputerID: "c-1",
+			Moment: MomentStackErrorRateCrossed, Enabled: true, ComputerIDs: []string{"c-1"}, RunAs: "u-alice",
 			Conditions: Conditions{Groups: []Group{when(rule(FieldStack, OpIs, "st-1"), rule(FieldProject, OpIs, "p-1"))}},
 		}},
 		{"a stack moment on a computer", TypeStack, AutoPlay{
-			Moment: MomentStackServiceRecovered, Enabled: true, ComputerID: "c-1",
+			Moment: MomentStackServiceRecovered, Enabled: true, ComputerIDs: []string{"c-1", "c-2"}, RunAs: "u-alice",
 			Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"), rule(FieldStack, OpIsNot, "st-2"), rule(FieldProject, OpIs, "p-1"))}},
 		}},
 		{"two levels of conditions and a priority", TypeTicket, AutoPlay{
@@ -142,14 +143,14 @@ func TestAutoPlayNormalize_FillsWhatAnOmittedPartMeans(t *testing.T) {
 	assert.Equal(t, RunOnCauser, doc.RunOn, "a doc has no developer, so its auto plays run on whoever caused the moment")
 	assert.Equal(t, []Group{}, doc.Conditions.Groups)
 
-	stack := AutoPlay{Moment: MomentStackServiceCrashed, ComputerID: "c-1"}
+	stack := AutoPlay{Moment: MomentStackServiceCrashed, ComputerIDs: []string{" c-2", "c-1", "c-2", ""}}
 	stack.normalize(TypeStack)
 	assert.Equal(t, RunOnComputer, stack.RunOn, "a stack has no developer, tester or causer, so its auto plays run on a chosen computer")
-	assert.Equal(t, "c-1", stack.ComputerID)
+	assert.Equal(t, []any{[]string{"c-2", "c-1"}, "c-2"}, []any{stack.ComputerIDs, stack.ComputerID}, "trimmed and deduped, in the order picked, the first also kept as computer_id")
 
-	moved := AutoPlay{Moment: MomentTicketCreated, RunOn: RunOnTester, ComputerID: "c-1", RunAs: "u-alice"}
+	moved := AutoPlay{Moment: MomentTicketCreated, RunOn: RunOnTester, ComputerIDs: []string{"c-1"}, ComputerID: "c-1", RunAs: "u-alice"}
 	moved.normalize(TypeTicket)
-	assert.Equal(t, []string{"", ""}, []string{moved.ComputerID, moved.RunAs}, "an auto play that no longer runs on a computer forgets it and who picked it")
+	assert.Equal(t, []any{[]string{}, "", ""}, []any{moved.ComputerIDs, moved.ComputerID, moved.RunAs}, "an auto play that no longer runs on a computer forgets them and who picked them")
 }
 
 // autoPlayFixture seeds a ticket play, a doc play, and an interview play; "editor" holds every autoplays bit.
