@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { BoardStatus } from "@/models/Status";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -57,16 +58,18 @@ const renderColumn = (props: Partial<Parameters<typeof KanbanColumn>[0]> = {}) =
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <KanbanColumn
-        droppableId="column-Sprint 1-open"
-        laneLabel="Sprint 1"
-        categoryId="c-1"
-        column={column}
-        collapsed={false}
-        tickets={[ticket("t-1", "Fix login", "open")]}
-        onAddTicket={() => {}}
-        {...props}
-      />
+      <BoardCardProvider projectId="p-1">
+        <KanbanColumn
+          droppableId="column-Sprint 1-open"
+          laneLabel="Sprint 1"
+          categoryId="c-1"
+          column={column}
+          collapsed={false}
+          tickets={[ticket("t-1", "Fix login", "open")]}
+          onAddTicket={() => {}}
+          {...props}
+        />
+      </BoardCardProvider>
     </QueryClientProvider>,
   );
 };

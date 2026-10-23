@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { TicketCard } from "@/components/board/TicketCard";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
@@ -45,7 +46,11 @@ const ticket = (id: string, title: string, status: string, developer = "onik97",
 
 const renderCard = (ui: Parameters<typeof render>[0]) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <BoardCardProvider projectId="p-1">{ui}</BoardCardProvider>
+    </QueryClientProvider>,
+  );
 };
 
 // Overrides just the ticket-types response for this project; every other endpoint keeps the beforeEach default.

@@ -15,6 +15,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
 import { boardKeyboardCoordinates } from "@/components/board/dragKeyboardCoordinates";
@@ -26,6 +27,7 @@ import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
 interface KanbanBoardProps {
+  projectId: string | undefined;
   columns: BoardStatus[];
   swimlanes: Swimlane[];
   onDrop: (actions: DragMoveAction[]) => Promise<void> | void;
@@ -47,6 +49,7 @@ const TOUCH_SENSOR = { activationConstraint: { delay: 200, tolerance: 8 } };
 const KEYBOARD_SENSOR = { coordinateGetter: boardKeyboardCoordinates };
 
 export const KanbanBoard = ({
+  projectId,
   columns,
   swimlanes,
   onDrop,
@@ -152,31 +155,33 @@ export const KanbanBoard = ({
   const shownColumns = settledColumns ?? columns;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={boardCollisionDetection}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => {
-        setActiveTicket(null);
-        setOverCell(null);
-      }}
-    >
-      {/* One shared horizontal scroll for every lane so column positions stay aligned across swimlanes. */}
-      <div className="space-y-6 overflow-x-auto pb-2">
-        {shownSwimlanes.map((lane) => (
-          <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} onAddTicket={onAddTicket} />
-        ))}
-      </div>
-      {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
-      {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}
-      {createPortal(
-        <DragOverlay dropAnimation={dropAnimation}>
-          {activeTicket && <TicketCardOverlay ticket={activeTicket} />}
-        </DragOverlay>,
-        document.body,
-      )}
-    </DndContext>
+    <BoardCardProvider projectId={projectId}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={boardCollisionDetection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActiveTicket(null);
+          setOverCell(null);
+        }}
+      >
+        {/* One shared horizontal scroll for every lane so column positions stay aligned across swimlanes. */}
+        <div className="space-y-6 overflow-x-auto pb-2">
+          {shownSwimlanes.map((lane) => (
+            <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} onAddTicket={onAddTicket} />
+          ))}
+        </div>
+        {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
+        {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}
+        {createPortal(
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeTicket && <TicketCardOverlay ticket={activeTicket} />}
+          </DragOverlay>,
+          document.body,
+        )}
+      </DndContext>
+    </BoardCardProvider>
   );
 };

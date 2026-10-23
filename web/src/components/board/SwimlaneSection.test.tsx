@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { useBoardStore } from "@/stores/boardStore";
@@ -59,21 +60,23 @@ const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/board/:projectId"
-            element={
-              <SwimlaneSection
-                lane={lane("c-1", [ticket("t-1", "Fix login", "open")])}
-                columns={columns}
-                onAddTicket={() => {}}
-                {...props}
-              />
-            }
-          />
-        </Routes>
-      </MemoryRouter>
+      <BoardCardProvider projectId="p-1">
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/board/:projectId"
+              element={
+                <SwimlaneSection
+                  lane={lane("c-1", [ticket("t-1", "Fix login", "open")])}
+                  columns={columns}
+                  onAddTicket={() => {}}
+                  {...props}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </BoardCardProvider>
     </QueryClientProvider>,
   );
 };

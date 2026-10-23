@@ -1,6 +1,6 @@
 import { Ban } from "lucide-react";
 
-import { useFetchBlockers } from "@/hooks/TicketLinkHooks";
+import { useBoardCardData } from "@/hooks/useBoardCardData";
 import { linkedTicketKey } from "@/models/TicketLink";
 
 interface TicketBlockedLineProps {
@@ -9,7 +9,7 @@ interface TicketBlockedLineProps {
 
 // A signal, never a gate: the card still drags anywhere while this shows.
 export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
-  const { data: blockers } = useFetchBlockers();
+  const { blockers } = useBoardCardData();
   const waitingOn = blockers?.[ticketId] ?? [];
   if (waitingOn.length === 0) return null;
 
