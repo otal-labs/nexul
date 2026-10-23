@@ -45,6 +45,9 @@ type QueueRepo interface {
 	GetQueueItem(ctx context.Context, id string) (*QueueItem, error)
 	// MoveQueueItem saves it's status, reason, trail, and times if the row is still in status from, reading its pick back.
 	MoveQueueItem(ctx context.Context, it *QueueItem, from QueueStatus, evts ...eventbus.OutboxEvent) error
+	// RepointQueueItem saves it's person and computers, clears what it waited on, and makes it due at it.NotBefore, if the
+	// row is still queued; otherwise ErrConflict.
+	RepointQueueItem(ctx context.Context, it *QueueItem, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
 	// ListQueuedByTargets returns the queued items on any of the given targets, highest priority then oldest first.

@@ -382,7 +382,8 @@ or causer. The auto play stores the computers and the person who picked them,
 who must own each or hold `computers:run_agents` on its share; with none
 named it is **Your order**, the picker's own computers as they are ordered. The
 person is whoever last saved a new list, and the run acts as them: the trail is theirs and the run waits in their
-queue. The right is checked again when the moment matches and at the front of
+queue. Saving a new list or person moves the runs the auto play still has
+queued onto it. The right is checked again when the moment matches and at the front of
 the queue, which drops a computer they have lost and leaves the run as
 "didn't run" with the reason when none is left. An auto play that runs on a
 computer stays off until someone has picked.

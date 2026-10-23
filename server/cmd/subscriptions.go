@@ -502,6 +502,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	for _, topic := range plays.AutoPlayOffTopics {
 		mustSubscribe(ctx, bus, "plays.queue_auto_play", topic, " for the run queue", svc.playsRunner.HandleAutoPlayOff)
 	}
+	// An edited auto play's computers and picker carry over to the runs it still has queued.
+	mustSubscribe(ctx, bus, "plays.queue_auto_play_computers", plays.TopicAutoPlayUpdated, " for the run queue", svc.playsRunner.HandleAutoPlayComputersChanged)
 	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
 	go svc.playsRunner.RunQueue(ctx)
 

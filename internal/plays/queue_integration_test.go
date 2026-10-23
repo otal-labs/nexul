@@ -1075,3 +1075,90 @@ func TestHandleAutoPlayOff_StaysOutOfTheWayOfAnAutoPlayStillOn(t *testing.T) {
 
 	assert.Equal(t, plays.QueueQueued, r.only(t, "t-1").Status)
 }
+
+// computerRig has a ticket play whose auto play runs on alice's c-1, with t-1 started on it and t-2 held because it is full.
+func computerRig(t *testing.T) (*rig, *plays.AutoPlay) {
+	t.Helper()
+	r := newRig(t, openStore(t))
+	r.Grant(alice)
+	r.Grant("u-bob")
+	r.OwnComputer("c-1", alice)
+	r.OwnComputer("c-2", alice)
+	r.OwnComputer("c-3", "u-bob")
+	a := r.autoPlay(t, r.play(t, "Fix it").ID, plays.MomentTicketUnblocked, onComputer("c-1"))
+	for _, id := range []string{"t-1", "t-2"} {
+		r.ticket(id)
+		r.unblock(t, id)
+		r.clock = r.clock.Add(time.Second)
+		r.dispatch(t)
+	}
+	require.Equal(t, []any{plays.QueueStarted, plays.QueueQueued, "no_computer_ready"},
+		[]any{r.only(t, "t-1").Status, r.only(t, "t-2").Status, r.only(t, "t-2").Reason})
+	return r, a
+}
+
+func (r *rig) editAutoPlay(t *testing.T, a *plays.AutoPlay) {
+	t.Helper()
+	require.NoError(t, r.store.Plays.UpdateAutoPlay(t.Context(), a))
+	raw, err := json.Marshal(plays.AutoPlayEvent{AutoPlay: *a})
+	require.NoError(t, err)
+	require.NoError(t, r.Runner.HandleAutoPlayComputersChanged(t.Context(), eventbus.Event{ID: ids.New(), Topic: plays.TopicAutoPlayUpdated, Payload: raw}))
+}
+
+func TestHandleAutoPlayComputersChanged_MovesAHeldRunOntoTheNewList(t *testing.T) {
+	tests := []struct {
+		name   string
+		edit   func(a *plays.AutoPlay)
+		person string
+		starts bool
+	}{
+		{"a computer added", func(a *plays.AutoPlay) { onComputer("c-1", "c-2")(a) }, alice, false},
+		{"picked again by someone else", func(a *plays.AutoPlay) { onComputer("c-3")(a); a.RunAs = "u-bob" }, "u-bob", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, a := computerRig(t)
+			r.Kicked()
+			r.clock = r.clock.Add(10 * time.Second)
+			tt.edit(a)
+
+			r.editAutoPlay(t, a)
+
+			it := r.only(t, "t-2")
+			assert.Equal(t, []any{a.ComputerIDs, a.ComputerID, tt.person, "", r.clock}, []any{it.ComputerIDs, it.ComputerID, it.PersonID, it.Reason, it.NotBefore},
+				"the run carries the auto play's list and picker and is due now, not what it was held on")
+			assert.Empty(t, it.WaitingOn)
+			assert.True(t, r.Kicked(), "the dispatcher is woken to try it at once")
+
+			r.dispatch(t)
+			if tt.starts {
+				assert.Equal(t, plays.QueueStarted, r.only(t, "t-2").Status, "the new computer had room")
+			}
+		})
+	}
+}
+
+func TestHandleAutoPlayComputersChanged_LeavesTheQueueAloneWhenNothingMoves(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(a *plays.AutoPlay)
+	}{
+		{"the list and picker are unchanged", func(a *plays.AutoPlay) { a.OnceWithinMinutes = 5 }},
+		{"it is switched off", func(a *plays.AutoPlay) { onComputer("c-1", "c-2")(a); a.Enabled = false }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, a := computerRig(t)
+			r.Kicked()
+			before := r.only(t, "t-2")
+			updates := r.updates(t)
+			tt.edit(a)
+
+			r.editAutoPlay(t, a)
+
+			assert.Equal(t, before, r.only(t, "t-2"))
+			assert.Equal(t, updates, r.updates(t), "nothing is announced")
+			assert.False(t, r.Kicked())
+		})
+	}
+}

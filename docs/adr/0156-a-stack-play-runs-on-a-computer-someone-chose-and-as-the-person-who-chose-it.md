@@ -29,8 +29,8 @@ Decision: a play has a third type, **stack**, and every auto play may run on **a
 - **The right is checked three times**: when the computers are picked, when the moment matches, and again at the front of
   the queue. The person must own each computer or hold `computers:run_agents` on its share (ADR 0148). A computer they
   no longer have the right on is left out of the run; if that leaves none, the run does not start and says "didn't run"
-  with the reason, as a play with nobody to run on does. If someone else has picked the computers since, the queued run
-  is skipped. A computer the picker cannot see reads as not shared at all.
+  with the reason, as a play with nobody to run on does. Saving a new list or picker moves the auto play's queued runs
+  onto it and wakes the queue; a run is skipped only if the picker changed after that. A computer the picker cannot see reads as not shared at all.
 - **Off until computers are picked.** An auto play that runs on a computer cannot be switched on until someone has
   picked, which an empty list (Your order) also counts as, so the seeded "Investigate a crash" waits for a person to
   pick it.
