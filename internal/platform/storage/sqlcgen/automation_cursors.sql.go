@@ -29,6 +29,7 @@ const setAutomationCursor = `-- name: SetAutomationCursor :exec
 INSERT INTO automation_cursors (automation_id, last_created_at, last_event_id, updated_at)
 VALUES (?, ?, ?, ?)
 ON CONFLICT(automation_id) DO UPDATE SET last_created_at = excluded.last_created_at, last_event_id = excluded.last_event_id, updated_at = excluded.updated_at
+WHERE (excluded.last_created_at, excluded.last_event_id) > (automation_cursors.last_created_at, automation_cursors.last_event_id)
 `
 
 type SetAutomationCursorParams struct {
@@ -38,6 +39,7 @@ type SetAutomationCursorParams struct {
 	UpdatedAt     int64
 }
 
+// Only ever advances: a run report that lands after a skip must not rewind past it.
 func (q *Queries) SetAutomationCursor(ctx context.Context, arg SetAutomationCursorParams) error {
 	_, err := q.db.ExecContext(ctx, setAutomationCursor,
 		arg.AutomationID,
