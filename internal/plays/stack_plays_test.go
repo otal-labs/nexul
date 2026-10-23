@@ -27,9 +27,15 @@ func (r *rig) stackPlay(t *testing.T, label string) *plays.Play {
 	return p
 }
 
-// onComputer makes the auto play land on computer, as alice picked it.
-func onComputer(computer string) func(*plays.AutoPlay) {
-	return func(a *plays.AutoPlay) { a.RunOn, a.ComputerID, a.RunAs = plays.RunOnComputer, computer, alice }
+// onComputer makes the auto play land on computers, in this order, as alice picked them; with none it is her own order.
+func onComputer(computers ...string) func(*plays.AutoPlay) {
+	return func(a *plays.AutoPlay) {
+		a.RunOn, a.ComputerIDs, a.RunAs = plays.RunOnComputer, computers, alice
+		a.ComputerID = ""
+		if len(computers) > 0 {
+			a.ComputerID = computers[0]
+		}
+	}
 }
 
 func (r *rig) crash(t *testing.T, topic, stack, service string, projectID string) {
@@ -358,4 +364,59 @@ func TestStackMoment_ErrorRateNothingWaitsForAnInstanceStack(t *testing.T) {
 func TestMomentTopics_IncludeTheErrorRateCrossing(t *testing.T) {
 	assert.Contains(t, plays.MomentTopics, "stack.error_rate_crossed")
 	assert.NotContains(t, plays.MomentTopics, "stack.error_rate_recovered")
+}
+
+func TestRunOnComputers_TheQueuedRunKeepsTheWholeListAndStartsWithIt(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.Grant(alice)
+	r.SetStack("st-1", project, "acme-web")
+	r.OwnComputer("c-1", alice)
+	r.OwnComputer("c-2", alice)
+	r.autoPlay(t, r.stackPlay(t, "Investigate").ID, plays.MomentStackServiceCrashed, onComputer("c-2", "c-1"))
+
+	r.crash(t, "service.container_stopped", "st-1", "api", project)
+
+	it := r.stackQueue(t, "st-1")[0]
+	assert.Equal(t, []any{[]string{"c-2", "c-1"}, "c-2"}, []any{it.ComputerIDs, it.ComputerID}, "the list is queued in its order, computer_id is its first")
+	r.dispatch(t)
+	assert.Equal(t, plays.QueueStarted, r.stackQueue(t, "st-1")[0].Status)
+	assert.Equal(t, []string{"c-2", "c-1"}, r.LastChoice().ComputerIDs, "placement is given every computer, so a full or offline first one falls to the next")
+}
+
+func TestRunOnComputers_OnesThePersonNoLongerMayRunAgentsOnAreDroppedAtEveryCheck(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.Grant(alice)
+	r.SetStack("st-1", project, "acme-web")
+	r.OwnComputer("c-1", "u-owner")
+	r.ShareComputer("c-1", alice, permissions.ComputersSee, permissions.ComputersAgents)
+	r.OwnComputer("c-2", alice)
+	r.OwnComputer("c-3", "u-owner")
+	r.autoPlay(t, r.stackPlay(t, "Investigate").ID, plays.MomentStackServiceCrashed, onComputer("c-3", "c-1", "c-2"))
+
+	r.crash(t, "service.container_stopped", "st-1", "api", project)
+
+	it := r.stackQueue(t, "st-1")[0]
+	require.Equal(t, plays.QueueQueued, it.Status)
+	assert.Equal(t, []string{"c-1", "c-2"}, it.ComputerIDs, "a computer shared with nobody is dropped when the run is queued")
+
+	r.ShareComputer("c-1", alice)
+	r.dispatch(t)
+
+	assert.Equal(t, plays.QueueStarted, r.stackQueue(t, "st-1")[0].Status, "one computer left is enough")
+	assert.Equal(t, []string{"c-2"}, r.LastChoice().ComputerIDs, "a right taken away since is dropped at the front of the queue")
+}
+
+func TestRunOnComputers_YourOrderRunsOnThePickersOwnComputersWithNoneNamed(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.Grant(alice)
+	r.SetStack("st-1", project, "acme-web")
+	r.autoPlay(t, r.stackPlay(t, "Investigate").ID, plays.MomentStackServiceCrashed, onComputer())
+
+	r.crash(t, "service.container_stopped", "st-1", "api", project)
+
+	it := r.stackQueue(t, "st-1")[0]
+	assert.Equal(t, []any{plays.QueueQueued, alice, []string{}}, []any{it.Status, it.PersonID, it.ComputerIDs}, "picked, so it runs, with no computer to check")
+	r.dispatch(t)
+	assert.Equal(t, plays.QueueStarted, r.stackQueue(t, "st-1")[0].Status)
+	assert.Empty(t, r.LastChoice().ComputerIDs, "pairing then takes the project's list, else the person's order")
 }

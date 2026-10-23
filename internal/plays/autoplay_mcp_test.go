@@ -123,3 +123,34 @@ func TestPlayCreateAndUpdate_StackPlayRunsOnAChosenComputer(t *testing.T) {
 	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added[0].ID+`","computer_id":"c-see"}]}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer shared for seeing only cannot be picked")
 }
+
+func TestPlayUpdate_AutoPlayComputersAreAnOrderedListTheModelCanKeepOrReplace(t *testing.T) {
+	s, repo, _ := computerFixture(t)
+	tools := MCPTools(s)
+	out, err := callTool(t, tools, ctxAs("owner"), "play_create", `{"workspace_id":"$WS","label":"Look into it","type":"stack","instructions":"Look."}`)
+	require.NoError(t, err)
+	playID := out.(playResult).ID
+	update := func(changes string) []autoPlayResult {
+		t.Helper()
+		out, err := callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+playID+`",`+changes+`}`)
+		require.NoError(t, err)
+		return out.(playResult).AutoPlays
+	}
+
+	added := update(`"add_auto_plays":[{"moment":"stack.service_crashed","computer_ids":["c-run","c-own"]}]`)
+	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "c-run", "editor"}, []any{added[0].ComputerIDs, added[0].ComputerID, added[0].RunAs}, "in the order the model gave")
+	id := added[0].ID
+
+	kept := update(`"update_auto_plays":[{"id":"` + id + `","enabled":true}]`)
+	assert.Equal(t, []any{true, []string{"c-run", "c-own"}}, []any{kept[0].Enabled, kept[0].ComputerIDs}, "omitting computer_ids keeps the list")
+
+	reordered := update(`"update_auto_plays":[{"id":"` + id + `","computer_ids":["c-own","c-run"]}]`)
+	assert.Equal(t, []string{"c-own", "c-run"}, reordered[0].ComputerIDs)
+
+	yours := update(`"update_auto_plays":[{"id":"` + id + `","computer_ids":[]}]`)
+	assert.Equal(t, []any{[]string{}, "editor"}, []any{yours[0].ComputerIDs, yours[0].RunAs}, "an empty list is the caller's own computers in their order")
+	assert.Equal(t, []string{}, repo.autoPlays[0].ComputerIDs)
+
+	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+playID+`","update_auto_plays":[{"id":"`+id+`","computer_ids":["c-own","c-see"]}]}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "one computer in the list the caller may not run agents on refuses it")
+}

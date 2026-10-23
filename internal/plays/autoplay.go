@@ -120,6 +120,7 @@ const (
 	MaxAutoPlayDailyCap     = 50
 	DefaultAutoPlayDailyCap = 5
 	MaxAutoPlayMemories     = 50
+	MaxAutoPlayComputers    = 20
 )
 
 // AutoPlayLimits are a workspace's bounds on automatic runs, shared by every play's auto plays.
@@ -172,8 +173,11 @@ type AutoPlay struct {
 	// OnceWithinMinutes allows one run per target per window after the moment; 0 is no limit.
 	OnceWithinMinutes int   `json:"once_within_minutes"`
 	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,computer"`
-	// ComputerID is the computer a RunOnComputer auto play lands on, and RunAs the person who picked it, whose
-	// identity the run takes; both are empty for any other RunOn, and ComputerID while a seeded one waits for its pick.
+	// ComputerIDs are the computers a RunOnComputer auto play lands on, first ready first, and RunAs the person who
+	// picked them, whose identity the run takes. A RunAs with no ComputerIDs is "Your order": the run goes to that
+	// person's own computers as they are ordered. Both are empty for any other RunOn, and while a seeded one waits for its pick.
+	ComputerIDs []string `json:"computer_ids" jsonschema:"With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."`
+	// ComputerID is the first of ComputerIDs, for readers that predate the list.
 	ComputerID string `json:"computer_id"`
 	RunAs      string `json:"run_as"`
 	// MemoryIDs are read by each run beside the always-included ones; a run reads only those in its target's project.
@@ -213,8 +217,10 @@ func (a *AutoPlay) normalize(playType Type) {
 		}
 	}
 	if a.RunOn != RunOnComputer {
-		a.ComputerID, a.RunAs = "", ""
+		a.ComputerIDs, a.RunAs = nil, ""
 	}
+	a.ComputerIDs = orderedIDs(a.ComputerIDs)
+	a.ComputerID = firstID(a.ComputerIDs)
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
 	}
@@ -308,8 +314,8 @@ func (a *AutoPlay) validateRunOn(playType Type) error {
 	if playType == TypeStack && a.RunOn != RunOnComputer {
 		return fmt.Errorf("%w: a stack play's auto play runs on a chosen computer; a stack has no developer, tester or causer", apperrs.ErrInvalid)
 	}
-	if a.RunOn == RunOnComputer && a.Enabled && a.ComputerID == "" {
-		return fmt.Errorf("%w: pick the computer it runs on before switching it on", apperrs.ErrInvalid)
+	if a.RunOn == RunOnComputer && a.Enabled && a.RunAs == "" {
+		return fmt.Errorf("%w: pick the computers it runs on before switching it on", apperrs.ErrInvalid)
 	}
 	return nil
 }

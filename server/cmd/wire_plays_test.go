@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,8 +12,12 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/eventcatalog"
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/pairing"
+	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
@@ -149,4 +154,84 @@ func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
 	doc, err := playsFacts{store: s}.Facts(ctx, plays.TargetDoc, "d-1")
 	require.NoError(t, err)
 	assert.Equal(t, plays.Facts{ProjectID: "project-general", FolderID: storagetest.GeneralMainFolderID}, doc)
+}
+
+// TestIntegration_PlaysHarnessResolver_ARunOnChosenComputersGoesToTheFirstOneThatCanTakeIt resolves a queued run with
+// two chosen computers over the real pairing placement: the first one offline or full is passed over for the second, the
+// order picked is the order tried, and a run naming one computer still waits on it.
+func TestIntegration_PlaysHarnessResolver_ARunOnChosenComputersGoesToTheFirstOneThatCanTakeIt(t *testing.T) {
+	t.Parallel()
+	// listed is the choice a queued run makes: its list, and computer_id as the list's first.
+	listed := func(ids ...string) plays.HarnessChoice {
+		return plays.HarnessChoice{ComputerID: ids[0], ComputerIDs: ids}
+	}
+	tests := []struct {
+		name       string
+		offline    string
+		busy       string
+		choice     plays.HarnessChoice
+		wantOn     string
+		wantReason string
+		wantPassed string
+	}{
+		{name: "the first one offline", offline: "a", choice: listed("a", "b"), wantOn: "b", wantPassed: "a"},
+		{name: "the first one full", busy: "a", choice: listed("a", "b"), wantOn: "b", wantPassed: "a"},
+		{name: "the order picked is the order tried", choice: listed("b", "a"), wantOn: "b"},
+		{name: "one computer that is full still waits", busy: "a", choice: plays.HarnessChoice{ComputerID: "a"}, wantReason: string(pairing.ReasonNoComputerReady)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newPermFixture(t)
+			ctx := as(uOwner)
+			now := time.Now().UTC()
+			client := &harnesstest.Client{
+				ListProvidersFn: func(_ context.Context, s harness.Session) ([]harness.Provider, error) {
+					if s.ComputerID == tt.offline {
+						return nil, errors.New("offline")
+					}
+					return []harness.Provider{{ID: "provider", Driver: "provider", Name: "Provider"}}, nil
+				},
+				ListProjectsFn: func(context.Context, harness.Session) ([]harness.Project, error) {
+					return []harness.Project{{ID: "checkout"}}, nil
+				},
+			}
+			sealed, err := crypto.Encrypt(switchTestKey, []byte("token"))
+			require.NoError(t, err)
+			for _, id := range []string{"a", "b"} {
+				require.NoError(t, f.store.Pairing.SaveComputer(ctx, pairing.Computer{ID: id, UserID: uOwner, Name: id, Kind: harness.KindT3Code, ServerURL: "https://example.com", BearerToken: sealed, TokenExpiresAt: now.Add(time.Hour), CreatedAt: now, UpdatedAt: now}))
+				outbox := func(topic string) eventbus.OutboxEvent {
+					return eventbus.OutboxEvent{ID: topic + id, Topic: "test.setup", Payload: map[string]string{"computer_id": id}}
+				}
+				require.NoError(t, f.store.Pairing.SetSetupConfirmedAt(ctx, uOwner, id, &now, outbox("overall")))
+				require.NoError(t, f.store.Pairing.SaveProviderSetup(ctx, id, pairing.ProviderSetup{Provider: "provider", ConfirmedAt: &now}, now, outbox("provider")))
+			}
+			svc := pairing.NewService(pairing.Config{Repo: f.store.Pairing, Harnesses: harnesstest.Registry(client), EncryptionKey: switchTestKey, Projects: f.svc.accessSvc})
+			_, err = svc.SetDefaults(ctx, uOwner, pairing.Defaults{Provider: "provider", StartIn: pairing.StartInFolder})
+			require.NoError(t, err)
+			_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{Checkouts: []pairing.Checkout{{ComputerID: "a", HarnessProjectID: "checkout"}, {ComputerID: "b", HarnessProjectID: "checkout"}}})
+			require.NoError(t, err)
+			if tt.busy != "" {
+				require.NoError(t, f.store.PlayTrails.CreateTrail(ctx, &plays.Trail{
+					ID: "tr-busy", WorkspaceID: wsDefault, PlayID: "p", PlayLabel: "pressed", TargetType: plays.TargetTicket, TargetID: f.ticket.ID,
+					ProjectID: f.ticket.ProjectID, StarterID: uOwner, Via: plays.ViaWeb, SelectedMemoryIDs: []string{}, State: plays.TrailRunning, StartedAt: now, ComputerID: tt.busy,
+				}))
+			}
+
+			got, err := playsHarnessResolver{svc: svc}.ResolveQueuedTarget(ctx, uOwner, f.ticket.ProjectID, tt.choice)
+
+			if tt.wantReason != "" {
+				var refusal *plays.HarnessRefusal
+				require.ErrorAs(t, err, &refusal)
+				assert.Equal(t, tt.wantReason, refusal.Reason)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantOn, got.ComputerID)
+			if tt.wantPassed != "" {
+				require.Len(t, got.PassedOver, 1)
+				assert.Equal(t, tt.wantPassed, got.PassedOver[0].ComputerID, "the trail says which computer it passed over")
+			}
+		})
+	}
 }

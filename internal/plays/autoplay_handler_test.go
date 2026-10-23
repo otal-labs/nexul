@@ -3,6 +3,9 @@ package plays
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,13 +72,57 @@ func TestHandler_StackAutoPlayPicksAComputerAsTheCaller(t *testing.T) {
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 	var created AutoPlay
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	assert.Equal(t, []any{RunOnComputer, "c-own", "editor"}, []any{created.RunOn, created.ComputerID, created.RunAs})
+	assert.Equal(t, []any{RunOnComputer, []string{"c-own"}, "c-own", "editor"}, []any{created.RunOn, created.ComputerIDs, created.ComputerID, created.RunAs}, "the older computer_id is a list of one")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-see"}`, "editor").Code)
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed"}`, "editor").Code,
-		"switching on needs the computer")
+	unpicked := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed"}`, "editor")
+	require.Equal(t, http.StatusCreated, unpicked.Code, unpicked.Body.String())
+	var waiting AutoPlay
+	require.NoError(t, json.Unmarshal(unpicked.Body.Bytes(), &waiting))
+	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+waiting.ID, `{"enabled":true,"moment":"stack.service_crashed"}`, "editor").Code,
+		"switching on needs the computers picked")
 	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-run"}`, "editor")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+}
+
+func TestHandler_StackAutoPlayKeepsOrderedComputersUnlessAPickIsSent(t *testing.T) {
+	s, _, ps := computerFixture(t)
+	routes := NewHandler(s).Routes()
+	base := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeStack].ID + "/auto-plays"
+	read := func(rec *httptest.ResponseRecorder) AutoPlay {
+		t.Helper()
+		require.Less(t, rec.Code, 300, rec.Body.String())
+		var a AutoPlay
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &a))
+		return a
+	}
+
+	rec := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed","computer_ids":["c-run","c-own","c-run"]}`, "editor")
+	created := read(rec)
+	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "c-run", "editor"}, []any{created.ComputerIDs, created.ComputerID, created.RunAs}, "in the order picked, once each")
+	assert.Contains(t, rec.Body.String(), `"computer_ids":["c-run","c-own"]`)
+	path := base + "/" + created.ID
+
+	kept := read(do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered"}`, "editor"))
+	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "editor"}, []any{kept.ComputerIDs, kept.RunAs}, "no computer_ids key keeps the list and who picked it")
+
+	yours := read(do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered","computer_ids":[]}`, "editor"))
+	assert.Equal(t, []any{[]string{}, "", "editor"}, []any{yours.ComputerIDs, yours.ComputerID, yours.RunAs}, "an empty list is a pick of the caller's own order")
+	assert.Contains(t, do(t, routes, http.MethodGet, base, "", "editor").Body.String(), `"computer_ids":[]`, "never null")
+
+	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered","computer_ids":["c-own","c-see"]}`, "editor").Code,
+		"one computer in the list the caller may not run agents on refuses the pick")
+	tooMany := do(t, routes, http.MethodPatch, path, `{"moment":"stack.service_recovered","computer_ids":["`+strings.Join(manyComputers(MaxAutoPlayComputers+1), `","`)+`"]}`, "editor")
+	assert.Equal(t, http.StatusBadRequest, tooMany.Code)
+	assert.Contains(t, tooMany.Body.String(), "at most 20 computers", "the list is bounded before any right is read")
+}
+
+func manyComputers(n int) []string {
+	out := make([]string, 0, n)
+	for i := range n {
+		out = append(out, "c-"+strconv.Itoa(i))
+	}
+	return out
 }
 
 func TestHandler_ListCountsTheAutoPlaysSwitchedOn(t *testing.T) {

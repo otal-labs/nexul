@@ -138,8 +138,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"stack play, none for an interview play. Its conditions read a ticket's "+
 				"type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked, a "+
 				"doc's project or folder, or a stack play's project, stack or service, with is and is_not over values or set and unset, at most 20 rules in all. "+
-				"run_on says whose computer runs it; computer, with a computer_id you own or may run agents on, picks one "+
-				"computer and runs as you, and is the only choice for a stack play. "+
+				"run_on says whose computer runs it; computer, with computer_ids you own or may run agents on, picks "+
+				"computers in order, runs as you on the first that can take a run, and is the only choice for a stack play; "+
+				"an empty computer_ids means your own computers in their usual order. "+
 				"Play fields apply first, then add_auto_plays, update_auto_plays, and remove_auto_plays in that order, "+
 				"stopping at the first failure with what already took effect. Returns the play, with its auto plays when "+
 				"they changed. A new label still applies when automations call the play by its old one with runPlay, and "+

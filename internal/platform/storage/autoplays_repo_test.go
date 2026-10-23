@@ -17,7 +17,7 @@ func newTestAutoPlay(id, playID string, at time.Time) *plays.AutoPlay {
 		ID: id, PlayID: playID, WorkspaceID: "ws-1", Moment: plays.MomentDocChanged, RunOn: plays.RunOnCauser,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}},
 		Priority:   plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal},
-		MemoryIDs:  []string{}, CreatedAt: at, UpdatedAt: at,
+		MemoryIDs:  []string{}, ComputerIDs: []string{}, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
@@ -65,24 +65,33 @@ func TestAutoPlaysRepo_RoundTripsTheTreesAndPublishesInTheSameWrite(t *testing.T
 	assert.Equal(t, got, again)
 }
 
-func TestAutoPlaysRepo_RoundTripsTheComputerAndThePersonWhoPickedIt(t *testing.T) {
+func TestAutoPlaysRepo_RoundTripsTheComputersInOrderAndThePersonWhoPickedThem(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	seedPlays(t, s, "play-1")
 	at := time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
 	want := newTestAutoPlay("ap-1", "play-1", at)
-	want.Moment, want.RunOn, want.ComputerID, want.RunAs = plays.MomentStackServiceCrashed, plays.RunOnComputer, "c-1", "u-alice"
+	want.Moment, want.RunOn, want.ComputerIDs, want.ComputerID, want.RunAs = plays.MomentStackServiceCrashed, plays.RunOnComputer, []string{"c-2", "c-1"}, "c-2", "u-alice"
 	require.NoError(t, s.Plays.CreateAutoPlay(t.Context(), want))
 
 	got, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 
-	got.ComputerID, got.RunAs = "c-2", "u-bob"
+	got.ComputerIDs, got.ComputerID, got.RunAs = []string{"c-3"}, "c-3", "u-bob"
 	require.NoError(t, s.Plays.UpdateAutoPlay(t.Context(), got))
 	again, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
 	require.NoError(t, err)
 	assert.Equal(t, got, again)
+
+	got.ComputerIDs, got.ComputerID = []string{}, ""
+	require.NoError(t, s.Plays.UpdateAutoPlay(t.Context(), got))
+	yours, err := s.Plays.GetAutoPlay(t.Context(), "ap-1")
+	require.NoError(t, err)
+	assert.Equal(t, []any{[]string{}, "", "u-bob"}, []any{yours.ComputerIDs, yours.ComputerID, yours.RunAs}, "the picker's own order is an empty list with a person")
+	var older string
+	require.NoError(t, s.db.QueryRowContext(t.Context(), `SELECT computer_id FROM auto_plays WHERE id = 'ap-1'`).Scan(&older))
+	assert.Empty(t, older, "computer_id stays the list's first, for a downgrade")
 }
 
 func TestAutoPlaysRepo_RoundTripsTheMemories(t *testing.T) {

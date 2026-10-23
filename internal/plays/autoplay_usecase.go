@@ -19,9 +19,10 @@ type AutoPlayInput struct {
 	Priority          Priority
 	OnceWithinMinutes int
 	RunOn             RunOn
-	// ComputerID is the computer a RunOnComputer auto play lands on.
-	ComputerID string
-	MemoryIDs  []string
+	// ComputerIDs are the computers a RunOnComputer auto play lands on, in order. Nil keeps the stored list and its
+	// person; a list, even an empty one (the picker's own order), is a pick made as the caller.
+	ComputerIDs *[]string
+	MemoryIDs   []string
 }
 
 // ListAutoPlays returns a play's auto plays, oldest first (autoplays:read).
@@ -81,7 +82,7 @@ func (s *Service) CreateAutoPlay(ctx context.Context, workspaceID, playID string
 	a := &AutoPlay{ID: ids.New(), PlayID: p.ID, WorkspaceID: p.WorkspaceID, CreatedBy: actorID(ctx), CreatedAt: now, UpdatedAt: now}
 	a.apply(in)
 	a.normalize(p.Type)
-	if err := s.pinComputer(ctx, a, ""); err != nil {
+	if err := s.pinComputers(ctx, a, nil, in.ComputerIDs != nil); err != nil {
 		return nil, err
 	}
 	if err := a.Validate(p.Type); err != nil {
@@ -102,12 +103,12 @@ func (s *Service) UpdateAutoPlay(ctx context.Context, workspaceID, playID, id st
 	if err != nil {
 		return nil, err
 	}
-	was := a.ComputerID
+	was := slices.Clone(a.ComputerIDs)
 	a.Enabled = enabled
 	a.apply(in)
 	a.UpdatedAt = s.now().UTC()
 	a.normalize(p.Type)
-	if err := s.pinComputer(ctx, a, was); err != nil {
+	if err := s.pinComputers(ctx, a, was, in.ComputerIDs != nil); err != nil {
 		return nil, err
 	}
 	if err := a.Validate(p.Type); err != nil {
@@ -199,22 +200,27 @@ func (s *Service) autoPlayInPlay(ctx context.Context, workspaceID, playID, id st
 	return p, a, nil
 }
 
-// pinComputer records the caller as the person a run-on-computer auto play runs as when they pick its computer, which
-// they must own or hold computers:run_agents on; keeping the computer keeps its person.
-func (s *Service) pinComputer(ctx context.Context, a *AutoPlay, was string) error {
-	if a.RunOn != RunOnComputer || a.ComputerID == "" {
-		a.RunAs = ""
+// pinComputers records the caller as the person a run-on-computer auto play runs as when a pick changes its list or
+// it has no person yet, and checks they own each computer or hold computers:run_agents on it; an unchanged list keeps
+// its person. Without a pick the list and its person stay as they were.
+func (s *Service) pinComputers(ctx context.Context, a *AutoPlay, was []string, picked bool) error {
+	if a.RunOn != RunOnComputer || !picked {
 		return nil
 	}
-	if a.ComputerID == was && a.RunAs != "" {
+	if len(a.ComputerIDs) > MaxAutoPlayComputers {
+		return fmt.Errorf("%w: an auto play runs on at most %d computers", apperrs.ErrInvalid, MaxAutoPlayComputers)
+	}
+	if slices.Equal(a.ComputerIDs, was) && a.RunAs != "" {
 		return nil
 	}
-	ok, err := mayRunAgents(ctx, s.computers, actorID(ctx), a.ComputerID)
-	if err != nil {
-		return fmt.Errorf("check computer %s: %w", a.ComputerID, err)
-	}
-	if !ok {
-		return fmt.Errorf("%w: pick a computer you own or may run agents on", apperrs.ErrInvalid)
+	for _, id := range a.ComputerIDs {
+		ok, err := mayRunAgents(ctx, s.computers, actorID(ctx), id)
+		if err != nil {
+			return fmt.Errorf("check computer %s: %w", id, err)
+		}
+		if !ok {
+			return fmt.Errorf("%w: pick computers you own or may run agents on", apperrs.ErrInvalid)
+		}
 	}
 	a.RunAs = actorID(ctx)
 	return nil
@@ -227,6 +233,8 @@ func (a *AutoPlay) apply(in AutoPlayInput) {
 	a.Priority = in.Priority
 	a.OnceWithinMinutes = in.OnceWithinMinutes
 	a.RunOn = in.RunOn
-	a.ComputerID = strings.TrimSpace(in.ComputerID)
+	if in.ComputerIDs != nil {
+		a.ComputerIDs = *in.ComputerIDs
+	}
 	a.MemoryIDs = in.MemoryIDs
 }
