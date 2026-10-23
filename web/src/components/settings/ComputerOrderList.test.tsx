@@ -30,7 +30,7 @@ const computer = (id: string, name: string, position: number, running = 0): Comp
   harness_version: "0.1.1",
   created_at: "2026-10-01T00:00:00Z",
   updated_at: "2026-10-01T00:00:00Z",
-  runner: { connected: true, last_seen: "2026-10-22T12:00:00Z" },
+  runner: { connected: true, last_seen: "2026-10-22T12:00:00Z", reconnecting: false },
   facts: { t3: { state: "answering" }, providers: [], projects: [{ id: "t3-notes", title: "notes", path: "/home/alice/notes" }] },
 });
 

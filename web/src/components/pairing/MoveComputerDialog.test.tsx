@@ -46,7 +46,7 @@ const moved: Computer = { ...byURL, server_url: "http://c1.nexul-computer.invali
 
 const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.token.sig";
 const enrollment = { computer: tunnelLaptop, token: "eyJ.token.sig", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: "irm" } };
-const connected = { connected: true, last_seen: "2026-10-10T12:00:00Z" };
+const connected = { connected: true, last_seen: "2026-10-10T12:00:00Z", reconnecting: false };
 const answering = { hostname: "alice-laptop", t3: { state: "answering" as const, port: 3773, version: "0.0.46" }, providers: [], projects: [] };
 
 let listed: Computer[] = [];

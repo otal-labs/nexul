@@ -180,7 +180,7 @@ func TestService_Enroll_APersonalCodeMakesTheComputersRunnerOnNoMachine(t *testi
 func TestHandler_PersonalRunnerChangesGoOnlyToItsOwnersTopic(t *testing.T) {
 	repo := newFakeRunnerRepo()
 	bus := newFakeBus()
-	h := newTestHandler(bus, repo)
+	h := newTestHandler(bus, repo, func(c *HandlerConfig) { c.ReconnectGrace = 50 * time.Millisecond })
 	srv := httptest.NewServer(streamMux(h))
 	t.Cleanup(srv.Close)
 	credential := repo.personal("r-alice", "u-alice", "c-laptop")
@@ -191,7 +191,7 @@ func TestHandler_PersonalRunnerChangesGoOnlyToItsOwnersTopic(t *testing.T) {
 	require.NoError(t, wsjson.Write(t.Context(), conn, Frame{Type: FrameHeartbeat, TS: time.Now().Unix()}))
 	eventually(t, 2*time.Second, func() bool { return repo.heartbeatCount() == 1 })
 	require.NoError(t, conn.Close(websocket.StatusNormalClosure, ""))
-	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicPersonalChanged)) == 2 })
+	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicPersonalChanged)) == 3 })
 
 	var states []string
 	for _, ev := range bus.topicEvents(TopicPersonalChanged) {
@@ -200,10 +200,39 @@ func TestHandler_PersonalRunnerChangesGoOnlyToItsOwnersTopic(t *testing.T) {
 		assert.True(t, p.MembersOnly)
 		states = append(states, p.State)
 	}
-	assert.Equal(t, []string{PersonalConnected, PersonalDisconnected}, states)
+	assert.Equal(t, []string{PersonalConnected, PersonalReconnecting, PersonalDisconnected}, states)
+	assert.False(t, h.Reconnecting("r-alice"), "the grace ended")
 	for _, topic := range []string{TopicRunnerConnected, TopicRunnerHeartbeat, TopicRunnerDisconnected} {
 		assert.Empty(t, bus.topicEvents(topic), topic)
 	}
+}
+
+// TestHandler_PersonalRunnerBackWithinTheGrace_IsNeverReportedDisconnected: a computer paused past its heartbeat
+// window drops, reads as reconnecting while it is gone, and is connected again with no disconnected in between.
+func TestHandler_PersonalRunnerBackWithinTheGrace_IsNeverReportedDisconnected(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	bus := newFakeBus()
+	h := newTestHandler(bus, repo, func(c *HandlerConfig) { c.ReconnectGrace = time.Hour })
+	srv := httptest.NewServer(streamMux(h))
+	t.Cleanup(srv.Close)
+	credential := repo.personal("r-alice", "u-alice", "c-laptop")
+
+	conn, _, err := dialRunner(t.Context(), srv, credential, "/ws/runner")
+	require.NoError(t, err)
+	eventually(t, 2*time.Second, func() bool { return len(h.Runners()) == 1 })
+	require.NoError(t, conn.Close(websocket.StatusNormalClosure, ""))
+	eventually(t, 2*time.Second, func() bool { return h.Reconnecting("r-alice") })
+	again, _, err := dialRunner(t.Context(), srv, credential, "/ws/runner")
+	require.NoError(t, err)
+	closeBeforeCleanup(t, again, repo)
+	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicPersonalChanged)) == 3 })
+
+	var states []string
+	for _, ev := range bus.topicEvents(TopicPersonalChanged) {
+		states = append(states, decodeEvent[PersonalChangedEvent](t, ev).State)
+	}
+	assert.Equal(t, []string{PersonalConnected, PersonalReconnecting, PersonalConnected}, states)
+	assert.False(t, h.Reconnecting("r-alice"), "connecting again ends the grace, so no disconnected follows")
 }
 
 // TestService_HandleAccountClosed_RevokesOnlyThatPersonsRunners: closing alice's account removes both her computers'

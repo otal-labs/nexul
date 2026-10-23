@@ -40,7 +40,7 @@ const windowsCommand = "& ([scriptblock]::Create((irm https://nexul.io/computer.
 
 const enrollment = { computer: waiting, token: "eyJ.token.sig", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: windowsCommand } };
 
-const connected = { connected: true, last_seen: "2026-10-10T12:00:00Z" };
+const connected = { connected: true, last_seen: "2026-10-10T12:00:00Z", reconnecting: false };
 
 const facts = (t3: ComputerFacts["t3"]): ComputerFacts => ({
   hostname: "alice-laptop",
@@ -144,7 +144,8 @@ describe("AddComputerDialog", () => {
   });
 
   it.each([
-    ["went offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, "Computer connected", "Offline", /journalctl -u nexul-computer/],
+    ["dropped moments ago", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: true } }, "Computer connected", "Reconnecting", /waiting for it to come back/],
+    ["went offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: false } }, "Computer connected", "Offline", /journalctl -u nexul-computer/],
     ["has a closed desktop app", { runner: connected, facts: facts({ state: "not_running", install: "desktop_app" }) }, "T3 Code found", "Closed", /open t3 code on the computer/i],
     ["has a stopped service", { runner: connected, facts: facts({ state: "not_running", install: "service", restart_error: "no user manager" }) }, "T3 Code found", "Not running", /no user manager/],
     ["has no T3 Code", { runner: connected, facts: facts({ state: "missing" }) }, "T3 Code found", "Missing", /without --no-t3/],

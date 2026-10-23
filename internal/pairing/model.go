@@ -72,7 +72,7 @@ func (c Computer) SharedName() string {
 func sharedView(c Computer) Computer {
 	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared, RunsAtOnce: c.RunsAtOnce}
 	if c.Runner != nil {
-		out.Runner = &ComputerRunner{Connected: c.Runner.Connected, LastSeen: c.Runner.LastSeen}
+		out.Runner = &ComputerRunner{Connected: c.Runner.Connected, LastSeen: c.Runner.LastSeen, Reconnecting: c.Runner.Reconnecting}
 	}
 	return out
 }
