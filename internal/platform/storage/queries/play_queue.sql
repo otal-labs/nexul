@@ -10,6 +10,10 @@ SELECT * FROM play_queue WHERE id = ?;
 UPDATE play_queue SET status = ?, reason = ?, waiting_on = ?, trail_id = ?, decided_at = ?, not_before = ?
 WHERE id = ? AND status = sqlc.arg(from_status);
 
+-- name: RepointPlayQueueItem :execrows
+UPDATE play_queue SET person_id = ?, computer_id = ?, computer_ids = ?, reason = '', waiting_on = '[]', not_before = ?
+WHERE id = ? AND status = 'queued';
+
 -- name: ListPlayQueueByTarget :many
 SELECT * FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC;
 

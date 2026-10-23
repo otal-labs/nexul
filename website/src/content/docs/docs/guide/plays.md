@@ -106,9 +106,9 @@ Any auto play can run on computers you pick, such as a box that is on all day wi
 
 Pick them in the order you want them tried. The run goes to the first one that is online, set up, holds the project and has room, so a box that is shut or full sends the run to the next one in your list. One computer is a list of one. Pick **Your order** instead to use your own computers as they are ordered under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order), so the auto play follows that list as you change it.
 
-The run is yours: it takes the identity and permissions of whoever picked the computers, shows as their run, and waits in their queue. Saving the auto play again with the same list keeps who picked it; saving a different list or order makes the person who saved it the one it runs as. An auto play that runs on computers can't be switched on until they are picked.
+The run is yours: it takes the identity and permissions of whoever picked the computers, shows as their run, and waits in their queue. Saving the auto play again with the same list keeps who picked it; saving a different list or order makes the person who saved it the one it runs as. Saving the auto play with a new list moves the runs already waiting onto it, so a run held on a full computer is tried on the ones you added at once. An auto play that runs on computers can't be switched on until they are picked.
 
-Nexul checks that you still own each computer or hold **Run agents** on it when you pick it, when the moment happens, and again just before the run starts. A computer you no longer have the right on is left out. If that leaves none, the run doesn't start and shows as **didn't run** with that reason. If someone else has picked the computers since the run was queued, it is skipped.
+Nexul checks that you still own each computer or hold **Run agents** on it when you pick it, when the moment happens, and again just before the run starts. A computer you no longer have the right on is left out. If that leaves none, the run doesn't start and shows as **didn't run** with that reason.
 
 ## Investigate a crash
 

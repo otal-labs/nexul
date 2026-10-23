@@ -103,6 +103,48 @@ func (r *Runner) HandleAutoPlayOff(ctx context.Context, ev eventbus.Event) error
 	return nil
 }
 
+// HandleAutoPlayComputersChanged moves the queued runs of an edited auto play that runs on computers onto its current
+// list and person, so a run held on a full or gone computer is tried on the ones now chosen. Dispatch checks the person's
+// rights on them as it does for any run.
+func (r *Runner) HandleAutoPlayComputersChanged(ctx context.Context, ev eventbus.Event) error {
+	if r.queue == nil {
+		return nil
+	}
+	var p AutoPlayEvent
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	a := p.AutoPlay
+	if !a.Enabled || a.RunOn != RunOnComputer {
+		return nil
+	}
+	items, err := r.queue.ListQueuedByPlay(ctx, a.PlayID, ProjectScope{All: true})
+	if err != nil {
+		return apperrs.Retryable(fmt.Errorf("list the queued runs of play %s: %w", a.PlayID, err))
+	}
+	now := r.now().UTC()
+	moved := false
+	for _, it := range items {
+		if it.AutoPlayID != a.ID || it.RunOn != RunOnComputer || (it.PersonID == a.RunAs && slices.Equal(it.ComputerIDs, a.ComputerIDs)) {
+			continue
+		}
+		it.PersonID, it.ComputerIDs, it.ComputerID = a.RunAs, slices.Clone(a.ComputerIDs), a.ComputerID
+		it.Reason, it.WaitingOn, it.NotBefore = "", nil, now
+		err := r.queue.RepointQueueItem(ctx, it, r.queueEvent(TopicQueueUpdated, it))
+		if errors.Is(err, apperrs.ErrConflict) {
+			continue
+		}
+		if err != nil {
+			return apperrs.Retryable(fmt.Errorf("move queue item %s onto the new computers: %w", it.ID, err))
+		}
+		moved = true
+	}
+	if moved {
+		r.Kick()
+	}
+	return nil
+}
+
 // RunQueue starts queued auto runs until ctx ends. It passes once at boot, then on every kick, and on a timer to the
 // next held item (a held computer's retry, a paused target's oldest run leaving the day); it never polls.
 func (r *Runner) RunQueue(ctx context.Context) {

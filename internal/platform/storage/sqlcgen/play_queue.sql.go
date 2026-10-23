@@ -475,6 +475,33 @@ func (q *Queries) RecoverDispatchingPlayQueue(ctx context.Context) error {
 	return err
 }
 
+const repointPlayQueueItem = `-- name: RepointPlayQueueItem :execrows
+UPDATE play_queue SET person_id = ?, computer_id = ?, computer_ids = ?, reason = '', waiting_on = '[]', not_before = ?
+WHERE id = ? AND status = 'queued'
+`
+
+type RepointPlayQueueItemParams struct {
+	PersonID    string
+	ComputerID  string
+	ComputerIds string
+	NotBefore   int64
+	ID          string
+}
+
+func (q *Queries) RepointPlayQueueItem(ctx context.Context, arg RepointPlayQueueItemParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, repointPlayQueueItem,
+		arg.PersonID,
+		arg.ComputerID,
+		arg.ComputerIds,
+		arg.NotBefore,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updatePlayQueueItem = `-- name: UpdatePlayQueueItem :execrows
 UPDATE play_queue SET status = ?, reason = ?, waiting_on = ?, trail_id = ?, decided_at = ?, not_before = ?
 WHERE id = ? AND status = ?8

@@ -81,6 +81,25 @@ func (r *PlayQueueRepo) MoveQueueItem(ctx context.Context, it *plays.QueueItem, 
 	})
 }
 
+func (r *PlayQueueRepo) RepointQueueItem(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) error {
+	computers, err := marshalStringList(it.ComputerIDs)
+	if err != nil {
+		return fmt.Errorf("encode computers of queue item %s: %w", it.ID, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).RepointPlayQueueItem(ctx, sqlcgen.RepointPlayQueueItemParams{
+			PersonID: it.PersonID, ComputerID: firstID(it.ComputerIDs), ComputerIds: computers, NotBefore: it.NotBefore.Unix(), ID: it.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("repoint queue item %s: %w", it.ID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("repoint queue item %s: no longer %s: %w", it.ID, plays.QueueQueued, apperrs.ErrConflict)
+		}
+		return enqueuePlaysOutbox(ctx, tx, evts)
+	})
+}
+
 func (r *PlayQueueRepo) ListQueueByTarget(ctx context.Context, targetType plays.TargetType, targetID string) ([]*plays.QueueItem, error) {
 	rows, err := r.q.ListPlayQueueByTarget(ctx, sqlcgen.ListPlayQueueByTargetParams{TargetType: string(targetType), TargetID: targetID})
 	if err != nil {
