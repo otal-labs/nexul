@@ -48,6 +48,7 @@ export const passOverLines = (passes: PassOver[]) => passes.map((p) => p.text).j
 
 export const MIN_RUNS_AT_ONCE = 1;
 export const MAX_RUNS_AT_ONCE = 5;
+export const RUNS_AT_ONCE_CHOICES = Array.from({ length: MAX_RUNS_AT_ONCE - MIN_RUNS_AT_ONCE + 1 }, (_, i) => String(MIN_RUNS_AT_ONCE + i));
 
 export interface ComputerRunner {
   connected: boolean;
