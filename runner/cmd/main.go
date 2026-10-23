@@ -33,6 +33,9 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if cfg.Mode == runner.ModePersonal {
+		runner.UseLoginPath(ctx, logger)
+	}
 
 	if err := cfg.EnrollOnFirstStart(ctx, &http.Client{Timeout: 30 * time.Second}, version.Version); err != nil {
 		fail(err)
