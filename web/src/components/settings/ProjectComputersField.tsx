@@ -30,7 +30,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
         own={own}
         ids={ids}
         onChange={(next) => setValue("computers", next, dirty)}
-        renderRow={({ id, rank, actions }) => {
+        renderRow={({ id, rank, controls }) => {
           const computer = own.find((c) => c.id === id);
           return (
             computer && (
@@ -39,7 +39,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
                 computer={computer}
                 rank={rank}
                 checkout={projectCheckout(computer, checkouts, remotes)}
-                actions={actions}
+                controls={controls}
                 onPick={(harnessProjectId) => setValue("checkouts", withCheckout(checkouts, computer.id, harnessProjectId), dirty)}
               />
             )

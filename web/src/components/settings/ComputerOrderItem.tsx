@@ -1,10 +1,10 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { GripVertical } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
 import { ComputerItem } from "@/components/settings/ComputerItem";
 import { ComputerOrderProvider } from "@/components/settings/ComputerOrderContext";
+import { RowGrip } from "@/components/settings/RowGrip";
 import { EASE_OUT, lastInputWasKeyboard, ROW_GLIDE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Computer } from "@/models/Pairing";
@@ -22,25 +22,15 @@ export const ComputerOrderItem = ({ computer, index, count, presence, onMove }: 
   const movable = count > 1;
   const reduced = useReducedMotion() ?? false;
   const name = computer.name || "New computer";
-  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+  const sortable = useSortable({
     id: computer.id,
     disabled: !movable,
     transition: reduced ? null : { duration: 200, easing: EASE_OUT },
   });
+  const { setNodeRef, transform, transition, isDragging } = sortable;
   const order = useMemo(
     () => ({
-      grip: movable && (
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Reorder ${name}`}
-          className="-ml-1 flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/70 transition-colors duration-150 ease-standard hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus active:cursor-grabbing"
-        >
-          <GripVertical className="size-4" aria-hidden />
-        </button>
-      ),
+      grip: movable && <RowGrip name={name} sortable={sortable} />,
       moveActions: movable
         ? [
             { label: "Move up", disabled: index === 0, onSelect: () => onMove(index, index - 1) },
@@ -48,7 +38,7 @@ export const ComputerOrderItem = ({ computer, index, count, presence, onMove }: 
           ]
         : [],
     }),
-    [movable, setActivatorNodeRef, attributes, listeners, name, index, count, onMove],
+    [movable, sortable, name, index, count, onMove],
   );
 
   return (

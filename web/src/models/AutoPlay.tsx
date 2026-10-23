@@ -195,19 +195,47 @@ export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status
 
 export const LEVEL_LABELS: Record<AutoPlayLevel, string> = { high: "High", normal: "Normal", low: "Low" };
 
-export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
+export const RUN_ON_LABELS: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
-  computer: "Chosen computers",
 };
 
-// Which run-on choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
-export const SUBJECT_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn[]> = {
-  ticket: ["developer", "tester", "causer", "computer"],
-  doc: ["causer", "computer"],
-  stack: ["computer"],
+// What the Run on select offers: the computer run-on is two choices, the person's own order and a list they picked.
+export type RunOnChoice = keyof typeof RUN_ON_LABELS | "own" | "picked";
+
+export const RUN_ON_CHOICE_LABELS: Record<RunOnChoice, string> = { ...RUN_ON_LABELS, own: "Your computers", picked: "Picked computers" };
+
+// Which choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
+export const SUBJECT_RUN_ON: Record<AutoPlaySubject, RunOnChoice[]> = {
+  ticket: ["developer", "tester", "causer", "own", "picked"],
+  doc: ["causer", "own", "picked"],
+  stack: ["own", "picked"],
 };
+
+const FIRST_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn> = { ticket: "developer", doc: "causer", stack: "computer" };
+
+type RunOnFields = Pick<AutoPlayDraft, "run_on" | "computer_ids" | "computers_picked">;
+
+// "" for a seeded auto play nobody has picked computers for.
+export const runOnChoice = ({ run_on, computer_ids, computers_picked }: RunOnFields): RunOnChoice | "" => {
+  if (run_on !== "computer") return run_on;
+  if (!computers_picked) return "";
+  return computer_ids.length > 0 ? "picked" : "own";
+};
+
+// A picked list starts as the viewer's own computers in their order, for them to reorder and trim.
+export const draftForChoice = (choice: RunOnChoice, ownIds: string[]): RunOnFields => {
+  if (choice === "own") return { run_on: "computer", computer_ids: [], computers_picked: true };
+  if (choice === "picked") return { run_on: "computer", computer_ids: ownIds, computers_picked: true };
+  return { run_on: choice, computer_ids: [], computers_picked: true };
+};
+
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+// Whose identity a save gives the run: whoever picked the computers before, until the list is changed, then the one saving.
+export const runsAsAfterSave = (draft: Pick<AutoPlayDraft, "run_as" | "computer_ids">, saved: string[], viewerId: string) =>
+  draft.run_as === "" || !sameIds(draft.computer_ids, saved) ? viewerId : draft.run_as;
 
 export const LIMIT_PRESETS = [0, 60, 24 * 60, 7 * 24 * 60];
 
@@ -241,6 +269,8 @@ export interface AutoPlayDraft {
   // [] follows the person's own order; computers_picked is false until a seeded auto play has been given either.
   computer_ids: string[];
   computers_picked: boolean;
+  // Who picked the computers, "" for nobody yet; never sent, it only says who a save leaves the run as.
+  run_as: string;
   memory_ids: string[];
 }
 
@@ -253,9 +283,10 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   groups: [],
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 24 * 60,
-  run_on: SUBJECT_RUN_ON[subject][0] ?? "developer",
+  run_on: FIRST_RUN_ON[subject],
   computer_ids: [],
   computers_picked: true,
+  run_as: "",
   memory_ids: [],
 });
 
@@ -271,6 +302,7 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   run_on: autoPlay.run_on,
   computer_ids: storedComputerIds(autoPlay),
   computers_picked: computersPicked(autoPlay),
+  run_as: autoPlay.run_as,
   memory_ids: autoPlay.memory_ids,
 });
 

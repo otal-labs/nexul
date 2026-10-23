@@ -1,24 +1,12 @@
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useCallback, useMemo } from "react";
 
 import { EnterList } from "@/components/EnterList";
 import { ComputerOrderItem } from "@/components/settings/ComputerOrderItem";
+import { useRowSortSensors } from "@/hooks/useRowSortSensors";
 import { useFetchPresence, useReorderComputers } from "@/hooks/PairingHooks";
 import type { Computer } from "@/models/Pairing";
-
-const MOUSE = { activationConstraint: { distance: 2 } };
-const TOUCH = { activationConstraint: { delay: 200, tolerance: 8 } };
-const KEYS = { coordinateGetter: sortableKeyboardCoordinates };
 
 interface ComputerOrderListProps {
   computers: Computer[];
@@ -28,7 +16,7 @@ interface ComputerOrderListProps {
 export const ComputerOrderList = ({ computers }: ComputerOrderListProps) => {
   const presence = useFetchPresence();
   const { mutate: reorder } = useReorderComputers();
-  const sensors = useSensors(useSensor(MouseSensor, MOUSE), useSensor(TouchSensor, TOUCH), useSensor(KeyboardSensor, KEYS));
+  const sensors = useRowSortSensors();
   const ids = useMemo(() => computers.map((c) => c.id), [computers]);
 
   const move = useCallback(
