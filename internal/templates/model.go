@@ -75,6 +75,11 @@ type Layer interface {
 	Reset(ctx context.Context, at Location, key, instanceBody string) error
 }
 
+// Namer is a Layer whose copy at a location carries its own name there, such as a renamed built-in play.
+type Namer interface {
+	Name(ctx context.Context, at Location, key string) (string, error)
+}
+
 // Kind registers one kind of template: its keys and code defaults, the layer below the instance, and how it is read.
 type Kind struct {
 	Name string

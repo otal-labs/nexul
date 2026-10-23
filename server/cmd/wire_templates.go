@@ -120,6 +120,14 @@ func (l playLayer) Read(ctx context.Context, at templates.Location, key string) 
 	return p.Instructions, true, nil
 }
 
+func (l playLayer) Name(ctx context.Context, at templates.Location, key string) (string, error) {
+	p, err := l.svc.BuiltinPlay(ctx, at.WorkspaceID, key)
+	if err != nil {
+		return "", err
+	}
+	return p.Label, nil
+}
+
 func (l playLayer) Write(ctx context.Context, at templates.Location, key, body string) error {
 	_, err := l.svc.SetBuiltinInstructions(ctx, at.WorkspaceID, key, body)
 	return err

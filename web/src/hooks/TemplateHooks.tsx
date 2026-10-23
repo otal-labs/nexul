@@ -104,9 +104,9 @@ export const useCloneTemplate = () => {
   return useMutation({
     mutationFn: requires("templates:write", async (input: { kind: TemplateKind; key: string; from: TemplateLocation; to: TemplateLocation }) =>
       (await api.post<Template>("/api/templates/clone", input)).data),
-    onSuccess: async () => {
+    onSuccess: async (cloned) => {
       await refreshTemplates(client);
-      toast.success("Template cloned");
+      toast.success(`Cloned into ${cloned.name}`);
     },
   });
 };
