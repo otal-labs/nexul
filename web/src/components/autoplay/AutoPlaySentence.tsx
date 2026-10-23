@@ -24,14 +24,15 @@ const Part = ({ children }: { children: ReactNode }) => <span className="font-me
 
 // The computers a chosen-computer auto play tries, in order, named as the viewer reads them; its person's own order when it names none.
 const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
-  const names = useComputerNames(storedComputerIds(autoPlay));
+  const ids = storedComputerIds(autoPlay);
+  const names = useComputerNames(ids);
   const person = usePersonLookup(autoPlay.workspace_id);
   const { data: me } = useFetchMe();
   const yours = me?.user.id === autoPlay.run_as;
   const owner = yours ? "your" : `${personLabel(person(autoPlay.run_as))}'s`;
 
   if (autoPlay.run_as === "") return "a computer nobody has picked yet";
-  if (names.length === 0) return `${owner} computers in ${yours ? "your" : "their"} order`;
+  if (ids.length === 0) return `${owner} computers in ${yours ? "your" : "their"} order`;
   return names.map((name) => name || "a computer you can't see").join(", then ");
 };
 
