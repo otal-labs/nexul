@@ -3,9 +3,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
-import { MAX_RUNS_AT_ONCE, MIN_RUNS_AT_ONCE, type Computer } from "@/models/Pairing";
+import { RUNS_AT_ONCE_CHOICES, type Computer } from "@/models/Pairing";
 
-const RUNS = Array.from({ length: MAX_RUNS_AT_ONCE - MIN_RUNS_AT_ONCE + 1 }, (_, i) => String(MIN_RUNS_AT_ONCE + i));
 const NO_FOLDER = "__none__";
 
 interface ComputerRunFactsProps {
@@ -32,7 +31,7 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
           onValueChange={(v) => v && update.mutate({ runs_at_once: Number(v) })}
           aria-label={`Runs at once on ${computer.name}`}
         >
-          {RUNS.map((n) => (
+          {RUNS_AT_ONCE_CHOICES.map((n) => (
             <ToggleGroupItem key={n} value={n} aria-label={n} className="h-6 w-8 px-0 font-mono tabular-nums">
               {n}
             </ToggleGroupItem>

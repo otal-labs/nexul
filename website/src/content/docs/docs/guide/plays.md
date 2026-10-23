@@ -94,7 +94,7 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 
 **Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
 
-**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order). A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
+**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order), or right under the cap line on a play's auto plays. A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
 
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computers busy)".
 
