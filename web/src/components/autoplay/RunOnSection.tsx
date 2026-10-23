@@ -1,7 +1,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
-import { ComputerPicker } from "@/components/autoplay/ComputerPicker";
+import { ChosenComputers } from "@/components/autoplay/ChosenComputers";
 import { RUN_ON_LABELS, SUBJECT_RUN_ON, type AutoPlayDraft, type AutoPlayRunOn } from "@/models/AutoPlay";
 
 // A doc has no developer or tester and a stack has none of the three, so what is left to choose depends on the play.
@@ -23,7 +23,7 @@ export const RunOnSection = () => {
           disabled={formState.disabled}
         />
       )}
-      {runOn === "computer" && <ComputerPicker />}
+      {runOn === "computer" && <ChosenComputers />}
     </ComposerSection>
   );
 };

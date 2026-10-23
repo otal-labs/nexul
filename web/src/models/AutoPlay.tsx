@@ -62,9 +62,11 @@ export interface AutoPlay {
   priority: AutoPlayPriority;
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
-  // The computer a "computer" auto play lands on, and the person who picked it, whose identity the run takes; both "" otherwise.
-  computer_id: string;
+  // The person who picked a "computer" auto play's computers, whose identity the run takes; "" until someone has (a seeded one) and for every other run-on.
   run_as: string;
+  // The computers a "computer" auto play tries in order; empty follows its person's own order. computer_id is the first, for older payloads.
+  computer_ids: string[];
+  computer_id: string;
   // Read by each run beside the always-included memories; a run reads only those in its own project.
   memory_ids: string[];
   created_by: string;
@@ -72,11 +74,17 @@ export interface AutoPlay {
   updated_at: string;
 }
 
-// The full replace the create and update routes take.
+// The full replace the create and update routes take; no computer_ids keeps the stored list and its person.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "computer_id" | "memory_ids"
->;
+  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids"
+> & { computer_ids?: string[] };
+
+export const storedComputerIds = (autoPlay: Pick<AutoPlay, "computer_ids" | "computer_id">): string[] =>
+  autoPlay.computer_ids ?? (autoPlay.computer_id === "" ? [] : [autoPlay.computer_id]);
+
+// A seeded auto play has no person yet, so nothing has been picked for it and it cannot be switched on.
+export const computersPicked = (autoPlay: Pick<AutoPlay, "run_on" | "run_as">) => autoPlay.run_on !== "computer" || autoPlay.run_as !== "";
 
 export interface AutoPlayLimits {
   daily_cap_per_ticket: number;
@@ -191,7 +199,7 @@ export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
-  computer: "A chosen computer",
+  computer: "Chosen computers",
 };
 
 // Which run-on choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
@@ -230,7 +238,9 @@ export interface AutoPlayDraft {
   priority: AutoPlayPriority;
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
-  computer_id: string;
+  // [] follows the person's own order; computers_picked is false until a seeded auto play has been given either.
+  computer_ids: string[];
+  computers_picked: boolean;
   memory_ids: string[];
 }
 
@@ -244,7 +254,8 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 24 * 60,
   run_on: SUBJECT_RUN_ON[subject][0] ?? "developer",
-  computer_id: "",
+  computer_ids: [],
+  computers_picked: true,
   memory_ids: [],
 });
 
@@ -258,7 +269,8 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
-  computer_id: autoPlay.computer_id,
+  computer_ids: storedComputerIds(autoPlay),
+  computers_picked: computersPicked(autoPlay),
   memory_ids: autoPlay.memory_ids,
 });
 
@@ -274,7 +286,7 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   priority: draft.priority,
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
-  computer_id: draft.run_on === "computer" ? draft.computer_id : "",
+  ...(draft.run_on === "computer" && draft.computers_picked && { computer_ids: draft.computer_ids }),
   memory_ids: draft.memory_ids,
 });
 
@@ -286,7 +298,7 @@ export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
-  computer_id: autoPlay.computer_id,
+  ...(autoPlay.run_on === "computer" && computersPicked(autoPlay) && { computer_ids: storedComputerIds(autoPlay) }),
   memory_ids: autoPlay.memory_ids,
 });
 

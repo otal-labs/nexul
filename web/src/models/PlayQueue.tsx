@@ -28,7 +28,8 @@ export interface PlayQueueItem {
   queued_at: string;
   decided_at: string | null;
   not_before: string;
-  // The computer its auto play names for "computer"; "" when it goes to its person's first ready computer.
+  // The computers its auto play names for "computer", in the order they are tried; empty when it goes to its person's own order.
+  computer_ids: string[];
   computer_id: string;
   // For a stack moment, the service that went down or came back and its outage; "" otherwise.
   service: string;

@@ -44,8 +44,9 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
   priority: { rules: [{ level: "high", when: { match: "all", rules: [{ field: "type", op: "is", values: ["Bug"] }] } }], otherwise: "normal" },
   once_within_minutes: 1440,
   run_on: "developer",
-  computer_id: "",
   run_as: "",
+  computer_ids: [],
+  computer_id: "",
   memory_ids: [],
   created_by: "u1",
   created_at: "",
@@ -213,7 +214,6 @@ describe("a play's auto plays", () => {
         priority: { rules: [], otherwise: "normal" },
         once_within_minutes: 1440,
         run_on: "developer",
-        computer_id: "",
         memory_ids: ["m-2", "m-1"],
       }),
     );
