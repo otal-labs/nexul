@@ -298,6 +298,8 @@ type Runner struct {
 	// kick wakes the queue's dispatcher; one buffered kick is enough, since a pass reads everything due.
 	kick chan struct{}
 
+	starts starterLocks
+
 	mu   sync.Mutex
 	runs map[string]*trailObserver // trail id -> the live run, so it can be stopped
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -63,6 +64,22 @@ const (
 	launchAgain
 )
 
+// starterLocks serializes one person's starts from placement to their trail, so each counts the room the one before took.
+// ponytail: in-process, since one server owns the database; a second process would need the count and the insert in one transaction.
+type starterLocks struct{ slots sync.Map }
+
+// acquire waits for starterID's turn and returns its release, safe to call more than once.
+func (l *starterLocks) acquire(ctx context.Context, starterID string) (func(), error) {
+	slot, _ := l.slots.LoadOrStore(starterID, make(chan struct{}, 1))
+	turn := slot.(chan struct{})
+	select {
+	case turn <- struct{}{}:
+		return sync.OnceFunc(func() { <-turn }), nil
+	case <-ctx.Done():
+		return nil, fmt.Errorf("wait for an earlier start of %s: %w", starterID, ctx.Err())
+	}
+}
+
 // launch resolves the harness and starts the turn, keeping refusals as failed trails as mode says.
 func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt target, pick HarnessChoice, mode launchMode) (*Trail, error) {
 	targetTitle := tgt.title
@@ -72,6 +89,11 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		}
 		return nil, err
 	}
+	release, err := r.starts.acquire(ctx, trail.StarterID)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	choice, err := r.resolveHarness(ctx, trail, targetTitle, pick, mode)
 	if err != nil {
 		return nil, err
@@ -102,6 +124,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err := r.trails.CreateTrail(ctx, trail); err != nil {
 		return nil, fmt.Errorf("create trail for play %s: %w", play.ID, err)
 	}
+	release()
 	// Opening the harness turn can take seconds; without this frame a run nobody pressed for stays invisible until then.
 	r.publishLive(ctx, trail)
 	body := startedMessage(play.Label, trail.CustomInstructions)
