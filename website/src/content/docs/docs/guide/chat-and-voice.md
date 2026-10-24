@@ -31,6 +31,20 @@ Messages are markdown. **Enter** sends, **Shift+Enter** starts a new line. Paste
 
 Hover a message to react, or to edit or delete your own. A deleted message leaves its place in the conversation.
 
+### Times in everyone's zone
+
+Paste a Discord time code such as `<t:1792867165:F>` and everyone reads it in their own time zone. Make one with any Discord timestamp generator. The letter after the second colon picks the format:
+
+| Code | Shows |
+|---|---|
+| `t` / `T` | time, without or with seconds |
+| `d` / `D` | short or long date |
+| `f` (or none) / `F` | date and time, then with the weekday |
+| `s` / `S` | short date and time, without or with seconds |
+| `R` | relative, such as "in 2 hours", kept up to date |
+
+Hover one to see the full date, time, and zone. Click it for **Copy code**, which copies the code itself so a re-paste stays local for every reader, and **Add to calendar**, which downloads a one-hour `.ics` event named after the channel, ticket, or doc. On the phone, tap one to see the full time and the code; hold the code to copy it. A code inside backticks stays as typed.
+
 ## Bots
 
 Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation through a webhook URL, the same JSON a Discord webhook takes. Their posts carry a **BOT** tag and show embeds as cards. Open a channel's **Settings**, or the **Bots** item in a direct message's or thread's menu, to create one. See [Bots](/docs/guide/bots/).

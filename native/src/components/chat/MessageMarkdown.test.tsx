@@ -12,12 +12,13 @@ jest.mock("@/stores/sessionStore", () => ({
 let mockCanReadTickets = true;
 jest.mock("@/hooks/WorkspaceHooks", () => ({ useAreaAccess: () => (area: string) => area === "tickets" && mockCanReadTickets }));
 
-// Stands in for the native view, which reports a tapped link as { url }; here the whole markdown is that one link.
+// Stands in for the native view, which reports a tapped link as { url }: the first [label](url) in the markdown, else the
+// whole markdown as that one link.
 jest.mock("react-native-enriched-markdown", () => {
   const { Text } = jest.requireActual("react-native");
   return {
     EnrichedMarkdownText: ({ markdown, onLinkPress }: { markdown: string; onLinkPress: (e: { url: string }) => void }) => (
-      <Text role="link" onPress={() => onLinkPress({ url: markdown })}>
+      <Text role="link" onPress={() => onLinkPress({ url: /\]\(([^)]+)\)/.exec(markdown)?.[1] ?? markdown })}>
         {markdown}
       </Text>
     ),
@@ -72,4 +73,27 @@ test("a ticket link opens in the browser, not the Board tab, without tickets:rea
 
   expect(openURL).toHaveBeenCalledWith("https://nexul.example.com/tickets/t-9");
   expect(mockPush).not.toHaveBeenCalled();
+});
+
+describe("a <t:…> code", () => {
+  const UNIX = 1792867165;
+
+  test("shows the reader's local time instead of the code, and a tap opens it with the code to copy", async () => {
+    await render(<MessageMarkdown markdown={`Standup <t:${UNIX}:F> today`} />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveTextContent(/2026.*\]\(nexul-time:/);
+    expect(link).not.toHaveTextContent(`<t:${UNIX}:F>`);
+
+    await userEvent.press(link);
+
+    expect(screen.getByText(`<t:${UNIX}:F>`)).toBeOnTheScreen();
+    expect(screen.getByText("Hold the code to copy it.")).toBeOnTheScreen();
+    expect(openURL).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  test("stays as typed inside inline code", async () => {
+    await render(<MessageMarkdown markdown={`\`<t:${UNIX}:F>\``} />);
+    expect(screen.getByRole("link")).toHaveTextContent(`\`<t:${UNIX}:F>\``);
+  });
 });

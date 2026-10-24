@@ -9,6 +9,7 @@ import type * as Y from "yjs";
 
 import type { MentionChipData } from "@nexul/client-core/mention";
 
+import { DiscordTimeLayer } from "@/components/doc/discordTime/DiscordTimeLayer";
 import { FormatBubbleMenu } from "@/components/doc/FormatBubbleMenu";
 import { TableBubbleMenu } from "@/components/doc/TableBubbleMenu";
 import { extractHeadingsFromJSON, type DocHeading } from "@/components/doc/docHeadings";
@@ -186,7 +187,9 @@ export const RichTextEditor = ({
           {placeholder}
         </span>
       )}
-      <EditorContent editor={editor} />
+      <DiscordTimeLayer>
+        <EditorContent editor={editor} />
+      </DiscordTimeLayer>
       {editor && <FormatBubbleMenu editor={editor} />}
       {editor && <TableBubbleMenu editor={editor} />}
     </div>

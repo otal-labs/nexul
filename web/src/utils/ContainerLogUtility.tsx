@@ -60,8 +60,8 @@ export const formatContainerLogTime = (line: ContainerLogLine): string => {
 export const containerLogToText = (lines: ContainerLogLine[]): string =>
   lines.map((line) => `${formatContainerLogTime(line)}  ${line.text}`).join("\n");
 
-export const saveTextFile = (filename: string, text: string) => {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+export const saveTextFile = (filename: string, text: string, type = "text/plain") => {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;

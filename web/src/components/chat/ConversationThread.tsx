@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
@@ -103,65 +104,67 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const Icon = CONVERSATION_ICONS[conversation.kind] ?? Hash;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {showHeader && (
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          {subjectPath && (
-            <Link
-              to={wsPath(subjectPath)}
-              dir="auto"
-              title={label}
-              className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
-            >
-              {label}
-            </Link>
-          )}
-          {!subjectPath && (
-            <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
-              {label}
-            </span>
-          )}
-        </div>
-      )}
-      {isVoiceChannel && (
-        <Suspense fallback={<LoadingDisplay label="Loading voice…" />}>
-          <LazyVoiceCallSection conversation={conversation} active={isCallActive} />
-        </Suspense>
-      )}
-      {isPending && (
-        <ChatPaneState>
-          <LoadingDisplay label="Loading messages…" />
-        </ChatPaneState>
-      )}
-      {error && (
-        <ChatPaneState>
-          <ErrorDisplay error={error} title="Couldn't load messages." />
-        </ChatPaneState>
-      )}
-      {messages && (
-        <MessageList
-          // What counts as already seen restarts with each conversation.
-          key={conversation.id}
-          conversation={conversation}
-          messages={messages}
-          onNewestSeen={onNewestSeen}
-          currentUserId={me?.user.id}
-          resolveAuthor={resolvePerson}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onInterruptAgent={() => void interruptAgent.mutateAsync()}
-        />
-      )}
-      {postRefusal && <ReadOnlyComposer label={channelMention(conversation)} source={postRefusal} />}
-      {!postRefusal && <ChatComposer
-        workspaceId={workspaceId}
-        conversationId={conversation.id}
-        placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
-        onSend={async (body) => {
-          await postMessage.mutateAsync(body);
-        }}
-      />}
-    </div>
+    <CalendarTitleContext value={label}>
+      <div className="flex h-full min-h-0 flex-col">
+        {showHeader && (
+          <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+            <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            {subjectPath && (
+              <Link
+                to={wsPath(subjectPath)}
+                dir="auto"
+                title={label}
+                className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                {label}
+              </Link>
+            )}
+            {!subjectPath && (
+              <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
+                {label}
+              </span>
+            )}
+          </div>
+        )}
+        {isVoiceChannel && (
+          <Suspense fallback={<LoadingDisplay label="Loading voice…" />}>
+            <LazyVoiceCallSection conversation={conversation} active={isCallActive} />
+          </Suspense>
+        )}
+        {isPending && (
+          <ChatPaneState>
+            <LoadingDisplay label="Loading messages…" />
+          </ChatPaneState>
+        )}
+        {error && (
+          <ChatPaneState>
+            <ErrorDisplay error={error} title="Couldn't load messages." />
+          </ChatPaneState>
+        )}
+        {messages && (
+          <MessageList
+            // What counts as already seen restarts with each conversation.
+            key={conversation.id}
+            conversation={conversation}
+            messages={messages}
+            onNewestSeen={onNewestSeen}
+            currentUserId={me?.user.id}
+            resolveAuthor={resolvePerson}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onInterruptAgent={() => void interruptAgent.mutateAsync()}
+          />
+        )}
+        {postRefusal && <ReadOnlyComposer label={channelMention(conversation)} source={postRefusal} />}
+        {!postRefusal && <ChatComposer
+          workspaceId={workspaceId}
+          conversationId={conversation.id}
+          placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
+          onSend={async (body) => {
+            await postMessage.mutateAsync(body);
+          }}
+        />}
+      </div>
+    </CalendarTitleContext>
   );
 };

@@ -2,6 +2,7 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { personLabel } from "@nexul/client-core/person";
 import type { ReactNode } from "react";
 
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";
@@ -65,16 +66,18 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
     <article className={layout?.article}>
       {/* A sheet like the doc's, sized to the reading measure so it never frames empty space beside the text. */}
       <div className="box-content max-w-[68ch] rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11">
-        {session && (
-          <CollabRichTextEditor
-            session={session}
-            value={ticket.body}
-            onChange={onBodyChange}
-            aria-label="Ticket description"
-            attachTo={{ ticket_id: ticket.id }}
-          />
-        )}
-        {!session && <DocBodyView body={ticket.body} />}
+        <CalendarTitleContext value={ticket.title}>
+          {session && (
+            <CollabRichTextEditor
+              session={session}
+              value={ticket.body}
+              onChange={onBodyChange}
+              aria-label="Ticket description"
+              attachTo={{ ticket_id: ticket.id }}
+            />
+          )}
+          {!session && <DocBodyView body={ticket.body} />}
+        </CalendarTitleContext>
       </div>
     </article>
   );

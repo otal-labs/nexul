@@ -1,10 +1,14 @@
 import { router, type Href } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Linking } from "react-native";
 import { EnrichedMarkdownText, type MarkdownStyle } from "react-native-enriched-markdown";
 import { useCSSVariable } from "uniwind";
 
+import { formatDiscordTime, hasRelativeTime, splitDiscordTimes } from "@nexul/client-core/discordTime";
+
+import { DiscordTimePopover, type OpenTime } from "@/components/chat/DiscordTimePopover";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
+import { useClockStore } from "@/stores/clockStore";
 import { useSessionStore } from "@/stores/sessionStore";
 
 const sans = "Inter";
@@ -77,6 +81,32 @@ export const openLink = (url: string, canReadTickets: boolean) => {
   void Linking.openURL(path.startsWith("/") ? `${host}${path}` : url);
 };
 
+const TIME_LINK = "nexul-time:";
+
+// The renderer draws the markdown natively, so each <t:…> goes in as a link carrying its code, which a tap reports back.
+const withTimeLinks = (markdown: string, now: number): string =>
+  splitDiscordTimes(markdown)
+    .map((part) => {
+      if (part.kind === "text") return part.text;
+      const label = formatDiscordTime(part.time, now).replace(/[[\]\\]/g, "\\$&");
+      return `[${label}](${TIME_LINK}${encodeURIComponent(part.time.code)})`;
+    })
+    .join("");
+
+const decoded = (s: string): string => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
+
+const timeAt = (url: string): OpenTime | null => {
+  if (!url.startsWith(TIME_LINK)) return null;
+  const part = splitDiscordTimes(decoded(url.slice(TIME_LINK.length)))[0];
+  return part?.kind === "time" ? { time: part.time, at: null } : null;
+};
+
 interface MessageMarkdownProps {
   markdown: string;
   own?: boolean;
@@ -84,12 +114,20 @@ interface MessageMarkdownProps {
 
 export const MessageMarkdown = ({ markdown, own = false }: MessageMarkdownProps) => {
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
+  const live = useMemo(() => hasRelativeTime(markdown), [markdown]);
+  // Only a message with a relative time follows the clock, so the minute tick leaves every other one alone.
+  const now = useClockStore((s) => (live ? s.now : 0));
+  const timed = useMemo(() => withTimeLinks(markdown, now), [markdown, now]);
+  const [open, setOpen] = useState<OpenTime | null>(null);
+  const onLinkPress = ({ url }: { url: string }) => {
+    const time = timeAt(url);
+    if (time) return setOpen(time);
+    openLink(url, canReadTickets);
+  };
   return (
-    <EnrichedMarkdownText
-      markdown={markdown}
-      flavor="github"
-      markdownStyle={useMarkdownStyle(own)}
-      onLinkPress={({ url }) => openLink(url, canReadTickets)}
-    />
+    <>
+      <EnrichedMarkdownText markdown={timed} flavor="github" markdownStyle={useMarkdownStyle(own)} onLinkPress={onLinkPress} />
+      <DiscordTimePopover open={open} onClose={() => setOpen(null)} />
+    </>
   );
 };

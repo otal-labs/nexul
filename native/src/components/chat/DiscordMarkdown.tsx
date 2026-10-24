@@ -1,16 +1,28 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { Text as Span, View } from "react-native";
 
+import { formatDiscordTime, type DiscordTime } from "@nexul/client-core/discordTime";
+
+import { DiscordTimePopover, type OpenTime } from "@/components/chat/DiscordTimePopover";
 import { openLink } from "@/components/chat/MessageMarkdown";
 import { Text } from "@/components/ui/text";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useClockStore } from "@/stores/clockStore";
 import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@/lib/discordMarkdown";
-import { formatDiscordTimestamp } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-const DiscordTime = ({ date, style }: { date: Date; style: string | undefined }) =>
-  formatDiscordTimestamp(date, style, useClockStore((s) => s.now));
+const OpenTimeContext = createContext<(open: OpenTime) => void>(() => undefined);
+
+// A span inside the line's Text, so the popover it opens is held by the markdown's root view.
+const TimeText = ({ time }: { time: DiscordTime }) => {
+  const now = useClockStore((s) => (time.style === "R" ? s.now : 0));
+  const openTime = useContext(OpenTimeContext);
+  return (
+    <Span role="button" className="underline" onPress={(e) => openTime({ time, at: { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } })}>
+      {formatDiscordTime(time, now)}
+    </Span>
+  );
+};
 
 const LinkText = ({ url, children }: { url: string; children: ReactNode }) => {
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
@@ -44,7 +56,7 @@ const Inline = ({ part }: { part: InlinePart }) => (
       </LinkText>
     )}
     {part.kind === "url" && <LinkText url={part.url}>{part.url}</LinkText>}
-    {part.kind === "time" && <DiscordTime date={part.date} style={part.style} />}
+    {part.kind === "time" && <TimeText time={part.time} />}
   </>
 );
 
@@ -81,10 +93,16 @@ interface DiscordMarkdownProps {
 }
 
 // Bot content only; nested spans are bare Text so they inherit the line's size and color.
-export const DiscordMarkdown = ({ text, mentionHandles, textClassName = "text-[15px] leading-[21px]" }: DiscordMarkdownProps) => (
-  <View className="gap-0.5">
-    {parseDiscordMarkdown(text, mentionHandles).map((line, i) => (
-      <Line key={i} line={line} textClassName={textClassName} />
-    ))}
-  </View>
-);
+export const DiscordMarkdown = ({ text, mentionHandles, textClassName = "text-[15px] leading-[21px]" }: DiscordMarkdownProps) => {
+  const [open, setOpen] = useState<OpenTime | null>(null);
+  return (
+    <OpenTimeContext value={setOpen}>
+      <View className="gap-0.5">
+        {parseDiscordMarkdown(text, mentionHandles).map((line, i) => (
+          <Line key={i} line={line} textClassName={textClassName} />
+        ))}
+      </View>
+      <DiscordTimePopover open={open} onClose={() => setOpen(null)} />
+    </OpenTimeContext>
+  );
+};

@@ -1152,6 +1152,13 @@ even from a project they are not In. Chat's `@login` and `@Agent` are plain
 text in the message instead.
 _Avoid_: Tag, ping
 
+**Time code**:
+Discord's `<t:unix>` or `<t:unix:style>` in a message, thread or body, shown
+as a chip in each reader's own time zone in one of nine styles (`t T d D f F
+R s S`, no style reading as `f`). The text keeps the code itself, so it saves,
+copies and reaches agents as written; inside inline code it stays as typed.
+_Avoid_: Timestamp (a record's own created or updated time), date tag
+
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own
 permissions. What an agent authenticates its MCP connection with. A paired

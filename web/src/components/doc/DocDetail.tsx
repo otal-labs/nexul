@@ -5,6 +5,7 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
 import { DocAutoPlaysSection } from "@/components/doc/DocAutoPlaysSection";
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBodySection } from "@/components/doc/DocBodySection";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
@@ -133,12 +134,9 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             onPointerLeave={onPointerLeave}
           >
             {session && <PointerOverlay awareness={session.provider.awareness} selfID={session.doc.clientID} />}
-            <DocBodySection
-              doc={doc}
-              session={session}
-              onBodyChange={onBodyChange}
-              onHeadingsChange={setHeadings}
-            />
+            <CalendarTitleContext value={doc.title}>
+              <DocBodySection doc={doc} session={session} onBodyChange={onBodyChange} onHeadingsChange={setHeadings} />
+            </CalendarTitleContext>
           </article>
 
           {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}

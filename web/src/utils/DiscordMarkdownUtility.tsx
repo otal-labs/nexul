@@ -1,3 +1,4 @@
+import { DISCORD_TIME_SOURCE, readDiscordTime, type DiscordTime } from "@nexul/client-core/discordTime";
 import { httpUrl } from "@nexul/client-core/embed";
 
 import { tokenizeMessageText } from "@/utils/MessageTextUtility";
@@ -10,7 +11,7 @@ export type InlinePart =
   | { kind: "italic"; parts: InlinePart[] }
   | { kind: "link"; url: string; parts: InlinePart[] }
   | { kind: "url"; url: string }
-  | { kind: "time"; date: Date; style: string | undefined };
+  | { kind: "time"; time: DiscordTime };
 
 export type MarkdownLine =
   | { kind: "text"; parts: InlinePart[] }
@@ -19,8 +20,18 @@ export type MarkdownLine =
   | { kind: "blank" };
 
 // Leftmost match wins and earlier alternatives win a tie, so code and URLs shield their * and _ from emphasis.
-const INLINE =
-  /`([^`\n]+)`|\[([^\]\n]+)\]\(([^)\s]+)\)|<t:(-?\d{1,13})(?::([tTdDfFR]))?>|(https?:\/\/[^\s<>"]+)|\*\*(.+?)\*\*|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<![\p{L}\p{N}])_([^_\s](?:[^_\n]*[^_\s])?)_(?![\p{L}\p{N}])/gu;
+const INLINE = new RegExp(
+  [
+    "`([^`\\n]+)`",
+    "\\[([^\\]\\n]+)\\]\\(([^)\\s]+)\\)",
+    DISCORD_TIME_SOURCE,
+    '(https?:\\/\\/[^\\s<>"]+)',
+    "\\*\\*(.+?)\\*\\*",
+    "\\*([^*\\s](?:[^*\\n]*[^*\\s])?)\\*",
+    "(?<![\\p{L}\\p{N}])_([^_\\s](?:[^_\\n]*[^_\\s])?)_(?![\\p{L}\\p{N}])",
+  ].join("|"),
+  "gu",
+);
 
 const plainParts = (text: string, mentionHandles: string[]): InlinePart[] =>
   tokenizeMessageText(text, mentionHandles).map((part): InlinePart => (part.kind === "link" ? { kind: "url", url: part.url } : part));
@@ -40,9 +51,9 @@ const matchPart = (m: RegExpExecArray, ctx: InlineContext): InlinePart[] => {
     return [{ kind: "link", url: safe, parts: parseInline(label, { ...ctx, links: false }) }];
   }
   if (unix !== undefined) {
-    const date = new Date(Number(unix) * 1000);
-    if (Number.isNaN(date.getTime())) return [{ kind: "text", text: raw }];
-    return [{ kind: "time", date, style }];
+    const time = readDiscordTime(raw, unix, style);
+    if (!time) return [{ kind: "text", text: raw }];
+    return [{ kind: "time", time }];
   }
   if (url !== undefined) return ctx.links ? plainParts(url, []) : [{ kind: "text", text: url }];
   if (bold !== undefined) return [{ kind: "bold", parts: parseInline(bold, ctx) }];
