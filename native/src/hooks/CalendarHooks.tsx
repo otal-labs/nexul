@@ -69,6 +69,7 @@ const dueTicketsQuery = defineQuery({
     "ticket.status_changed": "all",
     "ticket.developer_changed": "all",
     "ticket.tester_changed": "all",
+    "ticket.due_date_changed": "all",
     "ticket.finished": "all",
     "ticket.deleted": "all",
   },
