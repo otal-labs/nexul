@@ -73,10 +73,16 @@ const addDays = (d: Date, n: number): Date => new Date(d.getFullYear(), d.getMon
 // The Monday on or before d.
 export const startOfWeek = (d: Date): Date => addDays(startOfDay(d), -((d.getDay() + 6) % 7));
 
-// The days a view shows around anchor: a month as whole weeks from Monday, a week as its seven days.
-export const viewDays = (view: CalendarView, anchor: Date): Date[] => {
+// The first and last day a view shows around anchor: a month as whole weeks from Monday, a week as its seven days.
+const viewBounds = (view: CalendarView, anchor: Date): { first: Date; last: Date } => {
   const first = view === "week" ? startOfWeek(anchor) : startOfWeek(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
   const last = view === "week" ? addDays(first, 6) : addDays(startOfWeek(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0)), 6);
+  return { first, last };
+};
+
+// The days a view shows around anchor.
+export const viewDays = (view: CalendarView, anchor: Date): Date[] => {
+  const { first, last } = viewBounds(view, anchor);
   const days: Date[] = [];
   for (let d = first; d <= last; d = addDays(d, 1)) {
     days.push(d);
@@ -86,8 +92,8 @@ export const viewDays = (view: CalendarView, anchor: Date): Date[] => {
 
 // The range to ask the calendar routes for: from the first shown day's midnight to the day after the last.
 export const viewRange = (view: CalendarView, anchor: Date): { from: Date; to: Date } => {
-  const days = viewDays(view, anchor);
-  return { from: days[0], to: addDays(days[days.length - 1], 1) };
+  const { first, last } = viewBounds(view, anchor);
+  return { from: first, to: addDays(last, 1) };
 };
 
 // The anchor one view earlier or later.
