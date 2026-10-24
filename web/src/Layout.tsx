@@ -12,6 +12,7 @@ import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
+import { useUnreadTitle } from "@/hooks/useUnreadTitle";
 import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useIsViewingAs } from "@/stores/viewAsStore";
@@ -26,6 +27,7 @@ export const Layout = () => {
   useLiveEvents(token && !viewing ? buildLiveURL(token) : null);
   const { data: unread } = useFetchUnreadCount(isLoggedIn);
   useEnsureWorkspaceSelected(isLoggedIn);
+  useUnreadTitle(isLoggedIn);
   // Wizards, the invite page and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
   const onboarding = /^\/(?:(?:[^/]+\/)?wizard\/|invite$)/.test(useLocation().pathname);
   const frame = useRef<HTMLDivElement>(null);
