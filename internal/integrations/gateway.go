@@ -66,6 +66,7 @@ var pathAliases = map[string]string{
 	"automation-secrets": "automations",
 	"botwebhooks":        "botwebhook",
 	"runners":            "machines",
+	"crash-reports":      "tickets",
 }
 
 // exactDenylist blocks a path regardless of scopes: a runner enrollment code joins a machine to the fleet and an

@@ -9,6 +9,8 @@ type GitProvider interface {
 	GetPR(ctx context.Context, owner, name string, number int) (*PR, error)
 	// PRsForCommit lists the pull requests with a commit: the merged one that introduced it, else the open ones carrying it.
 	PRsForCommit(ctx context.Context, owner, name, sha string) ([]*PR, error)
+	// MergedInto reports whether merged pull request number's merge commit is sha or one of sha's ancestors.
+	MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error)
 	CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
 	ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
 	DeleteWebhook(ctx context.Context, owner, name, hookID string) error

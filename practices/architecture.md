@@ -81,7 +81,8 @@ Which domains this covers, as the tree stands:
   is a contract nobody asked for.
 - Thin variants: `mentions` has no `repo.go` (it reads through other
   domains); `auth` has no `usecase.go`;
-  `gitprovider` and `voice` have no `repo.go` but do publish events. Each
+  `gitprovider` and `voice` have no `repo.go` but do publish events; `crashintake` has only a model, a use-case and
+  a handler, reading and writing through tickets and chat seams wired in the composition root. Each
   follows the layers it has and grows into the full shape when it needs one.
 - Protocol and infrastructure packages: `agent`, `collab`, `eventcatalog`,
   `harness`, `livekit`, `mcp`, `presence`, `push`, `t3client`, `t3clientv2`,
@@ -299,6 +300,7 @@ type GitProvider interface {
     ListPRs(ctx context.Context, owner, name string, opts PROpts) ([]*PR, error)
     GetPR(ctx context.Context, owner, name string, number int) (*PR, error)
     PRsForCommit(ctx context.Context, owner, name, sha string) ([]*PR, error)
+    MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error)
     CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
     ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
     DeleteWebhook(ctx context.Context, owner, name, hookID string) error

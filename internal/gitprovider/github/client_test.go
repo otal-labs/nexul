@@ -196,6 +196,69 @@ func TestPRsForCommit(t *testing.T) {
 	})
 }
 
+// mergedPRHandler answers the PR read with a merge commit and the compare of it with the build with status.
+func mergedPRHandler(t *testing.T, merged bool, status string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/acme/app/pulls/7" {
+			mergedAt := "null"
+			if merged {
+				mergedAt = `"2026-10-03T22:12:53Z"`
+			}
+			_, _ = fmt.Fprintf(w, `{"number":7,"merged_at":%s,"merge_commit_sha":"m1"}`, mergedAt) // test server: write errors are irrelevant
+			return
+		}
+		assert.Equal(t, "/repos/acme/app/compare/m1...b1", r.URL.Path)
+		_, _ = fmt.Fprintf(w, `{"status":%q}`, status) // test server: write errors are irrelevant
+	}
+}
+
+func TestMergedInto(t *testing.T) {
+	tests := []struct {
+		name   string
+		status string
+		want   bool
+	}{
+		{"the build is the merge commit", "identical", true},
+		{"the build is ahead of the merge commit", "ahead", true},
+		{"the build predates the merge commit", "behind", false},
+		{"the build is on another branch", "diverged", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestClient(t, mergedPRHandler(t, true, tt.status))
+			got, err := c.MergedInto(t.Context(), "acme", "app", 7, "b1")
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+	t.Run("an unmerged PR is a conflict", func(t *testing.T) {
+		c := newTestClient(t, mergedPRHandler(t, false, "ahead"))
+		_, err := c.MergedInto(t.Context(), "acme", "app", 7, "b1")
+		assertErrorIs(t, err, apperrs.ErrConflict)
+	})
+	t.Run("a build commit GitHub doesn't know maps to ErrNotFound", func(t *testing.T) {
+		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/acme/app/pulls/7" {
+				mergedPRHandler(t, true, "")(w, r)
+				return
+			}
+			errorHandler(http.StatusNotFound)(w, r)
+		}))
+		_, err := c.MergedInto(t.Context(), "acme", "app", 7, "b1")
+		assertErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("a missing PR maps to ErrNotFound", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusNotFound))
+		_, err := c.MergedInto(t.Context(), "acme", "app", 7, "b1")
+		assertErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("an invalid repository is refused before any call", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusTeapot))
+		_, err := c.MergedInto(t.Context(), "acme", "../app", 7, "b1")
+		require.Error(t, err)
+	})
+}
+
 func TestCreateWebhook(t *testing.T) {
 	t.Run("success returns hook id", func(t *testing.T) {
 		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

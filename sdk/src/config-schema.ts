@@ -1,21 +1,25 @@
 // Config knobs declared in code: the platform renders these as a real
 // form (status dropdown, channel picker, plain text), never a raw JSON blob.
 export interface ConfigField {
-  // "status" and "channel" are semantic string types the settings UI renders
-  // as workspace pickers; they ride the wire as JSON Schema
+  // "status", "channel" and "project" are semantic string types the settings
+  // UI renders as workspace pickers; they ride the wire as JSON Schema
   // `type:"string"` + `format`.
-  type: "string" | "number" | "boolean" | "status" | "channel";
+  type: "string" | "number" | "boolean" | SemanticType;
   label?: string;
   default?: string | number | boolean;
   enum?: string[];
   required?: boolean;
 }
 
+export type SemanticType = "status" | "channel" | "project";
+
+const semanticTypes: readonly string[] = ["status", "channel", "project"] satisfies SemanticType[];
+
 export type ConfigSchema = Record<string, ConfigField>;
 
 type FieldValue<F extends ConfigField> = F["enum"] extends string[]
   ? F["enum"][number]
-  : F["type"] extends "string" | "status" | "channel"
+  : F["type"] extends "string" | SemanticType
     ? string
     : F["type"] extends "number"
       ? number
@@ -31,7 +35,7 @@ export function toJsonSchema(schema: ConfigSchema): unknown {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
   for (const [name, field] of Object.entries(schema)) {
-    const semantic = field.type === "status" || field.type === "channel";
+    const semantic = semanticTypes.includes(field.type);
     properties[name] = {
       type: semantic ? "string" : field.type,
       ...(semantic ? { format: field.type } : {}),

@@ -57,17 +57,23 @@ func (d crashTicketDesk) Open(ctx context.Context, ticketID string) (bool, error
 	if err != nil {
 		return false, err
 	}
+	done, err := ticketDone(ctx, d.statuses, t)
+	return !done, err
+}
+
+// ticketDone is a ticket in a done column, or in the legacy done or closed status.
+func ticketDone(ctx context.Context, statuses *storage.StatusesRepo, t *tickets.Ticket) (bool, error) {
 	if t.Status == tickets.StatusDone || t.Status == tickets.StatusClosed {
-		return false, nil
-	}
-	column, err := d.statuses.Get(ctx, string(t.Status))
-	if errors.Is(err, apperrs.ErrNotFound) {
 		return true, nil
+	}
+	column, err := statuses.Get(ctx, string(t.Status))
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return column.Kind != workspace.StatusKindDone, nil
+	return column.Kind == workspace.StatusKindDone, nil
 }
 
 func (d crashTicketDesk) Comment(ctx context.Context, ticketID, body string) error {
