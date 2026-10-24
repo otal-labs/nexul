@@ -6,24 +6,28 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { emptyPlayForm, playToFormData, SavePlayFormSchema, type Play, type SavePlayFormData } from "@/models/Play";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-// New play and Edit play, each opening the one form; the control that calls them gates itself.
+// New play, Clone and Edit play, each opening the one form; the control that calls them gates itself.
 export const usePlayDialogs = () => {
   const { open } = useFormDialog();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
 
-  const create = async () => {
+  const createFrom = async (title: string, defaultValues: SavePlayFormData) => {
     const result = await open<SavePlayFormData>({
-      title: "New play",
+      title,
       schema: SavePlayFormSchema,
       okLabel: "Create play",
       form: <PlayForm workspaceId={workspaceId} />,
-      formOptions: { defaultValues: emptyPlayForm() },
+      formOptions: { defaultValues },
     });
     const id = (result.data as { id?: string } | null)?.id;
     if (result.success && id) void navigate(wsPath(`/plays/${id}`));
   };
+
+  const create = () => createFrom("New play", emptyPlayForm());
+
+  const duplicate = (play: Play) => createFrom(`Clone ${play.label}`, { ...playToFormData(play), label: `${play.label} copy` });
 
   const edit = (play: Play) =>
     open<SavePlayFormData>({
@@ -34,5 +38,5 @@ export const usePlayDialogs = () => {
       formOptions: { defaultValues: playToFormData(play) },
     });
 
-  return { create, edit };
+  return { create, duplicate, edit };
 };
