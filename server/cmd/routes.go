@@ -456,6 +456,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")
 	spec.Register("POST", "/api/agent/conversations/{id}/interrupt", "Stop the in-flight agent turn on a conversation", "agent")
 	spec.Register("POST", "/api/agent/conversations/{id}/answer", "Answer the question the agent turn on a conversation is waiting on", "agent")
+	spec.Register("POST", "/api/agent/conversations/{id}/steer", "Hand a message whose agent turn waits in the queue to the turn under way", "agent")
 	spec.Register("POST", "/api/integrations", "Install an integration (mint scoped token)", "integrations")
 	spec.Register("GET", "/api/integrations", "List integration installs", "integrations")
 	spec.Register("GET", "/api/integrations/scopes", "List grantable token scopes with labels", "integrations")

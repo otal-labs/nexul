@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthorKind } from "@nexul/client-core/chat";
@@ -9,14 +10,16 @@ import { unknownPerson } from "@nexul/client-core/person";
 
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
+import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import type { Message } from "@/models/Chat";
 import type { Handoff, HandoffState } from "@/models/Handoff";
 import type { Trail } from "@/models/Trail";
 
 vi.mock("@/api/client", () => ({
-  api: { get: vi.fn() },
-  errorMessage: vi.fn(() => "error"),
+  api: { get: vi.fn(), post: vi.fn() },
+  errorMessage: vi.fn(() => "the turn already started"),
 }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 const message = (overrides: Partial<Message>): Message => ({
   id: "m1",
@@ -39,6 +42,33 @@ const renderRow = (ui: ReactNode) => {
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
+  vi.mocked(api.post).mockReset();
+  useAgentStreamStore.setState({ queued: {} });
+});
+
+describe("a message whose Agent turn waits in the queue", () => {
+  it("says so, and Steer hands it to the turn under way", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: null });
+    useAgentStreamStore.getState().setQueued("m1", true);
+    renderRow(<MessageRow message={message({ body: "@Agent also this" })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />);
+    expect(screen.getByText("Queued, the Agent is busy")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Steer" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/agent/conversations/c1/steer", { message_id: "m1" });
+    expect(screen.queryByText("Queued, the Agent is busy")).not.toBeInTheDocument();
+  });
+
+  it("keeps the line and shows why when the steer is refused", async () => {
+    vi.mocked(api.post).mockRejectedValue(new Error("409"));
+    useAgentStreamStore.getState().setQueued("m1", true);
+    renderRow(<MessageRow message={message({})} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Steer" }));
+
+    expect(toast.error).toHaveBeenCalledWith("the turn already started");
+    expect(screen.getByText("Queued, the Agent is busy")).toBeInTheDocument();
+  });
 });
 
 describe("MessageRow author_kind rendering", () => {

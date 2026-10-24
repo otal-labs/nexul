@@ -96,6 +96,7 @@
   "PATCH /api/workspaces/{workspaceID}/roles/{roleID}": ["roles:write"],
   "POST /api/agent/conversations/{id}/answer": ["none"],
   "POST /api/agent/conversations/{id}/interrupt": ["none"],
+  "POST /api/agent/conversations/{id}/steer": ["none"],
   "POST /api/attachments": ["docs:write","memories:write","tickets:write","none"],
   "POST /api/auth/accounts/{id}/disable": ["accounts:write"],
   "POST /api/auth/accounts/{id}/reactivate": ["accounts:write"],

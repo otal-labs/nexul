@@ -37,6 +37,10 @@ type StreamFrame struct {
 	ActivityCallID string `json:"activity_call_id,omitempty"`
 	// Handoff is set only on the frame for a hand-off that changed; the web merges it by id.
 	Handoff *chat.Handoff `json:"handoff,omitempty"`
+	// QueuedMessageID names the request message of a turn that started or stopped waiting in the harness's queue, as
+	// Queued says; such a frame carries nothing else and leaves the bubble alone.
+	QueuedMessageID string `json:"queued_message_id,omitempty"`
+	Queued          bool   `json:"queued,omitempty"`
 }
 
 // Conversation is the pipeline's slice of a chat conversation (ADR 0017 seam onto chat).
@@ -244,6 +248,10 @@ type activeTurn struct {
 	asked []string
 	// answered wakes the turn's silence window once an answer to its own question has reached the harness.
 	answered chan struct{}
+	// requestMessageID is the chat message the turn answers; queued is whether the harness holds the turn in its
+	// queue, under Service.mu.
+	requestMessageID string
+	queued           bool
 }
 
 // NewService wires the agent pipeline.
@@ -280,6 +288,7 @@ type mentionPayload struct {
 
 type messageCreatedPayload struct {
 	Message struct {
+		ID             string           `json:"id"`
 		ConversationID string           `json:"conversation_id"`
 		AuthorID       string           `json:"author_id"`
 		AuthorKind     string           `json:"author_kind"`
@@ -309,19 +318,19 @@ func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) err
 		return nil
 	}
 	// ponytail: fire-and-forget, a turn runs minutes and must not block the bus handler.
-	go s.answerMention(p.Message.ConversationID, p.Message.AuthorID, p.Message.Body)
+	go s.answerMention(p.Message.ConversationID, p.Message.AuthorID, p.Message.Body, p.Message.ID)
 	return nil
 }
 
 // answerMention continues the conversation's ended run when the continuer takes the mention, else runs a chat turn.
-func (s *Service) answerMention(conversationID, userID, body string) {
+func (s *Service) answerMention(conversationID, userID, body, messageID string) {
 	s.mu.Lock()
 	continuer := s.continuer
 	s.mu.Unlock()
 	if continuer != nil && continuer.ContinueThread(context.Background(), conversationID, userID, body) {
 		return
 	}
-	s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body})
+	s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body, RequestMessageID: messageID})
 }
 
 // runChatTurn runs a chat-started turn under chat's silence window; cancelling on return releases a turn the window ended.
@@ -347,6 +356,8 @@ type TurnRequest struct {
 	ViaUserID      string
 	// RequestBody is the message the turn answers; empty for a play run's start, whose request is the play itself.
 	RequestBody string
+	// RequestMessageID is that message's id, which the thread marks while the harness queues the turn; "" for none.
+	RequestMessageID string
 	// Play is set for a play run: it names the run's memories and replaces the conversation history (ADR 0111).
 	Play *PlayContext
 	// Target is optional; nil means resolve the caller's own project link or pairing defaults as usual.
@@ -419,7 +430,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
-	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), target: harness.Target{
+	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), requestMessageID: req.RequestMessageID, target: harness.Target{
 		Session:      target.Computer.Session(),
 		ProjectID:    target.HarnessProjectID,
 		Provider:     target.Provider,
@@ -450,7 +461,8 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 
 	finalText, handoffs, term := s.drainTurn(ctx, turn, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
-	s.finishTurn(ctx, conversationID, viaUserID, finalText, handoffs, term, obs)
+	s.setQueued(ctx, conversationID, turn, false)
+	s.finishTurn(ctx, conversationID, viaUserID, finalText, handoffs, term, obs, turn)
 	s.markSeen(ctx, conversationID, term)
 }
 
@@ -786,19 +798,9 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 		}
 		switch {
 		case u.Snapshot != nil:
-			// A streaming:false finalize may carry empty text (a close marker); only non-empty text may set the reply.
-			if u.Snapshot.Text != "" {
-				finalText = u.Snapshot.Text
-			}
-			// One message finishing is not the turn finishing; the frame streams until finishTurn clears it.
-			frame.MessageID, frame.Text = u.Snapshot.MessageID, u.Snapshot.Text
-			frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = "", "", "", ""
-			publish()
-			obs.OnSnapshot()
-			seg.observe(*u.Snapshot)
-			if !u.Snapshot.Streaming {
-				seg.flush(obs)
-			}
+			finalText = onSnapshot(*u.Snapshot, finalText, &frame, publish, &seg, obs)
+		case u.Queued != nil:
+			s.setQueued(ctx, conversationID, turn, *u.Queued)
 		case u.Activity != nil:
 			s.onActivity(ctx, conversationID, viaUserID, *u.Activity, &frame, publish, &seg, obs)
 		case u.Question != nil:
@@ -825,6 +827,24 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 			term = u.Terminal
 		}
 	}
+}
+
+// onSnapshot streams one reply snapshot into the bubble and returns the reply text so far.
+func onSnapshot(snap harness.Snapshot, finalText string, frame *StreamFrame, publish func(), seg *textSegments, obs Observer) string {
+	// A streaming:false finalize may carry empty text (a close marker); only non-empty text may set the reply.
+	if snap.Text != "" {
+		finalText = snap.Text
+	}
+	// One message finishing is not the turn finishing; the frame streams until finishTurn clears it.
+	frame.MessageID, frame.Text = snap.MessageID, snap.Text
+	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = "", "", "", ""
+	publish()
+	obs.OnSnapshot()
+	seg.observe(snap)
+	if !snap.Streaming {
+		seg.flush(obs)
+	}
+	return finalText
 }
 
 // onActivity records a step; the Agent's own is the live bubble's step line, while a message the person wrote in the
@@ -961,15 +981,16 @@ func textActivity(text string) harness.Activity {
 	return harness.Activity{Kind: harness.ActivityText, Summary: harness.Preview(text, 160), Detail: harness.CapDetail(text), At: time.Now().UTC()}
 }
 
-func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, finalText string, handoffs []harness.Handoff, term *harness.TurnResult, obs Observer) {
+func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, finalText string, handoffs []harness.Handoff, term *harness.TurnResult, obs Observer, turn *activeTurn) {
 	if term == nil {
 		term = &harness.TurnResult{State: harness.TurnError, LastError: "turn ended without a terminal result"}
 	}
 	if term.LeftRunning {
 		finalText = strings.TrimSpace(finalText + "\n\n" + leftRunningLine)
 	}
-	// Every exit but a persisted done-with-text must clear the ephemeral bubble itself, or it spins forever.
-	if term.State != harness.TurnDone || strings.TrimSpace(finalText) == "" {
+	// Every exit but a persisted done-with-text must clear the ephemeral bubble itself, or it spins forever, unless the
+	// bubble is another turn's still under way, such as the one a steered turn's message joined.
+	if (term.State != harness.TurnDone || strings.TrimSpace(finalText) == "") && !s.underWayBeside(conversationID, turn) {
 		s.clearStream(ctx, conversationID)
 	}
 	replyID := ""
@@ -992,6 +1013,28 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 		}
 	}
 	obs.OnFinished(*term, replyID)
+}
+
+// setQueued marks or unmarks the turn's request message as waiting in the harness's queue, once per change.
+func (s *Service) setQueued(ctx context.Context, conversationID string, turn *activeTurn, queued bool) {
+	s.mu.Lock()
+	changed := turn.queued != queued
+	turn.queued = queued
+	s.mu.Unlock()
+	if !changed || turn.requestMessageID == "" {
+		return
+	}
+	frame := StreamFrame{ConversationID: conversationID, QueuedMessageID: turn.requestMessageID, Queued: queued}
+	if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
+		s.log.Warn("agent: publish queued frame failed", "conversation", conversationID, "error", err)
+	}
+}
+
+// underWayBeside is whether a turn other than turn runs on the conversation outside the harness's queue.
+func (s *Service) underWayBeside(conversationID string, turn *activeTurn) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.ContainsFunc(s.active[conversationID], func(t *activeTurn) bool { return t != turn && !t.queued })
 }
 
 // clearStream publishes the empty non-streaming frame that removes the ephemeral bubble.
@@ -1215,6 +1258,20 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 	go s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body,
 		Answer: &harness.PendingAnswer{RequestID: requestID, Answer: answer}})
 	return nil
+}
+
+// Steer hands the queued turn answering messageID to the turn under way on the conversation, whose reply then answers
+// it; the caller must be able to read the conversation.
+func (s *Service) Steer(ctx context.Context, conversationID, messageID string) error {
+	if _, err := s.conversations.GetConversation(ctx, conversationID); err != nil {
+		return fmt.Errorf("steer agent turn: %w", err)
+	}
+	for _, t := range s.liveTurns(conversationID) {
+		if t.queued && t.requestMessageID == messageID {
+			return t.client.Steer(ctx, t.target)
+		}
+	}
+	return fmt.Errorf("%w: no queued agent turn answers message %s", apperrs.ErrNotFound, messageID)
 }
 
 // Interrupt stops every in-flight turn on a conversation (stop control); the caller must be able to read it.

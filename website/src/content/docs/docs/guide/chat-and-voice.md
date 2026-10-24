@@ -53,6 +53,8 @@ Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation
 
 Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation.
 
+A mention sent while the agent is still busy waits its turn, and **Queued** under it says the agent hasn't read it yet. Press **Steer** beside it to hand it to the agent now: the reply it is working on answers that message too.
+
 On a ticket's or doc's thread the agent works in that project's checkout on the first of [your computers](/docs/guide/paired-computers/#your-computers-in-order) that can take it. In a channel or direct message it works in that computer's chat folder, with your defaults. When the agent hands work to another agent, a pill under its reply opens that agent's conversation.
 
 ### Notes on a ticket

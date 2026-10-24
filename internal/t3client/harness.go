@@ -507,4 +507,9 @@ func (h *Harness) Settle(ctx context.Context, target harness.Target) error {
 	return nil
 }
 
+// Steer always refuses: a protocol-1 thread runs one turn at a time and never reports one as queued.
+func (h *Harness) Steer(context.Context, harness.Target) error {
+	return fmt.Errorf("%w: this T3 Code release has no queue to steer from", apperrs.ErrConflict)
+}
+
 var _ harness.Client = (*Harness)(nil)

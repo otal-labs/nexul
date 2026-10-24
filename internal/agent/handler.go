@@ -10,7 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
-// Handler adapts the agent pipeline's stop control to the HTTP gateway.
+// Handler adapts the agent pipeline's stop, steer and answer controls to the HTTP gateway.
 type Handler struct {
 	svc *Service
 }
@@ -25,6 +25,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/agent/conversations/{id}/interrupt", h.interrupt)
 	mux.HandleFunc("POST /api/agent/conversations/{id}/answer", h.answer)
+	mux.HandleFunc("POST /api/agent/conversations/{id}/steer", h.steer)
 	return mux
 }
 
@@ -46,6 +47,28 @@ func (h *Handler) answer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.AnswerFromChat(r.Context(), r.PathValue("id"), actor.ID, req.RequestID, harness.QuestionAnswer{Answers: req.Answers}); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SteerRequest is the body of the steer route: the queued message to hand to the turn under way.
+type SteerRequest struct {
+	MessageID string `json:"message_id"`
+}
+
+func (h *Handler) steer(w http.ResponseWriter, r *http.Request) {
+	var req SteerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if req.MessageID == "" {
+		httpx.WriteError(w, fmt.Errorf("%w: message_id is required", apperrs.ErrInvalid))
+		return
+	}
+	if err := h.svc.Steer(r.Context(), r.PathValue("id"), req.MessageID); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

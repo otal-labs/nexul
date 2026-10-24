@@ -37,7 +37,7 @@ const at = (pathname: string): Location => ({ pathname, search: "", hash: "", st
 
 describe("the chat follower", () => {
   beforeEach(() => {
-    useAgentStreamStore.setState({ streams: {} });
+    useAgentStreamStore.setState({ streams: {}, queued: {} });
   });
 
   it("appends, edits and marks deleted the messages of an open conversation from the frames alone", async () => {
@@ -142,6 +142,17 @@ describe("the chat follower", () => {
       await stream({ text: "almost" });
       await stream({ streaming: false });
       expect(useAgentStreamStore.getState().streams["c-1"]).toBeUndefined();
+    });
+
+    it("marks a message while its turn waits in the queue, leaving the running turn's bubble alone", async () => {
+      await stream({ text: "working on the first one" });
+      await stream({ streaming: false, queued_message_id: "m-2", queued: true });
+      expect(useAgentStreamStore.getState().queued).toEqual({ "m-2": true });
+      expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("working on the first one");
+
+      await stream({ streaming: false, queued_message_id: "m-2" });
+      expect(useAgentStreamStore.getState().queued).toEqual({});
+      expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("working on the first one");
     });
   });
 });

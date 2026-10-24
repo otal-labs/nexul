@@ -259,12 +259,21 @@ func endQueuedTurn(t *testing.T, f *t3rpctest.Server, h *Harness) (string, map[s
 	s := <-done
 	require.NoError(t, s.err)
 	f.Write(t3rpctest.Chunk(subID, event(5, "run.created", runAt(2, messageID, runQueued))))
-	note := t3rpctest.WaitFor(t, s.result.Updates, "the queued note")
-	require.NotNil(t, note.Activity)
-	require.Equal(t, queuedNote, note.Activity.Summary)
+	waitQueued(t, s.result.Updates)
 
 	cancel()
 	return messageID, t3rpctest.WaitFor(t, f.Dispatched, "the command sent once the turn let the thread go")
+}
+
+// waitQueued reads a turn's updates up to its queued note, which follows the turn reporting it waits in T3's queue.
+func waitQueued(t *testing.T, updates <-chan harness.Update) {
+	t.Helper()
+	queued := t3rpctest.WaitFor(t, updates, "the turn entering the queue")
+	require.NotNil(t, queued.Queued)
+	require.True(t, *queued.Queued)
+	note := t3rpctest.WaitFor(t, updates, "the queued note")
+	require.NotNil(t, note.Activity)
+	require.Equal(t, queuedNote, note.Activity.Summary)
 }
 
 func TestStartTurn_ContextEndsWhileQueued_CancelsOwnRun(t *testing.T) {

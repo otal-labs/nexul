@@ -102,6 +102,12 @@ user's own paired Harness and acts with only that user's permissions. Never a
 Runner — a Runner executes builds; the Agent converses and drives the product
 through MCP.
 
+**Steer**:
+Handing a mention whose Agent turn waits in the Harness's queue to the turn
+under way, whose reply then answers it; the steered turn ends with no reply of
+its own (ADR 0169).
+_Avoid_: interrupt, push
+
 **Harness**:
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
