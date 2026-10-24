@@ -47,4 +47,14 @@ describe("NotificationRow", () => {
     expect(screen.getByText(title)).toBeTruthy();
     expect(screen.getByText(label)).toBeTruthy();
   });
+
+  test.each([
+    ["meeting.invited", "Invited to a meeting"],
+    ["meeting.cancelled", "Meeting cancelled"],
+    ["meeting.reminder", "Meeting starting soon"],
+  ] as const)("a %s notice labels itself", async (kind, label) => {
+    await render(<NotificationRow notification={{ ...unread, kind, subject_type: "meeting", subject_title: "Sprint planning" }} onPress={jest.fn()} onMarkRead={jest.fn()} onMarkUnread={jest.fn()} />);
+
+    expect(screen.getByText(label)).toBeTruthy();
+  });
 });

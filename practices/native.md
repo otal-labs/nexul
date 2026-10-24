@@ -74,6 +74,8 @@ as written. In particular:
   `ScreenHeader` in its content, on the plain canvas. Board, Deploys and More's Runners follow the viewer's read
   permission through `@nexul/client-core/permissions`, the web's own table; a
   deep link into one the viewer can't read renders the plain not-found state.
+  More's Calendar has no area to read: a meeting shows only to the people in it, and
+  the phone only replies to one; creating and changing stay on the web.
   Projects are opt-in (ADR 0148): `/me` holds a non-Owner's workspace actions
   and, per project they are in, what they hold there, so a tab opens on what
   they hold in any project and a project's own screen on that project's

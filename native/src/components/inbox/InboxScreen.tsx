@@ -25,6 +25,8 @@ export const subjectRoute = (notification: Notification, canReadTickets: boolean
   if (notification.subject_type === SubjectType.Doc) return `/more/docs/${notification.subject_id}`;
   // Only people who read the stack are told of it, and a screen they can't open renders the plain not-found state.
   if (notification.subject_type === SubjectType.Stack) return `/deploys/stack/${notification.subject_id}`;
+  // A meeting shows only to the people in it, so there is no area to gate on.
+  if (notification.subject_type === SubjectType.Meeting) return `/more/calendar/${notification.subject_id}`;
   return null;
 };
 

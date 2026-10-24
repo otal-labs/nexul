@@ -9,7 +9,7 @@ import { subjectRoute } from "@/components/inbox/InboxScreen";
 import { getNotificationsKey } from "@/hooks/NotificationHooks";
 import { myRoleQuery } from "@/hooks/WorkspaceHooks";
 import { queryClient } from "@/lib/queryClient";
-import type { Notification } from "@/models/Notification";
+import { SubjectType, type Notification } from "@/models/Notification";
 
 // The Inbox caches one list per workspace and a push can come from any of them; the unscoped list holds them all.
 const findNotification = async (notificationId: string): Promise<Notification | undefined> => {
@@ -32,7 +32,9 @@ const canReadTickets = async (workspaceId: string): Promise<boolean> => {
 const openNotification = async (notificationId: string, router: ImperativeRouter): Promise<void> => {
   router.push("/inbox" as Href);
   const notification = await findNotification(notificationId);
-  const target = notification && subjectRoute(notification, await canReadTickets(notification.workspace_id));
+  // Only a ticket's route depends on the viewer's role; anything else opens without reading it.
+  const target =
+    notification && subjectRoute(notification, notification.subject_type === SubjectType.Ticket && (await canReadTickets(notification.workspace_id)));
   if (target) router.push(target, { withAnchor: true });
 };
 

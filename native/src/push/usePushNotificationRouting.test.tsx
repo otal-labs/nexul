@@ -62,6 +62,17 @@ describe("usePushNotificationRouting", () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 
+  test("a tap on a meeting notification opens it from the Inbox without reading the viewer's role", async () => {
+    queryClient.setQueryData([getNotificationsKey, "ws-1"], [{ ...notification, kind: "meeting.reminder", subject_type: "meeting", subject_id: "m-1" }]);
+    await renderHook(() => usePushNotificationRouting());
+
+    responseListener?.(respond({ notification_id: "n1" }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/more/calendar/m-1", { withAnchor: true }));
+    expect(mockPush).toHaveBeenNthCalledWith(1, "/inbox");
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
   test("a cold start with a pending response asks the server and routes the same way", async () => {
     jest.mocked(api.get).mockImplementation(async (path) => (path === "/api/notifications" ? [notification] : ticketReader));
     jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(respond({ notification_id: "n1" }) as never);

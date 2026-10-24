@@ -138,6 +138,28 @@ describe("InboxScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/deploys/stack/stack-1", { withAnchor: true });
   });
 
+  test("tapping a meeting notice opens the meeting, whatever the viewer's role", async () => {
+    mockInbox([{ ...docNotification, kind: "meeting.invited", subject_type: "meeting", subject_id: "m-1", subject_title: "Sprint planning" }], []);
+    await renderScreen();
+    await screen.findByText("Sprint planning");
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /Sprint planning/ }));
+
+    expect(screen.getByText("Invited to a meeting")).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith("/more/calendar/m-1", { withAnchor: true });
+  });
+
+  test("tapping a due-soon notice opens the ticket", async () => {
+    mockInbox([{ ...ticketNotification, kind: "ticket.due_soon", subject_title: "Write migrations is due tomorrow" }]);
+    await renderScreen();
+    await screen.findByText("Write migrations is due tomorrow");
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /due tomorrow/ }));
+
+    expect(screen.getByText("Due soon")).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith("/board/ticket/t-1", { withAnchor: true });
+  });
+
   test("tapping a ticket notification marks it read but stays in the inbox without tickets:read", async () => {
     mockInbox([ticketNotification], []);
     jest.mocked(api.post).mockResolvedValue(undefined);
