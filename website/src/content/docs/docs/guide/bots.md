@@ -127,6 +127,19 @@ curl -sS -H "Content-Type: application/json" \
 | `404` | Unknown webhook, code `10015`. A wrong id, a wrong token, and a deleted or regenerated URL all answer alike. |
 | `429` | Over 30 posts a minute, or too many wrong URLs from your address. The body holds `retry_after` in seconds, and `Retry-After` and `X-RateLimit-*` headers come with it. |
 
+## React with an automation
+
+Every post through a bot's URL also publishes a `chat.bot_message.posted` event, so an [automation](/docs/guide/automations/) can act on what a bot says without reading every chat message:
+
+```ts
+automation.on("chat.bot_message.posted", async (payload, ctx) => {
+  ctx.log("bot posted", { bot: payload.bot_name, content: payload.content });
+  return true;
+});
+```
+
+The event names the workspace, conversation, message, the bot's id and own name, the name the post showed, its text, its embeds without their color, and when it was posted. It never carries the bot's URL or token. A bot's post to a direct message or a private channel reaches no automation or integration, like any message there.
+
 ## Over MCP
 
 Agents manage bots with `botwebhook_list`, `botwebhook_create`, and `botwebhook_update` (rename, avatar, regenerate, delete, restore). URLs appear only to a caller holding `botwebhook:write`. An agent doesn't post as a bot over MCP; it posts with `message_post` as itself, or uses a bot's URL like any sender. See [MCP server](/docs/guide/mcp-server/).

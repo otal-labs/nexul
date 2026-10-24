@@ -19,6 +19,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // A CI run as a GitHub Actions workflow posts it to a Discord webhook: author, linked title, commit lines, four
@@ -186,6 +187,51 @@ func TestIntegration_BotPostsBecomeMessages(t *testing.T) {
 	}
 	assert.Equal(t, 3, created)
 	assertNoToken(t, f, logs.String(), tokenOfBot(b))
+}
+
+// TestIntegration_BotPost_PublishesOneBotMessageEvent: a post through a bot's URL publishes one chat.bot_message.posted
+// with its content and embeds, routed to the channel's workspace's automations, carrying neither the URL nor the token.
+func TestIntegration_BotPost_PublishesOneBotMessageEvent(t *testing.T) {
+	t.Parallel()
+	f := newPermFixture(t)
+	ctx := context.Background()
+	b, err := f.svc.botwebhookSvc.Create(as(uOwner), f.channel.ID, "Crash reports", "")
+	require.NoError(t, err)
+
+	rec := postAs(botRoutes(f, &bytes.Buffer{}), botPath(b)+"?wait=true",
+		`{"username":"Acme Monitor","content":"Checkout crashed","embeds":[{"title":"TypeError in cart","color":16711680,"fields":[{"name":"Version","value":"1.4.2"}]}]}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var answered botwebhook.Message
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &answered))
+
+	events, err := f.store.Outbox.Unpublished(ctx, 100)
+	require.NoError(t, err)
+	var posted [][]byte
+	for _, e := range events {
+		if e.Topic == chat.TopicBotMessagePosted {
+			posted = append(posted, e.Payload)
+		}
+	}
+	require.Len(t, posted, 1)
+	var got chat.BotMessagePostedEvent
+	require.NoError(t, json.Unmarshal(posted[0], &got))
+	assert.Equal(t, f.channel.WorkspaceID, got.WorkspaceID)
+	assert.Equal(t, f.channel.ID, got.ConversationID)
+	assert.Equal(t, answered.ID, got.MessageID)
+	assert.Equal(t, b.ID, got.BotID)
+	assert.Equal(t, "Crash reports", got.BotName)
+	assert.Equal(t, "Acme Monitor", got.AuthorName)
+	assert.Equal(t, "Checkout crashed", got.Content)
+	assert.JSONEq(t, `[{"title":"TypeError in cart","fields":[{"name":"Version","value":"1.4.2"}]}]`, string(got.Embeds))
+	assert.False(t, got.PostedAt.IsZero())
+	assert.NotContains(t, string(posted[0]), tokenOfBot(b))
+	assert.NotContains(t, string(posted[0]), "/api/botwebhooks/", "no URL, not even the avatar path")
+
+	assert.False(t, eventbus.MembersOnly(posted[0]), "a channel's bot post reaches automations")
+	ids, every, err := automationScope{lookup: f.store.EventWorkspaces}.Workspaces(ctx, chat.TopicBotMessagePosted, posted[0])
+	require.NoError(t, err)
+	assert.False(t, every)
+	assert.Equal(t, []string{f.channel.WorkspaceID}, ids)
 }
 
 // TestIntegration_BotDeletedMidPost_WritesNothing: a bot deleted between its URL check and its post leaves no message,

@@ -1134,6 +1134,59 @@
       "category"
     ]
   },
+  "chat.bot_message.posted": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the bot's conversation."
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "string"
+      },
+      "bot_id": {
+        "type": "string"
+      },
+      "bot_name": {
+        "type": "string",
+        "description": "The bot's own name, whatever name the post showed."
+      },
+      "author_name": {
+        "type": "string",
+        "description": "The name the message showed: the post's username, or else the bot's name."
+      },
+      "content": {
+        "type": "string",
+        "description": "The post's text, empty when it carried only embeds."
+      },
+      "embeds": {
+        "type": "array",
+        "description": "The post's embeds as the sender posted them less their color; absent when it carried none."
+      },
+      "posted_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a post to a DM or private channel, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "conversation_id",
+      "message_id",
+      "bot_id",
+      "bot_name",
+      "author_name",
+      "content",
+      "posted_at"
+    ]
+  },
   "chat.conversation.created": {
     "type": "object",
     "properties": {

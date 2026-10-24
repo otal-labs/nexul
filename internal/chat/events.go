@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -18,6 +19,8 @@ const (
 	TopicMessageDeleted             = "chat.message.deleted"
 	// TopicMessageReactionsChanged is its own topic so a reaction never reads as an edit to a consumer of updated.
 	TopicMessageReactionsChanged = "chat.message.reactions_changed"
+	// TopicBotMessagePosted is a post through a bot's URL, beside its chat.message.created, so automations can follow bots alone.
+	TopicBotMessagePosted = "chat.bot_message.posted"
 )
 
 // Topics returns every topic the chat domain publishes.
@@ -31,6 +34,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicMessageUpdated, Payload: MessageUpdatedEvent{}},
 		{Name: TopicMessageDeleted, Payload: MessageDeletedEvent{}},
 		{Name: TopicMessageReactionsChanged, Payload: MessageReactionsChangedEvent{}},
+		{Name: TopicBotMessagePosted, Payload: BotMessagePostedEvent{}},
 	}
 }
 
@@ -105,4 +109,18 @@ type MessageDeletedEvent struct {
 	DeletedAt      time.Time `json:"deleted_at"`
 	MembersOnly    bool      `json:"members_only,omitempty" jsonschema:"Set on a DM or private channel's message, which is never delivered to integrations or automations."`
 	WorkspaceID    string    `json:"workspace_id" jsonschema:"The workspace of the message's conversation."`
+}
+
+// BotMessagePostedEvent is the payload for chat.bot_message.posted; it never carries the bot's URL or token.
+type BotMessagePostedEvent struct {
+	WorkspaceID    string          `json:"workspace_id" jsonschema:"The workspace of the bot's conversation."`
+	ConversationID string          `json:"conversation_id"`
+	MessageID      string          `json:"message_id"`
+	BotID          string          `json:"bot_id"`
+	BotName        string          `json:"bot_name" jsonschema:"The bot's own name, whatever name the post showed."`
+	AuthorName     string          `json:"author_name" jsonschema:"The name the message showed: the post's username, or else the bot's name."`
+	Content        string          `json:"content" jsonschema:"The post's text, empty when it carried only embeds."`
+	Embeds         json.RawMessage `json:"embeds,omitempty" type:"array" jsonschema:"The post's embeds as the sender posted them less their color; absent when it carried none."`
+	PostedAt       time.Time       `json:"posted_at"`
+	MembersOnly    bool            `json:"members_only,omitempty" jsonschema:"Set on a post to a DM or private channel, which is never delivered to integrations or automations."`
 }

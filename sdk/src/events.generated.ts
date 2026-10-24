@@ -21,6 +21,7 @@ export interface EventPayloads {
   "category.created": { "category": { "id": string; "project_id": string; "name": string; "position": number; "color": string; "created_at": string; "updated_at": string; }; };
   "category.deleted": { "category": { "id": string; "project_id": string; "name": string; "position": number; "color": string; "created_at": string; "updated_at": string; }; };
   "category.updated": { "category": { "id": string; "project_id": string; "name": string; "position": number; "color": string; "created_at": string; "updated_at": string; }; };
+  "chat.bot_message.posted": { "workspace_id": string; "conversation_id": string; "message_id": string; "bot_id": string; "bot_name": string; "author_name": string; "content": string; "embeds"?: unknown[]; "posted_at": string; "members_only"?: boolean; };
   "chat.conversation.created": { "conversation": { "id": string; "workspace_id": string; "kind": string; "name"?: string; "ticket_id"?: string; "doc_id"?: string; "project_id"?: string; "stack_id"?: string; "parent_message_id"?: string; "created_by": string; "created_at": string; "updated_at": string; "general"?: boolean; "private": boolean; "participant_ids"?: string[]; }; "members_only"?: boolean; };
   "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; "private"?: boolean; "member_ids"?: string[]; "members_only"?: boolean; };
   "chat.conversation.members_changed": { "conversation_id": string; "workspace_id": string; "private": boolean; "added_user_ids": string[]; "removed_user_ids": string[]; "actor_id"?: string; "members_only"?: boolean; };
@@ -190,6 +191,7 @@ export const TOPICS: Topic[] = [
   "category.created",
   "category.deleted",
   "category.updated",
+  "chat.bot_message.posted",
   "chat.conversation.created",
   "chat.conversation.deleted",
   "chat.conversation.members_changed",
@@ -357,6 +359,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "category.created": {"category":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","position":1,"color":"fixture-color","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "category.deleted": {"category":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","position":1,"color":"fixture-color","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "category.updated": {"category":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","position":1,"color":"fixture-color","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
+  "chat.bot_message.posted": {"workspace_id":"fixture-workspace_id","conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","bot_id":"fixture-bot_id","bot_name":"fixture-bot_name","author_name":"fixture-author_name","content":"fixture-content","embeds":[],"posted_at":"2026-01-01T00:00:00Z","members_only":false},
   "chat.conversation.created": {"conversation":{"id":"fixture-id","workspace_id":"fixture-workspace_id","kind":"fixture-kind","name":"fixture-name","ticket_id":"fixture-ticket_id","doc_id":"fixture-doc_id","project_id":"fixture-project_id","stack_id":"fixture-stack_id","parent_message_id":"fixture-parent_message_id","created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","general":false,"private":false,"participant_ids":["fixture-participant_ids"]},"members_only":false},
   "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id","private":false,"member_ids":["fixture-member_ids"],"members_only":false},
   "chat.conversation.members_changed": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","private":false,"added_user_ids":["fixture-added_user_ids"],"removed_user_ids":["fixture-removed_user_ids"],"actor_id":"fixture-actor_id","members_only":false},
