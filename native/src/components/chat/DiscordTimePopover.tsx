@@ -1,7 +1,16 @@
+import { setStringAsync } from "expo-clipboard";
+import { createEventInCalendarAsync } from "expo-calendar/legacy";
+import CalendarPlus from "lucide-react-native/icons/calendar-plus";
+import Check from "lucide-react-native/icons/check";
+import Copy from "lucide-react-native/icons/copy";
+import { useContext, useState } from "react";
 import { Modal, Pressable, useWindowDimensions, View } from "react-native";
 
 import { fullDiscordTime, type DiscordTime } from "@nexul/client-core/discordTime";
 
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 
 export interface PressPoint {
@@ -21,8 +30,37 @@ interface DiscordTimePopoverProps {
 
 const POPOVER_WIDTH = 288;
 const MARGIN = 16;
+const HOUR_MS = 60 * 60 * 1000;
 
-// Under the finger when the tap says where it landed, else a third of the way down; the code is selectable, so a hold copies it.
+// The system's own new-event screen, which needs no calendar permission, holding a one-hour event at the instant.
+const addToCalendar = (date: Date, title: string, onDone: () => void) =>
+  createEventInCalendarAsync({ title, startDate: date, endDate: new Date(date.getTime() + HOUR_MS) })
+    .catch((error: unknown) => console.warn("time code: calendar dialog failed", error))
+    .finally(onDone);
+
+const TimeActions = ({ time, onClose }: { time: DiscordTime; onClose: () => void }) => {
+  const title = useContext(CalendarTitleContext);
+  const [copied, setCopied] = useState(false);
+  const copy = () =>
+    setStringAsync(time.code).then(
+      () => setCopied(true),
+      (error: unknown) => console.warn("time code: copy failed", error),
+    );
+  return (
+    <View className="gap-2 pt-1.5">
+      <Button variant="outline" size="sm" onPress={copy}>
+        <Icon as={copied ? Check : Copy} size={14} className={copied ? "text-success" : "text-foreground"} />
+        <Text>{copied ? "Copied" : "Copy code"}</Text>
+      </Button>
+      <Button variant="outline" size="sm" onPress={() => addToCalendar(time.date, title, onClose)}>
+        <Icon as={CalendarPlus} size={14} className="text-foreground" />
+        <Text>Add to calendar</Text>
+      </Button>
+    </View>
+  );
+};
+
+// Under the finger when the tap says where it landed, else a third of the way down.
 export const DiscordTimePopover = ({ open, onClose }: DiscordTimePopoverProps) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const width = Math.min(POPOVER_WIDTH, windowWidth - 2 * MARGIN);
@@ -43,7 +81,7 @@ export const DiscordTimePopover = ({ open, onClose }: DiscordTimePopoverProps) =
             <Text selectable className="font-mono text-[13px]">
               {open.time.code}
             </Text>
-            <Text className="text-[13px] text-muted-foreground">Hold the code to copy it.</Text>
+            <TimeActions time={open.time} onClose={onClose} />
           </View>
         )}
       </Pressable>

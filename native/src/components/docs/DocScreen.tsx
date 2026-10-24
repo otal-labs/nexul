@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import Lock from "lucide-react-native/icons/lock";
 import { ScrollView, View } from "react-native";
 
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBody } from "@/components/docs/DocBody";
 import { DocQuestionsPanel } from "@/components/docs/clarification/DocQuestionsPanel";
 import { DocViewSwitch } from "@/components/docs/clarification/DocViewSwitch";
@@ -44,7 +45,9 @@ const DocSides = ({ doc, openedOn }: { doc: Doc; openedOn: DocView }) => {
       {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
       {view === "doc" && (
         <View className="mx-3 rounded-xl border border-border bg-card px-4 py-5">
-          <DocBody body={doc.body} />
+          <CalendarTitleContext value={doc.title}>
+            <DocBody body={doc.body} />
+          </CalendarTitleContext>
         </View>
       )}
       {view === "questions" && <DocQuestionsPanel doc={doc} />}

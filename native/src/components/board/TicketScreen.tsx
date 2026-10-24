@@ -7,6 +7,7 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { TicketPerson } from "@/components/board/TicketPeople";
 import { TicketStatusField } from "@/components/board/TicketStatusField";
 import { ticketTypePill } from "@/components/board/ticketTypeColor";
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBody } from "@/components/docs/DocBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FactRow } from "@/components/FactRow";
@@ -107,7 +108,9 @@ export const TicketScreen = () => {
 
             <View className="gap-2">
               <Microheader>Description</Microheader>
-              <DocBody body={ticket.body} />
+              <CalendarTitleContext value={ticket.title}>
+                <DocBody body={ticket.body} />
+              </CalendarTitleContext>
             </View>
           </View>
         )}

@@ -27,23 +27,24 @@ export const ChatThreadScreen = () => {
   const editing = useMessageEditStore((s) => (s.editing?.conversationId === id ? s.editing : null));
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} className="flex-1 bg-background">
-      <ChatThreadTitle conversationId={id} />
-      {isPending && <LoadingDisplay message="Loading messages" />}
-      {error && (
-        <View className="flex-1 px-4">
-          <ErrorDisplay error={error} className="px-0" notFound="This conversation doesn't exist or was deleted." />
-        </View>
-      )}
-      {messages && messages.length === 0 && (
-        <View className="flex-1 justify-center">
-          <EmptyState size="compact" icon={MessagesSquare} title="No messages yet" message="Say the first thing; everyone in here sees it." />
-        </View>
-      )}
-      {messages && messages.length > 0 && (
-        <HandOff after={waited}>
-          <MessageList messages={messages} />
-        </HandOff>
-      )}
+      <ChatThreadTitle conversationId={id}>
+        {isPending && <LoadingDisplay message="Loading messages" />}
+        {error && (
+          <View className="flex-1 px-4">
+            <ErrorDisplay error={error} className="px-0" notFound="This conversation doesn't exist or was deleted." />
+          </View>
+        )}
+        {messages && messages.length === 0 && (
+          <View className="flex-1 justify-center">
+            <EmptyState size="compact" icon={MessagesSquare} title="No messages yet" message="Say the first thing; everyone in here sees it." />
+          </View>
+        )}
+        {messages && messages.length > 0 && (
+          <HandOff after={waited}>
+            <MessageList messages={messages} />
+          </HandOff>
+        )}
+      </ChatThreadTitle>
       {!gone && <ChatComposer key={editing?.messageId ?? "new"} conversationId={id} editing={editing} />}
     </KeyboardAvoidingView>
   );
