@@ -264,6 +264,8 @@ func grow(t *testing.T, f permFixture, n int) []string {
 		ticket, err := f.svc.ticketsSvc.Create(ctx, pGeneral, fmt.Sprintf("Login times out %d", i), "", "", "")
 		require.NoError(t, err)
 		ticketIDs = append(ticketIDs, ticket.ID)
+		_, err = f.svc.ticketsSvc.SetDueOn(ctx, ticket.ID, "2026-10-12")
+		require.NoError(t, err)
 		_, err = f.svc.chatSvc.GetOrCreateTicketThread(ctx, wsDefault, ticket.ID, uReader)
 		require.NoError(t, err)
 		_, err = f.svc.chatSvc.CreateChannel(ctx, wsDefault, uOwner, fmt.Sprintf("room-%d-%d", n, i))
@@ -405,6 +407,14 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 			// Every member but the outsider, and the readers grow added.
 			if want := len(people) - 1 + len(ticketIDs) - 1; err == nil && len(listed) != want {
 				err = fmt.Errorf("listed %d people, want %d", len(listed), want)
+			}
+			return err
+		},
+		"tickets due in a range": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			due, err := f.svc.ticketsSvc.DueBetween(ctx, wsDefault, "2026-10-01", "2026-10-31")
+			// grow gives every ticket it adds a due date and leaves the fixture's own without.
+			if err == nil && len(due) != len(ticketIDs)-1 {
+				err = fmt.Errorf("listed %d due tickets, want %d", len(due), len(ticketIDs)-1)
 			}
 			return err
 		},

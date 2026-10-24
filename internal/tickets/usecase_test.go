@@ -388,6 +388,12 @@ type allowGate struct{}
 
 func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
 
+func (allowGate) Require(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
 	return nil, true, nil
 }

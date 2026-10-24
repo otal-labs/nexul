@@ -467,8 +467,11 @@ func (r ticketRepo) Page(ctx context.Context, f tickets.TicketFilter, _ tickets.
 	all := r.filter(func(t *tickets.Ticket) bool {
 		return (f.ProjectID == "" || t.ProjectID == f.ProjectID) && (f.DocID == "" || t.DocID == f.DocID) &&
 			strings.Contains(strings.ToLower(t.Title+" "+t.Body), strings.ToLower(f.Query)) &&
-			(!f.BlockedOnly || len(blockers[t.ID]) > 0)
+			(!f.BlockedOnly || len(blockers[t.ID]) > 0) && dueWithin(f, t)
 	})
+	if f.DueFrom != "" || f.DueTo != "" {
+		slices.SortStableFunc(all, func(a, b *tickets.Ticket) int { return strings.Compare(a.DueOn+a.ID, b.DueOn+b.ID) })
+	}
 	return all[min(w.Offset, len(all)):min(w.Offset+w.Limit, len(all))], len(all), nil
 }
 
@@ -838,4 +841,26 @@ func (d *docFolders) DeleteFolder(_ context.Context, id string) error {
 		return apperrs.ErrInvalid
 	}
 	return nil
+}
+
+func (allowGate) Require(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
+func (r ticketRepo) UpdateDueOn(_ context.Context, id, dueOn string, _ ...eventbus.OutboxEvent) error {
+	return r.edit(id, func(t *tickets.Ticket) { t.DueOn = dueOn })
+}
+
+func (ticketRepo) ListDue(context.Context, string, string, string, tickets.TicketScope) ([]*tickets.Ticket, error) {
+	return nil, nil
+}
+
+// dueWithin is the due-date part of the filter: a ticket with no date never matches a range.
+func dueWithin(f tickets.TicketFilter, t *tickets.Ticket) bool {
+	if f.DueFrom == "" && f.DueTo == "" {
+		return true
+	}
+	return t.DueOn != "" && t.DueOn >= f.DueFrom && (f.DueTo == "" || t.DueOn <= f.DueTo)
 }

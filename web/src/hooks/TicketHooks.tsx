@@ -130,6 +130,19 @@ export const useSetTicketPerson = () => {
   });
 };
 
+export const useSetTicketDueOn = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("tickets:write", async ({ id, dueOn }: { id: string; dueOn: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/due-date`, { due_on: dueOn })).data),
+    onSuccess: async (ticket, vars) => {
+      await ticketChanged(client, ticket);
+      toast.success(vars.dueOn ? "Due date updated" : "Due date cleared");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useSetTicketSource = () => {
   const client = useQueryClient();
   return useMutation({
@@ -298,7 +311,7 @@ interface TicketPayload {
   ticket: Ticket;
 }
 
-const changedTopics = ["ticket.updated", "ticket.status_changed", "ticket.developer_changed", "ticket.tester_changed", "ticket.finished"];
+const changedTopics = ["ticket.updated", "ticket.status_changed", "ticket.developer_changed", "ticket.tester_changed", "ticket.due_date_changed", "ticket.finished"];
 
 export const ticketFollower: LiveFollower = {
   "ticket.created": ({ ticket }: TicketPayload, { client }) => ticketCreated(client, ticket),

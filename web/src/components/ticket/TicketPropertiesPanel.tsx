@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { microheaderClass } from "@/components/Microheader";
 import { TicketCategoryRow } from "@/components/ticket/TicketCategoryRow";
+import { TicketDueRow } from "@/components/ticket/TicketDueRow";
 import { TicketLabelsRow } from "@/components/ticket/TicketLabelsRow";
 import { TicketPersonRow } from "@/components/ticket/TicketPersonRow";
 import { TicketReporterRow } from "@/components/ticket/TicketReporterRow";
@@ -38,6 +39,7 @@ export const TicketPropertiesPanel = ({
         <TicketCategoryRow ticket={ticket} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Developer} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Tester} />
+        <TicketDueRow ticket={ticket} />
         <TicketReporterRow ticket={ticket} />
         <TicketLabelsRow ticket={ticket} onAddLabel={onAddLabel} onRemoveLabel={onRemoveLabel} />
         <TicketTypeRow ticket={ticket} onSetType={onSetType} />

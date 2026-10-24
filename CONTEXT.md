@@ -940,6 +940,12 @@ and shows as Nexul on behalf of a person when an agent or automation filed
 it.
 _Avoid_: Assignee, owner, creator
 
+**Due date** (ticket):
+The day a ticket is due, a plain `YYYY-MM-DD` with no time or timezone, optional. Anyone who
+can edit the ticket sets or clears it; anyone who can see the ticket sees it. Publishes
+`ticket.due_date_changed`.
+_Avoid_: Deadline, due time
+
 **Found in**:
 A bug's link to the ticket it was found in, carried by every bug unless its
 reporter marked the origin unknown. A done ticket is never reopened; a bug

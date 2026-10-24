@@ -26,6 +26,7 @@ const ticket = (id: string, projectId: string, overrides: Partial<Ticket> = {}):
   developer: "",
   tester: "",
   reporter: { kind: "user", login: "onik97" },
+  due_on: "",
   created_at: "",
   updated_at: "",
   labels: [],

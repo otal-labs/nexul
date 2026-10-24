@@ -10,6 +10,7 @@ import {
   useFetchTicket,
   useFetchTickets,
   useFetchTicketsByDoc,
+  useSetTicketDueOn,
   useUpdateTicket,
   useUpdateTicketPosition,
   useUpdateTicketStatus,
@@ -39,6 +40,7 @@ const ticket = {
   developer: "onik97",
   tester: "",
   reporter: { kind: "user", login: "onik97" },
+  due_on: "",
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
 };
@@ -144,6 +146,7 @@ type Wrapper = ({ children }: { children: ReactNode }) => ReactNode;
 describe.each([
   ["useUpdateTicket", async (w: Wrapper) => renderHook(() => useUpdateTicket(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", title: "New title", body: "" })],
   ["useUpdateTicketStatus", async (w: Wrapper) => renderHook(() => useUpdateTicketStatus(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done })],
+  ["useSetTicketDueOn", async (w: Wrapper) => renderHook(() => useSetTicketDueOn(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", dueOn: "2026-10-30" })],
 ])("%s", (_, save) => {
   it("puts the server's ticket in every cached view", async () => {
     const saved = { ...ticket, title: "New title", status: TicketStatus.Done, updated_at: "2026-08-02T12:00:05Z" };
@@ -175,6 +178,16 @@ describe("useUpdateTicketPosition", () => {
 });
 
 describe("the ticket follower", () => {
+  it("puts a ticket whose due date changed into the views holding it, without a request", async () => {
+    const client = seeded([
+      [["getTicketsByProject", "p-1"], [ticket]],
+      [["getTicket", "t-1"], ticket],
+    ]);
+    await followFrame(ticketFollower, "ticket.due_date_changed", { ticket: { ...ticket, due_on: "2026-10-30" }, previous_due_on: "" }, client);
+    expect(client.getQueryData<Ticket>(["getTicket", "t-1"])?.due_on).toBe("2026-10-30");
+    expect(client.getQueryData<Ticket[]>(["getTicketsByProject", "p-1"])?.[0]?.due_on).toBe("2026-10-30");
+  });
+
   const inColumn = (id: string, status: string) => ({ id, project_id: "p-1", doc_id: "", status, title: id, updated_at: "" });
 
   it("refetches the tickets of a deleted column and the lists holding them, and leaves other lists alone", async () => {

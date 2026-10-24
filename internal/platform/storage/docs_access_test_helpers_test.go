@@ -52,3 +52,9 @@ func (allowAll) DocsWith(context.Context, string, string, permissions.Action) (p
 func (allowAll) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
 	return nil, true, nil
 }
+
+func (allowAll) Require(context.Context, string, permissions.Action) error { return nil }
+
+func (allowAll) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}

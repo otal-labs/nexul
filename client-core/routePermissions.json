@@ -82,6 +82,7 @@
   "PATCH /api/ticket-types/{id}": ["projects:write"],
   "PATCH /api/tickets/{id}": ["tickets:write"],
   "PATCH /api/tickets/{id}/developer": ["tickets:write"],
+  "PATCH /api/tickets/{id}/due-date": ["tickets:write"],
   "PATCH /api/tickets/{id}/position": ["tickets:write"],
   "PATCH /api/tickets/{id}/source": ["tickets:write"],
   "PATCH /api/tickets/{id}/status": ["tickets:write"],

@@ -907,6 +907,73 @@ func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullSt
 	return items, nil
 }
 
+const listTicketsDueBetween = `-- name: ListTicketsDueBetween :many
+SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets
+WHERE due_on != '' AND due_on >= ?1 AND due_on <= ?2
+  AND project_id IN (SELECT id FROM projects WHERE workspace_id = ?3)
+  AND (?4 OR project_id IN (SELECT value FROM json_each(?5)))
+ORDER BY due_on, id
+`
+
+type ListTicketsDueBetweenParams struct {
+	FromOn      string
+	ToOn        string
+	WorkspaceID string
+	AllProjects interface{}
+	Readable    interface{}
+}
+
+// Due tickets in one workspace's projects, limited to the readable set unless the caller reads them all; the explicit non-empty test is what lets idx_tickets_due_on serve the range.
+func (q *Queries) ListTicketsDueBetween(ctx context.Context, arg ListTicketsDueBetweenParams) ([]Ticket, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketsDueBetween,
+		arg.FromOn,
+		arg.ToOn,
+		arg.WorkspaceID,
+		arg.AllProjects,
+		arg.Readable,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Ticket
+	for rows.Next() {
+		var i Ticket
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.Status,
+			&i.DocID,
+			&i.Developer,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProjectID,
+			&i.CategoryID,
+			&i.TypeID,
+			&i.FinishedAt,
+			&i.Position,
+			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
+			&i.DueOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const maxTicketNumberInProject = `-- name: MaxTicketNumberInProject :one
 SELECT MAX(number) FROM tickets WHERE project_id IS ?
 `
@@ -1061,6 +1128,24 @@ type UpdateTicketDocParams struct {
 
 func (q *Queries) UpdateTicketDoc(ctx context.Context, arg UpdateTicketDocParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateTicketDoc, arg.DocID, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateTicketDueOn = `-- name: UpdateTicketDueOn :execrows
+UPDATE tickets SET due_on = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateTicketDueOnParams struct {
+	DueOn     string
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) UpdateTicketDueOn(ctx context.Context, arg UpdateTicketDueOnParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateTicketDueOn, arg.DueOn, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

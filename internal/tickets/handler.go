@@ -50,6 +50,10 @@ type setSourceRequest struct {
 	DocID string `json:"doc_id"`
 }
 
+type setDueOnRequest struct {
+	DueOn string `json:"due_on"`
+}
+
 type setPersonRequest struct {
 	Login string `json:"login"`
 }
@@ -107,6 +111,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/tickets/labels/{label}/color", h.setLabelColor)
 	mux.HandleFunc("POST /api/tickets/dev-status", h.devStatus)
 	mux.HandleFunc("GET /api/tickets/blockers", h.unclearedBlockers)
+	mux.HandleFunc("GET /api/tickets/due", h.due)
 	mux.HandleFunc("GET /api/tickets/{id}", h.get)
 	mux.HandleFunc("PATCH /api/tickets/{id}", h.update)
 	mux.HandleFunc("PATCH /api/tickets/{id}/status", h.updateStatus)
@@ -114,6 +119,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/tickets/{id}/type", h.setType)
 	mux.HandleFunc("PATCH /api/tickets/{id}/developer", h.setPerson(RoleDeveloper))
 	mux.HandleFunc("PATCH /api/tickets/{id}/tester", h.setPerson(RoleTester))
+	mux.HandleFunc("PATCH /api/tickets/{id}/due-date", h.setDueOn)
 	mux.HandleFunc("PATCH /api/tickets/{id}/source", h.setSource)
 	mux.HandleFunc("GET /api/tickets/{id}/labels", h.listLabels)
 	mux.HandleFunc("POST /api/tickets/{id}/labels", h.addLabel)
@@ -290,6 +296,37 @@ func (h *Handler) setPerson(role Role) http.HandlerFunc {
 		}
 		httpx.WriteJSON(w, http.StatusOK, t)
 	}
+}
+
+// setDueOn sets the ticket's due date as YYYY-MM-DD; an empty due_on clears it.
+func (h *Handler) setDueOn(w http.ResponseWriter, r *http.Request) {
+	var req setDueOnRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	t, err := h.svc.SetDueOn(r.Context(), r.PathValue("id"), req.DueOn)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+// dueList is the tickets due in a range of days.
+type dueList struct {
+	Items []ticketJSON `json:"items"`
+}
+
+// due lists the workspace's tickets due from..to inclusive.
+func (h *Handler) due(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	ts, err := h.svc.DueBetween(r.Context(), q.Get("workspace_id"), q.Get("from"), q.Get("to"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, dueList{Items: jsonList(ts)})
 }
 
 func (h *Handler) listLabels(w http.ResponseWriter, r *http.Request) {

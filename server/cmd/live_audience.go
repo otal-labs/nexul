@@ -92,6 +92,7 @@ var liveRules = map[string]liveRule{
 	tickets.TopicAssigneeChanged:         ticketFrame,
 	tickets.TopicDeveloperChanged:        ticketFrame,
 	tickets.TopicTesterChanged:           ticketFrame,
+	tickets.TopicDueDateChanged:          ticketFrame,
 	tickets.TopicFinished:                ticketFrame,
 	tickets.TopicDeleted:                 ticketDeletedFrame,
 	tickets.TopicLinkCreated:             ticketLinkFrame,
