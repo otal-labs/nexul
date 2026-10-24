@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/botwebhook"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/connectors"
@@ -139,6 +140,9 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	botwebhookRoutes := botwebhook.NewHandler(svc.botwebhookSvc).Routes()
 	mountGateway(apiMux, "/api/conversations", botwebhookRoutes)
 	mountGateway(apiMux, "/api/botwebhooks", botwebhookRoutes)
+	calendarRoutes := calendar.NewHandler(svc.calendarSvc).Routes()
+	mountGateway(apiMux, "/api/workspaces/{workspaceID}/meetings", calendarRoutes)
+	mountGateway(apiMux, "/api/meetings", calendarRoutes)
 	mountGateway(apiMux, "/api/agent", agentHandler.Routes())
 	integrationsRoutes := integrations.NewHandler(svc.integrationsSvc).Routes()
 	mountGateway(apiMux, "/api/integrations", integrationsRoutes)
@@ -185,6 +189,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Mentions:    svc.mentionsSvc,
 		Chat:        svc.chatSvc,
 		Botwebhooks: svc.botwebhookSvc,
+		Calendar:    svc.calendarSvc,
 		Plays:       svc.playsSvc,
 		PlayRuns:    svc.playsRunner,
 		Pairing:     svc.pairingSvc,
@@ -288,6 +293,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("chat", "Workspace conversations, messages, and unread state")
 	spec.SetTagDescription("voice", "Voice channel join tokens and live occupancy")
 	spec.SetTagDescription("botwebhooks", "Bots: a conversation's webhook posters, their URLs, deletion, and restore")
+	spec.SetTagDescription("calendar", "The workspace calendar: meetings, their invitees and replies, repeats, cancelling and restoring")
 	spec.SetTagDescription("agent", "The @Agent chat pipeline's stop control")
 	spec.SetTagDescription("integrations", "Integration installs, subscriptions, deliveries")
 	spec.SetTagDescription("events", "Published event-schema catalog")
@@ -445,6 +451,11 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/chat/conversations/{id}/members", "Add members to a private channel", "chat")
 	spec.Register("DELETE", "/api/chat/conversations/{id}/members/{userID}", "Remove a member from a private channel", "chat")
 	spec.Register("POST", "/api/chat/conversations/{id}/leave", "Leave a private channel", "chat")
+	spec.Register("GET", "/api/workspaces/{workspaceID}/meetings", "The caller's meetings between ?from and ?to (RFC 3339, at most 62 days apart) and each time they take place", "calendar")
+	spec.Register("POST", "/api/workspaces/{workspaceID}/meetings", "Create a meeting the caller organises (calendar:write); its invitees are told", "calendar")
+	spec.Register("GET", "/api/meetings/{id}", "One meeting the caller organises or is invited to, with its invitees and their replies", "calendar")
+	spec.Register("PATCH", "/api/meetings/{id}", "Change, cancel or restore a meeting, or with slot and scope one occurrence or it and every later one (the organiser with calendar:write, or calendar:delete)", "calendar")
+	spec.Register("PUT", "/api/meetings/{id}/reply", "Accept or decline a meeting the caller is invited to", "calendar")
 	spec.Register("GET", "/api/conversations/{id}/botwebhooks", "List a conversation's bots (botwebhook:read); URLs only with botwebhook:write; ?deleted=true lists the deleted ones (botwebhook:write)", "botwebhooks")
 	spec.Register("POST", "/api/conversations/{id}/botwebhooks", "Create a bot with a name and an avatar (botwebhook:write); ten live bots per conversation", "botwebhooks")
 	spec.Register("PATCH", "/api/botwebhooks/{id}", "Rename a bot, change or clear its avatar, regenerate its URL, or restore it with a new URL via deleted false (botwebhook:write)", "botwebhooks")

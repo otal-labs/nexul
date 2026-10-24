@@ -589,6 +589,24 @@ instead, or a centered dialog when the record is a short form of its own (the
 Team's person dialog, its body scrolling between a fixed header and footer); a
 page that works as a full detail view is not forced into a drawer.
 
+Calendar. A page of its own, not a list pane: the title and New meeting over
+one toolbar row of previous, next and Today as outline buttons, the period's
+name, and a Month | Week segmented control at the right. The month is a
+hairline grid of seven columns, a week to a row, each cell its day number
+(today in an ink disc, never the accent) over its entries; days of the
+neighbouring months are muted, and a cell past three entries ends in "N more",
+which opens that day's week. The week is seven hairline rows, the weekday and
+number on the left and every entry beside it in time order. An entry is one
+line, a mono time then the title, the title wrapping under the time when the
+cell is narrow; a due ticket leads its day with a small calendar icon, its key
+in mono and its title; a cancelled meeting is muted and struck through and
+opens like any other. A meeting opens in the right sheet, its address
+`?meeting=<id>&slot=<occurrence>` so a notice can link to it: title and time in
+the header, facts, notes, the people grouped Coming, Declined and No reply, and
+what the viewer can do at the foot. The grid stands while the next period
+loads, so stepping never swaps it for a spinner. New meeting and Edit are one
+form dialog at 36rem.
+
 Ticket page. The page runs the full width beside the sidebar, with no centred
 cap, as one full-height panel. Its header spans the panel, so a long title
 reads across it, and under it a line tab row holds Ticket and Thread, each tab

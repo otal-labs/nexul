@@ -32,8 +32,10 @@ type User struct {
 	AvatarURL      string        `json:"avatar_url"`
 	FirstLoginDone bool          `json:"first_login_done"`
 	AccountStatus  AccountStatus `json:"account_status"`
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
+	// Timezone is the IANA timezone the person's app last reported, empty until it has.
+	Timezone  string    `json:"timezone,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`

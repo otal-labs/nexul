@@ -29,6 +29,8 @@ export const AREA_PERMISSION = {
   editNotes: "tickets:write",
   editTickets: "tickets:write",
   deleteTickets: "tickets:delete",
+  newMeeting: "calendar:write",
+  changeAnyMeeting: "calendar:delete",
 } as const;
 
 export type Area = keyof typeof AREA_PERMISSION;

@@ -17,6 +17,7 @@ import {
   AutomationPage,
   AutomationsPage,
   BoardPage,
+  CalendarPage,
   ChatPage,
   ConfigurationPage,
   DeployPage,
@@ -62,6 +63,7 @@ const staticTabs = (path: string, tabs: string[], area: RouteArea, element: Reac
 const workspaceRoutes: RouteObject[] = [
   { index: true, handle: projectGate(), element: <HomePage /> },
   { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
+  { path: "calendar", element: <CalendarPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
   { path: "wizard/project/import", handle: gate("editStacks"), element: <ProjectWizardImportPage /> },

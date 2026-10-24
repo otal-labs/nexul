@@ -307,6 +307,17 @@ func (f *fakeUserStore) SetProfileOverride(_ context.Context, id string, display
 	return nil
 }
 
+func (f *fakeUserStore) SetTimezone(_ context.Context, id, timezone string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	u.Timezone = timezone
+	return nil
+}
+
 // fakeAllowlist is an in-memory AllowlistStore.
 type fakeAllowlist struct {
 	mu  sync.Mutex

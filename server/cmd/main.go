@@ -13,10 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	// Meetings repeat in their own timezone, which a Windows or container host may have no database to load (ADR 0168).
+	_ "time/tzdata"
+
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/botwebhook"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
@@ -269,6 +273,7 @@ var livePushTopics = []string{
 	tickets.TopicAssigneeChanged,
 	tickets.TopicDeveloperChanged,
 	tickets.TopicTesterChanged,
+	tickets.TopicDueDateChanged,
 	tickets.TopicFinished,
 	tickets.TopicDeleted,
 	tickets.TopicLinkCreated,
@@ -292,6 +297,11 @@ var livePushTopics = []string{
 	botwebhook.TopicUpdated,
 	botwebhook.TopicDeleted,
 	botwebhook.TopicRestored,
+	calendar.TopicMeetingCreated,
+	calendar.TopicMeetingUpdated,
+	calendar.TopicMeetingCancelled,
+	calendar.TopicMeetingRestored,
+	calendar.TopicMeetingReplied,
 	voice.TopicOccupancyChanged,
 	pairing.TopicSetupConfirmed,
 	pairing.TopicSetupUnconfirmed,

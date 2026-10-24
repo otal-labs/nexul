@@ -33,6 +33,7 @@ const ticketAt = (status: string): Ticket => ({
   developer: "",
   tester: "",
   reporter: { kind: "user", login: "onik97" },
+  due_on: "",
   labels: [],
   created_at: "",
   updated_at: "",

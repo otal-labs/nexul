@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/deploy"
@@ -353,6 +354,20 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 	mustSubscribe(ctx, bus, "notifications", plays.TopicRunWaiting, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandlePlayRunWaiting(ctx, svc.notifSvc, ev)
+	})
+	for _, topic := range []string{calendar.TopicMeetingCreated, calendar.TopicMeetingUpdated, calendar.TopicMeetingRestored} {
+		mustSubscribe(ctx, bus, "notifications", topic, "", func(ctx context.Context, ev eventbus.Event) error {
+			return workspace.HandleMeetingInvited(ctx, svc.notifSvc, ev)
+		})
+	}
+	mustSubscribe(ctx, bus, "notifications", calendar.TopicMeetingCancelled, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleMeetingCancelled(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", calendar.TopicReminderDue, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleMeetingReminder(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", calendar.TopicDueDateReminder, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleDueDateReminder(ctx, svc.notifSvc, ev)
 	})
 	mustSubscribe(ctx, bus, "notifications", pairing.TopicMoveRequested, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleComputerMoveRequested(ctx, svc.notifSvc, ev)

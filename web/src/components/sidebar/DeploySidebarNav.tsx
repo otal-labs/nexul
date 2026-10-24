@@ -1,4 +1,4 @@
-import { Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
+import { CalendarDays, Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { type SidebarNavEntry } from "@/components/SidebarNav";
@@ -9,6 +9,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/runners", label: "Runners", icon: Cpu },
   { to: "/topology", label: "Topology", icon: Network, area: "topology" },
   { to: "/plays", label: "Plays", icon: Sparkles, area: "plays" },

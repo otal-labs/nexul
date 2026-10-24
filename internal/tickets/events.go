@@ -13,6 +13,7 @@ const (
 	TopicAssigneeChanged  = "ticket.assignee_changed" // deprecated alias of TopicDeveloperChanged, still published (ADR 0044)
 	TopicDeveloperChanged = "ticket.developer_changed"
 	TopicTesterChanged    = "ticket.tester_changed"
+	TopicDueDateChanged   = "ticket.due_date_changed"
 	TopicFinished         = "ticket.finished"
 	TopicDeleted          = "ticket.deleted"
 	TopicLinkCreated      = "ticket.link_created"
@@ -31,6 +32,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicAssigneeChanged, Payload: AssigneeChangedEvent{}, Description: "Deprecated in favour of ticket.developer_changed; still published with the same payload whenever the developer changes."},
 		{Name: TopicDeveloperChanged, Payload: PersonChangedEvent{}},
 		{Name: TopicTesterChanged, Payload: PersonChangedEvent{}},
+		{Name: TopicDueDateChanged, Payload: DueDateChangedEvent{}, Description: "A ticket's due date was set, changed, or cleared; an empty previous_due_on means it had none, and an empty due_on on the ticket means it has none now."},
 		{Name: TopicFinished, Payload: FinishedEvent{}},
 		{Name: TopicDeleted, Payload: DeletedEvent{}},
 		{Name: TopicLinkCreated, Payload: LinkEvent{}, Description: "A found-in or blocked-by link was added; ticket_id is found in or blocked by target_id, and an empty target_id on found_in marks the origin unknown."},
@@ -75,6 +77,13 @@ type PersonChangedEvent struct {
 	From   string `json:"from"`
 	To     string `json:"to"`
 	Actor  Actor  `json:"actor,omitzero" jsonschema:"Who changed the person: a member, or an automation."`
+}
+
+// DueDateChangedEvent is the payload for ticket.due_date_changed; Ticket reflects the new due date.
+type DueDateChangedEvent struct {
+	Ticket        Ticket `json:"ticket"`
+	PreviousDueOn string `json:"previous_due_on" jsonschema:"The due date before the change as YYYY-MM-DD; empty when the ticket had none."`
+	Actor         Actor  `json:"actor,omitzero" jsonschema:"Who changed the due date: a member, or an automation."`
 }
 
 // AssigneeChangedEvent is ticket.assignee_changed's unchanged payload, published beside ticket.developer_changed.

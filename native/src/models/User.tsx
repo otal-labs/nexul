@@ -5,6 +5,8 @@ export interface User {
   avatar_url: string;
   display_name?: string;
   avatar_override_url?: string;
+  // The IANA zone the server last heard this person's app run in; absent until one reports.
+  timezone?: string;
 }
 
 // The one rule for which avatar to show: the manual override if set, else the provider-sourced one.

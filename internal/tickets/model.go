@@ -37,10 +37,11 @@ type Ticket struct {
 	// Number combines with the project's Prefix to render PREFIX-NUMBER; ID remains the real primary key.
 	Number int    `json:"number"`
 	DocID  string `json:"doc_id"`
-	// Developer and Tester are member logins, both optional; Reporter is set once at creation and never edited.
+	// Developer and Tester are member logins, both optional; Reporter is set once at creation and never edited; DueOn is a YYYY-MM-DD day, empty for none.
 	Developer  string     `json:"developer"`
 	Tester     string     `json:"tester"`
 	Reporter   Reporter   `json:"reporter"`
+	DueOn      string     `json:"due_on"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
@@ -176,6 +177,8 @@ type TicketFilter struct {
 	Query string
 	// BlockedOnly keeps tickets still waiting on a blocker the caller can read that is neither finished nor done.
 	BlockedOnly bool
+	// DueFrom and DueTo keep tickets due within those YYYY-MM-DD days, inclusive; an empty end is open.
+	DueFrom, DueTo string
 }
 
 // TicketScope is what access lets a ticket list show: everything with All, otherwise the tickets of ProjectIDs.

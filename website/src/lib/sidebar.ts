@@ -15,6 +15,7 @@ export const guideGroups = [
 			guide('docs-tickets-and-board'),
 			guide('chat-and-voice'),
 			guide('bots'),
+			guide('calendar'),
 			guide('automations'),
 		],
 	},

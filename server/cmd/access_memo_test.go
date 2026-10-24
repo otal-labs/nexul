@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
@@ -264,14 +265,32 @@ func grow(t *testing.T, f permFixture, n int) []string {
 		ticket, err := f.svc.ticketsSvc.Create(ctx, pGeneral, fmt.Sprintf("Login times out %d", i), "", "", "")
 		require.NoError(t, err)
 		ticketIDs = append(ticketIDs, ticket.ID)
+		_, err = f.svc.ticketsSvc.SetDueOn(ctx, ticket.ID, "2026-10-12")
+		require.NoError(t, err)
 		_, err = f.svc.chatSvc.GetOrCreateTicketThread(ctx, wsDefault, ticket.ID, uReader)
 		require.NoError(t, err)
 		_, err = f.svc.chatSvc.CreateChannel(ctx, wsDefault, uOwner, fmt.Sprintf("room-%d-%d", n, i))
 		require.NoError(t, err)
 		_, err = f.svc.chatSvc.CreatePrivateChannel(as(uWriter), wsDefault, uWriter, fmt.Sprintf("quiet-%d-%d", n, i), chat.KindChannel, []string{uReader})
 		require.NoError(t, err)
+		growMeetings(t, f, fmt.Sprintf("%d-%d", n, i), now)
 	}
 	return ticketIDs
+}
+
+// growMeetings adds a weekly meeting the reader is invited to with one occurrence changed on its own, so each
+// calendar path has a series to expand and a replacement to read.
+func growMeetings(t *testing.T, f permFixture, suffix string, now time.Time) {
+	t.Helper()
+	start := now.Truncate(time.Hour)
+	slot := start.AddDate(0, 0, 7)
+	series := &calendar.Meeting{ID: "meet-" + suffix, WorkspaceID: wsDefault, OrganiserID: uOwner, Title: "Standup", Timezone: "UTC",
+		StartsAt: start, EndsAt: start.Add(30 * time.Minute), Repeats: calendar.RepeatWeekly, RemindMinutes: 10,
+		Invitees: []calendar.Invitee{{UserID: uReader, Reply: calendar.ReplyPending}}, CreatedAt: now, UpdatedAt: now}
+	one := *series
+	one.ID, one.Repeats, one.SeriesID, one.ReplacesAt = "meet-one-"+suffix, calendar.RepeatNone, series.ID, &slot
+	one.StartsAt, one.EndsAt = slot.Add(time.Hour), slot.Add(90*time.Minute)
+	require.NoError(t, f.store.Meetings.Save(context.Background(), []*calendar.Meeting{series, &one}))
 }
 
 // guardPlay is the play queueRuns queues a run of on every ticket, for the play's queued-runs path.
@@ -405,6 +424,26 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 			// Every member but the outsider, and the readers grow added.
 			if want := len(people) - 1 + len(ticketIDs) - 1; err == nil && len(listed) != want {
 				err = fmt.Errorf("listed %d people, want %d", len(listed), want)
+			}
+			return err
+		},
+		"calendar range": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			from := time.Now().AddDate(0, 0, -1)
+			ms, _, err := f.svc.calendarSvc.Calendar(ctx, wsDefault, from, from.AddDate(0, 0, 30))
+			if err == nil && len(ms) != 2*(len(ticketIDs)-1) {
+				err = fmt.Errorf("listed %d meetings, want %d", len(ms), 2*(len(ticketIDs)-1))
+			}
+			return err
+		},
+		"meeting_list": func(ctx context.Context, f permFixture, _ []string) error {
+			_, err := tool(t, calendar.MCPTools(f.svc.calendarSvc), "meeting_list").Call(ctx, json.RawMessage(`{"workspace_id":"`+wsDefault+`"}`))
+			return err
+		},
+		"tickets due in a range": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			due, err := f.svc.ticketsSvc.DueBetween(ctx, wsDefault, "2026-10-01", "2026-10-31")
+			// grow gives every ticket it adds a due date and leaves the fixture's own without.
+			if err == nil && len(due) != len(ticketIDs)-1 {
+				err = fmt.Errorf("listed %d due tickets, want %d", len(due), len(ticketIDs)-1)
 			}
 			return err
 		},

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/access"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
@@ -92,8 +93,8 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	for _, stmt := range []string{
-		`INSERT INTO tickets (id, title, body, status, project_id, created_at, updated_at, number, position)
-			SELECT printf('t-%05d', i), 'Login times out ' || i, '', 'open', 'project-general', 1700000000 + i, 1700000000 + i, 100 + i, i FROM n`,
+		`INSERT INTO tickets (id, title, body, status, project_id, created_at, updated_at, number, position, due_on)
+			SELECT printf('t-%05d', i), 'Login times out ' || i, '', 'open', 'project-general', 1700000000 + i, 1700000000 + i, 100 + i, i, printf('2026-10-%02d', 1 + i % 28) FROM n`,
 		`INSERT INTO docs (id, title, body, body_md, version, created_at, updated_at, project_id, folder_id)
 			SELECT printf('d-%05d', i), 'Runbook ' || i, '{"type":"doc","content":[]}', 'rollback step ' || i, 1, 1700000000 + i, 1700000000 + i, 'project-general', 'folder-general-main' FROM n`,
 		`INSERT INTO deploys (id, service, target, image, status, strategy, created_at, updated_at, stack_id)
@@ -102,6 +103,8 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 			SELECT printf('n-%05d', i), 'u-owner', 'workspace-default', 'ticket_assigned', 'ticket', printf('t-%05d', i), 'Ticket', 0, 1700000000 + i FROM n`,
 		`INSERT INTO memories (id, workspace_id, project_id, title, when_to_use, body, created_at, updated_at)
 			SELECT printf('mem-%05d', i), 'workspace-default', 'project-general', 'Note ' || i, 'when ' || i, 'body', 1700000000 + i, 1700000000 + i FROM n`,
+		`INSERT INTO meetings (id, workspace_id, organiser_id, title, starts_at, ends_at, created_at, updated_at)
+			SELECT printf('meet-%05d', i), 'workspace-default', 'u-owner', 'Sync ' || i, 1700000000 + i * 3600, 1700001800 + i * 3600, 1, 1 FROM n`,
 	} {
 		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000) ` + stmt)
 		require.NoError(t, err)
@@ -113,15 +116,18 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	tools = append(tools, deploy.MCPTools(s.deploySvc)...)
 	tools = append(tools, workspace.NotificationMCPTools(s.notifSvc)...)
 	tools = append(tools, memories.MCPTools(s.memoriesSvc)...)
+	tools = append(tools, calendar.MCPTools(s.calendarSvc)...)
 	for _, tc := range []struct{ tool, args, viewer string }{
 		{"ticket_list", `{}`, uOwner},
 		{"ticket_list", `{"query":"login"}`, uOwner},
+		{"ticket_list", `{"due_from":"2026-10-01","due_to":"2026-10-31"}`, uOwner},
 		{"doc_list", `{}`, uOwner},
 		{"doc_list", `{}`, uReader},
 		{"doc_list", `{"query":"rollback"}`, uOwner},
 		{"deploy_list", `{}`, uOwner},
 		{"notification_list", `{"offset":1500}`, uOwner},
 		{"memory_list", `{"project_id":"project-general"}`, uOwner},
+		{"meeting_list", `{"workspace_id":"workspace-default"}`, uOwner},
 	} {
 		t.Run(tc.tool+" "+tc.args+" as "+tc.viewer, func(t *testing.T) {
 			st.Reset()
@@ -371,6 +377,10 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 	require.NoError(t, err)
 	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: f.ticket.ID, Kind: tickets.LinkBlockedBy, TargetID: clientTicket.ID, CreatedAt: now}))
 	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: clientTicket.ID, Kind: tickets.LinkBlockedBy, TargetID: blocker.ID, CreatedAt: now}))
+	for id, due := range map[string]string{f.ticket.ID: "2026-10-05", clientTicket.ID: "2026-10-05", blocker.ID: "2026-11-03"} {
+		_, err := f.svc.ticketsSvc.SetDueOn(ctx, id, due)
+		require.NoError(t, err)
+	}
 
 	for id, project := range map[string]string{"doc-private": pGeneral, "doc-shared": pGeneral, "doc-client": pClient} {
 		require.NoError(t, f.store.Docs.Create(ctx, &docs.Doc{ID: id, ProjectID: project, Title: "Spec " + id, Body: `{"type":"doc","content":[]}`, Version: 1, CreatedAt: now, UpdatedAt: now}))
@@ -400,7 +410,29 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 		}
 	}
 	require.NoError(t, f.store.Notifications.CreateMany(ctx, notices))
+
+	for i, m := range []struct{ id, organiser, workspace string }{
+		{"meet-owner", uOwner, wsDefault}, {"meet-client", uClient, wsDefault}, {"meet-plain", uPlain, wsDefault}, {"meet-reader", uReader, wsDefault},
+	} {
+		at := now.Add(time.Duration(i) * time.Hour).Truncate(time.Second)
+		require.NoError(t, f.store.Meetings.Save(ctx, []*calendar.Meeting{{ID: m.id, WorkspaceID: m.workspace, OrganiserID: m.organiser,
+			Title: "Sync", Timezone: "UTC", StartsAt: at, EndsAt: at.Add(time.Hour), Repeats: calendar.RepeatNone,
+			Invitees:  []calendar.Invitee{{UserID: uReader, Reply: calendar.ReplyPending}, {UserID: uOutsider, Reply: calendar.ReplyPending}},
+			CreatedAt: now, UpdatedAt: now}}))
+	}
 	return f
+}
+
+// rowByRowMeetings is every parity meeting user may open one by one, in the calendar's order.
+func rowByRowMeetings(t *testing.T, f permFixture, user string) []string {
+	t.Helper()
+	var out []string
+	for _, id := range []string{"meet-owner", "meet-client", "meet-plain", "meet-reader"} {
+		if _, err := f.svc.calendarSvc.Get(as(user), id); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // TestListTools_ShowWhatTheRowByRowCheckShowed holds each list tool, now filtered in SQL, to what the path it replaced
@@ -416,13 +448,15 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
 	runners := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(s.accessSvc)
 	machineList := tool(t, runner.MCPTools(runners), "machine_list")
+	meetingList := tool(t, calendar.MCPTools(s.calendarSvc), "meeting_list")
 
 	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient, uUnlisted, uNoRole} {
 		t.Run(user, func(t *testing.T) {
-			listed, searched, blocked := rowByRowTickets(t, f, user)
+			listed, searched, blocked, due := rowByRowTickets(t, f, user)
 			assert.Equal(t, listed, pageThrough(t, s.accessSvc, ticketList, user, ""), "ticket_list")
 			assert.Equal(t, searched, pageThrough(t, s.accessSvc, ticketList, user, `"query":"login",`), "ticket_list query")
 			assert.Equal(t, blocked, pageThrough(t, s.accessSvc, ticketList, user, `"blocked_only":true,`), "ticket_list blocked_only")
+			assert.Equal(t, due, pageThrough(t, s.accessSvc, ticketList, user, `"due_from":"2026-10-01","due_to":"2026-10-31",`), "ticket_list due range")
 
 			docIDs, openable, ranked := rowByRowDocs(t, f, user)
 			assert.Equal(t, openable, docIDs, "listed equals openable")
@@ -441,6 +475,10 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 
 			assert.Equal(t, rowByRowInbox(t, f, user), pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
 
+			if user != uOutsider {
+				assert.Equal(t, rowByRowMeetings(t, f, user), pageThrough(t, s.accessSvc, meetingList, user, `"workspace_id":"`+wsDefault+`",`), "meeting_list")
+			}
+
 			assert.Equal(t, rowByRowMachines(t, f, user), pageThrough(t, s.accessSvc, machineList, user, ""), "machine_list")
 			rs, err := runners.ListRunners(as(user))
 			require.NoError(t, err)
@@ -457,8 +495,9 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	}
 }
 
-// rowByRowTickets is what the tickets use-cases that check each row show user: every ticket, a search, and the blocked.
-func rowByRowTickets(t *testing.T, f permFixture, user string) (listed, searched, blocked []string) {
+// rowByRowTickets is what the tickets use-cases that check each row show user: every ticket, a search, the blocked, and
+// those due in October by due date then id.
+func rowByRowTickets(t *testing.T, f permFixture, user string) (listed, searched, blocked, due []string) {
 	t.Helper()
 	ts, err := f.svc.ticketsSvc.List(as(user))
 	require.NoError(t, err)
@@ -474,7 +513,9 @@ func rowByRowTickets(t *testing.T, f permFixture, user string) (listed, searched
 			blocked = append(blocked, tk.ID)
 		}
 	}
-	return ticketIDs(ts), searched, blocked
+	inOctober := slices.DeleteFunc(slices.Clone(ts), func(tk *tickets.Ticket) bool { return tk.DueOn < "2026-10-01" || tk.DueOn > "2026-10-31" })
+	slices.SortFunc(inOctober, func(a, b *tickets.Ticket) int { return strings.Compare(a.DueOn+" "+a.ID, b.DueOn+" "+b.ID) })
+	return ticketIDs(ts), searched, blocked, ticketIDs(inOctober)
 }
 
 // rowByRowDocs is what the docs use-cases that check each row show user: every doc listed, every doc a single read

@@ -70,6 +70,27 @@ of someone's workspaces is refused rather than guessed. The ticket's id stays
 the one reference that needs nothing else.
 _Avoid_: Ticket id (that is the UUID), ticket number (only the second half)
 
+**Due date**:
+The day a ticket is due, a date with no time, set or cleared by anyone who can
+edit the ticket. It shows on the Calendar to whoever sees the ticket, and the
+ticket's developer is reminded at 09:00 the day before in their own timezone.
+_Avoid_: Deadline, due time
+
+**Meeting**:
+A planned time on a workspace's Calendar, organised by one member, who invites
+other members of the workspace. It takes place in a voice channel or at a link,
+and may repeat daily, weekly or monthly. Only its organiser and invitees see
+it. Invitees accept or decline; who has not declined gets a reminder before
+each occurrence. Cancelled, it stays on the calendar until restored.
+_Avoid_: Event (that is a bus message), appointment, invite (that is joining
+the instance)
+
+**Occurrence**:
+One time a meeting takes place. A meeting that doesn't repeat has one; a
+repeating meeting's are worked out from its start and its repeat, and its slot
+names one when a change covers it alone or it and the following ones.
+_Avoid_: Instance (that is the install), recurrence
+
 **Instance**:
 One self-hosted install of Nexul, owned by one person or group.
 Single-tenant by design.
@@ -955,6 +976,12 @@ and shows as Nexul on behalf of a person when an agent or automation filed
 it.
 _Avoid_: Assignee, owner, creator
 
+**Due date** (ticket):
+The day a ticket is due, a plain `YYYY-MM-DD` with no time or timezone, optional. Anyone who
+can edit the ticket sets or clears it; anyone who can see the ticket sees it. Publishes
+`ticket.due_date_changed`.
+_Avoid_: Deadline, due time
+
 **Found in**:
 A bug's link to the ticket it was found in, carried by every bug unless its
 reporter marked the origin unknown. A done ticket is never reopened; a bug
@@ -1287,6 +1314,9 @@ automations hosts they are placed on.
 route, limits, lifecycle, and the media proxy their messages' images load
 through. Posts reach chat through one use-case chat exposes; chat never
 learns what a webhook is.
+
+**Calendar** — meetings, their invitees and replies, repeats, and the
+reminders before each meeting and the day before a ticket's due date.
 
 **Chat** — conversations inside a workspace: channels, direct messages
 (shown in every workspace their people share), threads, and ticket threads,

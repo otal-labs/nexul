@@ -4,7 +4,7 @@ import { stackOptions, tabRootOptions } from "@/lib/stackOptions";
 
 export const unstable_settings = { initialRouteName: "index" };
 
-// docs/ and settings/ are stacks of their own that draw their own header, so this stack hides its bar over them.
+// calendar/, docs/ and settings/ are stacks of their own that draw their own header, so this stack hides its bar over them.
 export default function MoreLayout() {
   return (
     <Stack
@@ -12,6 +12,7 @@ export default function MoreLayout() {
     >
       <Stack.Screen name="index" options={{ ...tabRootOptions, title: "More" }} />
       <Stack.Screen name="runners/index" options={{ title: "" }} />
+      <Stack.Screen name="calendar" options={{ headerShown: false }} />
       <Stack.Screen name="docs" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>

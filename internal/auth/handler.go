@@ -213,6 +213,7 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/auth/me", h.me)
 	mux.HandleFunc("PUT /api/auth/profile", h.updateProfile)
+	mux.HandleFunc("PUT /api/auth/timezone", h.setTimezone)
 	mux.HandleFunc("POST /api/auth/onboarding/owner", h.completeOwnerWizard)
 	mux.HandleFunc("POST /api/auth/onboarding/profile", h.completeFirstLogin)
 	mux.HandleFunc("GET /api/auth/settings", h.getSettings)
@@ -559,6 +560,24 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, user)
+}
+
+type timezoneRequest struct {
+	Timezone string `json:"timezone"`
+}
+
+// setTimezone records the caller's own timezone; userID is from context, never the body.
+func (h *Handler) setTimezone(w http.ResponseWriter, r *http.Request) {
+	var req timezoneRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SetTimezone(r.Context(), currentUserID(r), req.Timezone); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type ownerWizardRequest struct {

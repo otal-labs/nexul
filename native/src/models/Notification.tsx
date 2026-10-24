@@ -15,6 +15,10 @@ export const NotificationKind = {
   ServiceRecovered: "service.container_recovered",
   ErrorRateCrossed: "stack.error_rate_crossed",
   ErrorRateRecovered: "stack.error_rate_recovered",
+  MeetingInvited: "meeting.invited",
+  MeetingCancelled: "meeting.cancelled",
+  MeetingReminder: "meeting.reminder",
+  TicketDueSoon: "ticket.due_soon",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -26,6 +30,7 @@ export const SubjectType = {
   // The phone shows no computers; the notice marks read with nothing to open.
   Computer: "computer",
   Stack: "stack",
+  Meeting: "meeting",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

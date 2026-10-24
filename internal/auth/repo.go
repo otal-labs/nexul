@@ -36,6 +36,8 @@ type UserStore interface {
 	MarkFirstLoginDone(ctx context.Context, id string) error
 	// SetProfileOverride sets the caller's profile override; nil clears to provider-sourced; UpsertUser never calls this.
 	SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string, events ...eventbus.OutboxEvent) error
+	// SetTimezone records the IANA timezone the person's app reported.
+	SetTimezone(ctx context.Context, id, timezone string) error
 }
 
 type OAuthHandoffStore interface {

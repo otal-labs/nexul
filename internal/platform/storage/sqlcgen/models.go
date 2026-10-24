@@ -666,6 +666,36 @@ type Machine struct {
 	LastSeen         int64
 }
 
+type Meeting struct {
+	ID             string
+	WorkspaceID    string
+	OrganiserID    string
+	Title          string
+	Notes          string
+	StartsAt       int64
+	EndsAt         int64
+	Timezone       string
+	VoiceChannelID string
+	Link           string
+	Repeats        string
+	RepeatUntil    sql.NullInt64
+	RemindMinutes  int64
+	SeriesID       string
+	ReplacesAt     sql.NullInt64
+	CancelledAt    sql.NullInt64
+	NextRemindAt   sql.NullInt64
+	NextOccurrence sql.NullInt64
+	CreatedAt      int64
+	UpdatedAt      int64
+}
+
+type MeetingInvitee struct {
+	MeetingID string
+	UserID    string
+	Reply     string
+	RepliedAt sql.NullInt64
+}
+
 type MemberRole struct {
 	UserID      string
 	WorkspaceID string
@@ -1156,6 +1186,7 @@ type Ticket struct {
 	ReporterLogin          string
 	ReporterAutomationID   string
 	ReporterAutomationName string
+	DueOn                  string
 }
 
 type TicketBranchLink struct {
@@ -1164,6 +1195,12 @@ type TicketBranchLink struct {
 	BranchRepo  string
 	BranchName  string
 	LinkedAt    int64
+}
+
+type TicketDueReminder struct {
+	TicketID string
+	DueOn    string
+	SentAt   int64
 }
 
 type TicketLabel struct {
@@ -1229,6 +1266,7 @@ type User struct {
 	AccountStatus     string
 	CreatedAt         int64
 	UpdatedAt         int64
+	Timezone          string
 }
 
 type UserIdentity struct {

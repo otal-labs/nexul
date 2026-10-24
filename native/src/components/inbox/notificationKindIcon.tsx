@@ -1,6 +1,10 @@
 import ArrowRightLeft from "lucide-react-native/icons/arrow-right-left";
 import AtSign from "lucide-react-native/icons/at-sign";
+import BellRing from "lucide-react-native/icons/bell-ring";
 import Brain from "lucide-react-native/icons/brain";
+import CalendarClock from "lucide-react-native/icons/calendar-clock";
+import CalendarPlus from "lucide-react-native/icons/calendar-plus";
+import CalendarX from "lucide-react-native/icons/calendar-x";
 import CircleCheck from "lucide-react-native/icons/circle-check";
 import CircleHelp from "lucide-react-native/icons/circle-question-mark";
 import CircleX from "lucide-react-native/icons/circle-x";
@@ -33,4 +37,8 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.ServiceRecovered]: CircleCheck,
   [NotificationKind.ErrorRateCrossed]: CircleX,
   [NotificationKind.ErrorRateRecovered]: CircleCheck,
+  [NotificationKind.MeetingInvited]: CalendarPlus,
+  [NotificationKind.MeetingCancelled]: CalendarX,
+  [NotificationKind.MeetingReminder]: BellRing,
+  [NotificationKind.TicketDueSoon]: CalendarClock,
 };

@@ -76,7 +76,7 @@ var scopeRules = map[string]scopeRule{
 	"ticket.created": nestedProjectScope("ticket"), "ticket.updated": nestedProjectScope("ticket"),
 	"ticket.status_changed": nestedProjectScope("ticket"), "ticket.finished": nestedProjectScope("ticket"),
 	"ticket.assignee_changed": nestedProjectScope("ticket"), "ticket.developer_changed": nestedProjectScope("ticket"),
-	"ticket.tester_changed": nestedProjectScope("ticket"), "ticket.test_passed": nestedProjectScope("ticket"),
+	"ticket.tester_changed": nestedProjectScope("ticket"), "ticket.due_date_changed": nestedProjectScope("ticket"), "ticket.test_passed": nestedProjectScope("ticket"),
 	"ticket.test_failed": nestedProjectScope("ticket"), "ticket.deleted": projectScope, "doc.deleted": projectScope,
 	"ticket.unblocked": projectScope, "doc.settled": nestedProjectScope("doc"),
 	"doc.created": nestedProjectScope("doc"), "doc.updated": nestedProjectScope("doc"), "doc.moved": nestedProjectScope("doc"),
@@ -110,6 +110,10 @@ var scopeRules = map[string]scopeRule{
 	"git.branch_deleted": repoScope, "git.provider_event": providerEventScope, "review.status_changed": reviewScope,
 
 	"notification.push_requested": pushScope, "access.grant.changed": grantScope,
+
+	"meeting.created": inviteesOnly, "meeting.updated": inviteesOnly, "meeting.cancelled": inviteesOnly,
+	"meeting.restored": inviteesOnly, "meeting.replied": inviteesOnly, "meeting.reminder_due": inviteesOnly,
+	"due_date.reminder_due":            projectScope,
 	"repository.installation.assigned": workspaceScope, "repository.installation.unassigned": workspaceScope,
 }
 
@@ -126,6 +130,11 @@ func one(id string, err error) ([]string, bool, error) {
 		return nil, false, err
 	}
 	return []string{id}, false, nil
+}
+
+// inviteesOnly reaches no automation: a meeting shows only to its organiser and the people invited (ADR 0168).
+func inviteesOnly(context.Context, *storage.EventWorkspacesRepo, json.RawMessage) ([]string, bool, error) {
+	return nil, false, nil
 }
 
 func instanceScope(context.Context, *storage.EventWorkspacesRepo, json.RawMessage) ([]string, bool, error) {

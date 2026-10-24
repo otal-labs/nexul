@@ -125,3 +125,14 @@ ON CONFLICT(project_id, label) DO UPDATE SET color = excluded.color, updated_at 
 
 -- name: ListLabelColors :many
 SELECT label, color FROM label_colors WHERE project_id = ? AND label IN (sqlc.slice('labels'));
+
+-- name: UpdateTicketDueOn :execrows
+UPDATE tickets SET due_on = ?, updated_at = ? WHERE id = ?;
+
+-- name: ListTicketsDueBetween :many
+-- Due tickets in one workspace's projects, limited to the readable set unless the caller reads them all; the explicit non-empty test is what lets idx_tickets_due_on serve the range.
+SELECT * FROM tickets
+WHERE due_on != '' AND due_on >= sqlc.arg(from_on) AND due_on <= sqlc.arg(to_on)
+  AND project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id))
+  AND (sqlc.arg(all_projects) OR project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
+ORDER BY due_on, id;

@@ -52,6 +52,8 @@ export interface Ticket {
   developer: string;
   tester: string;
   reporter: TicketReporter;
+  // The day the ticket is due as YYYY-MM-DD; empty when it has none.
+  due_on: string;
   created_at: string;
   updated_at: string;
   finished_at?: string | null;

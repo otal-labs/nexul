@@ -145,6 +145,19 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	if f.DocID != "" {
 		q.where("t.doc_id = ?", f.DocID)
 	}
+	if f.DueFrom != "" || f.DueTo != "" {
+		// The non-empty test is what lets idx_tickets_due_on serve the range.
+		q.where("t.due_on != ''")
+		if f.Query == "" {
+			q.order = "t.due_on, t.id"
+		}
+	}
+	if f.DueFrom != "" {
+		q.where("t.due_on >= ?", f.DueFrom)
+	}
+	if f.DueTo != "" {
+		q.where("t.due_on <= ?", f.DueTo)
+	}
 	readable := idsJSON(scope.ProjectIDs)
 	if !scope.All {
 		q.where("t.project_id IN (SELECT value FROM json_each(?))", readable)
@@ -498,6 +511,39 @@ func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.
 	})
 }
 
+// UpdateDueOn sets a ticket's due date, enqueueing evts in the same transaction; empty clears it.
+func (r *TicketsRepo) UpdateDueOn(ctx context.Context, id, dueOn string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).UpdateTicketDueOn(ctx, sqlcgen.UpdateTicketDueOnParams{DueOn: dueOn, UpdatedAt: time.Now().Unix(), ID: id})
+		if err != nil {
+			return fmt.Errorf("update ticket %s due date: %w", id, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("update ticket %s due date: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueTicketsOutbox(ctx, tx, evts)
+	})
+}
+
+// ListDue reads the tickets of workspaceID that scope keeps and that are due from..to inclusive, by due date then id.
+func (r *TicketsRepo) ListDue(ctx context.Context, workspaceID, from, to string, scope tickets.TicketScope) ([]*tickets.Ticket, error) {
+	rows, err := r.q.ListTicketsDueBetween(ctx, sqlcgen.ListTicketsDueBetweenParams{
+		FromOn: from, ToOn: to, WorkspaceID: workspaceID, AllProjects: scope.All, Readable: idsJSON(scope.ProjectIDs),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list tickets due %s to %s: %w", from, to, err)
+	}
+	out := toTickets(rows)
+	if len(out) == 0 {
+		return []*tickets.Ticket{}, nil
+	}
+	labels, err := r.q.ListTicketLabelsForTickets(ctx, ticketIDs(out))
+	if err != nil {
+		return nil, fmt.Errorf("load labels: %w", err)
+	}
+	return withLabels(out, labels), nil
+}
+
 // UpdateTicket edits a ticket's title and body in place, enqueueing the
 // given outbox events in the same transaction.
 func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error {
@@ -679,6 +725,7 @@ func toTicket(row sqlcgen.Ticket) *tickets.Ticket {
 		TypeID:     row.TypeID.String,
 		Developer:  row.Developer,
 		Tester:     row.Tester,
+		DueOn:      row.DueOn,
 		Reporter: tickets.Reporter{
 			Kind:           row.ReporterKind,
 			Login:          row.ReporterLogin,

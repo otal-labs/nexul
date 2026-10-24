@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -42,6 +43,18 @@ func (s *Service) UpdateProfileOverride(ctx context.Context, userID, displayName
 		return nil, fmt.Errorf("set profile override %s: %w", userID, err)
 	}
 	return s.cfg.Users.GetUserByID(ctx, userID)
+}
+
+// SetTimezone records the IANA timezone the caller's app runs in, which the reminders that fall on a local day use.
+func (s *Service) SetTimezone(ctx context.Context, userID, timezone string) error {
+	timezone = strings.TrimSpace(timezone)
+	if _, err := time.LoadLocation(timezone); err != nil || timezone == "" || timezone == "Local" {
+		return fmt.Errorf("%w: timezone is an IANA timezone such as Europe/London", apperrs.ErrInvalid)
+	}
+	if err := s.cfg.Users.SetTimezone(ctx, userID, timezone); err != nil {
+		return fmt.Errorf("set timezone of %s: %w", userID, err)
+	}
+	return nil
 }
 
 func deref(s *string) string {

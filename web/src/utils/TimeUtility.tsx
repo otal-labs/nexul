@@ -66,3 +66,10 @@ export const formatShortDate = (ts: string): string => {
   const sameYear = date.getFullYear() === new Date().getFullYear();
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 };
+
+// A YYYY-MM-DD day as the reader's calendar writes it, "30 Oct 2026"; the day is read in local time, where Date would take it as UTC and show the evening before.
+export const formatDay = (day: string): string => {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  return new Date(year, month - 1, date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+};

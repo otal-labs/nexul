@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -447,4 +448,81 @@ func extractMentions(text string) []string {
 		out = append(out, login)
 	}
 	return out
+}
+
+// meetingEvent mirrors the calendar domain's meeting payloads.
+type meetingEvent struct {
+	Meeting struct {
+		ID          string `json:"id"`
+		WorkspaceID string `json:"workspace_id"`
+		OrganiserID string `json:"organiser_id"`
+		Title       string `json:"title"`
+	} `json:"meeting"`
+	ActorID    string    `json:"actor_id"`
+	UserIDs    []string  `json:"user_ids"`
+	InvitedIDs []string  `json:"invited_ids"`
+	StartsAt   time.Time `json:"occurrence_starts_at"`
+}
+
+func parseMeetingEvent(ev eventbus.Event) (meetingEvent, error) {
+	var e meetingEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return e, apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if e.Meeting.ID == "" {
+		return e, apperrs.Fatal(fmt.Errorf("%s missing meeting id", ev.Topic))
+	}
+	return e, nil
+}
+
+// HandleMeetingInvited tells the people a new or changed meeting invites for the first time.
+func HandleMeetingInvited(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	e, err := parseMeetingEvent(ev)
+	if err != nil || len(e.InvitedIDs) == 0 {
+		return err
+	}
+	return svc.onMeeting(CtxWithEventKey(ctx, ev.ID), e, KindMeetingInvited, "Invited to "+e.Meeting.Title, e.InvitedIDs)
+}
+
+// HandleMeetingCancelled tells everyone invited that a meeting is off.
+func HandleMeetingCancelled(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	e, err := parseMeetingEvent(ev)
+	if err != nil {
+		return err
+	}
+	return svc.onMeeting(CtxWithEventKey(ctx, ev.ID), e, KindMeetingCancelled, e.Meeting.Title+" was cancelled", e.UserIDs)
+}
+
+// HandleMeetingReminder tells each attendee an occurrence is about to start.
+func HandleMeetingReminder(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	e, err := parseMeetingEvent(ev)
+	if err != nil {
+		return err
+	}
+	title := e.Meeting.Title + " " + startsIn(e.StartsAt.Sub(svc.now()))
+	return svc.onMeeting(CtxWithEventKey(ctx, ev.ID), e, KindMeetingReminder, title, e.UserIDs)
+}
+
+// dueDateReminderEvent mirrors the calendar domain's due_date.reminder_due payload.
+type dueDateReminderEvent struct {
+	TicketID    string   `json:"ticket_id"`
+	ProjectID   string   `json:"project_id"`
+	WorkspaceID string   `json:"workspace_id"`
+	Key         string   `json:"key"`
+	Title       string   `json:"title"`
+	UserIDs     []string `json:"user_ids"`
+}
+
+// HandleDueDateReminder tells a ticket's developer it is due tomorrow.
+func HandleDueDateReminder(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e dueDateReminderEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse due_date.reminder_due: %w", err))
+	}
+	if e.TicketID == "" {
+		return apperrs.Fatal(fmt.Errorf("due_date.reminder_due missing ticket id"))
+	}
+	n := notice{subjectType: SubjectTicket, subjectID: e.TicketID, subjectTitle: e.Key + " " + e.Title + " is due tomorrow", workspaceID: e.WorkspaceID, projectID: e.ProjectID}
+	ctx = CtxWithEventKey(ctx, ev.ID)
+	return svc.fanOutByUserID(ctx, evtKey(ctx), n, KindTicketDueSoon, e.UserIDs)
 }

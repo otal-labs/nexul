@@ -3723,6 +3723,46 @@
       "watching"
     ]
   },
+  "due_date.reminder_due": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "key": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "due_on": {
+        "type": "string",
+        "description": "The due date as YYYY-MM-DD."
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_id",
+      "project_id",
+      "workspace_id",
+      "key",
+      "title",
+      "due_on",
+      "user_ids"
+    ]
+  },
   "git.branch_deleted": {
     "type": "object",
     "properties": {
@@ -4713,6 +4753,476 @@
       "machine_id",
       "name",
       "user_ids"
+    ]
+  },
+  "meeting.cancelled": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.created": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.reminder_due": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "occurrence_starts_at": {
+        "type": "string",
+        "description": "When this occurrence starts.",
+        "format": "date-time"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "occurrence_starts_at",
+      "user_ids"
+    ]
+  },
+  "meeting.replied": {
+    "type": "object",
+    "properties": {
+      "meeting_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "reply": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "declined"
+        ]
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting_id",
+      "workspace_id",
+      "actor_id",
+      "reply",
+      "user_ids"
+    ]
+  },
+  "meeting.restored": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.updated": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
     ]
   },
   "memory.created": {
@@ -7339,6 +7849,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7377,6 +7890,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -7485,6 +7999,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7523,6 +8040,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -7629,6 +8147,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7667,6 +8188,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -7719,6 +8241,167 @@
       "ticket",
       "from",
       "to"
+    ]
+  },
+  "ticket.due_date_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "due_on",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "previous_due_on": {
+        "type": "string",
+        "description": "The due date before the change as YYYY-MM-DD; empty when the ticket had none."
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who changed the due date: a member, or an automation.",
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A ticket's due date was set, changed, or cleared; an empty previous_due_on means it had none, and an empty due_on on the ticket means it has none now.",
+    "required": [
+      "ticket",
+      "previous_due_on"
     ]
   },
   "ticket.finished": {
@@ -7788,6 +8471,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7826,6 +8512,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -7981,6 +8668,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8019,6 +8709,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8142,6 +8833,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8180,6 +8874,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8267,6 +8962,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8305,6 +9003,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8392,6 +9091,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8430,6 +9132,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8618,6 +9321,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8656,6 +9362,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",

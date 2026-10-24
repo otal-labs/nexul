@@ -531,6 +531,42 @@ func (s *NotificationService) onComputerMoveRequested(ctx context.Context, userI
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindComputerMove, []string{userID})
 }
 
+// onMeeting tells userIDs who still belong to the meeting's workspace about it; whoever made the change is left out, as
+// for every notice.
+func (s *NotificationService) onMeeting(ctx context.Context, e meetingEvent, kind Kind, title string, userIDs []string) error {
+	if s.members != nil {
+		members, err := s.members.ListMemberUserIDs(ctx, e.Meeting.WorkspaceID)
+		if err != nil {
+			return fmt.Errorf("list members of workspace %s: %w", e.Meeting.WorkspaceID, err)
+		}
+		userIDs = slices.DeleteFunc(slices.Clone(userIDs), func(id string) bool { return !slices.Contains(members, id) })
+	}
+	n := notice{subjectType: SubjectMeeting, subjectID: e.Meeting.ID, subjectTitle: title, workspaceID: e.Meeting.WorkspaceID, actorID: e.ActorID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, userIDs)
+}
+
+// startsIn words how soon a meeting starts: "starts now", "starts in 10 minutes", "starts in 2 hours".
+func startsIn(d time.Duration) string {
+	minutes := int(math.Ceil(d.Minutes()))
+	if minutes <= 0 {
+		return "starts now"
+	}
+	if minutes == 1 {
+		return "starts in 1 minute"
+	}
+	if minutes < 60 {
+		return fmt.Sprintf("starts in %d minutes", minutes)
+	}
+	hours := int(math.Round(float64(minutes) / 60))
+	if hours == 1 {
+		return "starts in 1 hour"
+	}
+	if hours < 48 {
+		return fmt.Sprintf("starts in %d hours", hours)
+	}
+	return fmt.Sprintf("starts in %d days", int(math.Round(float64(hours)/24)))
+}
+
 // notice is what one source event is about: its subject, the subject's workspace, and whose action it was.
 type notice struct {
 	subjectType  SubjectType
