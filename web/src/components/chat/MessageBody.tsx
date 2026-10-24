@@ -1,17 +1,32 @@
 import type { ClipboardEvent } from "react";
 
 import { splitMessageBody, type MessageBodySegment } from "@nexul/client-core/chat";
+import { splitDiscordTimes, type TimedTextPart } from "@nexul/client-core/discordTime";
 
+import { DiscordTimeChip } from "@/components/chat/DiscordTimeChip";
 import { MessageImage } from "@/components/chat/MessageImage";
 import { MessageLink } from "@/components/chat/MessageLink";
 import { tokenizeMessageText, type MessageTextPart } from "@/utils/MessageTextUtility";
 
-// Plain text with line breaks kept, each @mention bolded, and http(s) URLs linked; only a bot's text renders markdown.
+// Plain text with line breaks kept, @mentions bolded, http(s) URLs linked and <t:…> codes as times; only a bot's is markdown.
 const MessageTextPartView = ({ part }: { part: MessageTextPart }) => (
   <>
     {part.kind === "text" && part.text}
     {part.kind === "mention" && <strong className="font-semibold">{part.text}</strong>}
     {part.kind === "link" && <MessageLink url={part.url} />}
+  </>
+);
+
+interface TimedTextProps {
+  part: TimedTextPart;
+  mentionHandles: string[];
+}
+
+const TimedText = ({ part, mentionHandles }: TimedTextProps) => (
+  <>
+    {part.kind === "time" && <DiscordTimeChip time={part.time} />}
+    {part.kind === "text" &&
+      tokenizeMessageText(part.text, mentionHandles).map((textPart, i) => <MessageTextPartView key={i} part={textPart} />)}
   </>
 );
 
@@ -44,8 +59,8 @@ const MessageSegment = ({ segment, mentionHandles }: MessageSegmentProps) => (
     )}
     {segment.kind === "text" && (
       <p dir="auto" className="whitespace-pre-wrap" onCopy={copyPillUrls}>
-        {tokenizeMessageText(segment.text, mentionHandles).map((part, i) => (
-          <MessageTextPartView key={i} part={part} />
+        {splitDiscordTimes(segment.text).map((part, i) => (
+          <TimedText key={i} part={part} mentionHandles={mentionHandles} />
         ))}
       </p>
     )}

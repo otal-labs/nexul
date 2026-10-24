@@ -359,6 +359,13 @@ Nexul app and T3 Code, starts either one again 5 seconds after it exits, and
 removes the install when the computer is removed from Nexul. It prints the
 line that starts it again after a reboot.
 
+### Times in everyone's zone
+
+A Discord time code such as `<t:1792867165:F>` pasted into a message, a
+thread, a ticket or a doc shows in each reader's own time zone, on the web and
+the phone, in all nine of Discord's formats; a relative one stays current.
+Clicking one copies its code or downloads it as a calendar event.
+
 ---
 
 ## Now — improving what's built
