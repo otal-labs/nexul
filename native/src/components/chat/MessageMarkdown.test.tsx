@@ -1,6 +1,7 @@
 import { render, screen, userEvent } from "@testing-library/react-native";
 import { Linking } from "react-native";
 
+import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { MessageMarkdown } from "@/components/chat/MessageMarkdown";
 
 const mockPush = jest.fn();
@@ -24,6 +25,12 @@ jest.mock("react-native-enriched-markdown", () => {
     ),
   };
 });
+
+const mockSetString = jest.fn((_text: string) => Promise.resolve(true));
+jest.mock("expo-clipboard", () => ({ setStringAsync: (text: string) => mockSetString(text) }));
+
+const mockCreateEvent = jest.fn((_event: unknown) => Promise.resolve({ action: "saved" }));
+jest.mock("expo-calendar/legacy", () => ({ createEventInCalendarAsync: (event: unknown) => mockCreateEvent(event) }));
 
 const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 
@@ -87,9 +94,48 @@ describe("a <t:…> code", () => {
     await userEvent.press(link);
 
     expect(screen.getByText(`<t:${UNIX}:F>`)).toBeOnTheScreen();
-    expect(screen.getByText("Hold the code to copy it.")).toBeOnTheScreen();
     expect(openURL).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  const openTime = async () => {
+    await render(
+      <CalendarTitleContext value="Release sync">
+        <MessageMarkdown markdown={`Standup <t:${UNIX}:F> today`} />
+      </CalendarTitleContext>,
+    );
+    await userEvent.press(screen.getByRole("link"));
+  };
+
+  test("a calendar that refuses the event still closes the popover", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    mockCreateEvent.mockRejectedValueOnce(new Error("no calendar app"));
+    await openTime();
+
+    await userEvent.press(screen.getByRole("button", { name: "Add to calendar" }));
+
+    expect(screen.queryByText(`<t:${UNIX}:F>`)).not.toBeOnTheScreen();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  test("Copy code puts the code as written on the clipboard", async () => {
+    await openTime();
+
+    await userEvent.press(screen.getByRole("button", { name: "Copy code" }));
+
+    expect(mockSetString).toHaveBeenCalledWith(`<t:${UNIX}:F>`);
+    expect(screen.getByText("Copied")).toBeOnTheScreen();
+  });
+
+  test("Add to calendar opens a one-hour event at the instant, titled after where it was posted", async () => {
+    await openTime();
+
+    await userEvent.press(screen.getByRole("button", { name: "Add to calendar" }));
+
+    const start = new Date(UNIX * 1000);
+    expect(mockCreateEvent).toHaveBeenCalledWith({ title: "Release sync", startDate: start, endDate: new Date(start.getTime() + 3600_000) });
+    expect(screen.queryByText(`<t:${UNIX}:F>`)).not.toBeOnTheScreen();
   });
 
   test("stays as typed inside inline code", async () => {

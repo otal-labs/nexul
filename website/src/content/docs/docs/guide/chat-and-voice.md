@@ -43,7 +43,7 @@ Paste a Discord time code such as `<t:1792867165:F>` and everyone reads it in th
 | `s` / `S` | short date and time, without or with seconds |
 | `R` | relative, such as "in 2 hours", kept up to date |
 
-Hover one to see the full date, time, and zone. Click it for **Copy code**, which copies the code itself so a re-paste stays local for every reader, and **Add to calendar**, which downloads a one-hour `.ics` event named after the channel, ticket, or doc. On the phone, tap one to see the full time and the code; hold the code to copy it. A code inside backticks stays as typed.
+Hover one to see the full date, time, and zone. Click it for **Copy code**, which copies the code itself so a re-paste stays local for every reader, and **Add to calendar**, which downloads a one-hour `.ics` event named after the channel, ticket, or doc. On the phone, tap one for the full time and the code, with the same **Copy code** and an **Add to calendar** that opens your calendar app's new-event screen with that one-hour event. A code inside backticks stays as typed.
 
 ## Bots
 
