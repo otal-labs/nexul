@@ -1603,8 +1603,10 @@ func TestPostBotMessage_StoresTheBotAndWhatItShowed(t *testing.T) {
 	assert.Equal(t, []Mention{{Kind: MentionUser, Handle: "Alice"}}, stored.Mentions, "bob was not allowed and the Agent never is")
 	assert.Equal(t, fixedNow, m.CreatedAt)
 	assert.Equal(t, []string{"POST /api/botwebhooks/b-ci"}, repo.audits)
-	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
+	created := repo.events[len(repo.events)-2].Payload.(MessageCreatedEvent)
 	assert.True(t, created.MembersOnly, "a DM's bot message never reaches integrations")
+	posted := repo.events[len(repo.events)-1].Payload.(BotMessagePostedEvent)
+	assert.True(t, posted.MembersOnly, "nor does its bot event")
 
 	m, err = s.PostBotMessage(t.Context(), BotPost{ConversationID: dm.ID, BotID: "b-ci", Name: "GitHub", Embeds: json.RawMessage(`[{"title":"build passed"}]`)})
 	require.NoError(t, err)

@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -154,7 +155,7 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c)); err != nil {
+	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c), botMessagePosted(m, c)); err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
@@ -331,6 +332,13 @@ func (s *Service) newMessage(conversationID, authorID, body string, kind AuthorK
 
 func messageCreated(m *Message, c *Conversation) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: c.MembersOnly(), WorkspaceID: c.WorkspaceID}}
+}
+
+func botMessagePosted(m *Message, c *Conversation) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicBotMessagePosted, Payload: BotMessagePostedEvent{
+		WorkspaceID: c.WorkspaceID, ConversationID: c.ID, MessageID: m.ID, BotID: m.AuthorID, BotName: cmp.Or(m.Via, m.AuthorName),
+		AuthorName: m.AuthorName, Content: m.Body, Embeds: m.Embeds, PostedAt: m.CreatedAt, MembersOnly: c.MembersOnly(),
+	}}
 }
 
 func messageDeleted(m *Message, c *Conversation, at time.Time) eventbus.OutboxEvent {
