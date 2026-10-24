@@ -60,7 +60,7 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 ## Create or change a play
 
-Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on, when it starts by itself, and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. A play has:
+Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on, when it starts by itself, and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.
