@@ -39,7 +39,8 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
                 targetType="ticket"
                 targetId={ticket.id}
                 variant="ghost"
-                className="w-full [&>button]:h-auto [&>button]:w-full [&>button]:justify-start [&>button]:gap-2 [&>button]:px-2! [&>button]:py-1.5 [&>button]:text-xs [&>button]:font-normal [&>span]:px-2"
+                className="w-full"
+                mainClassName="h-auto min-w-0 flex-1 items-start justify-start gap-2 px-2! py-1.5 text-left text-xs font-normal whitespace-normal [&>svg]:mt-px"
               />
             ))}
           </div>

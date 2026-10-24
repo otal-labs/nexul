@@ -77,6 +77,7 @@ const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_i
     if (url === "/api/pairing/computers") return { data: { computers: [{ id: "c-1", name: "Onik's PC" }] } };
     if (url === "/api/pairing/computers/c-1/providers") return { data: { providers: [] } };
     if (url === "/api/plays/runs") return { data: trails };
+    if (url === "/api/plays/runs/tr-1") return { data: trails[0] };
     if (url === "/api/pairing/projects") return { data: { links } };
     if (url === "/api/plays/latest-choices")
       return { data: { memory_ids: [], computer_id: "", provider: "", model: "" } };
@@ -152,11 +153,11 @@ describe("PlayButton", () => {
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
-  it("is disabled with 'a run is in progress' when someone else's trail is active", async () => {
+  it("opens the run with no Stop when someone else's run of this play is active", async () => {
     mockApi({ trails: [runningTrail("u-other")] });
     renderButton();
-    expect(await screen.findByText("a run is in progress")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Open this run"));
+    expect(screen.getByRole("button", { name: "Fix with AI" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Stop Fix with AI" })).not.toBeInTheDocument();
   });
 
@@ -166,7 +167,12 @@ describe("PlayButton", () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ...runningTrail("u-me"), state: "interrupted" } });
     renderButton();
 
-    await user.click(await screen.findByRole("button", { name: "Stop Fix with AI" }));
+    const open = await screen.findByRole("button", { name: "Fix with AI", description: "Open this run" });
+    await user.click(open);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Stop Fix with AI" }));
     expect(api.post).toHaveBeenCalledWith("/api/plays/runs/tr-1/stop");
   });
 
@@ -198,14 +204,14 @@ describe("PlayButton", () => {
   it("a sibling play stays disabled with the waiting reason while another play's run waits", async () => {
     mockApi({ trails: [{ ...runningTrail("u-other"), play_id: "play-other", state: "waiting" }] });
     renderButton();
-    expect(await screen.findByText("a run is waiting for an answer")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("a run is waiting for an answer"));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
   it("gives a sibling play no Stop while the viewer's own run of another play is in progress", async () => {
     mockApi({ permissions: ["plays:run", "plays:write"], trails: [{ ...runningTrail("u-me"), play_id: "play-other", play_label: "Interview" }] });
     renderButton();
-    expect(await screen.findByText("a run is in progress")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("a run is in progress"));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Stop Fix with AI" })).not.toBeInTheDocument();
   });
@@ -222,7 +228,6 @@ describe("PlayButton", () => {
     renderButton();
     const button = await screen.findByRole("button", { name: "Fix with AI" });
     await waitFor(() => expect(button).toBeEnabled());
-    expect(screen.queryByText("a run is in progress")).not.toBeInTheDocument();
 
     await user.click(button);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
@@ -238,6 +243,6 @@ describe("PlayButton", () => {
     usePlayRunStore.getState().applyFrame({
       trail_id: "tr-1", play_id: "play-1", target_type: "ticket", target_id: "t-1", state: "running", activity: null, ended_at: null, last_error: "",
     });
-    expect(await screen.findByText("a run is in progress")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Open this run"));
   });
 });
