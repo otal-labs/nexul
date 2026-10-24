@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { getMeKey } from "@/hooks/AuthHooks";
+import { getDueTicketsKey, getMeetingKey, getMeetingsKey } from "@/hooks/CalendarHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocClarificationKey, getDocKey, getDocsKey } from "@/hooks/DocHooks";
@@ -127,6 +128,10 @@ describe("dispatch", () => {
     ["ticket.status_changed", { ticket: { id: "rec-1" }, from: "a", to: "b" }, [getTicketKey]],
     ["ticket.updated", { ticket: { id: "rec-1" } }, [getTicketKey]],
     ["ticket.deleted", { id: "rec-1", title: "Gone" }, [getTicketKey]],
+    ["meeting.updated", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
+    ["meeting.cancelled", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
+    ["meeting.restored", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
+    ["meeting.replied", { meeting_id: "rec-1", workspace_id: "ws-1" }, [getMeetingKey]],
     ["doc.updated", { doc: { id: "rec-1", title: "Spec", version: 2 } }, [getDocKey]],
     ["doc.clarification.answer_saved", { doc: { id: "rec-1", project_id: "p-1", title: "Spec" }, round: 1, question_id: "q-1" }, [getDocClarificationKey]],
     ["deploy.updated", { id: "rec-1", status: "running" }, [getDeployKey, getDeployLogKey]],
@@ -180,6 +185,11 @@ describe("dispatch", () => {
     ["chat.conversation.deleted", { conversation_id: "c1", workspace_id: "ws-1", kind: "channel", name: "x" }, getChatMessagesKey, "c1", "c2"],
     ["chat.conversation.members_changed", { conversation_id: "c1", workspace_id: "ws-1" }, getChatUnreadKey, "ws-1", "ws-2"],
     ["role.updated", { role_id: "r1", workspace_id: "ws-1" }, getMyRoleKey, "ws-1", "ws-2"],
+    ["meeting.created", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
+    ["meeting.updated", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
+    ["meeting.cancelled", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
+    ["meeting.restored", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
+    ["meeting.replied", { meeting_id: "m-1", workspace_id: "ws-1" }, getMeetingsKey, "ws-1", "ws-2"],
     ["workspace.member.removed", { user_id: "u2", workspace_id: "ws-1" }, getWorkspacePeopleKey, "ws-1", "ws-2"],
     ["ticket.status_changed", { ticket: { id: "t-1", project_id: "p-1" }, from: "a", to: "b" }, getTicketsByProjectKey, "p-1", "p-2"],
     ["status.updated", { status: { id: "st-1", project_id: "p-1" } }, getProjectStatusesKey, "p-1", "p-2"],
@@ -211,6 +221,15 @@ describe("dispatch", () => {
 
     expect(client.getQueryState([getChatConversationsKey, "ws-1"])?.isInvalidated).toBe(true);
     expect(client.getQueryState([getChatConversationsKey, "ws-2"])?.isInvalidated).toBe(everyList);
+  });
+
+  test.each(["ticket.created", "ticket.updated", "ticket.deleted"])("%s refetches the agenda's due tickets, which a ticket frame can't tie to a workspace", (topic) => {
+    const client = new QueryClient();
+    client.setQueryData([getDueTicketsKey, "ws-1", "2026-10-24", "2026-11-22"], { items: [] });
+
+    dispatch(client)({ topic, type: "event", payload: { ticket: { id: "t-1", project_id: "p-1" }, id: "t-1", project_id: "p-1" } });
+
+    expect(client.getQueryState([getDueTicketsKey, "ws-1", "2026-10-24", "2026-11-22"])?.isInvalidated).toBe(true);
   });
 
   test("a frame that names no record refetches every cached one, rather than none", () => {

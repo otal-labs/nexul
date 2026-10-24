@@ -23,6 +23,8 @@ export interface Ticket {
   tester: string;
   created_at: string;
   updated_at: string;
+  // The day it is due as YYYY-MM-DD; absent when it has none.
+  due_on?: string;
   // The gateway serializes labels as null when a ticket has none.
   labels: string[] | null;
 }

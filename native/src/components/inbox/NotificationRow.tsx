@@ -31,6 +31,10 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.ServiceRecovered]: "Service came back",
   [NotificationKind.ErrorRateCrossed]: "5xx over the limit",
   [NotificationKind.ErrorRateRecovered]: "5xx back under the limit",
+  [NotificationKind.MeetingInvited]: "Invited to a meeting",
+  [NotificationKind.MeetingCancelled]: "Meeting cancelled",
+  [NotificationKind.MeetingReminder]: "Meeting starting soon",
+  [NotificationKind.TicketDueSoon]: "Due soon",
 };
 
 interface NotificationRowProps {

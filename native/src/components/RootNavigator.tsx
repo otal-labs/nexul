@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { useEffect } from "react";
 
 import { VersionGate } from "@/components/connect/VersionGate";
-import { useFetchMe } from "@/hooks/AuthHooks";
+import { useFetchMe, useReportTimezone } from "@/hooks/AuthHooks";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { sheetOptions } from "@/lib/sheetOptions";
 import { startClock } from "@/stores/clockStore";
@@ -11,6 +11,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 export const RootNavigator = () => {
   const signedIn = useSessionStore((s) => s.signedIn);
   useFetchMe(signedIn);
+  useReportTimezone(signedIn);
   useLiveEvents();
   useEffect(startClock, []);
 
