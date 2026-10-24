@@ -19,6 +19,7 @@ export const AccessPage = page(() => import("@/pages/AccessPage"), (m) => m.Acce
 export const AutomationPage = page(() => import("@/pages/AutomationPage"), (m) => m.AutomationPage);
 export const AutomationsPage = page(() => import("@/pages/AutomationsPage"), (m) => m.AutomationsPage);
 export const BoardPage = page(() => import("@/pages/BoardPage"), (m) => m.BoardPage);
+export const CalendarPage = page(() => import("@/pages/CalendarPage"), (m) => m.CalendarPage);
 export const ChatPage = page(() => import("@/pages/ChatPage"), (m) => m.ChatPage);
 export const ConfigurationPage = page(() => import("@/pages/ConfigurationPage"), (m) => m.ConfigurationPage);
 export const DeployPage = page(() => import("@/pages/DeployPage"), (m) => m.DeployPage);
@@ -50,6 +51,7 @@ const warmed: (() => Promise<unknown>)[] = [
   AutomationPage.preload,
   AutomationsPage.preload,
   BoardPage.preload,
+  CalendarPage.preload,
   ChatPage.preload,
   ConfigurationPage.preload,
   DeployPage.preload,

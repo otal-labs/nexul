@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -141,6 +141,23 @@ describe("InboxPage", () => {
     expect(await within(list).findByRole("button", { name: /Move your computers to the Nexul app.*move to the Nexul app/ })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Move your computers to the Nexul app" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Computers" })).toHaveAttribute("href", "/settings/pairing");
+  });
+
+  it("opens a meeting notice on the calendar, with the meeting's panel", async () => {
+    const notice = { ...ticketNotification, id: "n4", kind: "meeting.invited", subject_type: "meeting", subject_id: "m-1", subject_title: "Standup" };
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [notice] }) : mockApiResponse(url)));
+    const Calendar = () => <output aria-label="calendar">{useLocation().pathname + useLocation().search}</output>;
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/acme/inbox/n:n4"]}>
+          <Routes>
+            <Route path="/acme/inbox/:rowKey?/:tab?" element={<InboxPage />} />
+            <Route path="/acme/calendar" element={<Calendar />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByLabelText("calendar")).toHaveTextContent("/acme/calendar?meeting=m-1");
   });
 
   it("falls back to the list when the path names a row that is gone", async () => {

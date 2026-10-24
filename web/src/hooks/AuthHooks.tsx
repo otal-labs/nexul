@@ -35,11 +35,12 @@ export const getSessionsKey = "getSessions";
 export const getIdentitiesKey = "getIdentities";
 export const getBootstrapStatusKey = "getBootstrapStatus";
 
-export const useFetchMe = () =>
+export const useFetchMe = (enabled = true) =>
   useQuery({
     queryKey: [getMeKey],
     queryFn: async () => (await api.get<MeResponse>("/api/auth/me")).data,
     staleTime: 30_000,
+    enabled,
   });
 
 export const useCompleteOwnerWizard = () => {

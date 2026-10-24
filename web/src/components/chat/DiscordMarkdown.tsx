@@ -64,7 +64,7 @@ interface DiscordMarkdownProps {
   className?: string | undefined;
 }
 
-// Bot content only: people's and the Agent's messages keep their own renderers.
+// Bot content and a meeting's notes; people's and the Agent's messages keep their own renderers.
 export const DiscordMarkdown = ({ text, mentionHandles, className }: DiscordMarkdownProps) => (
   <div className={cn("wrap-anywhere", className)}>
     {parseDiscordMarkdown(text, mentionHandles).map((line, i) => (

@@ -8,6 +8,7 @@ import { LiveEventsClient, type LiveEventsClientOptions, type ServerFrame } from
 import { accessGridFollower } from "@/hooks/AccessGridHooks";
 import { authFollower, getMeKey } from "@/hooks/AuthHooks";
 import { botwebhookFollower } from "@/hooks/BotwebhookHooks";
+import { calendarFollower } from "@/hooks/CalendarHooks";
 import { categoryFollower } from "@/hooks/CategoryHooks";
 import { chatFollower } from "@/hooks/ChatFollower";
 import { computerSetupFollower } from "@/hooks/ComputerSetupHooks";
@@ -78,6 +79,7 @@ const followers: LiveFollower[] = [
   accessGridFollower,
   authFollower,
   botwebhookFollower,
+  calendarFollower,
   categoryFollower,
   chatFollower,
   computerSetupFollower,

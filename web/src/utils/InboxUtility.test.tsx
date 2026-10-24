@@ -24,6 +24,22 @@ const inMain = { folder_id: "f-main", folder_name: "Main", folder_is_default: tr
 const at = (hour: number) => `2026-10-01T${String(hour).padStart(2, "0")}:00:00Z`;
 
 describe("groupInbox", () => {
+  it("words each meeting and due date notice on its own row", () => {
+    const entries = groupInbox([
+      note({ id: "c4", kind: "ticket.due_soon", subject_type: "ticket", subject_id: "t-1", subject_title: "ATL-7 is due tomorrow", created_at: at(14) }),
+      note({ id: "c3", kind: "meeting.reminder", subject_type: "meeting", subject_id: "m-1", subject_title: "Standup starts in 10 minutes", created_at: at(13) }),
+      note({ id: "c2", kind: "meeting.cancelled", subject_type: "meeting", subject_id: "m-1", subject_title: "Standup was cancelled", created_at: at(12) }),
+      note({ id: "c1", kind: "meeting.invited", subject_type: "meeting", subject_id: "m-1", subject_title: "You're invited to Standup", created_at: at(11) }),
+    ]);
+
+    expect(entries.map((e) => [e.key, (e as InboxRow).summary])).toEqual([
+      ["n:c4", "due tomorrow"],
+      ["n:c3", "starting soon"],
+      ["n:c2", "cancelled"],
+      ["n:c1", "invited"],
+    ]);
+  });
+
   it("gives a service that crashed and one that came back each their own row, worded by what happened", () => {
     const entries = groupInbox([
       note({ id: "s2", kind: "service.container_recovered", subject_type: "stack", subject_id: "st-1", subject_title: "api came back on web", created_at: at(11) }),

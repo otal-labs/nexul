@@ -10,6 +10,7 @@ const { evaluated, watch } = vi.hoisted(() => {
   return { evaluated, watch };
 });
 vi.mock("@/pages/BoardPage", watch("BoardPage"));
+vi.mock("@/pages/CalendarPage", watch("CalendarPage"));
 vi.mock("@/pages/ChatPage", watch("ChatPage"));
 vi.mock("@/pages/DocsPage", watch("DocsPage"));
 vi.mock("@/pages/LoginPage", watch("LoginPage"));

@@ -1,7 +1,11 @@
 import {
   ArrowRightLeftIcon,
   AtSignIcon,
+  BellRingIcon,
   BrainIcon,
+  CalendarClockIcon,
+  CalendarPlusIcon,
+  CalendarXIcon,
   CircleCheckIcon,
   CircleHelpIcon,
   CircleXIcon,
@@ -35,4 +39,8 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.ServiceRecovered]: CircleCheckIcon,
   [NotificationKind.ErrorRateCrossed]: CircleXIcon,
   [NotificationKind.ErrorRateRecovered]: CircleCheckIcon,
+  [NotificationKind.MeetingInvited]: CalendarPlusIcon,
+  [NotificationKind.MeetingCancelled]: CalendarXIcon,
+  [NotificationKind.MeetingReminder]: BellRingIcon,
+  [NotificationKind.TicketDueSoon]: CalendarClockIcon,
 };

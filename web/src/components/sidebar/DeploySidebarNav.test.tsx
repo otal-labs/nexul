@@ -50,10 +50,10 @@ describe("DeploySidebarNav", () => {
     expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
   });
 
-  it("lists Configuration after Automations", async () => {
+  it("lists Calendar first and Configuration after Automations", async () => {
     await renderNav();
     const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
-    expect(links).toEqual(["/acme/runners", "/acme/topology", "/acme/automations", "/acme/configuration"]);
+    expect(links).toEqual(["/acme/calendar", "/acme/runners", "/acme/topology", "/acme/automations", "/acme/configuration"]);
   });
 
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {
