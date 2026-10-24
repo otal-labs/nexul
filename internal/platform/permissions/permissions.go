@@ -95,6 +95,8 @@ const (
 	EventsRead         Action = "events:read"
 	TemplatesRead      Action = "templates:read"
 	TemplatesWrite     Action = "templates:write"
+	CalendarWrite      Action = "calendar:write"
+	CalendarDelete     Action = "calendar:delete"
 )
 
 // ProjectsOpen is In this project: held only through a project's rules, never by a role or a token, so it is off the
@@ -158,6 +160,8 @@ var verbLabel = map[Action]string{
 	MachinesWrite:    "Manage machines",
 	MachinesCreate:   "Add machines",
 	MembersViewAs:    "View Nexul as another member",
+	CalendarWrite:    "Create meetings",
+	CalendarDelete:   "Change or cancel anyone's meetings",
 }
 
 // Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
@@ -205,6 +209,8 @@ var domainTable = []domainInfo{
 	// A channel's read starts held for whoever may see it and only a rule denies it; posting takes channels:post (ADR 0150).
 	{"channels", "channels", []string{read, write, delete, post}, AreaWorkspace},
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
+	// Seeing a meeting takes being invited to it, so the calendar has no read: write creates, delete changes anyone's.
+	{"calendar", "calendar meetings", []string{write, delete}, AreaWorkspace},
 	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.
 	{"botwebhook", "bots", []string{read, write, delete}, AreaWorkspace},
 	{"automations", "automations", []string{read, write, delete}, AreaWorkspace},

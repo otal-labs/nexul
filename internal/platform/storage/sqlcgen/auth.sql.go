@@ -164,7 +164,7 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE id = ?
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at, timezone FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -181,12 +181,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.AccountStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
-SELECT u.id, u.login, u.name, u.avatar_url, u.first_login_done, u.display_name, u.avatar_override_url, u.account_status, u.created_at, u.updated_at FROM users u JOIN user_identities i ON i.user_id = u.id
+SELECT u.id, u.login, u.name, u.avatar_url, u.first_login_done, u.display_name, u.avatar_override_url, u.account_status, u.created_at, u.updated_at, u.timezone FROM users u JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = ? AND i.provider_user_id = ?
 `
 
@@ -209,12 +210,13 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 		&i.AccountStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getUserByLogin = `-- name: GetUserByLogin :one
-SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE lower(login) = lower(?)
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at, timezone FROM users WHERE lower(login) = lower(?)
 `
 
 func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error) {
@@ -231,6 +233,7 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 		&i.AccountStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -426,7 +429,7 @@ func (q *Queries) ListIdentityProviders(ctx context.Context) ([]ListIdentityProv
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users ORDER BY login
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at, timezone FROM users ORDER BY login
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -449,6 +452,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.AccountStatus,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Timezone,
 		); err != nil {
 			return nil, err
 		}
