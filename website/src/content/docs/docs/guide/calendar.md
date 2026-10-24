@@ -20,17 +20,17 @@ Press **New meeting** and fill in:
 - **Reminder**: how long before each meeting the reminder goes, 10 minutes unless you pick another time.
 - **Notes**, in markdown.
 
-Creating meetings takes **Create meetings** (`calendar:write`). Every role starts without it except the Owner, so an admin turns it on for the roles that need it on the [Access page](/docs/guide/people-and-access/). Without it the button is there but locked, with the reason.
+Creating meetings takes **Create meetings** (`calendar:write`). Every role starts without it except the Owner, so an admin turns it on for the roles that need it on the [Access page](/docs/guide/people-and-access/). Without it the button is hidden, or shown locked with the reason for a role set to show locked actions.
 
 ## Reply, change, cancel
 
-Select a meeting to open it beside the calendar. It shows where it takes place, the notes, and who is coming, who declined and who hasn't replied yet.
+Select a meeting to open it beside the calendar. A month cell with more than three entries ends in **N more**, which opens that week. It shows where it takes place, the notes, and who is coming, who declined and who hasn't replied yet.
 
 - **Accept** or **Decline** if you're invited. Your reply covers every occurrence of a repeating meeting.
 - **Edit** changes a meeting. Its organiser can change it, and so can anyone holding **Change or cancel anyone's meetings** (`calendar:delete`).
 - **Cancel** tells everyone invited. A cancelled meeting stays on the calendar, crossed out, until someone restores it with **Restore**.
 
-For a repeating meeting, an edit or a cancel asks whether it's for **this meeting** or **this and the following meetings**. Changing only this one leaves the rest as they were. Changing the following ones ends the series there and carries on with your change from that date.
+For a repeating meeting, an edit or a cancel asks whether it's for **This meeting** or **This and following meetings**. Changing only this one leaves the rest as they were. Changing the following ones ends the series there and carries on with your change from that date.
 
 ## Reminders
 
