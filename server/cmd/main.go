@@ -273,6 +273,7 @@ var livePushTopics = []string{
 	tickets.TopicAssigneeChanged,
 	tickets.TopicDeveloperChanged,
 	tickets.TopicTesterChanged,
+	tickets.TopicDueDateChanged,
 	tickets.TopicFinished,
 	tickets.TopicDeleted,
 	tickets.TopicLinkCreated,

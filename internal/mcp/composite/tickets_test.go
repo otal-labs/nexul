@@ -279,12 +279,12 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 
 	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{
 		"id":"REF-1","title":"New","body":"Body","status_id":"st-doing","position":0,"type_id":"tt-bug","category_id":"",
-		"developer":"","tester":"lena","doc_id":"doc-1","add_labels":["backend"],"remove_labels":["urgent"],"found_in_id":"REF-2",
+		"developer":"","tester":"lena","due_on":"2026-10-30","doc_id":"doc-1","add_labels":["backend"],"remove_labels":["urgent"],"found_in_id":"REF-2",
 		"add_blocker_ids":["REF-3"],"remove_blocker_ids":["REF-2"],
 		"link_pr":{"owner":"otal-labs","repo":"nexul","number":7},"link_branch":{"owner":"otal-labs","repo":"nexul","branch":"fix/x"}}`)
 	require.NoError(t, err)
 	res := got.(ticketUpdateResult)
-	assert.Equal(t, []string{"title, body", "status_id", "type_id", "category_id", "position", "developer", "tester", "doc_id",
+	assert.Equal(t, []string{"title, body", "status_id", "type_id", "category_id", "position", "developer", "tester", "due_on", "doc_id",
 		"add_labels[0]", "remove_labels[0]", "found_in", "add_blocker_ids[0]", "remove_blocker_ids[0]", "link_pr", "link_branch"}, res.Applied)
 	tk := res.Ticket
 	assert.Equal(t, "New", tk.Title)
@@ -293,6 +293,7 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 	assert.Empty(t, tk.CategoryID)
 	assert.Empty(t, tk.Developer)
 	assert.Equal(t, "lena", tk.Tester)
+	assert.Equal(t, "2026-10-30", tk.DueOn)
 	assert.Equal(t, "doc-1", tk.DocID)
 	assert.Equal(t, []string{"backend"}, tk.Labels)
 
@@ -420,4 +421,108 @@ func TestTicketKeys_ResolveWithinAWorkspace(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got.(ticketDetail).BlockedBy, 1)
 	assert.Equal(t, "t-10", got.(ticketDetail).BlockedBy[0].ID)
+}
+
+func TestTicketUpdate_DueOn(t *testing.T) {
+	update := func(t *testing.T, f fixture, args string) (ticketResult, error) {
+		t.Helper()
+		got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", args)
+		if err != nil {
+			return ticketResult{}, err
+		}
+		return got.(ticketUpdateResult).Ticket, nil
+	}
+
+	for _, bad := range []string{"tomorrow", "2026-1-5", "2026-02-30", "2026-10-30T10:00:00Z"} {
+		t.Run("rejects "+bad, func(t *testing.T) {
+			f := newFixture(t)
+			_, err := update(t, f, `{"id":"t-1","due_on":"`+bad+`"}`)
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			assert.Contains(t, err.Error(), "due_on: ")
+			assert.Contains(t, err.Error(), "YYYY-MM-DD")
+			assert.Empty(t, f.w.tickets["t-1"].DueOn)
+		})
+	}
+	t.Run("sets the date, and a later update that omits it keeps it", func(t *testing.T) {
+		f := newFixture(t)
+		got, err := update(t, f, `{"id":"REF-1","due_on":"2026-10-30"}`)
+		require.NoError(t, err)
+		assert.Equal(t, "2026-10-30", got.DueOn)
+
+		got, err = update(t, f, `{"id":"REF-1","title":"Renamed","tester":"lena"}`)
+		require.NoError(t, err)
+		assert.Equal(t, "2026-10-30", got.DueOn)
+		assert.Equal(t, "Renamed", got.Title)
+	})
+	t.Run("an empty string clears it", func(t *testing.T) {
+		f := newFixture(t)
+		_, err := update(t, f, `{"id":"t-1","due_on":"2026-10-30"}`)
+		require.NoError(t, err)
+		got, err := update(t, f, `{"id":"t-1","due_on":""}`)
+		require.NoError(t, err)
+		assert.Empty(t, got.DueOn)
+	})
+	t.Run("the result lists due_on as applied", func(t *testing.T) {
+		got, err := call(t, asUser(t.Context()), newFixture(t).ticketTools(), "ticket_update", `{"id":"t-1","due_on":"2026-10-30"}`)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"due_on"}, got.(ticketUpdateResult).Applied)
+	})
+}
+
+func TestTicketList_DueFilter(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Late", Status: "st-todo", DueOn: "2026-11-02"})
+	f.w.addTicket(&tickets.Ticket{ID: "t-4", ProjectID: "p-1", Title: "Early", Status: "st-todo", DueOn: "2026-10-01"})
+	f.w.addTicket(&tickets.Ticket{ID: "t-5", ProjectID: "p-1", Title: "Middle", Status: "st-todo", DueOn: "2026-10-15"})
+	list := func(args string) (mcptool.Page[ticketResult], error) {
+		got, err := call(t, t.Context(), f.ticketTools(), "ticket_list", args)
+		if err != nil {
+			return mcptool.Page[ticketResult]{}, err
+		}
+		return got.(mcptool.Page[ticketResult]), nil
+	}
+	ids := func(p mcptool.Page[ticketResult]) []string {
+		var out []string
+		for _, r := range p.Items {
+			out = append(out, r.ID)
+		}
+		return out
+	}
+
+	for name, args := range map[string]string{
+		"a bad due_from is invalid":    `{"due_from":"soon"}`,
+		"a bad due_to is invalid":      `{"due_to":"2026-13-01"}`,
+		"a reversed range is invalid":  `{"due_from":"2026-11-01","due_to":"2026-10-01"}`,
+		"due_from must be a string":    `{"due_from":20261001}`,
+		"an unknown due filter is bad": `{"due_on":"2026-10-01"}`,
+	} {
+		_, err := list(args)
+		require.ErrorIs(t, err, apperrs.ErrInvalid, name)
+	}
+
+	got, err := list(`{"due_from":"2026-10-01","due_to":"2026-10-31"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"t-4", "t-5"}, ids(got), "inclusive ends, by due date, tickets without one left out")
+	assert.Equal(t, "2026-10-15", got.Items[1].DueOn)
+	assert.Equal(t, 2, got.Total)
+
+	got, err = list(`{"due_from":"2026-10-15"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"t-5", "t-3"}, ids(got), "an open end")
+
+	got, err = list(`{"due_to":"2026-10-01"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"t-4"}, ids(got))
+
+	got, err = list(`{}`)
+	require.NoError(t, err)
+	assert.Len(t, got.Items, 5, "no filter keeps tickets without a due date")
+}
+
+func TestTicketGet_ShowsTheDueDate(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Due soon", Status: "st-todo", DueOn: "2026-10-30"})
+	got, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"t-3"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "2026-10-30", got.(ticketDetail).DueOn)
 }

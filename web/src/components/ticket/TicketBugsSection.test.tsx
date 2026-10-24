@@ -37,6 +37,7 @@ const ticket: Ticket = {
   developer: "",
   tester: "",
   reporter: { kind: "user", login: "onik97" },
+  due_on: "",
   created_at: "2026-09-01T00:00:00Z",
   updated_at: "2026-09-01T00:00:00Z",
   labels: null,

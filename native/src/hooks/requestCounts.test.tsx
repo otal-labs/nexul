@@ -247,6 +247,14 @@ describe("requests a session sends", () => {
     expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
   });
 
+  test("a due date change refetches the board's list and that ticket, nothing else", async () => {
+    const client = await renderSession();
+
+    const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.due_date_changed", "t-2")));
+
+    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
+  });
+
   const roleFrame = (roleID: string) => ({
     topic: "access.grant.changed",
     type: "event",

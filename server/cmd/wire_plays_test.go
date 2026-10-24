@@ -38,6 +38,10 @@ func (allowTickets) CallerProjects(context.Context, permissions.Action) ([]strin
 
 func (allowTickets) Require(context.Context, string, permissions.Action) error { return nil }
 
+func (allowTickets) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 // TestIntegration_PlaysLinkReader_OneHop names a bug's origin by its key, never the origin's own origin, and its blockers.
 func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	t.Parallel()

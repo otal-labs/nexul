@@ -7849,6 +7849,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7887,6 +7890,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -7995,6 +7999,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8033,6 +8040,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8139,6 +8147,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8177,6 +8188,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8229,6 +8241,167 @@
       "ticket",
       "from",
       "to"
+    ]
+  },
+  "ticket.due_date_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "due_on",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "previous_due_on": {
+        "type": "string",
+        "description": "The due date before the change as YYYY-MM-DD; empty when the ticket had none."
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who changed the due date: a member, or an automation.",
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A ticket's due date was set, changed, or cleared; an empty previous_due_on means it had none, and an empty due_on on the ticket means it has none now.",
+    "required": [
+      "ticket",
+      "previous_due_on"
     ]
   },
   "ticket.finished": {
@@ -8298,6 +8471,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8336,6 +8512,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8491,6 +8668,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8529,6 +8709,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8652,6 +8833,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8690,6 +8874,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8777,6 +8962,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8815,6 +9003,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -8902,6 +9091,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -8940,6 +9132,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",
@@ -9128,6 +9321,9 @@
               "kind"
             ]
           },
+          "due_on": {
+            "type": "string"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -9166,6 +9362,7 @@
           "developer",
           "tester",
           "reporter",
+          "due_on",
           "created_at",
           "updated_at",
           "labels",

@@ -115,6 +115,7 @@
   "ticket.created",
   "ticket.deleted",
   "ticket.developer_changed",
+  "ticket.due_date_changed",
   "ticket.finished",
   "ticket.link_created",
   "ticket.link_deleted",

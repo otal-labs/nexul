@@ -59,6 +59,10 @@ type Gate interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
+	// CallerProjectsIn is CallerProjects inside one workspace.
+	CallerProjectsIn(ctx context.Context, workspaceID string, action permissions.Action) (projectIDs []string, all bool, err error)
+	// Require checks action in a workspace; permissions.Member asks only for membership.
+	Require(ctx context.Context, workspaceID string, action permissions.Action) error
 }
 
 // NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
@@ -438,6 +442,10 @@ func (s *Service) List(ctx context.Context) ([]*Ticket, error) {
 // A project filter needs tickets:read there.
 func (s *Service) PageTickets(ctx context.Context, f TicketFilter, w paging.Window) ([]*Ticket, int, error) {
 	f.Query = strings.TrimSpace(f.Query)
+	f.DueFrom, f.DueTo = strings.TrimSpace(f.DueFrom), strings.TrimSpace(f.DueTo)
+	if err := checkDueRange(f.DueFrom, f.DueTo); err != nil {
+		return nil, 0, err
+	}
 	if f.ProjectID != "" {
 		if err := s.require(ctx, f.ProjectID, permissions.TicketsRead); err != nil {
 			return nil, 0, fmt.Errorf("list tickets for project %s: %w", f.ProjectID, err)

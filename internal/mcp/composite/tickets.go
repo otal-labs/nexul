@@ -52,6 +52,7 @@ type ticketResult struct {
 	Category   string           `json:"category,omitempty"`
 	Developer  string           `json:"developer,omitempty"`
 	Tester     string           `json:"tester,omitempty"`
+	DueOn      string           `json:"due_on"`
 	Reporter   tickets.Reporter `json:"reporter"`
 	Labels     []string         `json:"labels"`
 	DocID      string           `json:"doc_id,omitempty"`
@@ -123,7 +124,7 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 		ID: t.ID, Key: ticketKey(pn.prefix, t.Number), Title: t.Title, Body: body, ProjectID: t.ProjectID,
 		StatusID: string(t.Status), Status: pn.statuses[string(t.Status)],
 		TypeID: t.TypeID, Type: pn.types[t.TypeID], CategoryID: t.CategoryID, Category: pn.categories[t.CategoryID],
-		Developer: t.Developer, Tester: t.Tester, Reporter: t.Reporter, Labels: t.Labels, DocID: t.DocID,
+		Developer: t.Developer, Tester: t.Tester, DueOn: t.DueOn, Reporter: t.Reporter, Labels: t.Labels, DocID: t.DocID,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt, FinishedAt: t.FinishedAt,
 	}, nil
 }
@@ -141,16 +142,18 @@ type ticketListIn struct {
 	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, by its id."`
 	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and the text of notes on the ticket's thread, for example login timeout. Title and body matches come first, by relevance, then note-only matches."`
 	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets still waiting on a blocker whose pull request has not merged and that has not reached a done-stage column."`
+	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date, as YYYY-MM-DD such as 2026-10-01. Tickets without a due date are left out."`
+	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date, as YYYY-MM-DD such as 2026-10-31. Tickets without a due date are left out."`
 	mcptool.PageArgs
 }
 
 func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_list", "List tickets",
 		"Lists tickets without their bodies: each with its id, key (such as REF-102), title, status column, type, "+
-			"category, people, labels, and, when it is blocked, the keys of the blockers it still waits on (waiting_on). "+
-			"Filter by project, by source doc, by a full-text query, or to blocked tickets only; filters combine. "+
-			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Without a query tickets come "+
-			"oldest first; with one they come by relevance, and every match can be paged to. Returns at most 100 tickets per page.",
+			"category, people, due date (due_on, empty when none), labels, and, when it is blocked, the keys of the blockers it still waits on (waiting_on). "+
+			"Filter by project, by source doc, by a full-text query, by due date range (due_from and due_to, inclusive), or to blocked tickets only; filters combine. "+
+			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Tickets come oldest first, "+
+			"by due date when a due date filter is given, and by relevance with a query; every match can be paged to. Returns at most 100 tickets per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketListIn) (any, error) {
 			if in.ProjectID != "" {
@@ -159,7 +162,7 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 					return nil, err
 				}
 			}
-			f := tickets.TicketFilter{ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly}
+			f := tickets.TicketFilter{ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly, DueFrom: in.DueFrom, DueTo: in.DueTo}
 			found, total, err := t.PageTickets(ctx, f, in.Window())
 			if err != nil {
 				return nil, err
@@ -242,7 +245,7 @@ type reviewResult struct {
 
 func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Service) mcptool.Tool {
 	return mcptool.New("ticket_get", "Get ticket",
-		"Returns one ticket with its markdown body, status column, type, category, people, and labels, plus its "+
+		"Returns one ticket with its markdown body, status column, type, category, people, due date, and labels, plus its "+
 			"linked pull requests and branches, the ticket it was found in and the bugs found in it, what blocks it "+
 			"and what it blocks (each with done read from its column's stage), the code reviews of its pull requests, "+
 			"and its test_target. Use it before changing a ticket with ticket_update, and before testing one: "+
@@ -401,6 +404,7 @@ type ticketUpdateIn struct {
 	CategoryID       *string       `json:"category_id,omitempty" jsonschema:"The category's id, from project_get; an empty string uncategorizes the ticket."`
 	Developer        *string       `json:"developer,omitempty" jsonschema:"The member login who builds it; an empty string clears it."`
 	Tester           *string       `json:"tester,omitempty" jsonschema:"The member login who tests it; an empty string clears it."`
+	DueOn            *string       `json:"due_on,omitempty" jsonschema:"The ticket's due date, a date as YYYY-MM-DD such as 2026-10-30; an empty string clears it. Needs tickets:write."`
 	DocID            *string       `json:"doc_id,omitempty" jsonschema:"The id of the doc this ticket is derived from, its source, from doc_list; an empty string clears it."`
 	AddLabels        []string      `json:"add_labels,omitempty" jsonschema:"Labels to attach, for example urgent."`
 	RemoveLabels     []string      `json:"remove_labels,omitempty" jsonschema:"Labels to detach."`
@@ -443,7 +447,7 @@ type ticketUpdateResult struct {
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
 		"Changes a ticket: its title and body, project, status column and place in it, type, category, developer "+
-			"and tester, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. Only the fields "+
+			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. Only the fields "+
 			"you send change; an omitted field keeps its value. The changes apply in the order the fields are listed here and "+
 			"stop at the first failure, whose message names the field and the ones already applied. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete. Returns "+
@@ -523,6 +527,7 @@ func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 		{in.Tester != nil, step{"tester", "", func(ctx context.Context) error {
 			return discard(u.t.SetPerson(ctx, u.id, tickets.RoleTester, *in.Tester))
 		}}},
+		{in.DueOn != nil, step{"due_on", "", func(ctx context.Context) error { return discard(u.t.SetDueOn(ctx, u.id, *in.DueOn)) }}},
 		{in.DocID != nil, step{"doc_id", "doc_list lists the docs", func(ctx context.Context) error { return discard(u.t.SetSource(ctx, u.id, *in.DocID)) }}},
 	}
 	for _, f := range fields {
