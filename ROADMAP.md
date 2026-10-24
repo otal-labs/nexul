@@ -359,6 +359,18 @@ Nexul app and T3 Code, starts either one again 5 seconds after it exits, and
 removes the install when the computer is removed from Nexul. It prints the
 line that starts it again after a reboot.
 
+### Workspace calendar
+
+Each workspace has a calendar of meetings and ticket due dates, in month and
+week views. A meeting takes place in a voice channel or at a link, invites any
+members, who accept or decline, and repeats daily, weekly or monthly in its own
+timezone. One occurrence, or it and the following ones, can be changed or
+cancelled, and a cancelled meeting can be restored. Everyone who hasn't
+declined gets an inbox notice and a phone push before each one, and a ticket's
+developer the day before it's due. Only the people invited see a meeting.
+Agents plan meetings over MCP, and the phone app lists the next 30 days.
+ADR 0168.
+
 ---
 
 ## Now — improving what's built

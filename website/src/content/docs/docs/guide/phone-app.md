@@ -5,7 +5,7 @@ sidebar:
   order: 13
 ---
 
-The web app is built for tablets and desktops. On a phone, use the Nexul app: your inbox, chat, the board, deploys and their logs, and docs. It ships for Android, and for iPhone through SideStore. It isn't in an app store; you install it from GitHub.
+The web app is built for tablets and desktops. On a phone, use the Nexul app: your inbox, chat, your calendar, the board, deploys and their logs, and docs. It ships for Android, and for iPhone through SideStore. It isn't in an app store; you install it from GitHub.
 
 ## Install it
 
