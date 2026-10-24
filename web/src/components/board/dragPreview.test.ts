@@ -1,6 +1,7 @@
+import type { Active } from "@dnd-kit/core";
 import { describe, expect, it } from "vitest";
 
-import { applyDragPreview, applyDropResult, resolveDragCell, sameDragCell } from "@/components/board/dragPreview";
+import { animateNearSlot, applyDragPreview, applyDropResult, resolveDragCell, sameDragCell } from "@/components/board/dragPreview";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { Ticket } from "@/models/Ticket";
 
@@ -152,5 +153,44 @@ describe("applyDropResult", () => {
   it("returns the same array when there is nothing to apply", () => {
     const swimlanes = [lane("A", "c-1", [ticket("t-1", "open", "c-1", 0)])];
     expect(applyDropResult(swimlanes, "t-1", [])).toBe(swimlanes);
+  });
+});
+
+describe("animateNearSlot", () => {
+  const column = Array.from({ length: 209 }, (_, i) => `t-${i}`);
+
+  // The calls useSortable makes for every card of a column whose items changed, counting the cards that would measure and slide.
+  const slidingCards = (previousItems: string[], items: string[], active: Active | null) =>
+    items.filter((id, index) =>
+      id !== active?.id &&
+      animateNearSlot({
+        active,
+        containerId: "column",
+        previousContainerId: "column",
+        isDragging: false,
+        isSorting: active !== null,
+        id,
+        index,
+        items,
+        previousItems,
+        newIndex: previousItems.indexOf(id),
+        transition: { duration: 200, easing: "ease" },
+        wasDragging: true,
+      }),
+    ).length;
+
+  it("slides only the cards in view below the slot the ghost leaves", () => {
+    const active = { id: "t-0" } as Active;
+    expect(slidingCards(column, column.slice(1), active)).toBe(9);
+  });
+
+  it("slides only the cards in view below the slot the ghost enters", () => {
+    const active = { id: "ghost" } as Active;
+    const entered = [...column.slice(0, 3), "ghost", ...column.slice(3)];
+    expect(slidingCards(column, entered, active)).toBe(8);
+  });
+
+  it("slides every moved card once the drag has ended", () => {
+    expect(slidingCards(column, column.slice(1), null)).toBe(208);
   });
 });

@@ -8,6 +8,7 @@ import { personLabel } from "@nexul/client-core/person";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
@@ -123,6 +124,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
     disabled: { draggable: !draggable, droppable: collapsed },
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
     transition: { duration: 200, easing: "ease" },
+    animateLayoutChanges: animateNearSlot,
   });
   // The ghost remounts in every column it's dragged through; an entrance there reads as lag.
   const [mountedWhileDragging] = useState(isDragging);
