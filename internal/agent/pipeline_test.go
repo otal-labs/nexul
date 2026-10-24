@@ -1003,6 +1003,37 @@ func TestRunTurn_RequestImages_AttachToBothPromptsInPlaceOfTheirLinks(t *testing
 	}
 }
 
+func TestRunTurn_ImagesInEarlierMessages_AttachToBothPromptsInPlaceOfTheirLinks(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv.history = []ConversationMessage{
+		{AuthorID: "u-1", AuthorKind: "user", Body: "worth mentioning\n![image.png](/api/attachments/png-1)", CreatedAt: minuteOf(30)},
+		{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent", CreatedAt: minuteOf(31)},
+	}
+	var got harness.TurnPrompts
+	client := fourImageTypes{&harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		got = prompts
+		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
+	}}}
+	reader := newFakeAttachmentReader()
+	reader.items["png-1"] = StoredAttachment{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     harness.Registry{harness.KindT3Code: client},
+		Attachments:   reader,
+		Live:          &fakeLive{},
+	})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent"})
+
+	want := []harness.Attachment{{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}}
+	assert.Equal(t, want, got.Attachments)
+	assert.Equal(t, want, got.IncrementalAttachments, "a reused session gets the earlier message's image too")
+	for _, prompt := range []string{got.Full, got.Incremental} {
+		assert.Contains(t, prompt, "worth mentioning\n[Attached image: image.png]")
+	}
+}
+
 // --- interrupt -------------------------------------------------------------
 
 func TestInterrupt_NoActiveTurn_ReturnsNotFound(t *testing.T) {

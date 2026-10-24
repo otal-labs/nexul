@@ -584,16 +584,17 @@ func (s *Service) buildTurnPrompts(ctx context.Context, client harness.Client, c
 	if req.Play != nil {
 		all, others = nil, nil
 	}
-	targetImgs, requestImgs := s.turnImages(actorCtx, client, target, req.RequestBody)
+	targetImgs, contextImgs, requestImgs := s.turnImages(actorCtx, client, target, others, req.RequestBody)
 	in.Target = targetSection(target, targetImgs)
 	in.RequestBody = nameAttached(req.RequestBody, requestImgs)
+	all, others = nameAttachedIn(all, contextImgs), nameAttachedIn(others, contextImgs)
 	incremental := in
 	incremental.ContextMessages = others
 	in.ContextMessages = all
 	in.Intro = s.template(ctx, TemplateIntro, DefaultIntro)
 	in.Footer = s.template(ctx, TemplateFooter, DefaultFooter)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(slices.Concat(targetImgs, requestImgs)),
-		IncrementalAttachments: attached(requestImgs), Answer: req.Answer}, sentThrough, nil
+	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(slices.Concat(targetImgs, contextImgs, requestImgs)),
+		IncrementalAttachments: attached(slices.Concat(contextImgs, requestImgs)), Answer: req.Answer}, sentThrough, nil
 }
 
 // contextMessages resolves history; others drops the Agent's own replies and the messages relayed from the harness,
@@ -651,11 +652,11 @@ func (s *Service) markSent(ctx context.Context, conversationID string, through t
 	}
 }
 
-// turnImages reads the images the request and the ticket or doc body embed, attaching those client sends its agent;
-// the request's are read first, so they keep their place within the turn's total.
-func (s *Service) turnImages(ctx context.Context, client harness.Client, target *threadTarget, request string) (targetImgs, requestImgs []bodyImage) {
+// turnImages reads the images the request, the people's messages sent with it, and the ticket or doc body embed,
+// attaching those client sends its agent; they are read in that order, so the request's keep their place within the turn's total.
+func (s *Service) turnImages(ctx context.Context, client harness.Client, target *threadTarget, msgs []ContextMessage, request string) (targetImgs, contextImgs, requestImgs []bodyImage) {
 	if s.attachments == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	takes := func(string) bool { return true }
 	if t, ok := client.(harness.ImageTaker); ok {
@@ -663,10 +664,15 @@ func (s *Service) turnImages(ctx context.Context, client harness.Client, target 
 	}
 	budget := MaxTurnAttachmentBytes
 	requestImgs = bodyImages(ctx, request, s.attachments, takes, &budget)
+	bodies := make([]string, len(msgs))
+	for i, m := range msgs {
+		bodies[i] = m.Body
+	}
+	contextImgs = bodyImages(ctx, strings.Join(bodies, "\n"), s.attachments, takes, &budget)
 	if target != nil {
 		targetImgs = bodyImages(ctx, target.body, s.attachments, takes, &budget)
 	}
-	return targetImgs, requestImgs
+	return targetImgs, contextImgs, requestImgs
 }
 
 func attached(images []bodyImage) []harness.Attachment {
