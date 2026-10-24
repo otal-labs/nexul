@@ -1,5 +1,7 @@
 # A protocol-2 turn is the run Nexul's message starts
 
+Amended by ADR 0169: a queued mention can be steered into the run under way, and its turn then ends done.
+
 On T3 Code's orchestrator V2 (orchestration protocol 2) a thread no longer has one session with one active turn.
 Every message becomes a run, runs queue behind each other, and T3 starts runs of its own on the same thread: wakes
 for delegated work, pull-request watches, scheduled tasks, resumes after a usage limit. Protocol 1's "the session went

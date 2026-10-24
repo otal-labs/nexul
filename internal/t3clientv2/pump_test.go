@@ -99,6 +99,9 @@ func TestPump_QueuedRun_NoteRepeatsEveryFiveMinutesUnderOneCallID(t *testing.T) 
 		time.Sleep(11 * time.Minute)
 		synctest.Wait()
 		notes := collect(out)
+		require.NotEmpty(t, notes)
+		assert.Equal(t, harness.Update{Queued: new(true)}, notes[0], "the turn says it entered the queue before the note")
+		notes = notes[1:]
 		require.Len(t, notes, 3, "shown at once, then at five and ten minutes")
 		for i, u := range notes {
 			require.NotNil(t, u.Activity)
@@ -118,7 +121,7 @@ func TestPump_QueuedRun_NoteRepeatsEveryFiveMinutesUnderOneCallID(t *testing.T) 
 		src.ch <- items(event(4, "run.updated", runOf("msg-1", "running")))
 		time.Sleep(11 * time.Minute)
 		synctest.Wait()
-		assert.Empty(t, collect(out), "a started run is no longer queued")
+		assert.Equal(t, []harness.Update{{Queued: new(false)}}, collect(out), "a started run left the queue, and its note stops")
 
 		src.ch <- items(event(5, "run.updated", runOf("msg-1", runWaiting)))
 		synctest.Wait()

@@ -93,3 +93,8 @@ func (f forward) Settle(ctx context.Context, t Target) error {
 	_, err := follow(ctx, f, t.Session, func(c Client) (struct{}, error) { return struct{}{}, c.Settle(ctx, t) })
 	return err
 }
+
+func (f forward) Steer(ctx context.Context, t Target) error {
+	_, err := follow(ctx, f, t.Session, func(c Client) (struct{}, error) { return struct{}{}, c.Steer(ctx, t) })
+	return err
+}

@@ -49,6 +49,8 @@ type pump struct {
 	failures int
 	// lostAt is when the resubscribes in a row began.
 	lostAt time.Time
+	// queued is whether the turn last reported waiting in T3's queue.
+	queued bool
 	// note is the standing note last shown, due when it is shown again.
 	note string
 	due  time.Time
@@ -161,6 +163,10 @@ func (p *pump) finish(ctx context.Context, out chan<- harness.Update, end *harne
 			return
 		}
 	}
+	// A steered message's queued run is cancelled, and the run it joined replies to it.
+	if p.live.steered.Load() && end.State == harness.TurnInterrupted {
+		end = &harness.TurnResult{State: harness.TurnDone, Marker: end.Marker}
+	}
 	send(ctx, out, harness.Update{Terminal: end})
 }
 
@@ -174,8 +180,14 @@ func (p *pump) declineApprovals(ctx context.Context) {
 	p.w.declines = nil
 }
 
-// remind shows the standing note when it changes and again every noteEvery while it stands; false once ctx ends.
+// remind reports the turn entering or leaving T3's queue, and shows the standing note when it changes and again every noteEvery while it stands; false once ctx ends.
 func (p *pump) remind(ctx context.Context, out chan<- harness.Update) bool {
+	if queued := p.w.queued(); queued != p.queued {
+		p.queued = queued
+		if !send(ctx, out, harness.Update{Queued: &queued}) {
+			return false
+		}
+	}
 	note := p.w.standingNote()
 	if note == nil {
 		p.note, p.due = "", time.Time{}

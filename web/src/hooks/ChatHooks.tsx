@@ -7,6 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
+import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { channelMention, type ConversationDeleted, type CreateChannelFormData, type Message } from "@/models/Chat";
 import type { QuestionAnswers } from "@/models/Question";
@@ -250,6 +251,14 @@ export const useMarkChatRead = (workspaceId: string) => {
 export const useInterruptAgentTurn = (conversationId: string) =>
   useMutation({
     mutationFn: requires("none", async () => api.post(`/api/agent/conversations/${conversationId}/interrupt`)),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+// The queued line leaves at once; the turn under way replies to the message, and the steered turn ends without a reply.
+export const useSteerAgentTurn = (conversationId: string) =>
+  useMutation({
+    mutationFn: requires("none", async (messageId: string) => api.post(`/api/agent/conversations/${conversationId}/steer`, { message_id: messageId })),
+    onSuccess: (_, messageId) => useAgentStreamStore.getState().setQueued(messageId, false),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
