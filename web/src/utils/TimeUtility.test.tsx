@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatCalendarTime, formatDiscordTimestamp, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -71,18 +71,5 @@ describe("formatCalendarTime", () => {
 
   it("returns the raw string when the timestamp is unparseable", () => {
     expect(formatCalendarTime("soon")).toBe("soon");
-  });
-});
-
-describe("formatDiscordTimestamp", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("reads R as a distance in either direction", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-06T20:00:00Z"));
-    expect(formatDiscordTimestamp(new Date("2026-10-06T19:55:00Z"), "R")).toBe("5 minutes ago");
-    expect(formatDiscordTimestamp(new Date("2026-10-09T20:00:00Z"), "R")).toBe("in 3 days");
   });
 });

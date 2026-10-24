@@ -16,6 +16,8 @@ export const usePlayMenu = (play: Play): RowMenu => {
   const { offered, gates, deleteGate } = useRowGates({
     onEdit: { permission: "plays:write", verb: "edit plays" },
     onDelete: { permission: "plays:delete" },
+    // A built-in clones its text onto a template; a play a person made clones into a new play.
+    ...(play.builtin_key ? {} : { onClone: { permission: "plays:write", verb: "create plays" } }),
   });
   const canWrite = useActionState({ permission: "plays:write" }).state === "live";
   const { playId } = useParams();
@@ -25,7 +27,7 @@ export const usePlayMenu = (play: Play): RowMenu => {
   const openPermissions = usePermissionsDialog();
   const { open: confirm } = useConfirmationDialog();
   const openClone = useCloneTemplateDialog();
-  const { edit } = usePlayDialogs();
+  const { edit, duplicate } = usePlayDialogs();
 
   const remove = async () => {
     const ok = await confirm({
@@ -42,12 +44,16 @@ export const usePlayMenu = (play: Play): RowMenu => {
   };
 
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
+  const clone = () => {
+    if (play.builtin_key) return void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at });
+    void duplicate(play);
+  };
   const entity = { type: "play" as const, id: play.id, name: play.label, workspaceId: play.workspace_id, projectId: "", folderId: "" };
   return {
     gates,
     deleteGate,
     onEdit: offered("onEdit") ? () => void edit(play) : undefined,
-    onClone: play.builtin_key ? () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) : undefined,
+    onClone: play.builtin_key || offered("onClone") ? clone : undefined,
     permissions: canWrite ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
     onDelete: offered("onDelete") ? () => void remove() : undefined,
   };

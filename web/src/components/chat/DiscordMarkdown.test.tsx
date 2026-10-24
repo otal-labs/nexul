@@ -75,6 +75,15 @@ describe("DiscordMarkdown", () => {
     expect(container).not.toHaveTextContent("<t:");
   });
 
+  it("reads the short date and time styles s and S as times too", () => {
+    const at = Date.UTC(2026, 9, 6, 20, 11, 25) / 1000;
+    const { container } = renderMarkdown(`From <t:${at}:s> to <t:${at}:S>`);
+    const times = [...container.querySelectorAll("time")].map((t) => t.textContent);
+    expect(times).toHaveLength(2);
+    expect(times[1]).toContain("25");
+    expect(container).not.toHaveTextContent("<t:");
+  });
+
   it("renders list lines and quotes, and bolds only the handles the server parsed as mentions", () => {
     const { container } = renderMarkdown("**Labels:**\n - alertname = HighErrorRate\n> on call: @lena and @nobody", ["lena"]);
     expect(container).toHaveTextContent("•alertname = HighErrorRate");

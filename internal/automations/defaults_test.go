@@ -9,7 +9,7 @@ import (
 
 func TestDefaultDefinitions(t *testing.T) {
 	defs := DefaultDefinitions()
-	require.Len(t, defs, 2, "the board pair")
+	require.Len(t, defs, 3, "the board pair and crash intake")
 
 	seen := map[string]bool{}
 	for _, def := range defs {
@@ -21,6 +21,6 @@ func TestDefaultDefinitions(t *testing.T) {
 		assert.NotEmpty(t, def.Code, "bundle must be embedded, run automations/defaults/build.ts if empty")
 		assert.Contains(t, def.Code, "export {")
 		assert.NotEmpty(t, def.Scopes)
-		assert.True(t, def.Enabled, "the board pair ships enabled out of the box")
+		assert.Equal(t, def.ID != "default-crash-intake", def.Enabled, "the board pair ships on, crash intake off until configured")
 	}
 }

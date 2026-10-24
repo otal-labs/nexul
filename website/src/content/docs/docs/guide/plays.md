@@ -24,12 +24,12 @@ The agent decides where the ticket goes when it finishes. It reads your footer m
 
 ## Follow a run
 
-Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did. While the agent works, one line names the step it is on, such as "Running bun run test". Each stretch of work then folds to a line such as "Worked for 14s · explored 2 files, ran 1 command". Open the fold to see the files it read or edited, each command it ran, and any other tool it called. Click a file name, a command, or a tool to see its arguments and result.
+While a play runs, its button shows a spinner and opens the run; the other plays wait, greyed out. Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did. While the agent works, one line names the step it is on, such as "Running bun run test". Each stretch of work then folds to a line such as "Worked for 14s · explored 2 files, ran 1 command". Open the fold to see the files it read or edited, each command it ran, and any other tool it called. Click a file name, a command, or a tool to see its arguments and result.
 
 While a run is going:
 
 - **The agent asks you something.** A question card shows on the trail and in the thread, and a dot on the ticket's **Thread** tab marks it until it is answered. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer.
-- **You want it to stop.** Press stop on the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
+- **You want it to stop.** Press the stop square beside the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
 - **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable for 15 minutes; until then it keeps its place in the computer's **Runs at once**.
 - **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.
 
@@ -60,7 +60,7 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 ## Create or change a play
 
-Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on, when it starts by itself, and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. A play has:
+Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on, when it starts by itself, and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.

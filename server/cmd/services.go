@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/connectors"
 	cfoauth "github.com/otal-labs/nexul/internal/connectors/cloudflare"
 	githuboauth "github.com/otal-labs/nexul/internal/connectors/github"
+	"github.com/otal-labs/nexul/internal/crashintake"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
@@ -102,6 +103,7 @@ type coreServices struct {
 	chatSvc             *chat.Service
 	botwebhookSvc       *botwebhook.Service
 	calendarSvc         *calendar.Service
+	crashIntakeSvc      *crashintake.Service
 	voiceSvc            *voice.Service
 	voiceHandler        *voice.Handler
 	voiceWebhookHandler *voice.WebhookHandler
@@ -342,6 +344,10 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope}
 	computers.tokens = cloneTokens{repos: workspaceSvc, access: accessSvc, git: gitRouter}
 	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
+	crashIntakeSvc := crashintake.NewService(
+		crashIntakeDesk{tickets: ticketsSvc, statuses: store.Statuses, types: store.TicketTypes},
+		crashIntakeNotes{tickets: ticketsSvc, chat: chatSvc, projects: store.Projects, users: store.Users},
+		gitRouter, logger)
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,
 		People:        newGitHubPeople(authSvc, store.ConnectorAppConfig),
@@ -429,6 +435,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		chatSvc:             chatSvc,
 		botwebhookSvc:       botwebhookSvc,
 		calendarSvc:         calendarSvc,
+		crashIntakeSvc:      crashIntakeSvc,
 		voiceSvc:            voiceSvc,
 		voiceHandler:        voiceHandler,
 		voiceWebhookHandler: voiceWebhookHandler,

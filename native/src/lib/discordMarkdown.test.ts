@@ -34,3 +34,14 @@ test("a bare URL links without the sentence's punctuation", () => {
     { kind: "text", text: "." },
   ]);
 });
+
+test("every timestamp style, s and S included, reads as a time carrying its code", () => {
+  for (const style of ["t", "T", "d", "D", "f", "F", "R", "s", "S"]) {
+    const code = `<t:1792867165:${style}>`;
+    expect(inline(`at ${code}`)).toEqual([
+      { kind: "text", text: "at " },
+      { kind: "time", time: { date: new Date(1792867165000), style, code } },
+    ]);
+  }
+  expect(inline("<t:1792867165:x>")).toEqual([{ kind: "text", text: "<t:1792867165:x>" }]);
+});

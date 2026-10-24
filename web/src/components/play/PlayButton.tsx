@@ -23,6 +23,8 @@ interface PlayButtonProps {
   // Swaps the idle icon for the warning dot: what the play last ran on has changed since.
   outOfDate?: boolean;
   className?: string;
+  // Styles the play's own button, apart from the Stop beside it.
+  mainClassName?: string;
 }
 
 const disabledReason = (running: boolean, waiting: boolean, blocked: string | undefined): string => {
@@ -31,8 +33,8 @@ const disabledReason = (running: boolean, waiting: boolean, blocked: string | un
   return blocked ?? "";
 };
 
-// Hidden unless the play's can_run says the viewer may run it; the starter or a plays:write holder gets Stop while a run occupies the target.
-export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className }: PlayButtonProps) => {
+// Hidden unless the play's can_run says the viewer may run it; while it runs it opens the run, and the starter or a plays:write holder gets Stop beside it.
+export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className, mainClassName }: PlayButtonProps) => {
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
   const blocked = useRunBlockedReason(projectId);
@@ -45,74 +47,56 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   if (!play.can_run) return null;
 
   const running = activeTrail !== undefined;
-  // Stop sits on the button of the play that is running; a sibling only reads as disabled.
-  const canStop = running && activeTrail.play_id === play.id && (activeTrail.starter_id === me?.user.id || canWrite);
-  // Only the play that asked reads as waiting; its siblings stay disabled with the reason.
-  const waiting = running && (liveState ?? activeTrail.state) === "waiting" && activeTrail.play_id === play.id;
+  // Only the running play's own button says so; a sibling keeps its icon and gives the reason on hover.
+  const ownRun = running && activeTrail.play_id === play.id;
+  const canStop = ownRun && (activeTrail.starter_id === me?.user.id || canWrite);
+  const waiting = ownRun && (liveState ?? activeTrail.state) === "waiting";
   const anyWaiting = (liveState ?? activeTrail?.state) === "waiting";
   const reason = disabledReason(running, anyWaiting, blocked);
-  // Readiness holds for every button on the page, so HarnessReadinessNote says it once; only a run's state is said here.
-  const runReason = disabledReason(running, anyWaiting, undefined);
 
   return (
-    <span className={cn("inline-flex flex-col items-start gap-1", className)}>
-      {waiting && (
-        <span className="inline-flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-info/50"
-            title={`${play.label} asked a question`}
-            onClick={() => setTrailOpen(true)}
-          >
-            <CircleHelp className="size-3.5 text-info" aria-hidden />
-            Waiting for your answer
-          </Button>
-          {canStop && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-8"
-              title="Stop this run"
-              aria-label={`Stop ${play.label}`}
-              loading={stopTrail.isPending}
-              onClick={() => stopTrail.mutate(activeTrail.id)}
-            >
-              <Square className="size-3 fill-current" aria-hidden />
-            </Button>
-          )}
-        </span>
-      )}
-      {!waiting && canStop && (
+    // A disabled button takes no pointer events, so the reason's tooltip sits on the wrapper.
+    <span className={cn("inline-flex items-center gap-1", className)} title={ownRun ? undefined : reason || play.description}>
+      {ownRun && (
         <Button
-          variant="outline"
+          variant={variant === "default" ? "outline" : variant}
           size="sm"
-          className="border-warning/50"
+          className={mainClassName}
+          title={waiting ? `${play.label} asked a question` : "Open this run"}
+          onClick={() => setTrailOpen(true)}
+        >
+          {waiting && <CircleHelp className="size-3.5 text-info" aria-hidden />}
+          {!waiting && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />}
+          {waiting ? "Waiting for your answer" : play.label}
+        </Button>
+      )}
+      {canStop && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
           title="Stop this run"
           aria-label={`Stop ${play.label}`}
           disabled={stopTrail.isPending}
           onClick={() => stopTrail.mutate(activeTrail.id)}
         >
-          <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />
-          {play.label}
-          <Square className="ml-1 size-3 fill-current" aria-hidden />
+          <Square className="size-3 fill-current" aria-hidden />
         </Button>
       )}
-      {!waiting && !canStop && (
+      {!ownRun && (
         <Button
           variant={variant}
           size="sm"
+          className={mainClassName}
           disabled={reason !== "" || blocked === undefined}
           title={reason || play.description}
           onClick={() => setDialogOpen(true)}
         >
-          {running && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />}
-          {!running && outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning" />}
-          {!running && !outOfDate && <Sparkles className="size-3.5" aria-hidden />}
+          {outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning" />}
+          {!outOfDate && <Sparkles className="size-3.5" aria-hidden />}
           {label ?? play.label}
         </Button>
       )}
-      {!waiting && !canStop && runReason !== "" && <span className="font-mono text-xs text-muted-foreground">{runReason}</span>}
       {activeTrail && <TrailDetail trailId={trailOpen ? activeTrail.id : null} onClose={() => setTrailOpen(false)} />}
       <PlayRunDialog
         play={play}

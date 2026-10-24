@@ -30,6 +30,9 @@ interface AgentStreamPayload {
   activity_call_id?: string;
   // Set only on the frame for the one hand-off that changed.
   handoff?: Handoff;
+  // Set only on a frame saying the turn answering this message entered or left the harness's queue, as queued says.
+  queued_message_id?: string;
+  queued?: boolean;
 }
 
 // Message frames carry the whole message, so they patch the cached list instead of triggering a refetch.
@@ -128,6 +131,10 @@ export const chatFollower: LiveFollower = {
     return refetchUnread(client, [workspaceId, ...holdingWorkspaces(client, conversationId)]);
   },
   "chat.agent.stream": (p: AgentStreamPayload) => {
+    if (p.queued_message_id) {
+      useAgentStreamStore.getState().setQueued(p.queued_message_id, p.queued === true);
+      return;
+    }
     // An empty non-streaming frame is the pipeline's clear signal, or the bubble spins forever.
     if (!p.streaming && !p.text) {
       useAgentStreamStore.getState().clearStream(p.conversation_id);

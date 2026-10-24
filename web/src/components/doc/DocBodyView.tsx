@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 
 import type { MentionChipData } from "@nexul/client-core/mention";
 
+import { DiscordTimeLayer } from "@/components/doc/discordTime/DiscordTimeLayer";
 import {
   buildEditorExtensions,
   extractMentionRefs,
@@ -37,7 +38,9 @@ export const DocBodyView = ({ body }: DocBodyViewProps) => {
 
   return (
     <div className="doc-body-view doc-readonly prose-rich">
-      <EditorContent editor={editor} />
+      <DiscordTimeLayer>
+        <EditorContent editor={editor} />
+      </DiscordTimeLayer>
     </div>
   );
 };

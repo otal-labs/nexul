@@ -1,3 +1,5 @@
+import { defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable";
+
 import type { DragMoveAction, DropTargetData } from "@/components/board/dragMove";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { Ticket } from "@/models/Ticket";
@@ -65,4 +67,16 @@ export const applyDropResult = (swimlanes: Swimlane[], activeTicketId: string, a
     const tickets = (lane.categoryId ?? "") === categoryId ? [...others, moved] : others;
     return { ...lane, tickets: tickets.map((t) => (positions.has(t.id) ? { ...t, position: positions.get(t.id)! } : t)) };
   });
+};
+
+// A column's scroll box shows about five cards, so a card further than this below the opened or closed slot is out of view.
+const SLIDE_WINDOW = 8;
+
+// The ghost entering or leaving a cell shifts every card after its slot; dnd-kit measures and slides each one, which on a long column is most of the drag's cost.
+export const animateNearSlot: AnimateLayoutChanges = (args) => {
+  if (!defaultAnimateLayoutChanges(args)) return false;
+  if (!args.active) return true;
+  const entered = args.items.indexOf(args.active.id);
+  const slot = entered === -1 ? args.previousItems.indexOf(args.active.id) : entered;
+  return slot === -1 || args.index - slot <= SLIDE_WINDOW;
 };

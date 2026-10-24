@@ -224,6 +224,14 @@ func (g gitProviderRouter) PRsForCommit(ctx context.Context, owner, name, sha st
 	return p.PRsForCommit(ctx, owner, name, sha)
 }
 
+func (g gitProviderRouter) MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return false, err
+	}
+	return p.MergedInto(ctx, owner, name, number, sha)
+}
+
 func (g gitProviderRouter) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
 	p, err := g.resolve(ctx, owner, name)
 	if err != nil {

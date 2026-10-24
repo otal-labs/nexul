@@ -116,6 +116,27 @@ func (c *Client) PRsForCommit(ctx context.Context, owner, name, sha string) ([]*
 	return out, nil
 }
 
+// MergedInto implements gitprovider.GitProvider through GitHub's compare of the pull request's merge commit with sha.
+func (c *Client) MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return false, err
+	}
+	p, _, err := c.gh.PullRequests.Get(ctx, owner, name, number)
+	if err != nil {
+		return false, fmt.Errorf("get PR %s/%s#%d: %w", owner, name, number, mapErr(err))
+	}
+	merge := p.GetMergeCommitSHA()
+	if p.GetMergedAt().IsZero() || merge == "" {
+		return false, fmt.Errorf("%w: PR %s/%s#%d has not merged", apperrors.ErrConflict, owner, name, number)
+	}
+	cmp, _, err := c.gh.Repositories.CompareCommits(ctx, owner, name, merge, sha, &githubapi.ListOptions{PerPage: 1})
+	if err != nil {
+		return false, fmt.Errorf("compare %s...%s in %s/%s: %w", merge, sha, owner, name, mapErr(err))
+	}
+	status := cmp.GetStatus()
+	return status == "identical" || status == "ahead", nil
+}
+
 // webhookEvents are the delivery types the /hooks/github receiver dispatches; push also carries branch deletes.
 var webhookEvents = []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issue_comment", "push"}
 

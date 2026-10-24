@@ -48,7 +48,7 @@ as written. In particular:
 - Imports by full path through the `@/` alias (`native/src`), `import type`
   for types, no barrels, no `index.ts`. A module the web runs too is imported
   from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:
-  the permission table, chat and embed rules, mention text, people, the live
+  the permission table, chat, embed and time code rules, mention text, people, the live
   socket, the query retry rule, a doc's questions with their rules and an agent's steps. tsconfig's `paths` name it for Metro, which watches the
   folder, and `jest.config.js` maps it; its tests run once, in the web's job.
 - Naming: `XxxScreen`, `XxxFeed`, `XxxRow`, `XxxHooks.tsx`, `xxxStore.tsx`,

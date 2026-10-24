@@ -103,7 +103,25 @@ describe("PlayListRow", () => {
 
     await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Permissions…", "Delete"]);
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Clone", "Permissions…", "Delete"]);
+  });
+
+  it("clones a play a person made into a new play of the workspace", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockImplementation(mockGet());
+    vi.mocked(api.post).mockResolvedValue({ data: { ...play, id: "play-2", label: "Fix with AI copy" } });
+    await renderRow({ ...play, description: "Fixes it", instructions: "Read the ticket." });
+
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
+    const dialog = await screen.findByRole("dialog", { name: "Clone Fix with AI" });
+    expect(within(dialog).getByLabelText("Label")).toHaveValue("Fix with AI copy");
+    await user.click(within(dialog).getByRole("button", { name: "Create play" }));
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/api/workspaces/ws-1/plays",
+      expect.objectContaining({ label: "Fix with AI copy", type: "ticket", description: "Fixes it", instructions: "Read the ticket.", show_when_stage: "progress" }),
+    );
   });
 
   it("adds Clone for a built-in play", async () => {

@@ -14,6 +14,7 @@ Open **Docs** under the project. The list groups docs by folder, newest first; t
 Write in the editor with formatting, tables, and code blocks; type `/` for the block menu. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
 
 - **Mention** with `@`: a person, a ticket, or another doc becomes a live chip. Pasting a link to a ticket or doc in the workspace does the same. Mentioning someone tells them in their inbox. A chip you can't open still shows what it points at, with a lock; it doesn't open, and pointing at it says **You don't have access**.
+- **Times** pasted as Discord codes, such as `<t:1792867165:F>`, show in each reader's own zone, as they do in [chat](/docs/guide/chat-and-voice/#times-in-everyones-zone). The body keeps the code: put the caret inside one to edit it.
 - **Attach** files by pasting, dropping, or `/` then **Image**. The doc's files are listed under the body.
 - **Watch** with the eye button in the doc's header. Watchers hear about edits. You start watching a doc when you create it or save an edit, and **Stop watching** sticks until you choose to watch again.
 

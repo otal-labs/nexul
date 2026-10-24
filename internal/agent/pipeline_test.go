@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -365,6 +366,7 @@ func messageCreatedEventKind(t *testing.T, conversationID, authorID, authorKind,
 		mentions = append(mentions, map[string]string{"kind": "agent"})
 	}
 	payload, err := json.Marshal(map[string]any{"message": map[string]any{
+		"id":              "msg-1",
 		"conversation_id": conversationID,
 		"author_id":       authorID,
 		"author_kind":     authorKind,
@@ -1003,6 +1005,37 @@ func TestRunTurn_RequestImages_AttachToBothPromptsInPlaceOfTheirLinks(t *testing
 	}
 }
 
+func TestRunTurn_ImagesInEarlierMessages_AttachToBothPromptsInPlaceOfTheirLinks(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv.history = []ConversationMessage{
+		{AuthorID: "u-1", AuthorKind: "user", Body: "worth mentioning\n![image.png](/api/attachments/png-1)", CreatedAt: minuteOf(30)},
+		{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent", CreatedAt: minuteOf(31)},
+	}
+	var got harness.TurnPrompts
+	client := fourImageTypes{&harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		got = prompts
+		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
+	}}}
+	reader := newFakeAttachmentReader()
+	reader.items["png-1"] = StoredAttachment{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     harness.Registry{harness.KindT3Code: client},
+		Attachments:   reader,
+		Live:          &fakeLive{},
+	})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent"})
+
+	want := []harness.Attachment{{Name: "image.png", MIME: "image/png", Bytes: []byte{1}}}
+	assert.Equal(t, want, got.Attachments)
+	assert.Equal(t, want, got.IncrementalAttachments, "a reused session gets the earlier message's image too")
+	for _, prompt := range []string{got.Full, got.Incremental} {
+		assert.Contains(t, prompt, "worth mentioning\n[Attached image: image.png]")
+	}
+}
+
 // --- interrupt -------------------------------------------------------------
 
 func TestInterrupt_NoActiveTurn_ReturnsNotFound(t *testing.T) {
@@ -1101,6 +1134,50 @@ func TestInterruptAndAnswer_TwoMentionsInOneConversation_ReachEveryLiveTurn(t *t
 	require.NoError(t, svc.Answer(t.Context(), "conv-1", "req-1", answer))
 	assert.Equal(t, []string{"thread-1"}, interrupted, "the second turn's end left the first one reachable")
 	assert.Equal(t, []string{"thread-1"}, answered)
+
+	close(first)
+	<-firstDone
+}
+
+func TestSteer_QueuedMention_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testing.T) {
+	first, second := make(chan harness.Update), make(chan harness.Update)
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
+	steered := make(chan harness.Target, 1)
+	client := h.client()
+	client.SteerFn = func(_ context.Context, target harness.Target) error {
+		steered <- target
+		return nil
+	}
+	live := &fakeLive{}
+	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+		Harnesses: harnesstest.Registry(client), Live: live})
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
+	}()
+	first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+	require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent also this", true)))
+	second <- harness.Update{Queued: new(true)}
+
+	queuedFrame := StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true}
+	waitFor(t, time.Second, func() bool { return slices.Contains(live.snapshot(), queuedFrame) })
+	require.ErrorIs(t, svc.Steer(t.Context(), "conv-1", "msg-0"), apperrs.ErrNotFound, "the turn under way is not queued")
+	require.NoError(t, svc.Steer(t.Context(), "conv-1", "msg-1"))
+	assert.Equal(t, "thread-1", (<-steered).SessionID)
+
+	before := len(live.snapshot())
+	second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+	close(second)
+	waitFor(t, time.Second, func() bool {
+		return slices.Contains(live.snapshot(), StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1"})
+	})
+	waitFor(t, time.Second, func() bool {
+		svc.mu.Lock()
+		defer svc.mu.Unlock()
+		return len(svc.active["conv-1"]) == 1
+	})
+	assert.NotContains(t, live.snapshot()[before:], StreamFrame{ConversationID: "conv-1"}, "the first turn's bubble stays while it runs")
 
 	close(first)
 	<-firstDone

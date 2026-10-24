@@ -416,6 +416,8 @@ type Update struct {
 	Question *Question
 	Answered *AnsweredQuestion
 	Handoff  *Handoff
+	// Queued is set when the turn starts or stops waiting in the harness's queue behind another run on its session.
+	Queued   *bool
 	Terminal *TurnResult
 }
 
@@ -430,9 +432,9 @@ type Attachment struct {
 type TurnPrompts struct {
 	Full        string
 	Incremental string
-	// Attachments go with Full: the images its ticket or doc body and its request message embed.
+	// Attachments go with Full: the images its ticket or doc body, the messages it carries, and its request embed.
 	Attachments []Attachment
-	// IncrementalAttachments go with Incremental: the images its request message embeds.
+	// IncrementalAttachments go with Incremental: the images its new messages and its request embed.
 	IncrementalAttachments []Attachment
 	// Answer resolves the question still open on a reused session before the prompt is sent.
 	Answer *PendingAnswer
@@ -477,6 +479,9 @@ type Client interface {
 	Answer(ctx context.Context, t Target, requestID string, answer QuestionAnswer) error
 	// Settle moves t's idle session out of the harness's active list; the harness wakes it on new activity.
 	Settle(ctx context.Context, t Target) error
+	// Steer moves the queued turn t.TurnID names into the run under way on t's session, which then answers it; the
+	// steered turn ends done with no reply of its own. ErrConflict when the turn is not queued or nothing runs to take it.
+	Steer(ctx context.Context, t Target) error
 }
 
 // ImageTaker is a Client that sends its agent only some image types; a Client that is not one sends every image.

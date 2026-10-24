@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -939,6 +940,9 @@ func drainEnd(t *testing.T, updates <-chan harness.Update) (labels []string, end
 func label(u harness.Update) string {
 	if u.Snapshot != nil {
 		return "reply " + u.Snapshot.Text
+	}
+	if u.Queued != nil {
+		return "queued " + strconv.FormatBool(*u.Queued)
 	}
 	return string(u.Activity.Kind) + " " + u.Activity.Summary
 }

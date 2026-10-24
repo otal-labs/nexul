@@ -13,6 +13,7 @@ const OUT_DIR = path.resolve(import.meta.dir, "..", "..", "internal", "automatio
 const DEFAULTS = [
   { name: "ticket-finished", entry: path.resolve(import.meta.dir, "ticket-finished", "index.ts") },
   { name: "pr-opened", entry: path.resolve(import.meta.dir, "pr-opened", "index.ts") },
+  { name: "crash-intake", entry: path.resolve(import.meta.dir, "crash-intake", "index.ts") },
 ];
 
 async function main(): Promise<void> {

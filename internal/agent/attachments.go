@@ -77,3 +77,13 @@ func nameAttached(markdown string, images []bodyImage) string {
 		return "[Attached image: " + name + "]"
 	})
 }
+
+// nameAttachedIn is nameAttached over each message's body.
+func nameAttachedIn(msgs []ContextMessage, images []bodyImage) []ContextMessage {
+	out := make([]ContextMessage, len(msgs))
+	for i, m := range msgs {
+		m.Body = nameAttached(m.Body, images)
+		out[i] = m
+	}
+	return out
+}

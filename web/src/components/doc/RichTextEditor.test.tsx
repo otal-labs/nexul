@@ -22,18 +22,17 @@ const withMention = `{"type":"doc","content":[{"type":"paragraph","content":[{"t
 
 const trailingImage = "Intro\n\n![x](https://example.com/x.png)";
 
-// The server picked this editor to seed a fresh room; the provider never connects, so only the seed runs.
-const renderSeedingEditor = (value: string, onChange: (json: string) => void) => {
-  const doc = new Y.Doc();
+// The provider never connects: a seeding editor only runs the seed, and a joining one only reads the doc it is given.
+const renderCollabEditor = (value: string, onChange: (json: string) => void, doc = new Y.Doc(), seed = true) => {
   const provider = new RelayCollabProvider({ url: "ws://test/collab", doc });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <RichTextEditor
           value={value}
           onChange={onChange}
-          collab={{ doc, provider, user: { name: "Ann", color: "#3b82f6" }, seed: true }}
+          collab={{ doc, provider, user: { name: "Ann", color: "#3b82f6" }, seed }}
         />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -253,7 +252,7 @@ describe("RichTextEditor", () => {
     },
     {
       path: "the collab seed",
-      mount: (onChange: (json: string) => void) => renderSeedingEditor(trailingImage, onChange),
+      mount: (onChange: (json: string) => void) => renderCollabEditor(trailingImage, onChange),
     },
   ])("keeps a trailing image when typing after tabbing in, with the body loaded by $path", async ({ mount }) => {
     const user = userEvent.setup();
@@ -267,5 +266,25 @@ describe("RichTextEditor", () => {
     await waitFor(() => expect(onChange.mock.calls.at(-1)?.[0]).toContain("typed"));
     const body = onChange.mock.calls.at(-1)?.[0] as string;
     expect(body).toContain('"type":"image"');
+  });
+
+  it("seeds a checklist body into a room that the next visitor can read and edit", async () => {
+    const seeded = new Y.Doc();
+    const first = renderCollabEditor("## Why\n\n- [ ] one\n- [x] two\n", () => {}, seeded);
+    await screen.findByText(/one$/);
+    first.unmount();
+
+    const joined = new Y.Doc();
+    Y.applyUpdate(joined, Y.encodeStateAsUpdate(seeded));
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderCollabEditor("", onChange, joined, false);
+
+    expect(await screen.findByText("[x] two")).toBeInTheDocument();
+    const body = screen.getByLabelText(/doc body/i);
+    expect(body).toHaveAttribute("contenteditable", "true");
+    await user.click(body);
+    await user.keyboard("typed");
+    await waitFor(() => expect(onChange.mock.calls.at(-1)?.[0]).toContain("typed"));
   });
 });

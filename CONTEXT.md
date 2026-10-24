@@ -123,6 +123,12 @@ user's own paired Harness and acts with only that user's permissions. Never a
 Runner — a Runner executes builds; the Agent converses and drives the product
 through MCP.
 
+**Steer**:
+Handing a mention whose Agent turn waits in the Harness's queue to the turn
+under way, whose reply then answers it; the steered turn ends with no reply of
+its own (ADR 0169).
+_Avoid_: interrupt, push
+
 **Harness**:
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
@@ -704,6 +710,15 @@ open: a repeat crash or a recovery adds a comment to its thread and never closes
 stage the next crash opens a new one. A stack's error-rate episode has its own ticket the same way, titled by the 5xx share.
 _Avoid_: Incident ticket, alert ticket
 
+**Crash intake**:
+The default automation, shipped switched off, that turns crash reports a bot posts in its configured channel
+(crash-report/1: a `Crash fingerprint: <hash>` line and one embed) into bug tickets. A crash is the project's newest
+ticket whose body carries its fingerprint line: none files a bug of unknown origin, an open one or one done without a
+merged pull request gets a running "Seen again" note, and a done one whose every merged fix is in the report's build
+gets a new high-priority bug found in it at the top of its column. A build missing a fix, or one GitHub can't place,
+updates a note and files nothing (ADR 0168).
+_Avoid_: Crash ticket (a stack's own), crash reporter (the app that sends the report)
+
 **Watching a stack**:
 Getting a notification when one of its services goes down and another when it
 is back. Everyone who can read a stack in a project watches it by default; the
@@ -1178,6 +1193,13 @@ shows it, locked: a doc's title, a ticket's title, status and developer,
 even from a project they are not In. Chat's `@login` and `@Agent` are plain
 text in the message instead.
 _Avoid_: Tag, ping
+
+**Time code**:
+Discord's `<t:unix>` or `<t:unix:style>` in a message, thread or body, shown
+as a chip in each reader's own time zone in one of nine styles (`t T d D f F
+R s S`, no style reading as `f`). The text keeps the code itself, so it saves,
+copies and reaches agents as written; inside inline code it stays as typed.
+_Avoid_: Timestamp (a record's own created or updated time), date tag
 
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own

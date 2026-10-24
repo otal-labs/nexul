@@ -901,13 +901,20 @@ body {
   white-space: nowrap;
 }
 
-a.mention-chip {
+a.mention-chip,
+button.mention-chip {
   cursor: pointer;
 }
 
-a.mention-chip:hover {
+a.mention-chip:hover,
+button.mention-chip:hover {
   border-color: var(--ring);
   background: var(--accent);
+}
+
+/* A <t:…> code behind its chip in a body; the text stays in the document so it saves and copies as written. */
+.discord-time-raw {
+  display: none;
 }
 
 .mention-chip--inert {

@@ -7,6 +7,7 @@ var none = []string{"none"}
 var routePermissions = map[string][]string{
 	"POST /api/agent/conversations/{id}/answer":    none,
 	"POST /api/agent/conversations/{id}/interrupt": none,
+	"POST /api/agent/conversations/{id}/steer":     none,
 
 	"POST /api/attachments":        {"docs:write", "memories:write", "tickets:write", "none"},
 	"DELETE /api/attachments/{id}": {"docs:write", "memories:write", "tickets:write", "none"},
@@ -269,6 +270,8 @@ var routePermissions = map[string][]string{
 	"DELETE /api/ticket-types/{id}":       {"projects:delete"},
 	"PATCH /api/ticket-types/{id}":        {"projects:write"},
 	"PUT /api/ticket-types/{id}/template": {"projects:write"},
+
+	"POST /api/crash-reports": {"tickets:write"},
 
 	"POST /api/tickets":                               {"tickets:write"},
 	"POST /api/tickets/dev-status":                    {"tickets:read"},

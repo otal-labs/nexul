@@ -30,8 +30,11 @@ type StreamUpdate = Omit<AgentStreamFrame, "startedAt" | "activity" | "handoffs"
 
 export type AgentStreamStore = {
   streams: Record<string, AgentStreamFrame>;
+  // The ids of the messages whose Agent turn waits in the harness's queue behind another turn.
+  queued: Record<string, true>;
   setStream: (conversationId: string, frame: StreamUpdate) => void;
   clearStream: (conversationId: string) => void;
+  setQueued: (messageId: string, queued: boolean) => void;
 };
 
 const nextSteps = (previous: AgentStreamFrame | undefined, frame: StreamUpdate): Pick<AgentStreamFrame, "steps" | "textFrom"> => {
@@ -55,6 +58,7 @@ const nextSteps = (previous: AgentStreamFrame | undefined, frame: StreamUpdate):
 
 export const useAgentStreamStore = create<AgentStreamStore>((set) => ({
   streams: {},
+  queued: {},
   setStream: (conversationId, update) =>
     set((s) => {
       const { handoff, ...frame } = update;
@@ -79,5 +83,13 @@ export const useAgentStreamStore = create<AgentStreamStore>((set) => ({
       const rest = { ...s.streams };
       delete rest[conversationId];
       return { streams: rest };
+    }),
+  setQueued: (messageId, queued) =>
+    set((s) => {
+      if (queued === (messageId in s.queued)) return s;
+      if (queued) return { queued: { ...s.queued, [messageId]: true } };
+      const rest = { ...s.queued };
+      delete rest[messageId];
+      return { queued: rest };
     }),
 }));

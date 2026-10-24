@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -53,6 +54,8 @@ type runningTurn struct {
 	work   handoffs
 	// notes are what the latest Stop could not stop, for the turn to show before it ends.
 	notes []string
+	// steered is set once Steer handed the turn's queued message to the running run, so its cancelled run ends it done.
+	steered atomic.Bool
 }
 
 // handoffs is what a turn follows besides its own run: the runs its hand-offs woke, and every followed run's subagents.

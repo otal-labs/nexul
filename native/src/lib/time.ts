@@ -34,38 +34,6 @@ export const formatCalendarTime = (iso: string, now: number = Date.now()): strin
   return `${date.toLocaleDateString()} ${formatClockTime(date)}`;
 };
 
-const DISCORD_STYLES: Record<string, Intl.DateTimeFormatOptions> = {
-  t: { timeStyle: "short" },
-  T: { timeStyle: "medium" },
-  d: { dateStyle: "short" },
-  D: { dateStyle: "long" },
-  f: { dateStyle: "long", timeStyle: "short" },
-  F: { dateStyle: "full", timeStyle: "short" },
-};
-
-const RELATIVE_UNITS: [string, number][] = [
-  ["year", 365 * DAY_MS],
-  ["month", 30 * DAY_MS],
-  ["day", DAY_MS],
-  ["hour", HOUR_MS],
-  ["minute", MINUTE_MS],
-];
-
-// Hermes has no Intl.RelativeTimeFormat, so the "R" style is spelled out in English.
-const formatRelativeDistance = (date: Date, now: number): string => {
-  const diffMs = date.getTime() - now;
-  const [unit, size] = RELATIVE_UNITS.find(([, ms]) => Math.abs(diffMs) >= ms) ?? ["second", 1000];
-  const n = Math.round(Math.abs(diffMs) / size);
-  const span = `${n} ${unit}${n === 1 ? "" : "s"}`;
-  return diffMs >= 0 ? `in ${span}` : `${span} ago`;
-};
-
-// A Discord <t:unix:style> code in the reader's own zone; no style reads as Discord's default "f".
-export const formatDiscordTimestamp = (date: Date, style: string | undefined, now: number = Date.now()): string => {
-  if (style === "R") return formatRelativeDistance(date, now);
-  return date.toLocaleString(undefined, DISCORD_STYLES[style ?? "f"]);
-};
-
 // The clock time beside a chat author's name.
 export const formatMessageTime = (iso: string): string => formatClockTime(new Date(iso));
 

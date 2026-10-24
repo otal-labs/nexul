@@ -11,12 +11,27 @@ Each automation belongs to one workspace. It hears that workspace's events, plus
 
 ## The defaults
 
-Every workspace comes with its own copy of two, switched on:
+Every workspace comes with its own copy of three. The first two are switched on:
 
 - **Ticket finished** moves a ticket to a status you choose once all its pull requests have merged.
 - **PR opened** moves a ticket to a status you choose when a linked pull request opens.
 
 Open each one's **Configuration** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
+
+The third, **Crash intake**, starts switched off. It turns crash reports a [bot](/docs/guide/bots/) posts into bug tickets, described below.
+
+### Crash intake
+
+Your app reports a crash by posting it through a bot's URL in the crash-report/1 format: the line `Crash fingerprint: <hash>` as the message, and one embed whose fields are Contract (`crash-report/1`), Fingerprint, Kind, Process type, App version, Build commit, OS, Arch, First seen, Signature, Stack, Truncated, and optionally Suppressed duplicates. Any other post is ignored.
+
+Switch it on, then on its **Configuration** tab pick the channel the bot posts in and the project its tickets go to. Until you do, it skips every bot post and logs why. The bug type (`bug`) and the high-priority label (`high-priority`) can be changed there too. For each report, it looks for a ticket in that project whose body has the report's fingerprint line:
+
+- **None:** it files a bug in the first column, with the fingerprint line, the kind, the first version, the OS, the signature and the stack. Its origin is marked unknown.
+- **An open ticket:** it keeps one **Seen again** note on it, updated in place with the number of reports, the versions and when it was last seen. It never files a second ticket.
+- **A done ticket with no merged pull request**, such as one closed as won't fix: the same **Seen again** note, and nothing else.
+- **A done ticket with merged pull requests:** it asks GitHub whether the report's build commit contains every one of them. If it does, the crash came back, so it files a new bug found in the done ticket, labels it `high-priority`, and puts it at the top of the column. If the build lacks a fix, it updates an **Old build** note instead. If GitHub can't tell (the repository isn't connected, it doesn't know the commit, or it didn't answer), it updates a **Can't tell** note that says why, and files nothing.
+
+The notes are posted on behalf of the workspace's Owner. Each report's **Runs** entry logs what it did.
 
 The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisions-check) with an auto play, switched on from the play.
 

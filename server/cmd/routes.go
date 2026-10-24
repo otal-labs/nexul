@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/connectors"
+	"github.com/otal-labs/nexul/internal/crashintake"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
@@ -80,6 +81,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/templates", templates.NewHandler(svc.templatesSvc).Routes())
 	mountGateway(apiMux, "/api/attachments", attachments.NewHandler(svc.attachmentsSvc).Routes())
 	mountGateway(apiMux, "/api/tickets", tickets.NewHandler(svc.ticketsSvc).Routes())
+	mountGateway(apiMux, "/api/crash-reports", crashintake.NewHandler(svc.crashIntakeSvc).Routes())
 	mountGateway(apiMux, "/api/topology", topology.NewHandler(svc.topoSvc).Routes())
 	deployHandler := deploy.NewHandler(svc.deploySvc).Routes()
 	mountGateway(apiMux, "/api/deploys", deployHandler)
@@ -339,6 +341,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/tickets", "Create a ticket", "tickets")
 	spec.Register("GET", "/api/tickets/{id}", "Get a ticket by id, or by key with ?workspace= naming its workspace", "tickets")
 	spec.Register("PATCH", "/api/tickets/{id}/status", "Transition a ticket's status", "tickets")
+	spec.Register("POST", "/api/crash-reports", "File or note a crash report a bot posted", "tickets")
 	spec.Register("GET", "/api/deploys", "List deploys", "deploys")
 	spec.Register("POST", "/api/deploys", "Trigger a deploy", "deploys")
 	spec.Register("GET", "/api/deploys/{id}", "Get a deploy", "deploys")
@@ -464,6 +467,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")
 	spec.Register("POST", "/api/agent/conversations/{id}/interrupt", "Stop the in-flight agent turn on a conversation", "agent")
 	spec.Register("POST", "/api/agent/conversations/{id}/answer", "Answer the question the agent turn on a conversation is waiting on", "agent")
+	spec.Register("POST", "/api/agent/conversations/{id}/steer", "Hand a message whose agent turn waits in the queue to the turn under way", "agent")
 	spec.Register("POST", "/api/integrations", "Install an integration (mint scoped token)", "integrations")
 	spec.Register("GET", "/api/integrations", "List integration installs", "integrations")
 	spec.Register("GET", "/api/integrations/scopes", "List grantable token scopes with labels", "integrations")

@@ -1,7 +1,7 @@
+import { DiscordTimeChip } from "@/components/chat/DiscordTimeChip";
 import { MessageLink } from "@/components/chat/MessageLink";
 import { cn } from "@/lib/utils";
 import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@/utils/DiscordMarkdownUtility";
-import { formatDiscordTimestamp, formatFullTime } from "@/utils/TimeUtility";
 
 const InlineParts = ({ parts }: { parts: InlinePart[] }) => parts.map((part, i) => <Inline key={i} part={part} />);
 
@@ -26,11 +26,7 @@ const Inline = ({ part }: { part: InlinePart }) => (
       </a>
     )}
     {part.kind === "url" && <MessageLink url={part.url} />}
-    {part.kind === "time" && (
-      <time dateTime={part.date.toISOString()} title={formatFullTime(part.date.toISOString())}>
-        {formatDiscordTimestamp(part.date, part.style)}
-      </time>
-    )}
+    {part.kind === "time" && <DiscordTimeChip time={part.time} />}
   </>
 );
 

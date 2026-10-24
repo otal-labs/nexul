@@ -3,6 +3,7 @@ import { memo, useState, type ReactNode } from "react";
 import type { Person } from "@nexul/client-core/person";
 import { isNote } from "@nexul/client-core/chat";
 
+import { AgentQueuedLine } from "@/components/chat/AgentQueuedLine";
 import { BotMessageRow } from "@/components/chat/BotMessageRow";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
 import { MessageActions } from "@/components/chat/MessageActions";
@@ -170,6 +171,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
                 }
               />
             )}
+            {!editing && align === "end" && <AgentQueuedLine conversationId={message.conversation_id} messageId={message.id} />}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
             {!editing && isNote(message) && <NoteMessage message={message} ticketId={ticketId} />}
             {!editing && message.handoffs && message.handoffs.length > 0 && <HandoffPills handoffs={message.handoffs} />}
