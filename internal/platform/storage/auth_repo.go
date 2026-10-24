@@ -344,6 +344,20 @@ func (r *UsersRepo) SetProfileOverride(ctx context.Context, id string, displayNa
 	})
 }
 
+// SetTimezone records the IANA timezone the person's app reported.
+func (r *UsersRepo) SetTimezone(ctx context.Context, id, timezone string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetUserTimezone(ctx, sqlcgen.SetUserTimezoneParams{Timezone: timezone, ID: id})
+		if err != nil {
+			return fmt.Errorf("set timezone of %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set timezone of %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *UsersRepo) getByProvider(ctx context.Context, q *sqlcgen.Queries, provider auth.Provider, providerUserID string) (*auth.User, error) {
 	return userRow(q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{
 		Provider: string(provider), ProviderUserID: providerUserID,
@@ -384,6 +398,7 @@ func toUser(row sqlcgen.User) *auth.User {
 		AvatarURL:      row.AvatarUrl,
 		FirstLoginDone: row.FirstLoginDone != 0,
 		AccountStatus:  auth.AccountStatus(row.AccountStatus),
+		Timezone:       row.Timezone,
 		CreatedAt:      time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:      time.Unix(row.UpdatedAt, 0).UTC(),
 	}

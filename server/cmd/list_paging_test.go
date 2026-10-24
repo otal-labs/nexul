@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/access"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
@@ -102,6 +103,8 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 			SELECT printf('n-%05d', i), 'u-owner', 'workspace-default', 'ticket_assigned', 'ticket', printf('t-%05d', i), 'Ticket', 0, 1700000000 + i FROM n`,
 		`INSERT INTO memories (id, workspace_id, project_id, title, when_to_use, body, created_at, updated_at)
 			SELECT printf('mem-%05d', i), 'workspace-default', 'project-general', 'Note ' || i, 'when ' || i, 'body', 1700000000 + i, 1700000000 + i FROM n`,
+		`INSERT INTO meetings (id, workspace_id, organiser_id, title, starts_at, ends_at, created_at, updated_at)
+			SELECT printf('meet-%05d', i), 'workspace-default', 'u-owner', 'Sync ' || i, 1700000000 + i * 3600, 1700001800 + i * 3600, 1, 1 FROM n`,
 	} {
 		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000) ` + stmt)
 		require.NoError(t, err)
@@ -113,6 +116,7 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	tools = append(tools, deploy.MCPTools(s.deploySvc)...)
 	tools = append(tools, workspace.NotificationMCPTools(s.notifSvc)...)
 	tools = append(tools, memories.MCPTools(s.memoriesSvc)...)
+	tools = append(tools, calendar.MCPTools(s.calendarSvc)...)
 	for _, tc := range []struct{ tool, args, viewer string }{
 		{"ticket_list", `{}`, uOwner},
 		{"ticket_list", `{"query":"login"}`, uOwner},
@@ -122,6 +126,7 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 		{"deploy_list", `{}`, uOwner},
 		{"notification_list", `{"offset":1500}`, uOwner},
 		{"memory_list", `{"project_id":"project-general"}`, uOwner},
+		{"meeting_list", `{"workspace_id":"workspace-default"}`, uOwner},
 	} {
 		t.Run(tc.tool+" "+tc.args+" as "+tc.viewer, func(t *testing.T) {
 			st.Reset()
@@ -400,7 +405,29 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 		}
 	}
 	require.NoError(t, f.store.Notifications.CreateMany(ctx, notices))
+
+	for i, m := range []struct{ id, organiser, workspace string }{
+		{"meet-owner", uOwner, wsDefault}, {"meet-client", uClient, wsDefault}, {"meet-plain", uPlain, wsDefault}, {"meet-reader", uReader, wsDefault},
+	} {
+		at := now.Add(time.Duration(i) * time.Hour).Truncate(time.Second)
+		require.NoError(t, f.store.Meetings.Save(ctx, []*calendar.Meeting{{ID: m.id, WorkspaceID: m.workspace, OrganiserID: m.organiser,
+			Title: "Sync", Timezone: "UTC", StartsAt: at, EndsAt: at.Add(time.Hour), Repeats: calendar.RepeatNone,
+			Invitees:  []calendar.Invitee{{UserID: uReader, Reply: calendar.ReplyPending}, {UserID: uOutsider, Reply: calendar.ReplyPending}},
+			CreatedAt: now, UpdatedAt: now}}))
+	}
 	return f
+}
+
+// rowByRowMeetings is every parity meeting user may open one by one, in the calendar's order.
+func rowByRowMeetings(t *testing.T, f permFixture, user string) []string {
+	t.Helper()
+	var out []string
+	for _, id := range []string{"meet-owner", "meet-client", "meet-plain", "meet-reader"} {
+		if _, err := f.svc.calendarSvc.Get(as(user), id); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // TestListTools_ShowWhatTheRowByRowCheckShowed holds each list tool, now filtered in SQL, to what the path it replaced
@@ -416,6 +443,7 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
 	runners := runner.NewService(f.store.Runners, fakeUpgradeDispatch{}).WithMachines(f.store.Machines).WithGate(s.accessSvc)
 	machineList := tool(t, runner.MCPTools(runners), "machine_list")
+	meetingList := tool(t, calendar.MCPTools(s.calendarSvc), "meeting_list")
 
 	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient, uUnlisted, uNoRole} {
 		t.Run(user, func(t *testing.T) {
@@ -440,6 +468,10 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 			assert.Equal(t, rowByRowStacks(t, f, user), pageThrough(t, s.accessSvc, stackList, user, ""), "stack_list")
 
 			assert.Equal(t, rowByRowInbox(t, f, user), pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
+
+			if user != uOutsider {
+				assert.Equal(t, rowByRowMeetings(t, f, user), pageThrough(t, s.accessSvc, meetingList, user, `"workspace_id":"`+wsDefault+`",`), "meeting_list")
+			}
 
 			assert.Equal(t, rowByRowMachines(t, f, user), pageThrough(t, s.accessSvc, machineList, user, ""), "machine_list")
 			rs, err := runners.ListRunners(as(user))

@@ -276,6 +276,10 @@ const (
 	KindServiceRecovered     Kind = "service.container_recovered"
 	KindErrorRateCrossed     Kind = "stack.error_rate_crossed"
 	KindErrorRateRecovered   Kind = "stack.error_rate_recovered"
+	KindMeetingInvited       Kind = "meeting.invited"
+	KindMeetingCancelled     Kind = "meeting.cancelled"
+	KindMeetingReminder      Kind = "meeting.reminder"
+	KindTicketDueSoon        Kind = "ticket.due_soon"
 )
 
 // LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,
@@ -295,6 +299,8 @@ const (
 	SubjectComputer SubjectType = "computer"
 	// SubjectStack opens the stack's page; its notices go to the people who watch it.
 	SubjectStack SubjectType = "stack"
+	// SubjectMeeting opens the meeting on the calendar; its notices go only to the people who see it.
+	SubjectMeeting SubjectType = "meeting"
 )
 
 // Notification's SubjectTitle is denormalized so the frontend renders the list without extra fetches.

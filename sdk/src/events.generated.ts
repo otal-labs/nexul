@@ -77,6 +77,7 @@ export interface EventPayloads {
   "doc.settled": { "doc": { "id": string; "project_id": string; "title": string; }; "first": boolean; "actor_id": string; };
   "doc.updated": { "doc": { "id": string; "title": string; "body": string; "project_id": string; "folder_id": string; "version": number; "archived": boolean; "locked": boolean; "created_by": string; "created_at": string; "updated_at": string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; "lock_changed"?: boolean; };
   "doc.watchers.changed": { "doc": { "id": string; "project_id": string; "title": string; }; "user_id": string; "watching": boolean; };
+  "due_date.reminder_due": { "ticket_id": string; "project_id": string; "workspace_id": string; "key": string; "title": string; "due_on": string; "user_ids": string[]; };
   "git.branch_deleted": { "owner": string; "repo": string; "branch": string; };
   "git.pr_closed": { "owner": string; "repo": string; "pr": { "number": number; "title": string; "body": string; "state": string; "merged": boolean; "head_sha": string; "base_branch": string; "author": string; "linked_ticket_ids": string[]; }; };
   "git.pr_comment": { "owner": string; "repo": string; "pr": { "number": number; }; "comment": { "body": string; "author": string; }; };
@@ -104,6 +105,12 @@ export interface EventPayloads {
   "invitation.redeemed": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "invitation.revoked": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "machine.deleted": { "machine_id": string; "name": string; "user_ids": string[]; };
+  "meeting.cancelled": { "meeting": { "id": string; "workspace_id": string; "organiser_id": string; "title": string; "starts_at": string; "ends_at": string; "timezone": string; "repeats": "none" | "daily" | "weekly" | "monthly"; "series_id"?: string; "voice_channel_id"?: string; "link"?: string; "cancelled_at"?: string; }; "actor_id": string; "user_ids": string[]; "invited_ids": string[]; };
+  "meeting.created": { "meeting": { "id": string; "workspace_id": string; "organiser_id": string; "title": string; "starts_at": string; "ends_at": string; "timezone": string; "repeats": "none" | "daily" | "weekly" | "monthly"; "series_id"?: string; "voice_channel_id"?: string; "link"?: string; "cancelled_at"?: string; }; "actor_id": string; "user_ids": string[]; "invited_ids": string[]; };
+  "meeting.reminder_due": { "meeting": { "id": string; "workspace_id": string; "organiser_id": string; "title": string; "starts_at": string; "ends_at": string; "timezone": string; "repeats": "none" | "daily" | "weekly" | "monthly"; "series_id"?: string; "voice_channel_id"?: string; "link"?: string; "cancelled_at"?: string; }; "occurrence_starts_at": string; "user_ids": string[]; };
+  "meeting.replied": { "meeting_id": string; "workspace_id": string; "actor_id": string; "reply": "accepted" | "declined"; "user_ids": string[]; };
+  "meeting.restored": { "meeting": { "id": string; "workspace_id": string; "organiser_id": string; "title": string; "starts_at": string; "ends_at": string; "timezone": string; "repeats": "none" | "daily" | "weekly" | "monthly"; "series_id"?: string; "voice_channel_id"?: string; "link"?: string; "cancelled_at"?: string; }; "actor_id": string; "user_ids": string[]; "invited_ids": string[]; };
+  "meeting.updated": { "meeting": { "id": string; "workspace_id": string; "organiser_id": string; "title": string; "starts_at": string; "ends_at": string; "timezone": string; "repeats": "none" | "daily" | "weekly" | "monthly"; "series_id"?: string; "voice_channel_id"?: string; "link"?: string; "cancelled_at"?: string; }; "actor_id": string; "user_ids": string[]; "invited_ids": string[]; };
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; };
   "memory.deleted": { "id": string; "workspace_id": string; "project_id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; "author_via"?: string; };
@@ -247,6 +254,7 @@ export const TOPICS: Topic[] = [
   "doc.settled",
   "doc.updated",
   "doc.watchers.changed",
+  "due_date.reminder_due",
   "git.branch_deleted",
   "git.pr_closed",
   "git.pr_comment",
@@ -274,6 +282,12 @@ export const TOPICS: Topic[] = [
   "invitation.redeemed",
   "invitation.revoked",
   "machine.deleted",
+  "meeting.cancelled",
+  "meeting.created",
+  "meeting.reminder_due",
+  "meeting.replied",
+  "meeting.restored",
+  "meeting.updated",
   "memory.created",
   "memory.deleted",
   "memory.updated",
@@ -415,6 +429,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "doc.settled": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"first":false,"actor_id":"fixture-actor_id"},
   "doc.updated": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","project_id":"fixture-project_id","folder_id":"fixture-folder_id","version":1,"archived":false,"locked":false,"created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"],"lock_changed":false},
   "doc.watchers.changed": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"user_id":"fixture-user_id","watching":false},
+  "due_date.reminder_due": {"ticket_id":"fixture-ticket_id","project_id":"fixture-project_id","workspace_id":"fixture-workspace_id","key":"fixture-key","title":"fixture-title","due_on":"fixture-due_on","user_ids":["fixture-user_ids"]},
   "git.branch_deleted": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch"},
   "git.pr_closed": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1,"title":"fixture-title","body":"fixture-body","state":"fixture-state","merged":false,"head_sha":"fixture-head_sha","base_branch":"fixture-base_branch","author":"fixture-author","linked_ticket_ids":["fixture-linked_ticket_ids"]}},
   "git.pr_comment": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1},"comment":{"body":"fixture-body","author":"fixture-author"}},
@@ -442,6 +457,12 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "invitation.redeemed": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "machine.deleted": {"machine_id":"fixture-machine_id","name":"fixture-name","user_ids":["fixture-user_ids"]},
+  "meeting.cancelled": {"meeting":{"id":"fixture-id","workspace_id":"fixture-workspace_id","organiser_id":"fixture-organiser_id","title":"fixture-title","starts_at":"2026-01-01T00:00:00Z","ends_at":"2026-01-01T00:00:00Z","timezone":"fixture-timezone","repeats":"none","series_id":"fixture-series_id","voice_channel_id":"fixture-voice_channel_id","link":"fixture-link","cancelled_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"],"invited_ids":["fixture-invited_ids"]},
+  "meeting.created": {"meeting":{"id":"fixture-id","workspace_id":"fixture-workspace_id","organiser_id":"fixture-organiser_id","title":"fixture-title","starts_at":"2026-01-01T00:00:00Z","ends_at":"2026-01-01T00:00:00Z","timezone":"fixture-timezone","repeats":"none","series_id":"fixture-series_id","voice_channel_id":"fixture-voice_channel_id","link":"fixture-link","cancelled_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"],"invited_ids":["fixture-invited_ids"]},
+  "meeting.reminder_due": {"meeting":{"id":"fixture-id","workspace_id":"fixture-workspace_id","organiser_id":"fixture-organiser_id","title":"fixture-title","starts_at":"2026-01-01T00:00:00Z","ends_at":"2026-01-01T00:00:00Z","timezone":"fixture-timezone","repeats":"none","series_id":"fixture-series_id","voice_channel_id":"fixture-voice_channel_id","link":"fixture-link","cancelled_at":"2026-01-01T00:00:00Z"},"occurrence_starts_at":"2026-01-01T00:00:00Z","user_ids":["fixture-user_ids"]},
+  "meeting.replied": {"meeting_id":"fixture-meeting_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","reply":"accepted","user_ids":["fixture-user_ids"]},
+  "meeting.restored": {"meeting":{"id":"fixture-id","workspace_id":"fixture-workspace_id","organiser_id":"fixture-organiser_id","title":"fixture-title","starts_at":"2026-01-01T00:00:00Z","ends_at":"2026-01-01T00:00:00Z","timezone":"fixture-timezone","repeats":"none","series_id":"fixture-series_id","voice_channel_id":"fixture-voice_channel_id","link":"fixture-link","cancelled_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"],"invited_ids":["fixture-invited_ids"]},
+  "meeting.updated": {"meeting":{"id":"fixture-id","workspace_id":"fixture-workspace_id","organiser_id":"fixture-organiser_id","title":"fixture-title","starts_at":"2026-01-01T00:00:00Z","ends_at":"2026-01-01T00:00:00Z","timezone":"fixture-timezone","repeats":"none","series_id":"fixture-series_id","voice_channel_id":"fixture-voice_channel_id","link":"fixture-link","cancelled_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","user_ids":["fixture-user_ids"],"invited_ids":["fixture-invited_ids"]},
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id","author_via":"fixture-author_via"},

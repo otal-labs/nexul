@@ -110,6 +110,10 @@ var scopeRules = map[string]scopeRule{
 	"git.branch_deleted": repoScope, "git.provider_event": providerEventScope, "review.status_changed": reviewScope,
 
 	"notification.push_requested": pushScope, "access.grant.changed": grantScope,
+
+	"meeting.created": inviteesOnly, "meeting.updated": inviteesOnly, "meeting.cancelled": inviteesOnly,
+	"meeting.restored": inviteesOnly, "meeting.replied": inviteesOnly, "meeting.reminder_due": inviteesOnly,
+	"due_date.reminder_due":            projectScope,
 	"repository.installation.assigned": workspaceScope, "repository.installation.unassigned": workspaceScope,
 }
 
@@ -126,6 +130,11 @@ func one(id string, err error) ([]string, bool, error) {
 		return nil, false, err
 	}
 	return []string{id}, false, nil
+}
+
+// inviteesOnly reaches no automation: a meeting shows only to its organiser and the people invited (ADR 0168).
+func inviteesOnly(context.Context, *storage.EventWorkspacesRepo, json.RawMessage) ([]string, bool, error) {
+	return nil, false, nil
 }
 
 func instanceScope(context.Context, *storage.EventWorkspacesRepo, json.RawMessage) ([]string, bool, error) {

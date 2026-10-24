@@ -9,6 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/botwebhook"
+	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
@@ -161,6 +162,11 @@ var liveRules = map[string]liveRule{
 	botwebhook.TopicUpdated:              botwebhookFrame,
 	botwebhook.TopicDeleted:              botwebhookFrame,
 	botwebhook.TopicRestored:             botwebhookFrame,
+	calendar.TopicMeetingCreated:         recipientFrame,
+	calendar.TopicMeetingUpdated:         recipientFrame,
+	calendar.TopicMeetingCancelled:       recipientFrame,
+	calendar.TopicMeetingRestored:        recipientFrame,
+	calendar.TopicMeetingReplied:         recipientFrame,
 
 	deploy.TopicStackCreated:           stackFrame,
 	deploy.TopicStackUpdated:           stackFrame,

@@ -29,6 +29,7 @@ var routePermissions = map[string][]string{
 	"POST /api/auth/onboarding/owner":           none,
 	"POST /api/auth/onboarding/profile":         none,
 	"PUT /api/auth/profile":                     none,
+	"PUT /api/auth/timezone":                    none,
 	"DELETE /api/auth/sessions/current":         none,
 	"PUT /api/auth/sessions/current/push-token": none,
 	"DELETE /api/auth/sessions/others":          none,
@@ -55,6 +56,10 @@ var routePermissions = map[string][]string{
 	"POST /api/automations/{id}/versions":                      {"automations:write"},
 	"POST /api/automations/{id}/versions/{versionID}/merge":    {"automations:write"},
 	"POST /api/automations/{id}/versions/{versionID}/rollback": {"automations:write"},
+
+	"POST /api/workspaces/{workspaceID}/meetings": {"calendar:write"},
+	"PATCH /api/meetings/{id}":                    {"calendar:write", "calendar:delete"},
+	"PUT /api/meetings/{id}/reply":                none,
 
 	"DELETE /api/botwebhooks/{id}":             {"botwebhook:delete"},
 	"PATCH /api/botwebhooks/{id}":              {"botwebhook:write"},

@@ -1121,3 +1121,24 @@ func TestHandler_InvitationCallback_FailuresRedirectToSignIn(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_SetTimezone(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	_, _, err := users.UpsertUser(t.Context(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
+	require.NoError(t, err)
+	h := protectedHandler(s, users)
+	put := func(body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPut, "/api/auth/timezone", "u1", body))
+		return rec
+	}
+
+	for _, body := range []string{`{`, `{"timezone":""}`, `{"timezone":"Local"}`, `{"timezone":"Mars/Olympus"}`} {
+		assert.Equal(t, http.StatusBadRequest, put(body).Code, body)
+	}
+
+	require.Equal(t, http.StatusNoContent, put(`{"timezone":" Europe/London "}`).Code)
+	got, err := users.GetUserByID(t.Context(), "u1")
+	require.NoError(t, err)
+	assert.Equal(t, "Europe/London", got.Timezone)
+}

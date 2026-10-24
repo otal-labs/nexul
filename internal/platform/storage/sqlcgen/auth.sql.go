@@ -614,6 +614,23 @@ func (q *Queries) SetSettingsGitHubOAuth(ctx context.Context, arg SetSettingsGit
 	return result.RowsAffected()
 }
 
+const setUserTimezone = `-- name: SetUserTimezone :execrows
+UPDATE users SET timezone = ? WHERE id = ?
+`
+
+type SetUserTimezoneParams struct {
+	Timezone string
+	ID       string
+}
+
+func (q *Queries) SetUserTimezone(ctx context.Context, arg SetUserTimezoneParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setUserTimezone, arg.Timezone, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const syncIdentity = `-- name: SyncIdentity :exec
 UPDATE user_identities SET login = ?, name = ?, username = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?
 `

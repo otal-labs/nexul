@@ -78,6 +78,9 @@ UPDATE users SET first_login_done = 1, updated_at = ? WHERE id = ?;
 -- name: SetProfileOverride :execrows
 UPDATE users SET display_name = ?, avatar_override_url = ?, updated_at = ? WHERE id = ?;
 
+-- name: SetUserTimezone :execrows
+UPDATE users SET timezone = ? WHERE id = ?;
+
 -- name: GetUserByLogin :one
 SELECT * FROM users WHERE lower(login) = lower(?);
 

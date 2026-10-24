@@ -3723,6 +3723,46 @@
       "watching"
     ]
   },
+  "due_date.reminder_due": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "key": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "due_on": {
+        "type": "string",
+        "description": "The due date as YYYY-MM-DD."
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_id",
+      "project_id",
+      "workspace_id",
+      "key",
+      "title",
+      "due_on",
+      "user_ids"
+    ]
+  },
   "git.branch_deleted": {
     "type": "object",
     "properties": {
@@ -4713,6 +4753,476 @@
       "machine_id",
       "name",
       "user_ids"
+    ]
+  },
+  "meeting.cancelled": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.created": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.reminder_due": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "occurrence_starts_at": {
+        "type": "string",
+        "description": "When this occurrence starts.",
+        "format": "date-time"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "occurrence_starts_at",
+      "user_ids"
+    ]
+  },
+  "meeting.replied": {
+    "type": "object",
+    "properties": {
+      "meeting_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "reply": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "declined"
+        ]
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting_id",
+      "workspace_id",
+      "actor_id",
+      "reply",
+      "user_ids"
+    ]
+  },
+  "meeting.restored": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
+    ]
+  },
+  "meeting.updated": {
+    "type": "object",
+    "properties": {
+      "meeting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "organiser_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "repeats": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "series_id": {
+            "type": "string",
+            "description": "The series this meeting is one changed occurrence of."
+          },
+          "voice_channel_id": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "organiser_id",
+          "title",
+          "starts_at",
+          "ends_at",
+          "timezone",
+          "repeats"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "invited_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "meeting",
+      "actor_id",
+      "user_ids",
+      "invited_ids"
     ]
   },
   "memory.created": {

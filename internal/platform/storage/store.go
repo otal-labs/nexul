@@ -81,6 +81,7 @@ type Store struct {
 	GitHubUserLinks       *GitHubUserLinksRepo
 	Chat                  *ChatRepo
 	Botwebhooks           *BotwebhooksRepo
+	Meetings              *MeetingsRepo
 	Pairing               *PairingRepo
 	InstanceTemplates     *InstanceTemplatesRepo
 	Welcome               *WelcomeRepo
@@ -160,6 +161,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		GitHubUserLinks:       &GitHubUserLinksRepo{db: db, w: w, q: q, encKey: encKey},
 		Chat:                  &ChatRepo{db: db, w: w, q: q},
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
+		Meetings:              &MeetingsRepo{db: db, w: w, q: q},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},
 		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
 		Welcome:               &WelcomeRepo{db: db, w: w, q: q},
