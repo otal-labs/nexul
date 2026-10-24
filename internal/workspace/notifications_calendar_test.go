@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -136,4 +137,19 @@ func TestStartsIn(t *testing.T) {
 	} {
 		assert.Equal(t, want, startsIn(d), d.String())
 	}
+}
+
+func TestHandleMeetingReminder_LeavesOutWhoLeftTheWorkspace(t *testing.T) {
+	repo := newFakeNotifRepo()
+	members := &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}}}
+	s := newTestNotifServiceWith(repo, newFakeNotifUsers(notifUser("u1", "alice"), notifUser("u2", "bob"), notifUser("u3", "carol")), members, &fakeAccessChecker{})
+
+	require.NoError(t, HandleMeetingReminder(t.Context(), s, notifEvFor(t, "meeting.reminder_due", meetingPayload(map[string]any{"actor_id": ""}))))
+
+	assert.Len(t, repo.notifsFor("u1"), 1)
+	assert.Len(t, repo.notifsFor("u2"), 1)
+	assert.Empty(t, repo.notifsFor("u3"), "carol is no longer in the workspace")
+
+	members.err = errors.New("db down")
+	require.Error(t, HandleMeetingReminder(t.Context(), s, notifEvFor(t, "meeting.reminder_due", meetingPayload(map[string]any{"actor_id": ""}))))
 }

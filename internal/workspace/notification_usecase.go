@@ -531,8 +531,16 @@ func (s *NotificationService) onComputerMoveRequested(ctx context.Context, userI
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindComputerMove, []string{userID})
 }
 
-// onMeeting tells userIDs about a meeting; whoever made the change is left out, as for every notice.
+// onMeeting tells userIDs who still belong to the meeting's workspace about it; whoever made the change is left out, as
+// for every notice.
 func (s *NotificationService) onMeeting(ctx context.Context, e meetingEvent, kind Kind, title string, userIDs []string) error {
+	if s.members != nil {
+		members, err := s.members.ListMemberUserIDs(ctx, e.Meeting.WorkspaceID)
+		if err != nil {
+			return fmt.Errorf("list members of workspace %s: %w", e.Meeting.WorkspaceID, err)
+		}
+		userIDs = slices.DeleteFunc(slices.Clone(userIDs), func(id string) bool { return !slices.Contains(members, id) })
+	}
 	n := notice{subjectType: SubjectMeeting, subjectID: e.Meeting.ID, subjectTitle: title, workspaceID: e.Meeting.WorkspaceID, actorID: e.ActorID}
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, userIDs)
 }
