@@ -118,6 +118,10 @@ func (f *fakeProvider) PRsForCommit(context.Context, string, string, string) ([]
 	return f.prs, nil
 }
 
+func (f *fakeProvider) MergedInto(context.Context, string, string, int, string) (bool, error) {
+	return false, f.err
+}
+
 func (f *fakeProvider) CreateWebhook(context.Context, string, string, WebhookConfig) (string, error) {
 	if f.err != nil {
 		return "", f.err

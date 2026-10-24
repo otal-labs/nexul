@@ -28,8 +28,8 @@ export interface AutomationTokenMint {
   token: string;
 }
 
-// Semantic pickers ride JSON Schema's `format` ("status"/"channel") over a base string type.
-export type AutomationConfigFieldType = "string" | "status" | "channel";
+// Semantic pickers ride JSON Schema's `format` ("status"/"channel"/"project") over a base string type.
+export type AutomationConfigFieldType = "string" | "status" | "channel" | "project";
 
 export interface AutomationConfigField {
   key: string;
@@ -51,7 +51,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const parseConfigFieldType = (prop: Record<string, unknown>): AutomationConfigFieldType => {
   const format = typeof prop.format === "string" ? prop.format : "";
-  return format === "status" || format === "channel" ? format : "string";
+  return format === "status" || format === "channel" || format === "project" ? format : "string";
 };
 
 const parseConfigField = (key: string, prop: Record<string, unknown>, required: string[]): AutomationConfigField => ({

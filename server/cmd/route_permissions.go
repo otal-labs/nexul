@@ -265,6 +265,8 @@ var routePermissions = map[string][]string{
 	"PATCH /api/ticket-types/{id}":        {"projects:write"},
 	"PUT /api/ticket-types/{id}/template": {"projects:write"},
 
+	"POST /api/crash-reports": {"tickets:write"},
+
 	"POST /api/tickets":                               {"tickets:write"},
 	"POST /api/tickets/dev-status":                    {"tickets:read"},
 	"POST /api/tickets/labels/colors":                 {"tickets:read"},

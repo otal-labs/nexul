@@ -683,6 +683,15 @@ open: a repeat crash or a recovery adds a comment to its thread and never closes
 stage the next crash opens a new one. A stack's error-rate episode has its own ticket the same way, titled by the 5xx share.
 _Avoid_: Incident ticket, alert ticket
 
+**Crash intake**:
+The default automation, shipped switched off, that turns crash reports a bot posts in its configured channel
+(crash-report/1: a `Crash fingerprint: <hash>` line and one embed) into bug tickets. A crash is the project's newest
+ticket whose body carries its fingerprint line: none files a bug of unknown origin, an open one or one done without a
+merged pull request gets a running "Seen again" note, and a done one whose every merged fix is in the report's build
+gets a new high-priority bug found in it at the top of its column. A build missing a fix, or one GitHub can't place,
+updates a note and files nothing (ADR 0168).
+_Avoid_: Crash ticket (a stack's own), crash reporter (the app that sends the report)
+
 **Watching a stack**:
 Getting a notification when one of its services goes down and another when it
 is back. Everyone who can read a stack in a project watches it by default; the

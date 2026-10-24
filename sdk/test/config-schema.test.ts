@@ -26,4 +26,13 @@ describe("toJsonSchema", () => {
     expect(jsonSchema.properties.threshold).toEqual({ type: "number", default: 5 });
     expect(jsonSchema.properties.enabled).toEqual({ type: "boolean" });
   });
+
+  it("renders a semantic picker as a string with its format", () => {
+    const jsonSchema = toJsonSchema({ projectId: { type: "project", label: "Project", required: true } }) as {
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+    expect(jsonSchema.properties.projectId).toEqual({ type: "string", format: "project", title: "Project" });
+    expect(jsonSchema.required).toEqual(["projectId"]);
+  });
 });

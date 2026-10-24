@@ -1,6 +1,7 @@
 import type { Control } from "react-hook-form";
 
 import { AutomationConfigChannelField } from "@/components/automation/AutomationConfigChannelField";
+import { AutomationConfigProjectField } from "@/components/automation/AutomationConfigProjectField";
 import { AutomationConfigStatusField } from "@/components/automation/AutomationConfigStatusField";
 import { FormInput } from "@/components/FormInput";
 import type { AutomationConfigField } from "@/models/Automation";
@@ -20,6 +21,7 @@ export const AutomationConfigFieldControl = ({ control, field }: AutomationConfi
     {field.description && <p className="text-xs text-muted-foreground">{field.description}</p>}
     {field.type === "status" && <AutomationConfigStatusField control={control} field={field} />}
     {field.type === "channel" && <AutomationConfigChannelField control={control} field={field} />}
+    {field.type === "project" && <AutomationConfigProjectField control={control} field={field} />}
     {field.type === "string" && (
       <FormInput control={control} name={field.key} label={field.label} hideLabel id={field.key} />
     )}

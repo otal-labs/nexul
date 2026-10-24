@@ -37,6 +37,7 @@ const automation = (): Automation => ({
     properties: {
       targetStatus: { type: "string", format: "status", title: "Target status", project_id: "p1" },
       channel: { type: "string", format: "channel", title: "Notify channel" },
+      projectId: { type: "string", format: "project", title: "Project" },
       note: { type: "string", title: "Note" },
     },
     required: ["targetStatus"],
@@ -63,6 +64,7 @@ describe("AutomationConfigForm", () => {
     mocks.patch.mockReset();
     mocks.get.mockImplementation((url: string) => {
       if (url.includes("/statuses")) return Promise.resolve({ data: [{ id: "s1", name: "Done" }] });
+      if (url === "/api/projects") return Promise.resolve({ data: [{ id: "p1", name: "Northwind" }] });
       if (url.includes("/chat/conversations")) {
         return Promise.resolve({ data: [{ id: "c1", kind: "channel", name: "general" }] });
       }
@@ -70,13 +72,23 @@ describe("AutomationConfigForm", () => {
     });
   });
 
-  it("maps status → dropdown, channel → picker, string → input", () => {
+  it("maps status → dropdown, channel and project → pickers, string → input", () => {
     renderForm();
 
     expect(screen.getByText("Target status")).toBeInTheDocument();
     expect(screen.getByText("Notify channel")).toBeInTheDocument();
+    expect(screen.getByText("Project")).toBeInTheDocument();
     expect(screen.getByLabelText("Note")).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox")).toHaveLength(2);
+    expect(screen.getAllByRole("combobox")).toHaveLength(3);
+  });
+
+  it("lists the workspace's projects in a project field", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getAllByRole("combobox")[2]!);
+
+    expect(await screen.findByRole("option", { name: "Northwind" })).toBeInTheDocument();
   });
 
   it("submits the free-text field's value through PATCH /config", async () => {

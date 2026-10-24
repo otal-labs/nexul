@@ -140,6 +140,8 @@ automation.on("chat.bot_message.posted", async (payload, ctx) => {
 
 The event names the workspace, conversation, message, the bot's id and own name, the name the post showed, its text, its embeds without their color, and when it was posted. It never carries the bot's URL or token. A bot's post to a direct message or a private channel reaches no automation or integration, like any message there.
 
+The **Crash intake** default automation is built on this event: point a crash reporter's bot at a channel, and each crash becomes one bug ticket. See [Crash intake](/docs/guide/automations/#crash-intake).
+
 ## Over MCP
 
 Agents manage bots with `botwebhook_list`, `botwebhook_create`, and `botwebhook_update` (rename, avatar, regenerate, delete, restore). URLs appear only to a caller holding `botwebhook:write`. An agent doesn't post as a bot over MCP; it posts with `message_post` as itself, or uses a bot's URL like any sender. See [MCP server](/docs/guide/mcp-server/).

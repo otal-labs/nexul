@@ -27,6 +27,7 @@ internal/
   codereview/            # code review linking domain
   collab/                # collaborative editing session hub
   connectors/            # per-connector OAuth app config and credentials
+  crashintake/           # crash reports a bot posts, turned into bug tickets and running notes
   deploy/                # deploy engine domain
   dns/                   # DNS adoption and exposure domain
   docs/                  # docs domain (use-cases, handlers)
