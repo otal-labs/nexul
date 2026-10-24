@@ -15,6 +15,10 @@ export const NotificationKind = {
   ServiceRecovered: "service.container_recovered",
   ErrorRateCrossed: "stack.error_rate_crossed",
   ErrorRateRecovered: "stack.error_rate_recovered",
+  MeetingInvited: "meeting.invited",
+  MeetingCancelled: "meeting.cancelled",
+  MeetingReminder: "meeting.reminder",
+  TicketDueSoon: "ticket.due_soon",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -27,6 +31,8 @@ export const SubjectType = {
   Computer: "computer",
   // Opens the stack's page.
   Stack: "stack",
+  // Opens the Calendar with the meeting's panel.
+  Meeting: "meeting",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

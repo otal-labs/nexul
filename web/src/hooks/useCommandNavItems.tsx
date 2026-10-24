@@ -1,5 +1,6 @@
 import {
   BrainIcon,
+  CalendarDaysIcon,
   ClipboardListIcon,
   CpuIcon,
   FileTextIcon,
@@ -45,6 +46,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
   const pages: CommandItem[] = [
     ...page("inbox", "Inbox", InboxIcon, "/inbox"),
     ...page("chat", "Chat", MessagesSquareIcon, "/chat"),
+    ...page("calendar", "Calendar", CalendarDaysIcon, "/calendar"),
     ...page("board", "Board", LayoutDashboardIcon, current ? boardPath(current) : "/board", !!current && !!can?.("tickets")),
     ...page("interview", "Interview", ClipboardListIcon, interviewPath(token), !!current && !!can?.("memories")),
     ...page("docs", "Docs", FileTextIcon, "/docs", !!current && !!can?.("docs")),

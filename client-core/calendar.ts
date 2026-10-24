@@ -87,7 +87,7 @@ export const viewDays = (view: CalendarView, anchor: Date): Date[] => {
 // The range to ask the calendar routes for: from the first shown day's midnight to the day after the last.
 export const viewRange = (view: CalendarView, anchor: Date): { from: Date; to: Date } => {
   const days = viewDays(view, anchor);
-  return { from: days[0], to: addDays(days[days.length - 1], 1) };
+  return { from: days[0] ?? anchor, to: addDays(days[days.length - 1] ?? anchor, 1) };
 };
 
 // The anchor one view earlier or later.
@@ -132,3 +132,11 @@ export const asksScope = (meeting: Meeting): boolean => meeting.repeats !== "non
 // Whether the app should tell the server the timezone it runs in: only when it knows one the server doesn't have.
 export const shouldReportTimezone = (stored: string | undefined, device: string | undefined): device is string =>
   Boolean(device) && device !== stored;
+
+// A slot is an occurrence's start and every occurrence is as long as the meeting; no usable slot is the meeting's own run.
+export const occurrenceTimes = (meeting: Meeting, slot?: string): { starts_at: string; ends_at: string } => {
+  const start = slot ? Date.parse(slot) : NaN;
+  if (Number.isNaN(start)) return { starts_at: meeting.starts_at, ends_at: meeting.ends_at };
+  const length = Date.parse(meeting.ends_at) - Date.parse(meeting.starts_at);
+  return { starts_at: new Date(start).toISOString(), ends_at: new Date(start + length).toISOString() };
+};

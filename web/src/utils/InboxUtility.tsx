@@ -17,6 +17,10 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.ServiceRecovered]: "service came back",
   [NotificationKind.ErrorRateCrossed]: "5xx over the limit",
   [NotificationKind.ErrorRateRecovered]: "5xx back under the limit",
+  [NotificationKind.MeetingInvited]: "invited",
+  [NotificationKind.MeetingCancelled]: "cancelled",
+  [NotificationKind.MeetingReminder]: "starting soon",
+  [NotificationKind.TicketDueSoon]: "due tomorrow",
 };
 
 /** One inbox row: a doc with every notification about it, or any other notification on its own. */

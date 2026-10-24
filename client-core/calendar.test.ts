@@ -9,6 +9,7 @@ import {
   type Meeting,
   myReply,
   occurrencesByDay,
+  occurrenceTimes,
   shouldReportTimezone,
   stepAnchor,
   viewDays,
@@ -41,8 +42,8 @@ const meeting = (overrides: Partial<Meeting> = {}): Meeting => ({
 describe("the calendar's days", () => {
   it("shows a month as whole weeks from Monday", () => {
     const days = viewDays("month", new Date(2026, 10, 15));
-    expect(dayKey(days[0])).toBe("2026-10-26");
-    expect(dayKey(days[days.length - 1])).toBe("2026-12-06");
+    expect(dayKey(days[0] as Date)).toBe("2026-10-26");
+    expect(dayKey(days[days.length - 1] as Date)).toBe("2026-12-06");
     expect(days.length % 7).toBe(0);
   });
 
@@ -106,5 +107,18 @@ describe("the timezone report", () => {
     ["a device that knows none", "Europe/London", undefined, false],
   ])("%s", (_, stored, device, report) => {
     expect(shouldReportTimezone(stored, device)).toBe(report);
+  });
+});
+
+describe("the times of an occurrence", () => {
+  it("run from the slot for as long as the meeting", () => {
+    expect(occurrenceTimes(meeting({ repeats: "weekly" }), "2026-11-09T10:00:00Z")).toEqual({
+      starts_at: "2026-11-09T10:00:00.000Z",
+      ends_at: "2026-11-09T10:30:00.000Z",
+    });
+  });
+
+  it.each([["no slot", undefined], ["a slot that isn't a time", "later"]])("fall back to the meeting's own for %s", (_, slot) => {
+    expect(occurrenceTimes(meeting(), slot)).toEqual({ starts_at: "2026-11-02T10:00:00Z", ends_at: "2026-11-02T10:30:00Z" });
   });
 });

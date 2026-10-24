@@ -21,6 +21,8 @@ export interface User {
   // The optional manual profile override; omitted from the JSON entirely when unset, hence optional not nullable.
   display_name?: string;
   avatar_override_url?: string;
+  // The IANA zone the apps last reported; reminders at a fixed hour use it.
+  timezone?: string;
 }
 
 // One provider account attached to the user; the provider's own id never leaves the server.
