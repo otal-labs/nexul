@@ -76,9 +76,14 @@ toggle sets `.light` or `.dark` on `<html>` (kept in `localStorage` under
 `theme`). Every page loads it. Never add a colour that is not one of these
 tokens.
 
-`src/components/SiteHead.astro` is every page's shared head: the fonts and
-their preloads, and an inline script that sets the theme class before first
-paint. The one header (`src/components/SiteHeader.tsx`) is styled by
+`src/components/SiteHead.astro` is every page's shared head: the title,
+description and canonical URL, the link preview tags, the fonts and their
+preloads, and an inline script that sets the theme class before first paint.
+The preview tags come from `src/lib/social-meta.ts`: every page shares the
+1200x630 card image `public/social-preview.png` (the dark field, the
+headline and the board shot) under its own title and description, so a link
+to any page unfurls as a large card on X, Slack, Discord, LinkedIn and
+iMessage. A new headline means a new image at the same size. The one header (`src/components/SiteHeader.tsx`) is styled by
 `src/styles/site-header.css` and shared by every page, with the theme toggle
 and, below 768px, the phone menu; `src/lib/site-chrome.ts` runs both without a
 framework, so the landing pages ship no React. On docs pages the header also
