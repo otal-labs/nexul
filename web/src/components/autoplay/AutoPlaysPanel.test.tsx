@@ -60,6 +60,7 @@ const MEMORIES = [memory("m-1", "Branching"), memory("m-2", "Ship it", { footer:
 const WRITE = ["plays:read", "plays:write", "autoplays:read", "autoplays:write", "autoplays:delete"];
 let permissions: string[] = WRITE;
 let autoPlays: AutoPlay[] = [];
+let memories = MEMORIES;
 
 const serve = () =>
   mocks.get.mockImplementation(async (url: string, config?: AxiosRequestConfig) => {
@@ -69,7 +70,7 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
     if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
-    if (url === "/api/memories") return { data: MEMORIES };
+    if (url === "/api/memories") return { data: memories };
     if (url === "/api/ticket-types" && projectId === "p-1") return { data: [{ id: "tt-1", name: "Bug" }] };
     if (url === "/api/tickets/labels") return { data: ["urgent"] };
     if (url === "/api/categories") return { data: [] };
@@ -92,6 +93,7 @@ const discardPrompt = () => screen.findByRole("dialog", { name: "Discard changes
 beforeEach(() => {
   permissions = WRITE;
   autoPlays = [autoPlay()];
+  memories = MEMORIES;
   for (const fn of Object.values(mocks)) fn.mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   serve();
@@ -235,6 +237,17 @@ describe("a play's auto plays", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(await screen.findByRole("button", { name: /becomes unblocked/ })).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("says the memory picker is empty because every memory is always included", async () => {
+    memories = [memory("m-3", "House rules", { always_included: true }), memory("m-4", "Ship it", { always_included: true })];
+    const { user } = await openAutoPlays();
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
+    const picker = await screen.findByRole("button", { name: "Memories" });
+    await waitFor(() => expect(picker).toHaveTextContent("All memories are always included"));
+    expect(screen.getByText(/All 2 memories are always included, so every run gets them/)).toBeInTheDocument();
+    await user.click(picker);
+    expect(await screen.findByRole("dialog")).toHaveTextContent("All memories are always included");
   });
 
   it("keeps its memories when switched, and one it can't name stays picked as an unknown memory", async () => {
