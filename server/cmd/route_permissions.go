@@ -7,6 +7,7 @@ var none = []string{"none"}
 var routePermissions = map[string][]string{
 	"POST /api/agent/conversations/{id}/answer":    none,
 	"POST /api/agent/conversations/{id}/interrupt": none,
+	"POST /api/agent/conversations/{id}/secret":    none,
 	"POST /api/agent/conversations/{id}/steer":     none,
 
 	"POST /api/attachments":        {"docs:write", "memories:write", "tickets:write", "none"},

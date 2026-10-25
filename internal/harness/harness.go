@@ -295,6 +295,14 @@ type Approval struct {
 	Summary string
 }
 
+// SecretRequest is the agent asking the person for a secret value, which goes straight to the harness and is never stored.
+type SecretRequest struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Reason      string `json:"reason"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
 // QuestionOption is one choice of a question; Value is what the harness wants back, the label when empty.
 type QuestionOption struct {
 	Label       string `json:"label"`
@@ -414,6 +422,7 @@ type Update struct {
 	Activity *Activity
 	Approval *Approval
 	Question *Question
+	Secret   *SecretRequest
 	Answered *AnsweredQuestion
 	Handoff  *Handoff
 	// Queued is set when the turn starts or stops waiting in the harness's queue behind another run on its session.
@@ -487,6 +496,11 @@ type Client interface {
 // ImageTaker is a Client that sends its agent only some image types; a Client that is not one sends every image.
 type ImageTaker interface {
 	TakesImage(mime string) bool
+}
+
+// SecretAnswerer is a Client whose agent can ask for a secret; an empty secret declines the request.
+type SecretAnswerer interface {
+	AnswerSecret(ctx context.Context, t Target, requestID, secret string) error
 }
 
 // Registry maps each supported kind to its client; the composition root builds it once.

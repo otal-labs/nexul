@@ -188,7 +188,7 @@ type watch struct {
 	sent         map[string]harness.Snapshot
 	// steps is the step last emitted per item, so an item a snapshot re-sends unchanged emits nothing.
 	steps map[string]harness.Activity
-	// asked holds the request ids of the questions and approvals already raised.
+	// asked holds the request ids of the questions and approvals already raised, and the item ids of the secret requests.
 	asked map[string]bool
 	// resolved holds the request ids of the answered questions already reported.
 	resolved map[string]bool
@@ -510,7 +510,7 @@ func (w *watch) userMessage(it turnItem) []harness.Update {
 	return []harness.Update{{Activity: &a}}
 }
 
-// step emits what the mapper makes of an item: a step each time it changes, a question or approval once per request.
+// step emits what the mapper makes of an item: a step each time it changes, a question, approval or secret once per request.
 func (w *watch) step(it turnItem) []harness.Update {
 	u, ok := mapItem(it)
 	if !ok {
@@ -523,10 +523,15 @@ func (w *watch) step(it turnItem) []harness.Update {
 		w.steps[it.ID] = *u.Activity
 		return []harness.Update{u}
 	}
-	if w.asked[it.RequestID] {
+	// A secret request has no request id; its item id names it.
+	key := it.RequestID
+	if u.Secret != nil {
+		key = it.ID
+	}
+	if w.asked[key] {
 		return nil
 	}
-	w.asked[it.RequestID] = true
+	w.asked[key] = true
 	if u.Approval != nil {
 		w.declines = append(w.declines, it.RequestID)
 	}

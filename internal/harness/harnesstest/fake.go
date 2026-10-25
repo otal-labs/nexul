@@ -22,6 +22,7 @@ type Client struct {
 	WatchFn         func(ctx context.Context, t harness.Target) (harness.StartResult, error)
 	InterruptFn     func(ctx context.Context, t harness.Target) error
 	AnswerFn        func(ctx context.Context, t harness.Target, requestID string, answer harness.QuestionAnswer) error
+	AnswerSecretFn  func(ctx context.Context, t harness.Target, requestID, secret string) error
 	SettleFn        func(ctx context.Context, t harness.Target) error
 	SteerFn         func(ctx context.Context, t harness.Target) error
 }
@@ -120,6 +121,13 @@ func (c *Client) Answer(ctx context.Context, t harness.Target, requestID string,
 		return nil
 	}
 	return c.AnswerFn(ctx, t, requestID, answer)
+}
+
+func (c *Client) AnswerSecret(ctx context.Context, t harness.Target, requestID, secret string) error {
+	if c.AnswerSecretFn == nil {
+		return nil
+	}
+	return c.AnswerSecretFn(ctx, t, requestID, secret)
 }
 
 func (c *Client) Settle(ctx context.Context, t harness.Target) error {

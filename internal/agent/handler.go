@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -25,6 +26,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/agent/conversations/{id}/interrupt", h.interrupt)
 	mux.HandleFunc("POST /api/agent/conversations/{id}/answer", h.answer)
+	mux.HandleFunc("POST /api/agent/conversations/{id}/secret", h.secret)
 	mux.HandleFunc("POST /api/agent/conversations/{id}/steer", h.steer)
 	return mux
 }
@@ -47,6 +49,30 @@ func (h *Handler) answer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.AnswerFromChat(r.Context(), r.PathValue("id"), actor.ID, req.RequestID, harness.QuestionAnswer{Answers: req.Answers}); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SecretRequest is the body of the secret route: the request's id and the value, empty to decline.
+type SecretRequest struct {
+	RequestID string `json:"request_id"`
+	Secret    string `json:"secret"`
+}
+
+func (h *Handler) secret(w http.ResponseWriter, r *http.Request) {
+	var req SecretRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	actor, ok := identity.ActorFromCtx(r.Context())
+	if !ok || actor.ID == "" {
+		httpx.WriteError(w, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized))
+		return
+	}
+	if err := h.svc.AnswerSecret(r.Context(), r.PathValue("id"), actor.ID, req.RequestID, strings.TrimSpace(req.Secret)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

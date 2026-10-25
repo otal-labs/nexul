@@ -50,12 +50,13 @@ type Server struct {
 	Launched    chan map[string]any // payload of each orchestration.launchThread call (auto-acked)
 	Cloned      chan map[string]any // payload of each projectClone.start call
 	Mutated     chan map[string]any // payload of each projects.mutate call
+	Secrets     chan map[string]any // payload of each secrets.answerRequest call
 	// Branches answers vcs.refreshStatus per folder with the branch it is on; an unnamed folder is not a git repository.
 	Branches map[string]string
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
 	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload, the thread
-	// launch, the clone or the project mutation when it names that RPC; set it before connect.
+	// launch, the clone, the project mutation or the secret answer when it names that RPC; set it before connect.
 	CommandCauses map[string]any
 	// CloneError ends each clone in phase failed with this error; empty ends it done. Set it before connect.
 	CloneError string
@@ -94,6 +95,7 @@ const (
 	launchRPC  = "orchestration.launchThread"
 	cloneRPC   = "projectClone.start"
 	mutateRPC  = "projects.mutate"
+	secretRPC  = "secrets.answerRequest"
 	clonesRPC  = "subscribeProjectClones"
 )
 
@@ -122,6 +124,7 @@ func New(t testing.TB) *Server {
 		Launched:    make(chan map[string]any, 4),
 		Cloned:      make(chan map[string]any, 4),
 		Mutated:     make(chan map[string]any, 4),
+		Secrets:     make(chan map[string]any, 4),
 
 		ShellSubscribed: make(chan string, 4),
 		Pings:           make(chan struct{}, 64),
@@ -270,6 +273,8 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.handleClone(env)
 	case mutateRPC:
 		f.handleMutate(env)
+	case secretRPC:
+		f.handleSecret(env)
 	case clonesRPC:
 		f.writeClones(env)
 	case "vcs.refreshStatus":
@@ -410,6 +415,20 @@ func (f *Server) handleLaunch(env clientEnv) {
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"threadId": in["threadId"], "resumed": false}))
 	f.Launched <- in
+}
+
+func (f *Server) handleSecret(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable secret payload: %v", err)
+		return
+	}
+	if cause, ok := f.CommandCauses[secretRPC]; ok {
+		f.writeFailure(env, cause)
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), nil))
+	f.Secrets <- in
 }
 
 func (f *Server) handleClone(env clientEnv) {

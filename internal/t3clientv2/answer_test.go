@@ -260,3 +260,51 @@ func TestStartTurn_PendingAnswer_GoesAsAMessageOnlyWhenT3CannotTakeIt(t *testing
 		})
 	}
 }
+
+func TestAnswerSecret_SavesTheValueOrDeclines(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		secret string
+		want   map[string]any
+	}{
+		{"a value is saved", "sk_test_1", map[string]any{"type": "save", "secret": "sk_test_1"}},
+		{"no value declines", "", map[string]any{"type": "decline"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+
+			require.NoError(t, h.AnswerSecret(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}, "ti-1", tt.secret))
+			assert.Equal(t, map[string]any{"threadId": "th-1", "turnItemId": "ti-1", "answer": tt.want}, <-f.Secrets)
+		})
+	}
+}
+
+func TestAnswerSecret_Refused(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		reason string
+		errIs  error
+		want   string
+	}{
+		{"a request answered already conflicts", "already_answered", apperrs.ErrConflict,
+			"conflict: secret request ti-1 was already answered"},
+		{"a stopped agent is named", "agent_stopped", apperrs.ErrInvalid,
+			"invalid: the agent that asked has stopped, so the secret can't be used"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			f.CommandCauses = map[string]any{"secrets.answerRequest": []any{map[string]any{"_tag": "Fail",
+				"error": map[string]any{"_tag": "SecretRequestError", "reason": tt.reason}}}}
+
+			err := h.AnswerSecret(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}, "ti-1", "sk_test_1")
+			require.ErrorIs(t, err, tt.errIs)
+			assert.EqualError(t, err, tt.want)
+		})
+	}
+}

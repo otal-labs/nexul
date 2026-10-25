@@ -28,7 +28,7 @@ While a play runs, its button shows a spinner and opens the run; the other plays
 
 While a run is going:
 
-- **The agent asks you something.** A question card shows on the trail and in the thread, and a dot on the ticket's **Thread** tab marks it until it is answered. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer.
+- **The agent asks you something.** A question card shows on the trail and in the thread, and a dot on the ticket's **Thread** tab marks it until it is answered. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer. A secret the agent asks for, such as an API key, gets a secret card in the thread the same way; what you save goes to T3 Code, never into the thread.
 - **You want it to stop.** Press the stop square beside the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
 - **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable for 15 minutes; until then it keeps its place in the computer's **Runs at once**.
 - **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.

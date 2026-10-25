@@ -563,6 +563,8 @@ type ExitCause struct {
 		Message string `json:"message"`
 		// Detail is the human sentence some typed errors carry, such as a clone's "Destination path already exists".
 		Detail string `json:"detail"`
+		// Reason is the failure code some typed errors carry in place of a message, such as a secret request's "already_answered".
+		Reason string `json:"reason"`
 	} `json:"error"`
 }
 

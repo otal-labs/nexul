@@ -264,6 +264,19 @@ func TestWatch_ItemSentAgain_EmitsOnce(t *testing.T) {
 	}
 }
 
+func TestWatch_SecretRequests_AskOnceEach(t *testing.T) {
+	t.Parallel()
+	first, second := secretItem(t, "pending"), secretItem(t, "pending")
+	second.ID = "turn-item:secret-request:th-1:sr-2"
+	got := fold(t, newWatch("msg-1"), []json.RawMessage{
+		event(2, "run.created", runOf("msg-1", "running")),
+		event(3, "turn-item.updated", first), event(4, "turn-item.updated", first), event(5, "turn-item.updated", second),
+	})
+	require.Len(t, got, 2)
+	assert.Equal(t, first.ID, got[0].Secret.ID)
+	assert.Equal(t, second.ID, got[1].Secret.ID)
+}
+
 // event is a fixture-shaped event item; the payload keys follow the captures.
 func event(seq int, typ string, payload any) json.RawMessage {
 	b, err := json.Marshal(map[string]any{"kind": "event", "sequence": seq, "event": map[string]any{
