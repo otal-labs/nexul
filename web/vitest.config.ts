@@ -16,6 +16,8 @@ export default defineConfig({
   server: { fs: { allow: [".", "../client-core"] } },
   test: {
     environment: "jsdom",
+    // The date tests read British day and month names, so the host locale must not decide them.
+    env: { LC_ALL: "en_GB.UTF-8", LANG: "en_GB.UTF-8" },
     setupFiles: ["./src/test/setup.ts"],
     // Only the stylesheet guard reads index.css, as raw text; every other import still gets an empty module.
     css: { include: [/src\/index\.css/] },
