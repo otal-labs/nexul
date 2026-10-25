@@ -1,5 +1,3 @@
-import { useId } from "react";
-
 import type { ActionGate } from "@nexul/client-core/actionState";
 
 import { LockedReason } from "@/components/action/LockedReason";
@@ -19,7 +17,6 @@ interface ActionSwitchProps extends ActionGate {
 
 // A switch shows state too, so a viewer who can't flip it still sees it, disabled.
 export const ActionSwitch = ({ permission, projectId, answer, verb, checked, onCheckedChange, size = "default", disabled = false, title, className, "aria-label": label }: ActionSwitchProps) => {
-  const id = useId();
   const action = useActionState({ permission, projectId, answer, verb });
   return (
     <>
@@ -31,14 +28,14 @@ export const ActionSwitch = ({ permission, projectId, answer, verb, checked, onC
       )}
       {action.state === "locked" && (
         // The tooltip's trigger is a wrapper: on the switch itself its data-state would replace checked and unchecked.
-        <LockedReason id={id} reason={action.reason} side="top">
+        <LockedReason reason={action.reason} side="top">
           <span className="inline-flex">
             <Switch
               size={size}
               checked={checked}
               aria-label={label}
               aria-disabled
-              aria-describedby={id}
+              aria-description={action.reason}
               data-locked
               onCheckedChange={() => undefined}
               className={cn("cursor-default opacity-60", className)}

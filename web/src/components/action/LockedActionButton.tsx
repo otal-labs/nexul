@@ -1,5 +1,4 @@
 import { LockIcon, type LucideIcon } from "lucide-react";
-import { useId } from "react";
 
 import { LockedReason } from "@/components/action/LockedReason";
 import { Button, type ButtonProps } from "@/components/ui/button";
@@ -31,16 +30,15 @@ const LockBadge = () => (
 
 // aria-disabled, never disabled: it must stay in the tab order to explain itself on focus.
 export const LockedActionButton = ({ variant, size, className, reason, icon: Icon, children, ...props }: LockedActionButtonProps) => {
-  const id = useId();
   const glyphOnly = size === "icon";
   return (
-    <LockedReason id={id} reason={reason} title={glyphOnly ? props["aria-label"] : undefined}>
+    <LockedReason reason={reason} title={glyphOnly ? props["aria-label"] : undefined}>
       <Button
         type="button"
         variant={variant}
         size={size}
         aria-disabled
-        aria-describedby={id}
+        aria-description={reason}
         data-locked
         onClick={(event) => event.preventDefault()}
         className={cn("relative cursor-default text-muted-foreground hover:text-muted-foreground motion-safe:active:scale-100", VARIANT_CLASS[variant ?? "default"], className)}
