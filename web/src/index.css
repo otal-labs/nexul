@@ -234,8 +234,10 @@ body {
   line-height: 1.12;
 }
 
-::selection {
-  background: color-mix(in oklab, var(--brand) 32%, transparent);
+@layer base {
+  ::selection {
+    background: color-mix(in oklab, var(--brand) 32%, transparent);
+  }
 }
 
 /* Tailwind v4 leaves buttons on the arrow; anything clickable shows the pointer. Layered, so a cursor utility still wins. */
