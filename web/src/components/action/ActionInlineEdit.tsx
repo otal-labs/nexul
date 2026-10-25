@@ -1,5 +1,5 @@
 import { LockIcon, PencilIcon } from "lucide-react";
-import { useId, type ComponentProps } from "react";
+import type { ComponentProps } from "react";
 
 import type { ActionGate } from "@nexul/client-core/actionState";
 
@@ -21,7 +21,6 @@ const AFFORDANCE = "size-3.5 shrink-0 text-muted-foreground opacity-0 transition
 
 // Hidden, the value still shows as plain text: it is data first and a control second. A popover trigger passes its props through to the live button.
 export const ActionInlineEdit = ({ permission, projectId, answer, verb, label, onEdit, className, liveClassName, pencil = true, children, ...props }: ActionInlineEditProps) => {
-  const id = useId();
   const action = useActionState({ permission, projectId, answer, verb });
   return (
     <>
@@ -33,12 +32,12 @@ export const ActionInlineEdit = ({ permission, projectId, answer, verb, label, o
         </button>
       )}
       {action.state === "locked" && (
-        <LockedReason id={id} reason={action.reason} side="top">
+        <LockedReason reason={action.reason} side="top">
           <button
             type="button"
             aria-label={label}
             aria-disabled
-            aria-describedby={id}
+            aria-description={action.reason}
             data-locked
             onClick={(event) => event.preventDefault()}
             className={cn(BASE, "cursor-default", className)}

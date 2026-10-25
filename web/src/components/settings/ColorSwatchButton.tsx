@@ -1,5 +1,5 @@
 import { LockIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import type { ActionGate } from "@nexul/client-core/actionState";
 
@@ -24,7 +24,6 @@ interface ColorSwatchButtonProps extends Pick<ActionGate, "permission" | "projec
 // The color is data first: a viewer who can't change it still sees the dot, locked beside a lock.
 export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, permission, projectId, verb, dotClass }: ColorSwatchButtonProps) => {
   const [open, setOpen] = useState(false);
-  const id = useId();
   const action = useActionState({ permission, projectId, verb });
   const dot = (
     <span
@@ -37,12 +36,12 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
     <>
       {action.state === "hidden" && <span className="inline-flex size-6 items-center justify-center">{dot}</span>}
       {action.state === "locked" && (
-        <LockedReason id={id} reason={action.reason}>
+        <LockedReason reason={action.reason}>
           <button
             type="button"
             aria-label={label}
             aria-disabled
-            aria-describedby={id}
+            aria-description={action.reason}
             data-locked
             onClick={(event) => event.preventDefault()}
             className="inline-flex h-6 cursor-default items-center gap-1 rounded-md px-1.5 text-muted-foreground"
