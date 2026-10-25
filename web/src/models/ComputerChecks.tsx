@@ -80,10 +80,11 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
 };
 
 // A runner computer's health, one lane at a time: the computer's own connection, then T3 Code through it.
-export const computerLanes = (computer: Computer, presence: string | undefined): Lane[] => {
+export const computerLanes = (computer: Computer, presence: string | undefined, repairing = false): Lane[] => {
   if (!computer.runner) return [{ tone: "muted", text: "Nexul app not installed" }];
   if (computer.runner.reconnecting) return [{ tone: "warning", text: "Reconnecting", detail: `dropped ${formatRelativeTime(computer.runner.last_seen)}` }];
   if (!computer.runner.connected) return [{ tone: "muted", text: "Offline", detail: `last seen ${formatRelativeTime(computer.runner.last_seen)}` }];
+  if (repairing) return [{ tone: "success", text: "Online" }, { tone: "info", text: "Re-pairing" }];
   return [{ tone: "success", text: "Online" }, t3Lane(computer, presence)];
 };
 

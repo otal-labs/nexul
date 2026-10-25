@@ -364,16 +364,22 @@ describe("ComputersSection", () => {
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/enrollments", { id: "c1" });
     });
 
-    it("re-pairs now through its app instead of asking for a link", async () => {
+    it("re-pairs now through its app instead of asking for a link, saying so on the row until it is done", async () => {
       serveComputers([computer({ server_url: relay, runner: online, facts: answering })]);
-      mocks.post.mockResolvedValue({ data: computer({ server_url: relay }) });
+      let finish: (value: unknown) => void = () => {};
+      mocks.post.mockReturnValue(new Promise((resolve) => (finish = resolve)));
       const user = userEvent.setup();
       renderSection();
 
       await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
       await user.click(screen.getByRole("button", { name: "Re-pair now" }));
       await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/pair"));
+      expect(await screen.findByText("Re-pairing")).toBeInTheDocument();
       expect(screen.queryByLabelText(/pairing link/i)).not.toBeInTheDocument();
+
+      await act(async () => finish({ data: computer({ server_url: relay }) }));
+      await waitFor(() => expect(screen.queryByText("Re-pairing")).not.toBeInTheDocument());
+      expect(toast.success).toHaveBeenCalledWith("Home re-paired");
     });
 
     it("renames it from its menu", async () => {

@@ -698,6 +698,11 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 	if err != nil {
 		return nil, s.offline(ctx, target.Computer, err)
 	}
+	if listsMore(target.Computer.Facts, providers) {
+		if err := s.recordFacts(ctx, target.Computer.UserID, target.Computer.ID, nil); err != nil {
+			logging.FromCtx(ctx).Warn("computer facts not read again after T3 Code listed more providers", "computer_id", target.Computer.ID, "error", err)
+		}
+	}
 	// The call may have moved the computer to a newer kind; the turn and its version-drift check read what it holds now.
 	stored, err := s.repo.GetComputer(ctx, target.Computer.UserID, target.Computer.ID)
 	if err != nil {
@@ -741,6 +746,13 @@ func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfig
 }
 
 // pickProvider finds the stored instance id among the harness's providers; an empty one takes the first usable, else the harness default.
+// listsMore is whether T3 Code lists a provider facts lack, as it does once it checks a provider it listed unchecked.
+func listsMore(facts *Facts, providers []harness.Provider) bool {
+	return facts != nil && slices.ContainsFunc(providers, func(p harness.Provider) bool {
+		return !slices.ContainsFunc(facts.Providers, func(f ProviderFacts) bool { return f.ID == p.ID })
+	})
+}
+
 func pickProvider(providers []harness.Provider, id string, usable func(harness.Provider) bool) (harness.Provider, error) {
 	if i := slices.IndexFunc(providers, usable); id == "" && i >= 0 {
 		return providers[i], nil
