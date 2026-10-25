@@ -129,7 +129,7 @@ class is drift.
 |---|---|---|---|
 | Primary action | the primary button, the sidebar's Continue setup row | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
-| Selection | selected rows, canvas selection (`ring`), text selection | text selection (`brand` at 32%) | the drop target a held card is over |
+| Selection | selected rows, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
 | Your own messages | the chat bubble | | the chat bubble |
 | Checked controls | checkbox, switch | | the "Only mine" switch |
 | Progress | progress fills, the loader's dot | | pull to refresh |

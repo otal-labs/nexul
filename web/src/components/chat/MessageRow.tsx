@@ -53,7 +53,7 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
     className={cn(
       "relative w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
       // Yours is the one bubble; everyone else's text runs plain under their name, so a long thread reads as a transcript.
-      own && "bg-brand text-brand-foreground",
+      own && "bg-brand text-brand-foreground selection:bg-brand-foreground/30",
       !own && "max-w-[72ch] px-0 py-0",
     )}
   >
