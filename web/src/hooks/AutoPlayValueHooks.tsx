@@ -27,6 +27,7 @@ export interface FieldValues {
   options: ValueOption[];
   // Names a stored value; one the viewer can't see reads as "Unknown project" and stays in the auto play.
   label: (value: string) => string;
+  empty?: string;
 }
 
 const byName = (names: string[]): ValueOption[] =>
@@ -95,7 +96,7 @@ export const useAutoPlayValues = (field: AutoPlayField): FieldValues => {
 };
 
 // The workspace's memories an auto play may pick, each named with its project; always-included ones are read anyway.
-export const useAutoPlayMemoryValues = (): FieldValues => {
+export const useAutoPlayMemoryValues = (): FieldValues & { included: number } => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: memories } = useFetchMemories(workspaceId);
   const { data: projects } = useFetchProjects();
@@ -108,6 +109,8 @@ export const useAutoPlayMemoryValues = (): FieldValues => {
     .sort((a, b) => a.label.localeCompare(b.label));
   return {
     options,
+    included: (memories ?? []).length - options.length,
+    empty: memories?.length ? "All memories are always included" : "No memories yet",
     label: (id) => {
       const memory = byId.get(id);
       return memory ? labelOf(memory) : "Unknown memory";
