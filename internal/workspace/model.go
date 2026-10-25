@@ -301,6 +301,8 @@ const (
 	SubjectStack SubjectType = "stack"
 	// SubjectMeeting opens the meeting on the calendar; its notices go only to the people who see it.
 	SubjectMeeting SubjectType = "meeting"
+	// SubjectInterview opens a project's Interview; its id is the project's.
+	SubjectInterview SubjectType = "interview"
 )
 
 // Notification's SubjectTitle is denormalized so the frontend renders the list without extra fetches.

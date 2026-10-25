@@ -60,7 +60,8 @@ WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
        OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(?6)))
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(?6)))
 `
 
 type CountNotificationsPageParams struct {
@@ -88,7 +89,7 @@ func (q *Queries) CountNotificationsPage(ctx context.Context, arg CountNotificat
 }
 
 const countUnreadNotificationsByProject = `-- name: CountUnreadNotificationsByProject :many
-SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, st.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
+SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, st.project_id, CASE n.subject_type WHEN 'interview' THEN n.subject_id END, '') AS TEXT) AS project_id, COUNT(*) AS unread
 FROM notifications n INDEXED BY idx_notifications_user_unread
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
@@ -208,7 +209,8 @@ SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n
        CAST(COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') AS TEXT) AS project_id
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') AS TEXT) AS project_id
 FROM notifications n
 WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
   AND (NOT ?3 OR n.read = 0)
@@ -218,7 +220,8 @@ WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
        OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(?6)))
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(?6)))
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT ?8 OFFSET ?7
 `
