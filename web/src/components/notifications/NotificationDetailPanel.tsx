@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerMoveDetail } from "@/components/notifications/ComputerMoveDetail";
+import { InterviewNoticeDetail } from "@/components/notifications/InterviewNoticeDetail";
 import { MeetingNoticeDetail } from "@/components/notifications/MeetingNoticeDetail";
 import { StackNoticeDetail } from "@/components/notifications/StackNoticeDetail";
 import { SubjectType } from "@/models/Notification";
@@ -33,5 +34,6 @@ export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelPro
     {selected && selected.subject_type === SubjectType.Computer && <ComputerMoveDetail />}
     {selected && selected.subject_type === SubjectType.Stack && <StackNoticeDetail notification={selected} />}
     {selected && selected.subject_type === SubjectType.Meeting && <MeetingNoticeDetail meetingId={selected.subject_id} />}
+    {selected && selected.subject_type === SubjectType.Interview && <InterviewNoticeDetail notification={selected} />}
   </div>
 );

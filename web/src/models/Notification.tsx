@@ -33,6 +33,8 @@ export const SubjectType = {
   Stack: "stack",
   // Opens the Calendar with the meeting's panel.
   Meeting: "meeting",
+  // Opens the project's Interview; the id is the project's.
+  Interview: "interview",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

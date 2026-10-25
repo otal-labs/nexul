@@ -30,7 +30,8 @@ SELECT sqlc.embed(n),
        CAST(COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') AS TEXT) AS project_id
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') AS TEXT) AS project_id
 FROM notifications n
 WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.workspace_id = sqlc.arg(workspace_id))
   AND (NOT sqlc.arg(unread_only) OR n.read = 0)
@@ -40,7 +41,8 @@ WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.worksp
        OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))))
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))))
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
@@ -56,11 +58,12 @@ WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.worksp
        OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
          WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
          WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id)
-         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))));
+         WHEN 'stack' THEN (SELECT st.project_id FROM stacks st WHERE st.id = n.subject_id)
+         WHEN 'interview' THEN n.subject_id END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))));
 
 -- name: CountUnreadNotificationsByProject :many
 -- Without table statistics SQLite reads every notification the user has, read ones included, through the inbox index.
-SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, st.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
+SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, st.project_id, CASE n.subject_type WHEN 'interview' THEN n.subject_id END, '') AS TEXT) AS project_id, COUNT(*) AS unread
 FROM notifications n INDEXED BY idx_notifications_user_unread
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id

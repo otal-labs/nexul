@@ -223,7 +223,7 @@ func (s *NotificationService) requireMember(ctx context.Context, userID, workspa
 	return nil
 }
 
-// canOpen keeps a notice from naming a ticket or doc its recipient may not read.
+// canOpen keeps a notice from naming something its recipient may not read.
 func (s *NotificationService) canOpen(ctx context.Context, n notice, userID string) bool {
 	if s.access == nil {
 		return true
@@ -238,6 +238,8 @@ func (s *NotificationService) canOpen(ctx context.Context, n notice, userID stri
 		return s.access.CanReadDoc(ctx, userID, n.subjectID)
 	case SubjectStack:
 		return s.access.CanReadStack(ctx, userID, n.subjectID)
+	case SubjectInterview:
+		return s.access.CanInProject(ctx, userID, n.subjectID, permissions.MemoriesRead)
 	}
 	return true
 }
@@ -435,14 +437,17 @@ func (s *NotificationService) onPlayRunWaiting(ctx context.Context, e playRunFin
 // notifyPlayStarter has no actor to exclude: the run, not the starter, is what finished or asked.
 func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFinishedEvent, outcome string, kind Kind) error {
 	subjectType := SubjectTicket
-	if e.TargetType == string(SubjectDoc) {
-		subjectType = SubjectDoc
+	if slices.Contains([]SubjectType{SubjectDoc, SubjectStack, SubjectInterview}, SubjectType(e.TargetType)) {
+		subjectType = SubjectType(e.TargetType)
 	}
 	title := e.TargetTitle
 	if title == "" {
 		title = e.TargetID
 	}
 	n := notice{subjectType: subjectType, subjectID: e.TargetID, subjectTitle: fmt.Sprintf("%s %s on %s", e.PlayLabel, outcome, title), workspaceID: e.WorkspaceID}
+	if subjectType == SubjectInterview {
+		n.projectID = e.TargetID
+	}
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, []string{e.StarterID})
 }
 

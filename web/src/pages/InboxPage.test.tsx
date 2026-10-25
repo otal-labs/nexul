@@ -143,6 +143,16 @@ describe("InboxPage", () => {
     expect(screen.getByRole("link", { name: "Open Computers" })).toHaveAttribute("href", "/settings/pairing");
   });
 
+  it("opens an interview notice on the way to the project's Interview, never as a ticket", async () => {
+    const notice = { ...ticketNotification, id: "n5", kind: "play.run_waiting", subject_type: "interview", subject_id: "p-1", subject_title: "Interview needs your answer on Backend" };
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [notice] }) : mockApiResponse(url)));
+    renderPage("/acme/inbox/n:n5");
+
+    expect(await screen.findByRole("heading", { name: "Interview needs your answer on Backend" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open interview" })).toHaveAttribute("href", "/acme/projects/p-1/interview");
+    expect(vi.mocked(api.get).mock.calls.some(([url]) => String(url).startsWith("/api/tickets/"))).toBe(false);
+  });
+
   it("opens a meeting notice on the calendar, with the meeting's panel", async () => {
     const notice = { ...ticketNotification, id: "n4", kind: "meeting.invited", subject_type: "meeting", subject_id: "m-1", subject_title: "Standup" };
     vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [notice] }) : mockApiResponse(url)));

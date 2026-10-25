@@ -470,3 +470,35 @@ func TestNotificationsRepo_Page_FiltersInSQLAndCoversTheInboxOnce(t *testing.T) 
 		assert.Equal(t, want, got, "%+v", f)
 	}
 }
+
+func TestNotificationsRepo_AnInterviewNoticeFollowsItsProjectsAccess(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "alice")
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	var rows []*workspace.Notification
+	for _, id := range []string{"project-general", "p-hidden"} {
+		n := newTestNotification("n-"+id, "u1", false)
+		n.WorkspaceID, n.Kind, n.SubjectType, n.SubjectID = "workspace-default", workspace.KindPlayRunWaiting, workspace.SubjectInterview, id
+		rows = append(rows, n)
+	}
+	require.NoError(t, s.Notifications.CreateMany(ctx, rows))
+	scope := &workspace.InboxScope{WorkspaceIDs: []string{"workspace-default"}, ProjectIDs: []string{"project-general"}}
+
+	ns, total, err := s.Notifications.Page(ctx, "u1", workspace.InboxFilter{}, scope, paging.Window{Limit: 10})
+
+	require.NoError(t, err)
+	require.Len(t, ns, 1)
+	assert.Equal(t, "project-general", ns[0].SubjectID, "an interview of a project the reader cannot open is left out")
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "project-general", ns[0].ProjectID)
+
+	unread, err := s.Notifications.UnreadByProject(ctx, "u1", "")
+	require.NoError(t, err)
+	byProject := map[string]int{}
+	for _, g := range unread {
+		byProject[g.ProjectID] += g.Unread
+	}
+	assert.Equal(t, map[string]int{"project-general": 1, "p-hidden": 1}, byProject)
+}

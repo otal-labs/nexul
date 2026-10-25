@@ -31,6 +31,8 @@ export const SubjectType = {
   Computer: "computer",
   Stack: "stack",
   Meeting: "meeting",
+  // The phone has no Interview screen; the notice marks read with nothing to open.
+  Interview: "interview",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

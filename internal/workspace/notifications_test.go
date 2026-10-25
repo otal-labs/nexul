@@ -912,6 +912,8 @@ func TestHandlePlayRunFinished(t *testing.T) {
 		{"done on a ticket", "ticket", "done", SubjectTicket, "Fix with AI finished on NEX-12"},
 		{"failed on a ticket", "ticket", "failed", SubjectTicket, "Fix with AI failed on NEX-12"},
 		{"interrupted on a doc", "doc", "interrupted", SubjectDoc, "Fix with AI interrupted on NEX-12"},
+		{"done on an interview", "interview", "done", SubjectInterview, "Fix with AI finished on NEX-12"},
+		{"done on a stack", "stack", "done", SubjectStack, "Fix with AI finished on NEX-12"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
