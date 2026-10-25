@@ -11,6 +11,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 const noSignalReply = "Agent turn failed: turn gave no completion signal"
@@ -169,4 +170,46 @@ func TestAnswer_TwoTurnsPausedOnTheirOwnQuestions_WakesOnlyTheTurnThatAsked(t *t
 		close(second)
 		synctest.Wait()
 	})
+}
+
+func TestAnswerSecret_PendingSecret_ShowsTheCardAndHandsTheValueOnlyToTheHarness(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ch := make(chan harness.Update, 16)
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		var sent []string
+		client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: ch}}
+		client.AnswerSecretFn = func(_ context.Context, target harness.Target, requestID, secret string) error {
+			sent = append(sent, target.SessionID+" "+requestID+" "+secret)
+			return nil
+		}
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+		require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		ch <- harness.Update{Secret: &harness.SecretRequest{ID: "ti-1", Label: "Acme API key", Reason: "The check calls Acme."}}
+		time.Sleep(45 * time.Minute)
+		synctest.Wait()
+		replies, systemPosts := conv.snapshot()
+		require.Empty(t, systemPosts, "the user's silence is not the harness's")
+		require.Len(t, replies, 1)
+		assert.Equal(t, "```nexul-secret\n{\"id\":\"ti-1\",\"label\":\"Acme API key\",\"reason\":\"The check calls Acme.\"}\n```", replies[0].body)
+
+		require.NoError(t, svc.AnswerSecret(t.Context(), "conv-1", "u-2", "ti-1", "acme_test_1"))
+		assert.Equal(t, []string{"sess-1 ti-1 acme_test_1"}, sent)
+		conv.mu.Lock()
+		assert.Equal(t, []fakePost{{conversationID: "conv-1", viaUserID: "u-2", body: "Answered: saved the secret"}}, conv.userPosts,
+			"the thread records the answer, never the value")
+		conv.mu.Unlock()
+
+		time.Sleep(15 * time.Minute)
+		synctest.Wait()
+		_, systemPosts = conv.snapshot()
+		require.Len(t, systemPosts, 1, "once answered, a harness that goes quiet is caught again")
+	})
+}
+
+func TestAnswerSecret_Refusals(t *testing.T) {
+	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Live: &fakeLive{}})
+	require.ErrorIs(t, svc.AnswerSecret(t.Context(), "conv-1", "u-1", " ", "x"), apperrs.ErrInvalid)
+	require.ErrorIs(t, svc.AnswerSecret(t.Context(), "conv-1", "u-1", "ti-1", "x"), apperrs.ErrNotFound, "no turn is waiting")
 }

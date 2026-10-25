@@ -51,7 +51,7 @@ Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation
 
 ## Ask the agent
 
-Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation.
+Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation. If it needs a secret, such as an API key, a secret card asks for it: **Save securely** hands the value to T3 Code on the agent's computer, so it never shows in the conversation or gets stored in Nexul, and **Decline** says no. You can answer in T3 Code instead.
 
 A mention sent while the agent is still busy waits its turn, and **Queued** under it says the agent hasn't read it yet. Press **Steer** beside it to hand it to the agent now: the reply it is working on answers that message too.
 

@@ -60,6 +60,9 @@ var sessionCalls = []struct {
 	{"Answer", func(ctx context.Context, h *Harness, s harness.Session) error {
 		return h.Answer(ctx, harness.Target{Session: s, SessionID: "th-1"}, "rq-1", harness.QuestionAnswer{})
 	}},
+	{"AnswerSecret", func(ctx context.Context, h *Harness, s harness.Session) error {
+		return h.AnswerSecret(ctx, harness.Target{Session: s, SessionID: "th-1"}, "ti-1", "sk_test_1")
+	}},
 }
 
 func TestSessionCalls_ServerItCannotFollow_RefusedWithTheMessageToShow(t *testing.T) {

@@ -183,3 +183,27 @@ func TestAnswered(t *testing.T) {
 		})
 	}
 }
+
+// secretItem is a secret request as T3 records it; its status leaves pending as the card is answered.
+func secretItem(t *testing.T, secretStatus string) turnItem {
+	t.Helper()
+	var it turnItem
+	require.NoError(t, json.Unmarshal([]byte(`{"id":"turn-item:secret-request:th-1:sr-1","threadId":"th-1","runId":"`+runOne+`",
+		"nodeId":"`+rootOne+`","ordinal":29,"status":"waiting","type":"secret_request","label":"Acme API key",
+		"reason":"The check calls Acme's sandbox.","placeholder":"acme_test_...","delivery":"file",
+		"secretStatus":"`+secretStatus+`","updatedAt":"2026-10-03T17:00:50.000Z"}`), &it))
+	return it
+}
+
+func TestMapItem_SecretRequest(t *testing.T) {
+	t.Parallel()
+	got, ok := mapItem(secretItem(t, "pending"))
+	require.True(t, ok)
+	assert.Equal(t, harness.Update{Secret: &harness.SecretRequest{ID: "turn-item:secret-request:th-1:sr-1", Label: "Acme API key",
+		Reason: "The check calls Acme's sandbox.", Placeholder: "acme_test_..."}}, got)
+
+	for _, status := range []string{"saved", "declined", "cancelled"} {
+		_, ok := mapItem(secretItem(t, status))
+		assert.False(t, ok, "a %s request asks for nothing", status)
+	}
+}

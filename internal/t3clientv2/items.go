@@ -41,6 +41,10 @@ type turnItem struct {
 	RequestKind            string          `json:"requestKind"`
 	Prompt                 string          `json:"prompt"`
 	Questions              []userQuestion  `json:"questions"`
+	Label                  string          `json:"label"`
+	Reason                 string          `json:"reason"`
+	Placeholder            string          `json:"placeholder"`
+	SecretStatus           string          `json:"secretStatus"`
 	// QuestionAnswer is what a resolved question was answered with, wherever it was answered.
 	QuestionAnswer *struct {
 		Answers map[string]json.RawMessage `json:"answers"`
@@ -74,7 +78,7 @@ var builtinTools = map[string]string{
 // openItems are the statuses of an item still in flight, or a request still waiting for its answer.
 var openItems = []string{"pending", "running", "waiting"}
 
-// mapItem is a turn item as a step, an open question or an open approval; it filters no run, so child threads map too.
+// mapItem is a turn item as a step, an open question, approval or secret request; it filters no run, so child threads map too.
 func mapItem(it turnItem) (harness.Update, bool) {
 	open := slices.Contains(openItems, it.Status)
 	switch it.Type {
@@ -86,6 +90,9 @@ func mapItem(it turnItem) (harness.Update, bool) {
 			summary = it.Title
 		}
 		return harness.Update{Approval: &harness.Approval{Kind: it.RequestKind, Summary: harness.Preview(summary, summaryRunes)}}, open
+	case "secret_request":
+		return harness.Update{Secret: &harness.SecretRequest{ID: it.ID, Label: it.Label, Reason: it.Reason, Placeholder: it.Placeholder}},
+			it.SecretStatus == "pending"
 	case "dynamic_tool":
 		return harness.Update{Activity: step(it, toolName(it.ToolName), open)}, true
 	}

@@ -6,6 +6,7 @@ import { isNote } from "@nexul/client-core/chat";
 import { AgentQueuedLine } from "@/components/chat/AgentQueuedLine";
 import { BotMessageRow } from "@/components/chat/BotMessageRow";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
+import { ChatSecretCard } from "@/components/chat/ChatSecretCard";
 import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
@@ -21,6 +22,7 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
 import { parseQuestionMessage } from "@/models/Question";
+import { parseSecretMessage } from "@/models/Secret";
 import type { TrailBlock } from "@/utils/ThreadTrailUtility";
 
 interface MessageRowProps {
@@ -82,13 +84,15 @@ interface AgentMessageBodyProps {
 }
 
 // The Agent's message in the trail dialog's shape: its turns as collapsible groups, then the reply as prose or the
-// question card where it asked.
+// question or secret card where it asked.
 const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessageBodyProps) => {
   const question = parseQuestionMessage(message.body);
+  const secret = parseSecretMessage(message.body);
   return (
     <>
       {trailBlock && trailBlock.turns.length > 0 && <MessageTrailTurns turns={trailBlock.turns} />}
-      {question === null && <TrailReplyProse text={message.body} />}
+      {question === null && secret === null && <TrailReplyProse text={message.body} />}
+      {secret !== null && <ChatSecretCard conversationId={message.conversation_id} request={secret} answered={questionAnswered} />}
       {question !== null && trailBlock && <TrailQuestionBody trail={trailBlock.trail} />}
       {question !== null && !trailBlock && (
         <ChatQuestionCard conversationId={message.conversation_id} question={question} answered={questionAnswered} />

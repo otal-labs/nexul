@@ -9,6 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/t3rpc"
 )
 
 // answeredNote ends a turn whose pending answer T3 already holds, from its own UI.
@@ -131,4 +132,68 @@ func (p projection) runOf(nodeID string) string {
 		return ""
 	}
 	return p.Nodes[i].RunID
+}
+
+const answerSecretRequest = "secrets.answerRequest"
+
+// secretAnswer is T3's answer to a secret request: save carries the value, decline carries none.
+type secretAnswer struct {
+	Type   string `json:"type"`
+	Secret string `json:"secret,omitempty"`
+}
+
+type secretRespond struct {
+	ThreadID   string       `json:"threadId"`
+	TurnItemID string       `json:"turnItemId"`
+	Answer     secretAnswer `json:"answer"`
+}
+
+// AnswerSecret implements harness.SecretAnswerer: T3 stores the value under a one-use ref for its agent.
+func (h *Harness) AnswerSecret(ctx context.Context, target harness.Target, requestID, secret string) (err error) {
+	if target.SessionID == "" {
+		return fmt.Errorf("%w: no active session to answer", apperrs.ErrInvalid)
+	}
+	c, err := h.connect(ctx, target.Session)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, c.Close())
+	}()
+	answer := secretAnswer{Type: "decline"}
+	if secret != "" {
+		answer = secretAnswer{Type: "save", Secret: secret}
+	}
+	_, err = c.Call(ctx, answerSecretRequest, secretRespond{ThreadID: target.SessionID, TurnItemID: requestID, Answer: answer})
+	reason := t3Reason(err)
+	if reason == "already_answered" {
+		return fmt.Errorf("%w: secret request %s was already answered", apperrs.ErrConflict, requestID)
+	}
+	if why, ok := secretRefusals[reason]; ok {
+		return fmt.Errorf("%w: %s", apperrs.ErrInvalid, why)
+	}
+	if err != nil {
+		return refused("answer the T3 secret request", err)
+	}
+	return nil
+}
+
+// secretRefusals word the reasons T3 refuses a secret that the person can act on.
+var secretRefusals = map[string]string{
+	"not_found":     "this secret request no longer exists",
+	"agent_stopped": "the agent that asked has stopped, so the secret can't be used",
+}
+
+// t3Reason is the failure code T3 refused a call with, "" when the call failed another way or not at all.
+func t3Reason(err error) string {
+	var exit *t3rpc.ExitError
+	if !errors.As(err, &exit) {
+		return ""
+	}
+	for _, c := range exit.Causes {
+		if c.Error.Reason != "" {
+			return c.Error.Reason
+		}
+	}
+	return ""
 }

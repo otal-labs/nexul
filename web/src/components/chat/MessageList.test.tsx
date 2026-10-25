@@ -285,6 +285,47 @@ describe("MessageList agent question", () => {
   });
 });
 
+const secretBody = "```nexul-secret\n" + JSON.stringify({ id: "ti-1", label: "Acme API key", reason: "The check calls Acme's sandbox.", placeholder: "acme_test_..." }) + "\n```";
+
+describe("MessageList agent secret request", () => {
+  beforeEach(() => {
+    vi.mocked(api.post).mockReset();
+    vi.mocked(api.post).mockResolvedValue({ data: undefined });
+  });
+
+  it("saving hands the value to the secret route and closes the card", async () => {
+    const user = userEvent.setup();
+    renderWithClient([message({ id: "s", author_kind: "agent", body: secretBody })]);
+    expect(screen.getByRole("heading", { name: "Acme API key" })).toBeInTheDocument();
+    expect(screen.queryByText(/nexul-secret/)).not.toBeInTheDocument();
+
+    const field = screen.getByLabelText("Acme API key");
+    expect(field).toHaveAttribute("type", "password");
+    await user.type(field, "acme_test_1");
+    await user.click(screen.getByRole("button", { name: "Save securely" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/agent/conversations/c1/secret", { request_id: "ti-1", secret: "acme_test_1" });
+    expect(await screen.findByText("Answered")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Acme API key")).not.toBeInTheDocument();
+  });
+
+  it("declining sends no value", async () => {
+    const user = userEvent.setup();
+    renderWithClient([message({ id: "s", author_kind: "agent", body: secretBody })]);
+    await user.click(screen.getByRole("button", { name: "Decline" }));
+    expect(api.post).toHaveBeenCalledWith("/api/agent/conversations/c1/secret", { request_id: "ti-1", secret: "" });
+  });
+
+  it("a request the thread already answered asks for nothing", () => {
+    renderWithClient([
+      message({ id: "s", author_kind: "agent", body: secretBody }),
+      message({ id: "a", body: "Answered: saved the secret" }),
+    ]);
+    expect(screen.queryByRole("button", { name: "Save securely" })).not.toBeInTheDocument();
+    expect(screen.getByText("Acme API key")).toBeInTheDocument();
+  });
+});
+
 const ticketThread: Conversation = { ...conversation, kind: "ticket_thread", ticket_id: "t-1" };
 
 const at = (sec: number) => `2026-09-18T10:00:${String(sec).padStart(2, "0")}Z`;

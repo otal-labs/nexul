@@ -803,13 +803,8 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 			s.setQueued(ctx, conversationID, turn, *u.Queued)
 		case u.Activity != nil:
 			s.onActivity(ctx, conversationID, viaUserID, *u.Activity, &frame, publish, &seg, obs)
-		case u.Question != nil:
-			s.ask(turn, u.Question.RequestID)
-			// The question lands as the Agent's own message so the thread shows the card; the stream bubble yields to it.
-			if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, QuestionMessageBody(*u.Question), nil); err != nil {
-				s.log.Error("agent: post question failed", "conversation", conversationID, "error", err)
-			}
-			obs.OnQuestion(*u.Question)
+		case u.Question != nil, u.Secret != nil:
+			s.postRequest(ctx, turn, conversationID, viaUserID, u, obs)
 		case u.Answered != nil:
 			obs.OnAnswered(*u.Answered)
 		case u.Handoff != nil:
@@ -827,6 +822,23 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 			term = u.Terminal
 		}
 	}
+}
+
+// postRequest lands a question or secret request as the Agent's own message so the thread shows its card; the stream
+// bubble yields to it.
+func (s *Service) postRequest(ctx context.Context, turn *activeTurn, conversationID, viaUserID string, u harness.Update, obs Observer) {
+	if u.Secret != nil {
+		s.ask(turn, u.Secret.ID)
+		if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, SecretMessageBody(*u.Secret), nil); err != nil {
+			s.log.Error("agent: post secret request failed", "conversation", conversationID, "error", err)
+		}
+		return
+	}
+	s.ask(turn, u.Question.RequestID)
+	if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, QuestionMessageBody(*u.Question), nil); err != nil {
+		s.log.Error("agent: post question failed", "conversation", conversationID, "error", err)
+	}
+	obs.OnQuestion(*u.Question)
 }
 
 // onSnapshot streams one reply snapshot into the bubble and returns the reply text so far.
@@ -910,7 +922,7 @@ func (w *silenceWindow) receive(ctx context.Context, updates <-chan harness.Upda
 		select {
 		case u, ok = <-updates:
 			w.paused = w.paused && u.Answered == nil
-			w.heard(u.Question != nil)
+			w.heard(u.Question != nil || u.Secret != nil)
 			return u, nil, ok
 		case <-w.answered:
 			w.paused = false
@@ -924,7 +936,7 @@ func (w *silenceWindow) receive(ctx context.Context, updates <-chan harness.Upda
 	}
 }
 
-// heard restarts the window; a question stops it, since the user's silence is not the harness's.
+// heard restarts the window; a question or secret request stops it, since the user's silence is not the harness's.
 func (w *silenceWindow) heard(question bool) {
 	if w.timer == nil {
 		return
@@ -1199,6 +1211,52 @@ func QuestionMessageBody(q harness.Question) string {
 		return "The Agent asked a question that could not be rendered."
 	}
 	return questionFence + string(b) + "\n```"
+}
+
+// secretFence marks an Agent message whose body is a SecretRequest as JSON; the web renders it as the secret card.
+const secretFence = "```nexul-secret\n"
+
+// SecretMessageBody renders r as the Agent message the thread shows as a secret card.
+func SecretMessageBody(r harness.SecretRequest) string {
+	b, err := json.Marshal(r)
+	if err != nil {
+		return "The Agent asked for a secret that could not be rendered."
+	}
+	return secretFence + string(b) + "\n```"
+}
+
+// AnswerSecret hands secret to the live turn that asked for it, else another live turn, newest first; an empty
+// secret declines. The value goes only to the harness: the thread gets userID's answer without it.
+func (s *Service) AnswerSecret(ctx context.Context, conversationID, userID, requestID, secret string) error {
+	if strings.TrimSpace(requestID) == "" {
+		return fmt.Errorf("%w: request id is required", apperrs.ErrInvalid)
+	}
+	if _, err := s.conversations.GetConversation(ctx, conversationID); err != nil {
+		return fmt.Errorf("answer secret request: %w", err)
+	}
+	asking, others := s.answerers(conversationID, requestID)
+	err := fmt.Errorf("%w: no agent turn on conversation %s is waiting for a secret", apperrs.ErrNotFound, conversationID)
+	for _, t := range append(asking, others...) {
+		answerer, ok := t.client.(harness.SecretAnswerer)
+		if !ok {
+			continue
+		}
+		if err = answerer.AnswerSecret(ctx, t.target, requestID, secret); err == nil || errors.Is(err, apperrs.ErrConflict) {
+			break
+		}
+	}
+	if err != nil {
+		return err
+	}
+	wake(asking)
+	body := "Answered: saved the secret"
+	if secret == "" {
+		body = "Answered: declined the secret"
+	}
+	if err := s.conversations.PostUserMessage(ctx, conversationID, userID, body); err != nil {
+		return fmt.Errorf("post secret answer: %w", err)
+	}
+	return nil
 }
 
 // Answer resolves a question through the turn that asked it, else another live turn, newest first; ErrNotFound for none.
