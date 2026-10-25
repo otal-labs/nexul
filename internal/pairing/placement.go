@@ -335,6 +335,10 @@ func (s *Service) providerReady(ctx context.Context, p *plan, c Computer) (*miss
 	if p.pick.provider != "" {
 		i = slices.IndexFunc(c.Facts.Providers, func(f ProviderFacts) bool { return f.ID == p.pick.provider })
 	}
+	// T3 Code lists a provider it has not checked yet as not installed, so facts read as it starts can lack a set-up one.
+	if i < 0 && setupConfirmed(c, setups, p.pick.provider) {
+		return nil, nil
+	}
 	if i < 0 {
 		return setupMiss(p.pick.provider, p.pick.provider, ""), nil
 	}

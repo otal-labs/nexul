@@ -88,7 +88,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
 
   const actions: RowAction[] = [
     ...(!pairing && primary !== "setup" ? [{ label: setupLabel, onSelect: () => setSetupOpen(true) }] : []),
-    ...(connected && primary !== "repair" ? [{ label: "Re-pair now", onSelect: () => pairNow.mutate() }] : []),
+    ...(connected && primary !== "repair" ? [{ label: "Re-pair now", disabled: pairNow.isPending, onSelect: () => pairNow.mutate() }] : []),
     { label: "Share…", onSelect: () => void openPermissions(computerEntity({ id: computer.id, name })) },
     { label: "Rename", onSelect: () => void rename() },
     ...moveActions,
@@ -156,7 +156,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
         <RowActionsMenu subject={name} actions={actions} />
       </div>
       <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-12" : "pl-6")}>
-        {computerLanes(computer, presence).map((lane) => (
+        {computerLanes(computer, presence, pairNow.isPending).map((lane) => (
           <SettingsStatus key={lane.text} tone={lane.tone} detail={lane.detail}>
             {lane.text}
           </SettingsStatus>

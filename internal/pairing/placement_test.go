@@ -87,6 +87,12 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 		{name: "a session that ran out is passed over", edits: map[string]func(*Computer){"a": func(c *Computer) { c.TokenExpiresAt = placementNow.Add(-time.Hour) }},
 			want: "b", passed: []string{"a needs pairing again"}},
 		{name: "a computer not set up for the provider is passed over", noSetup: "a", want: "b", passed: []string{"a isn't set up for Claude"}},
+		{name: "a set-up provider T3 Code had not checked yet when the facts were read is asked live", req: RunRequest{Provider: "claude"},
+			edits: map[string]func(*Computer){"a": func(c *Computer) { c.Facts.Providers = []ProviderFacts{{ID: "codex", Driver: "codex", Name: "Codex"}} }},
+			want:  "a"},
+		{name: "a provider the facts lack and no setup confirmed is passed over", req: RunRequest{Provider: "claude"}, noSetup: "a",
+			edits: map[string]func(*Computer){"a": func(c *Computer) { c.Facts.Providers = []ProviderFacts{{ID: "codex", Driver: "codex", Name: "Codex"}} }},
+			want:  "b", passed: []string{"a isn't set up for claude"}},
 		{name: "a computer without the model is passed over", req: RunRequest{Model: "opus"},
 			edits: map[string]func(*Computer){"a": func(c *Computer) { c.Facts.Providers[0].Models = []ModelFacts{{Slug: "sonnet"}} }},
 			want:  "b", passed: []string{"a doesn't offer opus"}},
@@ -187,6 +193,28 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 			assert.Equal(t, tt.passed, passed)
 		})
 	}
+}
+
+func TestResolveRun_StoresTheProvidersT3CodeListsOnceFactsLackOne(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "a", func(c *Computer) { c.Facts.Providers = nil })
+	f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+		return []harness.Provider{{ID: "claude", Driver: "claude", Name: "Claude"}}, nil
+	}
+	f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) {
+		return []harness.Project{{ID: "t3-app-a", Repository: "github.com/acme/app"}}, nil
+	}
+
+	_, err := f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Provider: "claude"})
+	require.NoError(t, err)
+	_, err = f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Provider: "claude"})
+	require.NoError(t, err)
+
+	stored := f.repo.computers["a"].Facts
+	require.Len(t, stored.Providers, 1)
+	assert.Equal(t, "Claude", stored.Providers[0].Name)
+	assert.Equal(t, 1, f.repo.factWrites, "a second run that finds the facts current reads them no further")
 }
 
 func TestResolveRun_ModelAndStartInComeFromTheLinkThenTheDefaults(t *testing.T) {
