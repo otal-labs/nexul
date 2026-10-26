@@ -160,7 +160,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
         {/* One framed field holding attach, text and emoji; the frame takes the focus ring, not the textarea. */}
-        <div className="flex items-start gap-1 rounded-xl bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
+        <div className="flex items-start gap-1 rounded-lg bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
           <ComposerAttachButton onFiles={addFiles} />
           <Textarea
             ref={textareaRef}

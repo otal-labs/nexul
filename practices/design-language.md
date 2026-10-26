@@ -1028,7 +1028,7 @@ boxes. A run of one person's messages drops the avatar and header after the
 first and keeps 6px between messages. Each day opens with a divider: the
 microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
 is not this one) between two hairlines. The composer is one framed field
-(`bg-card`, `rounded-xl`, the `input` ring turning to the focus ring) holding
+(`bg-card`, `rounded-lg`, the `input` ring turning to the focus ring) holding
 attach, the text and emoji. `MessageList` and `ChatComposer` are the
 reference.
 
