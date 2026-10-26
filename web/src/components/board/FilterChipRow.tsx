@@ -7,6 +7,8 @@ export interface ChipOption {
   label: string;
   active: boolean;
   ariaLabel?: string;
+  /** A label option leads with its hue dot, the same one its chip carries. */
+  dotClass?: string;
   onToggle: () => void;
 }
 
@@ -19,7 +21,7 @@ interface FilterChipRowProps {
 // to remove" without a separate control.
 const chip = (active: boolean) =>
   cn(
-    "inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs transition-[color,background-color,border-color] duration-150 ease-standard",
+    "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition-[color,background-color,border-color] duration-150 ease-standard",
     active
       ? "border-primary bg-primary text-primary-foreground"
       : "border-border bg-card text-muted-foreground hover:border-ring/40 hover:bg-accent hover:text-foreground",
@@ -37,6 +39,7 @@ export const FilterChipRow = ({ title, chips }: FilterChipRowProps) => (
         onClick={option.onToggle}
         className={chip(option.active)}
       >
+        {option.dotClass && !option.active && <span className={cn("size-1.5 shrink-0 rounded-full", option.dotClass)} aria-hidden />}
         {option.label}
         {option.active && <XIcon className="size-3" aria-hidden />}
       </button>

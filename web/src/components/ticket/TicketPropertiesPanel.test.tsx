@@ -136,6 +136,14 @@ describe("TicketPropertiesPanel", () => {
     expect(screen.getByText("None")).toBeInTheDocument();
   });
 
+  it("draws a label's configured color on its dot, as the board card does", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { backend: "orange" } });
+    renderPanel();
+    await vi.waitFor(() => {
+      expect(screen.getByText("backend").closest('[data-slot="label-chip"]')?.querySelector("[aria-hidden]")).toHaveClass("bg-orange-500");
+    });
+  });
+
   it("adds an existing label picked from the search list", async () => {
     const user = userEvent.setup();
     const onAddLabel = vi.fn();
