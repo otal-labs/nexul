@@ -376,7 +376,9 @@ Palettes. Appearance settings (`web/src/lib/themePalettes.ts`) override the
 surface and text roles; a palette's `primary` becomes its `brand` (and so the
 field's warm glow) unless it names a brand of its own, and its panels follow
 its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
-zero radius applies to panels too. Every palette holds 4.5:1 for its text
+zero radius applies to panels too, and its field edge is the same hard ink as
+its panel edge. Every palette's field edge stays at least 1.1:1 against its
+card, so a field never vanishes. Every palette holds 4.5:1 for its text
 roles and the label on its accent, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
@@ -901,10 +903,11 @@ never a chip; an active account says nothing, only one that can't sign in
 (Disabled, Removed). Destructive actions that are not the card's job are ghost
 buttons that turn `destructive` on hover, kept apart from the primary action,
 and ask before they act. A card that edits values saves from its footer with
-`SettingsSaveBar`: the strip is always there; Save is an outline button until
-something changes, then Discard and "Unsaved changes" wake and Save turns
-`brand`; once a save lands Save reads Saved with a check for 1.4s. Settings
-that apply the moment they are picked (Appearance) have no Save. Copying uses
+`SettingsSaveBar`: the strip is always there; Save is the primary button,
+disabled (the flat disabled tint) until something changes, then Discard and
+"Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
+Saved with a check for 1.4s. Settings that apply the moment they are picked
+(Appearance) have no Save. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks

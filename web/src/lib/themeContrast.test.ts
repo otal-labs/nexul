@@ -11,6 +11,7 @@ type Mode = "light" | "dark";
 const PANEL_OPACITY = 0.85;
 const MIN_RATIO = 4.5;
 const DEFAULT_MUTED_RATIO = 6;
+const MIN_EDGE_RATIO = 1.1;
 
 const block = (selector: string): string => css.match(new RegExp(`\\n${selector} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 const DEFAULTS: Record<Mode, string> = { light: block(":root"), dark: block("\\.dark") };
@@ -33,6 +34,9 @@ const oklab = (value: string): Rgb => {
   const [l, c, h] = [Number(parts[1]), Number(parts[2]), (Number(parts[3]) * Math.PI) / 180];
   return [l, c * Math.cos(h), c * Math.sin(h)];
 };
+
+// A hairline written with alpha (the default palette's) lands on whatever surface it is drawn over.
+const alphaOf = (value: string): number => Number(value.match(/\/\s*([\d.]+)\s*\)$/)?.[1] ?? 1);
 
 const mixOklab = (a: Rgb, b: Rgb, share: number): Rgb => a.map((v, i) => v * share + b[i]! * (1 - share)) as Rgb;
 
@@ -99,6 +103,18 @@ const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   return pairs.filter(([, value, floor]) => value < floor).map(([pair, value, floor]) => `${pair}: ${value.toFixed(2)} < ${floor}`);
 };
 
+// The field's edge over the surfaces a field sits on: a hairline by design, but never so close to its surface that the field vanishes.
+const failingEdges = (mode: Mode): string[] => {
+  const value = rootValue(mode, "input");
+  const edge = toSrgb(oklab(value));
+  const share = alphaOf(value);
+  const { card, panel } = surfaces(mode);
+  return Object.entries({ card, panel })
+    .map(([surface, rgb]) => [surface, ratio(edge.map((v, i) => v * share + rgb![i]! * (1 - share)) as Rgb, rgb!)] as const)
+    .filter(([, value]) => value < MIN_EDGE_RATIO)
+    .map(([surface, value]) => `input border on ${surface}: ${value.toFixed(2)} < ${MIN_EDGE_RATIO}`);
+};
+
 describe("palette text contrast", () => {
   beforeEach(() => {
     document.documentElement.removeAttribute("style");
@@ -109,6 +125,20 @@ describe("palette text contrast", () => {
     ({ id, mode }) => {
       applyThemePalette(id, mode);
       expect(failingPairs(mode, id === ThemeId.Console ? DEFAULT_MUTED_RATIO : MIN_RATIO)).toEqual([]);
+    },
+  );
+});
+
+describe("palette field edge", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.flatMap((theme) => (["light", "dark"] as const).map((mode) => ({ id: theme.id, label: theme.label, mode }))))(
+    "$label $mode keeps the input border visible (1.1:1) against its surface",
+    ({ id, mode }) => {
+      applyThemePalette(id, mode);
+      expect(failingEdges(mode)).toEqual([]);
     },
   );
 });
