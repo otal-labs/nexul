@@ -32,6 +32,7 @@
   "computer.harness_switched",
   "computer.pair_failed",
   "computer.paired",
+  "computer.presence_changed",
   "computer.setup_confirmed",
   "computer.setup_finished",
   "computer.setup_turn_activity",

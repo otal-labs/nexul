@@ -357,6 +357,18 @@ func (s *Service) publishPairFailed(ctx context.Context, c Computer) {
 	}
 }
 
+// PublishPresence tells the owner's open views a computer's held connection changed state.
+func (s *Service) PublishPresence(userID, computerID, state string) {
+	if s.bus == nil {
+		return
+	}
+	ctx := context.Background()
+	err := s.bus.Publish(ctx, TopicPresenceChanged, PresenceChangedEvent{ComputerID: computerID, UserID: userID, State: state, MembersOnly: true})
+	if err != nil {
+		logging.FromCtx(ctx).Warn("publish computer presence", "computer_id", computerID, "error", err)
+	}
+}
+
 func (s *Service) mintAndPair(ctx context.Context, c Computer) (*Computer, error) {
 	runners, err := s.runnerSeam()
 	if err != nil {

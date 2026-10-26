@@ -32,6 +32,8 @@ const (
 	// TopicPlacementChanged is ephemeral: a person's computer order, runs at once, defaults or a project link changed,
 	// so their waiting runs may now land.
 	TopicPlacementChanged = "computer.placement_changed"
+	// TopicPresenceChanged is ephemeral: Nexul's held connection to a computer's T3 Code connected, dropped or was refused.
+	TopicPresenceChanged = "computer.presence_changed"
 )
 
 // Topics returns every topic the pairing domain publishes.
@@ -52,6 +54,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicPairFailed, Payload: PairFailedEvent{}},
 		{Name: TopicMoveRequested, Payload: MoveRequestedEvent{}},
 		{Name: TopicPlacementChanged, Payload: PlacementChangedEvent{}},
+		{Name: TopicPresenceChanged, Payload: PresenceChangedEvent{}},
 	}
 }
 
@@ -190,5 +193,13 @@ type MoveRequestedEvent struct {
 // PlacementChangedEvent names the person whose runs may land somewhere new, and nothing about their computers.
 type PlacementChangedEvent struct {
 	UserID      string `json:"user_id"`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// PresenceChangedEvent carries a computer's new connection state whole, so its owner's views replace it without a refetch.
+type PresenceChangedEvent struct {
+	ComputerID  string `json:"computer_id"`
+	UserID      string `json:"user_id" jsonschema:"The computer's owner."`
+	State       string `json:"state" jsonschema:"connecting, connected or rejected; empty once Nexul no longer holds a connection to it."`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }

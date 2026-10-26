@@ -141,12 +141,11 @@ export const useRevokeMCPToken = (computerId: string) => {
   });
 };
 
-// Polled: presence flips on browser connect/disconnect and T3 restarts, not on any user action here.
+// Each change after the first read arrives as computer.presence_changed, which the pairing follower patches in.
 export const useFetchPresence = () =>
   useQuery({
     queryKey: [getPairingPresenceKey],
     queryFn: async () => (await api.get<{ computers: Record<string, string> }>("/api/pairing/presence")).data.computers,
-    refetchInterval: 15_000,
     enabled: notViewing,
   });
 
@@ -317,21 +316,35 @@ interface ComputerPayload {
   computer_id: string;
 }
 
+// The state is "" once Nexul no longer holds a connection to the computer.
+interface PresencePayload extends ComputerPayload {
+  state: string;
+}
+
 const refetchComputers = (client: QueryClient, readiness: boolean) =>
   Promise.all([client.invalidateQueries({ queryKey: [getComputersKey] }), readiness && client.invalidateQueries({ queryKey: [getHarnessResolveKey] })]);
 
 export const pairingFollower: LiveFollower = {
   // A computer row goes from pairing to paired, loses the tunnel it was paired through, or shows its T3 Code's new version.
   ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
-  // A computer row follows its personal runner enrolling, connecting and going away, and a failed pairing's reason.
-  // ...and a computer someone shares with the viewer, or stops sharing, joining or leaving their list.
-  ...followEach(["runner.personal_changed", "computer.pair_failed", "computer.grant_changed"], (_p: unknown, { client }) => refetchComputers(client, false)),
-  // A computer row's details follow its facts, which the frame never carries; its pickers follow what T3 Code lists.
+  // A computer row and readiness follow its personal runner enrolling, connecting and going away.
+  "runner.personal_changed": (_p: unknown, { client }) => refetchComputers(client, true),
+  // A computer row follows a failed pairing's reason, and a computer someone shares with the viewer, or stops sharing.
+  ...followEach(["computer.pair_failed", "computer.grant_changed"], (_p: unknown, { client }) => refetchComputers(client, false)),
+  // A computer row, its readiness and its pickers follow its facts, T3 Code answering among them.
   "computer.facts_changed": ({ computer_id }: ComputerPayload, { client }) =>
     Promise.all([
-      refetchComputers(client, false),
+      refetchComputers(client, true),
       client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
     ]),
+  // Readiness follows Nexul's held connection to a computer's T3 Code; the frame carries the whole new state.
+  "computer.presence_changed": ({ computer_id, state }: PresencePayload, { client }) =>
+    client.setQueryData<Record<string, string>>([getPairingPresenceKey], (old) => {
+      if (!old) return old;
+      const next = { ...old, [computer_id]: state };
+      if (!state) delete next[computer_id];
+      return next;
+    }),
   // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
   ...followEach(["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_finished"], ({ computer_id }: ComputerPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
