@@ -1821,7 +1821,8 @@ hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
 canvas, under the 4.5:1 body text needs; it passes only on the app's white
 sheet) and a 2px underline at rest (heavy in a paragraph with several links).
 
-Docs sidebar. The app sidebar's grammar on the canvas: mono microheader
+Docs sidebar. The app sidebar's grammar on the canvas: the docs home as the
+first row, above the groups, so it is marked when open; mono microheader
 groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
 lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
 from its top and bottom.
@@ -1839,7 +1840,9 @@ Tables, inline code, cards. Tables are the app's ruled data: a hairline under
 each row, a muted 13px header over a stronger rule, tabular figures. Inline
 code is mono at 0.85em on `muted` with a hairline. The docs home cards are
 the app's card (`card`, the panel ring and lit top edge, 8px) under mono
-microheader groups. The docs content has no callouts or blockquotes; a
+microheader groups. A group's grid takes the most columns, up to two at 768px,
+three at 1024px and four from 1280px, that leave no row holding one card; at
+two columns an odd last card spans the row. The docs content has no callouts or blockquotes; a
 blockquote takes the app's 2px rule in `foreground` at 25%.
 
 Copy page. A quiet outline control (`border` hairline, muted text, 6px) beside
@@ -1890,8 +1893,16 @@ Showing the product.
   panel).
 
 Accent. The ember is the copy button, the one primary action on the page;
-the platform switcher is the segmented control (well and raised thumb), links
-stay ink, and status keeps its hues (the connection and beta dots).
+the platform switcher is the app's xs segmented control (well and raised
+thumb, 32px tall, a 44px hit area), links stay ink, and status keeps its hues
+(the connection and beta dots).
+
+Hero install block. It sits in the headline's column, left-aligned with it,
+32px under the lede and at most 480px wide, so the curl command fits on one
+line from 768px and the block reads as part of the copy. Rejected: a second
+column to the right of the lede (from 1024px it started 240px below the
+headline's top, the eye went from the lede into empty space, and the block
+floated away from the text it belongs to).
 
 Install command. One line always, the copy button inline. The command is mono
 12px under 414px, 12.5px to 768 and 13px above; when it is wider than its box

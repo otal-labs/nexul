@@ -30,12 +30,21 @@ export function docsGroups(pages: DocPage[]) {
 	];
 }
 
+// The most columns, up to max, that leave no row holding a single card; max again when no count does.
+export function gridColumns(count: number, max: number) {
+	for (let columns = Math.min(max, count); columns > 1; columns--) if (count % columns !== 1) return columns;
+	return Math.min(max, count);
+}
+
 export function docsTree(pages: DocPage[]): PageTree.Root {
 	return {
 		name: 'Docs',
-		children: docsGroups(pages).flatMap((group): PageTree.Node[] => [
-			{ type: 'separator', name: group.label, icon: createElement(group.icon) },
-			...group.pages.map((page): PageTree.Node => ({ type: 'page', name: page.label ?? page.title, url: docUrl(page.id) })),
-		]),
+		children: [
+			{ type: 'page', name: 'Documentation', url: docUrl('docs') },
+			...docsGroups(pages).flatMap((group): PageTree.Node[] => [
+				{ type: 'separator', name: group.label, icon: createElement(group.icon) },
+				...group.pages.map((page): PageTree.Node => ({ type: 'page', name: page.label ?? page.title, url: docUrl(page.id) })),
+			]),
+		],
 	};
 }

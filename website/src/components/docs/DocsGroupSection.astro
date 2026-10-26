@@ -1,6 +1,6 @@
 ---
 import DocCard from './DocCard.astro';
-import type { docsGroups } from '../../lib/docs-tree';
+import { gridColumns, type docsGroups } from '../../lib/docs-tree';
 
 interface Props {
 	group: ReturnType<typeof docsGroups>[number];
@@ -8,12 +8,14 @@ interface Props {
 
 const { group } = Astro.props;
 const Icon = group.icon;
+const count = group.pages.length;
+const columns = `--cols-lg: ${gridColumns(count, 3)}; --cols-xl: ${gridColumns(count, 4)}`;
 const id = `group-${group.label.toLowerCase().replaceAll(' ', '-')}`;
 ---
 
 <section aria-labelledby={id}>
 	<h2 id={id} class="docs-group-label mb-4 flex items-center gap-2"><Icon className="size-4" aria-hidden />{group.label}</h2>
-	<div class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+	<div class="grid grid-cols-1 gap-2.5 md:grid-cols-2 md:max-lg:[&>:last-child:nth-child(odd)]:col-span-2 lg:grid-cols-[repeat(var(--cols-lg),minmax(0,1fr))] xl:grid-cols-[repeat(var(--cols-xl),minmax(0,1fr))]" style={columns}>
 		{group.pages.map((page) => <DocCard page={page} />)}
 	</div>
 </section>
