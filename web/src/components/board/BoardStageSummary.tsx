@@ -40,7 +40,7 @@ export const BoardStageSummary = ({ projectId, className }: BoardStageSummaryPro
           <span key={s.kind} data-stage-segment={s.kind} className={cn("h-full origin-left rounded-full", stageBar(s.kind, s.dot))} style={{ flexGrow: s.count }} />
         ))}
       </div>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <ul className="flex gap-x-4 whitespace-nowrap text-xs text-muted-foreground">
         {stages.map((s) => (
           <li key={s.kind} className="flex items-center gap-1.5">
             <span className={cn("size-1.5 rounded-full", stageBar(s.kind, s.dot))} aria-hidden />
