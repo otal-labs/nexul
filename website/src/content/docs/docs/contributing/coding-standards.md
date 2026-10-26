@@ -149,7 +149,11 @@ interface boundary; prefer fakes over mocks for repos. A flaky test is a
 bug: fix it or delete it, never skip or retry-mask it, and async code is
 tested by draining, never by sleeping. A performance fix ships with a guard
 test that fails when the fix is reverted, and its numbers come from a
-production or release build on realistic data.
+production or release build on realistic data. A test that only restates
+the types or the implementation, cannot fail, or duplicates another goes,
+one package per pull request with before and after counts and timings; the
+enforced guards and the auth, permission, storage and event suites stay
+unless the owner agrees.
 
 ## Design language — frosted panels and one ember accent
 
