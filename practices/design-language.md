@@ -87,7 +87,7 @@ in the three token files; this table holds the roles.
 | `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
-| `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel | |
+| `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
 | `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
 | `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.465 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface | |
@@ -384,7 +384,11 @@ field's warm glow) unless it names a brand of its own, and its panels follow
 its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
 zero radius applies to panels too, and its field edge is the same hard ink as
 its panel edge. Every palette's field edge stays at least 1.1:1 against its
-card, so a field never vanishes. Every palette holds 4.5:1 for its text
+card, so a field never vanishes. In every dark palette a card sits at least 0.029
+of OKLCH lightness above the panel it is drawn on, the panel taken as it renders
+(its `card` mix over the canvas at `--panel-opacity`), so cards read as raised on
+the page and never dissolve into it; light palettes keep a white or near-white
+card and separate it by the ring and shadow. Every palette holds 4.5:1 for its text
 roles and the label on its accent, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
@@ -1238,6 +1242,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Decision | Why |
 |---|---|
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
+| A dark card sits at least 0.029 of OKLCH lightness above its panel (2026-10-26) | Against each palette keeping its own card step: the card sits straight on the panel, and the panel is the card mixed 60% into the canvas, so a palette whose card is only a few points above its canvas puts the card 0.012 to 0.020 above the panel and it dissolves into the page. 0.029 is the step Ember, Ocean and Grove hold (0.030), the default holding 0.039; a palette short of it lifts `card` (and `popover` where the two share a value) and keeps its hue and chroma. Light palettes are exempt: a white or near-white card has no lightness left to give, and the ring and shadow separate it. Guarded per palette in `themeContrast.test.ts` |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
 | Board: no column has a well at rest, every one takes it while a card is held | Against the full-height `surface-2` well on every column, and against a well only on populated ones: the page is already a panel, so cards on a well were three nested surfaces, and a well on some columns made two kinds of column side by side; the card's own surface and hairline carry it on the panel, and the well and the dashed slot appear when a card is held, where they say where it can drop |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |

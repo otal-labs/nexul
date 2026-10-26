@@ -12,6 +12,7 @@ const PANEL_OPACITY = 0.85;
 const MIN_RATIO = 4.5;
 const DEFAULT_MUTED_RATIO = 6;
 const MIN_EDGE_RATIO = 1.1;
+const MIN_CARD_LIFT = 0.029;
 
 const block = (selector: string): string => css.match(new RegExp(`\\n${selector} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 const DEFAULTS: Record<Mode, string> = { light: block(":root"), dark: block("\\.dark") };
@@ -48,6 +49,13 @@ const toSrgb = ([l, a, b]: Rgb): Rgb => {
   const [lc, mc, sc] = [(l + 0.3963377774 * a + 0.2158037573 * b) ** 3, (l - 0.1055613458 * a - 0.0638541728 * b) ** 3, (l - 0.0894841775 * a - 1.291485548 * b) ** 3];
   const linear = [4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc, -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc, -0.0041960863 * lc - 0.7034186147 * mc + 1.707614701 * sc];
   return linear.map((v) => encode(Math.min(1, Math.max(0, v)))) as Rgb;
+};
+
+// OKLCH lightness of an sRGB colour: the cube root of the LMS cone response, mixed by the Oklab L row.
+const lightness = (rgb: Rgb): number => {
+  const [r, g, b] = rgb.map(decode) as Rgb;
+  const [l, m, s] = [0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b, 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b, 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b].map(Math.cbrt) as Rgb;
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
 };
 
 const luminance = ([r, g, b]: Rgb): number => 0.2126 * decode(r) + 0.7152 * decode(g) + 0.0722 * decode(b);
@@ -115,6 +123,12 @@ const failingEdges = (mode: Mode): string[] => {
     .map(([surface, value]) => `input border on ${surface}: ${value.toFixed(2)} < ${MIN_EDGE_RATIO}`);
 };
 
+// How far a card stands above the panel it sits on, in OKLCH lightness, with the panel as it renders (its glass opacity over the canvas).
+const cardLift = (mode: Mode): number => {
+  const { card, panel } = surfaces(mode);
+  return lightness(card!) - lightness(panel!);
+};
+
 describe("palette text contrast", () => {
   beforeEach(() => {
     document.documentElement.removeAttribute("style");
@@ -139,6 +153,20 @@ describe("palette field edge", () => {
     ({ id, mode }) => {
       applyThemePalette(id, mode);
       expect(failingEdges(mode)).toEqual([]);
+    },
+  );
+});
+
+describe("palette card lift", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.map((theme) => ({ id: theme.id, label: theme.label })))(
+    "$label dark lifts a card at least 0.029 of OKLCH lightness over its panel",
+    ({ id }) => {
+      applyThemePalette(id, "dark");
+      expect(cardLift("dark")).toBeGreaterThanOrEqual(MIN_CARD_LIFT);
     },
   );
 });
