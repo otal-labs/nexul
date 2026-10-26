@@ -3,6 +3,7 @@ import { TicketIcon } from "lucide-react";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsHint } from "@/components/settings/SettingsHint";
+import { StackCrashNoticesCard } from "@/components/stack/StackCrashNoticesCard";
 import { StackErrorRateCard } from "@/components/stack/StackErrorRateCard";
 import { useUpdateStack } from "@/hooks/StackHooks";
 import { useStackActions } from "@/hooks/useStackActions";
@@ -50,6 +51,7 @@ export const StackAlertsSection = ({ stack }: StackAlertsSectionProps) => {
           />
         </div>
       </SettingsCard>
+      <StackCrashNoticesCard stack={stack} off={off} />
       <StackErrorRateCard stack={stack} />
     </>
   );

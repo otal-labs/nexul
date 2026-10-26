@@ -117,6 +117,9 @@ export interface Stack {
   managed: boolean;
   // Open a ticket in the project when a service crashes; only a stack with a project may switch it on.
   crash_tickets?: boolean;
+  // The channel each crash, error-rate episode and recovery is posted to, and the bot of it that posts; empty posts as the system.
+  crash_notice_conversation_id?: string;
+  crash_notice_bot_id?: string;
   error_rate?: ErrorRateRule;
   created_at: string;
   updated_at: string;

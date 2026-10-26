@@ -16,39 +16,42 @@ INSERT INTO stacks (id, project_id, name, slug, machine, strategy, compose_path,
     build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path,
     branch_deploy_rules, derived_from, branch, managed, crash_tickets,
     error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests,
+    crash_notice_conversation_id, crash_notice_bot_id,
     created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateStackParams struct {
-	ID                   string
-	ProjectID            sql.NullString
-	Name                 string
-	Slug                 string
-	Machine              string
-	Strategy             string
-	ComposePath          string
-	Env                  string
-	DockerNetwork        string
-	Ports                string
-	Mounts               string
-	Command              string
-	BuildRepoOwner       string
-	BuildRepoName        string
-	BuildBranch          string
-	BuildDockerfile      string
-	BuildComposePath     string
-	BranchDeployRules    string
-	DerivedFrom          string
-	Branch               string
-	Managed              int64
-	CrashTickets         int64
-	ErrorRateEnabled     int64
-	ErrorRatePercent     float64
-	ErrorRateMinutes     int64
-	ErrorRateMinRequests int64
-	CreatedAt            int64
-	UpdatedAt            int64
+	ID                        string
+	ProjectID                 sql.NullString
+	Name                      string
+	Slug                      string
+	Machine                   string
+	Strategy                  string
+	ComposePath               string
+	Env                       string
+	DockerNetwork             string
+	Ports                     string
+	Mounts                    string
+	Command                   string
+	BuildRepoOwner            string
+	BuildRepoName             string
+	BuildBranch               string
+	BuildDockerfile           string
+	BuildComposePath          string
+	BranchDeployRules         string
+	DerivedFrom               string
+	Branch                    string
+	Managed                   int64
+	CrashTickets              int64
+	ErrorRateEnabled          int64
+	ErrorRatePercent          float64
+	ErrorRateMinutes          int64
+	ErrorRateMinRequests      int64
+	CrashNoticeConversationID string
+	CrashNoticeBotID          string
+	CreatedAt                 int64
+	UpdatedAt                 int64
 }
 
 func (q *Queries) CreateStack(ctx context.Context, arg CreateStackParams) error {
@@ -79,6 +82,8 @@ func (q *Queries) CreateStack(ctx context.Context, arg CreateStackParams) error 
 		arg.ErrorRatePercent,
 		arg.ErrorRateMinutes,
 		arg.ErrorRateMinRequests,
+		arg.CrashNoticeConversationID,
+		arg.CrashNoticeBotID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -107,7 +112,7 @@ func (q *Queries) DeleteStackRules(ctx context.Context, resourceID string) error
 }
 
 const getStack = `-- name: GetStack :one
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE id = ?
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE id = ?
 `
 
 func (q *Queries) GetStack(ctx context.Context, id string) (Stack, error) {
@@ -142,12 +147,14 @@ func (q *Queries) GetStack(ctx context.Context, id string) (Stack, error) {
 		&i.ErrorRatePercent,
 		&i.ErrorRateMinutes,
 		&i.ErrorRateMinRequests,
+		&i.CrashNoticeConversationID,
+		&i.CrashNoticeBotID,
 	)
 	return i, err
 }
 
 const getStackByName = `-- name: GetStackByName :one
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE name = ? ORDER BY created_at LIMIT 1
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE name = ? ORDER BY created_at LIMIT 1
 `
 
 func (q *Queries) GetStackByName(ctx context.Context, name string) (Stack, error) {
@@ -182,12 +189,14 @@ func (q *Queries) GetStackByName(ctx context.Context, name string) (Stack, error
 		&i.ErrorRatePercent,
 		&i.ErrorRateMinutes,
 		&i.ErrorRateMinRequests,
+		&i.CrashNoticeConversationID,
+		&i.CrashNoticeBotID,
 	)
 	return i, err
 }
 
 const getStackBySlugAndMachine = `-- name: GetStackBySlugAndMachine :one
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE slug = ? AND machine = ?
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE slug = ? AND machine = ?
 `
 
 type GetStackBySlugAndMachineParams struct {
@@ -227,6 +236,8 @@ func (q *Queries) GetStackBySlugAndMachine(ctx context.Context, arg GetStackBySl
 		&i.ErrorRatePercent,
 		&i.ErrorRateMinutes,
 		&i.ErrorRateMinRequests,
+		&i.CrashNoticeConversationID,
+		&i.CrashNoticeBotID,
 	)
 	return i, err
 }
@@ -256,7 +267,7 @@ func (q *Queries) GetStackRuleScope(ctx context.Context, id string) (GetStackRul
 }
 
 const listReachedStacks = `-- name: ListReachedStacks :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks
 WHERE derived_from = ''
   AND (?1 = '' OR project_id = ?1)
   AND (?2 = '' OR project_id IN (SELECT id FROM projects WHERE workspace_id = ?2))
@@ -328,6 +339,8 @@ func (q *Queries) ListReachedStacks(ctx context.Context, arg ListReachedStacksPa
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
@@ -343,7 +356,7 @@ func (q *Queries) ListReachedStacks(ctx context.Context, arg ListReachedStacksPa
 }
 
 const listStacksByBuildRepo = `-- name: ListStacksByBuildRepo :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ?
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ?
   AND NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = stacks.project_id AND w.archived_at IS NOT NULL)
 ORDER BY name
 `
@@ -391,6 +404,8 @@ func (q *Queries) ListStacksByBuildRepo(ctx context.Context, arg ListStacksByBui
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
@@ -406,7 +421,7 @@ func (q *Queries) ListStacksByBuildRepo(ctx context.Context, arg ListStacksByBui
 }
 
 const listStacksByDerivedFrom = `-- name: ListStacksByDerivedFrom :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE derived_from = ? ORDER BY created_at
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE derived_from = ? ORDER BY created_at
 `
 
 func (q *Queries) ListStacksByDerivedFrom(ctx context.Context, derivedFrom string) ([]Stack, error) {
@@ -447,6 +462,8 @@ func (q *Queries) ListStacksByDerivedFrom(ctx context.Context, derivedFrom strin
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
@@ -462,7 +479,7 @@ func (q *Queries) ListStacksByDerivedFrom(ctx context.Context, derivedFrom strin
 }
 
 const listStacksByProject = `-- name: ListStacksByProject :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE (?1 = '' OR project_id = ?1) ORDER BY name
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE (?1 = '' OR project_id = ?1) ORDER BY name
 `
 
 func (q *Queries) ListStacksByProject(ctx context.Context, projectID interface{}) ([]Stack, error) {
@@ -503,6 +520,8 @@ func (q *Queries) ListStacksByProject(ctx context.Context, projectID interface{}
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
@@ -518,7 +537,7 @@ func (q *Queries) ListStacksByProject(ctx context.Context, projectID interface{}
 }
 
 const listStacksByWorkspace = `-- name: ListStacksByWorkspace :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE project_id IN (SELECT id FROM projects WHERE workspace_id = ?) ORDER BY name
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE project_id IN (SELECT id FROM projects WHERE workspace_id = ?) ORDER BY name
 `
 
 func (q *Queries) ListStacksByWorkspace(ctx context.Context, workspaceID string) ([]Stack, error) {
@@ -559,6 +578,8 @@ func (q *Queries) ListStacksByWorkspace(ctx context.Context, workspaceID string)
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
@@ -579,38 +600,41 @@ UPDATE stacks SET project_id = ?, name = ?, slug = ?, machine = ?, strategy = ?,
     build_repo_owner = ?, build_repo_name = ?, build_branch = ?, build_dockerfile = ?, build_compose_path = ?,
     branch_deploy_rules = ?, derived_from = ?, branch = ?, managed = ?, crash_tickets = ?,
     error_rate_enabled = ?, error_rate_percent = ?, error_rate_minutes = ?, error_rate_min_requests = ?,
+    crash_notice_conversation_id = ?, crash_notice_bot_id = ?,
     updated_at = ?
 WHERE id = ?
 `
 
 type UpdateStackParams struct {
-	ProjectID            sql.NullString
-	Name                 string
-	Slug                 string
-	Machine              string
-	Strategy             string
-	ComposePath          string
-	Env                  string
-	DockerNetwork        string
-	Ports                string
-	Mounts               string
-	Command              string
-	BuildRepoOwner       string
-	BuildRepoName        string
-	BuildBranch          string
-	BuildDockerfile      string
-	BuildComposePath     string
-	BranchDeployRules    string
-	DerivedFrom          string
-	Branch               string
-	Managed              int64
-	CrashTickets         int64
-	ErrorRateEnabled     int64
-	ErrorRatePercent     float64
-	ErrorRateMinutes     int64
-	ErrorRateMinRequests int64
-	UpdatedAt            int64
-	ID                   string
+	ProjectID                 sql.NullString
+	Name                      string
+	Slug                      string
+	Machine                   string
+	Strategy                  string
+	ComposePath               string
+	Env                       string
+	DockerNetwork             string
+	Ports                     string
+	Mounts                    string
+	Command                   string
+	BuildRepoOwner            string
+	BuildRepoName             string
+	BuildBranch               string
+	BuildDockerfile           string
+	BuildComposePath          string
+	BranchDeployRules         string
+	DerivedFrom               string
+	Branch                    string
+	Managed                   int64
+	CrashTickets              int64
+	ErrorRateEnabled          int64
+	ErrorRatePercent          float64
+	ErrorRateMinutes          int64
+	ErrorRateMinRequests      int64
+	CrashNoticeConversationID string
+	CrashNoticeBotID          string
+	UpdatedAt                 int64
+	ID                        string
 }
 
 func (q *Queries) UpdateStack(ctx context.Context, arg UpdateStackParams) (int64, error) {
@@ -640,6 +664,8 @@ func (q *Queries) UpdateStack(ctx context.Context, arg UpdateStackParams) (int64
 		arg.ErrorRatePercent,
 		arg.ErrorRateMinutes,
 		arg.ErrorRateMinRequests,
+		arg.CrashNoticeConversationID,
+		arg.CrashNoticeBotID,
 		arg.UpdatedAt,
 		arg.ID,
 	)

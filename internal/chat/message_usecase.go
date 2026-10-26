@@ -111,6 +111,8 @@ func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID
 // BotPost is one post through a bot's URL as chat stores it; the URL that reached the bot is the credential, and the bot
 // posts with what its creator may (ADR 0150).
 type BotPost struct {
+	// ID is the message's id when the poster derives one, so posting it again is ErrConflict; empty mints one.
+	ID                               string
 	ConversationID, BotID, CreatorID string
 	// Name and AvatarURL are what the message shows, kept through the bot's rename or delete.
 	Name, AvatarURL, Body string
@@ -139,7 +141,7 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	}
 	now := s.now().UTC()
 	m := &Message{
-		ID: ids.New(), ConversationID: conversationID, AuthorID: botID, AuthorKind: AuthorBot,
+		ID: cmp.Or(strings.TrimSpace(p.ID), ids.New()), ConversationID: conversationID, AuthorID: botID, AuthorKind: AuthorBot,
 		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(p.AvatarURL), Body: body, Mentions: allowedMentions(body, p.Mentions),
 		Embeds: p.Embeds, Via: strings.TrimSpace(p.Via), CreatedAt: now, UpdatedAt: now,
 	}
@@ -273,6 +275,20 @@ func jsonLen(s string) int {
 // PostSystemMessage posts an inline system message attributed to the user it's for.
 func (s *Service) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) (*Message, error) {
 	return s.postMessage(ctx, conversationID, viaUserID, body, AuthorSystem)
+}
+
+// PostSystemNotice posts a system message under an id derived from key, so posting the same key again changes nothing.
+func (s *Service) PostSystemNotice(ctx context.Context, conversationID, viaUserID, key, body string) error {
+	m, err := s.newMessage(conversationID, viaUserID, body, AuthorSystem)
+	if err != nil {
+		return err
+	}
+	m.ID = ids.From("system-notice\x00" + m.ConversationID + "\x00" + key)
+	_, err = s.create(ctx, m)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return nil
+	}
+	return err
 }
 
 func (s *Service) postMessage(ctx context.Context, conversationID, authorID, body string, kind AuthorKind) (*Message, error) {

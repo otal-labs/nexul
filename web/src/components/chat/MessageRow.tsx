@@ -73,7 +73,9 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
 const SystemMessageRow = ({ body, trailBlock }: { body: string; trailBlock: TrailBlock | undefined }) => (
   <div className="px-3 py-1">
     {trailBlock && <MessageTrailTurns turns={trailBlock.turns} />}
-    <p className="text-xs text-muted-foreground italic">{body}</p>
+    <div className="text-xs text-muted-foreground italic">
+      <MessageBody body={body} mentionHandles={[]} />
+    </div>
   </div>
 );
 

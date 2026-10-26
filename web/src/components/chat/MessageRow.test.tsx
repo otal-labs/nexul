@@ -134,6 +134,19 @@ describe("MessageRow author_kind rendering", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Edit message")).not.toBeInTheDocument();
   });
+
+  it("links the URL a system message carries, as a crash notice carries its ticket's", () => {
+    renderRow(
+      <MessageRow
+        message={message({ author_kind: "system", body: "`web` crashed on `api`: exit 1. https://status.example.com/incidents/1" })}
+        author={unknownPerson("onik97")}
+        isOwn={false}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "https://status.example.com/incidents/1" })).toHaveAttribute("href", "https://status.example.com/incidents/1");
+  });
 });
 
 describe("MessageRow attachment image rendering", () => {

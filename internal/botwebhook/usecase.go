@@ -55,6 +55,8 @@ type Post struct {
 	Via string
 	// Audit is the post's audit action: the route with its token stripped.
 	Audit string
+	// ID is the message's id when the poster derives one, so posting it again is ErrConflict; empty mints one.
+	ID string
 }
 
 // People lists who a bot's post may mention: the members of its conversation's workspace.

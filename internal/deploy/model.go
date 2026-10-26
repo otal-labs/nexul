@@ -312,6 +312,10 @@ type Stack struct {
 	Managed bool `json:"managed"`
 	// CrashTickets opens a ticket in the stack's project when one of its services crashes; only a stack with a project may switch it on.
 	CrashTickets bool `json:"crash_tickets,omitempty" jsonschema:"True when a service crashing opens a ticket in the stack's project."`
+	// CrashNoticeConversationID is the channel a crash, an error-rate episode and their recoveries are posted to.
+	CrashNoticeConversationID string `json:"crash_notice_conversation_id,omitempty" jsonschema:"The channel of the stack's workspace that each crash, error-rate episode and recovery is posted to; empty posts nowhere."`
+	// CrashNoticeBotID is the bot of that conversation the notices post as; empty posts them as the instance.
+	CrashNoticeBotID string `json:"crash_notice_bot_id,omitempty" jsonschema:"A bot of that conversation the notices post as; empty posts them as the instance."`
 	// ErrorRate is the stack's error-rate rule; a stack that predates it, or a client that omits it, gets the defaults, off.
 	ErrorRate ErrorRateRule `json:"error_rate" jsonschema:"The stack's error-rate rule: off until switched on."`
 	CreatedAt time.Time     `json:"created_at"`
@@ -365,6 +369,20 @@ func (r ErrorRateRule) Validate() error {
 	return nil
 }
 
+// validateAlerts holds crash tickets and notices to a stack in a project, and a notice bot to its conversation.
+func (s *Stack) validateAlerts() error {
+	if s.CrashTickets && strings.TrimSpace(s.ProjectID) == "" {
+		return fmt.Errorf("%w: crash tickets need a stack in a project, since the ticket is opened there", apperrs.ErrInvalid)
+	}
+	if s.CrashNoticeConversationID != "" && strings.TrimSpace(s.ProjectID) == "" {
+		return fmt.Errorf("%w: crash notices need a stack in a project, since the conversation is in its workspace", apperrs.ErrInvalid)
+	}
+	if s.CrashNoticeBotID != "" && s.CrashNoticeConversationID == "" {
+		return fmt.Errorf("%w: a crash notice bot needs the conversation it posts in", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
 // DefaultNetwork returns the docker network the stack's own containers join: DockerNetwork for a run
 // stack, or compose's own project network ("<slug>_default") for a compose stack (spec §2).
 func (s *Stack) DefaultNetwork() string {
@@ -379,8 +397,8 @@ func (s *Stack) Validate() error {
 	if strings.TrimSpace(s.Name) == "" {
 		return fmt.Errorf("%w: stack name is required", apperrs.ErrInvalid)
 	}
-	if s.CrashTickets && strings.TrimSpace(s.ProjectID) == "" {
-		return fmt.Errorf("%w: crash tickets need a stack in a project, since the ticket is opened there", apperrs.ErrInvalid)
+	if err := s.validateAlerts(); err != nil {
+		return err
 	}
 	if err := s.ErrorRate.WithDefaults().Validate(); err != nil {
 		return err

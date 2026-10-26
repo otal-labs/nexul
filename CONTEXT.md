@@ -710,6 +710,14 @@ open: a repeat crash or a recovery adds a comment to its thread and never closes
 stage the next crash opens a new one. A stack's error-rate episode has its own ticket the same way, titled by the 5xx share.
 _Avoid_: Incident ticket, alert ticket
 
+**Crash notice**:
+A post a stack makes in the channel it names under Alerts when a service's outage starts, when it ends, and when an
+error-rate episode opens and ends: one per outage, however often the container restarts, with a link to the crash
+ticket when that switch is on. It posts as a bot of that channel the stack names, or as a system message; naming the
+channel needs the right to post in it. A deleted channel or bot, or a bot whose creator may no longer post there,
+drops the notice.
+_Avoid_: Alert, incident message, crash message
+
 **Crash intake**:
 The default automation, shipped switched off, that turns crash reports a bot posts in its configured channel
 (crash-report/1: a `Crash fingerprint: <hash>` line and one embed) into bug tickets. A crash is the project's newest
