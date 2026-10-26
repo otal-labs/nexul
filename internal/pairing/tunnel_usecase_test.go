@@ -48,6 +48,7 @@ type fakeBus struct {
 	mu         sync.Mutex
 	pairFailed []PairFailedEvent
 	placements []PlacementChangedEvent
+	presence   []PresenceChangedEvent
 }
 
 func (b *fakeBus) Publish(_ context.Context, topic string, payload any) error {
@@ -58,6 +59,9 @@ func (b *fakeBus) Publish(_ context.Context, topic string, payload any) error {
 	}
 	if topic == TopicPlacementChanged {
 		b.placements = append(b.placements, payload.(PlacementChangedEvent))
+	}
+	if topic == TopicPresenceChanged {
+		b.presence = append(b.presence, payload.(PresenceChangedEvent))
 	}
 	return nil
 }

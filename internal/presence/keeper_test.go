@@ -468,3 +468,49 @@ func TestKeeper_NobodyListening_HoldsWithoutWatchingSessions(t *testing.T) {
 
 	assert.Equal(t, "hold", <-client.held)
 }
+
+// stateLog records each per-computer state change the keeper announces.
+type stateLog struct {
+	mu      sync.Mutex
+	changes []string
+}
+
+func (l *stateLog) record(userID, computerID, state string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.changes = append(l.changes, userID+"/"+computerID+"="+state)
+}
+
+func (l *stateLog) all() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.changes)
+}
+
+func TestKeeper_StateChanges_ReachTheListenerOncePerChange(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		log := &stateLog{}
+		k := New(Config{Sessions: sessions.list, Harnesses: harnesstest.Registry(&harnesstest.Client{HoldFn: t3.hold}), Linger: testLinger, OnState: log.record})
+
+		k.Connected("u1")
+		synctest.Wait()
+		require.Equal(t, []string{"u1/c1=connecting", "u1/c1=connected"}, log.all())
+
+		t3.conn("c1").dropServerSide()
+		synctest.Wait()
+		time.Sleep(initialBackoff)
+		synctest.Wait()
+		require.Equal(t, []string{"u1/c1=connecting", "u1/c1=connected", "u1/c1=connecting", "u1/c1=connected"}, log.all(), "a drop and redial")
+
+		sessions.set()
+		k.Refresh("u1")
+		synctest.Wait()
+		assert.Equal(t, "u1/c1=", log.all()[len(log.all())-1], "an unpaired computer is no longer held")
+
+		k.Disconnected("u1")
+		time.Sleep(testLinger)
+	})
+}

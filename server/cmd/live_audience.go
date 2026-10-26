@@ -75,6 +75,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicPersonalChanged:      ownFrame,
 	pairing.TopicFactsChanged:        ownFrame,
 	pairing.TopicPairFailed:          ownFrame,
+	pairing.TopicPresenceChanged:     ownFrame,
 	access.TopicGrantChanged:         grantFrame,
 	access.TopicComputerGrantChanged: computerGrantFrame,
 

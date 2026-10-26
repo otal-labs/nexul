@@ -29,6 +29,8 @@ type Config struct {
 	Logger    *slog.Logger
 	// Linger overrides DefaultLinger (tests use a tiny value).
 	Linger time.Duration
+	// OnState hears each held computer's state change, "" once it is no longer held; called outside the lock. Optional.
+	OnState func(userID, computerID, state string)
 }
 
 // Keeper tracks per-user browser WS refcounts and reconciles held harness connections against the user's paired computers.
@@ -109,10 +111,20 @@ func (k *Keeper) SetOnSession(fn func(userID, computerID string, u harness.Sessi
 	k.onSession = fn
 }
 
-func (k *Keeper) setState(l *loop, state string) {
+func (k *Keeper) setState(userID, computerID string, l *loop, state string) {
 	k.mu.Lock()
+	changed := l.state != state
 	l.state = state
 	k.mu.Unlock()
+	if changed {
+		k.announce(userID, computerID, state)
+	}
+}
+
+func (k *Keeper) announce(userID, computerID, state string) {
+	if k.cfg.OnState != nil {
+		k.cfg.OnState(userID, computerID, state)
+	}
 }
 
 // New wires a Keeper. A nil logger defaults to slog.Default().
@@ -207,10 +219,18 @@ func (k *Keeper) reconcile(userID string) {
 		return
 	}
 
+	for id, state := range k.holdAll(userID, p, computers) {
+		k.announce(userID, id, state)
+	}
+}
+
+// holdAll starts and stops p's loops to match computers, returning each computer whose state changed.
+func (k *Keeper) holdAll(userID string, p *presence, computers []pairing.Computer) map[string]string {
+	changes := map[string]string{}
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	if k.users[userID] != p {
-		return // torn down while we were reading
+		return changes // torn down while we were reading
 	}
 	desired := make(map[string]pairing.Computer, len(computers))
 	for _, c := range computers {
@@ -220,6 +240,7 @@ func (k *Keeper) reconcile(userID string) {
 		if _, ok := desired[id]; !ok {
 			l.cancel()
 			delete(p.computers, id)
+			changes[id] = ""
 		}
 	}
 	for id, computer := range desired {
@@ -234,8 +255,12 @@ func (k *Keeper) reconcile(userID string) {
 		ctx, cancel := context.WithCancel(p.ctx)
 		l := &loop{cancel: cancel, state: StateConnecting, kind: computer.Kind, session: computer.Session()}
 		p.computers[id] = l
+		if !ok || held.state != StateConnecting {
+			changes[id] = StateConnecting
+		}
 		go k.maintain(ctx, userID, p, l, computer)
 	}
+	return changes
 }
 
 // logDialFailure logs a failed dial and reports whether a protocol refusal has been logged since the last connection.
@@ -267,10 +292,14 @@ func (k *Keeper) hold(ctx context.Context, client harness.Client, userID string,
 func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self *loop, computer pairing.Computer) {
 	defer func() {
 		k.mu.Lock()
-		if p.computers[computer.ID] == self {
+		removed := p.computers[computer.ID] == self
+		if removed {
 			delete(p.computers, computer.ID)
 		}
 		k.mu.Unlock()
+		if removed {
+			k.announce(userID, computer.ID, "")
+		}
 	}()
 	client, ok := k.cfg.Harnesses[computer.Kind]
 	if !ok {
@@ -283,12 +312,12 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 		if !computer.TokenExpiresAt.After(time.Now()) {
 			return
 		}
-		k.setState(self, StateConnecting)
+		k.setState(userID, computer.ID, self, StateConnecting)
 		conn, err := k.hold(ctx, client, userID, computer)
 		if err != nil {
 			if errors.Is(err, harness.ErrSessionRejected) {
 				k.log.Warn("presence: harness rejected session, giving up until re-pair", "user", userID, "computer", computer.Name)
-				k.setState(self, StateRejected)
+				k.setState(userID, computer.ID, self, StateRejected)
 				<-ctx.Done()
 				return
 			}
@@ -296,7 +325,7 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 		}
 		if err == nil {
 			k.log.Debug("presence: connected", "user", userID, "computer", computer.Name)
-			k.setState(self, StateConnected)
+			k.setState(userID, computer.ID, self, StateConnected)
 			backoff = initialBackoff
 			refused = false
 			if conn == nil {
@@ -310,7 +339,7 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 				return
 			case <-conn.Done():
 				_ = conn.Close()
-				k.setState(self, StateConnecting)
+				k.setState(userID, computer.ID, self, StateConnecting)
 			}
 		}
 		select {

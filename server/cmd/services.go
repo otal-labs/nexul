@@ -269,6 +269,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Sessions:  pairingSvc.ActiveSessions,
 		Harnesses: harnesses,
 		Logger:    logger,
+		OnState:   pairingSvc.PublishPresence,
 	})
 	pairingHandler := pairing.NewHandler(pairingSvc)
 	// tenancy and roles need each other, so roles starts with a nil member gate, closed via SetMemberGate below.

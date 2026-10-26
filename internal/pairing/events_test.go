@@ -83,6 +83,10 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 	for _, p := range placedBus.placements {
 		check(TopicPlacementChanged, p)
 	}
+	placed.svc.PublishPresence("u1", "a", "connected")
+	for _, p := range placedBus.presence {
+		check(TopicPresenceChanged, p)
+	}
 
 	// Retired with pairing through a tunnel, still declared because the published contract only grows (ADR 0044).
 	retired := map[string]bool{TopicTunnelCreated: true, TopicTunnelStatusChanged: true}

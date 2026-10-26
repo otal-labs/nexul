@@ -37,6 +37,7 @@ export interface EventPayloads {
   "computer.pair_failed": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; "members_only": boolean; };
   "computer.placement_changed": { "user_id": string; "members_only": boolean; };
+  "computer.presence_changed": { "computer_id": string; "user_id": string; "state": string; "members_only": boolean; };
   "computer.removed": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; "members_only": boolean; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": ({ "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; })[]; "members_only": boolean; };
@@ -215,6 +216,7 @@ export const TOPICS: Topic[] = [
   "computer.pair_failed",
   "computer.paired",
   "computer.placement_changed",
+  "computer.presence_changed",
   "computer.removed",
   "computer.setup_confirmed",
   "computer.setup_finished",
@@ -391,6 +393,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "computer.pair_failed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z","members_only":false},
   "computer.placement_changed": {"user_id":"fixture-user_id","members_only":false},
+  "computer.presence_changed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","state":"fixture-state","members_only":false},
   "computer.removed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"],"members_only":false},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}],"members_only":false},
