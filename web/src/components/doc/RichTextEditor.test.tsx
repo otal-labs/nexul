@@ -26,8 +26,15 @@ const withMention = `{"type":"doc","content":[{"type":"paragraph","content":[{"t
 const trailingImage = "Intro\n\n![x](https://example.com/x.png)";
 
 // The provider never connects: a seeding editor only runs the seed, and a joining one only reads the doc it is given.
-const renderCollabEditor = (value: string, onChange: (json: string) => void, doc = new Y.Doc(), seed = true) => {
+const renderCollabEditor = (
+  value: string,
+  onChange: (json: string) => void,
+  doc = new Y.Doc(),
+  seed = true,
+  beforeMount: (provider: RelayCollabProvider) => void = () => {},
+) => {
   const provider = new RelayCollabProvider({ url: "ws://test/collab", doc });
+  beforeMount(provider);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -283,33 +290,50 @@ describe("RichTextEditor", () => {
     expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("- [x] one\n- [x] two");
   });
 
-  it("turns a room saved with \"[ ] \" bullets into task items and keeps them in the stored body", async () => {
-    const room = new Y.Doc();
-    const old = new Editor({
-      extensions: [StarterKit.configure({ undoRedo: false }), Collaboration.configure({ fragment: room.getXmlFragment("prosemirror") })],
-    });
-    old.commands.setContent({
-      type: "doc",
-      content: [
-        { type: "paragraph", content: [{ type: "text", text: "Plan" }] },
-        {
-          type: "bulletList",
-          content: ["[ ] one", "[x] two", "plain"].map((text) => ({
-            type: "listItem",
-            content: [{ type: "paragraph", content: [{ type: "text", text }] }],
-          })),
-        },
-      ],
-    });
-    old.destroy();
+  describe("a room saved with \"[ ] \" bullets", () => {
+    const oldRoom = () => {
+      const room = new Y.Doc();
+      const old = new Editor({
+        extensions: [StarterKit.configure({ undoRedo: false }), Collaboration.configure({ fragment: room.getXmlFragment("prosemirror") })],
+      });
+      old.commands.setContent({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Plan" }] },
+          {
+            type: "bulletList",
+            content: ["[ ] one", "[x] two", "plain"].map((text) => ({
+              type: "listItem",
+              content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+            })),
+          },
+        ],
+      });
+      old.destroy();
+      return room;
+    };
 
-    const onChange = vi.fn();
-    renderCollabEditor("", onChange, room, false);
+    it("becomes task items when the writer is alone, and the stored body keeps them", async () => {
+      const onChange = vi.fn();
+      renderCollabEditor("", onChange, oldRoom(), false);
 
-    const boxes = await screen.findAllByRole("checkbox");
-    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([false, true]);
-    await waitFor(() => expect(onChange).toHaveBeenCalled());
-    expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("Plan\n\n- [ ] one\n- [x] two\n\n- plain");
+      const boxes = await screen.findAllByRole("checkbox");
+      expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([false, true]);
+      await waitFor(() => expect(onChange).toHaveBeenCalled());
+      expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("Plan\n\n- [ ] one\n- [x] two\n\n- plain");
+    });
+
+    it("is left alone while another editor is in the room", async () => {
+      const onChange = vi.fn();
+      renderCollabEditor("", onChange, oldRoom(), false, (provider) => {
+        provider.awareness.states.set(7, { user: { name: "Bea", activity: "editing" } });
+      });
+
+      await screen.findByText("[x] two");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(onChange.mock.calls.some(([json]) => (json as string).includes("taskList"))).toBe(false);
+    });
   });
 
   it("seeds a checklist body into a room that the next visitor can read and edit", async () => {

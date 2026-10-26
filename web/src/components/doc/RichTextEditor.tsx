@@ -137,16 +137,16 @@ export const RichTextEditor = ({
     collab.provider.seed(() => setBody(editor, value));
   }, [editor, collab, value]);
 
-  // A room saved before task items holds "[ ] " bullets. Once its replay has landed, the lowest-id editor rewrites them
-  // in one edit, deferred a tick so no replayed update is still to land inside an item it replaces.
+  // A room saved before task items holds "[ ] " bullets. Once its replay has landed, an editor alone in the room rewrites
+  // them in one edit, deferred a tick so no replayed update is still to land inside an item it replaces. With peers
+  // present nothing changes: their concurrent edits would be lost or doubled, so the next solo open converts it.
   useEffect(() => {
     if (!editor || !collab) return;
     const { awareness } = collab.provider;
-    const mine = collab.doc.clientID;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const upgrade = () => {
       if (!editor.isEditable) return;
-      const peerEdits = [...awareness.getStates()].some(([id, state]) => id < mine && state.user?.activity === "editing");
+      const peerEdits = [...awareness.getStates()].some(([id, state]) => id !== collab.doc.clientID && state.user?.activity === "editing");
       if (peerEdits) return;
       const { doc, schema, tr } = editor.state;
       const edits: { from: number; to: number; next: JSONContent[] }[] = [];

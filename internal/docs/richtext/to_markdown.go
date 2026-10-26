@@ -14,7 +14,7 @@ func JSONToMarkdown(body string) (string, error) {
 		return "", err
 	}
 	var blocks []string
-	for _, n := range doc.Content {
+	for _, n := range upgradeChecklists(doc.Content) {
 		rendered, err := renderBlock(n)
 		if err != nil {
 			return "", err

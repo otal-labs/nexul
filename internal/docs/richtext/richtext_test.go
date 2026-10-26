@@ -420,3 +420,40 @@ func TestJSONToMarkdown_EditorTable_RendersGFMTable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "| Step | **Owner** |\n| --- | ---: |\n| `a\\|b` | x \\| y<br>z |\n|  | [docs](https://example.com) |", got)
 }
+
+func TestToMarkdown_ReadsOldChecklistBulletsAsTasks(t *testing.T) {
+	item := func(runs ...string) string {
+		inline := ""
+		for i, r := range runs {
+			if i > 0 {
+				inline += ","
+			}
+			inline += `{"type":"text","text":"` + r + `"}`
+		}
+		return `{"type":"listItem","content":[{"type":"paragraph","content":[` + inline + `]}]}`
+	}
+	doc := func(blocks ...string) string {
+		return `{"type":"doc","content":[` + strings.Join(blocks, ",") + `]}`
+	}
+	list := func(items ...string) string {
+		return `{"type":"bulletList","content":[` + strings.Join(items, ",") + `]}`
+	}
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"open and done items", doc(list(item("[ ] one"), item("[x] two"), item("[X] three"))), "- [ ] one\n- [x] two\n- [x] three"},
+		{"plain bullets stay beside them", doc(list(item("[ ] one"), item("plain"))), "- [ ] one\n\n- plain"},
+		{"the rest of the first line is kept", doc(list(item("[x] ", "tail"))), "- [x] tail"},
+		{"a nested list is upgraded too", doc(list(`{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"top"}]},` + list(item("[ ] inner")) + `]}`)), "- top\n  - [ ] inner"},
+		{"a bullet that merely mentions a box is untouched", doc(list(item("see [ ] below"))), "- see \\[ \\] below"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToMarkdown(tt.body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
