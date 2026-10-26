@@ -25,8 +25,11 @@ const upgradeList = (list: JSONContent): JSONContent[] => {
     const found = markerOf(item);
     const last = runs.at(-1);
     const entry = found ? toTaskItem(item, found) : item;
-    if (last && last.task === (found !== null)) last.items.push(entry);
-    else runs.push({ task: found !== null, items: [entry] });
+    if (last && last.task === (found !== null)) {
+      last.items.push(entry);
+      continue;
+    }
+    runs.push({ task: found !== null, items: [entry] });
   }
   return runs.map((run) => (run.task ? { type: "taskList", content: run.items } : { ...list, content: run.items }));
 };
