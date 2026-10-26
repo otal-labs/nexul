@@ -32,6 +32,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
+  const empty = tickets.length === 0;
   const data: DropTargetData = { type: "column", statusId: column.id, categoryId, kind: column.kind };
   // Keyed on the ids, not the array: a new items array re-renders every card in the column.
   const idsKey = tickets.map((t) => t.id).join(" ");
@@ -54,7 +55,9 @@ const KanbanColumnImpl = ({
         transition,
       }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-surface-2 p-1.5",
+        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg p-1.5 transition-colors duration-150 ease-standard",
+        // An empty column has no well at rest so the columns holding work lead; it fills in while a card is held, still the same full-height target.
+        empty ? "bg-transparent group-data-[card-drag]/board:bg-surface-2" : "bg-surface-2",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
@@ -88,15 +91,17 @@ const KanbanColumnImpl = ({
         />
       </h4>
       {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count; the 1px top padding is room for a card's hover lift. */}
-      <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-col gap-1.5 overflow-y-auto pt-px">
+      <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-1 flex-col gap-1.5 overflow-y-auto pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
           ))}
         </SortableContext>
-        {tickets.length === 0 && (
-          // A dashed slot reads as somewhere a card can land.
-          <EmptyRow className="rounded-md border border-dashed border-border px-2 py-6 text-center text-xs">No tickets</EmptyRow>
+        {empty && (
+          // The dashed slot only shows while a card is held: then it reads as somewhere a card can land.
+          <EmptyRow className="flex-1 rounded-md border border-dashed border-transparent px-2 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
+            No tickets
+          </EmptyRow>
         )}
       </EnterList>
     </section>
