@@ -25,4 +25,4 @@ export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 // On the icon rail a count sits on its icon's top-right corner, cut out of the icon by a canvas-coloured ring.
-export const railBadgeClass = "absolute top-0.5 left-[25px] h-3.5 min-w-3.5 px-[3px] text-[10px] ring-2 ring-background";
+export const railBadgeClass = "absolute top-0.5 left-[25px] flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-background px-[3px] text-[10px] ring-2 ring-background";
