@@ -89,7 +89,7 @@ in the three token files; this table holds the roles.
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
 | `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
-| `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.48 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface | |
+| `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.465 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface | |
 | `accent` | white at 7% | ink at 6% | hover and selected-row lift, reads on any surface | phone: the press tint |
 | `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour | site: Fumadocs' `fd-primary` is this ink |
 | `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
@@ -166,6 +166,12 @@ tinted-background chip: readable in both themes, and it keeps status from
 competing with the accent. Type and label, which are tags rather than state,
 may be tinted pills (the web app's board). A destructive button is white on
 `destructive-fill`.
+
+A disabled button keeps its shape but loses its fill and shadow and takes
+`muted-foreground` text (6:1 or better), never a lower opacity: a half-faded
+label sits near 3.5:1 on a settings tray. The web app's `Button`
+does this once for every variant. A button that is busy keeps its own fill and
+text: its spinner already says it is working, and grey would read as not allowed.
 
 A live status (a runner, an execution log, a health dot) reuses the one
 `status-pulse` keyframe; there is no second pulse, and a status that is not
@@ -316,6 +322,8 @@ The decisions every surface inherits. Each surface section records its own.
 | Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
 | One ember accent, held to action, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the product's voice |
 | Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
+| Disabled text is `muted-foreground`, not half opacity | At 50% opacity a disabled label sat near 3.5:1 on a light tray, where Save for an unchanged form read as missing; muted ink holds 6:1 and the loss of fill and shadow still says it is off |
+| Light `muted-foreground` at 0.465 | 0.48 held 5.65:1 on the canvas, under the 6:1 the token promises; 0.465 clears it on every light surface |
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
@@ -348,7 +356,10 @@ Palettes. Appearance settings (`web/src/lib/themePalettes.ts`) override the
 surface and text roles; a palette's `primary` becomes its `brand` (and so the
 field's warm glow) unless it names a brand of its own, and its panels follow
 its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
-zero radius applies to panels too.
+zero radius applies to panels too. Every palette holds 4.5:1 for its text
+roles and the label on its accent, on each surface they sit on, in both modes
+(`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
+holds 6:1.
 
 Prose links. The web app's prose links are `brand` text: on the doc sheet's
 white card they hold contrast. The site, whose text sits on the canvas, uses
