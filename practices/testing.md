@@ -219,3 +219,61 @@ func withTitle(title string) func(*Ticket) {
   unminified bundles that hide a cost or invent one. Alternate base and head
   runs and report medians, each timing beside the deterministic count that
   explains it.
+
+---
+
+## 11. Deleting a test
+
+A test that guards nothing still costs a read on every refactor and hides
+the tests that do guard something. Cleaning the suite is ordinary work, held
+to the same bar as writing it.
+
+### What goes
+
+A test goes when it matches section 4, or when it:
+
+- asserts only what the compiler, `sqlc`, or a generated catalog or schema
+  already guarantees;
+- restates the implementation: the expected value is computed by the code
+  under test, a fake implements the behavior being asserted, or the
+  assertion is the call order the code happens to use;
+- cannot fail: no assertion, or only "does not panic" or "does not throw";
+- duplicates another test of the same branch, such as table rows that take
+  the same path, or a helper test beside a test of the real entry point;
+- waits on time instead of a signal (section 9). `time.Sleep` inside a
+  `testing/synctest` bubble is virtual time and does not count;
+- exists only to keep a test-only export or wrapper alive. The export goes
+  with it.
+
+Slow is never a reason. A test that fails on the current code is a possible
+bug: reproduce it before deciding anything.
+
+### What stays without the owner's sign-off
+
+These are scored like any other test, but never deleted without the owner
+agreeing in the pull request:
+
+- every guard in the table under "What enforces the rules" in `AGENTS.md`;
+- `internal/auth`, `internal/platform/permissions`, and the audit
+  classification in `server/cmd/audit_integration_test.go`;
+- `internal/platform/storage` and its migrations;
+- `internal/eventcatalog`, `internal/platform/live`, and
+  `internal/platform/eventbus` (outbox, dedupe, dead-letter);
+- `server/cmd/access_memo_test.go`, `server/cmd/list_paging_test.go`, and
+  `server/cmd/json_parity_test.go`;
+- every `main_test.go` that runs goleak, and the count guards in section 10.
+
+### How
+
+- One package or app per pull request, edited by test name: delete the
+  function or the table rows, and keep the file while it still holds a kept
+  test. Helpers and fixtures used only by the deleted tests go in the same
+  pull request.
+- The coverage gate still passes. A dip below 80% is filled with an
+  error-path test, never by restoring a deleted one.
+- The pull request body carries the before and after test count and
+  uncached wall time (`go test -count=1 -json`, or the runner's summary
+  line) from the same machine, and the rule each deletion matched.
+- End-to-end specs stay few: the pull request that keeps a spec in
+  `web/e2e/specs/` gives the critical path it guards in one line. A deleted
+  unit test is never replaced by an end-to-end one.
