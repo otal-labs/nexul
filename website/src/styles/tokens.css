@@ -129,3 +129,8 @@
 	letter-spacing: -0.025em;
 	line-height: 1.12;
 }
+
+/* Icons still at the library's 2 draw at 1.75; one that sets its own width keeps it. */
+.lucide[stroke-width="2"] {
+	stroke-width: 1.75;
+}

@@ -292,7 +292,12 @@ icon says what they are. An icon-only control carries an `aria-label` and a
 tooltip of the same words. In a list of words, such as a menu, an icon gets
 its word beside it: an icon alone would be the one row nobody can read, and a
 phone has no tooltip. A filled brand mark sits 2px smaller than the stroked
-icons beside it, or it reads heavier.
+icons beside it, or it reads heavier. Stroked icons draw at 1.75 on the web
+app and the site, set once (`LucideProvider` in `web/src/App.tsx`, one
+`.lucide[stroke-width="2"]` rule in `website/src/styles/tokens.css`); an icon
+that sets its own `strokeWidth`, like the bold checks at 3, keeps it. The phone
+keeps the library's 2: its icons import by path, and the provider that sets a
+default is only exported from the barrel the app must not load.
 
 ### Do and don't
 
@@ -333,6 +338,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
 | Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
+| Stroked icons draw at 1.75 (web and site) | Beside 13 to 14px Inter in dense chrome (the sidebar, menus, the ticket rail, toolbars) a 2px stroke carries more weight than the text it labels; 1.75 sits level with it. Rejected: the library's 2 |
 
 ## Web app
 
