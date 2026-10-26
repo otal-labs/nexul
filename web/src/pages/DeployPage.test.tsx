@@ -87,7 +87,7 @@ describe("DeployPage", () => {
     expect(await screen.findByRole("link", { name: "api" })).toHaveAttribute("href", "/acme/stacks/stack-1");
     expect(screen.getByRole("link", { name: "Deploys" })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
     expect(screen.queryByText("d-1")).not.toBeInTheDocument();
-    expect(screen.getByText("running")).toBeInTheDocument();
+    expect(screen.getByText("Running")).toBeInTheDocument();
 
     const steps = screen
       .getAllByRole("listitem")

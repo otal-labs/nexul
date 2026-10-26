@@ -802,7 +802,7 @@ value and no second facts row: Health first, then Last deploy (its
 never "Healthy", which is how a service is doing and would contradict Health beside it), Services (the mono count over "N
 up"), and Hostnames (the first as a link with an arrow, then "+N more"). It is
 four columns from a 42rem page and two by two below. Health is "No issues"
-behind a `success` dot, or one line per problem behind its status hue: an
+behind a `success` dot, or one line per problem behind a dot in its status hue: an
 open outage is `destructive` ("api down"), an error rate over its rule is
 `warning` ("5xx 7.2%" in the line's own weight, then the time it began in muted mono), and a recovery within the hour reads
 `success` ("5xx recovered").
@@ -813,7 +813,7 @@ Services, then Requests (a stack with a hostname: the mono totals for the last
 hour with the 5xx share behind its hue, per-minute bars in a `surface-2` well
 with the 5xx part in the status hue, and the error-rate rule in the footer),
 then Deploy. A service's open outage is one line under its name in the
-Services row: a `destructive` dot and "Down since 10:42" in the status hue,
+Services row: a `destructive` icon and "Down since 10:42" in plain text,
 then the exit code, "out of memory" and the restart count in muted mono.
 Alerts sits after Logs in the section nav, with a Crash tickets card (one
 switch row) and an Error rate card (one switch row stating the rule, its
@@ -835,7 +835,7 @@ section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box, except permission and access rows
 (Permission rows, below) and the Services rows, which sit straight on the card or dialog surface.
 Nothing nests a card inside a card. The Services card has no column headers: each row is the service name and
-status over its image and a muted `container <name>` line, with how it is
+status (a status icon, its word in `muted-foreground`, or `foreground` when it is exited) over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine). The rows sit straight on the card with hairline dividers, no box of

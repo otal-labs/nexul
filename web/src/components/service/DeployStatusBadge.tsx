@@ -1,14 +1,15 @@
+import { deployOutcome } from "@nexul/client-core/deployOutcome";
 import { CheckCircle2, Clock, Loader2, XCircle, type LucideIcon } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
 import { DeployStatus, type DeployStatus as DeployStatusType } from "@/models/Service";
 
-// Colored icon + text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
-const config: Record<DeployStatusType, { icon: LucideIcon; color: string; iconClassName?: string }> = {
+// Colored icon beside the outcome word in plain text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
+const config: Record<DeployStatusType, { icon: LucideIcon; color: string; iconClassName?: string; textClassName?: string }> = {
   [DeployStatus.Pending]: { icon: Clock, color: "text-warning" },
   [DeployStatus.Running]: { icon: Loader2, color: "text-info", iconClassName: "animate-spin motion-reduce:animate-none" },
   [DeployStatus.Healthy]: { icon: CheckCircle2, color: "text-success" },
-  [DeployStatus.Failed]: { icon: XCircle, color: "text-destructive" },
+  [DeployStatus.Failed]: { icon: XCircle, color: "text-destructive", textClassName: "text-foreground" },
 };
 
 interface DeployStatusBadgeProps {
@@ -16,10 +17,10 @@ interface DeployStatusBadgeProps {
 }
 
 export const DeployStatusBadge = ({ status }: DeployStatusBadgeProps) => {
-  const { icon, color, iconClassName } = config[status];
+  const { icon, color, iconClassName, textClassName } = config[status];
   return (
-    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName}>
-      {status}
+    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName} className={textClassName}>
+      {deployOutcome(status)}
     </NoFillBadge>
   );
 };

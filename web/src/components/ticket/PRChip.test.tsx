@@ -18,9 +18,9 @@ describe("PRChip", () => {
     ["open", "text-success"],
     ["merged", "text-merged"],
     ["closed", "text-destructive"],
-  ] as const)("colors a %s pull request with %s", (state, color) => {
+  ] as const)("colors the icon of a %s pull request with %s", (state, color) => {
     render(<PRChip pr={pr(state)} />);
-    expect(screen.getByText("#42")).toHaveClass(color);
+    expect(screen.getByText("#42").querySelector("svg")).toHaveClass(color);
     expect(screen.getByRole("link", { name: `#42 Fix login, ${state}` })).toHaveAttribute(
       "href",
       "https://github.com/acme/app/pull/42",
