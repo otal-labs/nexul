@@ -896,8 +896,8 @@ func (s *Service) Log(ctx context.Context, id string) ([]LogLine, error) {
 
 // reconcileServices lands the runner's observation report onto the deploying stack's containers (spec §4 step 3):
 // upsert by (stack, name) with the observed facts, and mark any existing container missing from the report as
-// stopped — never deleted. Declared (the compose parse's own data) is preserved from the existing row; the report
-// only ever carries what docker observed.
+// stopped — never deleted, save a compose stack's never-run placeholder. Declared (the compose parse's own data) is
+// preserved from the existing row; the report only ever carries what docker observed.
 func (s *Service) reconcileServices(ctx context.Context, deployID string, observed []ObservedService) error {
 	d, err := s.repo.GetByID(ctx, deployID)
 	if err != nil {
@@ -928,8 +928,21 @@ func (s *Service) reconcileServices(ctx context.Context, deployID string, observ
 			return fmt.Errorf("upsert service %s: %w", o.Name, err)
 		}
 	}
+	placeholder, err := s.composePlaceholder(ctx, d.StackID)
+	if err != nil {
+		return err
+	}
 	for _, c := range existing {
-		if seen[c.Name] || c.Status == ServiceStatusStopped {
+		if seen[c.Name] {
+			continue
+		}
+		if c.Name == placeholder && c.ContainerName == "" {
+			if err := s.services.Delete(ctx, c.ID); err != nil {
+				return fmt.Errorf("drop placeholder service %s: %w", c.Name, err)
+			}
+			continue
+		}
+		if c.Status == ServiceStatusStopped {
 			continue
 		}
 		stopped := *c
@@ -940,6 +953,19 @@ func (s *Service) reconcileServices(ctx context.Context, deployID string, observ
 		}
 	}
 	return nil
+}
+
+// composePlaceholder names the row declaredServices guesses for a compose stack created without its parsed services;
+// it never runs as a container, so a report without it proves it a guess. Empty for any other stack.
+func (s *Service) composePlaceholder(ctx context.Context, stackID string) (string, error) {
+	stack, err := s.stacks.GetByID(ctx, stackID)
+	if err != nil {
+		return "", fmt.Errorf("get stack %s: %w", stackID, err)
+	}
+	if stack.Strategy != StrategyCompose {
+		return "", nil
+	}
+	return stack.Slug, nil
 }
 
 // transition validates and applies a single state-machine step.

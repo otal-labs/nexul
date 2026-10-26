@@ -65,6 +65,12 @@ func (r *ServicesRepo) DeleteByStack(ctx context.Context, stackID string) error 
 	})
 }
 
+func (r *ServicesRepo) Delete(ctx context.Context, id string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		return r.q.WithTx(tx).DeleteContainer(ctx, id)
+	})
+}
+
 func toCreateContainerParams(svc *deploy.Container) sqlcgen.CreateContainerParams {
 	var observedAt int64
 	if !svc.ObservedAt.IsZero() {

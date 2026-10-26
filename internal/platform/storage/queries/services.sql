@@ -23,6 +23,9 @@ SELECT * FROM services WHERE stack_id = ? ORDER BY name;
 -- name: DeleteContainersByStack :exec
 DELETE FROM services WHERE stack_id = ?;
 
+-- name: DeleteContainer :exec
+DELETE FROM services WHERE id = ?;
+
 -- name: ListContainerNamesByMachine :many
 SELECT c.container_name FROM services c JOIN stacks s ON s.id = c.stack_id
 WHERE s.machine = ? AND c.container_name <> '' ORDER BY c.container_name;

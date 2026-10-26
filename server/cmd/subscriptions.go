@@ -74,10 +74,7 @@ func topologyStackCreatedHandler(topoSvc *topology.Service) eventbus.Handler {
 			return apperrs.Fatal(fmt.Errorf("parse %s: %w", deploy.TopicStackCreated, err))
 		}
 		for _, svc := range e.Services {
-			name := e.Stack.Name
-			if len(e.Services) > 1 {
-				name = e.Stack.Name + "/" + svc.Name
-			}
+			name := containerNodeName(e.Stack.Name, svc.Name, len(e.Services))
 			status, address := containerNodeStatus(&svc, deploy.StatusPending)
 			_, err := topoSvc.AddServiceNode(ctx, topology.Node{
 				ID: svc.ID,
@@ -109,10 +106,7 @@ func topologyStackUpdatedHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 			return err
 		}
 		for _, svc := range services {
-			name := e.Stack.Name
-			if len(services) > 1 {
-				name = e.Stack.Name + "/" + svc.Name
-			}
+			name := containerNodeName(e.Stack.Name, svc.Name, len(services))
 			if _, err := topoSvc.RenameServiceNode(ctx, svc.ID, name); err != nil {
 				return err
 			}
@@ -138,15 +132,12 @@ func topologyStackDeletedHandler(topoSvc *topology.Service) eventbus.Handler {
 	}
 }
 
-// topologyDeployStatusHandler drives every one of the deploying stack's container nodes' badges. HandleStatusChanged
-// reconciles the runner's observation report into the services table first, so each node gets its own container's
-// status and address; a container the report never reached (e.g. a failed deploy with
-// no report at all) falls back to the deploy's own terminal status, same as before per-container observation.
+// topologyDeployStatusHandler lands the deploying stack's containers on the canvas. HandleStatusChanged reconciles the
+// runner's observation report into the services table first, so a container the deploy first observed gets its node,
+// one it dropped loses it, and each badge shows its own container's status and address; a container the report never
+// reached (e.g. a failed deploy with no report at all) falls back to the deploy's own terminal status.
 func topologyDeployStatusHandler(deploySvc *deploy.Service, topoSvc *topology.Service) eventbus.Handler {
 	return func(ctx context.Context, ev eventbus.Event) error {
-		if err := deploySvc.HandleStatusChanged(ctx, ev); err != nil {
-			return err
-		}
 		var e deploy.DeployStatusChangedEvent
 		if err := json.Unmarshal(ev.Payload, &e); err != nil {
 			return apperrs.Fatal(fmt.Errorf("parse %s: %w", deploy.TopicDeployStatusChanged, err))
@@ -155,18 +146,50 @@ func topologyDeployStatusHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 		if err != nil {
 			return err
 		}
+		before, err := deploySvc.ListServices(ctx, d.StackID)
+		if err != nil {
+			return err
+		}
+		if err := deploySvc.HandleStatusChanged(ctx, ev); err != nil {
+			return err
+		}
+		if d, err = deploySvc.Get(ctx, e.ID); err != nil {
+			return err
+		}
+		stack, err := deploySvc.GetStack(ctx, d.StackID)
+		if err != nil {
+			return err
+		}
 		services, err := deploySvc.ListServices(ctx, d.StackID)
 		if err != nil {
 			return err
 		}
+		kept := make(map[string]bool, len(services))
+		nodes := make([]topology.Node, 0, len(services))
 		for _, svc := range services {
+			kept[svc.ID] = true
 			status, address := containerNodeStatus(svc, deploy.Status(d.Status))
-			if _, err := topoSvc.SetServiceNodeStatus(ctx, svc.ID, status, address); err != nil {
-				return err
+			nodes = append(nodes, topology.Node{ID: svc.ID, Data: topology.NodeData{
+				Name: containerNodeName(stack.Name, svc.Name, len(services)), Runtime: "docker", Status: status, Address: address,
+			}})
+		}
+		var dropped []string
+		for _, svc := range before {
+			if !kept[svc.ID] {
+				dropped = append(dropped, svc.ID)
 			}
 		}
-		return nil
+		_, err = topoSvc.SyncServiceNodes(ctx, nodes, dropped)
+		return err
 	}
+}
+
+// containerNodeName is a container's canvas label: the stack's name alone, or stack/service once it runs several.
+func containerNodeName(stack, service string, containers int) string {
+	if containers > 1 {
+		return stack + "/" + service
+	}
+	return stack
 }
 
 // routesOnConnectHandler has dns re-send the proxy routes of the machine a runner just connected on.

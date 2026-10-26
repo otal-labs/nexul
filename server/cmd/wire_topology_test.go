@@ -94,3 +94,34 @@ func TestLiveAudience_ATopologyFrameReachesItsWorkspacesReaders(t *testing.T) {
 	}
 	assert.False(t, a.allows(as(uOwner), topicTopologyCanvas, json.RawMessage(`{"nodes":[]}`)), "a frame naming no workspace reaches nobody")
 }
+
+func TestTopologyDeployStatusHandler_AComposeStackMadeWithoutItsServicesShowsWhatRuns(t *testing.T) {
+	t.Parallel()
+	f := newPermFixture(t)
+	ctx := t.Context()
+	now := time.Now()
+	require.NoError(t, f.store.Stacks.Create(ctx, &deploy.Stack{ID: "stack-shop", ProjectID: "project-general", Name: "shop", Slug: "shop", Machine: "m1", Strategy: deploy.StrategyCompose, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Services.Create(ctx, &deploy.Container{ID: "c-guess", StackID: "stack-shop", Name: "shop", Status: deploy.ServiceStatusPending}))
+	_, err := f.svc.topoSvc.AddServiceNode(ctx, topology.Node{ID: "c-guess", Data: topology.NodeData{Name: "shop", Runtime: "docker", Status: topology.ServiceRunning}})
+	require.NoError(t, err)
+	require.NoError(t, f.store.Deploys.Create(ctx, &deploy.Deploy{ID: "deploy-shop", StackID: "stack-shop", Service: "shop", Status: deploy.StatusPending, CreatedAt: now, UpdatedAt: now}))
+
+	raw, err := json.Marshal(deploy.DeployStatusChangedEvent{ID: "deploy-shop", Status: string(deploy.StatusHealthy), Services: []deploy.ObservedService{
+		{Name: "api", ContainerName: "shop-api-1", Status: "healthy", Networks: []deploy.Network{{Name: "shop_default", Address: "172.30.0.2"}}},
+		{Name: "web", ContainerName: "shop-web-1", Status: "running", Networks: []deploy.Network{{Name: "shop_default", Address: "172.30.0.3"}}},
+	}})
+	require.NoError(t, err)
+	require.NoError(t, topologyDeployStatusHandler(f.svc.deploySvc, f.svc.topoSvc)(ctx, eventbus.Event{Topic: deploy.TopicDeployStatusChanged, Payload: raw}))
+
+	canvas, err := f.svc.topoSvc.Get(ctx, "workspace-default")
+	require.NoError(t, err)
+	shown := map[string]topology.NodeData{}
+	for _, n := range canvas.Nodes {
+		shown[n.Data.Name] = n.Data
+	}
+	assert.NotContains(t, shown, "shop", "the stack-named guess never ran, so it leaves the canvas")
+	require.Contains(t, shown, "shop/api")
+	require.Contains(t, shown, "shop/web")
+	assert.Equal(t, topology.ServiceHealthy, shown["shop/api"].Status)
+	assert.Equal(t, "172.30.0.3", shown["shop/web"].Address)
+}
