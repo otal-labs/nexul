@@ -645,6 +645,35 @@ describe("ProjectWizardPage", () => {
     });
   });
 
+  describe("a project whose repository already deploys from a service made outside setup", () => {
+    const portal = { owner: "acme", name: "portal", full_name: "acme/portal", connector_id: "github", role: "app" };
+    const setup = { finished: true, steps: { project: "done", people: "done", repository: "done", service: "skipped", reach: "skipped", branches: "skipped" } };
+    const staging = { ...stack, id: "stack-9", name: "portal-staging", build_source: { repo_owner: "acme", repo_name: "portal", branch: "main" } };
+
+    beforeEach(() => {
+      access.areas = ["tickets", "projects", "stacks"];
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url === "/api/projects/p-1") return { data: { ...project, setup } };
+        if (url === "/api/projects/p-1/repos") return { data: [portal] };
+        if (url === "/api/services") return { data: [staging] };
+        return { data: [] };
+      });
+    });
+
+    it.each(["deploy", "service"])("names that service on %s instead of asking for a repository, and scans nothing", async (step) => {
+      const user = userEvent.setup();
+      renderPage(`/acme/wizard/project/${step}?project=p-1&revisit=1`);
+
+      expect(await screen.findByRole("link", { name: "portal-staging" })).toHaveAttribute("href", "/acme/stacks/stack-9");
+      expect(screen.getByText(/already deploys as/)).toBeInTheDocument();
+      expect(screen.queryByText("Pick a repository first.")).not.toBeInTheDocument();
+      expect(mocks.post).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(await screen.findByRole("heading", { name: "Backend is ready" })).toBeInTheDocument();
+    });
+  });
+
   it("door 2: Service has no Skip for now, since the door exists to make one, and Back is the way out", async () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");

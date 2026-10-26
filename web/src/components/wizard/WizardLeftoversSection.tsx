@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useWaitingRepos } from "@/hooks/useWaitingRepos";
 import { useWizardGoTo } from "@/hooks/useWizardNavigation";
 import { useWizardAppRepos, useWizardProject, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWizardDoor, useWizardStepOrder } from "@/hooks/useWizardStepOrder";
@@ -38,8 +39,11 @@ export const WizardLeftoversSection = () => {
   const repos = useWizardAppRepos();
   const folded = (id: WizardStepId) => id === "deploy" || (noService && (id === "repository" || isDeployStep(id)));
   const left = order.filter((id) => id !== "done" && project?.setup.steps[id] !== "done" && !folded(id));
-  const deploying = noService && repos;
-  if (!project || (left.length === 0 && !deploying)) return null;
+  // Without stacks read every repository looks waiting, so the app repositories stand in.
+  const undeployed = useWaitingRepos(project?.id) ?? repos;
+  const needsRepo = noService && repos && repos.length === 0;
+  const deployLater = noService && undeployed && undeployed.length > 0;
+  if (!project || (left.length === 0 && !needsRepo && !deployLater)) return null;
   return (
     <section aria-labelledby="wizard-leftovers" className="space-y-1">
       <h3 id="wizard-leftovers" className="text-sm font-medium">
@@ -56,10 +60,8 @@ export const WizardLeftoversSection = () => {
             to={id}
           />
         ))}
-        {deploying && deploying.length === 0 && (
-          <WizardLeftoverRow label="Deploy" state="needs a repository" action="Open Repository" to="repository" />
-        )}
-        {deploying && deploying.length > 0 && <WizardLeftoverRow label="Deploy" state="later" action="Deploy now" to="deploy" outline />}
+        {needsRepo && <WizardLeftoverRow label="Deploy" state="needs a repository" action="Open Repository" to="repository" />}
+        {deployLater && <WizardLeftoverRow label="Deploy" state="later" action="Deploy now" to="deploy" outline />}
       </ul>
     </section>
   );

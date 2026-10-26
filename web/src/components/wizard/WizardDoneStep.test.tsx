@@ -180,6 +180,22 @@ describe("WizardDoneStep", () => {
       expect(await screen.findByText("deploy step")).toBeInTheDocument();
     });
 
+    it("offers no Deploy when the attached repository already deploys from a service made elsewhere", async () => {
+      access.areas = ["stacks", "projects", "topology", "tickets"];
+      mockApi(interview, unserved, attached);
+      const built = mocks.get.getMockImplementation()!;
+      mocks.get.mockImplementation(async (url: string, ...rest: unknown[]) =>
+        url === "/api/services" ? { data: [{ id: "s-9", project_id: "p-1", name: "portal-staging", build_source: { repo_owner: "acme", repo_name: "portal" } }] } : built(url, ...rest),
+      );
+      renderStep();
+
+      await screen.findByRole("button", { name: "Finish" });
+      await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "p-1" } }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.queryByRole("button", { name: "Deploy now" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Left for later" })).not.toBeInTheDocument();
+    });
+
     it("sends the Deploy row to Repository when none is attached", async () => {
       const user = userEvent.setup();
       mockApi(interview, unserved, []);

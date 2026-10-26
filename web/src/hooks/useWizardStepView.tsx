@@ -1,7 +1,7 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { useScanTarget } from "@/hooks/useWaitingRepos";
-import { useWizardStackId } from "@/hooks/useWizardSetup";
+import { useScanTarget, useWaitingReposState } from "@/hooks/useWaitingRepos";
+import { useWizardAppRepos, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWizardDoor } from "@/hooks/useWizardStepOrder";
 import { wizardStepView, type StepView, type WizardFacts, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -14,8 +14,11 @@ export const useWizardFacts = (): WizardFacts => {
   );
   const stack = !!useWizardStackId();
   const { target, pending } = useScanTarget();
+  const { waiting } = useWaitingReposState(door === "setup" ? (projectId ?? undefined) : undefined);
+  const appRepos = useWizardAppRepos();
+  const deployed = !!waiting && waiting.length === 0 && !!appRepos && appRepos.length > 0;
   const scan = seed === "idle" ? (scanned && !candidate ? "empty" : "idle") : seed;
-  return { door, project: !!projectId, stack, appRepo: !!target || pending, candidate, scan };
+  return { door, project: !!projectId, stack, appRepo: !!target || pending, deployed, candidate, scan };
 };
 
 export const useWizardStepView = (step: WizardStepId): StepView => wizardStepView(step, useWizardFacts());

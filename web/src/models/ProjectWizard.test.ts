@@ -24,7 +24,9 @@ const everyFacts = (): WizardFacts[] =>
   doors.flatMap((door) =>
     bools.flatMap((project) =>
       bools.flatMap((stack) =>
-        bools.flatMap((appRepo) => bools.flatMap((candidate) => scans.map((scan) => ({ door, project, stack, appRepo, candidate, scan })))),
+        bools.flatMap((appRepo) =>
+          bools.flatMap((deployed) => bools.flatMap((candidate) => scans.map((scan) => ({ door, project, stack, appRepo, deployed, candidate, scan })))),
+        ),
       ),
     ),
   );
@@ -69,12 +71,13 @@ describe("wizardStepView", () => {
   });
 
   it("shows the scan's own state while there is no candidate, and the form once there is one", () => {
-    const base: WizardFacts = { door: "setup", project: true, stack: false, appRepo: true, candidate: false, scan: "running" };
+    const base: WizardFacts = { door: "setup", project: true, stack: false, appRepo: true, deployed: false, candidate: false, scan: "running" };
     expect(wizardStepView("service", base)).toEqual({ kind: "scanning" });
     expect(wizardStepView("service", { ...base, scan: "failed" })).toEqual({ kind: "scanFailed" });
     expect(wizardStepView("deploy", { ...base, scan: "empty" })).toEqual({ kind: "nothingFound" });
     expect(wizardStepView("deploy", { ...base, candidate: true })).toEqual({ kind: "form" });
     expect(wizardStepView("deploy", { ...base, stack: true })).toEqual({ kind: "summary" });
+    expect(wizardStepView("deploy", { ...base, appRepo: false, deployed: true })).toEqual({ kind: "deployed" });
   });
 });
 

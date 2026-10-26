@@ -78,6 +78,8 @@ export interface WizardFacts {
   stack: boolean;
   // An app repository is attached or picked and no service builds from it yet.
   appRepo: boolean;
+  // In the setup run, app repositories are attached and every one already deploys from a service.
+  deployed: boolean;
   // A scan with something to build is loaded.
   candidate: boolean;
   // The scan that fills in for a missing candidate: reading, errored, or finished with nothing to build.
@@ -90,6 +92,7 @@ export type StepView =
   | { kind: "scanning" }
   | { kind: "scanFailed" }
   | { kind: "nothingFound" }
+  | { kind: "deployed" }
   | { kind: "needs"; needs: NeedsStep };
 
 // The steps whose product the others build on.
@@ -107,7 +110,7 @@ const scanView = (scan: WizardFacts["scan"]): StepView => {
 const buildView = (f: WizardFacts): StepView => {
   if (f.stack) return { kind: "summary" };
   if (f.candidate) return form;
-  if (!f.appRepo) return needs("repository");
+  if (!f.appRepo) return f.deployed ? { kind: "deployed" } : needs("repository");
   return scanView(f.scan);
 };
 
