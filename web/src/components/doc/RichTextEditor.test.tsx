@@ -1,3 +1,6 @@
+import { Editor } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
+import StarterKit from "@tiptap/starter-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -278,6 +281,35 @@ describe("RichTextEditor", () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("- [x] one\n- [x] two");
+  });
+
+  it("turns a room saved with \"[ ] \" bullets into task items and keeps them in the stored body", async () => {
+    const room = new Y.Doc();
+    const old = new Editor({
+      extensions: [StarterKit.configure({ undoRedo: false }), Collaboration.configure({ fragment: room.getXmlFragment("prosemirror") })],
+    });
+    old.commands.setContent({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Plan" }] },
+        {
+          type: "bulletList",
+          content: ["[ ] one", "[x] two", "plain"].map((text) => ({
+            type: "listItem",
+            content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+          })),
+        },
+      ],
+    });
+    old.destroy();
+
+    const onChange = vi.fn();
+    renderCollabEditor("", onChange, room, false);
+
+    const boxes = await screen.findAllByRole("checkbox");
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([false, true]);
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("Plan\n\n- [ ] one\n- [x] two\n\n- plain");
   });
 
   it("seeds a checklist body into a room that the next visitor can read and edit", async () => {

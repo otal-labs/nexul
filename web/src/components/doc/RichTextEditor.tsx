@@ -1,8 +1,9 @@
-import { Extension, type Editor } from "@tiptap/core";
+import { Extension, type Editor, type JSONContent } from "@tiptap/core";
+import type { Transaction } from "@tiptap/pm/state";
 import Collaboration from "@tiptap/extension-collaboration";
 import { useQueryClient } from "@tanstack/react-query";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import { yCursorPlugin } from "@tiptap/y-tiptap";
+import { yCursorPlugin, ySyncPluginKey } from "@tiptap/y-tiptap";
 import { useEffect, useMemo, useRef } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
@@ -13,6 +14,7 @@ import { DiscordTimeLayer } from "@/components/doc/discordTime/DiscordTimeLayer"
 import { FormatBubbleMenu } from "@/components/doc/FormatBubbleMenu";
 import { TableBubbleMenu } from "@/components/doc/TableBubbleMenu";
 import { extractHeadingsFromJSON, type DocHeading } from "@/components/doc/docHeadings";
+import { upgradedList } from "@/components/doc/legacyChecklist";
 import {
   buildEditorExtensions,
   extractMentionRefs,
@@ -50,7 +52,7 @@ interface RichTextEditorProps {
 // Structured JSON bodies load as-is; anything else is legacy markdown.
 const setBody = (editor: Editor, value: string, emitUpdate = true) => {
   if (isStructuredBody(value)) {
-    editor.commands.setContent(JSON.parse(value), { emitUpdate });
+    editor.commands.setContent(parseBodyToJSON(value), { emitUpdate });
     return;
   }
   editor.commands.setContent(value, { contentType: "markdown", emitUpdate });
@@ -134,6 +136,46 @@ export const RichTextEditor = ({
     seeded.current = true;
     collab.provider.seed(() => setBody(editor, value));
   }, [editor, collab, value]);
+
+  // A room saved before task items holds "[ ] " bullets. Once its replay has landed, the lowest-id editor rewrites them
+  // in one edit, deferred a tick so no replayed update is still to land inside an item it replaces.
+  useEffect(() => {
+    if (!editor || !collab) return;
+    const { awareness } = collab.provider;
+    const mine = collab.doc.clientID;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const upgrade = () => {
+      if (!editor.isEditable) return;
+      const peerEdits = [...awareness.getStates()].some(([id, state]) => id < mine && state.user?.activity === "editing");
+      if (peerEdits) return;
+      const { doc, schema, tr } = editor.state;
+      const edits: { from: number; to: number; next: JSONContent[] }[] = [];
+      doc.descendants((node, pos) => {
+        if (node.type.name !== "bulletList") return true;
+        const next = upgradedList(node.toJSON());
+        if (next) edits.push({ from: pos, to: pos + node.nodeSize, next });
+        return false;
+      });
+      if (edits.length === 0) return;
+      for (const { from, to, next } of edits.reverse()) tr.replaceWith(from, to, next.map((n) => schema.nodeFromJSON(n)));
+      editor.view.dispatch(tr);
+    };
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(upgrade, 0);
+    };
+    const onUpdate = ({ transaction }: { transaction: Transaction }) => {
+      if (transaction.getMeta(ySyncPluginKey)?.isChangeOrigin) schedule();
+    };
+    schedule();
+    editor.on("transaction", onUpdate);
+    awareness.on("change", schedule);
+    return () => {
+      clearTimeout(timer);
+      editor.off("transaction", onUpdate);
+      awareness.off("change", schedule);
+    };
+  }, [editor, collab]);
 
   // Resolves mention refs in one batched query so chips stay live while editing.
   const refs = useMemo(() => extractMentionRefs(parseBodyToJSON(value)), [value]);
