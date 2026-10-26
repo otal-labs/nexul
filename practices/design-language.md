@@ -60,9 +60,10 @@ and the site's build in the contributing page `website.md`.
 
 Content floats over a still light field. The canvas is near-black in dark mode
 and a soft grey in light mode, and behind everything sits a still, soft light
-field: an ember glow top right, a cool blue glow bottom left, a hint of pink
-between. Content sits on raised surfaces, a step lighter than the canvas with
-a hairline ring: frosted panels in the web app, solid cards and sheets on the
+field drawn from the palette: a tint of the brand top right and bottom left, a
+lift of the card between, so a palette never shows a hue that is not its own.
+Content sits on raised surfaces, a step lighter than the canvas with a hairline
+ring: frosted panels in the web app, solid cards and sheets on the
 phone, and on the site's reading pages the canvas itself. One ember accent
 marks what you act on and where you are: the primary action, the active nav
 item, selection, your own messages, checked controls and progress. Focus is
@@ -104,7 +105,7 @@ in the three token files; this table holds the roles.
 | `ring` | `brand` | `brand` | canvas selection and the console glow | site: none; Fumadocs' `fd-ring` is `focus` |
 | `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
-| `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent | phone: colour tokens (`--color-field-warm`, `-pink`, `-cool`) |
+| `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's three glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
 | `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
@@ -692,8 +693,8 @@ remove `×` shows on the row's hover and focus. `TicketPageBody` is the
 reference.
 
 Empty and loading state. `EmptyState` is the orbit mark (the muted icon on a
-card-coloured disc, ringed by two thin orbits stroked from the field's blue
-through pink to `brand`, an ember dot top right and a blue one bottom left),
+card-coloured disc, ringed by two thin orbits stroked from `muted-foreground`
+to `brand`, a brand dot top right and a muted one bottom left),
 then a Fraunces headline at 26px, one plain muted line, and the action. No
 border around it: an empty page reads as a first-run screen, not a
 placeholder box. The `compact` size (list panes, sub-sections) keeps the same
@@ -708,7 +709,7 @@ sits in a card body and lines up with the text around it.
 
 Showcase surfaces. The signed-out pages (home, sign in, invitation), the
 wizard frames and the error page sit on `ShowcaseSurface`: the light field,
-live where a page opts in, the same ember top right, pink between and blue bottom left,
+live where a page opts in, the same brand tint top right, card lift between and brand tint bottom left,
 drifting slowly through a flow field with a little grain (`ShowcaseField`,
 built on the shaders library and coloured from the tokens at runtime, so a
 palette retints it). Signed out it fills the screen; signed in it takes the
@@ -1244,6 +1245,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
+| The light field is derived from the palette, never a fixed hue | The blue and pink glows of the first field showed in every palette: a cool wash behind the sidebar of Ember, Clay and Grove, a magenta bloom beside a teal or blue brand on sign-in, a taupe stain on Zen from a near-black brand at 30%. Each glow is now a relative colour (the brand's hue and chroma at a fixed lightness, so a grey brand adds nothing) or a lift of `card`, held to 40% alpha or less. Rejected: a per-palette field override (a value to keep in step with every palette) and a mix of the brand with the canvas (a dark brand darkens a light canvas into a stain) |
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
 | The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
@@ -1385,7 +1387,7 @@ writing its own.
   changed count fades in 150ms.
 - Empty state (`.empty-state` in `index.css`): a whole-page one turns its
   orbit into place. The outer ring settles from 0.92 (520ms), the dashed one
-  turns in from -40° and 0.9 (620ms), the ember and blue dots swing 75° along
+  turns in from -40° and 0.9 (620ms), the brand and muted dots swing 75° along
   their orbits (700ms, 60 and 100ms in), the disc settles from 0.94 (320ms),
   and the headline, line and action rise 6px over 260ms at 90, 140 and 190ms,
   all `--ease-out`: readable by 350ms, still by 760ms, which a rare first-run
