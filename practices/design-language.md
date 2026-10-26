@@ -376,7 +376,9 @@ Palettes. Appearance settings (`web/src/lib/themePalettes.ts`) override the
 surface and text roles; a palette's `primary` becomes its `brand` (and so the
 field's warm glow) unless it names a brand of its own, and its panels follow
 its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
-zero radius applies to panels too. Every palette holds 4.5:1 for its text
+zero radius applies to panels too, and its field edge is the same hard ink as
+its panel edge. Every palette's field edge stays at least 1.1:1 against its
+card, so a field never vanishes. Every palette holds 4.5:1 for its text
 roles and the label on its accent, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
