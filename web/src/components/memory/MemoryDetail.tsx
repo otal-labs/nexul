@@ -69,8 +69,8 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
         <MemoryRail memoryId={memory.id} currentVersion={memory.version} />
 
         <div className="min-w-0 flex-1">
-          <article className="rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11">
-            <div className="mx-auto max-w-3xl">
+          <article>
+            <div className="max-w-3xl">
               {canWrite && (
                 <div className="mb-6 space-y-3">
                   <Input
