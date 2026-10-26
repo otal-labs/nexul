@@ -901,10 +901,11 @@ never a chip; an active account says nothing, only one that can't sign in
 (Disabled, Removed). Destructive actions that are not the card's job are ghost
 buttons that turn `destructive` on hover, kept apart from the primary action,
 and ask before they act. A card that edits values saves from its footer with
-`SettingsSaveBar`: the strip is always there; Save is an outline button until
-something changes, then Discard and "Unsaved changes" wake and Save turns
-`brand`; once a save lands Save reads Saved with a check for 1.4s. Settings
-that apply the moment they are picked (Appearance) have no Save. Copying uses
+`SettingsSaveBar`: the strip is always there; Save is the primary button,
+disabled (the flat disabled tint) until something changes, then Discard and
+"Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
+Saved with a check for 1.4s. Settings that apply the moment they are picked
+(Appearance) have no Save. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
