@@ -548,7 +548,9 @@ to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
 a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
 page is 48rem wide) holding a reading measure (`max-w-3xl`), and the title
 stays out of the sheet. From a 48rem page the table of contents (a 12rem
-column) sits to its left. A memory's body takes the same sheet.
+column) sits to its left once the body has two headings; with fewer the
+column is not drawn and the sheet takes the width. A memory's body takes the
+same sheet.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
 16px at 1.75, headings in Inter 600 at 20, 18 and 16px for `h1` to `h3` (the

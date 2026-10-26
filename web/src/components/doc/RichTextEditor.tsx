@@ -207,6 +207,8 @@ export const RichTextEditor = ({
   const lastReportedHeadingsKey = useRef<string | null>(null);
   useEffect(() => {
     if (!onHeadingsChange) return;
+    // A joining editor is blank until its room syncs; the first outline reported is a real one, not that gap.
+    if (lastReportedHeadingsKey.current === null && headings.length === 0) return;
     if (lastReportedHeadingsKey.current === headingsKey) return;
     lastReportedHeadingsKey.current = headingsKey;
     onHeadingsChange(headings);

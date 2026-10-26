@@ -53,6 +53,17 @@ describe("DocToc", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("renders nothing for a single heading, and appears once a second one is added", () => {
+    const { container, rerender } = render(<DocToc headings={headings.slice(0, 1)} />);
+    expect(container).toBeEmptyDOMElement();
+
+    rerender(<DocToc headings={headings} />);
+    expect(screen.getByLabelText("On this page")).toBeInTheDocument();
+
+    rerender(<DocToc headings={headings.slice(0, 1)} />);
+    expect(screen.queryByLabelText("On this page")).not.toBeInTheDocument();
+  });
+
   it("renders one link per heading", () => {
     render(<DocToc headings={headings} />);
     expect(screen.getByRole("link", { name: "Storage" })).toBeInTheDocument();
