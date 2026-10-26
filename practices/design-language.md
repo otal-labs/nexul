@@ -528,10 +528,12 @@ mono key as an eyebrow (with the run timer and thread mark trailing on its
 line), the title at full width, the blocked line, then the pills with the
 20px avatar of whoever acts next opposite. A swimlane header is a leading
 chevron, the lane name, and a 56px done bar beside the mono "4/11 tickets".
-An empty column has no well at rest: its header over one muted "No tickets"
-line, so the columns holding work lead. While a card is held every empty
-column takes its `surface-2` well back and shows the dashed slot, still the
-column's full height, as the place a card can land.
+A column has no well at rest, populated or empty: its header (flush with the
+cards' edges) over the cards, or over one muted "No tickets" line, so the
+cards sit on the page panel and the gap and the header separate the columns.
+While a card is held every column takes its `surface-2` well and an empty one
+shows the dashed slot, still the column's full height, as the place a card
+can land.
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
@@ -1226,7 +1228,7 @@ The web app's pattern decisions, each with what it was picked over.
 |---|---|
 | Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
-| Board: an empty column is quiet at rest, a dashed slot only while a card is held | Against the full-height `surface-2` well with a dashed "No tickets" box at rest: with several empty stages the empty columns were the heaviest shapes on the board and pulled the eye from the ones holding work; the well and the slot now appear when a card is held, where they say where it can drop |
+| Board: no column has a well at rest, every one takes it while a card is held | Against the full-height `surface-2` well on every column, and against a well only on populated ones: the page is already a panel, so cards on a well were three nested surfaces, and a well on some columns made two kinds of column side by side; the card's own surface and hairline carry it on the panel, and the well and the dashed slot appear when a card is held, where they say where it can drop |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
 | Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
