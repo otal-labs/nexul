@@ -862,13 +862,21 @@ switch rows (the name over a muted line), which the bulk row never sets. A
 viewer who can't change a list sees it disabled. `PermissionLevels` and
 `PermissionLevelControl` in `web/src/components/access/` are the reference.
 
-Settings card. `SettingsCard` opens with its title in 15px semibold and an
-optional muted description, no rule under them, then the body and the
+Settings card. A card scans in three levels of type, set once in the shared
+components and never per page. The title (`SettingsCard`, the same 16px
+semibold as a dialog title) is `foreground`. A setting's label (`SettingsRow`,
+and a field's label in a form) is 14px medium, `foreground`. A description or
+hint under either (`SettingsHint`: a card's description, a row's, a field's,
+a footer strip's line) is 12px at normal weight in `muted-foreground`, set
+`text-wrap: pretty` at a 1.5 leading. A page, a stepper's step or a dialog tab
+that sits among settings cards takes the same three levels. A label is never
+muted and a hint is never medium. The card opens with its title and an
+optional description, no rule under them, then the body and the
 optional footer strip (`bg-muted/30` behind a hairline). The card's state, or
 one quiet action, sits top right beside the title (`aside`: Up to date,
 Enabled, Registered). Inside, settings are rows (`SettingsRow` in
-`SettingsRows`): the label in 14px medium over a muted one-line description
-on the left, the control on the right once the card is 34rem wide and under
+`SettingsRows`): the label over its description on the left, the control on
+the right once the card is 34rem wide and under
 the text below that; a rule above the first row and between rows. A list
 inside a card keeps the bordered box of hairline rows. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
@@ -1233,7 +1241,8 @@ The web app's pattern decisions, each with what it was picked over.
 | A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the gradient mark; a plain initial on a square in General made the settings look like another project |
-| Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
+| Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a title flowing into its rows keeps the unit whole and saves the rule |
+| Settings type: 16px title, 14px label, 12px muted hint | Replaces the 15px title over 14px descriptions: the title sat one pixel off the dialog title and the description matched the label's size, so a card was two sizes and one weight told them apart, while the field hints beneath the controls were already 12px, a fourth look. Against 13px hints (a pixel under the label does not separate the levels, and it would have meant re-sizing every field hint that already reads at 12px); 12px is the size meta text already uses, and the longest hint in the settings pages (168 characters) still reads as a short paragraph at it |
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
 | Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
 | Theme and mode tiles are the app in miniature | Against swatch dots, which named a palette without showing what it changes; the miniature shows the canvas, the panel, text and the accent in that palette and mode |

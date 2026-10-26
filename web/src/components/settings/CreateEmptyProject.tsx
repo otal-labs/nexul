@@ -1,6 +1,7 @@
 import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateEmptyHarnessProject } from "@/hooks/PairingHooks";
@@ -24,9 +25,9 @@ export const CreateEmptyProject = ({ computerId, onCreated }: CreateEmptyProject
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
+      <SettingsHint>
         Nothing to clone here. An empty project makes a new folder beside the computer's other T3 projects.
-      </p>
+      </SettingsHint>
       <div className="flex flex-wrap gap-2">
         <Input
           aria-label="Folder name"

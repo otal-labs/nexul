@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { ActionButton } from "@/components/action/ActionButton";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
 import { useStackActions } from "@/hooks/useStackActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -84,7 +85,7 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 space-y-1">
         <p className="font-mono text-sm wrap-anywhere">{image}</p>
-        <p className="text-xs text-muted-foreground">Pulls the image again and restarts the container.</p>
+        <SettingsHint>Pulls the image again and restarts the container.</SettingsHint>
       </div>
       <ActionButton
         permission="deploys:write"
@@ -163,9 +164,9 @@ export const StackDeployActions = ({ stack, lastHealthy, image }: StackDeployAct
       {canBuild && <BuildRefForm stack={stack} deploy={deploy} />}
       {canRedeploy && image && <RedeployRow stack={stack} image={image} deploy={deploy} />}
       {!canBuild && !canRedeploy && (
-        <p className="text-sm text-muted-foreground">
+        <SettingsHint>
           This stack has no repository to build from and nothing running to redeploy, so it can't be deployed from here.
-        </p>
+        </SettingsHint>
       )}
     </SettingsCard>
   );

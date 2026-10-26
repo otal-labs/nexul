@@ -1,6 +1,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { normalizeSlugInput, slugify, type WorkspaceGeneralFormData } from "@/models/Workspace";
 
@@ -32,7 +33,7 @@ export const WorkspaceUrlField = ({ savedSlug }: WorkspaceUrlFieldProps) => {
       />
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         {slug !== savedSlug && (
-          <p className="text-xs text-muted-foreground">Links using the old address will stop working.</p>
+          <SettingsHint>Links using the old address will stop working.</SettingsHint>
         )}
         {suggestion !== slug && (
           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={suggest}>

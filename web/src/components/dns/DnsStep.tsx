@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +49,7 @@ export const DnsStep = ({ title, description, state, summary, onChange, last = f
             {title}
           </h2>
           {description && state === "active" && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <SettingsHint className="mt-1">{description}</SettingsHint>
           )}
         </div>
         {state === "done" && onChange && (
@@ -58,7 +59,7 @@ export const DnsStep = ({ title, description, state, summary, onChange, last = f
         )}
       </div>
       {state === "done" && summary && (
-        <div className="dns-step-summary mt-1 text-sm text-muted-foreground">{summary}</div>
+        <SettingsHint className="dns-step-summary mt-1">{summary}</SettingsHint>
       )}
       {state === "active" && children && (
         <div className="dns-step-body mt-4">

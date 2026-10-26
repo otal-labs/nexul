@@ -6,6 +6,7 @@ import { personLabel } from "@nexul/client-core/person";
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
@@ -75,7 +76,7 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           {unconfigured && <SettingsStatus tone="muted">Not connected</SettingsStatus>}
           {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
         </p>
-        <p className="line-clamp-2 text-sm text-pretty text-muted-foreground">{connector.description}</p>
+        <SettingsHint className="line-clamp-2">{connector.description}</SettingsHint>
       </div>
       {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
       {needsApp && <ConnectorAppConfigDialog connector={connector} />}

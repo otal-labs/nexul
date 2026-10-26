@@ -1,6 +1,7 @@
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { ProjectName } from "@/components/project/ProjectName";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useRenameProject } from "@/hooks/ProjectHooks";
 import type { Project } from "@/models/Project";
 
@@ -21,10 +22,10 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
           <div className="flex min-w-0 items-center gap-2 text-base">
             <ProjectName project={project} onRename={(name) => renameProject.mutateAsync({ id: project.id, name })} />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <SettingsHint>
             Prefix <span className="font-mono text-foreground/90">{project.prefix}</span>, so tickets read{" "}
             <span className="font-mono">{project.prefix}-1</span>. It can't change.
-          </p>
+          </SettingsHint>
           <p className="font-mono text-xs text-muted-foreground">created {created}</p>
         </div>
       </div>

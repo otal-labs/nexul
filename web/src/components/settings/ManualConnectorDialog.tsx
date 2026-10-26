@@ -9,6 +9,7 @@ import { api, errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
 import { TickerRow } from "@/components/TickerRow";
 import { ActionButton } from "@/components/action/ActionButton";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -118,7 +119,7 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
                 data-lpignore={f.secret ? "true" : undefined}
                 className="text-base"
               />
-              {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
+              {f.hint && <SettingsHint>{f.hint}</SettingsHint>}
             </div>
           ))}
           {(named || fresh) && (

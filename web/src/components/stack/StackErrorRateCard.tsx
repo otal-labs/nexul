@@ -6,6 +6,7 @@ import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { FormInput } from "@/components/FormInput";
 import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useFetchStackRequests, useUpdateStack } from "@/hooks/StackHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useFlash } from "@/hooks/useFlash";
@@ -77,7 +78,7 @@ export const StackErrorRateCard = ({ stack }: StackErrorRateCardProps) => {
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1 space-y-0.5">
             <p className="text-sm font-medium">{SWITCH}</p>
-            <p className="text-sm text-muted-foreground">{blocked ? off : `Trips on ${ruleText(rule)}. Everyone watching the stack is told when it trips and when it ends.`}</p>
+            <SettingsHint>{blocked ? off : `Trips on ${ruleText(rule)}. Everyone watching the stack is told when it trips and when it ends.`}</SettingsHint>
           </div>
           <ActionSwitch
             permission="stacks:write"

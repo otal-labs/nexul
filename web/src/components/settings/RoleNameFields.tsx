@@ -1,3 +1,4 @@
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
@@ -55,9 +56,9 @@ export const RoleNameFields = ({ creating, name, copiedFrom, copyable: given, on
         )}
       </div>
       {copiedFrom && (
-        <p className="text-xs text-muted-foreground">
+        <SettingsHint>
           Copied from {copiedFrom.name}. Change anything below; {copiedFrom.name} stays as it is.
-        </p>
+        </SettingsHint>
       )}
     </div>
   );

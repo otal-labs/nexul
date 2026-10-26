@@ -13,7 +13,7 @@ interface InterviewTemplateFieldProps {
 export const InterviewTemplateField = ({ id, value, onChange, questionCount, error, readOnly = false }: InterviewTemplateFieldProps) => (
   <div className="space-y-2">
     <div className="flex items-baseline justify-between gap-3">
-      <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
+      <label htmlFor={id} className="text-sm font-medium">
         Template (markdown)
       </label>
       <span className="font-mono text-xs tabular-nums text-muted-foreground">

@@ -1,4 +1,5 @@
 import { PairAgainButton } from "@/components/settings/PairAgainButton";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useListComputers } from "@/hooks/PairingHooks";
 
 interface PairAgainToCloneProps {
@@ -13,7 +14,7 @@ export const PairAgainToClone = ({ computerId }: PairAgainToCloneProps) => {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <p className="text-xs text-muted-foreground">This computer was paired before Nexul could clone there. Pair it again to clone.</p>
+      <SettingsHint>This computer was paired before Nexul could clone there. Pair it again to clone.</SettingsHint>
       <PairAgainButton computer={computer} />
     </div>
   );

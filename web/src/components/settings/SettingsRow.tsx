@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { cn } from "@/lib/utils";
 
 interface SettingsRowProps {
@@ -26,10 +27,10 @@ export const SettingsRow = ({ label, description, htmlFor, children, stacked = f
       )}
     >
       <div className={cn("min-w-0 space-y-1", !stacked && "@[34rem]:max-w-[24rem]")}>
-        <Label {...(htmlFor ? { htmlFor } : {})} className="block text-sm font-medium text-pretty">
+        <Label {...(htmlFor ? { htmlFor } : {})} className="block text-sm font-medium text-pretty text-foreground">
           {label}
         </Label>
-        {description && <div className="text-sm text-pretty text-muted-foreground">{description}</div>}
+        {description && <SettingsHint>{description}</SettingsHint>}
       </div>
       {children && (
         <div className={cn("min-w-0", !stacked && "@[34rem]:flex @[34rem]:shrink-0 @[34rem]:justify-end @[34rem]:w-[min(20rem,50%)]")}>

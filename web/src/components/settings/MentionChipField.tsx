@@ -25,7 +25,7 @@ interface MentionChipFieldProps {
 export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps) => (
   <div className="space-y-5">
     <div>
-      <label htmlFor={id} className="mb-2 block text-xs font-medium text-muted-foreground">
+      <label htmlFor={id} className="mb-2 block text-sm font-medium">
         Format
       </label>
       <input
@@ -51,7 +51,7 @@ export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps)
       </div>
     </div>
     <div className="rounded-md bg-surface-2 px-4 py-5">
-      <p className="mb-3 text-xs font-medium text-muted-foreground">Preview</p>
+      <p className="mb-3 text-sm font-medium">Preview</p>
       <p className="text-sm text-muted-foreground">
         Can you take{" "}
         <span className="mention-chip inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 align-middle text-sm text-foreground">

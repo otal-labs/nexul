@@ -2,6 +2,7 @@ import { useWatch, type Control, type FieldValues, type Path } from "react-hook-
 
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ModelChoice } from "@/components/model/ModelChoice";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
 import { COMPUTER_DEFAULT } from "@/models/ModelPick";
 import type { OptionSetting } from "@/models/Pairing";
@@ -58,7 +59,7 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
           <p className="flex h-9 items-center truncate rounded-md border border-input px-3 text-sm text-muted-foreground">
             {model || provider || defaultLabel}
           </p>
-          <p className="text-xs text-muted-foreground">Turn on a computer to change it.</p>
+          <SettingsHint>Turn on a computer to change it.</SettingsHint>
         </div>
       )}
     </div>

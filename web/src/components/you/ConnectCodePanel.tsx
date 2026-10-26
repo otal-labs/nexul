@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { QrCode } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { IssuedConnectCode } from "@/components/you/IssuedConnectCode";
 import { QrFrame } from "@/components/you/QrFrame";
@@ -41,7 +42,7 @@ export const ConnectCodePanel = ({ issueOnArrival = false }: ConnectCodePanelPro
             </Button>
           }
         >
-          <p className="text-muted-foreground">The code works once, for two minutes.</p>
+          <SettingsHint>The code works once, for two minutes.</SettingsHint>
         </QrFrame>
       )}
       {data && <IssuedConnectCode code={data} onNewCode={generate} generating={isPending} />}

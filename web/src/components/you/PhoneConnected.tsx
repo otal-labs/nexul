@@ -1,5 +1,7 @@
 import { CircleCheck } from "lucide-react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
+
 interface PhoneConnectedProps {
   label: string;
 }
@@ -13,7 +15,7 @@ export const PhoneConnected = ({ label }: PhoneConnectedProps) => (
       </span>
       <div className="min-w-0 space-y-3 text-sm">
         <p className="font-medium">{label} is connected</p>
-        <p className="text-muted-foreground">It's in your devices below. Its code no longer works.</p>
+        <SettingsHint>It's in your devices below. Its code no longer works.</SettingsHint>
       </div>
     </div>
   </div>
