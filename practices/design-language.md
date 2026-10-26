@@ -1020,7 +1020,9 @@ are the reference.
 
 Chat stream. The messages run in one centred column up to 48rem wide, the
 composer under it at the same width, so your bubble on the right never sits a
-panel away from the line it answers. Your own messages are the one bubble
+panel away from the line it answers. The conversation header's
+hairline and background run the panel's width, but its icon and name sit in the
+same column, starting on the messages' left edge. Your own messages are the one bubble
 (`brand`); everyone else's text runs plain under a 32px avatar and a header
 of the name in 13px semibold and the mono clock time (the full time on hover),
 held to 72ch, so a long thread reads as a transcript instead of a stack of
