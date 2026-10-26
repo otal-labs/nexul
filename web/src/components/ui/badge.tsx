@@ -39,9 +39,9 @@ export const Badge = ({ className, variant, asChild = false, ...props }: BadgePr
 };
 
 export interface NoFillBadgeProps extends Omit<React.ComponentProps<"span">, "color"> {
-  /** Tailwind color class for the icon/dot (and text in icon mode), e.g. "text-cyan-400" or "bg-cyan-500". Pass through whatever the caller already computed; this component never owns a color palette of its own. */
+  /** Tailwind color class for the icon (text-*) or the dot (bg-*), e.g. "text-cyan-400" or "bg-cyan-500"; the words stay plain. Pass through whatever the caller already computed; this component never owns a color palette of its own. */
   color: string;
-  /** Set for bounded-enum shapes (ticket type, priority, status): a colored icon leads and text matches. Omit for open-ended shapes (freeform labels/tags): a solid dot leads instead and text stays muted. */
+  /** Set for bounded-enum shapes (ticket type, priority, status): a colored icon leads and the text stays muted (a caller's className may lift it to foreground). Omit for open-ended shapes (freeform labels/tags): a solid dot leads instead and text stays muted. */
   icon?: LucideIcon;
   /** Extra classes for the icon, e.g. a spin for an in-progress state. Ignored in dot mode. */
   iconClassName?: string | undefined;
@@ -57,10 +57,10 @@ export const NoFillBadge = ({ color, icon: Icon, iconClassName, children, classN
     return (
       <span
         data-slot="no-fill-badge"
-        className={cn("inline-flex w-fit items-center gap-1 text-xs font-medium", color, className)}
+        className={cn("inline-flex w-fit items-center gap-1 text-xs font-medium text-muted-foreground", className)}
         {...props}
       >
-        <Icon className={cn("size-3 shrink-0", iconClassName)} aria-hidden />
+        <Icon className={cn("size-3 shrink-0", color, iconClassName)} aria-hidden />
         {children}
       </span>
     );

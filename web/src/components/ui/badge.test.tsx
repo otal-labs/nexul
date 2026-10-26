@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 import { NoFillBadge } from "@/components/ui/badge";
 
 describe("NoFillBadge", () => {
-  it("renders a colored icon and colored text, with no fill/border, when given an icon", () => {
+  it("colors only the icon and leaves the word plain muted text, with no fill/border, when given an icon", () => {
     const { container } = render(
       <NoFillBadge icon={Bug} color="text-red-400">
         bug
       </NoFillBadge>,
     );
     const badge = screen.getByText("bug");
-    expect(badge).toHaveClass("text-red-400");
-    expect(badge).not.toHaveClass("bg-red-400");
-    expect(container.querySelector("svg[aria-hidden]")).toBeInTheDocument();
+    expect(badge).toHaveClass("text-muted-foreground");
+    expect(badge).not.toHaveClass("text-red-400", "bg-red-400");
+    expect(container.querySelector("svg[aria-hidden]")).toHaveClass("text-red-400");
   });
 
   it("renders a solid-color dot and muted text, with no fill/border, when no icon is given", () => {

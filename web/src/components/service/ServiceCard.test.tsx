@@ -69,13 +69,13 @@ describe("ServiceCard", () => {
 
   it("renders the status badge and health dot when a status is provided", () => {
     renderCard(baseService(), DeployStatus.Healthy);
-    expect(screen.getByText("healthy")).toBeInTheDocument();
+    expect(screen.getByText("Succeeded")).toBeInTheDocument();
   });
 
   it("omits the status badge and health dot without a status", () => {
     renderCard(baseService());
-    expect(screen.queryByText("healthy")).not.toBeInTheDocument();
-    expect(screen.queryByText("failed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Succeeded")).not.toBeInTheDocument();
+    expect(screen.queryByText("Failed")).not.toBeInTheDocument();
   });
 
   it("links to the service detail page", () => {

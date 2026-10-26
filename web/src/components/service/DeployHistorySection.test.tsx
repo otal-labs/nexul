@@ -67,8 +67,9 @@ describe("DeployHistorySection", () => {
     expect(screen.getByText("repo build")).toBeInTheDocument();
     expect(screen.queryByText("d-1")).not.toBeInTheDocument();
     expect(screen.queryByText("d-2")).not.toBeInTheDocument();
-    expect(screen.getByText("healthy")).toBeInTheDocument();
-    expect(screen.getByText("failed")).toBeInTheDocument();
+    expect(screen.getByText("Succeeded")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.queryByText("healthy")).not.toBeInTheDocument();
     expect(screen.getByText("3h ago")).toBeInTheDocument();
     expect(screen.getByText("2h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
