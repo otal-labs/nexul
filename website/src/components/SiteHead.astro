@@ -5,6 +5,8 @@ import '@fontsource-variable/jetbrains-mono';
 import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
 import frauncesWoff2 from '../assets/fonts/fraunces-display-latin.woff2?url';
+// The hashed name gives a new card image a URL no unfurler has cached, X included.
+import previewImageUrl from '../assets/social-preview.png?url';
 import { socialMeta } from '../lib/social-meta';
 
 interface Props {
@@ -23,7 +25,7 @@ const fraunces = `@font-face{font-family:'Fraunces Variable';font-style:normal;f
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={url} />
-{socialMeta({ title, description: shareDescription, url, type }).map((tag) => <meta {...tag} />)}
+{socialMeta({ title, description: shareDescription, url, type, image: previewImageUrl }).map((tag) => <meta {...tag} />)}
 <link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
 <link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
 <link rel="preload" as="font" type="font/woff2" href={frauncesWoff2} crossorigin />
