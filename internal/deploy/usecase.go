@@ -70,6 +70,7 @@ type Service struct {
 	outages     OutageRepo
 	desk        TicketDesk
 	crashLinks  CrashTicketRepo
+	notices     NoticeDesk
 	watchers    StackWatchRepo
 	requests    *requestState
 	errorRates  ErrorRateRepo
@@ -409,6 +410,9 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 	if err := s.requireCreate(ctx, stack); err != nil {
 		return nil, err
 	}
+	if err := s.checkCrashNotice(ctx, nil, &stack); err != nil {
+		return nil, err
+	}
 	if err := s.requireAim(ctx, stack.ProjectID, stack.Machine); err != nil {
 		return nil, err
 	}
@@ -552,6 +556,9 @@ func (s *Service) UpdateStack(ctx context.Context, stack Stack) (*Stack, error) 
 		return nil, err
 	}
 	if err := s.checkBranchDeployRules(ctx, &stack); err != nil {
+		return nil, err
+	}
+	if err := s.checkCrashNotice(ctx, existing, &stack); err != nil {
 		return nil, err
 	}
 	if err := s.changeErrorRate(ctx, existing, &stack); err != nil {
@@ -1161,6 +1168,7 @@ func (s *Service) listScope(ctx context.Context, workspaceID string, action perm
 
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.
 func applyStackDefaults(stack Stack) Stack {
+	stack = trimNoticeTarget(stack)
 	stack.EnvMasked = false
 	stack.ErrorRate = stack.ErrorRate.WithDefaults()
 	if stack.Strategy == StrategyCompose && strings.TrimSpace(stack.ComposePath) == "" {

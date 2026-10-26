@@ -54,7 +54,7 @@ func (b botwebhookPoster) PostBotMessage(ctx context.Context, p botwebhook.Post)
 		return "", time.Time{}, fmt.Errorf("%w: %s", apperrs.ErrForbidden, line)
 	}
 	m, err := b.svc.PostBotMessage(ctx, chat.BotPost{
-		ConversationID: p.ConversationID, BotID: p.BotID, CreatorID: p.CreatorID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
+		ID: p.ID, ConversationID: p.ConversationID, BotID: p.BotID, CreatorID: p.CreatorID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
 		Embeds: p.Embeds, Mentions: p.Mentionable, Via: p.Via, Audit: p.Audit,
 	})
 	if errors.Is(err, chat.ErrBotStopped) {

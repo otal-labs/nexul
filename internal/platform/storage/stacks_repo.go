@@ -137,6 +137,7 @@ func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...ev
 			Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
 			ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
 			ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
+			CrashNoticeConversationID: stack.CrashNoticeConversationID, CrashNoticeBotID: stack.CrashNoticeBotID,
 			UpdatedAt: stack.UpdatedAt.Unix(), ID: stack.ID,
 		})
 		if err != nil {
@@ -176,6 +177,7 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 		Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
 		ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
 		ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
+		CrashNoticeConversationID: stack.CrashNoticeConversationID, CrashNoticeBotID: stack.CrashNoticeBotID,
 		CreatedAt: stack.CreatedAt.Unix(), UpdatedAt: stack.UpdatedAt.Unix(),
 	})
 	if err != nil {
@@ -186,18 +188,20 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 
 func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 	stack := &deploy.Stack{
-		ID:            row.ID,
-		ProjectID:     row.ProjectID.String,
-		Name:          row.Name,
-		Slug:          row.Slug,
-		Machine:       row.Machine,
-		Strategy:      deploy.Strategy(row.Strategy),
-		ComposePath:   row.ComposePath,
-		DockerNetwork: row.DockerNetwork,
-		DerivedFrom:   row.DerivedFrom,
-		Branch:        row.Branch,
-		Managed:       row.Managed != 0,
-		CrashTickets:  row.CrashTickets != 0,
+		ID:                        row.ID,
+		ProjectID:                 row.ProjectID.String,
+		Name:                      row.Name,
+		Slug:                      row.Slug,
+		Machine:                   row.Machine,
+		Strategy:                  deploy.Strategy(row.Strategy),
+		ComposePath:               row.ComposePath,
+		DockerNetwork:             row.DockerNetwork,
+		DerivedFrom:               row.DerivedFrom,
+		Branch:                    row.Branch,
+		Managed:                   row.Managed != 0,
+		CrashTickets:              row.CrashTickets != 0,
+		CrashNoticeConversationID: row.CrashNoticeConversationID,
+		CrashNoticeBotID:          row.CrashNoticeBotID,
 		ErrorRate: deploy.ErrorRateRule{
 			Enabled: row.ErrorRateEnabled != 0, Percent: row.ErrorRatePercent, Minutes: int(row.ErrorRateMinutes), MinRequests: int(row.ErrorRateMinRequests),
 		}.WithDefaults(),

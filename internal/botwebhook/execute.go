@@ -117,3 +117,26 @@ func decodeAvatar(dataURI string) (string, []byte, error) {
 	}
 	return "application/octet-stream", data, nil
 }
+
+// Notify posts content into a live bot's conversation as the bot, for the server's own notices, which reach no URL; a
+// derived id makes posting it again change nothing. A deleted bot is ErrUnknownWebhook.
+func (s *Service) Notify(ctx context.Context, botID, id, content string) error {
+	b, err := s.repo.Get(ctx, botID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return ErrUnknownWebhook
+	}
+	if err != nil {
+		return fmt.Errorf("get bot %s: %w", botID, err)
+	}
+	if b.DeletedAt != nil {
+		return ErrUnknownWebhook
+	}
+	_, _, err = s.poster.PostBotMessage(ctx, Post{
+		ID: id, ConversationID: b.ConversationID, BotID: b.ID, CreatorID: b.CreatedBy, Name: b.Name, AvatarURL: avatarPath(b),
+		Body: content, Audit: "server notice",
+	})
+	if errors.Is(err, apperrs.ErrConflict) {
+		return nil
+	}
+	return err
+}

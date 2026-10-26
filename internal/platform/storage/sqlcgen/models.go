@@ -1105,34 +1105,36 @@ type SetupCode struct {
 }
 
 type Stack struct {
-	ID                   string
-	ProjectID            sql.NullString
-	Name                 string
-	Slug                 string
-	Machine              string
-	Strategy             string
-	ComposePath          string
-	Env                  string
-	DockerNetwork        string
-	Ports                string
-	Mounts               string
-	Command              string
-	BuildRepoOwner       string
-	BuildRepoName        string
-	BuildBranch          string
-	BuildDockerfile      string
-	BuildComposePath     string
-	BranchDeployRules    string
-	DerivedFrom          string
-	Branch               string
-	Managed              int64
-	CreatedAt            int64
-	UpdatedAt            int64
-	CrashTickets         int64
-	ErrorRateEnabled     int64
-	ErrorRatePercent     float64
-	ErrorRateMinutes     int64
-	ErrorRateMinRequests int64
+	ID                        string
+	ProjectID                 sql.NullString
+	Name                      string
+	Slug                      string
+	Machine                   string
+	Strategy                  string
+	ComposePath               string
+	Env                       string
+	DockerNetwork             string
+	Ports                     string
+	Mounts                    string
+	Command                   string
+	BuildRepoOwner            string
+	BuildRepoName             string
+	BuildBranch               string
+	BuildDockerfile           string
+	BuildComposePath          string
+	BranchDeployRules         string
+	DerivedFrom               string
+	Branch                    string
+	Managed                   int64
+	CreatedAt                 int64
+	UpdatedAt                 int64
+	CrashTickets              int64
+	ErrorRateEnabled          int64
+	ErrorRatePercent          float64
+	ErrorRateMinutes          int64
+	ErrorRateMinRequests      int64
+	CrashNoticeConversationID string
+	CrashNoticeBotID          string
 }
 
 type StackCrashTicket struct {

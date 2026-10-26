@@ -838,7 +838,8 @@ then Deploy. A service's open outage is one line under its name in the
 Services row: a `destructive` icon and "Down since 10:42" in plain text,
 then the exit code, "out of memory" and the restart count in muted mono.
 Alerts sits after Logs in the section nav, with a Crash tickets card (one
-switch row) and an Error rate card (one switch row stating the rule, its
+switch row), a Crash notices card (a Channel select row, Off first, then a Post as select row of the channel's bots
+after System message while a channel is named, both applying on pick) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname
 or the instance can't read analytics), and under the switch row the rule's three numbers as small number fields saved from the
 footer, whose hint states how it recovers. A stack whose rule is off still shows the Requests card, with one line saying nothing

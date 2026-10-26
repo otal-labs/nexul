@@ -504,22 +504,24 @@ type buildSourcePatchIn struct {
 }
 
 type stackUpdateIn struct {
-	ID                string              `json:"id" jsonschema:"The stack's id, from stack_list."`
-	ProjectID         *string             `json:"project_id,omitempty" jsonschema:"Move the stack to this project, by id from project_list. An empty string leaves it with no project, which only a stack without a build source may be."`
-	Name              *string             `json:"name,omitempty" jsonschema:"A new display name; the slug never changes."`
-	Machine           *string             `json:"machine,omitempty" jsonschema:"Move the stack to the machine with this name, from machine_list; the next deploy runs there. Needs Deploy to on it."`
-	Strategy          *Strategy           `json:"strategy,omitempty" jsonschema:"compose or run."`
-	ComposePath       *string             `json:"compose_path,omitempty" jsonschema:"The compose file's path for the compose strategy."`
-	DockerNetwork     *string             `json:"docker_network,omitempty" jsonschema:"The docker network a run stack's container joins."`
-	Ports             []string            `json:"ports,omitempty" jsonschema:"Replaces the run stack's port mappings, for example 8080:80; send [] to clear them."`
-	Mounts            []string            `json:"mounts,omitempty" jsonschema:"Replaces the run stack's bind mounts, for example /srv/data:/data; send [] to clear them."`
-	Command           []string            `json:"command,omitempty" jsonschema:"Replaces the run stack's command override; send [] to use the image's own."`
-	Env               *envPatchIn         `json:"env,omitempty" jsonschema:"Changes to the environment variables; keys not named keep their values."`
-	BuildSource       *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
-	BranchDeployRules []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
-	CrashTickets      *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
-	ErrorRate         *errorRatePatchIn   `json:"error_rate,omitempty" jsonschema:"Changes to the error-rate rule; fields not sent keep their values."`
-	Watching          *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher of the stack, notified when a service crashes and when it comes back; false stops that for you alone. Needs only read access. Omit to leave it as is."`
+	ID                        string              `json:"id" jsonschema:"The stack's id, from stack_list."`
+	ProjectID                 *string             `json:"project_id,omitempty" jsonschema:"Move the stack to this project, by id from project_list. An empty string leaves it with no project, which only a stack without a build source may be."`
+	Name                      *string             `json:"name,omitempty" jsonschema:"A new display name; the slug never changes."`
+	Machine                   *string             `json:"machine,omitempty" jsonschema:"Move the stack to the machine with this name, from machine_list; the next deploy runs there. Needs Deploy to on it."`
+	Strategy                  *Strategy           `json:"strategy,omitempty" jsonschema:"compose or run."`
+	ComposePath               *string             `json:"compose_path,omitempty" jsonschema:"The compose file's path for the compose strategy."`
+	DockerNetwork             *string             `json:"docker_network,omitempty" jsonschema:"The docker network a run stack's container joins."`
+	Ports                     []string            `json:"ports,omitempty" jsonschema:"Replaces the run stack's port mappings, for example 8080:80; send [] to clear them."`
+	Mounts                    []string            `json:"mounts,omitempty" jsonschema:"Replaces the run stack's bind mounts, for example /srv/data:/data; send [] to clear them."`
+	Command                   []string            `json:"command,omitempty" jsonschema:"Replaces the run stack's command override; send [] to use the image's own."`
+	Env                       *envPatchIn         `json:"env,omitempty" jsonschema:"Changes to the environment variables; keys not named keep their values."`
+	BuildSource               *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
+	BranchDeployRules         []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
+	CrashTickets              *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
+	ErrorRate                 *errorRatePatchIn   `json:"error_rate,omitempty" jsonschema:"Changes to the error-rate rule; fields not sent keep their values."`
+	CrashNoticeConversationID *string             `json:"crash_notice_conversation_id,omitempty" jsonschema:"Posts each crash, error-rate episode and recovery, with a link to its crash ticket, into this channel of the stack's workspace, by id from conversation_list; you must be able to post there. An empty string stops the notices. Changing it without crash_notice_bot_id clears the bot."`
+	CrashNoticeBotID          *string             `json:"crash_notice_bot_id,omitempty" jsonschema:"Posts the notices as this bot of that conversation, by id from botwebhook_list; an empty string posts them as the instance."`
+	Watching                  *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher of the stack, notified when a service crashes and when it comes back; false stops that for you alone. Needs only read access. Omit to leave it as is."`
 }
 
 // errorRatePatchIn changes a stack's error-rate rule: it trips when the share of 5xx answers over the last minutes is
@@ -553,7 +555,8 @@ func stackUpdateTool(s *Service) mcptool.Tool {
 		"Changes a stack's definition; only the fields you send change, and every other field keeps its value. "+
 			"Env changes go through set and unset, so values you never saw are kept; branch_deploy_rules replaces "+
 			"the whole list, and a rule sent without overrides keeps the current overrides of the rule with the same "+
-			"pattern. crash_tickets switches the stack's crash tickets on or off. error_rate sets the rule that watches the "+
+			"pattern. crash_tickets switches the stack's crash tickets on or off, and crash_notice_conversation_id names a "+
+			"channel each crash and recovery is also posted to. error_rate sets the rule that watches the "+
 			"share of 5xx answers (on or off, the percent limit, the minutes and the request floor). watching true or false starts or "+
 			"stops your own notices of the stack's crashes and recoveries, and alone it needs only read access. It does "+
 			"not redeploy: use stack_deploy for that. Returns the updated stack and whether you watch it.",
@@ -604,6 +607,11 @@ func patchStack(cur Stack, in stackUpdateIn) Stack {
 	set(&cur.ComposePath, in.ComposePath)
 	set(&cur.DockerNetwork, in.DockerNetwork)
 	set(&cur.CrashTickets, in.CrashTickets)
+	if in.CrashNoticeConversationID != nil && *in.CrashNoticeConversationID != cur.CrashNoticeConversationID {
+		cur.CrashNoticeBotID = ""
+	}
+	set(&cur.CrashNoticeConversationID, in.CrashNoticeConversationID)
+	set(&cur.CrashNoticeBotID, in.CrashNoticeBotID)
 	cur.ErrorRate = patchErrorRate(cur.ErrorRate, in.ErrorRate)
 	cur.Ports = replaced(cur.Ports, in.Ports)
 	cur.Mounts = replaced(cur.Mounts, in.Mounts)
@@ -892,16 +900,18 @@ type branchRuleResult struct {
 // stackResult is a stack's definition with env values withheld: a stack's env holds secrets such as TUNNEL_TOKEN.
 type stackResult struct {
 	stackSummary
-	ComposePath       string             `json:"compose_path,omitempty"`
-	DockerNetwork     string             `json:"docker_network,omitempty"`
-	Ports             []string           `json:"ports,omitempty"`
-	Mounts            []string           `json:"mounts,omitempty"`
-	Command           []string           `json:"command,omitempty"`
-	EnvKeys           []string           `json:"env_keys"`
-	BranchDeployRules []branchRuleResult `json:"branch_deploy_rules,omitempty"`
-	DerivedFrom       string             `json:"derived_from,omitempty"`
-	CrashTickets      bool               `json:"crash_tickets"`
-	ErrorRate         ErrorRateRule      `json:"error_rate"`
+	ComposePath               string             `json:"compose_path,omitempty"`
+	DockerNetwork             string             `json:"docker_network,omitempty"`
+	Ports                     []string           `json:"ports,omitempty"`
+	Mounts                    []string           `json:"mounts,omitempty"`
+	Command                   []string           `json:"command,omitempty"`
+	EnvKeys                   []string           `json:"env_keys"`
+	BranchDeployRules         []branchRuleResult `json:"branch_deploy_rules,omitempty"`
+	DerivedFrom               string             `json:"derived_from,omitempty"`
+	CrashTickets              bool               `json:"crash_tickets"`
+	ErrorRate                 ErrorRateRule      `json:"error_rate"`
+	CrashNoticeConversationID string             `json:"crash_notice_conversation_id,omitempty"`
+	CrashNoticeBotID          string             `json:"crash_notice_bot_id,omitempty"`
 }
 
 func toStackResult(st *Stack) stackResult {
@@ -916,10 +926,12 @@ func toStackResult(st *Stack) stackResult {
 		stackSummary: toStackSummary(st),
 		ComposePath:  st.ComposePath, DockerNetwork: st.DockerNetwork,
 		Ports: st.Ports, Mounts: st.Mounts, Command: st.Command,
-		EnvKeys:           slices.Sorted(maps.Keys(st.Env)),
-		BranchDeployRules: rules,
-		DerivedFrom:       st.DerivedFrom,
-		CrashTickets:      st.CrashTickets,
-		ErrorRate:         st.ErrorRate,
+		EnvKeys:                   slices.Sorted(maps.Keys(st.Env)),
+		BranchDeployRules:         rules,
+		DerivedFrom:               st.DerivedFrom,
+		CrashTickets:              st.CrashTickets,
+		ErrorRate:                 st.ErrorRate,
+		CrashNoticeConversationID: st.CrashNoticeConversationID,
+		CrashNoticeBotID:          st.CrashNoticeBotID,
 	}
 }

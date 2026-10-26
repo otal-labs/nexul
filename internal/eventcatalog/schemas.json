@@ -6987,6 +6987,14 @@
             "type": "boolean",
             "description": "True when a service crashing opens a ticket in the stack's project."
           },
+          "crash_notice_conversation_id": {
+            "type": "string",
+            "description": "The channel of the stack's workspace that each crash, error-rate episode and recovery is posted to; empty posts nowhere."
+          },
+          "crash_notice_bot_id": {
+            "type": "string",
+            "description": "A bot of that conversation the notices post as; empty posts them as the instance."
+          },
           "error_rate": {
             "type": "object",
             "properties": {
@@ -7294,6 +7302,14 @@
           "crash_tickets": {
             "type": "boolean",
             "description": "True when a service crashing opens a ticket in the stack's project."
+          },
+          "crash_notice_conversation_id": {
+            "type": "string",
+            "description": "The channel of the stack's workspace that each crash, error-rate episode and recovery is posted to; empty posts nowhere."
+          },
+          "crash_notice_bot_id": {
+            "type": "string",
+            "description": "A bot of that conversation the notices post as; empty posts them as the instance."
           },
           "error_rate": {
             "type": "object",

@@ -27,6 +27,11 @@ const stack: Stack = {
 
 const SWITCH = "Open a ticket when a service crashes";
 
+const conversations = [
+  { id: "c-eng", workspace_id: "ws-1", kind: "channel", name: "eng", created_by: "u-1", created_at: "", updated_at: "", private: false },
+  { id: "c-dm", workspace_id: "ws-1", kind: "dm", created_by: "u-1", created_at: "", updated_at: "", private: false },
+];
+
 // The actions wait for the viewer's permissions, so a test settles every read before asserting what is locked.
 const renderSection = async (value: Stack = stack) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -48,6 +53,8 @@ describe("StackAlertsSection", () => {
     mocks.held = ["stacks:write"];
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/permissions/explain") return { data: { effective: [] } };
+      if (url === "/api/chat/conversations") return { data: conversations };
+      if (url === "/api/conversations/c-eng/botwebhooks") return { data: [{ id: "bot-1", conversation_id: "c-eng", name: "Alerts", created_by: "u-1", created_at: "", updated_at: "", post_count: 0 }] };
       return { data: { role_name: "Member", permissions: [], projects: [{ project_id: "proj-1", actions: mocks.held }] } };
     });
     mocks.patch.mockResolvedValue({ data: stack });
@@ -94,7 +101,7 @@ describe("StackAlertsSection", () => {
     await renderSection();
 
     const regions = screen.getAllByRole("region").map((r) => r.id);
-    expect(regions).toEqual(["crash-tickets", "error-rate"]);
+    expect(regions).toEqual(["crash-tickets", "crash-notices", "error-rate"]);
   });
 
   it("shows the state but does not flip for someone without stacks:write", async () => {
@@ -106,5 +113,37 @@ describe("StackAlertsSection", () => {
     expect(toggle).toBeChecked();
     await user.click(toggle);
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("names a channel from its channels only, then a bot of it, saving the whole stack each time", async () => {
+    const user = userEvent.setup();
+    await renderSection();
+
+    expect(screen.queryByRole("combobox", { name: "Post as" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Channel" }));
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Off", "#eng"]);
+    await user.click(screen.getByRole("option", { name: "#eng" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/stacks/stack-1", { ...stack, crash_notice_conversation_id: "c-eng", crash_notice_bot_id: "" });
+  });
+
+  it("posts as a bot of the named channel, and Off clears both", async () => {
+    const user = userEvent.setup();
+    const aimed = { ...stack, crash_notice_conversation_id: "c-eng" };
+    await renderSection(aimed);
+
+    await user.click(screen.getByRole("combobox", { name: "Post as" }));
+    await user.click(await screen.findByRole("option", { name: "Alerts" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/stacks/stack-1", { ...aimed, crash_notice_bot_id: "bot-1" });
+
+    await user.click(screen.getByRole("combobox", { name: "Channel" }));
+    await user.click(await screen.findByRole("option", { name: "Off" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/stacks/stack-1", { ...aimed, crash_notice_conversation_id: "", crash_notice_bot_id: "" });
+  });
+
+  it("can't name a channel for a stack outside every project", async () => {
+    await renderSection({ ...stack, project_id: "" });
+
+    expect(screen.getByRole("combobox", { name: "Channel" })).toBeDisabled();
+    expect(within(screen.getByRole("region", { name: "Crash notices" })).getByText("Needs a project")).toBeInTheDocument();
   });
 });

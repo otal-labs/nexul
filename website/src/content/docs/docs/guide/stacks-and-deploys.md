@@ -22,7 +22,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, which services are down, and the last hour of requests |
 | **Environment** | Add, change and remove the stack's environment variables |
 | **Logs** | Read each container's output live |
-| **Alerts** | Have a crashed service open a ticket in the stack's project, and set the error-rate rule |
+| **Alerts** | Have a crashed service open a ticket in the stack's project, post crashes in a channel, and set the error-rate rule |
 | **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
 | **Branch deploys** | Deploy other branches as their own copies |
 | **Deploy history** | Every build and deploy, with its log |
@@ -102,6 +102,12 @@ With it on, the first crash of a service opens one ticket in the project, titled
 
 While that ticket is open, the next crash of the same service adds a comment to it instead of opening another, and so does the service coming back. A comment about a recovery does not close the ticket, because a crash that stopped is not a crash that was fixed. Once someone moves the ticket to a done stage, the next crash opens a fresh one. Each service has its own ticket. The comments appear in the ticket's thread, posted for the owner of the project's workspace.
 
+### Crash notices
+
+A stack can also post its crashes in a channel, for instance the one your app's own bot already posts its alerts to, so everything that needs attention lands in one place. Under **Alerts**, pick the channel in **Crash notices**, then under **Post as** either one of that channel's bots or **System message**. It needs the stack to be in a project, you must be able to post in the channel, and changing it needs permission to change the stack. **Off** stops the notices. Agents set it with `stack_update` and its `crash_notice_conversation_id` and `crash_notice_bot_id` fields, and `stack_get` shows them.
+
+Each outage posts once, such as `` `web` crashed on `api`: exit 137, out of memory. ``, and its recovery posts once, such as `` `web` came back on `api` after 3m0s down. It crashed 2 more times meanwhile. `` A restart loop is one outage, so it is one post, not one per restart. With crash tickets on, each post ends with a link to the service's crash ticket. The error-rate rule posts the same way when it trips and when it recovers. If the channel or the bot is deleted, or the bot's creator can no longer post there, the notice is dropped and nothing else changes.
+
 ### Watching a stack
 
 Everyone who can read a stack in a project watches it. A watcher gets one [notification](/docs/guide/docs-tickets-and-board/#inbox) when a service goes down, such as `api crashed on web: exit 137, out of memory`, and one when it is back. A restart loop is one notification, not one per crash. The **Watching** button in the stack page's header turns this off for you alone; the button then reads **Watch**, and pressing it turns notices back on. Someone who joins the project later starts out watching, and one who loses the right to read the stack stops being told. A stack that belongs to no project, such as a gateway, has no watchers.
@@ -131,6 +137,7 @@ Tripping and recovering publish `stack.error_rate_crossed` and `stack.error_rate
 
 - **Watchers** get one notification when the rule trips, such as `5xx at 12% on web over the last 5 minutes, above 5%`, and one when it recovers. See [Watching a stack](#watching-a-stack).
 - **Crash tickets**, when that switch is on, open one ticket for the episode, titled like `api errors: 5xx at 12%`. While that ticket is open, a later episode adds a comment instead, and a recovery adds a comment and leaves it open. A crashed service and an error-rate episode each have their own ticket.
+- **Crash notices**, when the stack names a channel, post the episode and its recovery there. See [Crash notices](#crash-notices).
 - **Stack plays** can start on the moment **Error rate goes over its limit**. See [Plays](/docs/guide/plays/).
 
 ## Logs

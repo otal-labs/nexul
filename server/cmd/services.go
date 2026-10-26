@@ -341,6 +341,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Targets: ticketTestTargets{deploy: deploySvc},
 	})
 	deploySvc.SetCrashTickets(crashTicketDesk{tickets: ticketsSvc, chat: chatSvc, statuses: store.Statuses, types: store.TicketTypes, projects: store.Projects, users: store.Users}, store.CrashTickets)
+	deploySvc.SetCrashNotices(crashNoticeDesk{chat: chatSvc, bots: botwebhookSvc, tickets: ticketsSvc, projects: store.Projects, workspaces: store.Workspaces, users: store.Users, instance: dnsSettingsAdapter{store.Settings}})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
 	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope}
 	computers.tokens = cloneTokens{repos: workspaceSvc, access: accessSvc, git: gitRouter}

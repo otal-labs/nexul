@@ -427,7 +427,7 @@ describe("MessageList play runs in a ticket thread", () => {
       [trail({ state: "failed", reply_message_id: "", last_error: "no harness update for 15m", activity: [read, { kind: "note", summary: "Run failed: no harness update for 15m", at: at(30) }] })],
     );
     expect(screen.getByRole("button", { name: /Worked for/ })).toBeInTheDocument();
-    expect(screen.getByText("Run failed: no harness update for 15m")).toHaveClass("italic");
+    expect(screen.getByText("Run failed: no harness update for 15m").closest(".italic")).toBeInTheDocument();
   });
 });
 

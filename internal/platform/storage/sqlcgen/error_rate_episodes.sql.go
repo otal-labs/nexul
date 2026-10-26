@@ -93,7 +93,7 @@ func (q *Queries) LatestErrorRateEnd(ctx context.Context, stackID string) (sql.N
 }
 
 const listStacksWithErrorRate = `-- name: ListStacksWithErrorRate :many
-SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests FROM stacks WHERE error_rate_enabled = 1 ORDER BY id
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at, crash_tickets, error_rate_enabled, error_rate_percent, error_rate_minutes, error_rate_min_requests, crash_notice_conversation_id, crash_notice_bot_id FROM stacks WHERE error_rate_enabled = 1 ORDER BY id
 `
 
 func (q *Queries) ListStacksWithErrorRate(ctx context.Context) ([]Stack, error) {
@@ -134,6 +134,8 @@ func (q *Queries) ListStacksWithErrorRate(ctx context.Context) ([]Stack, error) 
 			&i.ErrorRatePercent,
 			&i.ErrorRateMinutes,
 			&i.ErrorRateMinRequests,
+			&i.CrashNoticeConversationID,
+			&i.CrashNoticeBotID,
 		); err != nil {
 			return nil, err
 		}
