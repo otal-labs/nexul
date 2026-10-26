@@ -4,6 +4,9 @@ import type { DocHeading } from "@/components/doc/docHeadings";
 import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 
+// A single heading is the title; a list of one is a column spent on nothing.
+const MIN_HEADINGS = 2;
+
 interface DocTocProps {
   headings: DocHeading[];
 }
@@ -27,7 +30,7 @@ export const DocToc = ({ headings }: DocTocProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (headings.length === 0) return;
+    if (headings.length < MIN_HEADINGS) return;
     let observer: IntersectionObserver | null = null;
     let mutation: MutationObserver | null = null;
 
@@ -72,7 +75,7 @@ export const DocToc = ({ headings }: DocTocProps) => {
     el.scrollIntoView?.({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   };
 
-  if (headings.length === 0) return null;
+  if (headings.length < MIN_HEADINGS) return null;
   return (
     <section aria-label="On this page">
       <h2 className={microheaderClass}>

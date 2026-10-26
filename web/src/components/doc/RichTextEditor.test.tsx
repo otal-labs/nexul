@@ -32,6 +32,7 @@ const renderCollabEditor = (
   doc = new Y.Doc(),
   seed = true,
   beforeMount: (provider: RelayCollabProvider) => void = () => {},
+  onHeadingsChange?: (headings: { id: string; text: string; level: number }[]) => void,
 ) => {
   const provider = new RelayCollabProvider({ url: "ws://test/collab", doc });
   beforeMount(provider);
@@ -42,6 +43,7 @@ const renderCollabEditor = (
         <RichTextEditor
           value={value}
           onChange={onChange}
+          {...(onHeadingsChange ? { onHeadingsChange } : {})}
           collab={{ doc, provider, user: { name: "Ann", color: "#3b82f6" }, seed }}
         />
       </MemoryRouter>
@@ -253,6 +255,15 @@ describe("RichTextEditor", () => {
       const last = onHeadingsChange.mock.calls.at(-1)?.[0];
       expect(last).toEqual([{ id: "overview", text: "Overview", level: 1 }]);
     });
+  });
+
+  it("never reports an empty outline while a collab body with headings loads", async () => {
+    const onHeadingsChange = vi.fn();
+    const body = `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"One"}]},{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Two"}]}]}`;
+    renderCollabEditor(body, () => {}, new Y.Doc(), true, () => {}, onHeadingsChange);
+
+    await waitFor(() => expect(onHeadingsChange).toHaveBeenCalled());
+    for (const [outline] of onHeadingsChange.mock.calls) expect(outline).toHaveLength(2);
   });
 
   it.each([
