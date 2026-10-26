@@ -96,3 +96,35 @@ describe("tables", () => {
     expect(bodyToMarkdown(JSON.stringify(parseBodyToJSON(written)))).toBe(written);
   });
 });
+
+describe("task lists", () => {
+  it.each([
+    ["a tight list", "- [ ] a\n- [x] b"],
+    ["nested items and plain bullets", "- [ ] a\n  - [x] nested\n  - plain\n- [ ] c"],
+  ])("loads %s as task items and writes the same markdown back", (_name, markdown) => {
+    const doc = parseBodyToJSON(markdown);
+    expect(doc.content[0].type).toBe("taskList");
+    expect(bodyToMarkdown(JSON.stringify(doc))).toBe(markdown);
+  });
+
+  it("renders a read-only checkbox in static markup", () => {
+    expect(bodyToHtml("- [x] done")).toContain('<input type="checkbox" disabled checked="checked">');
+  });
+
+  it("upgrades a body saved with \"[ ] \" bullets, keeping what follows the marker and plain bullets beside it", () => {
+    const item = (...content: object[]) => ({ type: "listItem", content: [{ type: "paragraph", content }] });
+    const text = (value: string, marks?: object[]) => ({ type: "text", text: value, ...(marks && { marks }) });
+    const old = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [item(text("[x] "), text("done", [{ type: "bold" }])), item(text("[ ] open")), item(text("plain"))],
+        },
+      ],
+    });
+
+    expect(bodyToMarkdown(old)).toBe("- [x] **done**\n- [ ] open\n\n- plain");
+    expect(bodyToHtml(old)).toContain('data-type="taskList"');
+  });
+});

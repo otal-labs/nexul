@@ -67,6 +67,7 @@ func TestMarkdownToJSON_RoundTrip(t *testing.T) {
 		{"list with code", "- item\n\n  ```go\n  x\n  ```"},
 		{"emphasis mixed", "a **b *c* d** e"},
 		{"table with marks, pipes, and alignment", "| Step | **Owner** |\n|:--|:-:|\n| `a \\| b` | [runbook](https://example.com) |\n| x \\| y | one<br>two |"},
+		{"task and plain items", "- a\n- [ ] b\n- c"},
 		{"table between paragraphs", "before\n\n| H |\n|---|\n| v |\n\nafter"},
 	}
 	for _, tt := range tests {
@@ -96,6 +97,9 @@ func TestMarkdownRoundTrip_KeepsSourceText(t *testing.T) {
 		{"prose underscores stay escaped", "plain ticket\\_list and `ticket_list`"},
 		{"table", "| Role | Nexul label | Meaning |\n| --- | --- | --- |\n| needs-triage | `needs_triage` | Needs evaluation |"},
 		{"code in table cells", "| Code | Meaning |\n| --- | --- |\n| `session_checkpoint/1` | `target_not_met` |"},
+		{"task list", "- [ ] a\n- [x] b"},
+		{"nested task list", "- [ ] a\n  - [x] nested\n  - plain\n- [ ] c"},
+		{"task item with marks", "- [x] a **bold** [l](https://example.com)"},
 		{"code span holding a backtick", "run ``a`b_c`` here"},
 		{"code span edged by backticks", "quote `` `x_y` `` literally"},
 		{"code span edged by spaces", "pad `  a_b  ` kept"},
@@ -415,4 +419,41 @@ func TestJSONToMarkdown_EditorTable_RendersGFMTable(t *testing.T) {
 	got, err := JSONToMarkdown(body)
 	require.NoError(t, err)
 	assert.Equal(t, "| Step | **Owner** |\n| --- | ---: |\n| `a\\|b` | x \\| y<br>z |\n|  | [docs](https://example.com) |", got)
+}
+
+func TestToMarkdown_ReadsOldChecklistBulletsAsTasks(t *testing.T) {
+	item := func(runs ...string) string {
+		inline := ""
+		for i, r := range runs {
+			if i > 0 {
+				inline += ","
+			}
+			inline += `{"type":"text","text":"` + r + `"}`
+		}
+		return `{"type":"listItem","content":[{"type":"paragraph","content":[` + inline + `]}]}`
+	}
+	doc := func(blocks ...string) string {
+		return `{"type":"doc","content":[` + strings.Join(blocks, ",") + `]}`
+	}
+	list := func(items ...string) string {
+		return `{"type":"bulletList","content":[` + strings.Join(items, ",") + `]}`
+	}
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"open and done items", doc(list(item("[ ] one"), item("[x] two"), item("[X] three"))), "- [ ] one\n- [x] two\n- [x] three"},
+		{"plain bullets stay beside them", doc(list(item("[ ] one"), item("plain"))), "- [ ] one\n\n- plain"},
+		{"the rest of the first line is kept", doc(list(item("[x] ", "tail"))), "- [x] tail"},
+		{"a nested list is upgraded too", doc(list(`{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"top"}]},` + list(item("[ ] inner")) + `]}`)), "- top\n  - [ ] inner"},
+		{"a bullet that merely mentions a box is untouched", doc(list(item("see [ ] below"))), "- see \\[ \\] below"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToMarkdown(tt.body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

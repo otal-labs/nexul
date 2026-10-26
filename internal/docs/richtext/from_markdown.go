@@ -36,6 +36,14 @@ func MarkdownToDoc(md string) (*Doc, error) {
 func blocks(parent ast.Node, source []byte) ([]Node, error) {
 	var out []Node
 	for child := parent.FirstChild(); child != nil; child = child.NextSibling() {
+		if list, ok := child.(*ast.List); ok {
+			lists, err := blockLists(list, source)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, lists...)
+			continue
+		}
 		n, err := block(child, source)
 		if err != nil {
 			return nil, err
@@ -59,8 +67,6 @@ func block(n ast.Node, source []byte) (Node, error) {
 		return blockFencedCode(v, source), nil
 	case *ast.CodeBlock:
 		return blockCodeBlock(v, source), nil
-	case *ast.List:
-		return blockList(v, source)
 	case *ast.ThematicBreak:
 		return Node{Type: "horizontalRule"}, nil
 	case *ast.AutoLink:
@@ -120,30 +126,74 @@ func blockCodeBlock(v *ast.CodeBlock, source []byte) Node {
 	}
 }
 
-func blockList(v *ast.List, source []byte) (Node, error) {
+// blockLists maps a list to the editor's list nodes. A "- [ ]" item becomes a task item, so a list that mixes
+// task and plain items splits into one list per run, the way the editor's own parser reads it.
+func blockLists(v *ast.List, source []byte) ([]Node, error) {
+	var lists []Node
 	var items []Node
+	var itemsAreTasks bool
+	flush := func() {
+		if len(items) == 0 {
+			return
+		}
+		lists = append(lists, listNode(v, items, itemsAreTasks))
+		items = nil
+	}
 	for item := v.FirstChild(); item != nil; item = item.NextSibling() {
 		if _, ok := item.(*ast.ListItem); !ok {
 			continue
 		}
 		content, err := blocks(item, source)
 		if err != nil {
-			return Node{}, err
+			return nil, err
 		}
-		if len(content) == 0 {
-			content = []Node{{Type: "paragraph"}}
+		checked, isTask := taskState(item)
+		isTask = isTask && !v.IsOrdered()
+		if isTask != itemsAreTasks {
+			flush()
+			itemsAreTasks = isTask
 		}
-		items = append(items, Node{Type: "listItem", Content: content})
+		items = append(items, listItemNode(content, checked, isTask))
 	}
-	typ := "bulletList"
-	var attrs map[string]any
+	flush()
+	return lists, nil
+}
+
+// taskState reads the "[ ]" or "[x]" marker goldmark parsed at the start of a list item's first line.
+func taskState(item ast.Node) (checked, isTask bool) {
+	first := item.FirstChild()
+	if first == nil {
+		return false, false
+	}
+	box, ok := first.FirstChild().(*gast.TaskCheckBox)
+	if !ok {
+		return false, false
+	}
+	return box.IsChecked, true
+}
+
+func listItemNode(content []Node, checked, isTask bool) Node {
+	if len(content) == 0 || isTask && content[0].Type != "paragraph" {
+		content = append([]Node{{Type: "paragraph"}}, content...)
+	}
+	if isTask {
+		return Node{Type: "taskItem", Attrs: map[string]any{"checked": checked}, Content: content}
+	}
+	return Node{Type: "listItem", Content: content}
+}
+
+func listNode(v *ast.List, items []Node, isTask bool) Node {
+	if isTask {
+		return Node{Type: "taskList", Content: items}
+	}
 	if v.IsOrdered() {
-		typ = "orderedList"
+		var attrs map[string]any
 		if v.Start != 1 {
 			attrs = map[string]any{"start": v.Start}
 		}
+		return Node{Type: "orderedList", Attrs: attrs, Content: items}
 	}
-	return Node{Type: typ, Attrs: attrs, Content: items}, nil
+	return Node{Type: "bulletList", Content: items}
 }
 
 func blockAutoLink(v *ast.AutoLink, source []byte) Node {

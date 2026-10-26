@@ -3,6 +3,7 @@ import { Markdown } from "@tiptap/markdown";
 import Mention from "@tiptap/extension-mention";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Image from "@tiptap/extension-image";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { renderTableToMarkdown, Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
@@ -11,7 +12,6 @@ import type { JSONContent } from "@tiptap/core";
 import type { MentionRef } from "@nexul/client-core/mention";
 
 import { CaretOffNodes } from "@/components/doc/caretOffNodes";
-import { ChecklistListItem } from "@/components/doc/checklistListItem";
 import { CodeBlockView } from "@/components/doc/codeBlock/CodeBlockView";
 import { DiscordTimes } from "@/components/doc/discordTime/discordTimeExtension";
 import { AttachmentImageView } from "@/components/doc/image/AttachmentImageView";
@@ -108,8 +108,9 @@ export function buildEditorExtensions({
 }: EditorExtensionOptions = {}) {
   return [
     // Collab mode's undo comes from the Yjs Collaboration extension; StarterKit's UndoRedo must stand down for Mod-Z.
-    StarterKit.configure({ codeBlock: false, listItem: false, ...(collab && { undoRedo: false }) }),
-    ChecklistListItem,
+    StarterKit.configure({ codeBlock: false, ...(collab && { undoRedo: false }) }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
     CodeBlockLowlight.extend({
       addNodeView() {
         return ReactNodeViewRenderer(CodeBlockView);

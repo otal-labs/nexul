@@ -115,13 +115,18 @@ const renderInlineMarkdown = (nodes: RichNode[]): string =>
     })
     .join("");
 
+const listMarker = (list: RichNode, item: RichNode, index: number, start: number): string => {
+  if (list.type === "taskList") return item.attrs?.checked === true ? "- [x] " : "- [ ] ";
+  return list.type === "orderedList" ? `${start + index}. ` : "- ";
+};
+
 const renderListMarkdown = (list: RichNode, depth: number): string => {
   const ordered = list.type === "orderedList";
   const start = ordered && typeof list.attrs?.start === "number" ? (list.attrs.start as number) : 1;
   const indent = "  ".repeat(depth);
   return (list.content ?? [])
     .map((item, i) => {
-      const marker = ordered ? `${start + i}. ` : "- ";
+      const marker = listMarker(list, item, i, start);
       const [first, ...rest] = item.content ?? [];
       const firstLine = first ? renderBlockMarkdown(first, depth) : "";
       const restLines = rest.map((child) => renderBlockMarkdown(child, depth + 1)).join("\n");
@@ -155,7 +160,7 @@ const renderBlockMarkdown = (node: RichNode, depth = 0): string => {
       .map((line) => `> ${line}`)
       .join("\n");
   }
-  if (node.type === "bulletList" || node.type === "orderedList") return renderListMarkdown(node, depth);
+  if (node.type === "bulletList" || node.type === "orderedList" || node.type === "taskList") return renderListMarkdown(node, depth);
   // Unrecognized node: render its inline text rather than dropping it silently.
   return renderInlineMarkdown(node.content ?? []);
 };

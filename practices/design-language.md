@@ -551,13 +551,20 @@ stays out of the sheet. From a 48rem page the table of contents (a 12rem
 column) sits to its left. A memory's body takes the same sheet.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
-16px at 1.75, headings closer to their text than to the paragraph above
-(1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
-muted list markers. Tables are ruled data, not boxed cells: a hairline under
-each row, a muted 13px header over a stronger rule, tabular figures. Images
-take the large radius, a black or white 10% outline drawn inside, and the
-card shadow. Code blocks stay consoles at 13px. A blockquote is a 2px rule in
-`foreground` at 25%.
+16px at 1.75, headings in Inter 600 at 20, 18 and 16px for `h1` to `h3` (the
+28px serif page title stays the top of the hierarchy, and no heading is
+smaller than the text it opens), closer to their text than to the paragraph
+above (1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
+muted list markers. A task item (`- [ ]` and `- [x]` in markdown, stored and
+served unchanged) is the checkbox rule at 16px on the item's first line with
+no bullet: the `input` hairline unticked, a `brand` fill with a
+`brand-foreground` mark ticked, ink focus ring, and the text at full contrast
+either way. Only an editable body toggles it; a read-only body and a rendered
+reply show the state and ignore the pointer. Tables are ruled data, not boxed
+cells: a hairline under each row, a muted 13px header over a stronger rule,
+tabular figures. Images take the large radius, a black or white 10% outline
+drawn inside, and the card shadow. Code blocks stay consoles at 13px. A
+blockquote is a 2px rule in `foreground` at 25%.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
@@ -1234,6 +1241,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 | Roles as a checklist with a Can't give group, chips on the rows | Against held roles as chips with an × beside an "Add role" menu of checkable roles (the menu hid the full set and every reason until it opened) and the roles as plain muted text on Team rows (read like any other meta line); every role and why one is out of reach shows at once |
 | Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
+| Body headings at 20, 18 and 16px, not 26, 21 and 17px | Against the old scale (an `h1` at 26px sat next to the 28px page title and the two read as one level) and 20, 17 and 15px (a 15px `h3` is smaller than the 16px text it opens, so only weight told it from a paragraph); the 1.9em lead-in does the separating the size no longer has to |
 
 ### Motion baseline
 

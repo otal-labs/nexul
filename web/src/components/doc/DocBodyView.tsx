@@ -20,7 +20,7 @@ interface DocBodyViewProps {
 export const DocBodyView = ({ body }: DocBodyViewProps) => {
   const editor = useEditor({
     extensions: buildEditorExtensions(),
-    content: isStructuredBody(body) ? JSON.parse(body) : body,
+    content: isStructuredBody(body) ? parseBodyToJSON(body) : body,
     contentType: isStructuredBody(body) ? "json" : "markdown",
     editable: false,
     immediatelyRender: false,

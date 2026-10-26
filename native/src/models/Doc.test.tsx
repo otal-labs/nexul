@@ -36,6 +36,17 @@ describe("richBodyToMarkdown", () => {
     expect(markdown).toContain("[Spec](/docs/doc-3) [CHK-4](/tickets/t-4)");
   });
 
+  test("keeps a task list's checkboxes as the markdown a person would type", () => {
+    const item = (checked: boolean, text: string) => ({
+      type: "taskItem",
+      attrs: { checked },
+      content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    });
+    const body = JSON.stringify({ type: "doc", content: [{ type: "taskList", content: [item(false, "a"), item(true, "b")] }] });
+
+    expect(richBodyToMarkdown(body)).toBe("- [ ] a\n- [x] b");
+  });
+
   test("passes a non-JSON legacy body through unchanged", () => {
     expect(richBodyToMarkdown("Just plain text")).toBe("Just plain text");
   });

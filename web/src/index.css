@@ -565,16 +565,17 @@ body {
   text-wrap: balance;
 }
 
+/* Body headings stay under the 28px serif page title; none is smaller than the 16px text it opens. */
 .prose-rich h1 {
-  font-size: 1.625rem;
+  font-size: 1.25rem;
 }
 
 .prose-rich h2 {
-  font-size: 1.3125rem;
+  font-size: 1.125rem;
 }
 
 .prose-rich h3 {
-  font-size: 1.0625rem;
+  font-size: 1rem;
 }
 
 .prose-rich p {
@@ -610,6 +611,84 @@ body {
 
 .prose-rich ol {
   list-style: decimal;
+}
+
+/* Task items: a 16px checkbox on the first line, no bullet. The tick is a mask so its colour is the token. */
+.prose-rich ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.prose-rich ul[data-type="taskList"] > li {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.prose-rich ul[data-type="taskList"] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.prose-rich ul[data-type="taskList"] > li > div > p {
+  margin: 0.2em 0;
+}
+
+.prose-rich ul[data-type="taskList"] > li > label {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 1lh;
+  margin-top: 0.2em;
+  user-select: none;
+  /* Only an editable body toggles; a read-only body and a rendered reply show the state and ignore the pointer. */
+  pointer-events: none;
+}
+
+.prose-rich ul[data-type="taskList"] > li > label > input {
+  appearance: none;
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition-property: background-color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-standard);
+}
+
+.prose-rich ul[data-type="taskList"] > li[data-checked="true"] > label > input {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.prose-rich ul[data-type="taskList"] > li > label::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 0.5rem);
+  left: 0;
+  width: 1rem;
+  height: 1rem;
+  background: var(--brand-foreground);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 0.875rem no-repeat;
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition-property: scale, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.prose-rich ul[data-type="taskList"] > li[data-checked="true"] > label::after {
+  opacity: 1;
+  scale: 1;
+  transition-duration: 350ms, 150ms;
+  transition-timing-function: var(--ease-spring-pop);
+}
+
+.prose-rich .tiptap[contenteditable="true"] ul[data-type="taskList"] > li > label {
+  pointer-events: auto;
 }
 
 .prose-rich blockquote {

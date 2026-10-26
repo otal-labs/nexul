@@ -4,6 +4,7 @@ import {
   Heading2Icon,
   Heading3Icon,
   ImageIcon,
+  ListChecksIcon,
   ListIcon,
   ListOrderedIcon,
   MinusIcon,
@@ -75,6 +76,13 @@ export const slashCommandItems: SlashCommandItem[] = [
     icon: ListOrderedIcon,
     keywords: ["list", "ordered", "number", "ol"],
     run: (editor, range) => lines(editor, range).toggleOrderedList().run(),
+  },
+  {
+    id: "taskList",
+    label: "Task list",
+    icon: ListChecksIcon,
+    keywords: ["list", "task", "todo", "checklist", "checkbox"],
+    run: (editor, range) => lines(editor, range).toggleTaskList().run(),
   },
   {
     id: "blockquote",
