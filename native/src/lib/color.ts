@@ -1,16 +1,11 @@
-// A small string hash, so a person or project keeps the same colours on every surface, as on the web.
-const hash = (seed: string): number => {
-  let h = 0;
-  for (const char of seed) h = (Math.imul(h, 31) + char.charCodeAt(0)) | 0;
-  return h >>> 0;
-};
+import { avatarOklch } from "@nexul/client-core/avatarFill";
 
 const toSrgb = (linear: number) => {
   const v = linear <= 0.0031308 ? 12.92 * linear : 1.055 * linear ** (1 / 2.4) - 0.055;
   return Math.round(Math.min(1, Math.max(0, v)) * 255);
 };
 
-// React Native and SVG props take no oklch(), so the web's oklch stops are converted here.
+// React Native and SVG props take no oklch(), so the web's oklch values are converted here.
 export const oklch = (l: number, c: number, h: number): string => {
   const a = c * Math.cos((h * Math.PI) / 180);
   const b = c * Math.sin((h * Math.PI) / 180);
@@ -23,21 +18,8 @@ export const oklch = (l: number, c: number, h: number): string => {
   return `rgb(${toSrgb(r)}, ${toSrgb(g)}, ${toSrgb(bl)})`;
 };
 
-export interface AvatarGradient {
-  // The gradient's angle in degrees and its three stops, dark enough for white initials.
-  turn: number;
-  stops: [string, string, string];
-}
-
-// The web's conic avatar as a linear sweep of the same three seeded hues (SVG on a phone has no conic gradient).
-export const avatarGradient = (seed: string): AvatarGradient => {
-  const h = hash(seed);
-  const hue = h % 360;
-  return {
-    turn: (h >>> 9) % 360,
-    stops: [oklch(0.52, 0.15, hue), oklch(0.49, 0.16, (hue + 50) % 360), oklch(0.46, 0.14, (hue + 140) % 360)],
-  };
-};
+// The web's flat avatar fill, drawn from the same shared seeded colour.
+export const avatarFill = (seed: string): string => oklch(...avatarOklch(seed));
 
 // Tokens arrive as #rrggbbaa; an SVG stop ignores that alpha, so it is split into a colour and an opacity.
 export const svgPaint = (token: string | number | undefined): { color: string; opacity: number } => {

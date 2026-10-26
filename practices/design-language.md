@@ -244,9 +244,13 @@ type](#phone-tokens-and-type).
   popovers and dialogs. No border where the surface step already separates,
   and no box inside a box: never a panel inside a panel, never a card inside a
   card.
-- People without a photo get a seeded conic-gradient avatar
-  (`web/src/lib/avatarGradient.ts`) with white initials, your own profile's
-  preview included; under 24px it shows one initial at 10px.
+- People without a photo get one flat avatar fill
+  (`client-core/avatarFill.ts`, shared by the web and the phone): one of 12
+  evenly spaced hues picked by the login, at a fixed `oklch` lightness 0.5 and
+  chroma 0.11, with white initials that clear 4.5:1 on every hue, your own
+  profile's preview included; under 24px it shows one initial at 10px. Never a
+  gradient or a second hue: the one accent is `brand`. A project's mark and
+  the phone's tiles use the same fill.
 
 ### Motion
 
@@ -357,7 +361,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
 | Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
 | Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
-| Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
+| One flat low-chroma fill per person without a photo | One of 12 hues per login, at a chroma that reads as a colour at 20px, still tells people apart at a glance where one grey circle for everyone did not. Against the seeded multi-hue gradient (the loudest colour on a chat or board in every palette, and a blue-violet or green one competed with the brand beside it) |
 | Stroked icons draw at 1.75 (web and site) | Beside 13 to 14px Inter in dense chrome (the sidebar, menus, the ticket rail, toolbars) a 2px stroke carries more weight than the text it labels; 1.75 sits level with it. Rejected: the library's 2 |
 
 ## Web app
@@ -531,7 +535,7 @@ notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
 
 Board. The header leads with the project mark (`ProjectMark`: the prefix in
-mono on a gradient seeded from it, 44px, 8px radius, the same family as a
+mono on a flat fill seeded from it, 44px, 8px radius, the same fill as a
 person's avatar) beside the title, a mono "55 tickets · 8 people" line under
 it, and the stage summary as the header's action (`BoardStageSummary`): one
 6px bar split by stage in the stage hues, backlog at half strength, over a
@@ -1272,7 +1276,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
-| Project settings lead with the project mark | The sidebar and the board already show the gradient mark; a plain initial on a square in General made the settings look like another project |
+| Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |
 | Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a title flowing into its rows keeps the unit whole and saves the rule |
 | Settings type: 16px title, 14px label, 12px muted hint | Replaces the 15px title over 14px descriptions: the title sat one pixel off the dialog title and the description matched the label's size, so a card was two sizes and one weight told them apart, while the field hints beneath the controls were already 12px, a fourth look. Against 13px hints (a pixel under the label does not separate the levels, and it would have meant re-sizing every field hint that already reads at 12px); 12px is the size meta text already uses, and the longest hint in the settings pages (168 characters) still reads as a short paragraph at it |
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
@@ -1904,7 +1908,7 @@ Showing the product.
   which showed each screen but no thread between them. Passkeys won over
   sign-in with an email code alone: here the code is the passkey flow's
   fallback, so one feature carries both.
-- People show their gradient avatar. The seeded logins carry an underscore and
+- People show their seeded avatar fill. The seeded logins carry an underscore and
   a two-letter suffix (`bob_nw`), which no GitHub account can have, so the
   app's `github.com/<login>.png` fallback finds nothing and no real face
   ships.

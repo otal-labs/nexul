@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { avatarGradient } from "@/lib/avatarGradient";
+import { avatarFill } from "@nexul/client-core/avatarFill";
 
 interface ReviewerAvatarsProps {
   names: string[];
@@ -13,7 +13,7 @@ const AvatarFace = ({ name }: { name: string }) => {
   return (
     <>
       {failed && (
-        <span className="flex size-full items-center justify-center text-white" style={{ backgroundImage: avatarGradient(name) }}>
+        <span className="flex size-full items-center justify-center text-white" style={{ backgroundColor: avatarFill(name) }}>
           {name.charAt(0).toUpperCase()}
         </span>
       )}
