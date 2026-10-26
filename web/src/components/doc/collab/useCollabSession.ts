@@ -28,6 +28,8 @@ export const colorFor = (clientID: number) => PRESENCE_COLORS[clientID % PRESENC
 export interface CollabUser {
   name: string;
   color: string;
+  // The account id: what folds one person's several tabs into one avatar.
+  id?: string;
   activity: "viewing" | "editing";
   // Rides awareness state so every participant sees everyone's real avatar; empty means initials.
   avatar?: string;
@@ -61,11 +63,31 @@ export interface CollabSession {
 }
 
 export interface CollabSessionOptions {
+  userId?: string;
   wsFactory?: (url: string) => LiveSocket;
   avatar?: string;
   /** The query a reset reloads before the fresh session starts; a doc room reloads its doc. */
   reloadKey?: QueryKey;
 }
+
+// One entry per person: every tab is its own awareness client, so clients sharing an account id fold into the lowest one.
+const participantsFrom = (states: Map<number, unknown>): CollabParticipant[] => {
+  const byPerson = new Map<string, CollabParticipant>();
+  for (const [clientID, state] of [...states].sort(([a], [b]) => a - b)) {
+    const u = (state as { user?: Partial<CollabUser> } | null)?.user;
+    if (!u?.name) continue;
+    const key = u.id ?? `client:${clientID}`;
+    if (byPerson.has(key)) continue;
+    byPerson.set(key, {
+      clientID,
+      name: u.name,
+      color: u.color ?? colorFor(clientID),
+      activity: u.activity === "viewing" ? "viewing" : "editing",
+      ...(u.avatar ? { avatar: u.avatar } : {}),
+    });
+  }
+  return [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
 
 // Owns a Y.Doc + provider pair; presence derives from awareness, not a domain event.
 // room is the path below /ws/collab: a doc's id, or notes/<message id> for a note's file.
@@ -101,6 +123,7 @@ export const useCollabSession = (
       name: name || "You",
       color: colorFor(doc.clientID),
       activity: mode === "edit" ? "editing" : "viewing",
+      ...(opts.userId ? { id: opts.userId } : {}),
       ...(opts.avatar ? { avatar: opts.avatar } : {}),
     };
     const provider = new RelayCollabProvider({
@@ -131,21 +154,7 @@ export const useCollabSession = (
     setSession({ doc, provider, user });
 
     const refresh = () => {
-      const states = provider.awareness.getStates();
-      const out: CollabParticipant[] = [];
-      for (const [clientID, state] of states) {
-        const u = (state as { user?: { name?: string; color?: string; activity?: string; avatar?: string } } | null)
-          ?.user;
-        if (!u?.name) continue;
-        out.push({
-          clientID,
-          name: u.name,
-          color: u.color ?? colorFor(clientID),
-          activity: u.activity === "viewing" ? "viewing" : "editing",
-          ...(u.avatar ? { avatar: u.avatar } : {}),
-        });
-      }
-      out.sort((a, b) => a.name.localeCompare(b.name));
+      const out = participantsFrom(provider.awareness.getStates());
       // Keeps prior roster identity when unchanged so typing doesn't re-render the whole tree.
       setParticipants((prev) => (JSON.stringify(prev) === JSON.stringify(out) ? prev : out));
     };
@@ -160,7 +169,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
+  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, opts.userId, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {
