@@ -55,14 +55,13 @@ const KanbanColumnImpl = ({
         transition,
       }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg p-1.5 transition-colors duration-150 ease-standard",
-        // An empty column has no well at rest so the columns holding work lead; it fills in while a card is held, still the same full-height target.
-        empty ? "bg-transparent group-data-[card-drag]/board:bg-surface-2" : "bg-surface-2",
+        // No well at rest, so the cards sit on the page panel; every column takes its well while a card is held, to read as a drop target.
+        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
     >
-      <h4 className="flex items-center gap-1.5 px-1 pt-1">
+      <h4 className="flex items-center gap-1.5 pt-1">
         <span
           ref={setActivatorNodeRef}
           {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
