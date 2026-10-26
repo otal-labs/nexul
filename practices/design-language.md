@@ -478,14 +478,15 @@ dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 300px default, one width shared by every page,
 kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
-search field. Rows are about 56px with 12px sides and hairline dividers: a
-13px medium title over a muted one-line preview, mono meta trailing right. A
+search field. Rows are about 56px with 12px sides and no dividers, the row's
+own padding and its hover lift separate them: a 13px normal-weight title in
+`foreground` over a muted one-line preview, mono meta trailing right. A
 title wraps to two lines at most, the full text in its tooltip, and sets its
 own direction so an Arabic title reads right to left. A
 row whose record already shows its details when open (Docs) is the title alone
 at about 40px, with a muted state icon after it (a lock) and no meta. The
-selected row is the current row (`brand` tint, ink label, 2px `brand` edge), a hover
-`bg-accent/40`, never a boxed border. A row's actions are its right-click menu,
+selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
+`bg-accent/40` lift, never a boxed border. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
 whoever may manage the record's access, then Delete in destructive), each item
@@ -494,7 +495,7 @@ Docs adds Pin first, which needs no permission and lifts the doc into a leading
 Pinned group kept in the browser, and Move to folder after Lock, a submenu of the
 project's folders with the current one checked. A submenu portals out of its
 parent menu, which scrolls and would clip it.
-Group labels are 11px uppercase mono over a hairline. Before a row is picked, the open pane says
+Group labels are 11px uppercase mono, with no rule under them or after the group. Before a row is picked, the open pane says
 so with the compact orbit around the list's own icon (the one its sidebar
 link uses), "Select a doc", a muted count of what the list holds ("27 docs
 in Atlas Platform"), and, where the command palette finds these records,

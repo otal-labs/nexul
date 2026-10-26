@@ -52,7 +52,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
         >
           <span className="flex min-w-0 items-start gap-1.5 text-[13px]">
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
-            <span dir="auto" title={title} className="line-clamp-2 min-w-0 font-medium break-words text-foreground">
+            <span dir="auto" title={title} className={cn("line-clamp-2 min-w-0 break-words text-foreground", selected && "font-medium")}>
               {title}
             </span>
             {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}

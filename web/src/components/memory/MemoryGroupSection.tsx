@@ -19,18 +19,18 @@ export const MemoryGroupSection = ({ group, projectToken, selectedId, forceOpen 
   const open = forceOpen || !collapsed;
   return (
     <section aria-label={group.label}>
-      <div className="flex h-9 items-center border-b border-border pr-2 pl-3">
+      <div className="flex h-9 items-center pr-2 pl-3">
         <FolderToggle name={group.label} open={open} onToggle={() => setCollapsed((c) => !c)} meta={group.memories.length} />
       </div>
       {open && group.memories.length > 0 && (
-        <EnterList className="divide-y divide-border border-b border-border">
+        <EnterList>
           {group.memories.map((memory) => (
             <MemoryListRow key={memory.id} memory={memory} projectToken={projectToken} selected={memory.id === selectedId} />
           ))}
         </EnterList>
       )}
       {open && group.memories.length === 0 && (
-        <EmptyRow className="rounded-none border-0 border-b py-2 pl-13 text-left text-xs">No memories</EmptyRow>
+        <EmptyRow className="rounded-none border-0 py-2 pl-13 text-left text-xs">No memories</EmptyRow>
       )}
     </section>
   );

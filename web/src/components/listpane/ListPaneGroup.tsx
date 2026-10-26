@@ -11,9 +11,9 @@ interface ListPaneGroupProps {
 
 export const ListPaneGroup = ({ label, children }: ListPaneGroupProps) => (
   <section aria-label={label}>
-    <h2 className={cn(microheaderClass, "border-b border-border px-3 pt-4 pb-1.5")}>
+    <h2 className={cn(microheaderClass, "px-3 pt-4 pb-1.5")}>
       {label}
     </h2>
-    <EnterList className="divide-y divide-border">{children}</EnterList>
+    <EnterList>{children}</EnterList>
   </section>
 );
