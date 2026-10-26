@@ -40,11 +40,9 @@ export function parseBodyToJSON(body: string) {
 
 // Legacy markdown docs are parsed through the same pipeline the editor uses so the round-trip stays consistent.
 export function bodyToHtml(body: string): string {
-  if (isStructuredBody(body)) {
-    return generateHTML(JSON.parse(body), extensions);
-  }
-  const json = manager().parse(body);
-  return generateHTML(json, extensions);
+  const json = isStructuredBody(body) ? JSON.parse(body) : manager().parse(body);
+  // The static markup has no node view to refuse a click, so its task checkboxes are disabled.
+  return generateHTML(json, extensions).replaceAll('<input type="checkbox"', '<input type="checkbox" disabled');
 }
 
 export function bodyToMarkdown(body: string): string {

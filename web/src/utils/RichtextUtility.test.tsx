@@ -96,3 +96,18 @@ describe("tables", () => {
     expect(bodyToMarkdown(JSON.stringify(parseBodyToJSON(written)))).toBe(written);
   });
 });
+
+describe("task lists", () => {
+  it.each([
+    ["a tight list", "- [ ] a\n- [x] b"],
+    ["nested items and plain bullets", "- [ ] a\n  - [x] nested\n  - plain\n- [ ] c"],
+  ])("loads %s as task items and writes the same markdown back", (_name, markdown) => {
+    const doc = parseBodyToJSON(markdown);
+    expect(doc.content[0].type).toBe("taskList");
+    expect(bodyToMarkdown(JSON.stringify(doc))).toBe(markdown);
+  });
+
+  it("renders a read-only checkbox in static markup", () => {
+    expect(bodyToHtml("- [x] done")).toContain('<input type="checkbox" disabled checked="checked">');
+  });
+});

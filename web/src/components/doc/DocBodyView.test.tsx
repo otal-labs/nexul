@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +50,17 @@ describe("DocBodyView", () => {
     renderBody(structuredWithMention);
     await screen.findByRole("link", { name: /Fix the bug/ });
     expect(document.querySelector(".tiptap")?.textContent).toContain("see");
+  });
+
+  it("shows a task item's state in a read-only body and refuses a click on it", async () => {
+    renderBody("- [ ] open\n- [x] done");
+    const [open, done] = (await screen.findAllByRole("checkbox")) as HTMLInputElement[];
+    expect([open?.checked, done?.checked]).toEqual([false, true]);
+
+    fireEvent.click(open as HTMLInputElement);
+    fireEvent.click(done as HTMLInputElement);
+
+    expect([open?.checked, done?.checked]).toEqual([false, true]);
   });
 
   it("renders prose from legacy markdown", async () => {

@@ -32,7 +32,7 @@ func renderBlock(n Node) (string, error) {
 		return renderHeading(n), nil
 	case "blockquote":
 		return renderBlockquote(n)
-	case "bulletList", "orderedList":
+	case "bulletList", "orderedList", "taskList":
 		return renderList(n)
 	case "codeBlock":
 		return renderCodeBlock(n), nil
@@ -87,6 +87,9 @@ func renderList(n Node) (string, error) {
 		if n.Type == "orderedList" {
 			marker = fmt.Sprintf("%d. ", start+i)
 		}
+		if n.Type == "taskList" {
+			marker = taskMarker(item)
+		}
 		rendered, err := renderListItem(item, marker)
 		if err != nil {
 			return "", err
@@ -94,6 +97,13 @@ func renderList(n Node) (string, error) {
 		items = append(items, rendered)
 	}
 	return strings.Join(items, "\n"), nil
+}
+
+func taskMarker(item Node) string {
+	if checked, _ := item.Attrs["checked"].(bool); checked {
+		return "- [x] "
+	}
+	return "- [ ] "
 }
 
 func renderCodeBlock(n Node) string {

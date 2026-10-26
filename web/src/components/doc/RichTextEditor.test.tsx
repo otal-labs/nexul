@@ -9,7 +9,7 @@ import { api } from "@/api/client";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { RelayCollabProvider } from "@/lib/collab/provider";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { emptyDocJson, isStructuredBody } from "@/utils/RichtextUtility";
+import { bodyToMarkdown, emptyDocJson, isStructuredBody } from "@/utils/RichtextUtility";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -268,10 +268,22 @@ describe("RichTextEditor", () => {
     expect(body).toContain('"type":"image"');
   });
 
+  it("stores a ticked task item as the same markdown a person would type", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderEditor("- [ ] one\n- [x] two", onChange);
+
+    const [first] = await screen.findAllByRole("checkbox");
+    await user.click(first as HTMLElement);
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(bodyToMarkdown(onChange.mock.calls.at(-1)?.[0] as string).trimEnd()).toBe("- [x] one\n- [x] two");
+  });
+
   it("seeds a checklist body into a room that the next visitor can read and edit", async () => {
     const seeded = new Y.Doc();
     const first = renderCollabEditor("## Why\n\n- [ ] one\n- [x] two\n", () => {}, seeded);
-    await screen.findByText(/one$/);
+    await screen.findAllByRole("checkbox");
     first.unmount();
 
     const joined = new Y.Doc();
@@ -280,7 +292,8 @@ describe("RichTextEditor", () => {
     const onChange = vi.fn();
     renderCollabEditor("", onChange, joined, false);
 
-    expect(await screen.findByText("[x] two")).toBeInTheDocument();
+    const boxes = await screen.findAllByRole("checkbox");
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([false, true]);
     const body = screen.getByLabelText(/doc body/i);
     expect(body).toHaveAttribute("contenteditable", "true");
     await user.click(body);

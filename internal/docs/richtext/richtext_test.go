@@ -67,6 +67,7 @@ func TestMarkdownToJSON_RoundTrip(t *testing.T) {
 		{"list with code", "- item\n\n  ```go\n  x\n  ```"},
 		{"emphasis mixed", "a **b *c* d** e"},
 		{"table with marks, pipes, and alignment", "| Step | **Owner** |\n|:--|:-:|\n| `a \\| b` | [runbook](https://example.com) |\n| x \\| y | one<br>two |"},
+		{"task and plain items", "- a\n- [ ] b\n- c"},
 		{"table between paragraphs", "before\n\n| H |\n|---|\n| v |\n\nafter"},
 	}
 	for _, tt := range tests {
@@ -96,6 +97,9 @@ func TestMarkdownRoundTrip_KeepsSourceText(t *testing.T) {
 		{"prose underscores stay escaped", "plain ticket\\_list and `ticket_list`"},
 		{"table", "| Role | Nexul label | Meaning |\n| --- | --- | --- |\n| needs-triage | `needs_triage` | Needs evaluation |"},
 		{"code in table cells", "| Code | Meaning |\n| --- | --- |\n| `session_checkpoint/1` | `target_not_met` |"},
+		{"task list", "- [ ] a\n- [x] b"},
+		{"nested task list", "- [ ] a\n  - [x] nested\n  - plain\n- [ ] c"},
+		{"task item with marks", "- [x] a **bold** [l](https://example.com)"},
 		{"code span holding a backtick", "run ``a`b_c`` here"},
 		{"code span edged by backticks", "quote `` `x_y` `` literally"},
 		{"code span edged by spaces", "pad `  a_b  ` kept"},

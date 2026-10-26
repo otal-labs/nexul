@@ -11,7 +11,7 @@ Work in Nexul usually starts with a doc: what you want and why. Tickets are the 
 
 Open **Docs** under the project. The list groups docs by folder, newest first; the toggle in its header sorts by last edited instead. **Pin** a doc from its row menu to keep it at the top. Pins and collapsed folders are kept in your browser, so they're yours alone.
 
-Write in the editor with formatting, tables, and code blocks; type `/` for the block menu. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
+Write in the editor with formatting, tables, task lists, and code blocks; type `/` for the block menu. A task list is `- [ ]` lines or **Task list** in that menu; click a box to tick it. A body you can't edit shows its boxes ticked or empty but won't toggle them. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
 
 - **Mention** with `@`: a person, a ticket, or another doc becomes a live chip. Pasting a link to a ticket or doc in the workspace does the same. Mentioning someone tells them in their inbox. A chip you can't open still shows what it points at, with a lock; it doesn't open, and pointing at it says **You don't have access**.
 - **Times** pasted as Discord codes, such as `<t:1792867165:F>`, show in each reader's own zone, as they do in [chat](/docs/guide/chat-and-voice/#times-in-everyones-zone). The body keeps the code: put the caret inside one to edit it.
