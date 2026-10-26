@@ -531,7 +531,7 @@ mono on a gradient seeded from it, 44px, 8px radius, the same family as a
 person's avatar) beside the title, a mono "55 tickets · 8 people" line under
 it, and the stage summary as the header's action (`BoardStageSummary`): one
 6px bar split by stage in the stage hues, backlog at half strength, over a
-legend of dot, stage and mono count. It counts every ticket in the project,
+legend of dot, stage and mono count, which stays on one row at the width of its entries, the bar matching it (under the title when the header is too narrow for both). It counts every ticket in the project,
 whatever the filters show, and moves as the Motion baseline's Board entry says. A card is the
 mono key as an eyebrow (with the run timer and thread mark trailing on its
 line), the title at full width, the blocked line, then the type (its icon in its

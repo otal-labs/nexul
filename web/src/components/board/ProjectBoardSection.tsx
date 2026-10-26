@@ -94,7 +94,7 @@ export const ProjectBoardSection = ({
             </div>
           </div>
         }
-        actions={<BoardStageSummary projectId={projectId} className="w-96" />}
+        actions={<BoardStageSummary projectId={projectId} className="w-fit" />}
       />
       {isLoading && <LoadingDisplay label="Loading board…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
