@@ -367,8 +367,8 @@ roles and the label on its accent, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
 
-Prose links. The web app's prose links are `brand` text: on the doc sheet's
-white card they hold contrast. The site, whose text sits on the canvas, uses
+Prose links. The web app's prose links are `brand` text: on the page
+panel they hold contrast. The site, whose text sits on the canvas, uses
 ink with a `brand` underline instead.
 
 Titles. A page title is Fraunces at 28px, 24px past 50 characters and 20px
@@ -544,13 +544,13 @@ an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
 A list pane (Docs, Memories, Plays, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
-to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
-a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
-page is 48rem wide) holding a reading measure (`max-w-3xl`), and the title
-stays out of the sheet. From a 48rem page the table of contents (a 12rem
-column) sits to its left once the body has two headings; with fewer the
-column is not drawn and the sheet takes the width. A memory's body takes the
-same sheet.
+to its list and folder (Docs › Runbooks), no workspace crumb. Its body sits
+straight on the page panel (no fill, ring or shadow, no side margin) in a
+reading measure (`max-w-3xl`) that starts at the column's left edge, so
+without the table of contents the body lines up with the title. From a 48rem
+page the table of contents (a 12rem column) sits to its left once the body
+has two headings; with fewer the column is not drawn and the body takes the
+width. A memory's body sits on the panel the same way.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
 16px at 1.75, headings in Inter 600 at 20, 18 and 16px for `h1` to `h3` (the
@@ -1219,7 +1219,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
 | Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
-| Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
+| Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
@@ -1810,7 +1810,7 @@ Reading surface. Docs text sits on the canvas with no panel and no sheet. The
 light field shows only from 1280px, at half strength and with its warm and
 cool glows only, where they fall beside the reading column (behind the
 sidebar and the on-this-page rail). Rejected: the field at every width (at
-375px its blue and pink glows sat behind body text), the app's doc sheet
+375px its blue and pink glows sat behind body text), a sheet
 behind the article (narrowed the phone measure by 16px a side, and put the
 console code blocks in a box inside a box) and a frosted panel for the whole
 page (the panel stopped at the rail and doubled the edges on a page that is

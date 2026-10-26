@@ -128,8 +128,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           <article
             ref={articleRef}
             hidden={view === "questions"}
-            // A sheet of its own inside the panel, with page margins, so the doc reads as the thing being written.
-            className="relative rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11"
+            className="relative"
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeave}
           >
