@@ -1,3 +1,4 @@
+import { WizardAlreadyDeployed } from "@/components/wizard/WizardAlreadyDeployed";
 import { WizardBranchesStep } from "@/components/wizard/WizardBranchesStep";
 import { WizardDeployStep } from "@/components/wizard/WizardDeployStep";
 import { WizardDoneStep } from "@/components/wizard/WizardDoneStep";
@@ -76,6 +77,9 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
         </WizardStepSummary>
       )}
       {step === "service" && view.kind === "form" && <WizardServiceStep onDone={() => complete(next(step))} onBack={onBack} onSkip={onSkip} />}
+      {(step === "deploy" || step === "service") && view.kind === "deployed" && (
+        <WizardAlreadyDeployed onContinue={() => goTo("done")} onBack={onBack} />
+      )}
       {(step === "deploy" || step === "service") && (view.kind === "scanning" || view.kind === "scanFailed" || view.kind === "nothingFound") && (
         <WizardScanState
           view={view.kind}
