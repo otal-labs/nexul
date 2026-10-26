@@ -9,7 +9,7 @@ export const UnreadBadge = ({ count, className }: UnreadBadgeProps) =>
   count > 0 && (
     <span
       className={cn(
-        "flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 font-mono text-xs leading-none font-semibold text-primary-foreground tabular-nums",
+        "shrink-0 font-mono text-xs leading-none text-muted-foreground tabular-nums",
         className,
       )}
     >

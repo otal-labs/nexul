@@ -1,7 +1,7 @@
 import { HourglassIcon, ShieldCheck } from "lucide-react";
-import { Link } from "react-router";
 
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
+import { SetupNavLink } from "@/components/sidebar/SetupNavLink";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 
@@ -18,18 +18,7 @@ export const AccessSetupNav = ({ setup, collapsed }: AccessSetupNavProps) => {
   return (
     <>
       {setup === "owner" && (
-        <RailTooltip label="Set up access" collapsed={collapsed}>
-          <Link
-            to={wsPath("/access")}
-            aria-label={collapsed ? "Set up access" : undefined}
-            className={cn(row, "nav-row bg-brand font-medium text-brand-foreground hover:bg-brand/90")}
-          >
-            <span className="flex w-8 shrink-0 justify-center">
-              <ShieldCheck className="size-4" aria-hidden />
-            </span>
-            {!collapsed && <span className="min-w-0 flex-1 truncate text-left">Set up access</span>}
-          </Link>
-        </RailTooltip>
+        <SetupNavLink to={wsPath("/access")} label="Set up access" icon={ShieldCheck} collapsed={collapsed} />
       )}
       {setup === "member" && (
         <RailTooltip label="Projects being set up" collapsed={collapsed}>

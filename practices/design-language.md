@@ -128,7 +128,7 @@ class is drift.
 
 | Role | Web app | Site | Phone |
 |---|---|---|---|
-| Primary action | the primary button, the sidebar's Continue setup row | the home page's copy button, the 404's Open the docs | the send button, once there is text |
+| Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
 | Selection | selected rows, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
 | Your own messages | the chat bubble | | the chat bubble |
@@ -1109,18 +1109,20 @@ Questions while some wait. `DocQuestionsPanel` in
 Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,
 the workspace switcher (a 32px initial tile), then one scroll: Search and
 Inbox, the project (its switcher leads with the project mark at 28px, then
-its pages, or while its setup is open one `brand`-filled Continue setup row,
-the one primary action in the sidebar, and a muted Being set up line for
-whoever cannot change the project), the foldable Workspace section, and last the conversations:
+its pages, or while its setup is open one Continue setup row, a plain nav
+row with a small `warning` dot trailing the label (on the rail, on the
+icon's corner), and a muted Being set up line for whoever cannot change the
+project; Set up access in the workspace's setup works the same), the foldable Workspace section, and last the conversations:
 Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are microheaders with
 their create `+` trailing; a direct message with one other person leads with
 their avatar, a group with the people icon, and a private channel's lock
 takes the place of its `#` or speaker. A row with unread messages sets its
-name in medium `foreground` and trails the count as an `UnreadBadge`, the
-solid ink pill (a muted pill vanished on the light canvas and a bare number
-read as a count of items). Rows are `nav-row`s: muted at rest, the
+name in medium `foreground` and trails the count as an `UnreadBadge`, mono
+`tabular-nums` in `muted-foreground` with no disc (on the rail the count
+sits on the icon's corner over a canvas cut-out). The Automations "WIP" tag
+is a microheader in `muted-foreground`, no hue. Rows are `nav-row`s: muted at rest, the
 `bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
 full-width row scaling from its centre shifts its text). The scroll fades
 out over its last 24px under the account row (`scroll-edge`) instead of
@@ -1188,6 +1190,8 @@ The web app's pattern decisions, each with what it was picked over.
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
 | Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
+| The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |
+| Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |

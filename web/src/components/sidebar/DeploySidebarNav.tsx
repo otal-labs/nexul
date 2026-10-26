@@ -1,11 +1,13 @@
 import { CalendarDays, Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
+import { microheaderClass } from "@/components/Microheader";
 import { type SidebarNavEntry } from "@/components/SidebarNav";
 import { SidebarFoldHeader } from "@/components/sidebar/SidebarFoldHeader";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen, useShowRunnersLink } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
@@ -50,7 +52,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
               end={entry.end ?? false}
             >
               {entry.wip && (
-                <span className="shrink-0 font-mono text-xs text-warning" title="Work in progress">
+                <span className={cn(microheaderClass, "shrink-0")} title="Work in progress">
                   WIP
                 </span>
               )}
