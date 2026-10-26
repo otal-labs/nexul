@@ -109,6 +109,51 @@ func TestSetPerson(t *testing.T) {
 	})
 }
 
+// fakeProjectPeople knows one account, Onik97, by any case of its login; every other login is nobody's and allowed.
+type fakeProjectPeople struct{}
+
+func (fakeProjectPeople) MayOpen(_ context.Context, login, _ string) (Person, bool, error) {
+	if strings.EqualFold(login, "onik97") {
+		return Person{ID: "u-onik", Login: "Onik97"}, true, nil
+	}
+	return Person{Login: login}, true, nil
+}
+
+func TestSetPerson_StoresTheAccount(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	s.SetProjectPeople(fakeProjectPeople{})
+	created, err := s.Create(t.Context(), "p-1", "ticket", "", "", "sam", CreateOptions{Tester: "ONIK97"})
+	require.NoError(t, err)
+	assert.Equal(t, Person{Login: "sam"}, Person{ID: created.DeveloperID, Login: created.Developer}, "a login nobody signed in with is kept as typed")
+	assert.Equal(t, Person{ID: "u-onik", Login: "Onik97"}, Person{ID: created.TesterID, Login: created.Tester})
+
+	got, err := s.SetPerson(t.Context(), created.ID, RoleDeveloper, "onik97")
+	require.NoError(t, err)
+	assert.Equal(t, Person{ID: "u-onik", Login: "Onik97"}, Person{ID: got.DeveloperID, Login: got.Developer})
+	for _, topic := range []string{TopicDeveloperChanged, TopicAssigneeChanged} {
+		evts := repo.eventsFor(topic)
+		require.Len(t, evts, 1, topic)
+		raw, err := json.Marshal(evts[0].Payload)
+		require.NoError(t, err)
+		var e struct {
+			From   string `json:"from"`
+			FromID string `json:"from_id"`
+			To     string `json:"to"`
+			ToID   string `json:"to_id"`
+			Ticket struct {
+				DeveloperID string `json:"developer_id"`
+			} `json:"ticket"`
+		}
+		require.NoError(t, json.Unmarshal(raw, &e))
+		assert.Equal(t, []string{"sam", "", "Onik97", "u-onik", "u-onik"}, []string{e.From, e.FromID, e.To, e.ToID, e.Ticket.DeveloperID}, topic)
+	}
+
+	_, err = s.SetPerson(t.Context(), created.ID, RoleTester, "onik97")
+	require.NoError(t, err)
+	assert.Empty(t, repo.eventsFor(TopicTesterChanged), "the same person typed in another case is no change")
+}
+
 func TestTicketJSON_KeepsDeprecatedAssignee(t *testing.T) {
 	raw, err := json.Marshal(CreatedEvent{Ticket: Ticket{ID: "t-1", Developer: "onik97", Tester: "lena"}})
 	require.NoError(t, err)

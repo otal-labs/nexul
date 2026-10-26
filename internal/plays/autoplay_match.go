@@ -186,6 +186,7 @@ type momentPayload struct {
 	Service  string `json:"service"`
 	OutageID string `json:"outage_id"`
 	From     string `json:"from"`
+	FromID   string `json:"from_id"`
 	To       string `json:"to"`
 	Tester   string `json:"tester"`
 	First    bool   `json:"first"`
@@ -299,6 +300,11 @@ func (r *Runner) personSet(ctx context.Context, m moment, topic string, p moment
 	if p.To == "" {
 		return m, false, nil
 	}
+	if p.FromID != "" {
+		m.from = p.FromID
+		return m, m.targetID != "", nil
+	}
+	// A change published before people were stored as ids names them only by login.
 	if p.From == "" || r.users == nil {
 		return m, m.targetID != "", nil
 	}

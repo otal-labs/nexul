@@ -2,13 +2,14 @@ import { UserIcon } from "lucide-react";
 import { useState } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
+import { ticketDeveloper, ticketTester } from "@nexul/client-core/ticketPeople";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
 import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
 import { rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
-import { usePerson } from "@/hooks/PeopleHooks";
+import { useTicketPerson } from "@/hooks/PeopleHooks";
 import { useSetTicketPerson } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
 import { TicketRole, type Ticket } from "@/models/Ticket";
@@ -23,8 +24,9 @@ const roleLabel = (role: TicketRole) => (role === TicketRole.Tester ? "Tester" :
 export const TicketPersonRow = ({ ticket, role }: TicketPersonRowProps) => {
   const [open, setOpen] = useState(false);
   const setPerson = useSetTicketPerson();
-  const login = role === TicketRole.Tester ? ticket.tester : ticket.developer;
-  const person = usePerson(login);
+  const ref = role === TicketRole.Tester ? ticketTester(ticket) : ticketDeveloper(ticket);
+  const login = ref.login;
+  const person = useTicketPerson(ref);
   const name = login ? personLabel(person) : "";
   const label = roleLabel(role);
 

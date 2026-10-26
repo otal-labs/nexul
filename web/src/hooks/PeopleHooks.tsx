@@ -1,6 +1,7 @@
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { unknownPerson, type PeopleList, type Person } from "@nexul/client-core/person";
+import { findTicketPerson, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
 
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -36,7 +37,7 @@ export const useFetchProjectRoleIds = (projectId: string | undefined) =>
     enabled: !!projectId,
   });
 
-// Chat holds user ids and tickets hold logins, so either resolves.
+// Some records hold user ids and some logins, so either resolves.
 export const findPerson = (people: Person[] | undefined, key: string): Person =>
   people?.find((p) => p.user_id === key || p.login === key) ?? unknownPerson(key);
 
@@ -48,6 +49,10 @@ export const usePersonLookup = (workspaceId: string | undefined) => {
 
 // For surfaces that carry no workspace id of their own (tickets, memories): they belong to the selected workspace.
 export const usePerson = (key: string): Person => usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId))(key);
+
+// A ticket's developer or tester in the selected workspace's directory.
+export const useTicketPerson = (ref: TicketPersonRef): Person =>
+  findTicketPerson(useFetchWorkspacePeople(useWorkspaceStore((s) => s.selectedWorkspaceId)).data, ref);
 
 // Every people list that shows the person, in any workspace or project.
 const refetchShowing = (client: QueryClient, userId: string) =>

@@ -39,27 +39,29 @@ func resolveTicket(ctx context.Context, t *tickets.Service, workspace, idOrKey s
 
 // ticketResult is a ticket as an agent reads it: ids with their human names and the key beside them.
 type ticketResult struct {
-	ID         string           `json:"id"`
-	Key        string           `json:"key,omitempty"`
-	Title      string           `json:"title"`
-	Body       string           `json:"body,omitempty"`
-	ProjectID  string           `json:"project_id"`
-	StatusID   string           `json:"status_id"`
-	Status     string           `json:"status,omitempty"`
-	TypeID     string           `json:"type_id,omitempty"`
-	Type       string           `json:"type,omitempty"`
-	CategoryID string           `json:"category_id,omitempty"`
-	Category   string           `json:"category,omitempty"`
-	Developer  string           `json:"developer,omitempty"`
-	Tester     string           `json:"tester,omitempty"`
-	DueOn      string           `json:"due_on"`
-	Reporter   tickets.Reporter `json:"reporter"`
-	Labels     []string         `json:"labels"`
-	DocID      string           `json:"doc_id,omitempty"`
-	WaitingOn  []string         `json:"waiting_on,omitempty"`
-	CreatedAt  time.Time        `json:"created_at"`
-	UpdatedAt  time.Time        `json:"updated_at"`
-	FinishedAt *time.Time       `json:"finished_at,omitempty"`
+	ID          string           `json:"id"`
+	Key         string           `json:"key,omitempty"`
+	Title       string           `json:"title"`
+	Body        string           `json:"body,omitempty"`
+	ProjectID   string           `json:"project_id"`
+	StatusID    string           `json:"status_id"`
+	Status      string           `json:"status,omitempty"`
+	TypeID      string           `json:"type_id,omitempty"`
+	Type        string           `json:"type,omitempty"`
+	CategoryID  string           `json:"category_id,omitempty"`
+	Category    string           `json:"category,omitempty"`
+	Developer   string           `json:"developer,omitempty"`
+	DeveloperID string           `json:"developer_id,omitempty"`
+	Tester      string           `json:"tester,omitempty"`
+	TesterID    string           `json:"tester_id,omitempty"`
+	DueOn       string           `json:"due_on"`
+	Reporter    tickets.Reporter `json:"reporter"`
+	Labels      []string         `json:"labels"`
+	DocID       string           `json:"doc_id,omitempty"`
+	WaitingOn   []string         `json:"waiting_on,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	FinishedAt  *time.Time       `json:"finished_at,omitempty"`
 }
 
 // names caches each project's prefix and column, type, and category names for one call.
@@ -124,7 +126,7 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 		ID: t.ID, Key: ticketKey(pn.prefix, t.Number), Title: t.Title, Body: body, ProjectID: t.ProjectID,
 		StatusID: string(t.Status), Status: pn.statuses[string(t.Status)],
 		TypeID: t.TypeID, Type: pn.types[t.TypeID], CategoryID: t.CategoryID, Category: pn.categories[t.CategoryID],
-		Developer: t.Developer, Tester: t.Tester, DueOn: t.DueOn, Reporter: t.Reporter, Labels: t.Labels, DocID: t.DocID,
+		Developer: t.Developer, DeveloperID: t.DeveloperID, Tester: t.Tester, TesterID: t.TesterID, DueOn: t.DueOn, Reporter: t.Reporter, Labels: t.Labels, DocID: t.DocID,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt, FinishedAt: t.FinishedAt,
 	}, nil
 }

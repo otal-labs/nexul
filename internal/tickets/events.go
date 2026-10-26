@@ -75,7 +75,9 @@ type StatusChangedEvent struct {
 type PersonChangedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	From   string `json:"from"`
+	FromID string `json:"from_id" jsonschema:"The user id of who held the role before; empty for nobody or a login nobody has signed in with."`
 	To     string `json:"to"`
+	ToID   string `json:"to_id" jsonschema:"The user id of who holds the role now; empty for nobody or a login nobody has signed in with."`
 	Actor  Actor  `json:"actor,omitzero" jsonschema:"Who changed the person: a member, or an automation."`
 }
 
@@ -86,11 +88,13 @@ type DueDateChangedEvent struct {
 	Actor         Actor  `json:"actor,omitzero" jsonschema:"Who changed the due date: a member, or an automation."`
 }
 
-// AssigneeChangedEvent is ticket.assignee_changed's unchanged payload, published beside ticket.developer_changed.
+// AssigneeChangedEvent is ticket.assignee_changed's payload, published beside ticket.developer_changed.
 type AssigneeChangedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	From   string `json:"from"`
+	FromID string `json:"from_id" jsonschema:"The user id of the developer before; empty for nobody or a login nobody has signed in with."`
 	To     string `json:"to"`
+	ToID   string `json:"to_id" jsonschema:"The user id of the developer now; empty for nobody or a login nobody has signed in with."`
 }
 
 // personTopic maps a role to the topic its change publishes on.

@@ -32,7 +32,7 @@ const statuses = [
 ];
 const tickets = [
   { id: "t-1", project_id: "p-1", type_id: "", title: "Fix login", status: "st-todo", position: 0, number: 12, developer: "onik97", tester: "", labels: null },
-  { id: "t-2", project_id: "p-1", type_id: "", title: "Add board", status: "st-doing", position: 0, number: 13, developer: "someone-else", tester: "onik97", labels: null },
+  { id: "t-2", project_id: "p-1", type_id: "", title: "Add board", status: "st-doing", position: 0, number: 13, developer: "someone-else", developer_id: "u2", tester: "Onik97", tester_id: "u1", labels: null },
   { id: "t-3", project_id: "p-1", type_id: "", title: "Ship it", status: "st-shipped", position: 0, number: 14, developer: "", tester: "", labels: null },
 ];
 
@@ -109,6 +109,7 @@ describe("BoardScreen", () => {
     expect(card).toBeTruthy();
   });
 
+  // t-1 names the viewer by login, as a server without ids does; t-2 by id, beside a login in another case.
   test("Only mine hides tickets where the viewer holds neither role", async () => {
     await renderScreen();
     await screen.findByText("Fix login");

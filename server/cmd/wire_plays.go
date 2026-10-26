@@ -346,7 +346,9 @@ func (a playsFacts) Facts(ctx context.Context, targetType plays.TargetType, id s
 	if err != nil {
 		return plays.Facts{}, err
 	}
-	f := plays.Facts{ProjectID: t.ProjectID, Status: string(t.Status), Labels: t.Labels, SourceDoc: t.DocID != ""}
+	f := plays.Facts{
+		ProjectID: t.ProjectID, Status: string(t.Status), Labels: t.Labels, SourceDoc: t.DocID != "", Developer: t.DeveloperID, Tester: t.TesterID,
+	}
 	if f.Type, err = optional(a.store.TicketTypes.TypeName(ctx, t.TypeID)); err != nil {
 		return plays.Facts{}, err
 	}
@@ -355,12 +357,6 @@ func (a playsFacts) Facts(ctx context.Context, targetType plays.TargetType, id s
 	}
 	if c, err := a.store.Categories.Get(ctx, t.CategoryID); t.CategoryID != "" && err == nil {
 		f.Category = c.Name
-	}
-	if f.Developer, err = a.userID(ctx, t.Developer); err != nil {
-		return plays.Facts{}, err
-	}
-	if f.Tester, err = a.userID(ctx, t.Tester); err != nil {
-		return plays.Facts{}, err
 	}
 	prs, err := a.store.Tickets.ListPRLinks(ctx, id)
 	if err != nil {
@@ -372,21 +368,6 @@ func (a playsFacts) Facts(ctx context.Context, targetType plays.TargetType, id s
 	}
 	f.LinkedPR, f.Blocked = len(prs) > 0, len(blockers[id]) > 0
 	return f, nil
-}
-
-// userID resolves a member login to its user id; a login no account holds any more is nobody.
-func (a playsFacts) userID(ctx context.Context, login string) (string, error) {
-	if login == "" {
-		return "", nil
-	}
-	u, err := a.store.Users.GetUserByLogin(ctx, login)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return u.ID, nil
 }
 
 // optional reads a lookup whose row may be gone as empty.

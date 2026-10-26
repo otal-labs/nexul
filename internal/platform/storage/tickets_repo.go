@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -70,8 +71,8 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 		ProjectID:              sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
 		CategoryID:             sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
 		TypeID:                 sql.NullString{String: t.TypeID, Valid: t.TypeID != ""},
-		Developer:              t.Developer,
-		Tester:                 t.Tester,
+		Developer:              cmp.Or(t.DeveloperID, t.Developer),
+		Tester:                 cmp.Or(t.TesterID, t.Tester),
 		ReporterKind:           t.Reporter.Kind,
 		ReporterLogin:          t.Reporter.Login,
 		ReporterAutomationID:   t.Reporter.AutomationID,
@@ -107,7 +108,9 @@ func (r *TicketsRepo) ListByKey(ctx context.Context, prefix string, number int) 
 	}
 	out := make([]tickets.KeyMatch, 0, len(rows))
 	for _, row := range rows {
-		t := toTicket(row.Ticket)
+		t := toTicket(sqlcgen.GetTicketRow{
+			Ticket: row.Ticket, DeveloperID: row.DeveloperID, DeveloperLogin: row.DeveloperLogin, TesterID: row.TesterID, TesterLogin: row.TesterLogin,
+		})
 		labels, err := r.ListLabels(ctx, t.ID)
 		if err != nil {
 			return nil, err
@@ -488,8 +491,8 @@ func (r *TicketsRepo) UpdateType(ctx context.Context, id, typeID string) error {
 	})
 }
 
-// UpdatePerson sets a ticket's developer or tester, enqueueing evts in the same transaction; empty clears it.
-func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.Role, login string, evts ...eventbus.OutboxEvent) error {
+// UpdatePerson sets a ticket's developer or tester, enqueueing evts in the same transaction; nobody clears it.
+func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.Role, p tickets.Person, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		now := time.Now().Unix()
@@ -497,9 +500,9 @@ func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.
 		var err error
 		switch role {
 		case tickets.RoleTester:
-			n, err = q.UpdateTicketTester(ctx, sqlcgen.UpdateTicketTesterParams{Tester: login, UpdatedAt: now, ID: id})
+			n, err = q.UpdateTicketTester(ctx, sqlcgen.UpdateTicketTesterParams{Tester: cmp.Or(p.ID, p.Login), UpdatedAt: now, ID: id})
 		default:
-			n, err = q.UpdateTicketDeveloper(ctx, sqlcgen.UpdateTicketDeveloperParams{Developer: login, UpdatedAt: now, ID: id})
+			n, err = q.UpdateTicketDeveloper(ctx, sqlcgen.UpdateTicketDeveloperParams{Developer: cmp.Or(p.ID, p.Login), UpdatedAt: now, ID: id})
 		}
 		if err != nil {
 			return fmt.Errorf("update ticket %s %s: %w", id, role, classifyWriteErr(err))
@@ -711,21 +714,24 @@ func insertTicketLabels(ctx context.Context, tx *sql.Tx, ticketID string, labels
 	return nil
 }
 
-func toTicket(row sqlcgen.Ticket) *tickets.Ticket {
+func toTicket(people sqlcgen.GetTicketRow) *tickets.Ticket {
+	row := people.Ticket
 	t := &tickets.Ticket{
-		ID:         row.ID,
-		Title:      row.Title,
-		Body:       row.Body,
-		Status:     tickets.Status(row.Status),
-		Position:   int(row.Position),
-		Number:     int(row.Number),
-		DocID:      row.DocID.String,
-		ProjectID:  row.ProjectID.String,
-		CategoryID: row.CategoryID.String,
-		TypeID:     row.TypeID.String,
-		Developer:  row.Developer,
-		Tester:     row.Tester,
-		DueOn:      row.DueOn,
+		ID:          row.ID,
+		Title:       row.Title,
+		Body:        row.Body,
+		Status:      tickets.Status(row.Status),
+		Position:    int(row.Position),
+		Number:      int(row.Number),
+		DocID:       row.DocID.String,
+		ProjectID:   row.ProjectID.String,
+		CategoryID:  row.CategoryID.String,
+		TypeID:      row.TypeID.String,
+		Developer:   people.DeveloperLogin,
+		DeveloperID: people.DeveloperID,
+		Tester:      people.TesterLogin,
+		TesterID:    people.TesterID,
+		DueOn:       row.DueOn,
 		Reporter: tickets.Reporter{
 			Kind:           row.ReporterKind,
 			Login:          row.ReporterLogin,
@@ -741,10 +747,21 @@ func toTicket(row sqlcgen.Ticket) *tickets.Ticket {
 	return t
 }
 
-func toTickets(rows []sqlcgen.Ticket) []*tickets.Ticket {
+// ticketRow is every ticket read's row: the ticket and its developer and tester as ids and logins.
+type ticketRow interface {
+	~struct {
+		Ticket         sqlcgen.Ticket
+		DeveloperID    string
+		DeveloperLogin string
+		TesterID       string
+		TesterLogin    string
+	}
+}
+
+func toTickets[R ticketRow](rows []R) []*tickets.Ticket {
 	var out []*tickets.Ticket
 	for _, row := range rows {
-		out = append(out, toTicket(row))
+		out = append(out, toTicket(sqlcgen.GetTicketRow(row)))
 	}
 	return out
 }

@@ -125,6 +125,8 @@ func TestMomentOf(t *testing.T) {
 		{"developer cleared", "ticket.developer_changed", `{"ticket":{"id":"t-1"},"from":"login-u-1","to":""}`, moment{}, false},
 		{"developer changed hands", "ticket.developer_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"login-u-2","to":"login-u-3","actor":{"kind":"user","user_id":"u-1"}}`,
 			moment{name: MomentTicketDeveloperSet, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb, from: "u-2"}, true},
+		{"developer changed hands, by id", "ticket.developer_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"renamed","from_id":"u-2","to":"login-u-3","actor":{"kind":"user","user_id":"u-1"}}`,
+			moment{name: MomentTicketDeveloperSet, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb, from: "u-2"}, true},
 		{"tester set", "ticket.tester_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"to":"login-u-3","actor":{"kind":"user","user_id":"u-1"}}`,
 			moment{name: MomentTicketTesterSet, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb}, true},
 		{"test failed by its tester", "ticket.test_failed", `{"ticket":{"id":"t-1","project_id":"p-1"},"tester":"login-u-3"}`,

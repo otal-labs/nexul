@@ -4,6 +4,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 
+import { namesAccount, ticketDeveloper, ticketTester } from "@nexul/client-core/ticketPeople";
+
 import { BoardDragContext, useBoardDragState, useLifted } from "@/components/board/boardDrag";
 import { BoardDragLayer } from "@/components/board/BoardDragLayer";
 import { BoardHeader } from "@/components/board/BoardHeader";
@@ -45,7 +47,9 @@ export const BoardScreen = () => {
   const waited = useLoaderShown(isPending);
   const error = projectsError ?? statusesError ?? ticketsError;
   const filteredTickets =
-    mineOnly && me ? tickets?.filter((t) => t.developer === me.user.login || t.tester === me.user.login) : tickets;
+    mineOnly && me
+      ? tickets?.filter((t) => namesAccount(ticketDeveloper(t), me.user) || namesAccount(ticketTester(t), me.user))
+      : tickets;
   const board = project && boardId && statuses && filteredTickets;
   // mutate is stable, unlike the mutation's result object, so the drag context keeps its identity across renders.
   const { mutate: updateStatus, error: updateError } = useUpdateTicketStatus();

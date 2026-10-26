@@ -1,3 +1,5 @@
+import { ticketDeveloper, ticketTester, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
+
 import { BoardFilterBar, type BoardFilters } from "@/components/board/BoardFilterBar";
 import type { DragMoveAction } from "@/components/board/dragMove";
 import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
@@ -21,7 +23,7 @@ interface ProjectBoardSectionProps {
   swimlanes: Swimlane[];
   columns: BoardStatus[];
   filters: BoardFilters;
-  developers: string[];
+  developers: TicketPersonRef[];
   showWaitingForMeToTest: boolean;
   showPlaying: boolean;
   onToggleProject: (projectId: string) => void;
@@ -73,7 +75,7 @@ export const ProjectBoardSection = ({
   const workspaceCrumb = useWorkspaceCrumb();
   const projectTickets = tickets?.filter((t) => t.project_id === projectId);
   const ticketCount = projectTickets?.length;
-  const people = new Set(projectTickets?.flatMap((t) => [t.developer, t.tester]).filter(Boolean)).size;
+  const people = new Set(projectTickets?.flatMap((t) => [ticketDeveloper(t).key, ticketTester(t).key]).filter(Boolean)).size;
   return (
     <>
       <PageHeader

@@ -176,11 +176,11 @@ INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, upda
 INSERT INTO statuses (id, project_id, name, position, kind, created_at, updated_at) VALUES
     ('s-open', 'p-due', 'Open', 1, 'backlog', 1, 1), ('s-done', 'p-due', 'Done', 2, 'done', 1, 1);
 INSERT INTO tickets (id, project_id, title, status, number, developer, due_on, created_at, updated_at) VALUES
-    ('t-due', 'p-due', 'Ship it', 's-open', 7, 'dev', '2026-11-03', 1, 1),
-    ('t-done', 'p-due', 'Shipped', 's-done', 8, 'dev', '2026-11-03', 1, 1),
+    ('t-due', 'p-due', 'Ship it', 's-open', 7, 'u-dev', '2026-11-03', 1, 1),
+    ('t-done', 'p-due', 'Shipped', 's-done', 8, 'u-dev', '2026-11-03', 1, 1),
     ('t-nobody', 'p-due', 'Unowned', 's-open', 9, '', '2026-11-03', 1, 1),
-    ('t-later', 'p-due', 'Later', 's-open', 10, 'dev', '2026-12-03', 1, 1),
-    ('t-none', 'p-due', 'Whenever', 's-open', 11, 'dev', '', 1, 1);`)
+    ('t-later', 'p-due', 'Later', 's-open', 10, 'u-dev', '2026-12-03', 1, 1),
+    ('t-none', 'p-due', 'Whenever', 's-open', 11, 'u-dev', '', 1, 1);`)
 	require.NoError(t, err)
 
 	due, err := s.Meetings.DueTickets(ctx, "2026-11-01", "2026-11-04")

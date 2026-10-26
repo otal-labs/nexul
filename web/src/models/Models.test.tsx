@@ -36,10 +36,10 @@ describe("ticket people", () => {
   });
 
   it("puts the tester on the card only in a testing stage", () => {
-    const t = { developer: "dev", tester: "qa" } as Ticket;
-    expect(cardPerson(t, "testing")).toEqual({ role: "tester", login: "qa" });
-    expect(cardPerson(t, "review")).toEqual({ role: "developer", login: "dev" });
-    expect(cardPerson(t, undefined)).toEqual({ role: "developer", login: "dev" });
+    const t = { developer: "dev", developer_id: "u-dev", tester: "qa", tester_id: "" } as Ticket;
+    expect(cardPerson(t, "testing")).toEqual({ role: "tester", key: "qa", login: "qa" });
+    expect(cardPerson(t, "review")).toEqual({ role: "developer", key: "u-dev", login: "dev" });
+    expect(cardPerson(t, undefined)).toEqual({ role: "developer", key: "u-dev", login: "dev" });
   });
 });
 

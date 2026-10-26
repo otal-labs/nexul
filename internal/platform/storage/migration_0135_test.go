@@ -18,7 +18,7 @@ INSERT INTO tickets (id, title, body, status, developer, tester, created_at, upd
     ('t-stranger', 'Fix logout', '', 'open', 'Sam', '', 1, 1);`)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0135 and every later migration apply on top, as an upgrade would")
+	migrateUpTo(t, db, "0137")
 
 	people := func(id string) (developer, tester string) {
 		require.NoError(t, db.QueryRow(`SELECT developer, tester FROM tickets WHERE id = ?`, id).Scan(&developer, &tester))

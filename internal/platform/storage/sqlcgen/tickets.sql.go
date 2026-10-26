@@ -26,6 +26,34 @@ func (q *Queries) AddTicketLabel(ctx context.Context, arg AddTicketLabelParams) 
 	return err
 }
 
+const claimTicketDeveloperLogin = `-- name: ClaimTicketDeveloperLogin :exec
+UPDATE tickets SET developer = ?1 WHERE lower(developer) = lower(?2)
+`
+
+type ClaimTicketDeveloperLoginParams struct {
+	UserID string
+	Login  string
+}
+
+func (q *Queries) ClaimTicketDeveloperLogin(ctx context.Context, arg ClaimTicketDeveloperLoginParams) error {
+	_, err := q.db.ExecContext(ctx, claimTicketDeveloperLogin, arg.UserID, arg.Login)
+	return err
+}
+
+const claimTicketTesterLogin = `-- name: ClaimTicketTesterLogin :exec
+UPDATE tickets SET tester = ?1 WHERE lower(tester) = lower(?2)
+`
+
+type ClaimTicketTesterLoginParams struct {
+	UserID string
+	Login  string
+}
+
+func (q *Queries) ClaimTicketTesterLogin(ctx context.Context, arg ClaimTicketTesterLoginParams) error {
+	_, err := q.db.ExecContext(ctx, claimTicketTesterLogin, arg.UserID, arg.Login)
+	return err
+}
+
 const createTicket = `-- name: CreateTicket :exec
 INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, created_at, updated_at, finished_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -133,33 +161,50 @@ func (q *Queries) DeleteTicketPRLink(ctx context.Context, arg DeleteTicketPRLink
 }
 
 const getTicket = `-- name: GetTicket :one
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets WHERE id = ?
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.id = ?
 `
 
-func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
+type GetTicketRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
+// A developer or tester is a user id, read back with its login, or a login nobody has signed in with, read back as is.
+func (q *Queries) GetTicket(ctx context.Context, id string) (GetTicketRow, error) {
 	row := q.db.QueryRowContext(ctx, getTicket, id)
-	var i Ticket
+	var i GetTicketRow
 	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Body,
-		&i.Status,
-		&i.DocID,
-		&i.Developer,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ProjectID,
-		&i.CategoryID,
-		&i.TypeID,
-		&i.FinishedAt,
-		&i.Position,
-		&i.Number,
-		&i.Tester,
-		&i.ReporterKind,
-		&i.ReporterLogin,
-		&i.ReporterAutomationID,
-		&i.ReporterAutomationName,
-		&i.DueOn,
+		&i.Ticket.ID,
+		&i.Ticket.Title,
+		&i.Ticket.Body,
+		&i.Ticket.Status,
+		&i.Ticket.DocID,
+		&i.Ticket.Developer,
+		&i.Ticket.CreatedAt,
+		&i.Ticket.UpdatedAt,
+		&i.Ticket.ProjectID,
+		&i.Ticket.CategoryID,
+		&i.Ticket.TypeID,
+		&i.Ticket.FinishedAt,
+		&i.Ticket.Position,
+		&i.Ticket.Number,
+		&i.Ticket.Tester,
+		&i.Ticket.ReporterKind,
+		&i.Ticket.ReporterLogin,
+		&i.Ticket.ReporterAutomationID,
+		&i.Ticket.ReporterAutomationName,
+		&i.Ticket.DueOn,
+		&i.DeveloperID,
+		&i.DeveloperLogin,
+		&i.TesterID,
+		&i.TesterLogin,
 	)
 	return i, err
 }
@@ -639,39 +684,55 @@ func (q *Queries) ListTicketProjects(ctx context.Context, ids []string) ([]ListT
 }
 
 const listTickets = `-- name: ListTickets :many
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets ORDER BY created_at
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+ORDER BY tickets.created_at
 `
 
-func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
+type ListTicketsRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
+func (q *Queries) ListTickets(ctx context.Context) ([]ListTicketsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTickets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ticket
+	var items []ListTicketsRow
 	for rows.Next() {
-		var i Ticket
+		var i ListTicketsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-			&i.DueOn,
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 		); err != nil {
 			return nil, err
 		}
@@ -687,39 +748,55 @@ func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
 }
 
 const listTicketsByDoc = `-- name: ListTicketsByDoc :many
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets WHERE doc_id = ? ORDER BY created_at
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.doc_id = ? ORDER BY tickets.created_at
 `
 
-func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([]Ticket, error) {
+type ListTicketsByDocRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
+func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([]ListTicketsByDocRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTicketsByDoc, docID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ticket
+	var items []ListTicketsByDocRow
 	for rows.Next() {
-		var i Ticket
+		var i ListTicketsByDocRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-			&i.DueOn,
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 		); err != nil {
 			return nil, err
 		}
@@ -735,10 +812,22 @@ func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([
 }
 
 const listTicketsByIDs = `-- name: ListTicketsByIDs :many
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets WHERE id IN (/*SLICE:ids*/?)
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.id IN (/*SLICE:ids*/?)
 `
 
-func (q *Queries) ListTicketsByIDs(ctx context.Context, ids []string) ([]Ticket, error) {
+type ListTicketsByIDsRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
+func (q *Queries) ListTicketsByIDs(ctx context.Context, ids []string) ([]ListTicketsByIDsRow, error) {
 	query := listTicketsByIDs
 	var queryParams []interface{}
 	if len(ids) > 0 {
@@ -754,30 +843,34 @@ func (q *Queries) ListTicketsByIDs(ctx context.Context, ids []string) ([]Ticket,
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ticket
+	var items []ListTicketsByIDsRow
 	for rows.Next() {
-		var i Ticket
+		var i ListTicketsByIDsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-			&i.DueOn,
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 		); err != nil {
 			return nil, err
 		}
@@ -793,9 +886,13 @@ func (q *Queries) ListTicketsByIDs(ctx context.Context, ids []string) ([]Ticket,
 }
 
 const listTicketsByPrefixAndNumber = `-- name: ListTicketsByPrefixAndNumber :many
-SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on, workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login,
+       workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
 FROM tickets
 JOIN projects ON tickets.project_id = projects.id
+LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
 JOIN workspaces ON workspaces.id = projects.workspace_id
 WHERE projects.prefix = ? AND tickets.number = ?
 ORDER BY workspaces.slug, tickets.created_at
@@ -807,9 +904,13 @@ type ListTicketsByPrefixAndNumberParams struct {
 }
 
 type ListTicketsByPrefixAndNumberRow struct {
-	Ticket        Ticket
-	WorkspaceID   string
-	WorkspaceSlug string
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+	WorkspaceID    string
+	WorkspaceSlug  string
 }
 
 // A key repeats across workspaces, and inside one when a moved ticket keeps its number, so every match comes back.
@@ -843,6 +944,10 @@ func (q *Queries) ListTicketsByPrefixAndNumber(ctx context.Context, arg ListTick
 			&i.Ticket.ReporterAutomationID,
 			&i.Ticket.ReporterAutomationName,
 			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 			&i.WorkspaceID,
 			&i.WorkspaceSlug,
 		); err != nil {
@@ -860,39 +965,55 @@ func (q *Queries) ListTicketsByPrefixAndNumber(ctx context.Context, arg ListTick
 }
 
 const listTicketsByProject = `-- name: ListTicketsByProject :many
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets WHERE project_id = ? ORDER BY created_at
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.project_id = ? ORDER BY tickets.created_at
 `
 
-func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullString) ([]Ticket, error) {
+type ListTicketsByProjectRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
+func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullString) ([]ListTicketsByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTicketsByProject, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ticket
+	var items []ListTicketsByProjectRow
 	for rows.Next() {
-		var i Ticket
+		var i ListTicketsByProjectRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-			&i.DueOn,
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 		); err != nil {
 			return nil, err
 		}
@@ -908,11 +1029,14 @@ func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullSt
 }
 
 const listTicketsDueBetween = `-- name: ListTicketsDueBetween :many
-SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, due_on FROM tickets
-WHERE due_on != '' AND due_on >= ?1 AND due_on <= ?2
-  AND project_id IN (SELECT id FROM projects WHERE workspace_id = ?3)
-  AND (?4 OR project_id IN (SELECT value FROM json_each(?5)))
-ORDER BY due_on, id
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.due_on != '' AND tickets.due_on >= ?1 AND tickets.due_on <= ?2
+  AND tickets.project_id IN (SELECT id FROM projects WHERE workspace_id = ?3)
+  AND (?4 OR tickets.project_id IN (SELECT value FROM json_each(?5)))
+ORDER BY tickets.due_on, tickets.id
 `
 
 type ListTicketsDueBetweenParams struct {
@@ -923,8 +1047,16 @@ type ListTicketsDueBetweenParams struct {
 	Readable    interface{}
 }
 
+type ListTicketsDueBetweenRow struct {
+	Ticket         Ticket
+	DeveloperID    string
+	DeveloperLogin string
+	TesterID       string
+	TesterLogin    string
+}
+
 // Due tickets in one workspace's projects, limited to the readable set unless the caller reads them all; the explicit non-empty test is what lets idx_tickets_due_on serve the range.
-func (q *Queries) ListTicketsDueBetween(ctx context.Context, arg ListTicketsDueBetweenParams) ([]Ticket, error) {
+func (q *Queries) ListTicketsDueBetween(ctx context.Context, arg ListTicketsDueBetweenParams) ([]ListTicketsDueBetweenRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTicketsDueBetween,
 		arg.FromOn,
 		arg.ToOn,
@@ -936,30 +1068,34 @@ func (q *Queries) ListTicketsDueBetween(ctx context.Context, arg ListTicketsDueB
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Ticket
+	var items []ListTicketsDueBetweenRow
 	for rows.Next() {
-		var i Ticket
+		var i ListTicketsDueBetweenRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-			&i.DueOn,
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.Ticket.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
 		); err != nil {
 			return nil, err
 		}

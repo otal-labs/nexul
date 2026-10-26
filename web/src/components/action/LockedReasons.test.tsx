@@ -28,6 +28,8 @@ const ticket: Ticket = {
   doc_id: "",
   developer: "alice",
   tester: "",
+  developer_id: "",
+  tester_id: "",
   reporter: { kind: "user", login: "alice" },
   due_on: "",
   labels: ["backend"],

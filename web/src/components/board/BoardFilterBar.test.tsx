@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TicketPersonRef } from "@nexul/client-core/ticketPeople";
+
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { BoardFilterBar, type BoardFilters } from "@/components/board/BoardFilterBar";
@@ -55,6 +57,9 @@ const mockReferenceData = ({
   });
 };
 
+// The stack lists people by key; keyed by login, as a ticket names someone who has not signed in.
+const devs = (...logins: string[]): TicketPersonRef[] => logins.map((login) => ({ key: login, login }));
+
 const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
   projectIds: [],
   categoryId: null,
@@ -70,7 +75,7 @@ const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
 
 const baseProps = {
   projectId: "p-1",
-  developers: [] as string[],
+  developers: [] as TicketPersonRef[],
   showWaitingForMeToTest: false,
   showPlaying: false,
   filters: filters(),
@@ -157,7 +162,7 @@ describe("BoardFilterBar", () => {
     const user = userEvent.setup();
     mockReferenceData({ labels: ["bug"] });
     renderFilterBar({
-      developers: ["alice"],
+      developers: devs("alice"),
       filters: filters({ labels: ["bug"], typeId: "ticket-type-task", statusIds: ["open"], developers: ["alice"] }),
     });
     await openFilterPopover(user);
@@ -191,17 +196,18 @@ describe("BoardFilterBar", () => {
   it("shows the developer stack beside the filter trigger, marking the selected ones", async () => {
     const user = userEvent.setup();
     const onToggleDeveloper = vi.fn();
-    renderFilterBar({ developers: ["alice", "bob"], filters: filters({ developers: ["alice"] }), onToggleDeveloper });
+    const developers = [{ key: "u-alice", login: "alice" }, { key: "u-bob", login: "bob" }];
+    renderFilterBar({ developers, filters: filters({ developers: ["u-alice"] }), onToggleDeveloper });
     expect(await screen.findByRole("button", { name: "Developer alice" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Developer bob" })).toHaveAttribute("aria-pressed", "false");
     await user.click(screen.getByRole("button", { name: "Developer bob" }));
-    expect(onToggleDeveloper).toHaveBeenCalledWith("bob");
+    expect(onToggleDeveloper).toHaveBeenCalledWith("u-bob");
   });
 
   it("collapses developers past the fifth into a count that opens the rest", async () => {
     const user = userEvent.setup();
     const onToggleDeveloper = vi.fn();
-    renderFilterBar({ developers: ["a", "b", "c", "d", "e", "f", "g"], onToggleDeveloper });
+    renderFilterBar({ developers: devs("a", "b", "c", "d", "e", "f", "g"), onToggleDeveloper });
     const more = await screen.findByRole("button", { name: "2 more developers" });
     expect(more).toHaveTextContent("+2");
     expect(screen.queryByRole("button", { name: "Developer f" })).not.toBeInTheDocument();
@@ -211,7 +217,7 @@ describe("BoardFilterBar", () => {
   });
 
   it("moves a selected developer into the visible stack even when they'd otherwise overflow", async () => {
-    renderFilterBar({ developers: ["a", "b", "c", "d", "e", "f", "g"], filters: filters({ developers: ["g"] }) });
+    renderFilterBar({ developers: devs("a", "b", "c", "d", "e", "f", "g"), filters: filters({ developers: ["g"] }) });
     expect(await screen.findByRole("button", { name: "Developer g" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "Developer e" })).not.toBeInTheDocument();
   });
@@ -237,7 +243,7 @@ describe("BoardFilterBar", () => {
   });
 
   it("renders no stack when no ticket has a developer", async () => {
-    renderFilterBar({ developers: [] });
+    renderFilterBar({ developers: devs() });
     await screen.findByRole("button", { name: /^Filter/ });
     expect(screen.queryByRole("group", { name: "Filter by developer" })).not.toBeInTheDocument();
   });
@@ -254,7 +260,7 @@ describe("BoardFilterBar interactions", () => {
     const onToggleStatus = vi.fn();
     const onToggleDeveloper = vi.fn();
     renderFilterBar({
-      developers: ["alice"],
+      developers: devs("alice"),
       onToggleProject,
       onToggleCategory,
       onToggleLabel,

@@ -3,13 +3,13 @@ import { createRef, useImperativeHandle, type Ref } from "react";
 
 import { BoardDragContext, useBoardDragState, type BoardDrag } from "@/components/board/boardDrag";
 import { TicketCard } from "@/components/board/TicketCard";
-import { usePersonLookup } from "@/hooks/PeopleHooks";
+import { useTicketPersonLookup } from "@/hooks/PeopleHooks";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
 // Every card body resolves its person once per render, so the lookup's call count is the cards' render count.
 jest.mock("@/hooks/PeopleHooks", () => ({
-  usePersonLookup: jest.fn(() => (login: string) => ({ user_id: login, login, display_name: login, avatar_url: "" })),
+  useTicketPersonLookup: jest.fn(() => ({ login }: { login: string }) => ({ user_id: login, login, display_name: login, avatar_url: "" })),
 }));
 jest.mock("@/hooks/WorkspaceHooks", () => ({ useCurrentWorkspaceId: () => "ws-1" }));
 
@@ -46,7 +46,7 @@ const Board = ({ ref }: { ref: Ref<BoardDrag> }) => {
 test("picking up, dropping and settling a card re-renders that card alone, not the board's other cards", async () => {
   const drag = createRef<BoardDrag>();
   await render(<Board ref={drag} />);
-  const renders = jest.mocked(usePersonLookup);
+  const renders = jest.mocked(useTicketPersonLookup);
   const mounted = renders.mock.calls.length;
   const from = { x: 0, y: 0, width: 300, height: 80 };
   const [held] = tickets;

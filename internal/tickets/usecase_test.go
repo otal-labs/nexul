@@ -440,7 +440,7 @@ func (f *fakeRepo) UpdateType(_ context.Context, id, typeID string) error {
 	return nil
 }
 
-func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, login string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, p Person, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -448,10 +448,10 @@ func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, login s
 		return apperrs.ErrNotFound
 	}
 	if role == RoleTester {
-		t.Tester = login
+		t.Tester, t.TesterID = p.Login, p.ID
 	}
 	if role == RoleDeveloper {
-		t.Developer = login
+		t.Developer, t.DeveloperID = p.Login, p.ID
 	}
 	f.events = append(f.events, evts...)
 	return nil

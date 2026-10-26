@@ -25,6 +25,8 @@ const ticket = (id: string, projectId: string, overrides: Partial<Ticket> = {}):
   doc_id: "",
   developer: "",
   tester: "",
+  developer_id: "",
+  tester_id: "",
   reporter: { kind: "user", login: "onik97" },
   due_on: "",
   created_at: "",
@@ -42,7 +44,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url === "/api/auth/me") return { data: { user: { login: "lena" } } };
+    if (url === "/api/auth/me") return { data: { user: { id: "u-lena", login: "lena" } } };
     if (url === "/api/statuses") {
       return {
         data: [
@@ -68,21 +70,28 @@ describe("useBoardFilters", () => {
     const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
     expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["t-1"]);
     expect(result.current.filters.projectIds).toEqual(["p-1"]);
-    expect(result.current.developers).toEqual(["lena"]);
+    expect(result.current.developers).toEqual([{ key: "lena", login: "lena" }]);
   });
 
-  it("narrows to the picked developers", () => {
-    const tickets = [ticket("t-1", "p-1", { developer: "onik97" }), ticket("t-2", "p-1", { developer: "bob" })];
+  it("narrows to the picked developers, one per person however their login was spelled", () => {
+    const tickets = [
+      ticket("t-1", "p-1", { developer: "onik97", developer_id: "u-onik" }),
+      ticket("t-2", "p-1", { developer: "bob" }),
+      ticket("t-3", "p-1", { developer: "Onik97", developer_id: "u-onik" }),
+    ];
     const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
-    expect(result.current.developers).toEqual(["bob", "onik97"]);
+    expect(result.current.developers).toEqual([{ key: "bob", login: "bob" }, { key: "u-onik", login: "Onik97" }]);
     act(() => result.current.toggleDeveloper("bob"));
     expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["t-2"]);
+    act(() => result.current.toggleDeveloper("bob"));
+    act(() => result.current.toggleDeveloper("u-onik"));
+    expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["t-1", "t-3"]);
   });
 
   it("waiting for me to test keeps only my tickets in testing-stage columns", async () => {
     const tickets = [
-      ticket("mine-testing", "p-1", { tester: "lena", status: "qa" as TicketStatus }),
-      ticket("mine-backlog", "p-1", { tester: "lena", status: "open" as TicketStatus }),
+      ticket("mine-testing", "p-1", { tester: "Lena", tester_id: "u-lena", status: "qa" as TicketStatus }),
+      ticket("mine-backlog", "p-1", { tester: "lena", tester_id: "u-lena", status: "open" as TicketStatus }),
       ticket("theirs-testing", "p-1", { tester: "bob", status: "qa" as TicketStatus }),
     ];
     const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });

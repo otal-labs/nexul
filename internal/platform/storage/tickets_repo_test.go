@@ -107,18 +107,34 @@ func TestTicketsRepo_UpdateDoc(t *testing.T) {
 func TestTicketsRepo_UpdatePerson(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-1")))
-	require.NoError(t, s.Tickets.Create(t.Context(), newTestTicket("t-1", "doc-1")))
-
-	require.NoError(t, s.Tickets.UpdatePerson(t.Context(), "t-1", tickets.RoleDeveloper, "alice"))
-	require.NoError(t, s.Tickets.UpdatePerson(t.Context(), "t-1", tickets.RoleTester, ""))
-	got, err := s.Tickets.GetByID(t.Context(), "t-1")
+	ctx := t.Context()
+	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-1")))
+	require.NoError(t, s.Tickets.Create(ctx, newTestTicket("t-1", "doc-1")))
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-alice", "41", "alice"))
 	require.NoError(t, err)
-	assert.Equal(t, "alice", got.Developer)
-	assert.Equal(t, "", got.Tester)
+
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleDeveloper, tickets.Person{ID: "u-alice", Login: "alice"}))
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{Login: "sam"}))
+	got, err := s.Tickets.GetByID(ctx, "t-1")
+	require.NoError(t, err)
+	assert.Equal(t, tickets.Person{ID: "u-alice", Login: "alice"}, tickets.Person{ID: got.DeveloperID, Login: got.Developer})
+	assert.Equal(t, tickets.Person{Login: "sam"}, tickets.Person{ID: got.TesterID, Login: got.Tester}, "a login nobody signed in with reads back as typed")
 	assert.Equal(t, tickets.ActorKindAutomation, got.Reporter.Kind, "reporter is never touched by a people edit")
 
-	require.ErrorIs(t, s.Tickets.UpdatePerson(t.Context(), "missing", tickets.RoleTester, "x"), apperrs.ErrNotFound)
+	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u-alice", "41", "alice-renamed"))
+	require.NoError(t, err)
+	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u-sam", "43", "Sam"))
+	require.NoError(t, err)
+	got, err = s.Tickets.GetByID(ctx, "t-1")
+	require.NoError(t, err)
+	assert.Equal(t, tickets.Person{ID: "u-alice", Login: "alice-renamed"}, tickets.Person{ID: got.DeveloperID, Login: got.Developer}, "a renamed login stays the same person")
+	assert.Equal(t, tickets.Person{ID: "u-sam", Login: "Sam"}, tickets.Person{ID: got.TesterID, Login: got.Tester}, "signing in claims the tickets that named the login")
+
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{}))
+	got, err = s.Tickets.GetByID(ctx, "t-1")
+	require.NoError(t, err)
+	assert.Empty(t, got.Tester+got.TesterID)
+	require.ErrorIs(t, s.Tickets.UpdatePerson(ctx, "missing", tickets.RoleTester, tickets.Person{Login: "x"}), apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_List_ReturnsAll(t *testing.T) {

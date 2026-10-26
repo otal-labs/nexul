@@ -14,7 +14,7 @@ interface AutoPlaysPausedRowProps {
   targetType: PlayType;
   targetId: string;
   autoRuns: number;
-  // The ticket's developer's login, who may resume beside autoplays:write holders; "" for a doc.
+  // The ticket's developer's user id, who may resume beside autoplays:write holders; "" for a doc.
   developer: string;
   onLeave: () => void;
 }
@@ -24,7 +24,7 @@ export const AutoPlaysPausedRow = ({ targetType, targetId, autoRuns, developer, 
   const canWrite = useActionState({ permission: "autoplays:write" }).state === "live";
   const resume = useResumeAutoPlays();
   const [leaving, setLeaving] = useState(false);
-  const canResume = canWrite || (developer !== "" && me?.user.login === developer);
+  const canResume = canWrite || (developer !== "" && me?.user.id === developer);
 
   const onResume = () => {
     setLeaving(true);

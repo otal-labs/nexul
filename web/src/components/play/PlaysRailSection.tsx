@@ -28,7 +28,7 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
         <h2 className={cn(microheaderClass, "px-2 pb-1")}>Plays</h2>
         {failed && <ErrorDisplay error={error} title="Couldn't load plays." />}
         {hasPlays && <HarnessReadinessNote projectId={ticket.project_id} className="px-2 pb-1" />}
-        {signals && <AutoPlaySignals targetType="ticket" targetId={ticket.id} developer={ticket.developer} />}
+        {signals && <AutoPlaySignals targetType="ticket" targetId={ticket.id} developer={ticket.developer_id} />}
         {hasPlays && (
           <div className="flex flex-col">
             {plays.map((play) => (
