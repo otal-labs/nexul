@@ -7,11 +7,12 @@
   --font-mono: "JetBrains Mono";
   --font-display: "Fraunces Display";
 
-  /* 7px controls, 9px cards, 12px panels and sheets. */
+  /* 4px small, 6px controls, 8px cards, 12px panels and sheets, 16px large surfaces. */
   --radius-sm: 4px;
-  --radius-md: 7px;
-  --radius-lg: 9px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-xl: 12px;
+  --radius-2xl: 16px;
 
   --spacing-hairline: hairlineWidth();
 }

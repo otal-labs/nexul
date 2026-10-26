@@ -105,6 +105,7 @@ in the three token files; this table holds the roles.
 | `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
 | `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent | phone: colour tokens (`--color-field-warm`, `-pink`, `-cool`) |
+| `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
 | `font-mono` | JetBrains Mono Variable | same | technical data | phone: `JetBrains Mono`, one embedded family with its weights |
@@ -205,10 +206,13 @@ type](#phone-tokens-and-type).
 
 ### Shape and depth
 
-- Radius: 7px for controls (`rounded-md`), 9px for cards (`rounded-lg`), 12px
-  for panels and sheets (`rounded-xl`), full pills (`rounded-full`) only for
-  badges, chips, and avatars. Never a pill button or input; a pill reads as a
-  tag, not a control.
+- Radius: one scale of five steps. 4px for small inner shapes, rows inside a
+  menu and segmented thumbs (`rounded-sm`), 6px for controls (`rounded-md`),
+  8px for cards and menus (`rounded-lg`), 12px for panels, dialogs and sheets
+  (`rounded-xl`), 16px for the largest floating surfaces (`rounded-2xl`); full
+  pills (`rounded-full`) only for badges, chips, and avatars. No radius off the
+  scale: an inner corner takes the step below its container. Never a pill
+  button or input; a pill reads as a tag, not a control.
 - Depth: a card is a step lighter (`bg-card`) than what it sits on, with the
   hairline `border`; a well is a step darker (`bg-surface-2`). The contained
   shadows `shadow-card`, `shadow-elevated`, `shadow-overlay` stay for cards,
@@ -316,7 +320,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
 | Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
-| 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
+| One radius scale, 4/6/8/12/16px: 6px controls, 8px cards, 12px panels | Soft but precise, and one step apart, so a corner inside a corner stays concentric without one-off values; pills stay badge-only so controls and tags never look alike. Rejected: 7px controls and 9px cards (menu rows and logos drifted onto off-scale 5px and 10px corners) |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
 | Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
 | Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
@@ -483,7 +487,7 @@ notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
 
 Board. The header leads with the project mark (`ProjectMark`: the prefix in
-mono on a gradient seeded from it, 44px, 9px radius, the same family as a
+mono on a gradient seeded from it, 44px, 8px radius, the same family as a
 person's avatar) beside the title, a mono "55 tickets · 8 people" line under
 it, and the stage summary as the header's action (`BoardStageSummary`): one
 6px bar split by stage in the stage hues, backlog at half strength, over a
@@ -549,8 +553,8 @@ No other size, weight, or tracking for an uppercase label.
 
 Menu. Every menu, custom on a popover, a dropdown or a right-click, is one anatomy: a
 `glass-menu` panel (the frosted recipe on `popover` at 88%, the elevated
-shadow) at 9px with 4px padding; rows of at least 32px in `text-sm` with
-`px-2 gap-2.5` on a 5px corner, concentric in the panel's 9px, a muted 16px
+shadow) at 8px with 4px padding; rows of at least 32px in `text-sm` with
+`px-2 gap-2.5` on a 4px corner, concentric in the panel's 8px, a muted 16px
 icon column, the label, then a trailing mono hint (`DropdownMenuShortcut`)
 or a check (`menuItemClass` in `web/src/components/MenuItem.tsx`); groups
 split by an edge-to-edge hairline (`MenuSeparator`) and headed by a
@@ -575,11 +579,11 @@ Sheet. The same frosted panel floating 8px from its edge at 12px, like the
 page panels; its header is the grip, and dragging it toward the edge moves
 the sheet 1:1 with the scrim fading in step (Motion baseline).
 
-Tooltip. A small `glass-menu` label (`text-xs`, `px-2 py-1`, 7px) for an
+Tooltip. A small `glass-menu` label (`text-xs`, `px-2 py-1`, 6px) for an
 icon-only control; the first waits 500ms, the next shows at once
 (`TooltipProvider` in `App.tsx`).
 
-Toast. The menus' glass at 9px, the status hue on the icon only, the action
+Toast. The menus' glass at 8px, the status hue on the icon only, the action
 in `brand`; bottom right, stacked by the library.
 
 Detail page header. The page header above, with the record's mono id chip
@@ -1553,7 +1557,7 @@ Look. Dialog surface: the palette's glass with a footer tray over a
 canvas-coloured scrim. Rejected: hairlines under the header and over the
 footer (an empty band on a dialog with no body; and the glass over a black
 scrim turned grey in light mode) and an opaque card (lost the frosted
-language the panels speak). Menus: the glass at 9px with 32px rows on a 5px
+language the panels speak). Menus: the glass at 8px with 32px rows on a 4px
 corner. Rejected: a solid panel with 36px rows and inset rules (a three-item
 menu a quarter taller; the inset rule read as a gap) and the palette's
 brand edge on the highlighted row (the accent on a pointer hover). Focus: the
@@ -1774,7 +1778,7 @@ groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
 lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
 from its top and bottom.
 
-Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 9px,
+Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 8px,
 13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
 `#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
 ember keywords (the accent on something that is not an action; YAML keys read
@@ -1786,11 +1790,11 @@ as plain text.
 Tables, inline code, cards. Tables are the app's ruled data: a hairline under
 each row, a muted 13px header over a stronger rule, tabular figures. Inline
 code is mono at 0.85em on `muted` with a hairline. The docs home cards are
-the app's card (`card`, the panel ring and lit top edge, 9px) under mono
+the app's card (`card`, the panel ring and lit top edge, 8px) under mono
 microheader groups. The docs content has no callouts or blockquotes; a
 blockquote takes the app's 2px rule in `foreground` at 25%.
 
-Copy page. A quiet outline control (`border` hairline, muted text, 7px) beside
+Copy page. A quiet outline control (`border` hairline, muted text, 6px) beside
 the title.
 
 Search. The app's command palette surface (the popover glass at 12px over the
@@ -1823,7 +1827,7 @@ Showing the product.
   ships.
 - The hero shot sits on a field panel (`surface-2` with the light field's
   three glows, the panel ring) and bleeds off its right and bottom edges, the
-  screenshot's top-left corner rounded at 9px. Below 768px it switches to a
+  screenshot's top-left corner rounded at 8px. Below 768px it switches to a
   480x600 crop of the board's top-left so cards stay legible.
 - Weight: the hero is about 16KB on a phone and 36KB on a 1x desktop; the four
   lazy step shots add about 65KB on a 1x desktop and 105KB on a 2x phone.

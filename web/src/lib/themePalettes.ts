@@ -33,8 +33,8 @@ export interface ThemeDefinition {
   swatch: readonly [string, string];
   /** `null` for the default (Nexul): it's what index.css already paints. */
   colors: { light: ThemeRoleOverrides; dark: ThemeRoleOverrides } | null;
-  /** Corner radius override for all four Tailwind radius steps; unset keeps the default. */
-  radius?: { sm: string; md: string; lg: string; xl: string };
+  /** Corner radius override for every Tailwind radius step; unset keeps the default. */
+  radius?: { sm: string; md: string; lg: string; xl: string; "2xl": string };
 }
 
 // Generated from an OKLCH lightness ladder and WCAG-contrast-checked; see the `color` skill for the method.
@@ -519,7 +519,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         "surface-2": "oklch(0.1157 0.0 0.0)",
       },
     },
-    radius: { sm: "0px", md: "0px", lg: "0px", xl: "0px" },
+    radius: { sm: "0px", md: "0px", lg: "0px", xl: "0px", "2xl": "0px" },
   },
 ];
 
@@ -549,11 +549,12 @@ const ROLE_CSS_VAR: Record<Role, string> = {
   ring: "--ring",
 };
 
-const RADIUS_CSS_VAR: Record<"sm" | "md" | "lg" | "xl", string> = {
+const RADIUS_CSS_VAR: Record<"sm" | "md" | "lg" | "xl" | "2xl", string> = {
   sm: "--shape-sm",
   md: "--shape-md",
   lg: "--shape-lg",
   xl: "--shape-xl",
+  "2xl": "--shape-2xl",
 };
 
 // A palette's primary is its accent unless it names one: buttons, focus, the active nav marker and the light field's warm corner follow it.

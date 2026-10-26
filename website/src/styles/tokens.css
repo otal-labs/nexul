@@ -22,9 +22,10 @@
 	--font-display-stack: 'Fraunces Variable', ui-serif, Georgia, serif;
 
 	--shape-sm: 0.25rem;
-	--shape-md: 0.4375rem;
-	--shape-lg: 0.5625rem;
+	--shape-md: 0.375rem;
+	--shape-lg: 0.5rem;
 	--shape-xl: 0.75rem;
+	--shape-2xl: 1rem;
 
 	--ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
 	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);

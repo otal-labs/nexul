@@ -96,7 +96,7 @@ export const BoardDragLayer = ({ projectPrefix, ticketTypes }: BoardDragLayerPro
       {drag && lifted && <BoardDropBar />}
       {drag && lifted && (
         <Animated.View pointerEvents="none" style={[{ position: "absolute" }, cardStyle]} className={ticketCardClass}>
-          <Animated.View style={[StyleSheet.absoluteFill, shadowStyle, { borderRadius: 9, boxShadow: "0 12px 28px rgba(0, 0, 0, 0.35)" }]} />
+          <Animated.View style={[StyleSheet.absoluteFill, shadowStyle, { borderRadius: 8, boxShadow: "0 12px 28px rgba(0, 0, 0, 0.35)" }]} />
           <TicketCardBody
             ticket={lifted.ticket}
             stage={drag.statuses.find((s) => s.id === lifted.ticket.status)?.kind ?? StatusKind.Backlog}

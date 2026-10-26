@@ -17,7 +17,7 @@ interface InvitationHeaderProps {
 export const InvitationHeader = ({ instanceName, host, person }: InvitationHeaderProps) => (
   <header className="space-y-4 text-center">
     <div className="flex items-center justify-center gap-3">
-      <Logo className="size-10 rounded-[10px] [&_svg]:size-6" />
+      <Logo className="size-10 rounded-lg [&_svg]:size-6" />
       <ArrowLeftRight aria-hidden className="size-4 text-muted-foreground" />
       {person && <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />}
       {!person && (

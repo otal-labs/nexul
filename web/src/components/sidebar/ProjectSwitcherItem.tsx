@@ -24,7 +24,7 @@ export const ProjectSwitcherItem = ({ project, selected, onSelect, onSettings, o
         permissions: { entity: projectEntity(project), onOpen: () => onPermissions(project) },
       }}
     >
-      <div className="rounded-[5px]">
+      <div className="rounded-sm">
         <SwitcherMenuItem
           tile={projectTile(project)}
           mark={<ProjectMark project={project} className="size-7 rounded-md text-[10px] shadow-none" />}

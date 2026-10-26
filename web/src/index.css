@@ -53,11 +53,12 @@
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
   --font-display: var(--font-display-stack);
-  /* Radius system: 7px controls, 9px cards, 12px panels, pills for badges. */
+  /* Radius system: 4px small, 6px controls, 8px cards, 12px panels, 16px large surfaces, pills for badges. */
   --radius-sm: var(--shape-sm);
   --radius-md: var(--shape-md);
   --radius-lg: var(--shape-lg);
   --radius-xl: var(--shape-xl);
+  --radius-2xl: var(--shape-2xl);
   --shadow-card: var(--shadow-card);
   --shadow-elevated: var(--shadow-elevated);
   --shadow-overlay: var(--shadow-overlay);
@@ -79,9 +80,10 @@
 
   /* Radius a theme can override (Brutalism zeroes these); default matches the radius system above. */
   --shape-sm: 0.25rem;
-  --shape-md: 0.4375rem;
-  --shape-lg: 0.5625rem;
+  --shape-md: 0.375rem;
+  --shape-lg: 0.5rem;
   --shape-xl: 0.75rem;
+  --shape-2xl: 1rem;
 
   /* canvas < surface-2 (wells inside a panel) < panel < card < popover */
   --background: oklch(0.95 0.004 265);

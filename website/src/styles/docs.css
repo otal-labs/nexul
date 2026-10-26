@@ -7,10 +7,10 @@
 @theme {
 	--font-sans: var(--font-sans-stack);
 	--font-mono: var(--font-mono-stack);
-	/* Fumadocs rounds controls with rounded-lg and cards with rounded-xl; the app's controls are 7px and cards 9px. */
-	--radius-md: 7px;
-	--radius-lg: 7px;
-	--radius-xl: 9px;
+	/* Fumadocs rounds controls with rounded-lg and cards with rounded-xl; the app's controls are 6px and cards 8px. */
+	--radius-md: var(--shape-md);
+	--radius-lg: var(--shape-md);
+	--radius-xl: var(--shape-lg);
 }
 
 :root {

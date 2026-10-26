@@ -25,7 +25,7 @@
 .roadmap-jump a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; color: var(--color-fd-foreground); }
 .roadmap.wrap { max-width: 784px; padding-bottom: 96px; }
 .roadmap-group + .roadmap-group { margin-top: 36px; }
-.roadmap-group h2 { display: flex; align-items: center; gap: 10px; padding: 12px 12px; margin-inline: -12px; border-radius: 7px; font: 600 15px/1.4 var(--page-sans); letter-spacing: -.01em; }
+.roadmap-group h2 { display: flex; align-items: center; gap: 10px; padding: 12px 12px; margin-inline: -12px; border-radius: var(--shape-md); font: 600 15px/1.4 var(--page-sans); letter-spacing: -.01em; }
 .roadmap-group h2 .count { margin-left: auto; }
 .roadmap-items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-fd-border); }
 .roadmap-item { padding: 16px 0; border-bottom: 1px solid var(--color-fd-border); }
@@ -36,7 +36,7 @@
 .releases.wrap { max-width: 784px; padding-bottom: 96px; }
 .releases ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-fd-border); }
 .release { border-bottom: 1px solid var(--color-fd-border); }
-.release summary { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px; min-height: 52px; padding: 14px 12px 14px 40px; margin-inline: -12px; position: relative; border-radius: 7px; cursor: pointer; list-style: none; }
+.release summary { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px; min-height: 52px; padding: 14px 12px 14px 40px; margin-inline: -12px; position: relative; border-radius: var(--shape-md); cursor: pointer; list-style: none; }
 .release summary::-webkit-details-marker { display: none; }
 .release summary::before { content: ''; position: absolute; left: 16px; top: 22px; width: 6px; height: 6px; border: solid var(--color-fd-muted-foreground); border-width: 0 1.5px 1.5px 0; rotate: -45deg; transition: rotate 150ms var(--ease-standard, cubic-bezier(0.25, 0.1, 0.25, 1)); }
 .release details[open] > summary::before { rotate: 45deg; }
