@@ -51,7 +51,7 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
         </View>
       )}
       {error && <ErrorDisplay error={error} className="px-1" />}
-      <View className={cn("flex-row items-end rounded-xl border bg-card py-1 pl-3.5 pr-1", focused ? "border-focus" : "border-input")}>
+      <View className={cn("flex-row items-end rounded-lg border bg-card py-1 pl-3.5 pr-1", focused ? "border-focus" : "border-input")}>
         <TextInput
           multiline
           autoFocus={!!editing}
@@ -69,7 +69,7 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
           aria-label={editing ? "Save" : "Send"}
           disabled={!canSend}
           onPress={send}
-          className={cn("size-10 items-center justify-center rounded-lg", canSend && "bg-brand active:bg-brand/85")}
+          className={cn("size-10 items-center justify-center rounded-md", canSend && "bg-brand active:bg-brand/85")}
         >
           {editing && <Check color={String(canSend ? brandForeground : muted)} size={20} />}
           {!editing && <ArrowUp color={String(canSend ? brandForeground : muted)} size={20} />}
