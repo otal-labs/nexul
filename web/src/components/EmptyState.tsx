@@ -17,7 +17,7 @@ interface EmptyStateProps {
 
 type Icon = ComponentType<{ className?: string }>;
 
-// One mark for every empty: the icon on two orbits in the light field's colours, ember and blue on opposite sides.
+// One mark for every empty: the icon on two orbits from muted ink to the brand, a brand dot and an ink dot on opposite sides.
 const OrbitMark = ({ icon: Icon, compact }: { icon: Icon; compact: boolean }) => {
   const id = useId();
   return (
@@ -25,15 +25,14 @@ const OrbitMark = ({ icon: Icon, compact }: { icon: Icon; compact: boolean }) =>
       <svg aria-hidden viewBox="0 0 112 112" className="absolute inset-0 size-full" fill="none">
         <defs>
           <linearGradient id={id} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="oklch(from var(--field-cool) l c h)" />
-            <stop offset="0.55" stopColor="oklch(from var(--field-pink) l c h)" />
+            <stop offset="0" stopColor="var(--muted-foreground)" />
             <stop offset="1" stopColor="var(--brand)" />
           </linearGradient>
         </defs>
         <circle data-orbit-outer cx="56" cy="56" r="54" stroke={`url(#${id})`} strokeOpacity="0.45" />
         <circle data-orbit-inner cx="56" cy="56" r="40" stroke={`url(#${id})`} strokeOpacity="0.85" strokeDasharray="2 5" strokeLinecap="round" />
         <circle data-orbit-ember cx="94.2" cy="39.8" r="3" fill="var(--brand)" />
-        <circle data-orbit-cool cx="21.8" cy="78" r="2.5" fill="oklch(from var(--field-cool) l c h)" />
+        <circle data-orbit-cool cx="21.8" cy="78" r="2.5" fill="var(--muted-foreground)" />
       </svg>
       <span data-orbit-disc className={cn("relative grid place-items-center rounded-full bg-card shadow-card ring-1 ring-border", compact ? "size-7" : "size-12")}>
         <Icon className={cn("text-muted-foreground", compact ? "size-3.5" : "size-5")} aria-hidden />

@@ -17,9 +17,9 @@ const hasWebGPU = typeof navigator !== "undefined" && "gpu" in navigator;
 const still = (strength: number): CSSProperties => ({
   backgroundColor: "var(--background)",
   backgroundImage: [
-    `radial-gradient(52% 56% at 94% 4%, oklch(from var(--brand) l c h / ${strength}), transparent 72%)`,
-    `radial-gradient(36% 40% at 84% 40%, oklch(from var(--field-pink) l c h / ${strength}), transparent 70%)`,
-    `radial-gradient(56% 60% at 4% 96%, oklch(from var(--field-cool) l c h / ${strength}), transparent 72%)`,
+    `radial-gradient(52% 56% at 94% 4%, oklch(from var(--field-warm) l c h / ${strength}), transparent 72%)`,
+    `radial-gradient(36% 40% at 84% 40%, oklch(from var(--field-mid) l c h / ${strength}), transparent 70%)`,
+    `radial-gradient(56% 60% at 4% 96%, oklch(from var(--field-low) l c h / ${strength}), transparent 72%)`,
   ].join(","),
 });
 

@@ -133,10 +133,10 @@
   --panel-highlight: oklch(1 0 0 / 0.9);
   --panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
 
-  /* The light field's hues: the warm corner follows the brand, so a palette's accent tints it. */
-  --field-warm: color-mix(in oklab, var(--brand) 30%, transparent);
-  --field-pink: oklch(0.75 0.14 350 / 0.2);
-  --field-cool: oklch(0.72 0.12 250 / 0.3);
+  /* The light field's glows come from the palette: the brand's hue at a fixed lightness (an achromatic brand adds no stain) and a lift of the card. */
+  --field-warm: oklch(from var(--brand) 0.93 calc(c * 0.5) h / 0.4);
+  --field-mid: color-mix(in oklab, var(--card) 55%, transparent);
+  --field-low: oklch(from var(--brand) 0.93 calc(c * 0.4) h / 0.28);
 
   /* Glass opacity/blur for overlay surfaces (dialog/sheet scrims); user-
      controlled via the Appearance settings slider, 40–100%. */
@@ -185,9 +185,9 @@
   --panel-highlight: oklch(1 0 0 / 0.05);
   --panel-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -12px oklch(0 0 0 / 0.6);
 
-  --field-warm: color-mix(in oklab, var(--brand) 34%, transparent);
-  --field-pink: oklch(0.6 0.17 350 / 0.12);
-  --field-cool: oklch(0.55 0.16 255 / 0.3);
+  --field-warm: oklch(from var(--brand) 0.5 calc(c * 0.7) h / 0.4);
+  --field-mid: color-mix(in oklab, var(--card) 55%, transparent);
+  --field-low: oklch(from var(--brand) 0.45 calc(c * 0.5) h / 0.3);
 }
 
 html {
@@ -390,7 +390,7 @@ body {
   overflow: visible;
 }
 
-/* The light field behind the app: ember top right, blue bottom left, a hint of pink between.
+/* The light field behind the app: the brand's tint top right and bottom left, a lift of the card between.
    Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
 .light-field {
   position: fixed;
@@ -399,8 +399,8 @@ body {
   pointer-events: none;
   background:
     radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
-    radial-gradient(30% 34% at 60% 38%, var(--field-pink), transparent 70%),
-    radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
+    radial-gradient(30% 34% at 60% 38%, var(--field-mid), transparent 70%),
+    radial-gradient(44% 48% at 10% 92%, var(--field-low), transparent 72%);
 }
 
 /* ============ Technical surfaces ============

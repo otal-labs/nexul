@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 
 interface FieldColors {
   base: string;
-  ember: string;
-  pink: string;
-  blue: string;
+  warm: string;
+  mid: string;
+  low: string;
 }
 
 // The shader takes plain colours, so the tokens are resolved through a probe and their alpha dropped.
@@ -25,9 +25,9 @@ const useFieldColors = (): FieldColors => {
     document.body.append(probe);
     const colors = {
       base: resolveToken(probe, "--background"),
-      ember: resolveToken(probe, "--brand"),
-      pink: resolveToken(probe, "--field-pink"),
-      blue: resolveToken(probe, "--field-cool"),
+      warm: resolveToken(probe, "--field-warm"),
+      mid: resolveToken(probe, "--field-mid"),
+      low: resolveToken(probe, "--field-low"),
     };
     probe.remove();
     return colors;
@@ -42,11 +42,11 @@ const LightField = ({ c, quiet }: { c: FieldColors; quiet: boolean }) => (
     <MultiPointGradient
       colorA={c.base}
       positionA={{ x: 0.4, y: 0.4 }}
-      colorB={c.ember}
+      colorB={c.warm}
       positionB={{ x: 0.94, y: 0.04 }}
-      colorC={c.pink}
+      colorC={c.mid}
       positionC={{ x: 0.84, y: 0.4 }}
-      colorD={c.blue}
+      colorD={c.low}
       positionD={{ x: 0.04, y: 0.96 }}
       colorE={c.base}
       positionE={{ x: 0.62, y: 0.82 }}
