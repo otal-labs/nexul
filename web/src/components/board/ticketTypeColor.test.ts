@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { labelDotColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 
 describe("ticketTypeColor", () => {
   it("returns a known text color for a recognized type, no background/border fill", () => {
@@ -48,17 +48,5 @@ describe("labelDotColor", () => {
   it("falls back to the hash when no color is configured (undefined or empty)", () => {
     expect(labelDotColor("urgent", undefined)).toBe(labelDotColor("urgent"));
     expect(labelDotColor("urgent", "")).toBe(labelDotColor("urgent"));
-  });
-});
-
-describe("pillClass", () => {
-  it("tints a pill from the hue of a type's light/dark icon color or a label's dot color", () => {
-    expect(pillClass(ticketTypeColor("widget", "cyan"))).toBe(pillClass("bg-cyan-500"));
-    expect(pillClass("text-cyan-400")).toMatch(/bg-cyan-500\/15/);
-    expect(pillClass("text-red-400")).not.toBe(pillClass("text-cyan-400"));
-  });
-
-  it("falls back to the neutral slate pill for anything it can't parse", () => {
-    expect(pillClass("nonsense")).toBe(pillClass("text-slate-400"));
   });
 });

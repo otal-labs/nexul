@@ -6,7 +6,7 @@ import { useCSSVariable } from "uniwind";
 import { ActionButton } from "@/components/action/ActionButton";
 import { TicketPerson } from "@/components/board/TicketPeople";
 import { TicketStatusField } from "@/components/board/TicketStatusField";
-import { ticketTypePill } from "@/components/board/ticketTypeColor";
+import { TicketTypeBadge } from "@/components/board/TicketTypeBadge";
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBody } from "@/components/docs/DocBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -23,7 +23,6 @@ import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTicket, useOpenTicketThread, useSetTicketPerson } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import { cn } from "@/lib/utils";
 import { ticketKey, TicketRole } from "@/models/Ticket";
 
 // The record's mono id under its title, the web detail header's id chip.
@@ -72,7 +71,7 @@ export const TicketScreen = () => {
                 <TicketStatusField ticket={ticket} status={status} />
               </FactRow>
               <FactRow label="Type">
-                {type && <Text className={cn("overflow-hidden rounded-full px-2 py-0.5 text-xs font-medium", ticketTypePill(type.name, type.color))}>{type.name}</Text>}
+                {type && <TicketTypeBadge name={type.name} color={type.color} />}
                 {!type && <Text className="text-sm text-muted-foreground">None</Text>}
               </FactRow>
               <FactRow label="Developer">

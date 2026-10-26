@@ -22,7 +22,7 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
   const content = (
     <>
       <span className={rowIconClass}>
-        <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5", ticketTypeColor(current?.name ?? ""))} aria-hidden />
+        <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5", ticketTypeColor(current?.name ?? "", current?.color))} aria-hidden />
       </span>
       <span className={rowLabelClass}>Type</span>
       <span className={cn(rowValueClass, !current && "text-muted-foreground")}>{current?.name ?? "No type"}</span>
