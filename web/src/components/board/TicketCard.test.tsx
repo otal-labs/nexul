@@ -91,13 +91,12 @@ describe("TicketCard", () => {
     expect(pill?.querySelector("svg")).toBeInTheDocument();
   });
 
-  it("renders each label as a tinted pill", () => {
-    const { container } = renderCard(
-      <TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent"] }} />,
-    );
-    expect(screen.getByText("bug")).toHaveAttribute("data-slot", "pill");
-    expect(screen.getByText("urgent")).toHaveClass(...pillClass(labelDotColor("urgent")).split(" "));
-    expect(container.querySelectorAll('[data-slot="pill"]')).toHaveLength(2);
+  it("renders each label as a chip whose hue is only on its dot", () => {
+    const { container } = renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent"] }} />);
+    const chip = screen.getByText("urgent").closest('[data-slot="label-chip"]');
+    expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
+    expect(chip?.querySelector("[aria-hidden]")).toHaveClass(labelDotColor("urgent"));
+    expect(chip).not.toHaveClass(...pillClass(labelDotColor("urgent")).split(" "));
   });
 
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
@@ -287,7 +286,7 @@ describe("TicketCard", () => {
       );
       await screen.findByText("urgent");
       await vi.waitFor(() => {
-        expect(screen.getByText("urgent")).toHaveClass(...pillClass("bg-orange-500").split(" "));
+        expect(screen.getByText("urgent").closest('[data-slot="label-chip"]')?.querySelector("[aria-hidden]")).toHaveClass("bg-orange-500");
       });
       expect(labelDotColor("urgent")).not.toBe("bg-orange-500");
     });

@@ -1,3 +1,4 @@
+import { labelDotColor } from "@/components/board/ticketTypeColor";
 import type { ChipOption } from "@/components/board/FilterChipRow";
 import type { Category } from "@/models/Category";
 import type { Project } from "@/models/Project";
@@ -63,10 +64,16 @@ export const buildCategoryChips = (categories: Category[] | undefined, filters: 
   ];
 };
 
-export const buildLabelChips = (labels: string[] | undefined, filters: BoardFilters, onToggle: (label: string) => void): ChipOption[] =>
+export const buildLabelChips = (
+  labels: string[] | undefined,
+  colors: Record<string, string> | undefined,
+  filters: BoardFilters,
+  onToggle: (label: string) => void,
+): ChipOption[] =>
   (labels ?? []).map((label) => ({
     key: label,
     label,
+    dotClass: labelDotColor(label, colors?.[label]),
     active: filters.labels.includes(label),
     onToggle: () => onToggle(label),
   }));

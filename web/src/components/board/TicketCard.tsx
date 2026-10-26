@@ -6,12 +6,13 @@ import { useNavigate } from "react-router";
 
 import { personLabel } from "@nexul/client-core/person";
 
+import { LabelChip } from "@/components/LabelChip";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
-import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { findPerson } from "@/hooks/PeopleHooks";
@@ -61,13 +62,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         </span>
       )}
       {labels.map((label) => (
-        <span
-          key={label}
-          data-slot="pill"
-          className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", pillClass(labelDotColor(label, labelColors?.[label])))}
-        >
-          {label}
-        </span>
+        <LabelChip key={label} label={label} color={labelColors?.[label]} />
       ))}
     </span>
   );

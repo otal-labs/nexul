@@ -20,7 +20,7 @@ import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchAllLabels } from "@/hooks/TicketHooks";
+import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 
 export type { BoardFilters } from "@/components/board/boardFilterChipBuilders";
@@ -73,13 +73,14 @@ export const BoardFilterBar = ({
   const { data: projects } = useFetchProjects();
   const { data: categories } = useFetchProjectCategories(projectId);
   const { data: labels } = useFetchAllLabels(projectId);
+  const { data: labelColors } = useFetchLabelColors(projectId);
   const { data: ticketTypes } = useFetchProjectTicketTypes(projectId);
   const { data: statuses } = useFetchProjectStatuses(projectId);
 
   const activeCount = countActiveFilters(filters, hideProjectFilter);
   const projectChips = buildProjectChips(projects, filters, onToggleProject);
   const categoryChips = buildCategoryChips(categories, filters, onToggleCategory);
-  const labelChips = buildLabelChips(labels, filters, onToggleLabel);
+  const labelChips = buildLabelChips(labels, labelColors, filters, onToggleLabel);
   const typeChips = buildTypeChips(ticketTypes, filters, onSelectType);
   const statusChips = buildStatusChips(statuses, filters, onToggleStatus);
   const summaryLabel = buildSummaryLabel(activeCount, projects);

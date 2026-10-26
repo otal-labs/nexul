@@ -1,5 +1,5 @@
-// Type and label pills, the web board card's: a 15% tint of the hue with an 800 (light) or 400 (dark) text shade, which
-// holds 4.5:1 in both themes. Status never uses a pill.
+// The type pill, the web board card's: a 15% tint of the hue with an 800 (light) or 400 (dark) text shade, which
+// holds 4.5:1 in both themes. Status and labels never use a tinted pill; a label keeps its hue on a dot.
 const HUE_PILL_CLASS: Record<string, string> = {
   slate: "bg-slate-500/15 text-slate-800 dark:text-slate-300",
   red: "bg-red-500/15 text-red-800 dark:text-red-400",
@@ -30,7 +30,20 @@ const TYPE_HUES: Record<string, string> = {
 
 const TYPE_FALLBACK_HUES = ["cyan", "emerald", "orange", "fuchsia", "lime"];
 
-const LABEL_HUES = ["cyan", "emerald", "orange", "fuchsia", "lime", "red", "violet", "amber", "blue", "indigo", "teal", "pink"];
+const LABEL_DOTS = [
+  "bg-cyan-500",
+  "bg-emerald-500",
+  "bg-orange-500",
+  "bg-fuchsia-500",
+  "bg-lime-500",
+  "bg-red-500",
+  "bg-violet-500",
+  "bg-amber-500",
+  "bg-blue-500",
+  "bg-indigo-500",
+  "bg-teal-500",
+  "bg-pink-500",
+];
 
 const CONFIGURABLE_HUES = new Set(["cyan", "emerald", "orange", "fuchsia", "lime"]);
 
@@ -49,5 +62,4 @@ export const ticketTypePill = (typeName: string, color?: string): string => {
   return HUE_PILL_CLASS[TYPE_HUES[key] ?? TYPE_FALLBACK_HUES[hashIndex(key, TYPE_FALLBACK_HUES.length)]!]!;
 };
 
-export const labelPill = (label: string): string =>
-  HUE_PILL_CLASS[LABEL_HUES[hashIndex(label.trim().toLowerCase(), LABEL_HUES.length)]!]!;
+export const labelDot = (label: string): string => LABEL_DOTS[hashIndex(label.trim().toLowerCase(), LABEL_DOTS.length)]!;

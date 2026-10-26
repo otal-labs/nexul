@@ -3,12 +3,12 @@ import { useState } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { Input } from "@/components/ui/input";
-import { NoFillBadge } from "@/components/ui/badge";
+import { LabelChip } from "@/components/LabelChip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { labelDotColor } from "@/components/board/ticketTypeColor";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { rowClass, rowIconClass, rowLabelClass } from "@/components/ticket/ticketPropertyRowStyle";
-import { useFetchAllLabels } from "@/hooks/TicketHooks";
+import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/models/Ticket";
 
@@ -20,6 +20,7 @@ interface AddLabelPopoverProps {
 
 const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverProps) => {
   const { data: allLabels } = useFetchAllLabels(projectId);
+  const { data: labelColors } = useFetchLabelColors(projectId);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const trimmed = search.trim();
@@ -67,7 +68,7 @@ const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverPr
         <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
           {filtered.map((label) => (
             <button key={label} type="button" className={menuItemClass} onClick={() => pick(label)}>
-              <span className={cn("size-1.5 shrink-0 rounded-full", labelDotColor(label))} aria-hidden />
+              <span className={cn("size-1.5 shrink-0 rounded-full", labelDotColor(label, labelColors?.[label]))} aria-hidden />
               {label}
             </button>
           ))}
@@ -93,6 +94,7 @@ interface TicketLabelsRowProps {
 
 export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLabelsRowProps) => {
   const labels = ticket.labels ?? [];
+  const { data: labelColors } = useFetchLabelColors(ticket.project_id);
 
   return (
     <div className={cn(rowClass, "items-start")}>
@@ -104,7 +106,7 @@ export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLab
         {labels.length === 0 && <span className="text-xs text-muted-foreground">None</span>}
         {labels.map((label) => (
           <span key={label} className="group/chip inline-flex items-center gap-0.5">
-            <NoFillBadge color={labelDotColor(label)}>{label}</NoFillBadge>
+            <LabelChip label={label} color={labelColors?.[label]} />
             <ActionButton
               permission="tickets:write"
               projectId={ticket.project_id}
