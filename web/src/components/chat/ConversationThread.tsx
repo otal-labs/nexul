@@ -107,23 +107,25 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
     <CalendarTitleContext value={label}>
       <div className="flex h-full min-h-0 flex-col">
         {showHeader && (
-          <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-            <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            {subjectPath && (
-              <Link
-                to={wsPath(subjectPath)}
-                dir="auto"
-                title={label}
-                className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
-              >
-                {label}
-              </Link>
-            )}
-            {!subjectPath && (
-              <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
-                {label}
-              </span>
-            )}
+          <div className="h-14 shrink-0 border-b border-border">
+            <div className="mx-auto flex h-full w-full max-w-3xl items-center gap-2 px-3">
+              <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              {subjectPath && (
+                <Link
+                  to={wsPath(subjectPath)}
+                  dir="auto"
+                  title={label}
+                  className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
+                >
+                  {label}
+                </Link>
+              )}
+              {!subjectPath && (
+                <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
+                  {label}
+                </span>
+              )}
+            </div>
           </div>
         )}
         {isVoiceChannel && (
