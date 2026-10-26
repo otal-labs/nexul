@@ -16,9 +16,9 @@
 /* Hero */
 .home-hero { padding-top: 40px; }
 .hero-title { margin: 0; max-width: 13ch; font-size: 40px; }
-.hero-lead { display: grid; gap: 24px; margin-top: 20px; }
+.hero-lead { display: grid; gap: 32px; margin-top: 20px; }
 .hero-lede { margin: 0; max-width: 46ch; font-size: 16px; line-height: 1.6; color: var(--muted-foreground); }
-.hero-install { min-width: 0; }
+.hero-install { min-width: 0; max-width: 480px; }
 
 .hero-shot {
 	position: relative;
@@ -127,7 +127,7 @@
 @media (min-width: 1024px) {
 	.home-hero { padding-top: 80px; }
 	.hero-title { font-size: 68px; }
-	.hero-lead { grid-template-columns: minmax(0, 1fr) minmax(400px, 520px); align-items: start; gap: 48px; margin-top: 32px; }
+	.hero-lead { margin-top: 32px; }
 	.hero-shot { margin-top: 56px; padding: 40px 0 0 40px; }
 	.home h2 { font-size: 40px; }
 	.home-section { padding-block: 120px; }
