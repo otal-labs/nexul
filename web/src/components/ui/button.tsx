@@ -5,20 +5,20 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out outline-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-busy:[&>svg:not([data-slot=spinner])]:hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out outline-none disabled:pointer-events-none disabled:not-aria-busy:text-muted-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-busy:[&>svg:not([data-slot=spinner])]:hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-brand text-brand-foreground hover:bg-brand/90",
+          "bg-brand text-brand-foreground hover:bg-brand/90 disabled:not-aria-busy:bg-foreground/[0.06]",
         destructive:
-          "bg-destructive-fill text-white hover:bg-destructive-fill/90",
+          "bg-destructive-fill text-white hover:bg-destructive-fill/90 disabled:not-aria-busy:bg-foreground/[0.06]",
         outline:
-          "border bg-card shadow-card hover:bg-accent hover:text-accent-foreground",
+          "border bg-card shadow-card hover:bg-accent hover:text-accent-foreground disabled:not-aria-busy:bg-transparent disabled:not-aria-busy:shadow-none",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:not-aria-busy:bg-foreground/[0.06]",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-brand underline-offset-4 hover:underline",
+        link: "text-brand underline-offset-4 hover:underline disabled:not-aria-busy:no-underline",
       },
       size: {
         // A labelled button presses in; an icon button answers with its background alone, in 120ms.
