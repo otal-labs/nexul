@@ -294,17 +294,21 @@ func (g projectEntityGate) RequireTickets(ctx context.Context, ticketIDs []strin
 	return out, nil
 }
 
-// ticketProjectPeople resolves a ticket person's login and asks access whether they may open the project; a login
-// nobody signed in with stays accepted, as before people were checked.
+// ticketProjectPeople resolves a ticket person's login to their account and asks access whether they may open the
+// project; a login nobody signed in with stays accepted as typed, as before people were checked.
 type ticketProjectPeople struct {
 	users  userLookupGate
 	access *access.Service
 }
 
-func (g ticketProjectPeople) MayOpen(ctx context.Context, login, projectID string) (bool, error) {
+func (g ticketProjectPeople) MayOpen(ctx context.Context, login, projectID string) (string, bool, error) {
 	userID, found, err := g.users.UserIDForLogin(ctx, login)
 	if err != nil || !found {
-		return !found, err
+		return login, !found, err
 	}
-	return g.access.CanInProject(ctx, userID, projectID, permissions.Member), nil
+	own, err := g.users.LoginForUserID(ctx, userID)
+	if err != nil {
+		return "", false, fmt.Errorf("read the login of %s: %w", userID, err)
+	}
+	return own, g.access.CanInProject(ctx, userID, projectID, permissions.Member), nil
 }

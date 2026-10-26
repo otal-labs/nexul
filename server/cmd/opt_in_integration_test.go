@@ -153,6 +153,17 @@ func TestIntegration_NotInAProject(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("a developer or tester typed in another case is stored as their account spells it", func(t *testing.T) {
+		set, err := s.ticketsSvc.SetPerson(as(uOwner), f.ticket.ID, tickets.RoleDeveloper, strings.ToUpper(uOwner))
+		require.NoError(t, err)
+		assert.Equal(t, uOwner, set.Developer)
+		created, err := s.ticketsSvc.Create(as(uOwner), pGeneral, "Cased", "", "", strings.ToUpper(uOwner),
+			tickets.CreateOptions{Tester: strings.ToUpper(uOwner)})
+		require.NoError(t, err)
+		assert.Equal(t, uOwner, created.Developer)
+		assert.Equal(t, uOwner, created.Tester)
+	})
+
 	t.Run("the developer picker lists who the project's rules let in", func(t *testing.T) {
 		people := func(projectID string) []string {
 			ps, err := s.tenancySvc.ListProjectPeople(context.Background(), uOwner, projectID)
