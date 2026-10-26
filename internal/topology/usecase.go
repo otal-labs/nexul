@@ -277,26 +277,42 @@ func (s *Service) RenameServiceNode(ctx context.Context, serviceID string, name 
 	return c, nil
 }
 
-// SetServiceNodeStatus updates the anchored node's live status badge and, when reported, its address;
-// an empty address keeps whatever was set before, so a failed redeploy doesn't wipe the last known one.
-func (s *Service) SetServiceNodeStatus(ctx context.Context, serviceID string, status ServiceStatus, address string) (*Canvas, error) {
+// SyncServiceNodes lands one stack's containers on the registry in a single write: a node per container, added when a
+// deploy first observes it, with its name, status and, when reported, address (an empty one keeps the last known), and
+// the nodes of containers the deploy dropped removed.
+func (s *Service) SyncServiceNodes(ctx context.Context, nodes []Node, dropped []string) (*Canvas, error) {
 	if err := s.requireRegistry(ctx, permissions.TopologyWrite); err != nil {
 		return nil, err
-	}
-	if serviceID == "" {
-		return nil, fmt.Errorf("%w: service id is required", apperrs.ErrInvalid)
-	}
-	if !status.Valid() {
-		return nil, fmt.Errorf("%w: status %q is invalid", apperrs.ErrInvalid, status)
 	}
 	c, err := s.load(ctx, registryKey)
 	if err != nil {
 		return nil, err
 	}
-	if n := serviceNode(c, serviceID); n != nil {
-		n.Data.Status = status
-		if address != "" {
-			n.Data.Address = address
+	for _, id := range dropped {
+		if n := serviceNode(c, id); n != nil {
+			if err := dropNode(c, n.ID); err != nil {
+				return nil, err
+			}
+		}
+	}
+	for _, n := range nodes {
+		if !n.Data.Status.Valid() {
+			return nil, fmt.Errorf("%w: node %q: status %q is invalid", apperrs.ErrInvalid, n.ID, n.Data.Status)
+		}
+		existing := serviceNode(c, n.ID)
+		if existing == nil {
+			n.Type = NodeService
+			n.Data.ServiceID = n.ID
+			if err := n.Validate(); err != nil {
+				return nil, fmt.Errorf("sync node: %w", err)
+			}
+			c.Nodes = append(c.Nodes, n)
+			continue
+		}
+		existing.Data.Name = n.Data.Name
+		existing.Data.Status = n.Data.Status
+		if n.Data.Address != "" {
+			existing.Data.Address = n.Data.Address
 		}
 	}
 	if err := s.save(ctx, registryKey, c); err != nil {

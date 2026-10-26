@@ -43,6 +43,15 @@ func (q *Queries) CreateContainer(ctx context.Context, arg CreateContainerParams
 	return err
 }
 
+const deleteContainer = `-- name: DeleteContainer :exec
+DELETE FROM services WHERE id = ?
+`
+
+func (q *Queries) DeleteContainer(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteContainer, id)
+	return err
+}
+
 const deleteContainersByStack = `-- name: DeleteContainersByStack :exec
 DELETE FROM services WHERE stack_id = ?
 `

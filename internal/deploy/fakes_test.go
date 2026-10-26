@@ -507,6 +507,13 @@ func (f *fakeContainerRepo) Get(_ context.Context, id string) (*Container, error
 	return &cp, nil
 }
 
+func (f *fakeContainerRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.stored, id)
+	return nil
+}
+
 func (f *fakeContainerRepo) DeleteByStack(_ context.Context, stackID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

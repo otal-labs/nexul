@@ -63,6 +63,8 @@ type ServiceRepo interface {
 	Upsert(ctx context.Context, svc *Container) error
 	ListByStack(ctx context.Context, stackID string) ([]*Container, error)
 	Get(ctx context.Context, id string) (*Container, error)
+	// Delete removes one container row; a missing one is not an error.
+	Delete(ctx context.Context, id string) error
 	DeleteByStack(ctx context.Context, stackID string) error
 }
 

@@ -493,64 +493,62 @@ func TestRenameServiceNode(t *testing.T) {
 	})
 }
 
-func TestSetServiceNodeStatus(t *testing.T) {
-	t.Run("missing service id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.SetServiceNodeStatus(context.Background(), "", ServiceHealthy, "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("bad status is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceStatus("bogus"), "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("updates the anchored service node status", func(t *testing.T) {
+func TestSyncServiceNodes(t *testing.T) {
+	observed := func(id, name string, status ServiceStatus, address string) Node {
+		return Node{ID: id, Data: NodeData{Name: name, Runtime: "docker", Status: status, Address: address}}
+	}
+	seeded := func(t *testing.T, nodes ...Node) (*Service, *fakeRepo) {
 		repo := newFakeRepo()
-		bus := newFakeBus()
-		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, repo.Save(t.Context(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: nodes}))
+		return newTestService(repo, newFakeBus()), repo
+	}
 
-		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceFailed, "")
+	t.Run("a bad status is invalid and writes nothing", func(t *testing.T) {
+		s, repo := seeded(t, validNode())
+		_, err := s.SyncServiceNodes(t.Context(), []Node{observed("svc-api", "api", ServiceStatus("bogus"), "")}, nil)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Empty(t, repo.outbox)
+	})
+	t.Run("a container a deploy first observes gets its node", func(t *testing.T) {
+		s, _ := seeded(t)
+		got, err := s.SyncServiceNodes(t.Context(), []Node{observed("c-web", "shop/web", ServiceRunning, "172.18.0.3")}, nil)
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
-		assert.Equal(t, ServiceFailed, got.Nodes[0].Data.Status)
-		assert.Len(t, repo.lastUpdated().Canvas.Nodes, 1)
+		assert.Equal(t, NodeService, got.Nodes[0].Type)
+		assert.Equal(t, "c-web", got.Nodes[0].Data.ServiceID)
+		assert.Equal(t, "shop/web", got.Nodes[0].Data.Name)
+		assert.Equal(t, "172.18.0.3", got.Nodes[0].Data.Address)
 	})
-	t.Run("missing node is a no-op", func(t *testing.T) {
-		repo := newFakeRepo()
-		bus := newFakeBus()
-		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion}))
-
-		got, err := s.SetServiceNodeStatus(context.Background(), "svc-ghost", ServiceHealthy, "")
-		require.NoError(t, err)
-		assert.Empty(t, got.Nodes)
-	})
-	t.Run("sets the address when reported", func(t *testing.T) {
-		repo := newFakeRepo()
-		bus := newFakeBus()
-		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
-
-		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceHealthy, "172.18.0.4")
+	t.Run("an existing node takes the name, status and reported address", func(t *testing.T) {
+		s, _ := seeded(t, validNode())
+		got, err := s.SyncServiceNodes(t.Context(), []Node{observed("svc-api", "shop/api", ServiceHealthy, "172.18.0.4")}, nil)
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
+		assert.Equal(t, "shop/api", got.Nodes[0].Data.Name)
+		assert.Equal(t, ServiceHealthy, got.Nodes[0].Data.Status)
 		assert.Equal(t, "172.18.0.4", got.Nodes[0].Data.Address)
+		assert.Equal(t, Position{X: 100, Y: 200}, got.Nodes[0].Position)
 	})
 	t.Run("an empty address keeps the previous one", func(t *testing.T) {
-		repo := newFakeRepo()
-		bus := newFakeBus()
-		s := newTestService(repo, bus)
 		node := validNode()
 		node.Data.Address = "172.18.0.4"
-		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{node}}))
-
-		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceFailed, "")
+		s, _ := seeded(t, node)
+		got, err := s.SyncServiceNodes(t.Context(), []Node{observed("svc-api", "api", ServiceFailed, "")}, nil)
 		require.NoError(t, err)
-		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "172.18.0.4", got.Nodes[0].Data.Address, "a failed redeploy must not wipe the last known address")
+	})
+	t.Run("a dropped container leaves the registry in the same write", func(t *testing.T) {
+		s, repo := seeded(t, validNode())
+		got, err := s.SyncServiceNodes(t.Context(),
+			[]Node{observed("c-web", "shop/web", ServiceRunning, ""), observed("c-bot", "shop/bot", ServiceRunning, "")},
+			[]string{"svc-api", "svc-ghost"})
+		require.NoError(t, err)
+		ids := []string{}
+		for _, n := range got.Nodes {
+			ids = append(ids, n.ID)
+		}
+		assert.ElementsMatch(t, []string{"c-web", "c-bot"}, ids)
+		assert.Len(t, repo.outbox, 1, "one registry write for the whole stack")
 	})
 }
 
@@ -700,7 +698,7 @@ func TestView_PositionsAndDrawingsBelongToTheWorkspace(t *testing.T) {
 	assert.Empty(t, b.Edges)
 	assert.Equal(t, Position{X: 40, Y: 50}, a.Nodes[1].Position)
 
-	_, err = s.SetServiceNodeStatus(t.Context(), "svc-gw", ServiceFailed, "")
+	_, err = s.SyncServiceNodes(t.Context(), []Node{{ID: "svc-gw", Data: NodeData{Name: "gw", Runtime: "docker", Status: ServiceFailed}}}, nil)
 	require.NoError(t, err)
 	a, err = s.Get(t.Context(), "ws-a")
 	require.NoError(t, err)
@@ -746,7 +744,7 @@ func TestGate_ChecksTheCanvasWorkspace(t *testing.T) {
 	require.NoError(t, err)
 	_, err = s.AddNode(t.Context(), "ws-b", validNetworkNode())
 	require.NoError(t, err)
-	_, err = s.SetServiceNodeStatus(t.Context(), "svc-api", ServiceHealthy, "")
+	_, err = s.SyncServiceNodes(t.Context(), nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"ws-a", "ws-b"}, gate.workspaces)
 	assert.Equal(t, 1, gate.anywhere, "the registry answers to the instance-level check")

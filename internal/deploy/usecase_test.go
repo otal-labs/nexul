@@ -1042,6 +1042,32 @@ func TestHandleStatusChanged(t *testing.T) {
 		assert.Equal(t, ServiceStatusRunning, cache.Status)
 	})
 
+	t.Run("a compose stack's placeholder row leaves once a report shows what runs", func(t *testing.T) {
+		repo := newFakeRepo()
+		containers := newFakeContainerRepo()
+		stacks := newFakeStackRepo()
+		require.NoError(t, stacks.Create(context.Background(), &Stack{ID: "svc-1", Name: "shop", Slug: "shop", Strategy: StrategyCompose}))
+		s := newTestServiceWith(repo, stacks, containers, newFakeProjects(), newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", StackID: "svc-1", Status: StatusPending}))
+		for _, svc := range declaredServices(&Stack{ID: "svc-1", Slug: "shop"}, nil) {
+			require.NoError(t, containers.Create(context.Background(), &svc))
+		}
+
+		ev := DeployStatusChangedEvent{ID: "d1", Status: string(StatusHealthy), Services: []ObservedService{
+			{Name: "api", ContainerName: "shop-api-1", Status: "healthy"},
+			{Name: "web", ContainerName: "shop-web-1", Status: "running"},
+		}}
+		require.NoError(t, s.HandleStatusChanged(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
+
+		services, err := containers.ListByStack(context.Background(), "svc-1")
+		require.NoError(t, err)
+		names := []string{}
+		for _, svc := range services {
+			names = append(names, svc.Name)
+		}
+		assert.ElementsMatch(t, []string{"api", "web"}, names, "the guess named after the stack never ran, so it is no service")
+	})
+
 	t.Run("a failed deploy with no report leaves existing services untouched", func(t *testing.T) {
 		repo := newFakeRepo()
 		containers := newFakeContainerRepo()
