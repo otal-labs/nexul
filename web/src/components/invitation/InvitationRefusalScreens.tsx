@@ -17,7 +17,7 @@ const instanceHost = () => window.location.host;
 // Says only that the link is gone: no inviter, no next step, nothing that tells expired from deleted.
 export const InvitationGoneScreen = () => (
   <InvitationPanel className="text-center">
-    <Logo className="mx-auto size-10 rounded-[10px] opacity-70 [&_svg]:size-6" />
+    <Logo className="mx-auto size-10 rounded-lg opacity-70 [&_svg]:size-6" />
     <p className={cn(microheaderClass, "mt-4")}>Invitation</p>
     <h1 className={cn(displayTitleClass, "mt-1.5 text-[1.5rem]")}>This invitation has been deleted or has expired</h1>
     <p className="mt-2 font-mono text-xs break-all text-muted-foreground">{instanceHost()}</p>
@@ -28,7 +28,7 @@ export const InvitationGoneScreen = () => (
 export const InvitationExistingAccountScreen = ({ person }: { person?: RefusedPerson | undefined }) => (
   <InvitationPanel className="text-center">
     <div className="flex items-center justify-center gap-3">
-      <Logo className="size-10 rounded-[10px] [&_svg]:size-6" />
+      <Logo className="size-10 rounded-lg [&_svg]:size-6" />
       <ArrowLeftRight aria-hidden className="size-4 text-muted-foreground" />
       {person && <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />}
     </div>

@@ -18,7 +18,7 @@ interface InvitationGrantCardProps {
 export const InvitationGrantCard = ({ grant, signedIn }: InvitationGrantCardProps) => (
   <section className="space-y-2">
     <h2 className="flex min-w-0 items-center gap-2 text-[13px] font-medium">
-      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-[5px] bg-surface-2 font-mono text-[10px] font-semibold text-muted-foreground ring-1 ring-border">
+      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-sm bg-surface-2 font-mono text-[10px] font-semibold text-muted-foreground ring-1 ring-border">
         {grant.workspace_name.charAt(0).toUpperCase()}
       </span>
       <span className="min-w-0 break-words">{grant.workspace_name}</span>

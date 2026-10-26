@@ -68,7 +68,7 @@
 
 .site-nav a:focus-visible {
 	outline-offset: -8px;
-	border-radius: 10px;
+	border-radius: var(--shape-lg);
 }
 
 .site-nav a[aria-current='page'] {

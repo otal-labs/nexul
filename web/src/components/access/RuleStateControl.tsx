@@ -41,7 +41,7 @@ const StateItem = ({ state, word, Icon, on, reason }: StateItemProps) => (
           value={state}
           disabled={!!reason}
           aria-label={reason ? `${word}: ${reason}` : word}
-          className={cn("w-7 rounded-[5px] px-0 text-muted-foreground hover:bg-accent hover:text-foreground", on)}
+          className={cn("w-7 rounded-sm px-0 text-muted-foreground hover:bg-accent hover:text-foreground", on)}
         >
           {reason && <Lock className="size-3" aria-hidden />}
           {!reason && <Icon className="size-3.5" aria-hidden />}

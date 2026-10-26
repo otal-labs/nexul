@@ -29,10 +29,10 @@ h1, h2, h3 { text-wrap: balance; }
 .muted { color: var(--page-muted); }
 .eyebrow { display: flex; align-items: center; gap: 10px; font: 10px/1.6 var(--page-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--page-muted); margin: 0 0 20px; }
 .wordmark { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; letter-spacing: -.05em; font-weight: 600; min-height: 44px; }
-.button { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 48px; padding: 12px 20px; background: var(--page-primary); color: var(--page-primary-fg); border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; transition: opacity 150ms var(--page-ease), transform 150ms var(--page-ease); }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 48px; padding: 12px 20px; background: var(--page-primary); color: var(--page-primary-fg); border: 1px solid transparent; border-radius: var(--shape-md); font-size: 13px; font-weight: 500; white-space: nowrap; transition: opacity 150ms var(--page-ease), transform 150ms var(--page-ease); }
 .text-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 13px; font-weight: 500; }
 .text-link span, .capability-arrow, .detail-link > span { color: var(--page-muted); transition: transform 150ms var(--page-ease); }
-.skip-link { position: fixed; top: 8px; left: 16px; transform: translateY(-150%); z-index: 50; background: var(--foreground); color: var(--background); padding: 12px 16px; border-radius: 6px; }
+.skip-link { position: fixed; top: 8px; left: 16px; transform: translateY(-150%); z-index: 50; background: var(--foreground); color: var(--background); padding: 12px 16px; border-radius: var(--shape-md); }
 .skip-link:focus { transform: translateY(0); }
 h1 { margin: 0; font-size: 36px; font-weight: 500; line-height: 1.08; letter-spacing: -.055em; }
 h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spacing: -.045em; }

@@ -40,6 +40,7 @@ describe("applyThemePalette", () => {
     applyThemePalette(ThemeId.Brutalism, "dark");
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--shape-md")).toBe("0px");
+    expect(root.style.getPropertyValue("--shape-2xl")).toBe("0px");
     expect(root.style.getPropertyValue("--foreground")).toBe("oklch(1.0 0.0 0.0)");
   });
 

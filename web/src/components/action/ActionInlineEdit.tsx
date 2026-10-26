@@ -16,7 +16,7 @@ interface ActionInlineEditProps extends Omit<ComponentProps<"button">, "aria-lab
   pencil?: boolean;
 }
 
-const BASE = "group/edit -mx-1 inline-flex min-w-0 items-center gap-1.5 rounded-[5px] px-1 py-0.5 text-left";
+const BASE = "group/edit -mx-1 inline-flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-left";
 const AFFORDANCE = "size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/edit:opacity-100 group-focus-visible/edit:opacity-100";
 
 // Hidden, the value still shows as plain text: it is data first and a control second. A popover trigger passes its props through to the live button.
