@@ -168,7 +168,7 @@ export const KanbanBoard = ({
         }}
       >
         {/* One shared horizontal scroll for every lane so column positions stay aligned across swimlanes. */}
-        <div className="space-y-6 overflow-x-auto pb-2">
+        <div data-card-drag={activeTicket ? "" : undefined} className="group/board space-y-6 overflow-x-auto pb-2">
           {shownSwimlanes.map((lane) => (
             <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} onAddTicket={onAddTicket} />
           ))}
