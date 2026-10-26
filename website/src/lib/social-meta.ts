@@ -1,5 +1,4 @@
 export const previewImage = {
-	path: '/social-preview.png',
 	width: 1200,
 	height: 630,
 	alt: 'Nexul: from docs to deploy, on your servers.',
@@ -10,13 +9,14 @@ interface Page {
 	description: string;
 	url: URL;
 	type: 'website' | 'article';
+	image: string;
 }
 
 export type MetaTag = { property: string; content: string } | { name: string; content: string };
 
 // X reads only the twitter: names; Slack, Discord, LinkedIn and iMessage read the og: properties.
-export function socialMeta({ title, description, url, type }: Page): MetaTag[] {
-	const image = new URL(previewImage.path, url).href;
+export function socialMeta({ title, description, url, type, image: imagePath }: Page): MetaTag[] {
+	const image = new URL(imagePath, url).href;
 	return [
 		{ property: 'og:site_name', content: 'Nexul' },
 		{ property: 'og:type', content: type },
