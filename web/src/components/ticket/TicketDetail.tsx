@@ -64,8 +64,8 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
 
   const article = (
     <article className={layout?.article}>
-      {/* A sheet like the doc's, sized to the reading measure so it never frames empty space beside the text. */}
-      <div className="box-content max-w-[68ch] rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11">
+      {/* Open on the panel like a page, held to a reading measure; a card around it only framed empty space. */}
+      <div className="max-w-[68ch]">
         <CalendarTitleContext value={ticket.title}>
           {session && (
             <CollabRichTextEditor
