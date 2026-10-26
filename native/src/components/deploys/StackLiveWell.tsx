@@ -1,3 +1,4 @@
+import { deployOutcome } from "@nexul/client-core/deployOutcome";
 import { View } from "react-native";
 
 import { Microheader } from "@/components/Microheader";
@@ -22,7 +23,7 @@ export const StackLiveWell = ({ latest, containers }: StackLiveWellProps) => {
         <Microheader>Last deploy</Microheader>
         <View className="flex-row items-center gap-2">
           <View className={cn("size-2.5 rounded-full", deployStatusDot(latest?.status))} />
-          <Text className="text-xl font-semibold capitalize">{latest?.status ?? "None"}</Text>
+          <Text className="text-xl font-semibold">{latest ? deployOutcome(latest.status) : "None"}</Text>
         </View>
         {latest && (
           <Text className="font-mono text-xs text-muted-foreground">

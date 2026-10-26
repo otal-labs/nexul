@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent } from "@testing-library/react-native";
+import { render, screen, userEvent, within } from "@testing-library/react-native";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
@@ -55,6 +55,14 @@ beforeEach(() => {
 });
 
 describe("StackScreen", () => {
+  test("the last deploy reads in deploy words, never as the stack's health", async () => {
+    await renderWithLatest("healthy", [web]);
+
+    const well = within((await screen.findByText("Last deploy")).parent!);
+    expect(well.getByText("Succeeded")).toBeTruthy();
+    expect(well.queryByText(/healthy/i)).toBeNull();
+  });
+
   test("a service row opens that service's logs for a viewer who can read them", async () => {
     await renderWithLatest("healthy", [web]);
 

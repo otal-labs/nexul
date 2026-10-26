@@ -28,6 +28,8 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | **Deploy history** | Every build and deploy, with its log |
 | **Danger zone** | Delete the stack |
 
+Above the sections, a status strip reads **Health** (what is down or over its error-rate rule now), **Last deploy**, **Services** and **Hostnames**. Last deploy says how the latest deploy went (Succeeded, Failed, Running or Pending) and how long ago, never how the stack is doing; Health does that.
+
 The containers table is read-only. To change a container, change the compose file or Dockerfile and deploy again.
 
 ## Deleting a stack
@@ -108,7 +110,7 @@ Agents change it with `stack_update` and `watching`, which needs only read acces
 
 ## Requests
 
-A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Its footer states the stack's [error-rate rule](#error-rate). Nexul keeps only these per-minute counts, for a day, and never a request itself. It counts a stack's requests only while that rule is on; a stack with the rule off shows the card with a line saying so.
+A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Its footer states the stack's [error-rate rule](#error-rate). Nexul keeps only these per-minute counts, for a day, and never a request itself. It counts a stack's requests only while that rule is on; a stack with the rule off shows the card with one line saying so, with a link to **Alerts**.
 
 Where the counts come from depends on the gateway carrying the hostname:
 

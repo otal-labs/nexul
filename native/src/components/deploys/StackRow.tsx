@@ -1,3 +1,4 @@
+import { deployOutcome } from "@nexul/client-core/deployOutcome";
 import Layers from "lucide-react-native/icons/layers";
 import { Pressable, View } from "react-native";
 
@@ -25,7 +26,7 @@ export const StackRow = ({ stack, latest, onPress }: StackRowProps) => (
       </Text>
     </View>
     <View className="items-end gap-0.5">
-      {latest && <Text className="text-[13px]">{latest.status}</Text>}
+      {latest && <Text className="text-[13px]">{deployOutcome(latest.status)}</Text>}
       {latest && (
         <Text className="font-mono text-xs text-muted-foreground">
           <RelativeTime iso={latest.created_at} />

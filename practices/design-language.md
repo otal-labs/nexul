@@ -769,7 +769,8 @@ with its compose path, the repository with its branch (or the network when no
 repository is attached), and a run stack's image. Under it is one live status
 strip (`StackLiveHero`), a `surface-2` well with a microheader over each
 value and no second facts row: Health first, then Last deploy (its
-`HealthDot` and state over the mono age), Services (the mono count over "N
+`HealthDot` and the deploy's outcome in deploy words, Succeeded, Failed, Running or Pending, over the mono age;
+never "Healthy", which is how a service is doing and would contradict Health beside it), Services (the mono count over "N
 up"), and Hostnames (the first as a link with an arrow, then "+N more"). It is
 four columns from a 42rem page and two by two below. Health is "No issues"
 behind a `success` dot, or one line per problem behind its status hue: an
@@ -789,8 +790,8 @@ Alerts sits after Logs in the section nav, with a Crash tickets card (one
 switch row) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname
 or the instance can't read analytics), and under the switch row the rule's three numbers as small number fields saved from the
-footer, whose hint states how it recovers. A stack whose rule is off still shows the Requests card, with a line saying nothing
-is counted. Below it the page is the settings shell:
+footer, whose hint states how it recovers. A stack whose rule is off still shows the Requests card, with one line saying nothing
+is counted and a link to Alerts, and no footer. Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Alerts, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
@@ -803,12 +804,14 @@ the stack sees the names over dots and nothing to edit. A card's action lives in
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box, except permission and access rows
-(Permission rows, below), which sit straight on the card or dialog surface.
+(Permission rows, below) and the Services rows, which sit straight on the card or dialog surface.
 Nothing nests a card inside a card. The Services card has no column headers: each row is the service name and
 status over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
-machine); its footer names the networks and when the runner last looked.
+machine). The rows sit straight on the card with hairline dividers, no box of
+their own, and one muted line under them names the networks and when the runner
+last looked; it is information, so it is not a footer strip.
 A project's Services card lists each attached repository no service builds
 from as a row in one bordered box, after the services or in place of the
 empty line: the mono name over a hollow muted dot and "Attached, not deployed
@@ -1176,6 +1179,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
 | Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
+| Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |

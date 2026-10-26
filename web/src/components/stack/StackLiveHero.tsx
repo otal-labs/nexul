@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowUpRightIcon } from "lucide-react";
+import { deployOutcome } from "@nexul/client-core/deployOutcome";
 
 import { HealthDot } from "@/components/service/HealthDot";
 import { formatRelativeTime } from "@/components/service/DeployTime";
@@ -69,9 +70,9 @@ const LastDeploy = ({ latest }: { latest: Deploy | undefined }) => (
   <Cell label="Last deploy">
     {latest && (
       <>
-        <p className="flex items-center gap-2 text-sm font-medium capitalize">
-          <HealthDot status={latest.status} />
-          {latest.status}
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <HealthDot status={latest.status} className="animate-none" />
+          {deployOutcome(latest.status)}
         </p>
         <p className="mt-0.5 font-mono text-xs text-muted-foreground">{formatRelativeTime(latest.created_at)}</p>
       </>

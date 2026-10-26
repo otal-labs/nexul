@@ -114,6 +114,22 @@ describe("StackPage", () => {
     expect(screen.getAllByText(/^Down since/)).toHaveLength(1);
   });
 
+  it("reads the last deploy in deploy words, so a service that is down never sits beside a green Healthy", async () => {
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [{ ...container, status: "exited" }] });
+      if (url === "/api/stacks/stack-1/deploys") {
+        return Promise.resolve({ data: [{ id: "d-1", stack_id: "stack-1", service: "api", target: "instance", image: "ghcr.io/onik/api:v1", status: "healthy", strategy: "compose", created_at: "2026-10-01T09:00:00Z", updated_at: "2026-10-01T09:01:00Z" }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+    const cell = async (label: string) => within((await screen.findByText(label)).parentElement!);
+    expect(await (await cell("Health")).findByText("api down")).toBeInTheDocument();
+    expect(await (await cell("Last deploy")).findByText("Succeeded")).toBeInTheDocument();
+    expect((await cell("Last deploy")).queryByText(/healthy/i)).not.toBeInTheDocument();
+  });
+
   it("reads the error rate in Health: the open episode in the warning hue, a recovery in success, and nothing once the rule is off", async () => {
     const rule = { enabled: true, percent: 5, minutes: 5, min_requests: 20 };
     const episode = { id: "ep-1", stack_id: "stack-1", started_at: "2026-10-16T09:42:00Z", peak_percent: 7.24, requests: 400, errors: 29, limit_percent: 5, window_minutes: 5, min_requests: 20 };

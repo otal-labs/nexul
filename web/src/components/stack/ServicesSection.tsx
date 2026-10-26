@@ -35,18 +35,18 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
       id="services"
       title="Services"
       description="Containers this stack declares, with what the runner last observed for each."
-      footer={services && services.length > 0 && <p className="text-xs text-muted-foreground">{summary(services)}</p>}
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load services." />}
       {services && services.length === 0 && <EmptyRow flush>No services found in this stack yet.</EmptyRow>}
       {services && services.length > 0 && (
-        <EnterList className="divide-y divide-border rounded-lg border border-border">
+        <EnterList className="divide-y divide-border">
           {services.map((c) => (
             <ServiceRow key={c.id} container={c} hostnames={hostnamesOf(c.id)} outage={stack?.outages?.find((o) => o.service === c.name)} />
           ))}
         </EnterList>
       )}
+      {services && services.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{summary(services)}</p>}
     </SettingsCard>
   );
 };

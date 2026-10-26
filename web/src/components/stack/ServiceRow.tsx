@@ -39,7 +39,7 @@ export const ServiceRow = ({ container, hostnames, outage }: ServiceRowProps) =>
   const ports = (container.ports ?? []).map(parseContainerPort).filter((p): p is ContainerPort => p != null);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-8 px-4 py-3">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-8 py-3 first:pt-0">
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="min-w-0 text-sm font-medium wrap-anywhere text-foreground">{container.name}</span>
