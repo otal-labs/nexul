@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Check, Trash2 } from "lucide-react";
 
+import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import { TargetMark } from "@/components/access/TargetMark";
 import type { PanelTarget } from "@/hooks/usePanelTargets";
 import { cn } from "@/lib/utils";
@@ -53,9 +54,9 @@ export const PanelTargetRow = ({ target, selected, onSelect, subline, onRemove }
       aria-current={selected ? "true" : undefined}
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left transition-colors duration-150 ease-standard @3xl/panel:rounded-none @3xl/panel:border-l-2 @3xl/panel:px-3 @3xl/panel:py-2",
-        selected && "bg-accent ring-1 ring-border @3xl/panel:border-l-brand @3xl/panel:ring-0",
-        !selected && "hover:bg-accent/40 @3xl/panel:border-l-transparent",
+        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left transition-colors duration-150 ease-standard @3xl/panel:rounded-none @3xl/panel:px-3 @3xl/panel:py-2",
+        selected && cn(currentRowFillClass, "ring-1 ring-border @3xl/panel:ring-0"),
+        !selected && "hover:bg-accent/40",
         onRemove && "pr-9 @3xl/panel:pr-9",
       )}
     >
@@ -67,6 +68,7 @@ export const PanelTargetRow = ({ target, selected, onSelect, subline, onRemove }
         <span className="hidden truncate font-mono text-[11px] text-muted-foreground @3xl/panel:block">{subline}</span>
       </span>
     </button>
+    {selected && <CurrentRowEdge className="hidden @3xl/panel:block" />}
     {onRemove && <RemoveTargetButton name={target.name} shown={selected} onRemove={onRemove} />}
   </li>
 );

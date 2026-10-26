@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 
 import { ActiveIndicator } from "@/components/ActiveIndicator";
+import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import { microheaderClass } from "@/components/Microheader";
 import { UpdateDot } from "@/components/UpdateDot";
 import { cn } from "@/lib/utils";
@@ -38,8 +39,8 @@ interface SettingsSectionNavProps {
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
     <ul className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
-      <ActiveIndicator selector='[aria-current="page"]' className="rounded-md bg-accent">
-        <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-brand lg:block" />
+      <ActiveIndicator selector='[aria-current="page"]' className={cn("rounded-md", currentRowFillClass)}>
+        <CurrentRowEdge className="hidden lg:block" />
       </ActiveIndicator>
       {items.map((item, index) => (
         <Fragment key={item.section}>

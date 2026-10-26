@@ -1,7 +1,9 @@
 import { Check } from "lucide-react";
 
+import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import { RepoProviderMark } from "@/components/ProviderMarks";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { preferredCandidate, scanSummary, type Repo, type ScanResult } from "@/models/Repository";
 
 interface WizardOpenRepositoryRowProps {
@@ -15,8 +17,8 @@ interface WizardOpenRepositoryRowProps {
 export const WizardOpenRepositoryRow = ({ repo, scan, onDeploy }: WizardOpenRepositoryRowProps) => {
   const candidate = preferredCandidate(scan);
   return (
-    <div className="relative bg-accent px-2 py-3" aria-current="true">
-      <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-brand" />
+    <div className={cn("relative px-2 py-3", currentRowFillClass)} aria-current="true">
+      <CurrentRowEdge />
       <div className="flex items-center gap-3">
         <RepoProviderMark provider={repo.provider} />
         <span className="min-w-0 flex-1">

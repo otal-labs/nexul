@@ -1,3 +1,4 @@
+import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { notificationKindIcon } from "@/components/notifications/notificationKindIcon";
 import { useMarkNotificationUnread, useOpenInboxRow, useSelectedInboxRow } from "@/hooks/NotificationHooks";
@@ -26,11 +27,12 @@ export const NotificationItem = ({ row, inset = false }: NotificationItemProps) 
         onClick={() => open(row)}
         aria-current={selected}
         className={cn(
-          "flex w-full items-start gap-2.5 border-b border-l-2 border-b-border px-4 py-3 text-left transition-colors duration-150 ease-standard",
+          "relative flex w-full items-start gap-2.5 border-b border-b-border px-4 py-3 text-left transition-colors duration-150 ease-standard",
           inset && "pl-9",
-          selected ? "border-l-brand bg-accent" : "border-l-transparent hover:bg-accent/40",
+          selected ? currentRowFillClass : "hover:bg-accent/40",
         )}
       >
+        {selected && <CurrentRowEdge />}
         <span className="relative mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
           <KindIcon className="size-3.5" aria-hidden />
           <span
@@ -44,7 +46,7 @@ export const NotificationItem = ({ row, inset = false }: NotificationItemProps) 
             <span
               dir="auto"
               title={row.title}
-              className={cn("line-clamp-2 min-w-0 flex-1 text-[13px] break-words", unread ? "font-semibold" : "font-medium text-muted-foreground")}
+              className={cn("line-clamp-2 min-w-0 flex-1 text-[13px] break-words", unread ? "font-semibold" : "font-medium text-muted-foreground", selected && "text-foreground")}
             >
               {row.title}
             </span>
