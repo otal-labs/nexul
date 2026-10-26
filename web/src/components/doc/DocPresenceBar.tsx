@@ -23,7 +23,7 @@ export const DocPresenceBar = ({ participants, connected, updatedAt }: DocPresen
           className={cn(
             "size-1.5 rounded-full",
             connected
-              ? "animate-[status-pulse_2.4s_ease-standard_infinite] bg-primary motion-reduce:animate-none"
+              ? "animate-[status-pulse_2.4s_ease-standard_infinite] bg-success motion-reduce:animate-none"
               : "bg-muted-foreground/40",
           )}
           aria-hidden="true"
