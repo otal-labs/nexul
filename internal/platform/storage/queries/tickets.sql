@@ -3,28 +3,53 @@ INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTicket :one
-SELECT * FROM tickets WHERE id = ?;
+-- A developer or tester is a user id, read back with its login, or a login nobody has signed in with, read back as is.
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.id = ?;
 
 -- name: ListTicketsByPrefixAndNumber :many
 -- A key repeats across workspaces, and inside one when a moved ticket keeps its number, so every match comes back.
-SELECT sqlc.embed(tickets), workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login,
+       workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
 FROM tickets
 JOIN projects ON tickets.project_id = projects.id
+LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
 JOIN workspaces ON workspaces.id = projects.workspace_id
 WHERE projects.prefix = ? AND tickets.number = ?
 ORDER BY workspaces.slug, tickets.created_at;
 
 -- name: ListTickets :many
-SELECT * FROM tickets ORDER BY created_at;
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+ORDER BY tickets.created_at;
 
 -- name: ListTicketsByIDs :many
-SELECT * FROM tickets WHERE id IN (sqlc.slice('ids'));
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.id IN (sqlc.slice('ids'));
 
 -- name: ListTicketsByDoc :many
-SELECT * FROM tickets WHERE doc_id = ? ORDER BY created_at;
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.doc_id = ? ORDER BY tickets.created_at;
 
 -- name: ListTicketsByProject :many
-SELECT * FROM tickets WHERE project_id = ? ORDER BY created_at;
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.project_id = ? ORDER BY tickets.created_at;
 
 -- name: GetTicketStatusAndCategory :one
 SELECT status, category_id FROM tickets WHERE id = ?;
@@ -88,6 +113,12 @@ UPDATE tickets SET developer = ?, updated_at = ? WHERE id = ?;
 -- name: UpdateTicketTester :execrows
 UPDATE tickets SET tester = ?, updated_at = ? WHERE id = ?;
 
+-- name: ClaimTicketDeveloperLogin :exec
+UPDATE tickets SET developer = sqlc.arg(user_id) WHERE lower(developer) = lower(sqlc.arg(login));
+
+-- name: ClaimTicketTesterLogin :exec
+UPDATE tickets SET tester = sqlc.arg(user_id) WHERE lower(tester) = lower(sqlc.arg(login));
+
 -- name: UpdateTicketTitleBody :execrows
 UPDATE tickets SET title = ?, body = ?, updated_at = ? WHERE id = ?;
 
@@ -131,8 +162,11 @@ UPDATE tickets SET due_on = ?, updated_at = ? WHERE id = ?;
 
 -- name: ListTicketsDueBetween :many
 -- Due tickets in one workspace's projects, limited to the readable set unless the caller reads them all; the explicit non-empty test is what lets idx_tickets_due_on serve the range.
-SELECT * FROM tickets
-WHERE due_on != '' AND due_on >= sqlc.arg(from_on) AND due_on <= sqlc.arg(to_on)
-  AND project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id))
-  AND (sqlc.arg(all_projects) OR project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
-ORDER BY due_on, id;
+SELECT sqlc.embed(tickets),
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.due_on != '' AND tickets.due_on >= sqlc.arg(from_on) AND tickets.due_on <= sqlc.arg(to_on)
+  AND tickets.project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id))
+  AND (sqlc.arg(all_projects) OR tickets.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
+ORDER BY tickets.due_on, tickets.id;

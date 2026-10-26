@@ -24,6 +24,8 @@ const ticket: Ticket = {
   doc_id: "doc-1",
   developer: "",
   tester: "",
+  developer_id: "",
+  tester_id: "",
   reporter: { kind: "user", login: "alice" },
   due_on: "",
   created_at: "2026-10-01T10:00:00Z",

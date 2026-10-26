@@ -5,6 +5,7 @@ import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { personLabel } from "@nexul/client-core/person";
+import { findTicketPerson } from "@nexul/client-core/ticketPeople";
 
 import { LabelChip } from "@/components/LabelChip";
 import { PersonAvatar } from "@/components/PersonAvatar";
@@ -16,7 +17,6 @@ import { ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
-import { findPerson } from "@/hooks/PeopleHooks";
 import { getProjectKey } from "@/hooks/ProjectHooks";
 import { useRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -37,7 +37,7 @@ interface TicketCardBodyProps {
 export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const { prefix, ticketTypes, labelColors, threadIndicators, statuses, activeTrails, people } = useBoardCardData();
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
-  const shown = findPerson(people, person.login);
+  const shown = findTicketPerson(people, person);
   const hasThread = threadIndicators?.[ticket.id] === true;
   const runState = useRunState("ticket", ticket.id, activeTrails);
   const runStartedAt = activeTrails?.started[ticket.id];

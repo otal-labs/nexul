@@ -20,7 +20,8 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog", developer: "alice" } as Ticket;
+// The developer is matched by id, so a login stored in another case still lets them resume.
+const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog", developer: "Alice", developer_id: "u-alice" } as Ticket;
 
 const people = [
   { user_id: "u-alice", login: "alice", display_name: "Alice Moreau", avatar_url: "" },

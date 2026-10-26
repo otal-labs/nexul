@@ -8,7 +8,7 @@ import { labelDot } from "@/components/board/ticketTypeColor";
 import { TicketTypeBadge } from "@/components/board/TicketTypeBadge";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
-import { usePersonLookup } from "@/hooks/PeopleHooks";
+import { useTicketPersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { StatusKind } from "@/models/Status";
@@ -34,7 +34,7 @@ const LabelChip = ({ label, dotClass }: { label: string; dotClass: string }) => 
 
 // The mono key as an eyebrow, the title at full width, then the type and the label chips with whoever acts next opposite.
 export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeColor }: TicketCardBodyProps) => {
-  const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
+  const resolvePerson = useTicketPersonLookup(useCurrentWorkspaceId());
   const person = cardPerson(ticket, stage);
   const labels = ticket.labels ?? [];
   return (
@@ -51,7 +51,7 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
               <LabelChip key={label} label={label} dotClass={labelDot(label)} />
             ))}
           </View>
-          {person.login && <PersonAvatar person={resolvePerson(person.login)} size={22} />}
+          {person.login && <PersonAvatar person={resolvePerson(person)} size={22} />}
         </View>
       )}
     </>

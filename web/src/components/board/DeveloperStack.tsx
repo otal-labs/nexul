@@ -1,20 +1,22 @@
 import { CheckIcon } from "lucide-react";
 
 import { personLabel } from "@nexul/client-core/person";
+import type { TicketPersonRef } from "@nexul/client-core/ticketPeople";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { usePerson } from "@/hooks/PeopleHooks";
+import { useTicketPerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
 
 interface DeveloperStackProps {
-  developers: string[];
+  developers: TicketPersonRef[];
+  // The keys of the developers the board is narrowed to.
   selected: string[];
   onToggle: (developer: string) => void;
 }
 
 interface DeveloperToggleProps {
-  login: string;
+  developer: TicketPersonRef;
   active: boolean;
   dimmed: boolean;
   onToggle: (developer: string) => void;
@@ -22,36 +24,36 @@ interface DeveloperToggleProps {
 
 const MAX_VISIBLE = 5;
 
-const DeveloperStackAvatar = ({ login, active, dimmed, onToggle }: DeveloperToggleProps) => {
-  const person = usePerson(login);
+const DeveloperStackAvatar = ({ developer, active, dimmed, onToggle }: DeveloperToggleProps) => {
+  const person = useTicketPerson(developer);
   return (
   <button
     type="button"
     aria-pressed={active}
     aria-label={`Developer ${personLabel(person)}`}
-    onClick={() => onToggle(login)}
+    onClick={() => onToggle(developer.key)}
     className={cn(
       "relative rounded-full ring-2 ring-card transition-[transform,opacity,box-shadow] duration-150 ease-standard hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring",
       active && "z-10 ring-primary",
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={login} src={person.avatar_url} className="size-8 text-xs" />
+    <PersonAvatar login={person.login} src={person.avatar_url} className="size-8 text-xs" />
   </button>
   );
 };
 
-const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggleProps, "dimmed">) => {
-  const person = usePerson(login);
+const DeveloperStackMenuItem = ({ developer, active, onToggle }: Omit<DeveloperToggleProps, "dimmed">) => {
+  const person = useTicketPerson(developer);
   return (
   <button
     type="button"
     aria-pressed={active}
     aria-label={`Developer ${personLabel(person)}`}
-    onClick={() => onToggle(login)}
+    onClick={() => onToggle(developer.key)}
     className="quiet-focus flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent"
   >
-    <PersonAvatar login={login} src={person.avatar_url} className="size-6" />
+    <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" />
     <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>
     {active && <CheckIcon className="size-3.5 shrink-0" aria-hidden />}
   </button>
@@ -61,19 +63,19 @@ const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggl
 // Overlapping avatars beside the Filter button: a click narrows the board to that developer, a ring marks the selected ones.
 export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStackProps) => {
   // Selected first, so picking someone from the overflow list surfaces them in the stack.
-  const ordered = [...developers.filter((d) => selected.includes(d)), ...developers.filter((d) => !selected.includes(d))];
+  const ordered = [...developers.filter((d) => selected.includes(d.key)), ...developers.filter((d) => !selected.includes(d.key))];
   const visible = ordered.slice(0, MAX_VISIBLE);
   const overflow = ordered.slice(MAX_VISIBLE);
   const anySelected = selected.length > 0;
 
   return (
     <div role="group" aria-label="Filter by developer" className="flex items-center -space-x-2">
-      {visible.map((login) => (
+      {visible.map((developer) => (
         <DeveloperStackAvatar
-          key={login}
-          login={login}
-          active={selected.includes(login)}
-          dimmed={anySelected && !selected.includes(login)}
+          key={developer.key}
+          developer={developer}
+          active={selected.includes(developer.key)}
+          dimmed={anySelected && !selected.includes(developer.key)}
           onToggle={onToggle}
         />
       ))}
@@ -89,8 +91,8 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-1">
-            {overflow.map((login) => (
-              <DeveloperStackMenuItem key={login} login={login} active={selected.includes(login)} onToggle={onToggle} />
+            {overflow.map((developer) => (
+              <DeveloperStackMenuItem key={developer.key} developer={developer} active={selected.includes(developer.key)} onToggle={onToggle} />
             ))}
           </PopoverContent>
         </Popover>

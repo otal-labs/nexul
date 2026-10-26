@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { personLabel, unknownPerson, type PeopleList, type Person } from "@nexul/client-core/person";
+import { findTicketPerson, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
 
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
@@ -36,6 +37,12 @@ export const useMentionName = (workspaceId: string | undefined): MentionName => 
 
 export const usePersonLookup = (workspaceId: string | undefined) => {
   const { data } = useWorkspacePeople(workspaceId);
-  // Chat holds user ids and tickets hold logins, so either resolves.
+  // Some records hold user ids and some logins, so either resolves.
   return (key: string): Person => data?.people.find((p) => p.user_id === key || p.login === key) ?? unknownPerson(key);
+};
+
+// A ticket's developer or tester in the workspace's directory.
+export const useTicketPersonLookup = (workspaceId: string | undefined) => {
+  const { data } = useWorkspacePeople(workspaceId);
+  return (ref: TicketPersonRef): Person => findTicketPerson(data?.people, ref);
 };

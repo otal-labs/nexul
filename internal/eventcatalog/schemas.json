@@ -7864,8 +7864,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -7931,7 +7939,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -7943,8 +7953,16 @@
       "from": {
         "type": "string"
       },
+      "from_id": {
+        "type": "string",
+        "description": "The user id of the developer before; empty for nobody or a login nobody has signed in with."
+      },
       "to": {
         "type": "string"
+      },
+      "to_id": {
+        "type": "string",
+        "description": "The user id of the developer now; empty for nobody or a login nobody has signed in with."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7952,7 +7970,9 @@
     "required": [
       "ticket",
       "from",
-      "to"
+      "from_id",
+      "to",
+      "to_id"
     ]
   },
   "ticket.category_changed": {
@@ -8014,8 +8034,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8081,7 +8109,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8162,8 +8192,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8229,7 +8267,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8241,8 +8281,16 @@
       "from": {
         "type": "string"
       },
+      "from_id": {
+        "type": "string",
+        "description": "The user id of who held the role before; empty for nobody or a login nobody has signed in with."
+      },
       "to": {
         "type": "string"
+      },
+      "to_id": {
+        "type": "string",
+        "description": "The user id of who holds the role now; empty for nobody or a login nobody has signed in with."
       },
       "actor": {
         "type": "object",
@@ -8283,7 +8331,9 @@
     "required": [
       "ticket",
       "from",
-      "to"
+      "from_id",
+      "to",
+      "to_id"
     ]
   },
   "ticket.due_date_changed": {
@@ -8325,8 +8375,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8392,7 +8450,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8486,8 +8546,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8553,7 +8621,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8683,8 +8753,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8750,7 +8828,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8848,8 +8928,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -8915,7 +9003,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -8977,8 +9067,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -9044,7 +9142,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -9106,8 +9206,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -9173,7 +9281,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",
@@ -9185,8 +9295,16 @@
       "from": {
         "type": "string"
       },
+      "from_id": {
+        "type": "string",
+        "description": "The user id of who held the role before; empty for nobody or a login nobody has signed in with."
+      },
       "to": {
         "type": "string"
+      },
+      "to_id": {
+        "type": "string",
+        "description": "The user id of who holds the role now; empty for nobody or a login nobody has signed in with."
       },
       "actor": {
         "type": "object",
@@ -9227,7 +9345,9 @@
     "required": [
       "ticket",
       "from",
-      "to"
+      "from_id",
+      "to",
+      "to_id"
     ]
   },
   "ticket.unblocked": {
@@ -9336,8 +9456,16 @@
           "developer": {
             "type": "string"
           },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
           "tester": {
             "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
           },
           "reporter": {
             "type": "object",
@@ -9403,7 +9531,9 @@
           "number",
           "doc_id",
           "developer",
+          "developer_id",
           "tester",
+          "tester_id",
           "reporter",
           "due_on",
           "created_at",

@@ -83,8 +83,8 @@ type Repo interface {
 	UpdateStatus(ctx context.Context, id string, status Status, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
 	// UpdateType changes a ticket's type id in place; the ticket keeps its identity.
 	UpdateType(ctx context.Context, id, typeID string) error
-	// UpdatePerson sets the ticket's developer or tester, enqueueing evts in the same transaction; empty clears it.
-	UpdatePerson(ctx context.Context, id string, role Role, login string, evts ...eventbus.OutboxEvent) error
+	// UpdatePerson sets the ticket's developer or tester, enqueueing evts in the same transaction; nobody clears it.
+	UpdatePerson(ctx context.Context, id string, role Role, p Person, evts ...eventbus.OutboxEvent) error
 	// UpdateDueOn sets the ticket's due date, enqueueing evts in the same transaction; empty clears it.
 	UpdateDueOn(ctx context.Context, id, dueOn string, evts ...eventbus.OutboxEvent) error
 	// ListDue reads the tickets of workspaceID that scope keeps and that are due from..to inclusive, by due date then id.

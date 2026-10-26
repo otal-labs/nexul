@@ -18,6 +18,8 @@ const ticket = (id: string, status: string, categoryId: string, position: number
   doc_id: "",
   developer: "",
   tester: "",
+  developer_id: "",
+  tester_id: "",
   reporter: { kind: "user", login: "onik97" },
   due_on: "",
   created_at: "",

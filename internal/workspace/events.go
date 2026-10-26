@@ -139,13 +139,15 @@ type ticketStatusChangedEvent struct {
 
 // ticketRef is the slice of a ticket the generation rules need.
 type ticketRef struct {
-	ID        string `json:"id"`
-	ProjectID string `json:"project_id"`
-	Title     string `json:"title"`
-	Body      string `json:"body"`
-	Developer string `json:"developer"`
-	Tester    string `json:"tester"`
-	Reporter  struct {
+	ID          string `json:"id"`
+	ProjectID   string `json:"project_id"`
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	Developer   string `json:"developer"`
+	DeveloperID string `json:"developer_id"`
+	Tester      string `json:"tester"`
+	TesterID    string `json:"tester_id"`
+	Reporter    struct {
 		Login string `json:"login"`
 	} `json:"reporter"`
 }

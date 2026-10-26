@@ -74,27 +74,27 @@ func NewService(repo Repo, statuses StatusStore, users UserLogins) *Service {
 func (s *Service) SetGate(g Gate) { s.gate = g }
 
 // ProjectPeople says whether the person behind a login may open a project, so a ticket's developer or tester is never
-// someone its project is hidden from (ADR 0097); own is the login as their account spells it, or login when nobody has it.
+// someone its project is hidden from (ADR 0097); the Person is their account, or only login when nobody has it.
 type ProjectPeople interface {
-	MayOpen(ctx context.Context, login, projectID string) (own string, ok bool, err error)
+	MayOpen(ctx context.Context, login, projectID string) (Person, bool, error)
 }
 
-// SetProjectPeople wires the developer and tester check; unset, any login is accepted.
+// SetProjectPeople wires the developer and tester check; unset, any login is accepted as nobody's.
 func (s *Service) SetProjectPeople(p ProjectPeople) { s.people = p }
 
-// requirePerson refuses, as invalid, a developer or tester who may not open projectID, and returns the login to store.
-func (s *Service) requirePerson(ctx context.Context, projectID string, role Role, login string) (string, error) {
+// requirePerson refuses, as invalid, a developer or tester who may not open projectID, and returns the person to store.
+func (s *Service) requirePerson(ctx context.Context, projectID string, role Role, login string) (Person, error) {
 	if login == "" || s.people == nil {
-		return login, nil
+		return Person{Login: login}, nil
 	}
-	own, ok, err := s.people.MayOpen(ctx, login, projectID)
+	p, ok, err := s.people.MayOpen(ctx, login, projectID)
 	if err != nil {
-		return "", fmt.Errorf("check %s %s: %w", role, login, err)
+		return Person{}, fmt.Errorf("check %s %s: %w", role, login, err)
 	}
 	if !ok {
-		return "", fmt.Errorf("%w: %s cannot open this ticket's project, so they cannot be its %s", apperrs.ErrInvalid, login, role)
+		return Person{}, fmt.Errorf("%w: %s cannot open this ticket's project, so they cannot be its %s", apperrs.ErrInvalid, login, role)
 	}
-	return own, nil
+	return p, nil
 }
 
 func (s *Service) require(ctx context.Context, projectID string, action permissions.Action) error {
@@ -193,11 +193,11 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	if err := s.checkFoundIn(ctx, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
-	developer, err = s.requirePerson(ctx, projectID, RoleDeveloper, strings.TrimSpace(developer))
+	dev, err := s.requirePerson(ctx, projectID, RoleDeveloper, strings.TrimSpace(developer))
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
-	opt.Tester, err = s.requirePerson(ctx, projectID, RoleTester, strings.TrimSpace(opt.Tester))
+	tester, err := s.requirePerson(ctx, projectID, RoleTester, strings.TrimSpace(opt.Tester))
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
@@ -211,19 +211,21 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	}
 	now := s.now().UTC()
 	t := &Ticket{
-		ID:         ids.New(),
-		ProjectID:  projectID,
-		CategoryID: strings.TrimSpace(opt.CategoryID),
-		TypeID:     opt.TypeID,
-		Title:      title,
-		Body:       body,
-		Status:     status,
-		DocID:      docID,
-		Developer:  developer,
-		Tester:     opt.Tester,
-		Reporter:   s.reporter(ctx, opt.ViaMCP),
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:          ids.New(),
+		ProjectID:   projectID,
+		CategoryID:  strings.TrimSpace(opt.CategoryID),
+		TypeID:      opt.TypeID,
+		Title:       title,
+		Body:        body,
+		Status:      status,
+		DocID:       docID,
+		Developer:   dev.Login,
+		DeveloperID: dev.ID,
+		Tester:      tester.Login,
+		TesterID:    tester.ID,
+		Reporter:    s.reporter(ctx, opt.ViaMCP),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := s.persist(ctx, t, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
@@ -539,28 +541,32 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	updated := *current
-	field := &updated.Developer
+	heldLogin, heldID := &updated.Developer, &updated.DeveloperID
 	if role == RoleTester {
-		field = &updated.Tester
+		heldLogin, heldID = &updated.Tester, &updated.TesterID
 	}
-	previous := *field
-	if previous == login {
+	previous := Person{ID: *heldID, Login: *heldLogin}
+	if previous.Login == login {
 		return current, nil
 	}
-	login, err = s.requirePerson(ctx, current.ProjectID, role, login)
+	next, err := s.requirePerson(ctx, current.ProjectID, role, login)
 	if err != nil {
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
-	if previous == login {
+	if previous == next {
 		return current, nil
 	}
-	*field = login
+	*heldLogin, *heldID = next.Login, next.ID
 	updated.UpdatedAt = s.now().UTC()
-	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login, Actor: statusActor(ctx)}}}
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{
+		Ticket: updated, From: previous.Login, FromID: previous.ID, To: next.Login, ToID: next.ID, Actor: statusActor(ctx),
+	}}}
 	if role == RoleDeveloper {
-		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{Ticket: updated, From: previous, To: login}})
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{
+			Ticket: updated, From: previous.Login, FromID: previous.ID, To: next.Login, ToID: next.ID,
+		}})
 	}
-	if err := s.repo.UpdatePerson(ctx, id, role, login, evts...); err != nil {
+	if err := s.repo.UpdatePerson(ctx, id, role, next, evts...); err != nil {
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	return &updated, nil

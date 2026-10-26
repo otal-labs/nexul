@@ -3,6 +3,8 @@ import MessageSquare from "lucide-react-native/icons/message-square";
 import { ScrollView, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import { namesAccount, ticketDeveloper, ticketTester } from "@nexul/client-core/ticketPeople";
+
 import { ActionButton } from "@/components/action/ActionButton";
 import { TicketPerson } from "@/components/board/TicketPeople";
 import { TicketStatusField } from "@/components/board/TicketStatusField";
@@ -75,17 +77,17 @@ export const TicketScreen = () => {
                 {!type && <Text className="text-sm text-muted-foreground">None</Text>}
               </FactRow>
               <FactRow label="Developer">
-                <TicketPerson login={ticket.developer} />
+                <TicketPerson holder={ticketDeveloper(ticket)} />
               </FactRow>
               <FactRow label="Tester">
-                <TicketPerson login={ticket.tester} />
+                <TicketPerson holder={ticketTester(ticket)} />
               </FactRow>
             </View>
 
             {setPerson.error && <ErrorDisplay error={setPerson.error} className="px-0" />}
             {openThread.error && <ErrorDisplay error={openThread.error} className="px-0" />}
             <View className="flex-row gap-2">
-              {ticket.developer !== me?.user.login && (
+              {!(me && namesAccount(ticketDeveloper(ticket), me.user)) && (
                 <ActionButton
                   permission="tickets:write"
                   projectId={ticket.project_id}

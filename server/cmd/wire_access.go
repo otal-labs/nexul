@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
+	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -301,14 +302,14 @@ type ticketProjectPeople struct {
 	access *access.Service
 }
 
-func (g ticketProjectPeople) MayOpen(ctx context.Context, login, projectID string) (string, bool, error) {
+func (g ticketProjectPeople) MayOpen(ctx context.Context, login, projectID string) (tickets.Person, bool, error) {
 	userID, found, err := g.users.UserIDForLogin(ctx, login)
 	if err != nil || !found {
-		return login, !found, err
+		return tickets.Person{Login: login}, !found, err
 	}
 	own, err := g.users.LoginForUserID(ctx, userID)
 	if err != nil {
-		return "", false, fmt.Errorf("read the login of %s: %w", userID, err)
+		return tickets.Person{}, false, fmt.Errorf("read the login of %s: %w", userID, err)
 	}
-	return own, g.access.CanInProject(ctx, userID, projectID, permissions.Member), nil
+	return tickets.Person{ID: userID, Login: own}, g.access.CanInProject(ctx, userID, projectID, permissions.Member), nil
 }

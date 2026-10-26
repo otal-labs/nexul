@@ -674,6 +674,16 @@ func TestHandleTicketCreated(t *testing.T) {
 		assert.Equal(t, []string{TopicNotificationCreated, TopicNotificationPushRequested}, repo.topics())
 		assert.ElementsMatch(t, []NotificationPushItem{{ID: "evt-1:u1", UserID: "u1"}, {ID: "evt-1:u2", UserID: "u2"}, {ID: "evt-1:u3", UserID: "u3"}}, repo.pushItems())
 	})
+	t.Run("a developer and tester with ids are notified by id, whatever their login reads", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
+		payload := map[string]any{
+			"ticket": map[string]any{"id": "t-1", "title": "Fix", "developer": "old-login", "developer_id": "u1", "tester": "lena", "tester_id": "u3"},
+		}
+		require.NoError(t, HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload)))
+		require.Len(t, repo.notifsFor("u1"), 1)
+		require.Len(t, repo.notifsFor("u3"), 1)
+	})
 	t.Run("unknown people and mentions are skipped", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		users := newFakeNotifUsers(notifUser("u1", "onik97"))

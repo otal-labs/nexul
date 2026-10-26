@@ -337,13 +337,13 @@ func (r ticketRepo) UpdateDoc(_ context.Context, id, docID string, _ ...eventbus
 	return r.edit(id, func(t *tickets.Ticket) { t.DocID = docID })
 }
 
-func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role, login string, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role, p tickets.Person, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		if role == tickets.RoleTester {
-			t.Tester = login
+			t.Tester, t.TesterID = p.Login, p.ID
 			return
 		}
-		t.Developer = login
+		t.Developer, t.DeveloperID = p.Login, p.ID
 	})
 }
 

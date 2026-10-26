@@ -162,6 +162,9 @@ func TestIntegration_NotInAProject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uOwner, created.Developer)
 		assert.Equal(t, uOwner, created.Tester)
+		read, err := s.ticketsSvc.Get(as(uOwner), created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, []string{uOwner, uOwner}, []string{read.DeveloperID, read.TesterID}, "the ticket keeps the account, not the typed login")
 	})
 
 	t.Run("the developer picker lists who the project's rules let in", func(t *testing.T) {

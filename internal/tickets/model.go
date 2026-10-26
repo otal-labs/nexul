@@ -38,14 +38,22 @@ type Ticket struct {
 	Number int    `json:"number"`
 	DocID  string `json:"doc_id"`
 	// Developer and Tester are member logins, both optional; Reporter is set once at creation and never edited; DueOn is a YYYY-MM-DD day, empty for none.
-	Developer  string     `json:"developer"`
-	Tester     string     `json:"tester"`
-	Reporter   Reporter   `json:"reporter"`
-	DueOn      string     `json:"due_on"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	Labels     []string   `json:"labels"`
+	Developer   string     `json:"developer"`
+	DeveloperID string     `json:"developer_id" jsonschema:"The developer's user id; empty when there is none or nobody has signed in with the developer's login."`
+	Tester      string     `json:"tester"`
+	TesterID    string     `json:"tester_id" jsonschema:"The tester's user id; empty when there is none or nobody has signed in with the tester's login."`
+	Reporter    Reporter   `json:"reporter"`
+	DueOn       string     `json:"due_on"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	FinishedAt  *time.Time `json:"finished_at,omitempty"`
+	Labels      []string   `json:"labels"`
+}
+
+// Person is a ticket's developer or tester: their user id and login, or only a login nobody has signed in with.
+type Person struct {
+	ID    string
+	Login string
 }
 
 // ticketJSON is a ticket's wire shape: its fields plus the deprecated assignee, always equal to developer, so the published payload stays additive (ADR 0044).

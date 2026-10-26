@@ -101,7 +101,24 @@ func insertUserWithIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Id
 	}); err != nil {
 		return fmt.Errorf("insert user: %w", classifyWriteErr(err))
 	}
+	if err := claimTicketPeople(ctx, q, id.UserID, id.Login); err != nil {
+		return err
+	}
 	return insertIdentity(ctx, q, id, now)
+}
+
+// claimTicketPeople makes a new user the developer or tester of the tickets that named their login before they signed in.
+func claimTicketPeople(ctx context.Context, q *sqlcgen.Queries, userID, login string) error {
+	if login == "" {
+		return nil
+	}
+	if err := q.ClaimTicketDeveloperLogin(ctx, sqlcgen.ClaimTicketDeveloperLoginParams{UserID: userID, Login: login}); err != nil {
+		return fmt.Errorf("claim tickets developed by %s: %w", login, err)
+	}
+	if err := q.ClaimTicketTesterLogin(ctx, sqlcgen.ClaimTicketTesterLoginParams{UserID: userID, Login: login}); err != nil {
+		return fmt.Errorf("claim tickets tested by %s: %w", login, err)
+	}
+	return nil
 }
 
 func insertIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Identity, now time.Time) error {

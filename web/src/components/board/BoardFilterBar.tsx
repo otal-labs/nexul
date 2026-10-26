@@ -1,5 +1,7 @@
 import { FilterIcon, FlaskConicalIcon, SearchIcon, SparklesIcon } from "lucide-react";
 
+import type { TicketPersonRef } from "@nexul/client-core/ticketPeople";
+
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
 import {
@@ -31,7 +33,7 @@ interface BoardFilterBarProps {
   /** Hides the Projects filter row/toggle on a /board/:projectId view, where the URL already scopes to one project. */
   hideProjectFilter?: boolean;
   /** Derived client-side from the page's own ticket set (useBoardFilters); shown as the avatar stack, not as popover chips. */
-  developers: string[];
+  developers: TicketPersonRef[];
   showWaitingForMeToTest: boolean;
   showPlaying: boolean;
   filters: BoardFilters;

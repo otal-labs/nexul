@@ -14,7 +14,7 @@ const meetingDueTickets = `-- name: MeetingDueTickets :many
 SELECT t.id, t.project_id, p.workspace_id, p.prefix, t.number, t.title, t.due_on, u.id AS developer_id, u.timezone
 FROM tickets t
 JOIN projects p ON p.id = t.project_id
-JOIN users u ON u.login = t.developer
+JOIN users u ON u.id = t.developer
 LEFT JOIN statuses s ON s.id = t.status
 LEFT JOIN ticket_due_reminders r ON r.ticket_id = t.id
 WHERE t.due_on != '' AND t.due_on >= ?1 AND t.due_on <= ?2

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ticketDeveloper, ticketTester, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
+
 import { StatusKind } from "@/models/Status";
 
 export const TicketStatus = {
@@ -48,9 +50,11 @@ export interface Ticket {
   // Per-project sequential number, combined with the project's prefix for a human-readable PREFIX-N id.
   number: number;
   doc_id: string;
-  // Member logins; empty when nobody holds the role.
+  // Member logins; empty when nobody holds the role. An id is empty for a login nobody has signed in with.
   developer: string;
+  developer_id: string;
   tester: string;
+  tester_id: string;
   reporter: TicketReporter;
   // The day the ticket is due as YYYY-MM-DD; empty when it has none.
   due_on: string;
@@ -81,10 +85,10 @@ export const reporterLabel = (reporter: TicketReporter, nameOf: NameOf = asLogin
   [reporterName(reporter, nameOf), reporterOnBehalfOf(reporter, nameOf)].filter((part) => part !== "").join(" · ");
 
 // A board card shows who acts next: the tester while the ticket sits in a testing-stage column, else the developer.
-export const cardPerson = (ticket: Ticket, stage: StatusKind | undefined): { role: TicketRole; login: string } =>
+export const cardPerson = (ticket: Ticket, stage: StatusKind | undefined): TicketPersonRef & { role: TicketRole } =>
   stage === StatusKind.Testing
-    ? { role: TicketRole.Tester, login: ticket.tester }
-    : { role: TicketRole.Developer, login: ticket.developer };
+    ? { role: TicketRole.Tester, ...ticketTester(ticket) }
+    : { role: TicketRole.Developer, ...ticketDeveloper(ticket) };
 
 // Links use the human-readable PREFIX-NUMBER key, falling back to the UUID when the prefix isn't at hand.
 export const ticketPath = (ticket: Ticket, prefix?: string): string =>

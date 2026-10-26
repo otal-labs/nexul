@@ -267,7 +267,9 @@ func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef, 
 		return err
 	}
 	mentionTitle := s.mentionTitle(ctx, n)
-	recipients := []recipient{{Login: t.Developer, Kind: KindTicketAssigned}, {Login: t.Tester, Kind: KindTicketAssigned}}
+	recipients := []recipient{
+		{UserID: t.DeveloperID, Login: t.Developer, Kind: KindTicketAssigned}, {UserID: t.TesterID, Login: t.Tester, Kind: KindTicketAssigned},
+	}
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
 		recipients = append(recipients, recipient{Login: login, Kind: KindTicketMentioned, Title: mentionTitle})
 	}
@@ -296,7 +298,9 @@ func (s *NotificationService) onTicketUpdated(ctx context.Context, e ticketUpdat
 
 // onTicketStatusChanged fans out ticket.status_changed to the developer, tester, and @-mentioned users of the ticket.
 func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticketRef, actorID string) error {
-	recipients := []recipient{{Login: t.Developer, Kind: KindTicketStatus}, {Login: t.Tester, Kind: KindTicketStatus}}
+	recipients := []recipient{
+		{UserID: t.DeveloperID, Login: t.Developer, Kind: KindTicketStatus}, {UserID: t.TesterID, Login: t.Tester, Kind: KindTicketStatus},
+	}
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
 		if strings.EqualFold(login, t.Developer) || strings.EqualFold(login, t.Tester) {
 			continue

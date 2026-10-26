@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 
+import { ticketDeveloper, ticketTester, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
+
 import type { BoardFilters } from "@/components/board/BoardFilterBar";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -38,8 +40,8 @@ const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: Filte
   (!filters.typeId || ticket.type_id === filters.typeId) &&
   (filters.statusIds.length === 0 || sets.statusIds.has(ticket.status)) &&
   (filters.labels.length === 0 || (ticket.labels ?? []).some((l) => sets.labels.has(l))) &&
-  (filters.developers.length === 0 || sets.developers.has(ticket.developer)) &&
-  (!filters.waitingForMeToTest || (ticket.tester === sets.myLogin && sets.testingStatusIds.has(ticket.status))) &&
+  (filters.developers.length === 0 || sets.developers.has(ticketDeveloper(ticket).key)) &&
+  (!filters.waitingForMeToTest || (ticketTester(ticket).key === sets.myId && sets.testingStatusIds.has(ticket.status))) &&
   (!filters.playing || sets.playingIds.has(ticket.id)) &&
   matchesSearch(ticket, filters.search);
 
@@ -50,7 +52,7 @@ interface FilterSets {
   developers: Set<string>;
   testingStatusIds: Set<string>;
   playingIds: Set<string>;
-  myLogin: string;
+  myId: string;
 }
 
 // projectId, when given, locks the board to that project, seeded into initial state so the URL is the source of truth.
@@ -60,21 +62,23 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
 
   const { data: me } = useFetchMe();
   const { data: statuses } = useFetchProjectStatuses(projectId);
-  const myLogin = me?.user.login ?? "";
+  const myId = me?.user.id ?? "";
 
   const projectTickets = useMemo(
     () => (projectId ? (tickets ?? []).filter((t) => t.project_id === projectId) : (tickets ?? [])),
     [tickets, projectId],
   );
 
+  // One entry per person, matched by id, so a login spelled two ways is still one developer.
   const developers = useMemo(() => {
-    const set = new Set(projectTickets.map((t) => t.developer).filter((d) => d !== ""));
-    return Array.from(set).sort();
+    const refs = projectTickets.map(ticketDeveloper).filter((ref) => ref.key !== "");
+    const byKey = new Map<string, TicketPersonRef>(refs.map((ref) => [ref.key, ref]));
+    return Array.from(byKey.values()).sort((a, b) => a.login.localeCompare(b.login));
   }, [projectTickets]);
 
   // Offered once the signed-in member tests anything here, and kept while on so it can be switched off.
   const showWaitingForMeToTest =
-    filters.waitingForMeToTest || (myLogin !== "" && projectTickets.some((t) => t.tester === myLogin));
+    filters.waitingForMeToTest || (myId !== "" && projectTickets.some((t) => ticketTester(t).key === myId));
 
   const playingIds = useTicketsWithActiveRun(projectId, projectTickets.map((t) => t.id));
   // Offered while a play runs here, and kept while on so it can be switched off.
@@ -88,10 +92,10 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
       developers: new Set(filters.developers),
       testingStatusIds: new Set((statuses ?? []).filter((s) => s.kind === StatusKind.Testing).map((s) => s.id)),
       playingIds: new Set(playingIds),
-      myLogin,
+      myId,
     };
     return (tickets ?? []).filter((t) => ticketMatchesFilters(t, filters, sets));
-  }, [tickets, filters, statuses, myLogin, playingIds]);
+  }, [tickets, filters, statuses, myId, playingIds]);
 
   const toggleProject = (projectId: string) =>
     setFilters((current) => ({
