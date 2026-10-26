@@ -37,6 +37,7 @@ export const NoteFileView = ({ message, fileName, canEdit, inline = false }: Not
   // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
   const session = useCollabSession(editable && me ? `notes/${message.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getNoteTextKey, message.attachment_id],
+    ...(me?.user?.id ? { userId: me.user.id } : {}),
     ...(avatar ? { avatar } : {}),
   });
 

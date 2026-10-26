@@ -59,6 +59,14 @@ const remotePresence = () => {
   return btoa(String.fromCharCode(...encodeAwarenessUpdate(remote, [7])));
 };
 
+const presenceOf = (clientID: number, user: Record<string, string>) => {
+  const remote = new Awareness(new Doc());
+  remote.clientID = clientID;
+  remote.setLocalState({ user });
+  remote.setLocalState({ user });
+  return btoa(String.fromCharCode(...encodeAwarenessUpdate(remote, [clientID])));
+};
+
 describe("useCollabSession", () => {
   it("opens no room while viewing as another member, since the socket would edit as the signed-in one", async () => {
     useViewAsStore.getState().start({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "" });
@@ -110,6 +118,25 @@ describe("useCollabSession", () => {
     await waitFor(() => {
       expect(result.current?.participants.some((p) => p.name === "Bob" && p.activity === "viewing")).toBe(true);
     });
+  });
+
+  it("lists each person once however many tabs they have open, the viewer's own other tabs included", async () => {
+    const { socket, factory } = makeSocket();
+    const { result } = renderHook(
+      () => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory, userId: "u-alice" }),
+      { wrapper: withClient },
+    );
+    await flushConnect();
+    act(() => socket.onopen?.({}));
+    const bob = { name: "Bob", id: "u-bob", color: "#22c55e", activity: "editing" };
+    const cara = { name: "Cara", id: "u-cara", color: "#0ea5e9", activity: "viewing" };
+    const alice = { name: "Alice", id: "u-alice", color: "#6366f1", activity: "editing" };
+    for (const [clientID, user] of [[7, bob], [8, bob], [9, bob], [10, cara], [11, alice]] as const) {
+      socket.dispatch(JSON.stringify({ type: "presence", from: user.id, client_id: clientID, payload: presenceOf(clientID, user) }));
+    }
+
+    await waitFor(() => expect(result.current?.participants.map((p) => p.name)).toContain("Cara"));
+    expect(result.current?.participants.map((p) => p.name)).toEqual(["Alice", "Bob", "Cara"]);
   });
 
   it("flags unresolvable payloads and resets to a fresh session", async () => {

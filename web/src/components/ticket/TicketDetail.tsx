@@ -48,6 +48,7 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
   // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
   const session = useCollabSession(canEdit && me ? `tickets/${ticket.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getTicketKey, ticket.id],
+    ...(me?.user?.id ? { userId: me.user.id } : {}),
     ...(wsFactory ? { wsFactory } : {}),
     ...(avatar ? { avatar } : {}),
   });
