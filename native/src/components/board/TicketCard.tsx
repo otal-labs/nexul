@@ -4,7 +4,8 @@ import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
 import { BoardDragContext, useCardDrag, useLifted } from "@/components/board/boardDrag";
-import { labelDot, ticketTypePill } from "@/components/board/ticketTypeColor";
+import { labelDot } from "@/components/board/ticketTypeColor";
+import { TicketTypeBadge } from "@/components/board/TicketTypeBadge";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
@@ -21,12 +22,6 @@ export interface TicketCardBodyProps {
   typeColor: string | undefined;
 }
 
-const Pill = ({ className, label }: { className: string; label: string }) => (
-  <Text numberOfLines={1} className={cn("overflow-hidden rounded-full px-2 py-0.5 text-xs font-medium", className)}>
-    {label}
-  </Text>
-);
-
 // A label is a tag: a neutral hairline pill, its hue only on the leading dot.
 const LabelChip = ({ label, dotClass }: { label: string; dotClass: string }) => (
   <View className="max-w-full flex-row items-center gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5">
@@ -37,7 +32,7 @@ const LabelChip = ({ label, dotClass }: { label: string; dotClass: string }) => 
   </View>
 );
 
-// The mono key as an eyebrow, the title at full width, then the type and label pills with whoever acts next opposite.
+// The mono key as an eyebrow, the title at full width, then the type and the label chips with whoever acts next opposite.
 export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeColor }: TicketCardBodyProps) => {
   const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
   const person = cardPerson(ticket, stage);
@@ -51,7 +46,7 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
       {(typeName || labels.length > 0 || person.login) && (
         <View className="flex-row items-end gap-2">
           <View className="min-w-0 flex-1 flex-row flex-wrap gap-1.5">
-            {typeName && <Pill className={ticketTypePill(typeName, typeColor)} label={typeName} />}
+            {typeName && <TicketTypeBadge name={typeName} color={typeColor} />}
             {labels.map((label) => (
               <LabelChip key={label} label={label} dotClass={labelDot(label)} />
             ))}

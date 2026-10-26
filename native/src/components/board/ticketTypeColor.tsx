@@ -1,19 +1,19 @@
-// The type pill, the web board card's: a 15% tint of the hue with an 800 (light) or 400 (dark) text shade, which
-// holds 4.5:1 in both themes. Status and labels never use a tinted pill; a label keeps its hue on a dot.
-const HUE_PILL_CLASS: Record<string, string> = {
-  slate: "bg-slate-500/15 text-slate-800 dark:text-slate-300",
-  red: "bg-red-500/15 text-red-800 dark:text-red-400",
-  violet: "bg-violet-500/15 text-violet-800 dark:text-violet-400",
-  amber: "bg-amber-500/15 text-amber-800 dark:text-amber-400",
-  blue: "bg-blue-500/15 text-blue-800 dark:text-blue-400",
-  indigo: "bg-indigo-500/15 text-indigo-800 dark:text-indigo-400",
-  teal: "bg-teal-500/15 text-teal-800 dark:text-teal-400",
-  pink: "bg-pink-500/15 text-pink-800 dark:text-pink-400",
-  cyan: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-400",
-  emerald: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400",
-  orange: "bg-orange-500/15 text-orange-800 dark:text-orange-400",
-  fuchsia: "bg-fuchsia-500/15 text-fuchsia-800 dark:text-fuchsia-400",
-  lime: "bg-lime-500/15 text-lime-800 dark:text-lime-400",
+// A type's icon color on the card and the ticket screen: 700 in light and 400 in dark hold 3:1 on either canvas. The words
+// stay muted; status and labels never fill a chip either, a label keeps its hue on a dot.
+const HUE_ICON_CLASS: Record<string, string> = {
+  slate: "text-slate-700 dark:text-slate-400",
+  red: "text-red-700 dark:text-red-400",
+  violet: "text-violet-700 dark:text-violet-400",
+  amber: "text-amber-700 dark:text-amber-400",
+  blue: "text-blue-700 dark:text-blue-400",
+  indigo: "text-indigo-700 dark:text-indigo-400",
+  teal: "text-teal-700 dark:text-teal-400",
+  pink: "text-pink-700 dark:text-pink-400",
+  cyan: "text-cyan-700 dark:text-cyan-400",
+  emerald: "text-emerald-700 dark:text-emerald-400",
+  orange: "text-orange-700 dark:text-orange-400",
+  fuchsia: "text-fuchsia-700 dark:text-fuchsia-400",
+  lime: "text-lime-700 dark:text-lime-400",
 };
 
 const TYPE_HUES: Record<string, string> = {
@@ -56,10 +56,10 @@ const hashIndex = (value: string, length: number): number => {
 };
 
 // An unrecognized `color` value falls through to the hash exactly like unset does; it can't crash the card.
-export const ticketTypePill = (typeName: string, color?: string): string => {
-  if (color && CONFIGURABLE_HUES.has(color)) return HUE_PILL_CLASS[color]!;
+export const ticketTypeColor = (typeName: string, color?: string): string => {
+  if (color && CONFIGURABLE_HUES.has(color)) return HUE_ICON_CLASS[color]!;
   const key = typeName.trim().toLowerCase();
-  return HUE_PILL_CLASS[TYPE_HUES[key] ?? TYPE_FALLBACK_HUES[hashIndex(key, TYPE_FALLBACK_HUES.length)]!]!;
+  return HUE_ICON_CLASS[TYPE_HUES[key] ?? TYPE_FALLBACK_HUES[hashIndex(key, TYPE_FALLBACK_HUES.length)]!]!;
 };
 
 export const labelDot = (label: string): string => LABEL_DOTS[hashIndex(label.trim().toLowerCase(), LABEL_DOTS.length)]!;

@@ -1,4 +1,4 @@
-// A type's icon color, 700 light and 400 dark to hold 3:1 on either canvas; card pills take their hue from it via pillClass.
+// A type's icon color, 700 light and 400 dark to hold 3:1 on either canvas.
 const TICKET_TYPE_COLORS: Record<string, string> = {
   task: "text-slate-700 dark:text-slate-400",
   bug: "text-red-700 dark:text-red-400",
@@ -74,27 +74,4 @@ export const ticketTypeColor = (typeName: string, color?: string): string => {
 export const labelDotColor = (label: string, color?: string): string => {
   if (color && HUE_DOT_CLASS[color]) return HUE_DOT_CLASS[color];
   return LABEL_DOT_PALETTE[hashIndex(label.trim().toLowerCase(), LABEL_DOT_PALETTE.length)]!;
-};
-
-// Full literal strings per hue so Tailwind emits them; the 800/400 text shades hold 4.5:1 on the tint in both themes.
-const HUE_PILL_CLASS: Record<string, string> = {
-  slate: "bg-slate-500/15 text-slate-800 dark:text-slate-300",
-  red: "bg-red-500/15 text-red-800 dark:text-red-400",
-  violet: "bg-violet-500/15 text-violet-800 dark:text-violet-400",
-  amber: "bg-amber-500/15 text-amber-800 dark:text-amber-400",
-  blue: "bg-blue-500/15 text-blue-800 dark:text-blue-400",
-  indigo: "bg-indigo-500/15 text-indigo-800 dark:text-indigo-400",
-  teal: "bg-teal-500/15 text-teal-800 dark:text-teal-400",
-  pink: "bg-pink-500/15 text-pink-800 dark:text-pink-400",
-  cyan: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-400",
-  emerald: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400",
-  orange: "bg-orange-500/15 text-orange-800 dark:text-orange-400",
-  fuchsia: "bg-fuchsia-500/15 text-fuchsia-800 dark:text-fuchsia-400",
-  lime: "bg-lime-500/15 text-lime-800 dark:text-lime-400",
-};
-
-// Tinted pill (Board cards) for an icon/dot color class such as "text-cyan-700 dark:text-cyan-400" or "bg-cyan-500".
-export const pillClass = (colorClass: string): string => {
-  const hue = /^(?:text|bg)-([a-z]+)-\d+/.exec(colorClass)?.[1] ?? "";
-  return HUE_PILL_CLASS[hue] ?? HUE_PILL_CLASS.slate!;
 };

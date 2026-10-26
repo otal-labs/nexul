@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { TicketCard } from "@/components/board/TicketCard";
-import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { labelDotColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 import { usePlayRunStore } from "@/stores/playRunStore";
 
@@ -82,13 +82,13 @@ describe("TicketCard", () => {
     expect(screen.queryByText("t-142", { exact: false })).not.toBeInTheDocument();
   });
 
-  it("renders the ticket type as a tinted pill with its icon", async () => {
+  it("renders the ticket type as its icon in the type hue beside plain text, with no pill", async () => {
     mockTicketType("Bug");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const pill = (await screen.findByText("Bug")).closest("span");
-    expect(pill).toHaveAttribute("data-slot", "pill");
-    expect(pill).toHaveClass("rounded-full");
-    expect(pill?.querySelector("svg")).toBeInTheDocument();
+    const badge = (await screen.findByText("Bug")).closest("span");
+    expect(badge).toHaveAttribute("data-slot", "no-fill-badge");
+    expect(badge).not.toHaveClass("rounded-full");
+    expect(badge?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug").split(" "));
   });
 
   it("renders each label as a chip whose hue is only on its dot", () => {
@@ -96,7 +96,7 @@ describe("TicketCard", () => {
     const chip = screen.getByText("urgent").closest('[data-slot="label-chip"]');
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
     expect(chip?.querySelector("[aria-hidden]")).toHaveClass(labelDotColor("urgent"));
-    expect(chip).not.toHaveClass(...pillClass(labelDotColor("urgent")).split(" "));
+    expect(chip).not.toHaveClass(labelDotColor("urgent"));
   });
 
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
@@ -267,7 +267,7 @@ describe("TicketCard", () => {
       renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
       await screen.findByText("Bug");
       await vi.waitFor(() => {
-        expect(screen.getByText("Bug").closest("span")).toHaveClass(...pillClass("text-cyan-400").split(" "));
+        expect(screen.getByText("Bug").closest("span")?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug", "cyan").split(" "));
       });
       // ticketTypeColor("Bug") on its own would hash to red, proving the configured color won, not a coincidence.
       expect(ticketTypeColor("Bug")).toMatch(/red/);

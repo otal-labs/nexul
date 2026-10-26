@@ -177,8 +177,10 @@ as focus on every palette and keeps 3:1 on every surface.
 Status is a coloured dot or icon in its own hue (`success`, `warning`,
 `info`, `merged`, `destructive`) beside plain text, never a filled or
 tinted-background chip: readable in both themes, and it keeps status from
-competing with the accent. A ticket's type, which is a tag rather than state,
-may be a tinted pill (the web app's board). A label is a neutral chip: a
+competing with the accent. A ticket's type follows the same rule: its icon in
+the type hue leads and the name stays `muted-foreground` (`NoFillBadge` with an
+icon, on the web board card and the phone card and ticket screen), so on a
+card the type is never a filled shape beside the palette's accent. A label is a neutral chip: a
 `rounded-full` hairline pill at `foreground` 4% with `muted-foreground` text,
 its own hue only on a 6px leading dot (`LabelChip` on the web, drawn once for
 the board card, the ticket rail and the board's label filter; the phone card
@@ -327,8 +329,8 @@ both modes, which are each designed, not inverted.
 Don't: the accent on anything else in the chrome (headings, icons at rest,
 borders, chips, badges); a second accent hue; a panel inside a panel, or a
 border where a surface step already separates; tint a chip with the accent; a
-filled or tinted-background chip for status or for a label (a type may be a
-tinted pill, `pillClass` in `web/src/components/board/ticketTypeColor.tsx`); the
+filled or tinted-background chip for status or for a label (a type is an icon in its
+hue beside plain text, `NoFillBadge`); the
 serif anywhere but a title or a showcase, landing or empty-state headline;
 script type; pill buttons or inputs; heavy shadows for co-planar depth; a
 second ambient animation or anything animating layout behind the panels;
@@ -531,8 +533,8 @@ it, and the stage summary as the header's action (`BoardStageSummary`): one
 legend of dot, stage and mono count. It counts every ticket in the project,
 whatever the filters show, and moves as the Motion baseline's Board entry says. A card is the
 mono key as an eyebrow (with the run timer and thread mark trailing on its
-line), the title at full width, the blocked line, then the type pill and the
-label chips with the 20px avatar of whoever acts next opposite. A swimlane header is a leading
+line), the title at full width, the blocked line, then the type (its icon in its
+hue beside plain text) and the label chips with the 20px avatar of whoever acts next opposite. A swimlane header is a leading
 chevron, the lane name, and a 56px done bar beside the mono "4/11 tickets".
 A column has no well at rest, populated or empty: its header (flush with the
 cards' edges) over the cards, or over one muted "No tickets" line, so the
@@ -1234,8 +1236,7 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
-| Board cards: the type as a tinted pill | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Status never uses one, and a label no longer does (next row) |
-| A label is a neutral chip with a 6px hue dot (2026-10-26) | Against a filled pill in each label's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone |
+| A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
 | Board: no column has a well at rest, every one takes it while a card is held | Against the full-height `surface-2` well on every column, and against a well only on populated ones: the page is already a panel, so cards on a well were three nested surfaces, and a well on some columns made two kinds of column side by side; the card's own surface and hairline carry it on the panel, and the well and the dashed slot appear when a card is held, where they say where it can drop |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
@@ -2112,7 +2113,7 @@ Lists. Rows on a tab root are separated by space, not hairlines: a 36pt tile
 or avatar with its state as a dot on the corner, the title, mono meta
 trailing; read titles turn muted. Rows grouped in a card keep hairlines.
 Board columns are `surface-2` wells of cards (the mono key as an eyebrow, the
-title, the type pill and label chips, whoever acts next), under a header with the
+title, the type icon and name and label chips, whoever acts next), under a header with the
 project mark, the stage bar and an "Only mine" switch that takes the ember
 when on. The tab bar's active tab is the ember; its unread count is the ink
 pill.

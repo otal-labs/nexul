@@ -12,8 +12,9 @@ import type { DropTargetData } from "@/components/board/dragMove";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
-import { pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
-import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
+import { ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
+import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { findPerson } from "@/hooks/PeopleHooks";
 import { getProjectKey } from "@/hooks/ProjectHooks";
@@ -53,13 +54,9 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const pills = (
     <span className="flex min-w-0 flex-wrap items-center gap-1.5">
       {type !== "" && (
-        <span
-          data-slot="pill"
-          className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
-        >
-          <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
+        <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)}>
           {type}
-        </span>
+        </NoFillBadge>
       )}
       {labels.map((label) => (
         <LabelChip key={label} label={label} color={labelColors?.[label]} />
