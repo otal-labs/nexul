@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 
+import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { cn } from "@/lib/utils";
@@ -38,11 +39,12 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
       <li
         ref={ref}
         className={cn(
-          "group relative flex items-center gap-2 border-l-2 px-3 transition-colors duration-150 ease-standard",
+          "group relative flex items-center gap-2 px-3 transition-colors duration-150 ease-standard",
           snippet === "" ? "min-h-10" : "min-h-14",
-          selected ? "border-l-brand bg-accent" : "border-l-transparent hover:bg-accent/40",
+          selected ? currentRowFillClass : "hover:bg-accent/40",
         )}
       >
+        {selected && <CurrentRowEdge />}
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}

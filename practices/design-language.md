@@ -90,7 +90,7 @@ in the three token files; this table holds the roles.
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
 | `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
 | `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.465 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface | |
-| `accent` | white at 7% | ink at 6% | hover and selected-row lift, reads on any surface | phone: the press tint |
+| `accent` | white at 7% | ink at 6% | the hover lift, reads on any surface; never the current row, whose fill is `brand` at a fixed tint (see [the accent](#the-accent)) | phone: the press tint |
 | `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour | site: Fumadocs' `fd-primary` is this ink |
 | `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
 | `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light | |
@@ -130,11 +130,24 @@ class is drift.
 |---|---|---|---|
 | Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
-| Selection | selected rows, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
+| Selection | the current row's tint (`brand` at 12%, 16% in dark), selected rows, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
 | Your own messages | the chat bubble | | the chat bubble |
 | Checked controls | checkbox, switch | | the "Only mine" switch |
 | Progress | progress fills, the loader's dot | | pull to refresh |
 | Prose links | `brand` text | ink text with a `brand` underline (see [Docs pages](#docs-pages)) | |
+
+The current row. Every list that marks the current item (the sidebar and its
+channels, the section navs, the Docs, Memories, Plays and Inbox list panes, the
+access panel's targets, a note rail) draws it one way, from `brand` and never
+from `accent`: a fill of `brand` at 12% (16% in dark), the label in ink
+(`text-foreground`) at weight 500, never `brand` and never `brand-foreground`,
+and a 2px `brand` edge inset 8px from the row's top and bottom
+(`CurrentRowEdge`). The recipe lives in `web/src/components/CurrentRow.tsx`, and
+a sliding block (`ActiveIndicator`) takes it there; a list never carries its own
+copy. The row's hover stays the `accent` lift, so hover and current read
+differently. `accent` is a per-palette role and swung from invisible to a solid
+block across the twelve palettes; `brand` at a fixed share is a quiet tint in
+all of them, and ink on it holds 4.5:1 (`themeContrast.test.ts`).
 
 Why one accent and only those roles: an accent everywhere stops meaning
 "here", and it competes with status colour; held to action and selection it
@@ -330,6 +343,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Disabled text is `muted-foreground`, not half opacity | At 50% opacity a disabled label sat near 3.5:1 on a light tray, where Save for an unchanged form read as missing; muted ink holds 6:1 and the loss of fill and shadow still says it is off |
 | Light `muted-foreground` at 0.465 | 0.48 held 5.65:1 on the canvas, under the 6:1 the token promises; 0.465 clears it on every light surface |
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
+| The current row is `brand` at 12% (16% in dark) with an ink label and the 2px `brand` edge, in every list and palette (2026-10-26) | `accent` is also the hover colour and is set per palette, so the current row was near-invisible in some palettes (light green, deep purple, console, tiesen, zen), a saturated block in others (indigo clean dark, ember, ocean, grove light), white on yellow at 1.7:1 in Brutalism, and brand-on-brand text where a palette tints its accent label. Rejected: a per-palette `accent` fill (the spread above), `brand` label text (low contrast on a brand tint) and a solid `brand` fill (read as a button) |
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
 | Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
@@ -462,7 +476,7 @@ title wraps to two lines at most, the full text in its tooltip, and sets its
 own direction so an Arabic title reads right to left. A
 row whose record already shows its details when open (Docs) is the title alone
 at about 40px, with a muted state icon after it (a lock) and no meta. The
-selected row is `bg-accent` with a 2px `brand` left edge, a hover
+selected row is the current row (`brand` tint, ink label, 2px `brand` edge), a hover
 `bg-accent/40`, never a boxed border. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
@@ -1097,8 +1111,8 @@ look, and the job picks the control, never the page:
 - Section nav (`SettingsSectionNav`): a page of five or more sections, each
   its own job and its own path segment (Your settings, Configuration, Project
   settings, Stack). The sidebar's row grammar at settings scale: muted rows,
-  the `bg-accent/60` hover lift, and the sidebar's sliding block (`bg-accent`
-  with the 2px `brand` edge on its left) on the current one. A side column
+  the `bg-accent/60` hover lift, and the sidebar's sliding block (the current
+  row's tint with the 2px `brand` edge on its left) on the current one. A side column
   from 1024px, a scrolling top row below it, where the block drops its edge.
   Danger zone is a plain row set apart at the end by a hairline (a gap in the
   top row): the red lives on its card, and a red label at rest pulled the eye
@@ -1198,9 +1212,8 @@ filter by every word alongside tickets and docs from the server's search
 and memories by title, each group ordered by its best match (a label that
 starts with the query first), and the palettes join the theme group. Group heads are
 microheaders; a row is 36px with a muted icon, the label, a mono hint
-(ticket key, prefix, status) and an enter mark on the active row, which takes
-the sidebar's selection marks: `bg-accent`, a 2px `brand` edge and a `brand`
-icon. The highlight jumps, never slides: the palette is driven a dozen times
+(ticket key, prefix, status) and an enter mark on the active row, which is the cursor and not the current
+page: the hover lift (`bg-accent`), a 2px `brand` edge and a `brand` icon. The highlight jumps, never slides: the palette is driven a dozen times
 an hour. Arrows wrap, Enter opens, Escape closes and hands focus back to
 where it was; the count is announced once a search settles. `CommandPalette` in `web/src/components/command/` is the
 reference.

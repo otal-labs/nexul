@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { ThemeId } from "@/enums/Theme";
+import { currentRowFillClass } from "@/components/CurrentRow";
 import css from "@/index.css?raw";
 import { applyThemePalette, THEME_DEFINITIONS } from "@/lib/themePalettes";
 
@@ -69,7 +70,19 @@ const surfaces = (mode: Mode): Record<string, Rgb> => {
 
 const ink = (mode: Mode, name: string): Rgb => toSrgb(oklab(rootValue(mode, name)));
 
-// Every pair a palette paints text on: body ink and secondary ink on each surface, and the label on the accent fill.
+// The current row's brand tint as the shipped class spells it: `bg-brand/12`, with a `dark:` override.
+const tintShare = (mode: Mode): number => {
+  const light = Number(currentRowFillClass.match(/(?:^|\s)bg-brand\/(\d+)/)?.[1]);
+  const dark = Number(currentRowFillClass.match(/dark:bg-brand\/(\d+)/)?.[1] ?? light);
+  return (mode === "dark" ? dark : light) / 100;
+};
+
+const withTint = (mode: Mode, surface: Rgb): Rgb => {
+  const share = tintShare(mode);
+  return ink(mode, "brand").map((v, i) => v * share + surface[i]! * (1 - share)) as Rgb;
+};
+
+// Every pair a palette paints text on: body ink and secondary ink on each surface, ink on the current row's brand tint over each, and the label on the brand fill.
 const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   const onSurface = surfaces(mode);
   const pairs: [string, number, number][] = [];
@@ -79,6 +92,9 @@ const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   }
   pairs.push(["card-foreground on card", ratio(ink(mode, "card-foreground"), onSurface.card!), MIN_RATIO]);
   pairs.push(["popover-foreground on popover", ratio(ink(mode, "popover-foreground"), onSurface.popover!), MIN_RATIO]);
+  for (const [surface, rgb] of Object.entries(onSurface)) {
+    pairs.push([`foreground on the current row over ${surface}`, ratio(ink(mode, "foreground"), withTint(mode, rgb)), MIN_RATIO]);
+  }
   pairs.push(["brand-foreground on brand", ratio(ink(mode, "brand-foreground"), ink(mode, "brand")), MIN_RATIO]);
   return pairs.filter(([, value, floor]) => value < floor).map(([pair, value, floor]) => `${pair}: ${value.toFixed(2)} < ${floor}`);
 };
