@@ -1,8 +1,11 @@
+import { Link } from "react-router";
+
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { RequestBars } from "@/components/stack/RequestBars";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchStackRequests } from "@/hooks/StackHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Stack, StackRequests } from "@/models/Stack";
 import { errorRateOf, ruleText } from "@/utils/ErrorRateUtility";
 import { formatShare, missingSince, requestTotals } from "@/utils/RequestsUtility";
@@ -45,6 +48,7 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
 // The footer states the error-rate rule, since requests are only counted for a stack that has it on.
 export const RequestsSection = ({ stack }: RequestsSectionProps) => {
   const { data, error } = useFetchStackRequests(stack.id);
+  const wsPath = useWorkspacePath();
   const rule = errorRateOf(stack);
   const requests = data?.counted ? data : undefined;
   const hasData = !!requests && requestTotals(requests).counted > 0;
@@ -60,16 +64,19 @@ export const RequestsSection = ({ stack }: RequestsSectionProps) => {
           id="requests"
           title="Requests"
           description="What this stack's hostnames served in the last hour, counted a minute at a time."
-          footer={
-            <p className="text-xs text-muted-foreground">
-              {rule.enabled && `Alert when ${ruleText(rule)}.`}
-              {!rule.enabled && "No error-rate rule on this stack. Requests are counted while one is on; set it under Alerts."}
-            </p>
-          }
+          footer={rule.enabled && <p className="text-xs text-muted-foreground">{`Alert when ${ruleText(rule)}.`}</p>}
         >
           {hasData && <Summary requests={requests} />}
           {!hasData && rule.enabled && <EmptyRow flush>No request data yet. Counts show up within a few minutes of the first request.</EmptyRow>}
-          {!hasData && !rule.enabled && <EmptyRow flush>Not counted. Turn on the error-rate rule under Alerts to count this stack's requests.</EmptyRow>}
+          {!hasData && !rule.enabled && (
+            <EmptyRow flush>
+              Not counted. Turn on the error-rate rule in{" "}
+              <Link to={wsPath(`/stacks/${stack.id}/alerts`)} className="text-brand underline-offset-4 hover:underline">
+                Alerts
+              </Link>
+              .
+            </EmptyRow>
+          )}
         </SettingsCard>
       )}
     </>

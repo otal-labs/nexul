@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequestsSection } from "@/components/stack/RequestsSection";
@@ -33,7 +34,9 @@ const stack: Stack = {
 const renderSection = (value: Stack = stack) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <RequestsSection stack={value} />
+      <MemoryRouter>
+        <RequestsSection stack={value} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 
@@ -89,12 +92,13 @@ describe("RequestsSection", () => {
     expect(screen.getByText("No 5xx")).toBeInTheDocument();
   });
 
-  it("says nothing is counted while the rule is off, and where to turn it on", async () => {
+  it("says once that nothing is counted while the rule is off, linking to where to turn it on", async () => {
     mocks.get.mockResolvedValue({ data: hour(Array.from({ length: 60 }, () => null)) });
     renderSection({ ...stack, error_rate: { enabled: false, percent: 5, minutes: 5, min_requests: 20 } });
 
-    expect(await screen.findByText(/^No error-rate rule on this stack/)).toBeInTheDocument();
-    expect(screen.getByText(/^Not counted\. Turn on the error-rate rule under Alerts/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Not counted\. Turn on the error-rate rule in/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Alerts" })).toHaveAttribute("href", expect.stringMatching(/\/stacks\/stack-1\/alerts$/));
+    expect(screen.queryByText(/^No error-rate rule on this stack/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^No request data yet/)).not.toBeInTheDocument();
   });
 
