@@ -1,5 +1,6 @@
 import { UsersIcon } from "lucide-react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { peopleWord } from "@/models/ProjectPeople";
 
 interface WorkspaceArchiveDetailsProps {
@@ -18,9 +19,9 @@ export const WorkspaceArchiveDetails = ({ people, projects }: WorkspaceArchiveDe
         </p>
       )}
       {projects !== undefined && (
-        <p className="text-muted-foreground">
+        <SettingsHint>
           {projects} {projects === 1 ? "project" : "projects"}, with their tickets, docs, chat and plays, go with it.
-        </p>
+        </SettingsHint>
       )}
     </div>
   </div>

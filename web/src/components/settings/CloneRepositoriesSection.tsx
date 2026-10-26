@@ -1,5 +1,6 @@
 import { CloneRepositoryButton } from "@/components/settings/CloneRepositoryButton";
 import { PairAgainToClone } from "@/components/settings/PairAgainToClone";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useCanCloneOnComputer } from "@/hooks/PairingHooks";
 
 interface CloneRepositoriesSectionProps {
@@ -14,9 +15,9 @@ export const CloneRepositoriesSection = ({ computerId, repositories, onCloned }:
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
+      <SettingsHint>
         Not on this computer yet. Cloning puts it beside the computer's other T3 projects.
-      </p>
+      </SettingsHint>
       {canClone === false && <PairAgainToClone computerId={computerId} />}
       <div className="flex flex-wrap gap-2">
         {repositories.map((repository) => (

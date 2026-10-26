@@ -6,6 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { DeviceRow } from "@/components/you/DeviceRow";
 import { useListSessions, useSignOutOtherSessions, useSignOutSession } from "@/hooks/AuthHooks";
@@ -46,7 +47,7 @@ export const DevicesFeed = () => {
       description="Sign out any you don't recognise."
       footer={
         <>
-          <p className="text-sm text-muted-foreground">Every other device will have to sign in again.</p>
+          <SettingsHint>Every other device will have to sign in again.</SettingsHint>
           <Button
             variant="destructive"
             size="sm"

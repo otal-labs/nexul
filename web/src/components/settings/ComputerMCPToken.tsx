@@ -1,5 +1,6 @@
 import { KeyRound, Trash2 } from "lucide-react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -25,7 +26,7 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
       {error && <ErrorDisplay error={error} title="Couldn't load the MCP token." className="p-3" />}
       {token === null && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">No MCP token, so agents here can't reach Nexul's MCP server.</p>
+          <SettingsHint>No MCP token, so agents here can't reach Nexul's MCP server.</SettingsHint>
           <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>
             <KeyRound className="size-4" />
             Mint MCP token

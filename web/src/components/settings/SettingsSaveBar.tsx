@@ -23,7 +23,7 @@ const off = "invisible -translate-x-1 opacity-0";
 // The card's footer strip for a form: always there, so nothing below it moves; a change wakes Discard and Save.
 export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLabel = "Save", hint }: SettingsSaveBarProps) => (
   <>
-    <span className="grid min-w-0 flex-1 text-sm text-muted-foreground">
+    <span className="grid min-w-0 flex-1 text-xs text-muted-foreground">
       <span className={cn("col-start-1 row-start-1 truncate", strip, (dirty || saved || !hint) && off)}>{hint}</span>
       <span className={cn("col-start-1 row-start-1", strip, !dirty && off)}>Unsaved changes</span>
     </span>

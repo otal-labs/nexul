@@ -2,6 +2,7 @@ import { TicketIcon } from "lucide-react";
 
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { StackErrorRateCard } from "@/components/stack/StackErrorRateCard";
 import { useUpdateStack } from "@/hooks/StackHooks";
 import { useStackActions } from "@/hooks/useStackActions";
@@ -31,9 +32,9 @@ export const StackAlertsSection = ({ stack }: StackAlertsSectionProps) => {
             <p className="text-sm font-medium">
               Open a ticket when a service crashes
             </p>
-            <p className="text-sm text-muted-foreground">
+            <SettingsHint>
               {off ?? "One ticket per service in the project's first stage, created by the instance. A repeat or a recovery adds a comment. The error-rate rule opens one the same way."}
-            </p>
+            </SettingsHint>
           </div>
           <ActionSwitch
             permission="stacks:write"

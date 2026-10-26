@@ -9,6 +9,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MachinePicker } from "@/components/MachinePicker";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useCreateTunnel, useFetchDnsZones, useProvisionTunnelAgent } from "@/hooks/DnsHooks";
@@ -86,9 +87,9 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
                 placeholder="Choose an account…"
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
               />
-              <p className="text-xs text-muted-foreground">
+              <SettingsHint>
                 The account that owns the domain this instance will use. A tunnel only serves its own account's domains.
-              </p>
+              </SettingsHint>
             </div>
           )}
           <p className="font-mono text-xs text-muted-foreground">

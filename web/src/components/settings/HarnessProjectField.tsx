@@ -4,6 +4,7 @@ import { FormCombobox } from "@/components/FormCombobox";
 import { AddProjectSection } from "@/components/settings/AddProjectSection";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { useFetchHarnessProjects } from "@/hooks/PairingHooks";
 
@@ -55,20 +56,20 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
               Change
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Its name shows when this computer is back online.</p>
+          <SettingsHint>Its name shows when this computer is back online.</SettingsHint>
         </div>
       )}
       {!listed && !savedOffline && (
         <div className="space-y-1">
           <FormInput control={control} name={name} label={label} placeholder="e.g. proj_abc123" />
-          {!computerId && <p className="text-xs text-muted-foreground">Pick a computer to load its projects.</p>}
+          {!computerId && <SettingsHint>Pick a computer to load its projects.</SettingsHint>}
           {projects.isError && (
-            <p className="text-xs text-muted-foreground">
+            <SettingsHint>
               Couldn't load this computer's projects. Check it's online, or paste the project id.
-            </p>
+            </SettingsHint>
           )}
           {projects.data?.length === 0 && (
-            <p className="text-xs text-muted-foreground">This computer has no T3 projects yet.</p>
+            <SettingsHint>This computer has no T3 projects yet.</SettingsHint>
           )}
         </div>
       )}

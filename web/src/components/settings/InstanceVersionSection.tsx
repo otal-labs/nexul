@@ -5,6 +5,7 @@ import { Fact } from "@/components/Fact";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ const InstanceVersionBody = ({ data }: { data: InstanceUpgrade }) => {
   return (
     <div className="@container space-y-6">
       <InstanceVersionFacts data={data} />
-      {showReason && <p className="text-sm text-muted-foreground">{reasonCopy(data.reason)}</p>}
+      {showReason && <SettingsHint>{reasonCopy(data.reason)}</SettingsHint>}
       {record && (inProgress || isUnresolvedFailure(data)) && <InstanceUpgradeProgress record={record} />}
       {record && record.status === UpgradeRecordStatus.Completed && (
         <p className="text-xs text-muted-foreground">

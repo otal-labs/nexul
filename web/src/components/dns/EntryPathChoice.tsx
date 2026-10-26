@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { entryPathOptions, type EntryPath, type EntryPathOption } from "@/models/DNS";
@@ -17,7 +18,7 @@ const EntryPathRow = ({ option }: EntryPathRowProps) => (
     <RadioGroupItem id={`entry-path-${option.value}`} value={option.value} className="mt-0.5" />
     <span className="min-w-0">
       <span className="block text-sm font-medium">{option.label}</span>
-      <span className="mt-0.5 block text-sm text-muted-foreground">{option.description}</span>
+      <SettingsHint className="mt-0.5">{option.description}</SettingsHint>
     </span>
   </label>
 );

@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { cn } from "@/lib/utils";
 
 interface SettingsCardProps {
@@ -30,10 +31,10 @@ export const SettingsCard = ({ id, title, description, danger = false, icon: Ico
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <h2 id={`${id}-title`} className="text-[15px] font-semibold tracking-tight text-balance">
+        <h2 id={`${id}-title`} className="text-base font-semibold tracking-tight text-balance text-foreground">
           {title}
         </h2>
-        {description && <p className="mt-1 max-w-prose text-sm text-pretty text-muted-foreground">{description}</p>}
+        {description && <SettingsHint className="mt-1 max-w-prose">{description}</SettingsHint>}
       </div>
       {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
     </div>

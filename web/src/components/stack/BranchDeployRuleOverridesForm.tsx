@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { FormTextarea } from "@/components/ticket/FormTextarea";
 import { RuleOverridesFormSchema, type RuleOverridesFormData } from "@/models/Stack";
@@ -32,10 +33,10 @@ export const BranchDeployRuleOverridesForm = ({ overrides, saving, onSave, onCan
         rows={3}
         className="bg-background font-mono text-xs"
       />
-      <p className="text-xs text-muted-foreground">
+      <SettingsHint>
         One KEY=value per line, replacing the base stack&apos;s value for this branch only. Remove a line and the next
         deploy uses the base value again.
-      </p>
+      </SettingsHint>
       <div className="flex gap-2">
         <Button type="submit" size="sm" loading={saving}>
           Save overrides

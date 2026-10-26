@@ -1,5 +1,6 @@
 import { UserMinus } from "lucide-react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { Microheader } from "@/components/Microheader";
 import { RoleChipRow } from "@/components/role/RoleChipRow";
@@ -44,14 +45,14 @@ export const TeamWorkspacePanel = ({ workspace, membership }: TeamWorkspacePanel
         <section className="space-y-2">
           <Microheader>Roles</Microheader>
           <RoleChipRow roles={heldRoles(membership)} />
-          {membership.is_owner && <p className="text-xs text-muted-foreground">The Owner role is never given or taken here, and it holds everything in {workspace.name}.</p>}
+          {membership.is_owner && <SettingsHint>The Owner role is never given or taken here, and it holds everything in {workspace.name}.</SettingsHint>}
           {!membership.is_owner && <TeamReadOnlyReason workspaceName={workspace.name} />}
         </section>
       )}
       {!removed && !membership.is_owner && (
-        <p className="text-xs text-muted-foreground">
+        <SettingsHint>
           The projects, channels and plays {firstName} sees follow from these roles and from the rules on each one.
-        </p>
+        </SettingsHint>
       )}
       {!removed && !entry && !membership.is_owner && <TeamViewAsButton person={person} workspace={workspace} />}
       {!removed && editable && (

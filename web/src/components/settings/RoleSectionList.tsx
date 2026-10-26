@@ -2,6 +2,7 @@ import { RoleAbilityRow } from "@/components/settings/RoleAbilityRow";
 import { RoleAreaRow } from "@/components/settings/RoleAreaRow";
 import { RoleBulkRow } from "@/components/settings/RoleBulkRow";
 import { RoleLockedActionsRow } from "@/components/settings/RoleLockedActionsRow";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { PermissionArea } from "@/models/Permission";
 import type { RoleSection, SectionDomains } from "@/models/RoleSection";
 
@@ -14,7 +15,7 @@ interface RoleSectionListProps {
 // One tab's body: where it applies, then one bordered list led by its bulk row.
 export const RoleSectionList = ({ section, line, domains }: RoleSectionListProps) => (
   <div className="space-y-3">
-    <p className="text-sm text-muted-foreground">{line}</p>
+    <SettingsHint>{line}</SettingsHint>
     {section.area === PermissionArea.Workspace && (
       <ul className="overflow-hidden rounded-md border border-input">
         <RoleLockedActionsRow />

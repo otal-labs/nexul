@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 
 interface DangerZoneProps {
   children: ReactNode;
@@ -27,7 +28,7 @@ export const DangerAction = ({ title, consequence, details, action }: DangerActi
     <div className="flex flex-col gap-3 @sm:flex-row @sm:items-start @sm:justify-between @sm:gap-6">
       <div className="min-w-0 space-y-1">
         <p className="text-sm font-medium">{title}</p>
-        <p className="text-sm text-pretty text-muted-foreground">{consequence}</p>
+        <SettingsHint>{consequence}</SettingsHint>
         {details}
       </div>
       <div className="shrink-0">{action}</div>

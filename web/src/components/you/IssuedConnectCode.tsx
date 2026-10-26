@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { QrFrame } from "@/components/you/QrFrame";
 import { Button } from "@/components/ui/button";
 import { useNow } from "@/hooks/useNow";
@@ -43,7 +44,7 @@ export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnect
         )
       }
     >
-      <p className="text-muted-foreground">Works once, for two minutes.</p>
+      <SettingsHint>Works once, for two minutes.</SettingsHint>
       <p className="font-mono text-xs tabular-nums">
         <span className="text-muted-foreground">Code </span>
         {code.code}
