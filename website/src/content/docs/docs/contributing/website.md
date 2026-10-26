@@ -121,7 +121,7 @@ the same feature, so change both together. The sources are
 mode, then cropped; `src/components/ProductShot.astro` turns each pair into
 AVIF and WebP at several widths and lets the page's theme pick one. Seeded
 people have logins no GitHub account can have (`bob_nw`), so they show their
-gradient avatars; never capture people whose login could be a real GitHub
+seeded avatar fills; never capture people whose login could be a real GitHub
 account, because the app shows `github.com/<login>.png` for anyone without a
 picture.
 

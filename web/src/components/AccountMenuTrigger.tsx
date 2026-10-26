@@ -6,7 +6,7 @@ import { PopoverTrigger } from "@/components/ui/popover";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { UpdateDot } from "@/components/UpdateDot";
 import { useWelcomeProgress } from "@/hooks/WelcomeHooks";
-import { avatarGradient } from "@/lib/avatarGradient";
+import { avatarFill } from "@nexul/client-core/avatarFill";
 import { effectiveAvatar, userLabel, loginHandle } from "@/models/User";
 import type { User } from "@/models/User";
 import { welcomeMenuSummary } from "@/utils/WelcomeMenuUtility";
@@ -54,7 +54,7 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
           {effectiveAvatar(user) === "" && (
             <span
               className="flex size-8 items-center justify-center rounded-lg text-xs font-semibold text-white"
-              style={{ backgroundImage: avatarGradient(user.login) }}
+              style={{ backgroundColor: avatarFill(user.login) }}
             >
               {initials(userLabel(user))}
             </span>

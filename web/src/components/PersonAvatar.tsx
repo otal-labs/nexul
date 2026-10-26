@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useAttachmentBlob } from "@/hooks/AttachmentHooks";
-import { avatarGradient } from "@/lib/avatarGradient";
+import { avatarFill } from "@nexul/client-core/avatarFill";
 import { cn, initials } from "@/lib/utils";
 
 interface PersonAvatarProps {
@@ -13,7 +13,7 @@ interface PersonAvatarProps {
   label?: string | undefined;
 }
 
-// The gradient circle covers a picture that is missing, still loading, or 404s; under 24px it keeps one initial at 10px.
+// The flat circle covers a picture that is missing, still loading, or 404s; under 24px it keeps one initial at 10px.
 const AvatarImage = ({ login, src, className, label = login }: PersonAvatarProps) => {
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
   const showImage = !!src && failedSrc !== src;
@@ -24,13 +24,13 @@ const AvatarImage = ({ login, src, className, label = login }: PersonAvatarProps
       {!showImage && (
         <span
           title={label}
-          style={{ backgroundImage: avatarGradient(login) }}
+          style={{ backgroundColor: avatarFill(login) }}
           className={cn(
             "@container flex size-5 shrink-0 items-center justify-center rounded-full font-semibold text-white select-none",
             className,
           )}
         >
-          <span className="text-[max(10px,38cqw)] leading-none [text-shadow:0_1px_2px_oklch(0_0_0/0.35)]">
+          <span className="text-[max(10px,38cqw)] leading-none">
             {first}
             <span className="@max-[1.5rem]:hidden">{second}</span>
           </span>
