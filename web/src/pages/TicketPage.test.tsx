@@ -133,9 +133,10 @@ describe("TicketPage", () => {
     expect(screen.getByText("by alice")).toBeInTheDocument();
   });
 
-  it("resolves a /tickets/PREFIX-NUMBER url to the same ticket as its uuid url", async () => {
+  it("resolves a /tickets/PREFIX-NUMBER url to the same ticket as its uuid url, reading only that ticket", async () => {
     vi.mocked(api.get).mockImplementation(withOwner((url: string) => {
       if (url === "/api/tickets") return Promise.resolve({ data: [ticketData] });
+      if (url === "/api/tickets/BE-7") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
       if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
@@ -145,10 +146,17 @@ describe("TicketPage", () => {
     renderPage("/tickets/BE-7");
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(screen.getByText("BE-7")).toBeInTheDocument();
+    const reads = vi.mocked(api.get).mock.calls.map(([url]) => url);
+    expect(api.get).toHaveBeenCalledWith("/api/tickets/BE-7", { params: { workspace: "ws-1" } });
+    expect(reads).not.toContain("/api/tickets");
   });
 
   it("shows not-found for a key that matches no ticket", async () => {
-    mockTicket();
+    vi.mocked(api.get).mockImplementation(withOwner((url: string) => {
+      if (url === "/api/tickets/BE-999") return Promise.reject(Object.assign(new Error("not found"), { response: { status: 404 } }));
+      if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
+      return Promise.resolve({ data: [] });
+    }));
     renderPage("/tickets/BE-999");
     expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
   });

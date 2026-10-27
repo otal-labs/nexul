@@ -80,6 +80,9 @@ export const ticketCategoryMoved = (client: QueryClient, id: string, categoryId:
   return ticketChanged(client, { ...ticket, category_id: categoryId, position });
 };
 
+// A ticket read another way (by its key) becomes its own view, so the page that opens it by id reads nothing again.
+export const ticketFetched = (client: QueryClient, ticket: Ticket) => client.setQueryData<Ticket>([getTicketKey, ticket.id], ticket);
+
 // A new ticket: the lists that hold it refetch for the server's order, and its own view starts from the server's copy.
 export const ticketCreated = (client: QueryClient, ticket: Ticket): Promise<void> => {
   client.setQueryData<Ticket>([getTicketKey, ticket.id], ticket);

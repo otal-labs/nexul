@@ -13,6 +13,7 @@ import {
   ticketCategoryMoved,
   ticketChanged,
   ticketCreated,
+  ticketFetched,
   ticketRemoved,
 } from "@/hooks/TicketCache";
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
@@ -30,13 +31,15 @@ import { isTrailActive, type RunFrame } from "@/models/Trail";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTicketLinksKey = "getTicketLinks";
+const getTicketIdByKeyKey = "getTicketIdByKey";
 export const getAllLabelsKey = "getAllLabels";
 const getLabelColorsKey = "getLabelColors";
 
+// The board and pickers show titles only, so the lists leave bodies out; a ticket's page reads its own.
 export const useFetchTickets = () =>
   useQuery({
     queryKey: [getTicketsKey],
-    queryFn: async () => (await api.get<Ticket[]>("/api/tickets")).data,
+    queryFn: async () => (await api.get<Ticket[]>("/api/tickets", { params: { without: "body" } })).data,
   });
 
 export const useFetchTicket = (id: string | undefined) =>
@@ -44,6 +47,18 @@ export const useFetchTicket = (id: string | undefined) =>
     queryKey: [getTicketKey, id],
     queryFn: async () => (await api.get<Ticket>(`/api/tickets/${id}`)).data,
     enabled: !!id,
+  });
+
+// A PREFIX-NUMBER link reads its one ticket by key and seeds the ticket's own view, so the page reads it once.
+export const useFetchTicketIdByKey = (key: string | undefined, workspaceId: string) =>
+  useQuery({
+    queryKey: [getTicketIdByKeyKey, workspaceId, key],
+    queryFn: async ({ client }) => {
+      const ticket = (await api.get<Ticket>(`/api/tickets/${key}`, { params: { workspace: workspaceId } })).data;
+      ticketFetched(client, ticket);
+      return ticket.id;
+    },
+    enabled: !!key,
   });
 
 export const useFetchTicketsByDoc = (docId: string | undefined) =>
@@ -56,7 +71,7 @@ export const useFetchTicketsByDoc = (docId: string | undefined) =>
 export const useFetchTicketsByProject = (projectId: string | undefined) =>
   useQuery({
     queryKey: [getTicketsByProjectKey, projectId],
-    queryFn: async () => (await api.get<Ticket[]>("/api/tickets", { params: { project_id: projectId } })).data,
+    queryFn: async () => (await api.get<Ticket[]>("/api/tickets", { params: { project_id: projectId, without: "body" } })).data,
     enabled: !!projectId,
   });
 

@@ -80,6 +80,27 @@ func TestTicketsHandler_List(t *testing.T) {
 	})
 }
 
+func TestTicketsHandler_List_WithoutBody_LeavesBodiesOut(t *testing.T) {
+	h := newTicketsHandler()
+	serve(t, h, http.MethodPost, "/api/tickets", `{"title":"A","body":"a long spec","project_id":"p-1"}`)
+	bodies := func(path string) []string {
+		rec := serve(t, h, http.MethodGet, path, "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var list []*Ticket
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
+		out := make([]string, len(list))
+		for i, tk := range list {
+			out[i] = tk.Body
+		}
+		return out
+	}
+
+	assert.Equal(t, []string{""}, bodies("/api/tickets?without=body"))
+	assert.Equal(t, []string{""}, bodies("/api/tickets?project_id=p-1&without=body"))
+	assert.Equal(t, []string{"a long spec"}, bodies("/api/tickets?project_id=p-1"))
+	assert.Equal(t, []string{"a long spec"}, bodies("/api/tickets"), "leaving a body out never reaches the ticket the service holds")
+}
+
 func TestTicketsHandler_Get(t *testing.T) {
 	h := newTicketsHandler()
 	created := decodeTicket(t, serve(t, h, http.MethodPost, "/api/tickets", `{"title":"A","project_id":"p-1"}`))

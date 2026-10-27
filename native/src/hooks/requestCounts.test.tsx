@@ -111,7 +111,7 @@ const responses: Record<string, unknown> = {
   "/api/projects/p-1": { id: "p-1", name: "Nexul", prefix: "NEX" },
   "/api/statuses?project_id=p-1": [{ id: "st-todo", name: "Todo", position: 0, kind: "backlog" }],
   "/api/ticket-types?project_id=p-1": [],
-  "/api/tickets?project_id=p-1": [ticket("t-1", 1), ticket("t-2", 2), ticket("t-3", 3)],
+  "/api/tickets?project_id=p-1&without=body": [ticket("t-1", 1), ticket("t-2", 2), ticket("t-3", 3)],
   "/api/tickets/t-1": ticket("t-1", 1),
   "/api/tickets/t-2": ticket("t-2", 2),
   "/api/tickets/t-3": ticket("t-3", 3),
@@ -232,7 +232,7 @@ describe("requests a session sends", () => {
 
     const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.status_changed", "t-1")));
 
-    expect(gets.sort()).toEqual(["/api/tickets/t-1", "/api/tickets?project_id=p-1"]);
+    expect(gets.sort()).toEqual(["/api/tickets/t-1", "/api/tickets?project_id=p-1&without=body"]);
   });
 
   // The server publishes ticket.assignee_changed beside ticket.developer_changed for older clients; following both refetched twice.
@@ -244,7 +244,7 @@ describe("requests a session sends", () => {
       dispatch(client)(ticketFrame("ticket.assignee_changed", "t-2"));
     });
 
-    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
+    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1&without=body"]);
   });
 
   test("a due date change refetches the board's list and that ticket, nothing else", async () => {
@@ -252,7 +252,7 @@ describe("requests a session sends", () => {
 
     const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.due_date_changed", "t-2")));
 
-    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
+    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1&without=body"]);
   });
 
   const roleFrame = (roleID: string) => ({

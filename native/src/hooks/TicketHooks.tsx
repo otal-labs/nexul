@@ -10,10 +10,11 @@ import type { Ticket, TicketRole } from "@/models/Ticket";
 export const getTicketsByProjectKey = "getTicketsByProject";
 export const getTicketKey = "getTicket";
 
+// The board shows titles only, so its list leaves bodies out; a ticket's screen reads its own.
 // ticket.assignee_changed is left out: it is published beside ticket.developer_changed, so following both refetched twice.
 const ticketsByProjectQuery = defineQuery({
   key: getTicketsByProjectKey,
-  fetch: (projectId: string | undefined) => api.get<Ticket[]>(`/api/tickets?project_id=${encodeURIComponent(projectId ?? "")}`),
+  fetch: (projectId: string | undefined) => api.get<Ticket[]>(`/api/tickets?project_id=${encodeURIComponent(projectId ?? "")}&without=body`),
   refreshes: {
     "ticket.created": { key: (p) => p.ticket.project_id },
     "ticket.updated": { key: (p) => p.ticket.project_id },
