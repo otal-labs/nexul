@@ -5,9 +5,14 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { attachmentPath, type Attachment, type AttachmentOwner } from "@/models/Attachment";
+import { csvDelimiter, parseCsv } from "@/utils/CsvUtility";
 
 export const getAttachmentsKey = "getAttachments";
 export const getAttachmentBlobKey = "getAttachmentBlob";
+export const getAttachmentTextKey = "getAttachmentText";
+
+export const csvPreviewRows = 100;
+export const csvPreviewColumns = 50;
 
 export const useFetchAttachments = (owner: AttachmentOwner) =>
   useQuery({
@@ -49,17 +54,28 @@ export const useDeleteAttachment = () => {
   });
 };
 
-const fetchBlobUrl = async (src: string): Promise<string> =>
-  URL.createObjectURL((await api.get<Blob>(src, { responseType: "blob" })).data);
+// type relabels the bytes, since the server serves an SVG as text and the browser renders by the blob's type.
+const fetchBlobUrl = async (src: string, type?: string): Promise<string> => {
+  const blob = (await api.get<Blob>(src, { responseType: "blob" })).data;
+  return URL.createObjectURL(type ? new Blob([blob], { type }) : blob);
+};
 
 // A bare <img src> can't send the Bearer token, so this renders from an object URL (ponytail: revoke on eviction).
-export const useAttachmentBlob = (src: string | null) =>
+export const useAttachmentBlob = (src: string | null, type?: string) =>
   useQuery({
-    queryKey: [getAttachmentBlobKey, src],
-    queryFn: () => fetchBlobUrl(src ?? ""),
+    queryKey: [getAttachmentBlobKey, src, type],
+    queryFn: () => fetchBlobUrl(src ?? "", type),
     enabled: !!src,
     staleTime: Infinity,
     gcTime: Infinity,
+  });
+
+// The header and the first rows of a CSV or TSV file, however long it is.
+export const useAttachmentCsv = (attachment: Attachment) =>
+  useQuery({
+    queryKey: [getAttachmentTextKey, attachment.id],
+    queryFn: async () => (await api.get<string>(attachmentPath(attachment.id), { responseType: "text" })).data,
+    select: (text) => parseCsv(text, csvDelimiter(attachment.name), csvPreviewRows + 1, csvPreviewColumns),
   });
 
 export const downloadAttachment = async (attachment: Attachment): Promise<void> => {

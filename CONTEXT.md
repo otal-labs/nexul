@@ -494,7 +494,8 @@ _Avoid_: Comment, addendum, memory (a memory is written for agents)
 **Attachment**:
 A file uploaded onto exactly one doc, ticket, conversation, or memory, and
 embedded in a body or message by its `/api/attachments/<id>` link: a raster
-image renders inline, any other file is a download link. Reading one takes
+image renders inline, any other file is a download link. The owner's list of
+attachments previews images, SVG, PDF, audio and CSV in place. Reading one takes
 read on its owner, uploading one takes change; people and agents (through
 `attachment_create` and `attachment_get`) share the same 10 MiB cap.
 _Avoid_: Upload, asset, blob

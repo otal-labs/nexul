@@ -3,6 +3,7 @@ import { DownloadIcon, FileIcon, Trash2Icon } from "lucide-react";
 import type { PermissionAction } from "@nexul/client-core/permissionActions";
 
 import { ActionButton } from "@/components/action/ActionButton";
+import { AttachmentPreviewDialog } from "@/components/attachment/AttachmentPreviewDialog";
 import { downloadAttachment, useAttachmentBlob, useDeleteAttachment } from "@/hooks/AttachmentHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { attachmentPath, formatBytes, isInlineImage, type Attachment } from "@/models/Attachment";
@@ -38,7 +39,11 @@ export const AttachmentRow = ({ attachment, permission, projectId }: AttachmentR
         {thumb && <img src={thumb} alt="" className="size-full object-cover" />}
         {!thumb && <FileIcon className="size-3 text-muted-foreground" aria-hidden />}
       </span>
-      <span className="truncate text-foreground">{attachment.name}</span>
+      <AttachmentPreviewDialog attachment={attachment}>
+        <button type="button" className="truncate rounded-sm text-foreground hover:underline">
+          {attachment.name}
+        </button>
+      </AttachmentPreviewDialog>
       <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
         {formatBytes(attachment.size)}
       </span>
