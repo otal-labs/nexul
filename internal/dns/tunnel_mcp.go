@@ -8,23 +8,23 @@ import (
 )
 
 type tunnelListIn struct {
-	ID     string `json:"id,omitempty" jsonschema:"Only this tunnel, with its live connection status read from Cloudflare."`
-	Verify bool   `json:"verify,omitempty" jsonschema:"With an id, also check its routed hostname: the ingress rule, the proxied CNAME, and whether it answers over HTTPS. Defaults to false."`
+	ID     string `json:"id,omitempty" jsonschema:"Only this tunnel, with its live connection status."`
+	Verify bool   `json:"verify,omitempty" jsonschema:"With an id, also check its routed hostname: the ingress rule, the proxied CNAME, and whether it answers over HTTPS."`
 	mcptool.PageArgs
 }
 
 type tunnelCreateIn struct {
 	Name      string `json:"name" jsonschema:"The tunnel's name at Cloudflare, for example instance."`
-	AccountID string `json:"account_id,omitempty" jsonschema:"The Cloudflare account to create it in, the account_id of the zone its hostname will use, from dns_zone_list. Required when the token reaches more than one account."`
+	AccountID string `json:"account_id,omitempty" jsonschema:"The Cloudflare account to create it in: the account_id of the zone its hostname will use, from dns_zone_list. Required when the token reaches more than one account."`
 }
 
 type tunnelUpdateIn struct {
 	ID                string  `json:"id" jsonschema:"The tunnel's id, from dns_tunnel_list."`
-	Hostname          *string `json:"hostname,omitempty" jsonschema:"The public hostname to route into the tunnel, for example nexul.example.com. Omit to keep the current one."`
-	ZoneID            *string `json:"zone_id,omitempty" jsonschema:"The hostname's zone, from dns_zone_list; pass zone with it. Omit to keep the current one."`
-	Zone              *string `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Omit to keep the current one."`
-	OriginURL         *string `json:"origin_url,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. Omit to keep the current one; a tunnel routed for the first time without one forwards to this Nexul instance."`
-	RotateCredentials bool    `json:"rotate_credentials,omitempty" jsonschema:"Issue the tunnel a new token and store it. Defaults to false."`
+	Hostname          *string `json:"hostname,omitempty" jsonschema:"The public hostname to route into the tunnel, for example nexul.example.com."`
+	ZoneID            *string `json:"zone_id,omitempty" jsonschema:"The hostname's zone, from dns_zone_list; pass zone with it."`
+	Zone              *string `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com."`
+	OriginURL         *string `json:"origin_url,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. A tunnel routed for the first time without one forwards to this Nexul instance."`
+	RotateCredentials bool    `json:"rotate_credentials,omitempty" jsonschema:"Issue the tunnel a new token and store it."`
 }
 
 func (in tunnelUpdateIn) routes() bool {
@@ -67,11 +67,10 @@ type tunnelUpdateResult struct {
 func tunnelTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dns_tunnel_list", "List tunnels",
-			"Lists the Cloudflare tunnels Nexul manages, oldest first, with the hostname each routes, its zone, the "+
-				"origin_url cloudflared forwards to, and the stack_id of the stack running cloudflared. With an id it "+
-				"returns only that tunnel with its live status read from Cloudflare, healthy once cloudflared is "+
-				"connected, which is how to wait for a new tunnel gateway to come up; verify adds the routed hostname's "+
-				"checks. Tunnel tokens are never returned.",
+			"Lists the Cloudflare tunnels Nexul manages, oldest first, with hostname, zone, origin_url, and the stack_id "+
+				"of the stack running cloudflared. With an id it returns only that tunnel with its live status from "+
+				"Cloudflare (healthy once cloudflared is connected, which is how to wait for a new tunnel gateway); verify "+
+				"adds the routed hostname's checks. Tunnel tokens are never returned.",
 			mcptool.Hints{ReadOnly: true},
 			func(ctx context.Context, in tunnelListIn) (any, error) {
 				if in.ID != "" {
@@ -94,9 +93,8 @@ func tunnelTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("dns_tunnel_create", "Create tunnel",
 			"Creates a Cloudflare tunnel and stores its token encrypted; the token is never returned. A name Nexul "+
-				"already tracks returns that tunnel instead of a second one, so a retry is safe. Next, run cloudflared "+
-				"for it with gateway_create (kind tunnel), then route a hostname into it with exposure_create or "+
-				"dns_tunnel_update.",
+				"already tracks returns that tunnel instead of a second one, so a retry is safe. Next, run cloudflared for it "+
+				"with gateway_create (kind tunnel), then route a hostname into it with exposure_create or dns_tunnel_update.",
 			mcptool.Hints{Additive: true, Idempotent: true},
 			func(ctx context.Context, in tunnelCreateIn) (any, error) {
 				t, err := s.CreateTunnel(ctx, CreateTunnelInput(in))
@@ -107,12 +105,11 @@ func tunnelTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("dns_tunnel_update", "Update tunnel",
 			"Routes a public hostname into a tunnel, rotates its credentials, or both. Routing sets the ingress rule "+
-				"sending hostname to origin_url plus a proxied CNAME pointing hostname at the tunnel, and route fields you "+
-				"omit keep their current values, so passing only origin_url re-points the current hostname; for a "+
-				"container Nexul deploys, use exposure_create instead. rotate_credentials issues and stores a new "+
-				"token: a running cloudflared keeps its connection, but its stack still holds the old token, so its "+
-				"next reconnect fails until the gateway is recreated. Routing runs before rotation, a failure stops "+
-				"the call, and the result lists what was applied.",
+				"sending hostname to origin_url plus a proxied CNAME to the tunnel, so passing only origin_url re-points the "+
+				"current hostname; for a container Nexul deploys, use exposure_create instead. rotate_credentials issues and "+
+				"stores a new token: a running cloudflared keeps its connection but its stack still holds the old token, so "+
+				"its next reconnect fails until the gateway is recreated. Routing runs before rotation; the result lists what "+
+				"was applied.",
 			mcptool.Hints{},
 			func(ctx context.Context, in tunnelUpdateIn) (any, error) {
 				t, err := s.GetTunnel(ctx, in.ID)
@@ -143,12 +140,11 @@ func tunnelTools(s *Service) []mcptool.Tool {
 				return tunnelUpdateResult{Tunnel: toTunnelResult(t), Applied: applied}, nil
 			}),
 		mcptool.New("dns_tunnel_delete", "Delete tunnel",
-			"Deletes a Cloudflare tunnel, the proxied CNAME its own hostname route created, and Nexul's record of it, "+
-				"returning its id with deleted set. It is refused while a gateway routes through the tunnel, a hostname is "+
-				"exposed on one, the tunnel serves this instance's own address, or its cloudflared stack still exists, "+
-				"and the error names each; remove gateways and exposures with gateway_delete and exposure_delete, and "+
-				"the stack with stack_delete. "+
-				"Other DNS records pointing at the tunnel stay; dns_record_delete removes them.",
+			"Deletes a Cloudflare tunnel, the proxied CNAME its own hostname route created, and Nexul's record of it. It "+
+				"is refused, naming each, while a gateway routes through the tunnel, a hostname is exposed on one, the tunnel "+
+				"serves this instance's own address, or its cloudflared stack still exists; remove those with gateway_delete, "+
+				"exposure_delete and stack_delete. Other DNS records pointing at the tunnel stay; dns_record_delete removes "+
+				"them.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in tunnelDeleteIn) (any, error) {
 				if err := s.DeleteTunnel(ctx, in.ID); err != nil {

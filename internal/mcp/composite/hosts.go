@@ -43,14 +43,11 @@ type hostDeleteIn struct {
 
 func hostCreateTool(kinds map[string]HostKind) mcptool.Tool {
 	return mcptool.New("host_create", "Enroll host",
-		"Enrolls a new runner or automations host: mints a one-time enrollment code and returns it with the "+
-			"one-line install commands for Linux or macOS and for Windows that carry it. Run one of them on the "+
-			"machine; it installs the host as a service, which trades the code for its own credential. The code is "+
-			"shown only in this result, is valid for one hour and enrolls exactly the named host; the result's id revokes "+
-			"an unused runner code with host_delete. A runner "+
-			"on a machine that exists needs Manage on it; one that makes a new machine needs Add machines, and its "+
-			"adder then holds every permission on the machine. An automations host on a machine that exists needs Manage on "+
-			"it, and one with no machine or on a machine Nexul doesn't know yet is the instance Owner's alone.",
+		"Enrolls a new runner or automations host and returns a one-time enrollment code, shown only in this result "+
+			"and valid for one hour, with the install commands that carry it for Linux or macOS and for Windows. Run one "+
+			"on the machine. The result's id revokes an unused runner code with host_delete. A runner needs Manage on an "+
+			"existing machine or Add machines for a new one; an automations host needs Manage on an existing machine, and "+
+			"with no machine or an unknown one is the instance Owner's alone.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in hostCreateIn) (any, error) {
 			kind, err := hostKind(kinds, in.Kind)
@@ -69,13 +66,11 @@ type hostDeleted struct {
 func hostDeleteTool(kinds map[string]HostKind) mcptool.Tool {
 	return mcptool.New("host_delete", "Remove host",
 		"Removes a runner or automations host, deletes a machine, or with code_id revokes an unused runner enrollment "+
-			"code so it enrolls nothing. Removing a host: its credential is revoked and its record deleted, so it can "+
-			"never connect again. A connected host is told to uninstall its own service; an offline one is refused as "+
-			"removed when it returns and uninstalls itself then. Work it is running fails. A runner or an "+
-			"automations host needs Manage on its machine, and one on a machine you can't see is not found. "+
-			"Deleting a machine (kind machine) needs Delete on it and is refused, naming each, while a stack or gateway "+
-			"targets it or a runner on it is connected; its offline runners and its rules go with it. "+
-			"A code is revoked by the person who made it, by someone who manages its machine, or by the instance Owner.",
+			"code. A removed host can never connect again, and a connected one uninstalls itself (an offline one when it "+
+			"returns). A host needs Manage on its machine. Deleting a machine (kind machine) needs Delete on it and is "+
+			"refused, naming each, while a stack or gateway targets it or a runner on it is connected; its offline "+
+			"runners and rules go with it. A code is revoked by its maker, a manager of its machine, or the instance "+
+			"Owner.",
 		mcptool.Hints{},
 		func(ctx context.Context, in hostDeleteIn) (any, error) {
 			kind, err := hostKind(kinds, in.Kind)

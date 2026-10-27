@@ -23,15 +23,14 @@ type canvasResult struct {
 }
 
 type topologyGetIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace whose canvas to read, by id from workspace_list."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace, by id from workspace_list."`
 }
 
 func topologyGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("topology_get", "Get topology",
-		"Returns a workspace's infrastructure map: service nodes (one per container of the workspace's stacks, plus "+
-			"the gateways routing to them, kept in sync with deploys, with live status and address), network and "+
-			"external nodes people drew, and the typed relations between them. Each workspace has its own canvas. "+
-			"Use it to understand how services connect, and topology_update to draw on it.",
+		"Returns a workspace's infrastructure map. It holds service nodes kept in sync with the workspace's stacks "+
+			"and gateways (live status, address), the network and external nodes people drew, and the typed relations "+
+			"between them. Use it to see how services connect; topology_update draws on it.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in topologyGetIn) (any, error) {
 			c, err := s.Get(ctx, in.WorkspaceID)
@@ -47,9 +46,9 @@ type nodeIn struct {
 	Type  string  `json:"type" jsonschema:"network or external; service nodes come and go with stacks on their own."`
 	Name  string  `json:"name" jsonschema:"The node's display name."`
 	Label string  `json:"label,omitempty" jsonschema:"Required for an external node: domain, tunnel, proxy, database, api, or other."`
-	URL   string  `json:"url,omitempty" jsonschema:"A link for an external node, for example https://status.example.com."`
-	X     float64 `json:"x,omitzero" jsonschema:"Horizontal position on the canvas. Defaults to 0."`
-	Y     float64 `json:"y,omitzero" jsonschema:"Vertical position on the canvas. Defaults to 0."`
+	URL   string  `json:"url,omitempty" jsonschema:"A link for an external node."`
+	X     float64 `json:"x,omitzero" jsonschema:"Horizontal canvas position."`
+	Y     float64 `json:"y,omitzero" jsonschema:"Vertical canvas position."`
 }
 
 type edgeIn struct {
@@ -60,7 +59,7 @@ type edgeIn struct {
 }
 
 type topologyUpdateIn struct {
-	WorkspaceID   string   `json:"workspace_id" jsonschema:"The workspace whose canvas to change, by id from workspace_list."`
+	WorkspaceID   string   `json:"workspace_id" jsonschema:"The workspace, by id from workspace_list."`
 	AddNodes      []nodeIn `json:"add_nodes,omitempty" jsonschema:"Network or external nodes to add."`
 	RemoveNodeIDs []string `json:"remove_node_ids,omitempty" jsonschema:"Ids of network or external nodes to remove, with every edge that touches them."`
 	AddEdges      []edgeIn `json:"add_edges,omitempty" jsonschema:"Relations to add between existing or newly added nodes."`
@@ -75,10 +74,10 @@ type change struct {
 
 func topologyUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("topology_update", "Update topology",
-		"Draws on the infrastructure map: adds and removes network and external nodes and the typed relations "+
-			"between nodes. Service nodes are managed from stacks and cannot be added or removed here. Changes apply "+
-			"in order (removed edges, removed nodes, added nodes, added edges), each saved on its own; the first "+
-			"failure stops the rest and the error lists what was already applied. Returns the updated canvas.",
+		"Adds and removes network and external nodes and the typed relations between nodes. Service nodes follow "+
+			"stacks and cannot be added or removed here. Changes apply in order (removed edges, removed nodes, added "+
+			"nodes, added edges), each saved on its own; the first failure stops the rest and the error lists what was "+
+			"already applied. Returns the updated canvas.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in topologyUpdateIn) (any, error) {
 			changes := topologyChanges(ctx, s, in.WorkspaceID, in)
