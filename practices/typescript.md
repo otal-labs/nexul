@@ -249,7 +249,7 @@ same no-barrel rule as everywhere else.
 - **What goes in.** Pure TypeScript with no React, navigation, network or
   platform API: the wire shapes both apps read and the rules over them
   (`permissions.ts`, `chat.ts`, `discordTime.ts`, `embed.ts`, `mention.ts`, `person.ts`,
-  `liveSocket.ts`, `queryRetry.ts`, `clarification.ts`, `questionChecklist.ts`, `question.ts`, `agentSteps.ts`). Hooks, components, query declarations and the web's
+  `liveSocket.ts`, `queryRetry.ts`, `clarification.ts`, `questionChecklist.ts`, `question.ts`, `agentSteps.ts`, `search.ts`). Hooks, components, query declarations and the web's
   followers stay in their app, as does anything only one app uses. A module
   moves here when the second app needs it.
 - **Platform differences.** A module takes plain values where the platforms

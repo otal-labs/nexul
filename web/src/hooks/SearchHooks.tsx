@@ -1,8 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import type { SearchFound } from "@nexul/client-core/search";
+
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { SearchFound } from "@/models/Search";
 import { pause } from "@/lib/pause";
 
 export const searchWorkspaceKey = "searchWorkspace";

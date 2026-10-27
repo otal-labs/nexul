@@ -2133,6 +2133,11 @@ project mark, the stage bar and an "Only mine" switch that takes the ember
 when on. The tab bar's active tab is the ember; its unread count is the ink
 pill.
 
+Search. More's first row opens a pushed screen: one field at the top, then
+the web palette's groups as microheaders over plain rows (a muted kind icon,
+the title, the mono key trailing), tickets and docs found only in their text
+under In text, and a quiet line under the list when a kind had more.
+
 Chat. Your messages are the ember bubble on the right (12pt corners, the
 bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
 with the name and mono clock time; day dividers are the microheader between
