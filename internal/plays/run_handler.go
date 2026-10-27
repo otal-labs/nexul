@@ -229,6 +229,8 @@ func (h *RunHandler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, trail)
 }
 
+// list takes ?steps=last for a page that shows each run's newest step only: the whole transcript is up to
+// MaxTrailActivityLines steps a run, and GET /api/plays/runs/{trailID} still returns all of them.
 func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	list, err := h.runner.ListTrails(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"), q.Get("play_id"))
@@ -236,7 +238,22 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
+	if q.Get("steps") == "last" {
+		list = lastStepOnly(list)
+	}
 	httpx.WriteJSON(w, http.StatusOK, list)
+}
+
+func lastStepOnly(list []*Trail) []*Trail {
+	out := make([]*Trail, len(list))
+	for i, t := range list {
+		trimmed := *t
+		if n := len(t.Activity); n > 1 {
+			trimmed.Activity = t.Activity[n-1:]
+		}
+		out[i] = &trimmed
+	}
+	return out
 }
 
 // active answers the one batched question per project: which of these targets has a run going, when it started, which
