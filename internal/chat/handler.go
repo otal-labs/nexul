@@ -78,6 +78,8 @@ type postMessageRequest struct {
 	Body string `json:"body"`
 	// File makes the post a note, which only a ticket's thread takes.
 	File *NoteFileInput `json:"file,omitempty"`
+	// Queue makes an Agent turn the post starts wait behind the one under way instead of steering into it.
+	Queue bool `json:"queue,omitempty"`
 }
 
 type reactRequest struct {
@@ -328,6 +330,9 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) post(ctx context.Context, conversationID string, req postMessageRequest) (*Message, error) {
+	if req.File == nil && req.Queue {
+		return h.svc.PostQueuedMessage(ctx, conversationID, UserIDFromCtx(ctx), req.Body)
+	}
 	if req.File == nil {
 		return h.svc.PostMessage(ctx, conversationID, UserIDFromCtx(ctx), req.Body)
 	}

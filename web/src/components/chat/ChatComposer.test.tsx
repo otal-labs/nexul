@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useChatDraftStore } from "@/stores/chatDraftStore";
 
 vi.mock("@/api/client", () => ({
@@ -40,6 +41,7 @@ const pngFile = (name = "shot.png") => new File(["png"], name, { type: "image/pn
 
 beforeEach(() => {
   useChatDraftStore.setState({ drafts: {} });
+  useAgentStreamStore.setState({ streams: {}, queued: {} });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockResolvedValue({ data: people });
   vi.mocked(api.post).mockReset();
@@ -69,8 +71,23 @@ describe("ChatComposer", () => {
     const input = screen.getByLabelText("Message");
     await user.type(input, "  hello team  ");
     await user.keyboard("{Enter}");
-    await waitFor(() => expect(onSend).toHaveBeenCalledWith("hello team"));
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("hello team", false));
     expect(input).toHaveValue("");
+  });
+
+  it.each(["{Control>}{Enter}{/Control}", "{Meta>}{Enter}{/Meta}"])("queues the message behind the Agent's turn on %s", async (keys) => {
+    const user = userEvent.setup();
+    const { onSend } = renderComposer();
+    await user.type(screen.getByLabelText("Message"), "@Agent after that");
+    await user.keyboard(keys);
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("@Agent after that", true));
+  });
+
+  it("says Enter steers and the shortcut queues only while the Agent works in the thread", () => {
+    renderComposer();
+    expect(screen.queryByText(/steers the Agent/)).not.toBeInTheDocument();
+    act(() => useAgentStreamStore.getState().setStream("c-1", { messageId: "m-1", text: "", streaming: true }));
+    expect(screen.getByText(/steers the Agent/)).toHaveTextContent("Enter steers the Agent · Ctrl Enter queues");
   });
 
   it("does not send on Shift+Enter, and inserts a newline instead", async () => {
@@ -144,7 +161,7 @@ describe("ChatComposer", () => {
 
     await screen.findByAltText("shot.png");
     await user.type(screen.getByLabelText("Message"), "{Enter}");
-    await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)"));
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)", false));
   });
 
   it("toasts and uploads nothing when a non-image file is pasted", async () => {
@@ -194,7 +211,7 @@ describe("ChatComposer", () => {
     resolveUpload({ data: { id: "a-1", conversation_id: "c-1", name: "shot.png", content_type: "image/png", size: 3 } });
     await screen.findByAltText("shot.png");
     await user.type(input, "{Enter}");
-    await waitFor(() => expect(onSend).toHaveBeenCalledWith("look\n![shot.png](/api/attachments/a-1)"));
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("look\n![shot.png](/api/attachments/a-1)", false));
   });
 
   it("sends an image-only message with no text", async () => {
@@ -207,6 +224,6 @@ describe("ChatComposer", () => {
     await user.upload(screen.getByLabelText("Choose image files"), pngFile());
     await screen.findByAltText("shot.png");
     await user.type(screen.getByLabelText("Message"), "{Enter}");
-    await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)"));
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)", false));
   });
 });

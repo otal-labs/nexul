@@ -17,7 +17,7 @@ interface ChatComposerProps {
 }
 
 // One framed field holding the text and the send button; the frame turns to the ink focus ring, and Send is the ember once
-// there is something to send.
+// there is something to send. Holding Send queues the message behind the Agent's turn instead of steering into it.
 export const ChatComposer = ({ conversationId, editing = null }: ChatComposerProps) => {
   const [draft, setDraft] = useState(editing?.body ?? "");
   const [focused, setFocused] = useState(false);
@@ -29,7 +29,7 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
   const canSend = draft.trim() !== "" && draft.trim() !== editing?.body;
 
   // The draft clears at once because the optimistic row shows it; a failed send puts it back.
-  const send = () => {
+  const send = (queue = false) => {
     const body = draft.trim();
     if (body === "") return;
     if (editing) {
@@ -37,7 +37,7 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
       return;
     }
     setDraft("");
-    post.mutate(body, { onError: () => setDraft(body) });
+    post.mutate({ body, queue }, { onError: () => setDraft(body) });
   };
 
   return (
@@ -68,7 +68,13 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
           role="button"
           aria-label={editing ? "Save" : "Send"}
           disabled={!canSend}
-          onPress={send}
+          onPress={() => send()}
+          {...(!editing && {
+            onLongPress: () => send(true),
+            accessibilityHint: "Hold to queue it behind the Agent's turn",
+            accessibilityActions: [{ name: "longpress", label: "Queue behind the Agent" }],
+            onAccessibilityAction: () => send(true),
+          })}
           className={cn("size-10 items-center justify-center rounded-md", canSend && "bg-brand active:bg-brand/85")}
         >
           {editing && <Check color={String(canSend ? brandForeground : muted)} size={20} />}

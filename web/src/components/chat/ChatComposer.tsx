@@ -15,6 +15,7 @@ import { ComposerAttachButton } from "@/components/chat/ComposerAttachButton";
 import { ComposerAttachmentStrip } from "@/components/chat/ComposerAttachmentStrip";
 import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
 import { ComposerMentionSuggestions } from "@/components/chat/ComposerMentionSuggestions";
+import { ComposerSteerHint } from "@/components/chat/ComposerSteerHint";
 import { useComposerAttachments } from "@/hooks/ComposerAttachmentHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useChatDraftStore } from "@/stores/chatDraftStore";
@@ -32,7 +33,8 @@ interface ChatComposerProps {
   workspaceId: string;
   conversationId: string;
   placeholder?: string;
-  onSend: (body: string) => Promise<void>;
+  // queue: the Agent's turn this starts waits behind the one under way instead of steering into it.
+  onSend: (body: string, queue: boolean) => Promise<void>;
 }
 
 // ponytail: mention picker anchors to the composer, not the caret; upgrade to text-mirror measurement if felt.
@@ -91,7 +93,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     });
   };
 
-  const send = async () => {
+  const send = async (queue: boolean) => {
     const body = value.trim();
     if ((body === "" && pending.length === 0) || sending || isUploading) return;
     // Clears on Enter like a chat app, not after the round-trip; a failed post hands the text back.
@@ -101,7 +103,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     setTrigger(undefined);
     reset();
     try {
-      await onSend(composed);
+      await onSend(composed, queue);
     } catch {
       setValue(composed);
     } finally {
@@ -148,7 +150,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     }
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      void send();
+      void send(event.metaKey || event.ctrlKey);
     }
   };
 
@@ -180,6 +182,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             </Button>
           </EmojiPickerPopover>
         </div>
+        <ComposerSteerHint conversationId={conversationId} />
       </div>
     </div>
   );

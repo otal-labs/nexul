@@ -36,7 +36,7 @@ func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body s
 		return nil, nil, err
 	}
 	m.AttachmentID = file.ID
-	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c)); err != nil {
+	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c, false)); err != nil {
 		return nil, nil, fmt.Errorf("post note to conversation %s: %w", c.ID, err)
 	}
 	return m, file, nil

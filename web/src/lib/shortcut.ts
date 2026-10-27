@@ -2,3 +2,5 @@
 export const isApplePlatform = () => /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 export const commandPaletteShortcut = () => (isApplePlatform() ? "⌘K" : "Ctrl K");
+
+export const queueShortcut = () => (isApplePlatform() ? "⌘ Enter" : "Ctrl Enter");

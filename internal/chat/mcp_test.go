@@ -47,7 +47,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)
 		if tool.Name == "message_post" {
-			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body", "file", "reaction"}, keys(tool.InputSchema.Properties))
+			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body", "file", "reaction", "queue"}, keys(tool.InputSchema.Properties))
 			assert.Empty(t, tool.InputSchema.Required, "a replace through file.note_id needs no body")
 		}
 	}
@@ -325,4 +325,19 @@ func TestConversationUpdate_PrivateAndMembers(t *testing.T) {
 		assert.False(t, got.Private)
 		assert.Empty(t, got.MemberIDs)
 	})
+}
+
+func TestMessagePost_QueueReachesTheCreatedEvent(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	for _, args := range []string{`"body":"@Agent now"`, `"body":"@Agent after that","queue":true`} {
+		_, err := callTool(as("u-1"), t, s, "message_post", `{"conversation_id":"`+c.ID+`",`+args+`}`)
+		require.NoError(t, err)
+	}
+	evts := repo.eventsFor(TopicMessageCreated)
+	require.Len(t, evts, 2)
+	assert.False(t, evts[0].Payload.(MessageCreatedEvent).Queue)
+	assert.True(t, evts[1].Payload.(MessageCreatedEvent).Queue)
 }

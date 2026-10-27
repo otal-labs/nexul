@@ -114,11 +114,18 @@ export const applyCachedReaction = (client: QueryClient, change: ReactionChange)
     reactions: applyReaction(m.reactions, change.emoji, change.user_id, change.reacted),
   }));
 
+// queue makes an Agent turn the message starts wait behind the one under way; without it the message steers into that turn.
+export interface PostMessageInput {
+  body: string;
+  queue?: boolean;
+}
+
 export const usePostMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("channels:post", (body: string) => api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body })),
-    onMutate: async (body) => {
+    mutationFn: requires("channels:post", ({ body, queue }: PostMessageInput) =>
+      api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body, ...(queue && { queue }) })),
+    onMutate: async ({ body }) => {
       await client.cancelQueries({ queryKey: [getChatMessagesKey, conversationId] });
       const now = new Date().toISOString();
       const pending: Message = {

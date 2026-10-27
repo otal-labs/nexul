@@ -162,8 +162,8 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           workspaceId={workspaceId}
           conversationId={conversation.id}
           placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
-          onSend={async (body) => {
-            await postMessage.mutateAsync(body);
+          onSend={async (body, queue) => {
+            await postMessage.mutateAsync({ body, queue });
           }}
         />}
       </div>

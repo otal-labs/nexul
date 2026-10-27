@@ -377,6 +377,19 @@ func messageCreatedEventKind(t *testing.T, conversationID, authorID, authorKind,
 	return eventbus.Event{Topic: "chat.message.created", Payload: payload}
 }
 
+// queuedMessageEvent is a mention of the Agent its author sent to wait behind the turn under way.
+func queuedMessageEvent(t *testing.T, conversationID, authorID, body string) eventbus.Event {
+	t.Helper()
+	ev := messageCreatedEvent(t, conversationID, authorID, body, true)
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(ev.Payload, &payload))
+	payload["queue"] = true
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	ev.Payload = raw
+	return ev
+}
+
 func TestHandleMessageCreated_IgnoresNonUserAuthors(t *testing.T) {
 	// Regression: the pipeline's own system replies contain "@Agent" and get
 	// mentions parsed; without the author-kind guard they re-trigger turns
@@ -1139,7 +1152,7 @@ func TestInterruptAndAnswer_TwoMentionsInOneConversation_ReachEveryLiveTurn(t *t
 	<-firstDone
 }
 
-func TestSteer_QueuedMention_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testing.T) {
+func TestSteer_MentionSentToQueue_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testing.T) {
 	first, second := make(chan harness.Update), make(chan harness.Update)
 	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
 	steered := make(chan harness.Target, 1)
@@ -1157,11 +1170,12 @@ func TestSteer_QueuedMention_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testi
 		svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
 	}()
 	first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
-	require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent also this", true)))
+	require.NoError(t, svc.HandleMessageCreated(t.Context(), queuedMessageEvent(t, "conv-1", "u-1", "@Agent also this")))
 	second <- harness.Update{Queued: new(true)}
 
 	queuedFrame := StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true}
 	waitFor(t, time.Second, func() bool { return slices.Contains(live.snapshot(), queuedFrame) })
+	assert.Empty(t, steered, "a mention sent to queue waits for its Steer")
 	require.ErrorIs(t, svc.Steer(t.Context(), "conv-1", "msg-0"), apperrs.ErrNotFound, "the turn under way is not queued")
 	require.NoError(t, svc.Steer(t.Context(), "conv-1", "msg-1"))
 	assert.Equal(t, "thread-1", (<-steered).SessionID)
@@ -1181,6 +1195,82 @@ func TestSteer_QueuedMention_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testi
 
 	close(first)
 	<-firstDone
+}
+
+func TestSteer_QueuedMention_SteersIntoTheTurnUnderWayUnlessRefused(t *testing.T) {
+	queuedFrame := StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true}
+	tests := []struct {
+		name       string
+		steerErr   error
+		wantMarked bool
+	}{
+		{"a refused steer leaves it queued and marked", fmt.Errorf("%w: the run has started", apperrs.ErrConflict), true},
+		{"a failed steer leaves it queued and marked", errors.New("socket closed"), true},
+		{"a steered mention is never marked", nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			first, second := make(chan harness.Update), make(chan harness.Update)
+			h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
+			steered := make(chan harness.Target, 1)
+			client := h.client()
+			client.SteerFn = func(_ context.Context, target harness.Target) error {
+				steered <- target
+				return tt.steerErr
+			}
+			live := &fakeLive{}
+			svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+				Harnesses: harnesstest.Registry(client), Live: live})
+			firstDone := make(chan struct{})
+			go func() {
+				defer close(firstDone)
+				svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
+			}()
+			first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+			require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent also this", true)))
+			second <- harness.Update{Queued: new(true)}
+
+			waitFor(t, time.Second, func() bool { return len(steered) == 1 })
+			assert.Equal(t, "thread-1", (<-steered).SessionID, "the mention goes to the turn under way unasked")
+			// Taken once the queued update was handled, so the mark is settled by then.
+			second <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Waiting"}}
+			assert.Equal(t, tt.wantMarked, slices.Contains(live.snapshot(), queuedFrame))
+
+			second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+			close(second)
+			close(first)
+			<-firstDone
+		})
+	}
+}
+
+func TestSteer_QueuedMentionWithNoTurnOfNexulsUnderWay_StaysQueued(t *testing.T) {
+	updates := make(chan harness.Update)
+	var steers atomic.Int32
+	client := &harnesstest.Client{
+		StartTurnFn: func(context.Context, harness.Target, string, harness.TurnPrompts) (harness.StartResult, error) {
+			return harness.StartResult{SessionID: "thread-1", Updates: updates, PromptSent: true}, nil
+		},
+		SteerFn: func(context.Context, harness.Target) error {
+			steers.Add(1)
+			return nil
+		},
+	}
+	live := &fakeLive{}
+	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+		Harnesses: harnesstest.Registry(client), Live: live})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent hi", RequestMessageID: "msg-1"})
+	}()
+
+	updates <- harness.Update{Queued: new(true)}
+	updates <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+	close(updates)
+	<-done
+	assert.Zero(t, steers.Load(), "a run of the harness's own would answer it, and nobody would post that reply")
+	assert.Contains(t, live.snapshot(), StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true})
 }
 
 func TestRunTurn_HandedOffWorkLeftRunning_ReplyEndsWithTheLine(t *testing.T) {
