@@ -425,6 +425,26 @@ func TestPairingRepo_ProviderSetups_UpsertListAndCascade(t *testing.T) {
 	assert.Empty(t, got, "unpairing drops the computer's provider rows")
 }
 
+func TestPairingRepo_ListOutdatedSkillsComputers_OwnConfirmedProvidersOnAnotherVersion(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	ctx := t.Context()
+	at := time.Unix(1_700_000_000, 0).UTC()
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c2", "u1", "laptop")))
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u2", "43", "lena"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c3", "u2", "lenas")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c1", pairing.ProviderSetup{Provider: "codex", ConfirmedAt: &at, Skills: []string{}, SkillsVersion: "v1"}, at, setupEvt("e1")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c1", pairing.ProviderSetup{Provider: "claude", ConfirmedAt: &at, Skills: []string{}, SkillsVersion: "v1"}, at, setupEvt("e2")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c2", pairing.ProviderSetup{Provider: "codex", ConfirmedAt: &at, Skills: []string{}, SkillsVersion: "v2"}, at, setupEvt("e3")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c2", pairing.ProviderSetup{Provider: "claude", Skills: []string{}, SkillsVersion: "v1"}, at, setupEvt("e4")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c3", pairing.ProviderSetup{Provider: "codex", ConfirmedAt: &at, Skills: []string{}, SkillsVersion: "v1"}, at, setupEvt("e5")))
+
+	got, err := s.Pairing.ListOutdatedSkillsComputers(ctx, "u1", "v2")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c1"}, got, "c1 once for both its providers; c2's old provider is unconfirmed; c3 is another person's")
+}
+
 func TestPairingRepo_SaveProviderSetup_UnknownComputerRejected(t *testing.T) {
 	t.Parallel()
 	s := newSetupTestStore(t)

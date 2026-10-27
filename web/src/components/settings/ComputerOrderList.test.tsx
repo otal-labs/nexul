@@ -24,6 +24,7 @@ const computer = (id: string, name: string, position: number, running = 0): Comp
   runs_at_once: 2,
   running,
   chat_project_id: "",
+  skills_outdated: false,
   server_url: `http://${id}.nexul-computer.invalid`,
   token_expires_at: "2099-01-01T00:00:00Z",
   kind: "t3code",

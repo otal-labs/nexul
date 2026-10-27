@@ -93,6 +93,12 @@ UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?
 -- name: ListPairingProviderSetups :many
 SELECT * FROM pairing_provider_setups WHERE computer_id = ? ORDER BY provider;
 
+-- name: ListPairingComputersWithOutdatedSkills :many
+-- A person's own computers with a confirmed provider whose skills predate the version this server ships, for the settings dot.
+SELECT DISTINCT s.computer_id FROM pairing_provider_setups s
+JOIN pairing_computers c ON c.id = s.computer_id
+WHERE c.user_id = ? AND s.confirmed_at IS NOT NULL AND s.skills_version <> ?;
+
 -- name: SavePairingProviderSetup :exec
 INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, skills_version, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)

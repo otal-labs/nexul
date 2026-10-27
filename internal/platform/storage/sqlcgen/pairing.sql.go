@@ -379,6 +379,41 @@ func (q *Queries) ListPairingComputersToMove(ctx context.Context, runnerAddressP
 	return items, nil
 }
 
+const listPairingComputersWithOutdatedSkills = `-- name: ListPairingComputersWithOutdatedSkills :many
+SELECT DISTINCT s.computer_id FROM pairing_provider_setups s
+JOIN pairing_computers c ON c.id = s.computer_id
+WHERE c.user_id = ? AND s.confirmed_at IS NOT NULL AND s.skills_version <> ?
+`
+
+type ListPairingComputersWithOutdatedSkillsParams struct {
+	UserID        string
+	SkillsVersion string
+}
+
+// A person's own computers with a confirmed provider whose skills predate the version this server ships, for the settings dot.
+func (q *Queries) ListPairingComputersWithOutdatedSkills(ctx context.Context, arg ListPairingComputersWithOutdatedSkillsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingComputersWithOutdatedSkills, arg.UserID, arg.SkillsVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var computer_id string
+		if err := rows.Scan(&computer_id); err != nil {
+			return nil, err
+		}
+		items = append(items, computer_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPairingProjectComputers = `-- name: ListPairingProjectComputers :many
 SELECT user_id, project_id, computer_id, position, harness_project_id FROM pairing_project_computers WHERE user_id = ? AND project_id = ? ORDER BY position IS NULL, position, computer_id
 `

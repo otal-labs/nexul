@@ -33,6 +33,8 @@ export interface Computer {
   running: number;
   // The T3 project an @Agent chat outside any project runs in here; "" when none is picked.
   chat_project_id: string;
+  // Whether a confirmed provider here holds older Nexul skills than the server ships; false on a shared computer.
+  skills_outdated: boolean;
 }
 
 // Mirrors pairing.PassOver: one computer a run could not land on, with the line every surface shows as is.
@@ -294,8 +296,6 @@ export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] =>
 
 // The hint every update dot for out-of-date skills reads out.
 export const SKILLS_OUTDATED = "skills out of date";
-
-export const hasOutdatedSkills = (setup: ComputerSetup) => setup.providers.some((p) => p.skills_outdated);
 
 export type SetupSummaryTone = "success" | "warning" | "destructive" | "info";
 

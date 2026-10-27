@@ -31,12 +31,13 @@ type fakeRepo struct {
 	sharedWith  map[string][]Computer
 	moveNotices map[string]time.Time
 	// running is how many play runs are going on each computer.
-	running      map[string]int
-	factWrites   int
-	saveErr      error
-	getErr       error
-	listSetupErr error
-	listTurnsErr error
+	running         map[string]int
+	factWrites      int
+	saveErr         error
+	getErr          error
+	listSetupErr    error
+	listTurnsErr    error
+	listOutdatedErr error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -342,6 +343,22 @@ func (f *fakeRepo) ListProviderSetups(_ context.Context, computerID string) ([]P
 		return nil, f.listSetupErr
 	}
 	return slices.Clone(f.setups[computerID]), nil
+}
+
+func (f *fakeRepo) ListOutdatedSkillsComputers(_ context.Context, userID, version string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listOutdatedErr != nil {
+		return nil, f.listOutdatedErr
+	}
+	var ids []string
+	for id, setups := range f.setups {
+		stale := slices.ContainsFunc(setups, func(p ProviderSetup) bool { return p.ConfirmedAt != nil && p.SkillsVersion != version })
+		if stale && f.computers[id].UserID == userID {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
 }
 
 func (f *fakeRepo) SaveProviderSetup(_ context.Context, computerID string, p ProviderSetup, _ time.Time, evt eventbus.OutboxEvent) error {

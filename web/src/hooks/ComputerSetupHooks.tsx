@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
@@ -6,7 +6,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { getHarnessProvidersKey, useListComputers } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
-import { hasOutdatedSkills, stillPairing, type ComputerSetup, type OptionSetting, type SetupChoices, type SetupRun } from "@/models/Pairing";
+import { type ComputerSetup, type OptionSetting, type SetupChoices, type SetupRun } from "@/models/Pairing";
 import type { ActivityKind } from "@/models/Trail";
 import { followEach, type LiveFollower } from "@/lib/live";
 
@@ -22,13 +22,10 @@ const computerSetupQuery = (computerId: string) =>
 
 export const useFetchComputerSetup = (computerId: string) => useQuery(computerSetupQuery(computerId));
 
-// Whether any of the viewer's paired computers has a provider whose skills are out of date, from the same cached setup reads.
+// Whether any of the viewer's computers has a provider whose skills are out of date; the computer list carries it, so a page reads no setup.
 export const useSkillsOutdated = () => {
   const { data: computers } = useListComputers();
-  return useQueries({
-    queries: (computers ?? []).filter((c) => !stillPairing(c)).map((c) => computerSetupQuery(c.id)),
-    combine: (results) => results.some((r) => r.data !== undefined && hasOutdatedSkills(r.data)),
-  });
+  return (computers ?? []).some((c) => c.skills_outdated);
 };
 
 // Model slugs and their options keyed by driver kind; a provider left out or set to "" runs on its own default. An empty folder runs

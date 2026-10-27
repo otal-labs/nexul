@@ -138,7 +138,12 @@ func (s *Service) ListComputers(ctx context.Context, userID string) ([]Computer,
 	if cs, err = s.withRunning(ctx, cs); err != nil {
 		return nil, err
 	}
+	outdated, err := s.repo.ListOutdatedSkillsComputers(ctx, userID, shipped.SetVersion)
+	if err != nil {
+		return nil, fmt.Errorf("list computers: %w", err)
+	}
 	for i := range cs {
+		cs[i].SkillsOutdated = slices.Contains(outdated, cs[i].ID)
 		if cs[i].Shared != nil {
 			cs[i] = sharedView(cs[i])
 		}

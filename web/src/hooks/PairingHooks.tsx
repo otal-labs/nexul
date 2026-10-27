@@ -345,9 +345,12 @@ export const pairingFollower: LiveFollower = {
       if (!state) delete next[computer_id];
       return next;
     }),
-  // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
+  // The pickers' "needs setup" tags and the settings dot follow a setup turn confirming or withdrawing a provider.
   ...followEach(["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_finished"], ({ computer_id }: ComputerPayload, { client }) =>
-    client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
+    Promise.all([
+      client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
+      refetchComputers(client, false),
+    ]),
   ),
   // A computer's "n of m running" follows a run starting and ending; the frames between carry only its steps.
   "play.run": ({ state, ended_at }: RunFrame, { client }) =>
