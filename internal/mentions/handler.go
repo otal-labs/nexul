@@ -22,6 +22,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/mentions/search", h.search)
 	mux.HandleFunc("POST /api/mentions/resolve", h.resolve)
+	mux.HandleFunc("GET /api/search", h.find)
 	return mux
 }
 
@@ -56,4 +57,16 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// find answers the workspace search box with every kind's hits in one response.
+func (h *Handler) find(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	found, err := h.svc.Find(r.Context(), q.Get("q"), q.Get("workspace_id"), q.Get("kind"), limit)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, found)
 }

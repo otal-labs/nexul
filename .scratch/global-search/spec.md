@@ -1,10 +1,12 @@
 # Global search: one box, every searchable entity
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
-Partly shipped: the command palette (Ctrl or Cmd+K) is the box, and it searches tickets and docs through the `@`
-picker's endpoint and lists memories. Not built: the fan-out endpoint, the workspace scope on its ticket and doc
-sources, and the services, pull requests and automations as searchable kinds.
+Mostly shipped: `GET /api/search` fans out over tickets, docs, pull requests, stacks, automations, channels and
+memories in one workspace, ranked by title and recency with title and body hits apart (ADR 0028). The command palette
+and `mention_search` with `kind` both read it. Left: a phone search screen over the same endpoint, a palette row to see
+more of one kind (the endpoint's `kind` already returns up to 50), and scrolling a doc or ticket to the words a body hit
+matched.
 
 Carried over from the retired search requirements document, where it sat as a
 future direction. Search exists and works, but only from inside the docs and

@@ -1175,6 +1175,61 @@ func (q *Queries) RemoveTicketLabel(ctx context.Context, arg RemoveTicketLabelPa
 	return err
 }
 
+const searchTicketPRLinksInWorkspace = `-- name: SearchTicketPRLinksInWorkspace :many
+SELECT l.ticket_id, t.project_id, l.pr_owner, l.pr_repo, l.pr_number, l.pr_title, l.linked_at
+FROM ticket_pr_links l JOIN tickets t ON t.id = l.ticket_id JOIN projects p ON p.id = t.project_id
+WHERE p.workspace_id = ?1 AND instr(lower(l.pr_title), ?2) > 0
+ORDER BY l.linked_at DESC, l.pr_number DESC
+LIMIT ?3
+`
+
+type SearchTicketPRLinksInWorkspaceParams struct {
+	WorkspaceID string
+	Needle      string
+	RowLimit    int64
+}
+
+type SearchTicketPRLinksInWorkspaceRow struct {
+	TicketID  string
+	ProjectID sql.NullString
+	PrOwner   string
+	PrRepo    string
+	PrNumber  int64
+	PrTitle   string
+	LinkedAt  int64
+}
+
+func (q *Queries) SearchTicketPRLinksInWorkspace(ctx context.Context, arg SearchTicketPRLinksInWorkspaceParams) ([]SearchTicketPRLinksInWorkspaceRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchTicketPRLinksInWorkspace, arg.WorkspaceID, arg.Needle, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTicketPRLinksInWorkspaceRow
+	for rows.Next() {
+		var i SearchTicketPRLinksInWorkspaceRow
+		if err := rows.Scan(
+			&i.TicketID,
+			&i.ProjectID,
+			&i.PrOwner,
+			&i.PrRepo,
+			&i.PrNumber,
+			&i.PrTitle,
+			&i.LinkedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setLabelColor = `-- name: SetLabelColor :exec
 INSERT INTO label_colors (project_id, label, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(project_id, label) DO UPDATE SET color = excluded.color, updated_at = excluded.updated_at

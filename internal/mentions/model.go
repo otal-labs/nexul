@@ -3,6 +3,7 @@ package mentions
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -80,6 +81,7 @@ type Ticket struct {
 	ProjectID string
 	TypeID    string
 	Developer string
+	UpdatedAt time.Time
 }
 
 // Project is the slice of a project record the resolver needs, its Prefix for the PREFIX-NUMBER id (ADR 0004).
@@ -96,8 +98,10 @@ type TicketType struct {
 
 // Doc is the slice of a doc record the resolver needs (ADR 0017 seam onto docs).
 type Doc struct {
-	ID    string
-	Title string
+	ID        string
+	Title     string
+	ProjectID string
+	UpdatedAt time.Time
 }
 
 // Status is the slice of a status column the resolver needs; statuses are configurable.
@@ -115,7 +119,8 @@ type SearchHit struct {
 // TicketSource is the consumer-side slice of the tickets persistence layer the resolver needs.
 type TicketSource interface {
 	GetByID(ctx context.Context, id string) (*Ticket, error)
-	Search(ctx context.Context, query string, limit int) ([]SearchHit, error)
+	// Search finds tickets in workspaceID's projects, or in every workspace when it is empty.
+	Search(ctx context.Context, workspaceID, query string, limit int) ([]SearchHit, error)
 	// ListByKey returns the tickets whose PREFIX-NUMBER key matches in workspaceID, or in every workspace when it is
 	// empty, since a key repeats across workspaces (ADR 0089).
 	ListByKey(ctx context.Context, workspaceID, prefix string, number int) ([]*Ticket, error)
@@ -124,7 +129,8 @@ type TicketSource interface {
 // DocSource is the consumer-side slice of the docs persistence layer the resolver needs.
 type DocSource interface {
 	GetByID(ctx context.Context, id string) (*Doc, error)
-	Search(ctx context.Context, query string, limit int) ([]SearchHit, error)
+	// Search finds docs in workspaceID's projects, or in every workspace when it is empty.
+	Search(ctx context.Context, workspaceID, query string, limit int) ([]SearchHit, error)
 }
 
 // StatusSource reads a workspace status column by id for its display name.

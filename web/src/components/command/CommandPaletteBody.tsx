@@ -31,7 +31,7 @@ export const CommandPaletteBody = () => {
   const nav = useCommandNavItems();
   const settings = useCommandSettingsItems(browsing);
   const actions = useCommandActionItems(browsing);
-  const { groups: found, searching } = useCommandSearch(query, true);
+  const { groups: found, searching, cut } = useCommandSearch(query, true);
 
   // Browsing leads with what changed lately; typing leads with pages, then what the search found.
   const groups = filterCommandGroups(browsing ? [...found, ...nav, ...settings, ...actions] : [...nav, ...settings, ...found, ...actions], query);
@@ -81,7 +81,7 @@ export const CommandPaletteBody = () => {
           aria-controls={LIST_ID}
           aria-autocomplete="list"
           aria-activedescendant={items.length > 0 ? commandOptionId(activeIndex) : undefined}
-          aria-label="Search pages, tickets, docs and memories"
+          aria-label="Search pages and everything in this workspace"
           placeholder="Search or jump to…"
           value={query}
           onChange={(event) => {
@@ -114,6 +114,7 @@ export const CommandPaletteBody = () => {
         ))}
       </div>
       {items.length === 0 && !searching && <EmptyRow className="-mt-1 pt-0 wrap-anywhere">No results for “{query.trim()}”</EmptyRow>}
+      {cut && !searching && <EmptyRow className="-mt-1 pt-0">More matches than shown. Add a word to narrow.</EmptyRow>}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>

@@ -19,7 +19,12 @@ type ftsHit struct {
 }
 
 func (r *DocsRepo) Search(ctx context.Context, query string, limit int) ([]docs.SearchResult, error) {
-	hits, err := queryFTS(ctx, r.db, "docs_fts", "docs", "id", query, limit, true)
+	return r.SearchIn(ctx, "", query, limit)
+}
+
+// SearchIn is Search held to workspaceID's projects; an empty workspaceID searches every workspace.
+func (r *DocsRepo) SearchIn(ctx context.Context, workspaceID, query string, limit int) ([]docs.SearchResult, error) {
+	hits, err := queryFTS(ctx, r.db, "docs_fts", "docs", "id", workspaceID, query, limit, true)
 	if err != nil {
 		return nil, fmt.Errorf("search docs: %w", err)
 	}
@@ -32,15 +37,21 @@ func (r *DocsRepo) Search(ctx context.Context, query string, limit int) ([]docs.
 
 // Search ranks title and body matches first, then tickets found only through a note's text.
 func (r *TicketsRepo) Search(ctx context.Context, query string, limit int) ([]tickets.SearchResult, error) {
-	hits, err := queryFTS(ctx, r.db, "tickets_fts", "tickets", "id", query, limit, false)
+	return r.SearchIn(ctx, "", query, limit)
+}
+
+// SearchIn is Search held to workspaceID's projects; an empty workspaceID searches every workspace.
+func (r *TicketsRepo) SearchIn(ctx context.Context, workspaceID, query string, limit int) ([]tickets.SearchResult, error) {
+	hits, err := queryFTS(ctx, r.db, "tickets_fts", "tickets", "id", workspaceID, query, limit, false)
 	if err != nil {
 		return nil, fmt.Errorf("search tickets: %w", err)
 	}
 	// hand-written: sqlc cannot express an FTS5 table as the operand of MATCH or bm25
 	// MATERIALIZED stops SQLite flattening bm25 into the GROUP BY, where FTS5 refuses to run it.
+	scope, scopeArgs := inWorkspace("t", workspaceID)
 	noteHits, err := scanFTS(ctx, r.db, `WITH n AS MATERIALIZED (SELECT ticket_id, bm25(ticket_notes_fts) AS rank FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)
-		SELECT t.id, t.title, MIN(n.rank) AS best FROM n JOIN tickets t ON t.id = n.ticket_id WHERE `+inLiveWorkspace("t")+` GROUP BY t.id ORDER BY best LIMIT ?`,
-		ftsQuery(query), limit)
+		SELECT t.id, t.title, MIN(n.rank) AS best FROM n JOIN tickets t ON t.id = n.ticket_id WHERE `+inLiveWorkspace("t")+scope+` GROUP BY t.id ORDER BY best LIMIT ?`,
+		append(append([]any{ftsQuery(query)}, scopeArgs...), limit)...)
 	if err != nil {
 		return nil, fmt.Errorf("search ticket notes: %w", err)
 	}
@@ -82,17 +93,26 @@ func inLiveWorkspace(alias string) string {
 	return `NOT EXISTS (SELECT 1 FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE p.id = ` + alias + `.project_id AND w.archived_at IS NOT NULL)`
 }
 
+// inWorkspace holds the doc or ticket aliased alias to workspaceID's projects; an empty workspaceID holds nothing back.
+func inWorkspace(alias, workspaceID string) (string, []any) {
+	if workspaceID == "" {
+		return "", nil
+	}
+	return ` AND ` + alias + `.project_id IN (SELECT id FROM projects WHERE workspace_id = ?)`, []any{workspaceID}
+}
+
 // excludeArchived adds `AND j.archived = 0` so archived docs never appear in search; tickets have no archived flag.
-func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
+func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, workspaceID, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
 	archived := " AND " + inLiveWorkspace("j")
 	if excludeArchived {
 		archived += " AND j.archived = 0"
 	}
+	scope, scopeArgs := inWorkspace("j", workspaceID)
 	// hand-written: sqlc cannot express table and column names chosen at runtime
 	stmt := fmt.Sprintf(
 		`SELECT j.%s, j.title, bm25(%s) AS rank FROM %s JOIN %s j ON j.rowid = %s.rowid WHERE %s MATCH ?%s ORDER BY rank LIMIT ?`,
-		idCol, ftsTable, ftsTable, joinTable, ftsTable, ftsTable, archived)
-	return scanFTS(ctx, db, stmt, ftsQuery(query), limit)
+		idCol, ftsTable, ftsTable, joinTable, ftsTable, ftsTable, archived+scope)
+	return scanFTS(ctx, db, stmt, append(append([]any{ftsQuery(query)}, scopeArgs...), limit)...)
 }
 
 func scanFTS(ctx context.Context, db *sql.DB, stmt string, args ...any) (out []ftsHit, err error) {

@@ -85,3 +85,32 @@ func TestMentionSearch_Refs(t *testing.T) {
 	assert.Equal(t, "Secret plan", chips[1].Title)
 	assert.False(t, chips[1].CanOpen, "an unopenable doc resolves as an inert chip")
 }
+
+func TestMentionSearch_Kind(t *testing.T) {
+	tests := []struct {
+		name, args string
+		want       error
+	}{
+		{"kind needs a query", `{"kind":"all","workspace_id":"ws-1"}`, apperrs.ErrInvalid},
+		{"kind needs a workspace", `{"kind":"all","query":"fix"}`, apperrs.ErrInvalid},
+		{"an unknown kind", `{"kind":"person","query":"fix","workspace_id":"ws-1"}`, apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := callSearch(asUser(), tt.args)
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+
+	got, err := callSearch(asUser(), `{"kind":"all","query":"fix","workspace_id":"ws-1"}`)
+	require.NoError(t, err)
+	page := got.(foundPage)
+	require.Len(t, page.Items, 2, "the doc the caller cannot open is left out")
+	assert.Equal(t, Hit{Type: "ticket", ID: "t-1", Title: "Fix the bug", StatusLabel: "Open"}, page.Items[0])
+	assert.Equal(t, Hit{Type: "doc", ID: "d-1", Title: "Architecture", InBody: true}, page.Items[1])
+	assert.Empty(t, page.More)
+
+	got, err = callSearch(asUser(), `{"kind":"ticket","query":"fix","workspace_id":"ws-1"}`)
+	require.NoError(t, err)
+	assert.Len(t, got.(foundPage).Items, 1)
+}

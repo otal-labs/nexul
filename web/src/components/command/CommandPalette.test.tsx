@@ -18,12 +18,16 @@ const permissions = ["tickets:read", "docs:read", "memories:read", "projects:rea
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
+const hit = (type: string, id: string, title: string, extra: Record<string, unknown> = {}) => ({ type, id, title, in_body: false, updated_at: "", ...extra });
+
+let found: { hits: ReturnType<typeof hit>[]; more: string[] } = { hits: [hit("ticket", "t-1", "Renew the staging certificate")], more: [] };
+
 const renderPalette = (extra: string[] = []) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: [...permissions, ...extra] } };
     if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
-    if (url === "/api/mentions/search") return { data: { results: [{ type: "ticket", id: "t-1", title: "Renew the staging certificate", can_open: true }] } };
+    if (url === "/api/search") return { data: found };
     return { data: [] };
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -40,6 +44,7 @@ const renderPalette = (extra: string[] = []) => {
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
+  found = { hits: [hit("ticket", "t-1", "Renew the staging certificate")], more: [] };
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   useCommandPaletteStore.setState({ open: false });
 });
@@ -118,5 +123,29 @@ describe("CommandPalette", () => {
     await user.type(await screen.findByRole("combobox"), "roles");
     await user.click(await screen.findByRole("option", { name: /Roles/ }));
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/access/roles");
+  });
+
+  it("groups each kind's title hits, puts text-only hits under In text, and opens a pull request's ticket", async () => {
+    found = {
+      hits: [
+        hit("ticket", "t-1", "Checkout flow", { hint: "BE-4" }),
+        hit("ticket", "t-2", "Payments", { hint: "BE-5", in_body: true }),
+        hit("pull_request", "acme/app#9", "Speed up checkout", { hint: "app#9", ticket_id: "t-1" }),
+        hit("channel", "c-1", "checkout"),
+      ],
+      more: ["ticket"],
+    };
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "checkout");
+    const inText = await screen.findByRole("group", { name: "In text" });
+    expect(inText).toHaveTextContent("Payments");
+    expect(screen.getByRole("group", { name: "Tickets" })).not.toHaveTextContent("Payments");
+    expect(screen.getByText("More matches than shown. Add a word to narrow.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: /Speed up checkout/ }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/tickets/t-1");
   });
 });
