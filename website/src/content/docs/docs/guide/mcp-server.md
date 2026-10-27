@@ -73,7 +73,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 
 ## What an agent can do
 
-110 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
+112 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
 
 | Area | Tools |
 |---|---|
@@ -101,6 +101,7 @@ A few things that save an agent a wasted call:
 
 - **Updates are patches.** Send only the fields to change; the rest keep their values.
 - **Lists page.** They take `limit` (50 by default, 100 at most) and `offset` and return `items`, `total`, `has_more`, and `next_offset`. `total` counts everything you can see, searches included, so paging with `next_offset` reaches every match. A row added ahead of your place while you page shifts the later pages by one.
+- **A list given an id returns that one record.** `deploy_list` with a deploy's `id` returns it with its log; `trail_list`, `automation_list`, `computer_list`, and `dns_tunnel_list` work the same way. A field's description lists the values it takes.
 - **Tickets by key.** Ticket tools take an id or a key such as `WEB-12`. A key is unique only within a workspace, so when you hold it in two, pass `workspace` too, or the call is refused with the workspaces to choose from.
 - **Errors say how to fix the call.** A failed tool returns the fields it needs, not a bare error. A refused one names the role or rule that refused it; `permission_overwrite_list` with a `user_id` explains every answer on a doc, folder, stack, play, project, or instance area.
 - **Read-only and destructive hints.** Reads are marked read-only, and deletes and anything that starts work are marked destructive, so your client knows what to confirm.
