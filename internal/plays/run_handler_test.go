@@ -124,6 +124,31 @@ func TestRunHandler_GetAndList(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs?target_type=column&target_id=x", "", starter).Code)
 }
 
+func TestRunHandler_List_LastStep_KeepsEachRunsNewestStepOnly(t *testing.T) {
+	f := newRunnerFixture()
+	tr := seededTrail(f, "tr-1", TargetTicket, ticketID, fixedNow)
+	steps := []ActivityEntry{{Kind: ActivityNote, Summary: "Read main.go"}, {Kind: ActivityNote, Summary: "go test"}, {Kind: ActivityNote, Summary: "Opened the PR"}}
+	tr.Activity = steps
+	require.NoError(t, f.trails.UpdateTrail(t.Context(), tr))
+	h := NewRunHandler(f.runner, nil).Routes()
+	summaries := func(path string) []string {
+		rec := do(t, h, http.MethodGet, path, "", starter)
+		require.Equal(t, http.StatusOK, rec.Code)
+		var list []Trail
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
+		require.Len(t, list, 1)
+		var out []string
+		for _, e := range list[0].Activity {
+			out = append(out, e.Summary)
+		}
+		return out
+	}
+
+	assert.Equal(t, []string{"Opened the PR"}, summaries("/api/plays/runs?target_type=ticket&steps=last&target_id="+ticketID))
+	assert.Equal(t, []string{"Read main.go", "go test", "Opened the PR"}, summaries("/api/plays/runs?target_type=ticket&target_id="+ticketID),
+		"the full list still carries every step, so trimming never reached the stored trail")
+}
+
 func TestRunHandler_LatestChoices(t *testing.T) {
 	f := newRunnerFixture()
 	seededTrail(f, "tr-1", TargetTicket, ticketID, fixedNow)

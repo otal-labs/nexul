@@ -362,7 +362,7 @@ const trail = (overrides: Partial<Trail>): Trail => ({
 
 const renderThread = (messages: Message[], trails: Trail[]) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData([getTrailsKey, "ticket", "t-1"], trails);
+  client.setQueryData([getTrailsKey, "ticket", "t-1", "steps"], trails);
   return render(
     <QueryClientProvider client={client}>
       <MessageList

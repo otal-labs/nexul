@@ -318,7 +318,7 @@ describe("DocDetail", () => {
 
     // The rail and the below-article placement both mount (CSS shows one), so the heading appears twice.
     expect((await screen.findAllByRole("heading", { name: "Trail" })).length).toBeGreaterThan(0);
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1" } });
+    expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1", steps: "last" } });
   });
 
   it("shows the folder the doc lives in as a breadcrumb", async () => {

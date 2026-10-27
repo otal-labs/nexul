@@ -24,9 +24,19 @@ export const getTrailKey = "getTrail";
 export const getActiveTrailsKey = "getActiveTrails";
 export const getLatestChoicesKey = "getLatestChoices";
 
+// Each run with only its newest step, which is all a row shows; a thread reads every step with useFetchTrailsWithSteps.
 export const useFetchTrails = (targetType: PlayType, targetId: string) =>
   useQuery({
     queryKey: [getTrailsKey, targetType, targetId],
+    queryFn: async () =>
+      (await api.get<Trail[]>("/api/plays/runs", { params: { target_type: targetType, target_id: targetId, steps: "last" } })).data,
+    enabled: targetId !== "",
+  });
+
+// Every step of every run, for a thread that places each run's turns; keyed under the list, so what refreshes one refreshes both.
+const useFetchTrailsWithSteps = (targetType: PlayType, targetId: string) =>
+  useQuery({
+    queryKey: [getTrailsKey, targetType, targetId, "steps"],
     queryFn: async () =>
       (await api.get<Trail[]>("/api/plays/runs", { params: { target_type: targetType, target_id: targetId } })).data,
     enabled: targetId !== "",
@@ -202,7 +212,7 @@ export const useLiveTrailSteps = (trail: Trail): ActivityEntry[] => {
 // The runs a thread shows inline: each run's turns placed above the message it led to, plus the running one.
 export const useThreadTrailBlocks = (conversation: Conversation): ThreadTrailBlocks => {
   const target = conversationPlayTarget(conversation);
-  const { data: trails } = useFetchTrails(target?.type ?? "ticket", target?.id ?? "");
+  const { data: trails } = useFetchTrailsWithSteps(target?.type ?? "ticket", target?.id ?? "");
   const frames = usePlayRunStore((s) => s.frames);
   const steps = usePlayRunStore((s) => s.steps);
   return useMemo(
@@ -275,7 +285,7 @@ export const trailFollower: LiveFollower = {
     usePlayRunStore.getState().applyFrame(run);
     if (previous === run.state) return;
     return Promise.all([
-      client.invalidateQueries({ queryKey: [getTrailsKey, run.target_type, run.target_id], exact: true }),
+      client.invalidateQueries({ queryKey: [getTrailsKey, run.target_type, run.target_id] }),
       client.invalidateQueries({ queryKey: [getTrailKey, run.trail_id], exact: true }),
       client.invalidateQueries({ queryKey: [getActiveTrailsKey, run.target_type, run.project_id], exact: true }),
     ]);

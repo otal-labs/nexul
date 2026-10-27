@@ -11,6 +11,7 @@ import {
   useFetchTrails,
   useRunPlay,
   useStopTrail,
+  useThreadTrailBlocks,
   useTicketRunState,
   trailFollower,
 } from "@/hooks/TrailHooks";
@@ -67,7 +68,14 @@ describe("useFetchTrails / useFetchLatestChoices", () => {
     vi.mocked(api.get).mockResolvedValue({ data: [trail()] });
     const { result } = renderHook(() => useFetchTrails("ticket", "t-1"), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "ticket", target_id: "t-1" } });
+    expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "ticket", target_id: "t-1", steps: "last" } });
+  });
+
+  it("lists every step only for a thread, which places each run's turns", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [trail()] });
+    const thread = { id: "conv-1", kind: "ticket_thread", ticket_id: "t-1" } as unknown as Parameters<typeof useThreadTrailBlocks>[0];
+    renderHook(() => useThreadTrailBlocks(thread), { wrapper });
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "ticket", target_id: "t-1" } }));
   });
 
   it("reads the caller's latest choices for a play in a project", async () => {
@@ -213,6 +221,7 @@ describe("the trail follower", () => {
   it("writes each run frame into the run store, and refetches the run's views and its project's active set only when its state moves", async () => {
     const client = seeded([
       [["getTrails", "ticket", "t-1"], []],
+      [["getTrails", "ticket", "t-1", "steps"], []],
       [["getTrail", "tr-1"], {}],
       [["getActiveTrails", "ticket", "p-1"], {}],
       [["getActiveTrails", "ticket", "p-2"], {}],
@@ -221,8 +230,8 @@ describe("the trail follower", () => {
     const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-1", ended_at: null, last_error: "", project_id: "p-1", workspace_id: "ws-1" };
     await followFrame(trailFollower, "play.run", { ...run, state: "running", activity: null }, client);
     expect(usePlayRunStore.getState().activeByTarget["ticket:t-1"]).toBe("tr-1");
-    const keys = [["getTrails", "ticket", "t-1"], ["getTrail", "tr-1"], ["getActiveTrails", "ticket", "p-1"], ["getActiveTrails", "ticket", "p-2"], ["getActiveTrails", "doc", "p-1"]];
-    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true, false, false]);
+    const keys = [["getTrails", "ticket", "t-1"], ["getTrails", "ticket", "t-1", "steps"], ["getTrail", "tr-1"], ["getActiveTrails", "ticket", "p-1"], ["getActiveTrails", "ticket", "p-2"], ["getActiveTrails", "doc", "p-1"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true, true, false, false]);
 
     const settled = seeded([[["getTrail", "tr-1"], {}]]);
     const activity = { kind: "tool_call", call_id: "c-1", tool: "Read", summary: "main.go", at: "2026-09-18T10:00:00Z" };
