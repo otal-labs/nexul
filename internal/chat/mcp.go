@@ -15,7 +15,7 @@ import (
 )
 
 type conversationListIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace whose conversations to list."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace, from workspace_list."`
 	mcptool.PageArgs
 }
 
@@ -39,14 +39,14 @@ type messagePostIn struct {
 	messageTarget
 	WorkspaceID string      `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
 	Body        string      `json:"body,omitempty" jsonschema:"The message as markdown, required for a post. @login mentions a member and @Agent starts an agent turn."`
-	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec. With note_id it replaces that note's file instead."`
+	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec."`
 	Reaction    *reactionIn `json:"reaction,omitempty" jsonschema:"Reacts to an existing message with an emoji instead of posting, and leaves out the target, body, and file."`
 }
 
 type reactionIn struct {
 	MessageID string `json:"message_id" jsonschema:"The message's id, from message_list."`
 	Emoji     string `json:"emoji" jsonschema:"One emoji, such as 👍."`
-	Remove    bool   `json:"remove,omitempty" jsonschema:"Removes your reaction with this emoji instead of adding it."`
+	Remove    bool   `json:"remove,omitempty" jsonschema:"true removes your reaction instead of adding it."`
 }
 
 type noteFileIn struct {
@@ -62,16 +62,16 @@ type noteFileResult struct {
 }
 
 type conversationUpdateIn struct {
-	ID              string   `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
-	Name            string   `json:"name,omitempty" jsonschema:"The new name, without the leading #; omit to keep the current one."`
-	Private         *bool    `json:"private,omitempty" jsonschema:"true makes the channel private, false makes it public and opens its history to the whole workspace; omit to keep it as it is."`
+	ID              string   `json:"id" jsonschema:"The channel id, from conversation_list."`
+	Name            string   `json:"name,omitempty" jsonschema:"The new name, without the leading #."`
+	Private         *bool    `json:"private,omitempty" jsonschema:"true makes it private; false makes it public and opens its history to the whole workspace."`
 	MemberIDs       []string `json:"member_ids,omitempty" jsonschema:"With private true: the user ids, besides you, who stay in the channel; everyone else loses it. mention_search finds a person's user id."`
 	AddMemberIDs    []string `json:"add_member_ids,omitempty" jsonschema:"User ids of workspace members to add to a private channel."`
 	RemoveMemberIDs []string `json:"remove_member_ids,omitempty" jsonschema:"User ids to remove from a private channel; your own id leaves it."`
 }
 
 type conversationDeleteIn struct {
-	ID string `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
+	ID string `json:"id" jsonschema:"The channel id, from conversation_list."`
 }
 
 type conversationResult struct {
@@ -126,9 +126,8 @@ func conversationListTool(s *Service) mcptool.Tool {
 		"Lists your conversations in a workspace: every public channel and the private channels you are in, the threads you take part in, "+
 			"and your direct messages, each shown in every workspace all its people belong to. "+
 			"Use it to find a conversation's id for message_list or message_post; a doc's, ticket's, or project interview's thread "+
-			"can also be reached there by the doc_id, ticket_id, or project_id alone. "+
-			"Each item has its kind (channel, dm, ticket_thread, doc_thread, interview_thread, voice_channel), what it belongs to, "+
-			"and whether it is private, with a private channel's member_ids.",
+			"can also be reached by doc_id, ticket_id, or project_id alone. "+
+			"Each item has its kind (channel, dm, ticket_thread, doc_thread, interview_thread, voice_channel) and a private channel's member_ids.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in conversationListIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -151,12 +150,9 @@ func conversationUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("conversation_update", "Update channel",
 		"Renames a channel or voice channel, makes it private or public, and adds or removes a private channel's members; "+
 			"direct messages and doc, ticket, or interview threads have none of these to change. "+
-			"Renaming and switching private or public take channels:write; going private keeps you and member_ids and "+
-			"everyone else loses the channel, and the workspace's general channel is always public. "+
-			"Anyone in a private channel may add workspace members, removing someone else takes channels:write, "+
-			"and removing yourself leaves, except as its last member. "+
-			"Omitted fields keep their value; the changes apply in the order name, private, add, remove, and an error says which applied. "+
-			"Returns the channel as it ends up.",
+			"Going private keeps you and member_ids and everyone else loses the channel. "+
+			"Anyone in a private channel may add workspace members; removing yourself leaves it. "+
+			"The changes apply in the order name, private, add, remove, and an error says which applied.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in conversationUpdateIn) (any, error) {
 			if len(in.MemberIDs) > 0 && (in.Private == nil || !*in.Private) {
@@ -197,8 +193,8 @@ func conversationUpdateTool(s *Service) mcptool.Tool {
 func conversationDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("conversation_delete", "Delete channel",
 		"Deletes a channel or voice channel and every message in it, for good; a voice channel's call ends for everyone in it. "+
-			"It takes channels:delete, and the workspace's general channel is never deleted. "+
-			"Direct messages and doc, ticket, or interview threads are not deleted here. Returns the deleted id.",
+			"Direct messages and doc, ticket, or interview threads are not deleted here. "+
+			"Returns the deleted id.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in conversationDeleteIn) (any, error) {
 			c, err := s.DeleteChannel(ctx, in.ID)
@@ -224,12 +220,10 @@ func toConversationResult(c *Conversation) conversationResult {
 
 func messageListTool(s *Service) mcptool.Tool {
 	return mcptool.New("message_list", "List messages",
-		"Lists a conversation's messages newest first, so the first page is the latest; page back with offset for older ones, "+
-			"and a message posted meanwhile moves the older pages back by one. "+
+		"Lists a conversation's messages newest first, so the first page is the latest; a message posted meanwhile moves the older pages back by one. "+
 			"Name the conversation by conversation_id, or by exactly one of doc_id, ticket_id, or project_id for that doc's, ticket's, "+
 			"or project interview's thread; a thread nobody has started yet lists as empty and is not created. "+
-			"Deleted messages are left out, and a note carries its markdown file in file. "+
-			"An Agent reply that handed off work carries handoffs: each helper's provider, model, title, state and the first 1 KiB of its final reply. "+
+			"A note carries its markdown file in file, and an Agent reply that handed off work carries handoffs: each helper's provider, model, title, state and the first 1 KiB of its final reply. "+
 			"Reply with message_post.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in messageListIn) (any, error) {
@@ -266,9 +260,7 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"starting that thread if it does not exist yet (which needs workspace_id). "+
 			"Name the target the same way as message_list: conversation_id, or exactly one of doc_id, ticket_id, or project_id. "+
 			"Mentioning @Agent starts an agent turn on your own paired computer. "+
-			"In a channel it takes channels:post there, which a channel's rules may deny a role or a person; a refusal names the rule or role that decided it. "+
-			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, "+
-			"needs tickets:write on the ticket, and carries the file; message_list returns it. "+
+			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, and carries the file; message_list returns it. "+
 			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+
 			"With reaction it adds or removes your emoji reaction on a message instead of posting. "+
 			"Returns the posted, replaced, or reacted-to message and its conversation_id.",

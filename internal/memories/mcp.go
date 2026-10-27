@@ -17,76 +17,76 @@ const viaMCP = "mcp"
 const memoryGetVersions = 50
 
 type memoryListIn struct {
-	ProjectID string `json:"project_id" jsonschema:"The project whose memories to list, from project_list."`
+	ProjectID string `json:"project_id" jsonschema:"The project, from project_list."`
 	mcptool.PageArgs
 }
 
 type memoryGetIn struct {
-	ID      string `json:"id" jsonschema:"The memory's id, from memory_list or the memories a turn names."`
-	Version int    `json:"version,omitzero" jsonschema:"A version number from 1 up, to read that version's content instead of the current one."`
+	ID      string `json:"id" jsonschema:"The memory id, from memory_list."`
+	Version int    `json:"version,omitzero" jsonschema:"A version number from 1 up, to read instead of the current one."`
 }
 
 type memoryCreateIn struct {
-	ProjectID      string `json:"project_id" jsonschema:"The project the memory belongs to, or the destination of a copy, from project_list."`
-	Title          string `json:"title,omitempty" jsonschema:"The memory's title, for example Deploy quirks. Required for an ordinary memory."`
-	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
-	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
-	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true names the memory, to read first, in every agent turn in its project. Defaults to false."`
+	ProjectID      string `json:"project_id" jsonschema:"The project, or the destination of a copy, from project_list."`
+	Title          string `json:"title,omitempty" jsonschema:"The title. Required for an ordinary memory."`
+	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, such as use this if you are writing React code."`
+	Body           string `json:"body,omitempty" jsonschema:"The body as markdown."`
+	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true names the memory, to read first, in every agent turn in its project."`
 	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it empty the first time."`
-	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
+	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"A memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
 }
 
 type memoryUpdateIn struct {
-	ID              string  `json:"id" jsonschema:"The memory's id, from memory_list."`
-	Title           *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
-	WhenToUse       *string `json:"when_to_use,omitempty" jsonschema:"New when-to-use line; an empty string clears it. Omit to keep the current one."`
-	Body            *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
-	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first. Omit to keep the current setting."`
-	Footer          *bool   `json:"footer,omitempty" jsonschema:"Whether the memory sits in the Footer folder: a play run names it last, to read once its work is done and conclude the run, for example which column the ticket belongs in. Ordinary memories only. Omit to keep the current setting."`
-	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version's title, when-to-use, body, and flag as a new version. Send it without the other fields."`
+	ID              string  `json:"id" jsonschema:"The memory id, from memory_list."`
+	Title           *string `json:"title,omitempty" jsonschema:"New title."`
+	WhenToUse       *string `json:"when_to_use,omitempty" jsonschema:"New when-to-use line; an empty string clears it."`
+	Body            *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body."`
+	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first."`
+	Footer          *bool   `json:"footer,omitempty" jsonschema:"Whether the memory sits in the Footer folder: a play run names it last, to read once its work is done and conclude the run. Ordinary memories only."`
+	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new version. Send it alone."`
 
-	Answers []answerIn `json:"answers,omitempty" jsonschema:"Interview memory only: answers to the Interview template's questions, each replacing that question's stored answer. Follow-up rounds are recorded by the run, not here."`
+	Answers []answerIn `json:"answers,omitempty" jsonschema:"Answers to the Interview template's questions, each replacing that question's stored answer. Follow-up rounds are recorded by the run."`
 
-	AddSources    []sourceIn       `json:"add_sources,omitempty" jsonschema:"Interview memory only: material to point the interview at, each with its stance. A doc, memory, or project must be one you can read in this workspace; at most 50 sources per project."`
-	UpdateSources []sourceChangeIn `json:"update_sources,omitempty" jsonschema:"Interview memory only: sources whose stance, or pasted text's label or body, to change, by id from memory_get."`
-	RemoveSources []string         `json:"remove_sources,omitempty" jsonschema:"Interview memory only: ids of sources to take off the interview, from memory_get. Drafts made from them stay."`
-	Drafts        []draftIn        `json:"drafts,omitempty" jsonschema:"Interview memory only: draft answers to the template's questions, each replacing that question's earlier draft. A draft never counts as an answer; one equal to the stored answer is dropped."`
-	DismissDrafts []string         `json:"dismiss_drafts,omitempty" jsonschema:"Interview memory only: ids of drafts to delete, from memory_get."`
+	AddSources    []sourceIn       `json:"add_sources,omitempty" jsonschema:"Material to point the interview at, each with its stance. At most 50 sources per project."`
+	UpdateSources []sourceChangeIn `json:"update_sources,omitempty" jsonschema:"Sources whose stance, or pasted text's label or body, to change, by id from memory_get."`
+	RemoveSources []string         `json:"remove_sources,omitempty" jsonschema:"Ids of sources to take off the interview, from memory_get. Drafts made from them stay."`
+	Drafts        []draftIn        `json:"drafts,omitempty" jsonschema:"Draft answers to the template's questions, each replacing that question's earlier draft. A draft never counts as an answer; one equal to the stored answer is dropped."`
+	DismissDrafts []string         `json:"dismiss_drafts,omitempty" jsonschema:"Ids of drafts to delete, from memory_get."`
 }
 
 type sourceIn struct {
 	Kind   string `json:"kind" jsonschema:"path, doc, memory, project, or text."`
-	Ref    string `json:"ref,omitempty" jsonschema:"For path, a file or folder relative to the project's checkout, for example practices/testing.md; for doc, memory, or project, its id. Omit for text."`
-	Label  string `json:"label,omitempty" jsonschema:"Text only: the name the pasted text shows under, for example Team wiki notes."`
+	Ref    string `json:"ref,omitempty" jsonschema:"For path, a file or folder relative to the project's checkout, such as practices/testing.md; for doc, memory, or project, its id. Omit for text."`
+	Label  string `json:"label,omitempty" jsonschema:"Text only: the name the pasted text shows under, such as Team wiki notes."`
 	Body   string `json:"body,omitempty" jsonschema:"Text only: the pasted text, at most 32,000 characters."`
 	Stance string `json:"stance" jsonschema:"follow to draft answers from it, or question for how something was done but should not be copied, only asked about."`
 }
 
 type sourceChangeIn struct {
-	ID     string  `json:"id" jsonschema:"The source's id, from memory_get."`
-	Stance *string `json:"stance,omitempty" jsonschema:"follow or question. Omit to keep the current stance."`
-	Label  *string `json:"label,omitempty" jsonschema:"Text sources only: a new label. Omit to keep the current one."`
-	Body   *string `json:"body,omitempty" jsonschema:"Text sources only: the new text, replacing the old. Omit to keep the current one."`
+	ID     string  `json:"id" jsonschema:"The source id, from memory_get."`
+	Stance *string `json:"stance,omitempty" jsonschema:"follow or question."`
+	Label  *string `json:"label,omitempty" jsonschema:"Text sources only: a new label."`
+	Body   *string `json:"body,omitempty" jsonschema:"Text sources only: the new text, replacing the old."`
 }
 
 type draftIn struct {
-	Question  string   `json:"question" jsonschema:"The template question's text exactly as the interview memory's questions list it."`
+	Question  string   `json:"question" jsonschema:"The question text exactly as memory_get lists it."`
 	Selected  []string `json:"selected,omitempty" jsonschema:"The picked options' labels."`
 	Text      string   `json:"text,omitempty" jsonschema:"A free-text answer, alone or beside the picked options."`
 	SourceIDs []string `json:"source_ids" jsonschema:"The ids of the follow sources the draft came from, from memory_get."`
-	Where     string   `json:"where,omitempty" jsonschema:"One line, at most 500 characters, saying where inside the sources it came from (a heading, a file inside a folder source, a quoted phrase) without repeating a source's name, for example Testing, 'Test error paths first'."`
-	TrailID   string   `json:"trail_id,omitempty" jsonschema:"The id of the play run's trail writing the draft, when the run names it."`
+	Where     string   `json:"where,omitempty" jsonschema:"One line, at most 500 characters, saying where inside the sources it came from (a heading, a file inside a folder source, a quoted phrase), not the source's name."`
+	TrailID   string   `json:"trail_id,omitempty" jsonschema:"The trail of the play run writing the draft, when the run names it."`
 }
 
 type answerIn struct {
-	Question string   `json:"question" jsonschema:"The question's text exactly as the interview memory's questions list it, for example Testing."`
+	Question string   `json:"question" jsonschema:"The question text exactly as memory_get lists it."`
 	Selected []string `json:"selected,omitempty" jsonschema:"The picked options' labels."`
 	Text     string   `json:"text,omitempty" jsonschema:"A free-text answer, alone or beside the picked options."`
 	Skip     bool     `json:"skip,omitzero" jsonschema:"true skips the question instead of answering it; omit selected and text."`
 }
 
 type memoryDeleteIn struct {
-	ID string `json:"id" jsonschema:"The memory's id, from memory_list."`
+	ID string `json:"id" jsonschema:"The memory id, from memory_list."`
 }
 
 // memoryListItem is a memory's index entry: enough to decide relevance, never the body.
@@ -180,9 +180,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func memoryListTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_list", "List memories",
-		"Lists a project's memories by title and when-to-use line only, no body. "+
-			"Every memory belongs to one project, so project_id is required. "+
-			"Pick the ones whose when-to-use matches your task and read them with memory_get.",
+		"Lists a project's memories, title and when-to-use line only, no body. "+
+			"Pick the ones whose when-to-use matches your task. "+
+			"Read them with memory_get.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryListIn) (any, error) {
 			ms, total, err := s.PageForProject(ctx, in.ProjectID, in.Window())
@@ -201,11 +201,9 @@ func memoryListTool(s *Service) mcptool.Tool {
 
 func memoryGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_get", "Get memory",
-		"Returns one memory with its full body as markdown and its newest 50 versions (number, title, author, and time); the interview memory also carries the questions of the workspace's Interview template. "+
-			"With version it returns that version's title, when-to-use, body, and flag instead, and current_version says which is live. "+
-			"For the interview memory, answers holds the project's stored answers, round 0 for the template's questions and 1 and up for follow-up rounds; "+
-			"sources lists what the interview is pointed at with its stance, pasted text bodies included, and drafts the draft answers a drafting run wrote. "+
-			"Use memory_list to find ids, and memory_update with revert_to_version to restore an old version.",
+		"Returns one memory with its body as markdown and its newest 50 versions; with version it returns that version's content instead, and current_version says which is live. "+
+			"The interview memory also carries the Interview template's questions, answers (round 0 for the template's questions, 1 and up for follow-up rounds), sources with their stance, and the drafts a drafting run wrote. "+
+			"Restore an old version with memory_update revert_to_version.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryGetIn) (any, error) {
 			m, err := s.Get(ctx, in.ID)
@@ -234,13 +232,10 @@ func memoryGetTool(s *Service) mcptool.Tool {
 
 func memoryCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_create", "Create memory",
-		"Saves a note for agents in a project, or copies one into it with clone_from_id; every memory belongs to one project. "+
-			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
-			"A memory holds reusable technical guidance for agents, such as research, architecture, coding standards, and library choices, while requirements, scope, and business processes people read go in doc_create. "+
-			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
-			"creating it empty the first time, with the questions of the workspace's Interview template. "+
-			"Copying needs memories:clone on the source and memories:write at the destination. "+
-			"Returns the memory with its body as markdown.",
+		"Saves a note for agents in a project, or copies one into it with clone_from_id. "+
+			"A memory holds reusable technical guidance (research, architecture, coding standards, library choices); requirements, scope, and business processes people read go in doc_create. "+
+			"If a memory already covers the ground, change it with memory_update instead. "+
+			"kind decisions_log creates the project's decisions log (one per project, never sent every turn); kind interview also returns the Interview template's questions.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in memoryCreateIn) (any, error) {
 			m, err := createMemory(ctx, s, in)
@@ -277,12 +272,11 @@ func (in memoryCreateIn) hasText() bool {
 
 func memoryUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_update", "Update memory",
-		"Changes a memory's title, when-to-use line, body, or always-included flag; only the fields you send change, and each save adds a version. "+
+		"Changes a memory's title, when-to-use line, body, or flags; each save adds a version. "+
 			"revert_to_version restores an earlier version as a new one; memory_get lists the versions. "+
 			"The interview memory stays always included and its body is capped at 8,000 characters of markdown; the decisions log is never always included. "+
-			"answers saves or skips the interview's answers to the template's questions without adding a version; "+
-			"add_sources, update_sources, and remove_sources change what the interview is pointed at, and drafts and dismiss_drafts write or delete draft answers, which never count as answers. "+
-			"Returns the memory as it now stands.",
+			"answers, add_sources, update_sources, remove_sources, drafts, and dismiss_drafts apply to the interview memory only: answers saves or skips its answers without adding a version, "+
+			"the sources fields change what it is pointed at, and drafts write or delete draft answers, which never count as answers.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in memoryUpdateIn) (any, error) {
 			m, err := updateMemory(ctx, s, in)

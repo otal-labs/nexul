@@ -62,15 +62,15 @@ type accountListIn struct {
 }
 
 type accountWorkspaceIn struct {
-	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace id, from workspace_list."`
 	AddRoles    []string `json:"add_roles,omitempty" jsonschema:"Role ids to give the account there, never the Owner role; workspace_list with the workspace's id lists them. At least one when the account is not a member yet."`
 	RemoveRoles []string `json:"remove_roles,omitempty" jsonschema:"Role ids to take away there, never the Owner role; taking away every role leaves a member who sees no project."`
 }
 
 type accountUpdateIn struct {
 	ID                 string               `json:"id" jsonschema:"The account's id, from account_list."`
-	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled. active reactivates a disabled account and restores a removed one. Needs accounts:write in any workspace."`
-	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Roles to change per workspace: adds the account to a workspace it is not in with add_roles, and gives or takes away roles where it is a member."`
+	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled."`
+	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Roles to change per workspace."`
 	RemoveWorkspaceIDs []string             `json:"remove_workspace_ids,omitempty" jsonschema:"Workspaces to take the account out of; its account and authored content stay."`
 }
 
@@ -82,20 +82,13 @@ type accountUpdateResult struct {
 func accountListTool(t Team) mcptool.Tool {
 	return mcptool.New("account_list", "List accounts",
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
-			"when they were last seen (to the hour, null once signed out everywhere), providers (the sign-in accounts "+
-			"linked, github, google or discord, in the order they were linked), and their workspace access, one "+
-			"entry per workspace with roles, every role they hold there in the order given (id, name, whether it is "+
-			"the Owner role), is_owner, whether the Owner role is among them, and can_manage_members, whether you hold "+
-			"members:write there and so may change their roles, and welcome, their Welcome wizard progress: whether "+
-			"its first run happened, each step their roles give them (github, computer, projects, deploy_server, phone) "+
-			"as done, skipped or left, dot, whether one still waits on them, and in_a_project, whether they are in any "+
-			"project; and joined, the first invitation they accepted: invited_by, the account id that made the link, "+
-			"and accepted_at. Which projects someone is in is set on each project, "+
-			"through permission_overwrite_list and permission_overwrite_update. "+
-			"A holder of accounts:read in any workspace sees every account and workspace; anyone else sees only the "+
-			"workspaces where they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
-			"for your own account, account_update to change an account's status or roles, and "+
-			"account_delete to remove it. People online come first, then the most recently seen.",
+			"when they were last seen, providers (the sign-in accounts linked), and their workspace access, one entry per workspace with roles "+
+			"(id, name, whether it is the Owner role), is_owner, and can_manage_members, whether you hold members:write there and so may change their roles; "+
+			"welcome is their Welcome wizard progress and joined the first invitation they accepted. "+
+			"Which projects someone is in is set on each project, through permission_overwrite_list and permission_overwrite_update. "+
+			"With accounts:read in any workspace you see every account, otherwise only the people in workspaces where you hold members:write. "+
+			"Use account_get for your own account, account_update to change an account's status or roles, and "+
+			"account_delete to remove it.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountListIn) (any, error) {
 			team, err := t.ListTeam(ctx, accountActor(ctx))
@@ -114,14 +107,14 @@ func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 	return mcptool.New("account_update", "Update account",
 		"Changes an account's status and the roles it holds in each workspace. status disabled blocks sign-in and disconnects "+
 			"their computers while keeping memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
-			"the access account_delete took away; status needs accounts:write in any workspace. A workspaces entry adds the "+
+			"the access account_delete took away. A workspaces entry adds the "+
 			"account to a workspace it is not in with add_roles, or gives it add_roles and takes away remove_roles where "+
-			"it is a member; remove_workspace_ids takes it out of one. Each needs members:write in that workspace, you "+
-			"may give or take away only a role whose permissions you hold there yourself, and the Owner role is never "+
-			"given or taken. Someone left with no role stays a member and sees no project. Which projects a person is "+
-			"in is set on each project with permission_overwrite_update. Only the fields you send change. The changes apply in the order listed "+
-			"here and stop at the first failure, whose message names the field and the ones already applied. "+
-			"Returns the fields applied and the account as account_list shows it to you, when it shows it at all.",
+			"it is a member; remove_workspace_ids takes it out of one. You may "+
+			"give or take away only a role whose permissions you hold there yourself, and the Owner role is never "+
+			"given or taken. Someone left with no role stays a member and sees no project; which projects a person is "+
+			"in is set on each project with permission_overwrite_update. The changes apply in the order listed "+
+			"and stop at the first failure, whose message names the field and the ones already applied. "+
+			"Returns the fields applied and the account as account_list shows it to you.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountUpdateIn) (any, error) {
 			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 {
