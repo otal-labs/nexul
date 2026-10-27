@@ -73,7 +73,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.Equal(t, "object", tool.InputSchema.Type, tool.Name)
 	}
 	assert.Equal(t, []string{
-		"deploy_list", "deploy_get", "deploy_cancel", "stack_list", "stack_get", "stack_create", "stack_update",
+		"deploy_list", "deploy_cancel", "stack_list", "stack_get", "stack_create", "stack_update",
 		"stack_delete", "stack_deploy", "machine_import",
 	}, names)
 }
@@ -88,8 +88,7 @@ func TestMCPTools_Errors(t *testing.T) {
 	}{
 		{"deploy_list rejects an unknown status", "deploy_list", `{"status":"queued"}`, apperrs.ErrInvalid, "pending, running, healthy, failed"},
 		{"deploy_list rejects an unknown key", "deploy_list", `{"service":"api"}`, apperrs.ErrInvalid, ""},
-		{"deploy_get needs an id", "deploy_get", `{}`, apperrs.ErrInvalid, ""},
-		{"deploy_get of a missing deploy", "deploy_get", `{"id":"nope"}`, apperrs.ErrNotFound, "deploy_list"},
+		{"deploy_list of a missing deploy id", "deploy_list", `{"id":"nope"}`, apperrs.ErrNotFound, "deploy_list without an id"},
 		{"deploy_cancel of a missing deploy", "deploy_cancel", `{"id":"nope"}`, apperrs.ErrNotFound, "deploy_list"},
 		{"deploy_cancel of a finished deploy", "deploy_cancel", `{"id":"done"}`, apperrs.ErrConflict, ""},
 		{"stack_get of a missing stack", "stack_get", `{"id":"nope"}`, apperrs.ErrNotFound, "stack_list"},
@@ -187,7 +186,7 @@ func TestPageDeploys_AsksForWhatTheCallerReads(t *testing.T) {
 	}
 }
 
-func TestDeployGet_ReturnsTheLogTail(t *testing.T) {
+func TestDeployList_WithAnIDReturnsTheLogTail(t *testing.T) {
 	repo := newFakeRepo()
 	seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "s1", Service: "api", Target: "prod", Status: StatusRunning, CreatedAt: at(1)})
 	require.NoError(t, repo.AppendLogLines(t.Context(), "d1", []LogLine{
@@ -195,7 +194,7 @@ func TestDeployGet_ReturnsTheLogTail(t *testing.T) {
 	}))
 	s := newTestService(repo, newFakeBus())
 
-	got, err := call(t, s, "deploy_get", `{"id":"d1","log_lines":2}`)
+	got, err := call(t, s, "deploy_list", `{"id":"d1","log_lines":2}`)
 	require.NoError(t, err)
 	d := got.(deployDetail)
 	assert.Equal(t, "api", d.Stack)
@@ -204,7 +203,7 @@ func TestDeployGet_ReturnsTheLogTail(t *testing.T) {
 	require.Len(t, d.Log, 2)
 	assert.Equal(t, "step 2", d.Log[1].Text)
 
-	got, err = call(t, s, "deploy_get", `{"id":"d1"}`)
+	got, err = call(t, s, "deploy_list", `{"id":"d1"}`)
 	require.NoError(t, err)
 	assert.Len(t, got.(deployDetail).Log, 3, "the default tail covers a short log")
 }

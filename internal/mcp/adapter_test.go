@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -24,7 +25,8 @@ import (
 const testInstanceURL = "https://nexul.example"
 
 type whoamiIn struct {
-	Fail string `json:"fail,omitempty" jsonschema:"invalid, internal, or empty."`
+	Fail string  `json:"fail,omitempty" jsonschema:"invalid, internal, or empty."`
+	Note *string `json:"note,omitempty" jsonschema:"Ignored; a pointer, so its full schema also allows null."`
 }
 
 func fakeServer() server {
@@ -180,6 +182,26 @@ func TestAdapter_ToolsCarryTitlesAndHints(t *testing.T) {
 	assert.True(t, del.Annotations.IdempotentHint)
 	assert.Equal(t, "public", res.CacheScope)
 	assert.Positive(t, res.TTLMs)
+}
+
+func TestAdapter_AdvertisesACompactSchemaAndValidatesTheFullOne(t *testing.T) {
+	session := connect(t, newTestEndpoint(t).URL+"/mcp", revisions[0])
+	res, err := session.ListTools(t.Context(), nil)
+	require.NoError(t, err)
+	i := slices.IndexFunc(res.Tools, func(tool *sdk.Tool) bool { return tool.Name == "thing_get" })
+	require.GreaterOrEqual(t, i, 0)
+	wire, err := json.Marshal(res.Tools[i].InputSchema)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"type":"object","properties":{
+		"fail":{"type":"string","description":"invalid, internal, or empty."},
+		"note":{"type":"string","description":"Ignored; a pointer, so its full schema also allows null."}}}`, string(wire))
+
+	call, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_get", Arguments: map[string]any{"note": nil}})
+	require.NoError(t, err)
+	assert.False(t, call.IsError, "the full schema still accepts what the compact one leaves out")
+	call, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_get", Arguments: map[string]any{"user_id": "u2"}})
+	require.NoError(t, err)
+	assert.True(t, call.IsError, "an unknown key is still refused")
 }
 
 func TestAdapter_AdvertisesOnlyWhatItImplements(t *testing.T) {

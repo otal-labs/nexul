@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
@@ -134,7 +136,7 @@ func sdkTool(t mcptool.Tool) *sdk.Tool {
 		Name:        t.Name,
 		Title:       t.Title,
 		Description: t.Description,
-		InputSchema: t.InputSchema,
+		InputSchema: advertised(t.InputSchema),
 		Annotations: &sdk.ToolAnnotations{
 			Title:           t.Title,
 			ReadOnlyHint:    t.Hints.ReadOnly,
@@ -143,6 +145,31 @@ func sdkTool(t mcptool.Tool) *sdk.Tool {
 			OpenWorldHint:   &openWorld,
 		},
 	}
+}
+
+// advertised is the schema tools/list shows, without what costs every session context and steers no call: a
+// pointer's null alternative and the closed-object marker. Calls still validate against the full schema (ADR 0171).
+func advertised(full *jsonschema.Schema) *jsonschema.Schema {
+	s := full.CloneSchemas()
+	compact(s)
+	return s
+}
+
+func compact(s *jsonschema.Schema) {
+	if s == nil {
+		return
+	}
+	if len(s.Types) == 2 && s.Types[0] == "null" {
+		s.Type, s.Types = s.Types[1], nil
+	}
+	if s.AdditionalProperties != nil && s.AdditionalProperties.Not != nil && reflect.ValueOf(*s.AdditionalProperties.Not).IsZero() {
+		s.AdditionalProperties = nil
+	}
+	for _, p := range s.Properties {
+		compact(p)
+	}
+	compact(s.Items)
+	compact(s.AdditionalProperties)
 }
 
 // toolHandler runs a tool as the caller and turns every failure into an isError result the model can read.

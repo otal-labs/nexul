@@ -16,7 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// defaultLogLines and maxLogLines bound the log tail deploy_get returns, so a long build never floods the context.
+// defaultLogLines and maxLogLines bound the log tail deploy_list returns for one deploy, so a long build never floods the context.
 const (
 	defaultLogLines = 200
 	maxLogLines     = 1000
@@ -29,7 +29,6 @@ const recentDeploys = 10
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		deployListTool(s),
-		deployGetTool(s),
 		deployCancelTool(s),
 		stackListTool(s),
 		stackGetTool(s),
@@ -42,18 +41,31 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type deployListIn struct {
-	StackID string `json:"stack_id,omitempty" jsonschema:"Only this stack's deploys, by the stack's id from stack_list."`
-	Status  string `json:"status,omitempty" jsonschema:"Only deploys in this state: pending, running, healthy, or failed."`
+	ID       string `json:"id,omitempty" jsonschema:"One deploy, from this list or stack_deploy's result, returned with its log instead of a page."`
+	LogLines int    `json:"log_lines,omitzero" jsonschema:"With an id, how many of the log's last lines to return, 1 to 1000, default 200."`
+	StackID  string `json:"stack_id,omitempty" jsonschema:"Only this stack's deploys, by its id from stack_list."`
+	Status   string `json:"status,omitempty" jsonschema:"Only deploys in this state: pending, running, healthy, or failed."`
 	mcptool.PageArgs
+}
+
+// deployDetail is a deploy with the tail of its log; log_total is the full log's length, so a cut tail shows.
+type deployDetail struct {
+	deployResult
+	Log      []LogLine `json:"log"`
+	LogTotal int       `json:"log_total"`
 }
 
 func deployListTool(s *Service) mcptool.Tool {
 	return mcptool.New("deploy_list", "List deploys",
-		"Lists deploys newest first, as summaries without their logs. Filter by stack_id to see one stack's "+
-			"history or by status to find what is running or failed; use deploy_get for one deploy with its log. "+
-			"Returns at most 100 per page.",
+		"Lists deploys newest first, without their logs, filtered by stack_id or status. With an id it returns that "+
+			"one deploy with what triggered it and the tail of its checkout, build, and deploy log (each line has a "+
+			"unix-millisecond ts and a phase; log_total is the full length). Poll it with the id stack_deploy returned "+
+			"until the status is healthy or failed, and read the log to diagnose a failure.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in deployListIn) (any, error) {
+			if in.ID != "" {
+				return deployDetailOf(ctx, s, in.ID, in.LogLines)
+			}
 			ds, total, err := s.PageDeploys(ctx, DeployFilter{StackID: in.StackID, Status: Status(in.Status)}, in.Window())
 			if errors.Is(err, apperrs.ErrInvalid) {
 				return nil, fmt.Errorf("%w; status is one of pending, running, healthy, failed", err)
@@ -65,41 +77,21 @@ func deployListTool(s *Service) mcptool.Tool {
 		})
 }
 
-type deployGetIn struct {
-	ID       string `json:"id" jsonschema:"The deploy's id, from deploy_list or from the result of stack_deploy."`
-	LogLines int    `json:"log_lines,omitzero" jsonschema:"How many of the log's last lines to return, 1 to 1000. Defaults to 200."`
-}
-
-// deployDetail is a deploy with the tail of its log; log_total is the full log's length, so a cut tail shows.
-type deployDetail struct {
-	deployResult
-	Log      []LogLine `json:"log"`
-	LogTotal int       `json:"log_total"`
-}
-
-func deployGetTool(s *Service) mcptool.Tool {
-	return mcptool.New("deploy_get", "Get deploy",
-		"Returns one deploy with its status, what triggered it, and the last lines of its checkout, build, and "+
-			"deploy log (each line has a unix-millisecond ts and a phase). Poll it after stack_deploy until the status "+
-			"is healthy or failed, and read the log to diagnose a failure. The log tail defaults to 200 lines; "+
-			"log_total is the full length.",
-		mcptool.Hints{ReadOnly: true, Local: true},
-		func(ctx context.Context, in deployGetIn) (any, error) {
-			d, err := s.Get(ctx, in.ID)
-			if err != nil {
-				return nil, withHint(err, "deploy_list lists deploys")
-			}
-			lines, err := s.Log(ctx, in.ID)
-			if err != nil {
-				return nil, err
-			}
-			n := in.LogLines
-			if n < 1 {
-				n = defaultLogLines
-			}
-			n = min(n, maxLogLines)
-			return deployDetail{deployResult: toDeployResult(d), Log: lines[max(0, len(lines)-n):], LogTotal: len(lines)}, nil
-		})
+func deployDetailOf(ctx context.Context, s *Service, id string, logLines int) (deployDetail, error) {
+	d, err := s.Get(ctx, id)
+	if err != nil {
+		return deployDetail{}, withHint(err, "deploy_list without an id lists deploys")
+	}
+	lines, err := s.Log(ctx, id)
+	if err != nil {
+		return deployDetail{}, err
+	}
+	n := logLines
+	if n < 1 {
+		n = defaultLogLines
+	}
+	n = min(n, maxLogLines)
+	return deployDetail{deployResult: toDeployResult(d), Log: lines[max(0, len(lines)-n):], LogTotal: len(lines)}, nil
 }
 
 type deployCancelIn struct {
@@ -109,7 +101,7 @@ type deployCancelIn struct {
 func deployCancelTool(s *Service) mcptool.Tool {
 	return mcptool.New("deploy_cancel", "Cancel deploy",
 		"Asks the runner to stop a pending or running deploy; the deploy then lands failed with reason cancelled. "+
-			"Use deploy_get afterwards to see it land. A deploy that already finished cannot be cancelled and returns "+
+			"Use deploy_list with its id afterwards to see it land. A deploy that already finished cannot be cancelled and returns "+
 			"a conflict.",
 		mcptool.Hints{},
 		func(ctx context.Context, in deployCancelIn) (any, error) {
@@ -399,7 +391,7 @@ func stackCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_create", "Create stack",
 		"Creates a stack on a machine, from explicit fields or from a repository_scan candidate plus a build "+
 			"source, exactly as the project wizard does. Set deploy to also start its first deploy, then poll "+
-			"deploy_get; use stack_deploy for later deploys and stack_update to change it. Returns the stack and the "+
+			"deploy_list with its id; use stack_deploy for later deploys and stack_update to change it. Returns the stack and the "+
 			"started deploy; if the stack is created but its first deploy cannot start, the error says so.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackCreateIn) (any, error) {
@@ -723,7 +715,7 @@ func stackDeployTool(s *Service) mcptool.Tool {
 		"Starts a deploy of a stack on its machine, exactly as the deploy button does: build a ref of its repository, "+
 			"redeploy an image, roll back to the last healthy image, or retry a failed deploy on the commit it built with the "+
 			"stack's current settings, for example after fixing an environment variable. It is rejected while the stack already has a "+
-			"deploy pending or running. It needs Deploy to on the stack's machine. Returns the new deploy; poll deploy_get until it is healthy or failed.",
+			"deploy pending or running. It needs Deploy to on the stack's machine. Returns the new deploy; poll deploy_list with its id until it is healthy or failed.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackDeployIn) (any, error) {
 			d, err := startDeploy(ctx, s, in)

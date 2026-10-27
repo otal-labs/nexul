@@ -14,7 +14,7 @@ Tool families, named object_verb:
 Workflows:
 - Every update is a patch: omitted fields keep their values.
 - Files: attachment_create returns markdown for a line of a body or message; attachment_get reads one.
-- Shipping: stack_deploy returns a deploy id; poll deploy_get and stack_get until it settles.
+- Shipping: stack_deploy returns a deploy id; poll deploy_list with that id and stack_get until it settles.
 
 Ids are opaque strings; ticket tools also accept a key such as REF-102, plus workspace (id or slug) when two of yours share it. Lists return items, total, has_more, and next_offset (pass it back as offset).
 
