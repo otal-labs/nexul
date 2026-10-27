@@ -60,11 +60,12 @@ export const useCanAddMachines = (): boolean | undefined => {
   return me && (me.instance_owner || hasPermission(me.instance_permissions, "machines:create"));
 };
 
-// The Runners link is for whoever sees a machine or can add one; the route itself still opens for every member.
+// The Runners link is for whoever sees a machine or can add one, who has it without the machine list being read on every
+// page; the route itself still opens for every member.
 export const useShowRunnersLink = (): boolean => {
   const canAdd = useCanAddMachines();
-  const { data: machines } = useFetchMachines();
-  return (machines?.length ?? 0) > 0 || canAdd === true;
+  const { data: machines } = useFetchMachines(canAdd === false);
+  return canAdd === true || (machines?.length ?? 0) > 0;
 };
 
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.

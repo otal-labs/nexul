@@ -70,10 +70,11 @@ export const useRemoveRunner = () => {
   });
 };
 
-export const useFetchMachines = () =>
+export const useFetchMachines = (enabled = true) =>
   useQuery({
     queryKey: [getMachinesKey],
     queryFn: async () => (await api.get<Machine[]>("/api/machines")).data,
+    enabled,
   });
 
 // A machine missing from the list is one the viewer can't see, so it reads as refused; undefined until the list loads.

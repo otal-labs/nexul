@@ -21,6 +21,7 @@ const renderNav = async (collapsed = false) => {
     </QueryClientProvider>,
   );
   await screen.findByRole("link", { name: /Configuration/ });
+  await screen.findByRole("link", { name: /Runners/ });
 };
 
 beforeEach(() => {
@@ -75,11 +76,11 @@ describe("DeploySidebarNav", () => {
   });
 
   it.each([
-    { who: "a Client with no machine and no way to add one", machines: [], me: { instance_permissions: [] }, link: false },
-    { who: "someone who sees a machine", machines: [{ id: "m-1", name: "box" }], me: { instance_permissions: [] }, link: true },
-    { who: "someone who can add machines", machines: [], me: { instance_permissions: ["machines:create"] }, link: true },
-    { who: "the instance Owner", machines: [], me: { instance_permissions: [], instance_owner: true }, link: true },
-  ])("shows the Runners link for $who: $link", async ({ machines, me, link }) => {
+    { who: "a Client with no machine and no way to add one", machines: [], me: { instance_permissions: [] }, link: false, readsMachines: true },
+    { who: "someone who sees a machine", machines: [{ id: "m-1", name: "box" }], me: { instance_permissions: [] }, link: true, readsMachines: true },
+    { who: "someone who can add machines", machines: [], me: { instance_permissions: ["machines:create"] }, link: true, readsMachines: false },
+    { who: "the instance Owner", machines: [], me: { instance_permissions: [], instance_owner: true }, link: true, readsMachines: false },
+  ])("shows the Runners link for $who: $link", async ({ machines, me, link, readsMachines }) => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: {}, ...me } };
       if (url === "/api/machines") return { data: machines };
@@ -95,9 +96,10 @@ describe("DeploySidebarNav", () => {
     );
 
     await screen.findByRole("link", { name: /Topology/ });
-    await vi.waitFor(() => expect(client.getQueryState(["machines"])?.status).toBe("success"));
     await vi.waitFor(() => expect(client.getQueryState([getMeKey])?.status).toBe("success"));
-    expect(screen.queryByRole("link", { name: /Runners/ }) !== null).toBe(link);
+    if (readsMachines) await vi.waitFor(() => expect(client.getQueryState(["machines"])?.status).toBe("success"));
+    await vi.waitFor(() => expect(screen.queryByRole("link", { name: /Runners/ }) !== null).toBe(link));
+    expect(vi.mocked(api.get).mock.calls.some(([url]) => url === "/api/machines")).toBe(readsMachines);
   });
 
   it("tags only Automations as work in progress", async () => {
