@@ -159,4 +159,13 @@ describe("AttachmentsSection", () => {
     expect(api.get).toHaveBeenCalledWith("/api/attachments/a-2", { responseType: "blob" });
     click.mockRestore();
   });
+
+  it("opens a file's preview from its name", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "spec.pdf" }));
+
+    expect(await screen.findByRole("dialog", { name: "spec.pdf" })).toBeInTheDocument();
+    expect(await screen.findByTitle("spec.pdf")).toHaveAttribute("src", "blob:shot");
+  });
 });
