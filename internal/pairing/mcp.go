@@ -26,19 +26,19 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type computerListIn struct {
-	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its T3 projects and containers. Omit to list every computer you own."`
-	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also return the last lines one Docker container on that computer printed. Omit it for the computer alone."`
-	RunnerLogs    *computerRunnerLogsIn    `json:"runner_logs,omitzero" jsonschema:"With id only: also return the last lines the computer's Nexul app (its runner) logged. Omit it for the computer alone."`
+	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its T3 projects and containers. Omit to list all."`
+	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also returns one Docker container's last log lines."`
+	RunnerLogs    *computerRunnerLogsIn    `json:"runner_logs,omitzero" jsonschema:"With id only: also returns the Nexul app's (the runner's) last log lines."`
 	mcptool.PageArgs
 }
 
 type computerContainerLogsIn struct {
-	Container string `json:"container" jsonschema:"The container's name, from this computer's containers, for example shop-web-1."`
-	Tail      int    `json:"tail,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
+	Container string `json:"container" jsonschema:"The container's name, from this computer's containers."`
+	Tail      int    `json:"tail,omitzero" jsonschema:"Last lines to return, 1 to 1000. Defaults to 200."`
 }
 
 type computerRunnerLogsIn struct {
-	Lines int `json:"lines,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
+	Lines int `json:"lines,omitzero" jsonschema:"Last lines to return, 1 to 1000. Defaults to 200."`
 }
 
 // computerRunnerLogs is the last lines the computer's runner logged.
@@ -53,16 +53,16 @@ type computerContainerLogs struct {
 }
 
 type computerCreateIn struct {
-	Name string `json:"name,omitempty" jsonschema:"The computer's name, for example Alice Laptop. Omit it to name the computer after the hostname it reports when its runner enrolls."`
-	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired, or to move a computer paired before the Nexul app onto it. Omit it to add a new computer."`
+	Name string `json:"name,omitempty" jsonschema:"The computer's name. Omit to use the hostname its runner reports."`
+	ID   string `json:"id,omitempty" jsonschema:"One of your computers with no runner yet, for a fresh command after the last expired, or to move a computer paired before the Nexul app onto it. Omit to add a new computer."`
 }
 
 type computerPairIn struct {
-	ID            string  `json:"id" jsonschema:"One of your computers, from computer_list, to pair or re-pair now through its Nexul app."`
-	Name          string  `json:"name,omitempty" jsonschema:"A new name for the computer, for example Alice Laptop. With it, or any field below, the call only changes those and does not pair."`
-	Position      *int    `json:"position,omitempty" jsonschema:"Where the computer goes in your order, 0 for first: runs go to the first of your computers that can take them. Omit to keep it."`
-	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"How many play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full. Omit to keep it."`
-	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in here; empty clears it. Omit to keep it."`
+	ID            string  `json:"id" jsonschema:"One of your computers, from computer_list."`
+	Name          string  `json:"name,omitempty" jsonschema:"A new name. With it, or any field below, the call only changes those and does not pair."`
+	Position      *int    `json:"position,omitempty" jsonschema:"Place in your order, 0 for first: runs go to the first computer that can take them."`
+	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
+	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 }
 
 type computerDeleteIn struct {
@@ -71,8 +71,8 @@ type computerDeleteIn struct {
 
 type computerProjectCreateIn struct {
 	ID         string `json:"id" jsonschema:"The computer's id, from computer_list."`
-	Repository string `json:"repository,omitempty" jsonschema:"The GitHub repository to clone, as owner/name, for example acme/api; project_get lists a project's repositories. Give this or name, not both."`
-	Name       string `json:"name,omitempty" jsonschema:"The folder name of a new empty project, with no slashes, for example acme-notes. Give this or repository, not both."`
+	Repository string `json:"repository,omitempty" jsonschema:"The GitHub repository to clone, as owner/name; project_get lists a project's repositories. Give this or name, not both."`
+	Name       string `json:"name,omitempty" jsonschema:"The folder name of a new empty project, with no slashes. Give this or repository, not both."`
 }
 
 type computerIDIn struct {
@@ -81,21 +81,21 @@ type computerIDIn struct {
 
 type computerSetupRunIn struct {
 	ComputerID   string                             `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
-	Provider     string                             `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
-	Model        string                             `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
-	Providers    []string                           `json:"providers,omitempty" jsonschema:"Without provider only: the driver kinds to set up, for example [\"claude\", \"opencode\"]; the computer remembers the ones left out as skipped. Omit to run every provider the harness lists."`
-	Models       map[string]string                  `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
-	ModelOptions map[string][]harness.OptionSetting `json:"model_options,omitempty" jsonschema:"The options each provider's picked model runs with, keyed by driver kind like models, for example {\"codex\": [{\"id\": \"reasoningEffort\", \"value\": \"high\"}]}: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies beside a picked model; an option left out keeps the harness default."`
-	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
-	SkillsOnly   bool                               `json:"skills_only,omitempty" jsonschema:"true to only update Nexul's skills, alone with computer_id: one turn on the first confirmed provider, on its saved model and folder, for a computer whose providers are confirmed but show skills_outdated."`
+	Provider     string                             `json:"provider,omitempty" jsonschema:"One provider's driver kind, for example codex, to run alone after its turn failed. Omit to run every provider."`
+	Model        string                             `json:"model,omitempty" jsonschema:"With provider only: the model slug, as the harness lists it. Omit for the provider's default."`
+	Providers    []string                           `json:"providers,omitempty" jsonschema:"Without provider only: the driver kinds to set up, for example [\"claude\", \"opencode\"]; the rest are remembered as skipped. Omit to run every provider."`
+	Models       map[string]string                  `json:"models,omitempty" jsonschema:"Without provider only: the model slug per provider, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out uses its default."`
+	ModelOptions map[string][]harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options each provider's picked model runs with, keyed by driver kind like models, for example {\"codex\": [{\"id\": \"reasoningEffort\", \"value\": \"high\"}]}: a choice id for a select option, true or false for a switch, as the harness lists them per model. Only applies beside a picked model."`
+	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default."`
+	SkillsOnly   bool                               `json:"skills_only,omitempty" jsonschema:"true only updates Nexul's skills and goes alone with computer_id: one turn on the first confirmed provider, on its saved model and folder."`
 }
 
 type computerSetupUpdateIn struct {
 	ComputerID    string   `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
-	Provider      string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit to change the computer's overall confirmation."`
-	Confirmed     bool     `json:"confirmed" jsonschema:"true confirms, false withdraws the confirmation."`
+	Provider      string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit for the computer's overall confirmation."`
+	Confirmed     bool     `json:"confirmed" jsonschema:"true confirms, false withdraws."`
 	Skills        []string `json:"skills,omitempty" jsonschema:"With provider and confirmed true, required: the skill names this session's harness reported as discovered, for example [\"tdd\", \"nexul-memory\"]."`
-	SkillsVersion string   `json:"skills_version,omitempty" jsonschema:"Without provider and with confirmed true: the skills_version skill_get returns, once you have written every Nexul skill from skill_get into every path it lists, for example 3f9a1c0b2d4e. Records it for every confirmed provider on the computer and changes no confirmation."`
+	SkillsVersion string   `json:"skills_version,omitempty" jsonschema:"Without provider and with confirmed true: the skills_version skill_get returns, once every Nexul skill is written into every path it lists. Recorded for every confirmed provider."`
 }
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
@@ -140,25 +140,19 @@ func toComputerResult(c Computer) computerResult {
 
 func computerListTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_list", "List paired computers",
-		"Lists the computers you own in your order, where runs go to the first that can take them, each with its "+
-			"position, runs_at_once, how many play runs are running on it, its chat_project_id, its setup confirmation (overall and per provider, plus each "+
-			"provider's newest setup turn), and its MCP token's metadata, never the token itself. Pass id to read one "+
-			"computer alone with its T3 projects as T3 Code reports them, the t3_project_id play_run takes. A computer "+
-			"with paired false has no harness session yet, and pair_error says why its last pairing through its Nexul app "+
-			"failed; a computer with no runner was paired before the Nexul app and runs no agent work until computer_create "+
-			"with its id moves it. One without setup.confirmed_at needs computer_setup_run "+
-			"before agent work can use it. A runner whose connection dropped reads runner.reconnecting true for up to a minute "+
-			"before it counts as offline. A computer with a runner carries its facts, which only you can read: its system, git "+
-			"name and email, free disk, T3 Code's state, install and port, and the providers (version, models, signed in or "+
-			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
-			"available also lists its Docker containers (name, image, status); pass container_logs with a container's name "+
-			"to read its last lines (200 by default, at most 1000, each cut at 2000 characters), which needs the computer's "+
-			"Nexul app connected. Pass runner_logs to read the last lines the computer's Nexul app itself logged, the same way. After yours come the computers other people share with you by name, each named "+
-			"\"<owner>'s <computer> (shared)\" with runner.connected, runner.reconnecting and shared (its owner, and the permissions you hold: "+
-			"computers:see, computers:run_agents, computers:run_commands, computers:read_logs) and little else; with "+
-			"computers:read_logs it also lists the computer's containers and answers container_logs and runner_logs, with "+
-			"the container's own env values hidden. Its owner shares or stops sharing one with permission_overwrite_update "+
-			"on resource_type computer.",
+		"Lists the computers you own in your order (runs go to the first that can take them), each with its "+
+			"position, runs_at_once, running count, chat_project_id, setup confirmation (overall, per provider, newest "+
+			"setup turn) and its MCP token's metadata, never the token. Pass id to read one with its T3 projects, "+
+			"the t3_project_id play_run takes. paired false means no harness session yet (pair_error says why); "+
+			"no runner means it predates the Nexul app and runs no agent work until computer_create with its id "+
+			"moves it; no setup.confirmed_at needs computer_setup_run first. A computer with a runner carries facts "+
+			"only you can read. With id and docker in its facts it also lists Docker containers; "+
+			"container_logs reads a container's last lines and runner_logs the Nexul app's own (each line cut at 2000 "+
+			"characters), both needing its Nexul app connected. Computers shared with you follow, named "+
+			"\"<owner>'s <computer> (shared)\", with runner state and shared (owner and your permissions: "+
+			"computers:see, computers:run_agents, computers:run_commands, computers:read_logs); computers:read_logs "+
+			"adds containers and both logs, container env values hidden. Its owner shares one with "+
+			"permission_overwrite_update on resource_type computer.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)
@@ -293,16 +287,15 @@ type computerCreateResult struct {
 
 func computerCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_create", "Create computer",
-		"Adds one of your computers: creates it, waiting for its runner, and returns the one command that installs "+
-			"the runner there (commands.unix for Linux and macOS, commands.windows for Windows), ending in one signed token valid "+
-			"for an hour. Give the command to the computer's owner to run in a terminal on that computer from their own account; "+
-			"on Linux and macOS it uses sudo and installs a service that runs as them, never as root, and on Windows it needs no "+
-			"administrator and installs a task that runs as them while they are logged in. Once the "+
-			"runner connects, computer_list shows runner.connected on the computer. Pass id instead of name for a "+
-			"fresh command when a computer of yours has no runner yet and its last code expired, or to move a computer "+
-			"paired before the Nexul app onto it: once its runner connects it pairs through it, keeping its links, setup, "+
-			"MCP token and trails. A computer that had a tunnel still runs cloudflared, which sudo cloudflared service "+
-			"uninstall (cloudflared service uninstall in an administrator PowerShell on Windows) removes. Only you can see or use the computer.",
+		"Creates one of your computers, waiting for its runner, and returns the one command that installs "+
+			"the runner there (commands.unix for Linux and macOS, commands.windows for Windows), with a signed token valid "+
+			"for an hour. The computer's owner runs it from their own account in a terminal there: "+
+			"on Linux and macOS it uses sudo and installs a service running as them, never root; on Windows it needs no "+
+			"administrator. Once the runner connects, computer_list shows "+
+			"runner.connected. Pass id instead of name for a fresh command when a computer has no runner yet and its "+
+			"last code expired, or to move a computer paired before the Nexul app onto it, keeping its links, setup, "+
+			"MCP token and trails. A computer that had a tunnel still runs cloudflared; sudo cloudflared service "+
+			"uninstall removes it (in an administrator PowerShell on Windows, without sudo).",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in computerCreateIn) (any, error) {
 			e, err := createComputer(ctx, s, in)
@@ -322,11 +315,11 @@ func createComputer(ctx context.Context, s *Service, in computerCreateIn) (*Comp
 
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
-		"Pairs T3 Code on one of your computers now through its Nexul app, giving Nexul a harness session on it. A "+
-			"computer added with computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app "+
-			"connects; this pairs it again now, which mints a one-time token on the computer and exchanges it there, and a "+
-			"failure says why and leaves the computer as it was. With name, position, runs_at_once or chat_project_id it only "+
-			"changes those and pairs nothing. Returns the computer; after pairing, run computer_setup_run next so agent work can use it.",
+		"Pairs T3 Code on one of your computers now through its Nexul app, minting a one-time token there and "+
+			"exchanging it for a harness session. A computer from computer_create pairs, and re-pairs before its "+
+			"session ends, on its own once its Nexul app connects. With name, position, runs_at_once or "+
+			"chat_project_id it only changes those and pairs nothing. Returns the computer; after pairing, run "+
+			"computer_setup_run next.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
 			c, err := pairComputer(ctx, s, in)
@@ -358,7 +351,7 @@ func computerDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_delete", "Delete computer",
 		"Removes one of your computers: retires its Nexul app, which removes itself from the computer, revokes its MCP "+
 			"token, then deletes it. Agent work can no longer run there; add it again with computer_create. A failed step "+
-			"keeps the computer, so calling this again retries it. Returns {id, deleted: true}.",
+			"keeps the computer, so calling this again retries it.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in computerDeleteIn) (any, error) {
 			if err := s.DeleteComputer(ctx, mcpActorID(ctx), in.ID); err != nil {
@@ -370,17 +363,14 @@ func computerDeleteTool(s *Service) mcptool.Tool {
 
 func computerProjectCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_project_create", "Add a project to a computer",
-		"Adds a new T3 project to one of your paired computers so plays and @Agent turns can run in it there; use it "+
-			"when computer_list with the computer's id lists no T3 project for the work. With repository, a GitHub "+
-			"repository as owner/name of one of your projects, the Nexul app there clones it with a read-only token for that "+
-			"repository, so the computer needs no GitHub sign-in (an older app, or no GitHub App key, leaves it to the "+
-			"computer's own git credentials); with name it makes "+
-			"an empty folder, for a project with no repository or a computer with no T3 project at all, which setup also "+
-			"needs. Either lands in the folder most of the computer's T3 projects share, or ~/Code when it has none. "+
-			"Returns the new project's id, the t3_project_id play_run takes, once the clone is done; a clone that fails "+
-			"leaves no project behind and says why, such as a computer with no GitHub sign-in. A clone fails when the folder "+
-			"already exists and is not empty, and on a computer paired before cloning existed until computer_pair pairs "+
-			"it again; an empty project does not need that.",
+		"Adds a T3 project to one of your paired computers so plays and @Agent turns can run in it; use it "+
+			"when computer_list with the computer's id lists none for the work. With repository the Nexul app there "+
+			"clones it with a read-only token, so the computer needs no GitHub sign-in (an older app, or no GitHub App "+
+			"key, leaves it to the computer's own git credentials); with name it makes an empty folder, which a "+
+			"computer with no T3 project needs for setup. Either lands in the folder most of the computer's T3 "+
+			"projects share, or ~/Code when it has none. Returns the new project's id, the t3_project_id play_run "+
+			"takes, once the clone is done; a failed clone leaves no project behind, and on a computer paired before "+
+			"cloning existed it fails until computer_pair pairs it again.",
 		mcptool.Hints{Additive: true},
 		func(ctx context.Context, in computerProjectCreateIn) (any, error) {
 			return s.AddProject(ctx, mcpActorID(ctx), in.ID, in.Repository, in.Name)
@@ -389,17 +379,15 @@ func computerProjectCreateTool(s *Service) mcptool.Tool {
 
 func computerSetupRunTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_setup_run", "Run computer setup",
-		"Starts setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one "+
-			"setup turn per provider its harness lists, one after another, each connecting Nexul's MCP server, "+
+		"Starts setup on one of your paired computers: mints or reuses its MCP token, then runs one "+
+			"setup turn per provider its harness lists, each connecting Nexul's MCP server, "+
 			"installing the default skills and nexul-memory, and confirming through computer_setup_update. Pass "+
-			"providers to set up only some of them (the rest are remembered as skipped), or "+
-			"provider to run only that provider's turn again after it failed; on a confirmed provider it re-verifies "+
-			"without undoing anything. Pass skills_only when computer_list shows skills_outdated on confirmed providers "+
-			"and nothing else needs setup: one short turn on the first confirmed provider rewrites Nexul's skills from "+
-			"skill_get into the folders every provider reads and reports the version for all of them, with no MCP "+
-			"reconnect and no per-provider check. Returns at once with the run and its providers; computer_list shows each "+
-			"provider's turn state as it progresses. Setup only writes user-level files, so pass folder to run it in any "+
-			"project folder when the default one is gone. Only one setup or skills update runs on a computer at a time.",
+			"providers to set up only some (the rest are remembered as skipped), or provider to rerun one "+
+			"provider's turn after it failed; on a confirmed provider that re-verifies. Pass skills_only when "+
+			"computer_list shows skills_outdated on confirmed providers: one short turn on the first confirmed "+
+			"provider rewrites Nexul's skills from skill_get and reports the version for all. Returns at once with "+
+			"the run; computer_list shows each turn's state. Pass folder to run in any project folder when the "+
+			"default is gone. One setup or skills update runs per computer at a time.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerSetupRunIn) (any, error) {
 			if in.SkillsOnly {
@@ -432,14 +420,12 @@ func updateSkills(ctx context.Context, s *Service, in computerSetupRunIn) (*Setu
 func computerSetupUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_setup_update", "Update setup confirmation",
 		"Confirms or withdraws a setup confirmation on one of your paired computers; agent work runs there only while "+
-			"both the computer's overall confirmation and its provider's are set. With provider and confirmed true, "+
-			"it records that Nexul's MCP server is connected to that provider and its harness reports the given "+
-			"skills; without provider it confirms the computer overall, the last step of its setup. Confirmed false "+
+			"both its overall confirmation and its provider's are set. With provider and confirmed true it records "+
+			"that Nexul's MCP server is connected to that provider and its harness reports the given skills; "+
+			"without provider it confirms the computer overall, the last step of setup. Confirmed false "+
 			"withdraws the one named, and withdrawing the overall confirmation also revokes the computer's MCP token. "+
-			"With skills_version and confirmed true, alone, it records the skills_version you just wrote from "+
-			"skill_get for every confirmed provider, since they read the same skill folders, and confirms nothing. "+
-			"Only this tool writes a confirmation, and repeating a call changes nothing more; returns the computer's "+
-			"setup, which computer_list also shows.",
+			"With skills_version and confirmed true, alone, it records that version for every confirmed provider "+
+			"and confirms nothing. Returns the computer's setup.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in computerSetupUpdateIn) (any, error) {
 			if in.SkillsVersion != "" && (in.Provider != "" || len(in.Skills) > 0 || !in.Confirmed) {
@@ -470,10 +456,10 @@ func updateSetup(ctx context.Context, s *Service, userID string, in computerSetu
 
 func computerMCPTokenCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_mcp_token_create", "Create computer MCP token",
-		"Mints one of your paired computers its own personal access token, \"Nexul MCP on <computer>\", for its "+
-			"providers' MCP configs, revoking the one it had. The token is returned only in this response and is "+
-			"hidden in saved transcripts, so show it only to the computer's owner; computer_list shows its metadata "+
-			"afterwards. computer_setup_run mints one on its own, so call this only to rotate the token by hand.",
+		"Mints one of your paired computers a personal access token, \"Nexul MCP on <computer>\", for its "+
+			"providers' MCP configs, revoking the one it had. The token is returned only in this response, hidden "+
+			"in saved transcripts, so show it only to the computer's owner. computer_setup_run mints one on its "+
+			"own, so call this only to rotate the token by hand.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in computerIDIn) (any, error) {
 			return s.MintMCPToken(ctx, mcpActorID(ctx), in.ComputerID)
@@ -484,7 +470,7 @@ func computerMCPTokenDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_mcp_token_delete", "Delete computer MCP token",
 		"Revokes one of your paired computers' MCP token, so its providers lose Nexul's MCP server until "+
 			"computer_mcp_token_create or computer_setup_run mints a new one. Returns the revoked token's id. "+
-			"A computer without a token is not found; computer_list shows which computers have one.",
+			"computer_list shows which computers have one.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in computerIDIn) (any, error) {
 			userID := mcpActorID(ctx)

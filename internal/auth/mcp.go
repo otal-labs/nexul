@@ -14,7 +14,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type accountGetIn struct {
-	ID string `json:"id,omitempty" jsonschema:"The account's id, from account_list. Omit it to get the account this connection acts as."`
+	ID string `json:"id,omitempty" jsonschema:"The account's id, from account_list. Omit for the account this connection acts as."`
 }
 
 type accountDeleteIn struct {
@@ -50,12 +50,11 @@ func toAccountResult(u *User) accountResult {
 
 func accountGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("account_get", "Get account",
-		"Returns one account: without id, the account this MCP connection acts as, which also confirms Nexul is "+
+		"Returns one account: without id, the one this connection acts as, which also confirms Nexul is "+
 			"reachable; call it first in a session. With another account's id it needs accounts:read in any "+
-			"workspace, the same as seeing everyone in account_list, which lists every account with its workspace "+
-			"access. Returns the login, name, the display name the person chose if any, status (active, "+
-			"disabled, or removed), and welcome, their Welcome wizard progress: whether its first run happened, each "+
-			"step their roles give them as done, skipped or left, and dot, whether one still waits on them.",
+			"workspace, as account_list does, which lists every account with its workspace access. "+
+			"status is active, disabled, or removed; welcome is their Welcome wizard progress: each step their "+
+			"roles give them as done, skipped or left, and dot, whether one still waits on them.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountGetIn) (any, error) {
 			u, err := s.GetAccount(ctx, actorID(ctx), in.ID)
@@ -76,10 +75,9 @@ func accountGetTool(s *Service) mcptool.Tool {
 func accountDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("account_delete", "Remove account",
 		"Removes an account: it can no longer sign in, its credentials and workspace memberships are deleted, "+
-			"and its computers are disconnected, "+
-			"while everything it authored stays. The account remains listed as removed; account_update with status "+
-			"active restores it, without the deleted access. Needs accounts:delete in any workspace, and the last "+
-			"active Owner cannot be removed; returns {id, deleted: true}.",
+			"and its computers are disconnected, while everything it authored stays. The account remains listed as "+
+			"removed; account_update with status active restores it, without the deleted access. Needs accounts:delete "+
+			"in any workspace, and the last active Owner cannot be removed.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountDeleteIn) (any, error) {
 			if err := s.RemoveAccount(ctx, actorID(ctx), in.ID); err != nil {

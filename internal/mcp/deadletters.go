@@ -43,10 +43,9 @@ type deadLetterReplayIn struct {
 func deadLetterTools(store DeadLetterStore, pub deadletter.Publisher, gate anywhereGate) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dead_letter_list", "List dead letters",
-			"Lists events that exhausted their retries or failed permanently, newest first, with the error each one "+
-				"hit and its payload. Use it to diagnose a failure the event bus could not process, then "+
-				"dead_letter_replay to retry one once the cause is fixed. Needs instance:read in any workspace, "+
-				"because payloads carry every domain's data.",
+			"Lists events that exhausted their retries or failed permanently, newest first, with each one's error "+
+				"and payload. Use it to diagnose a failure the bus could not process, then dead_letter_replay "+
+				"to retry one once the cause is fixed. Needs instance:read in any workspace.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in deadLetterListIn) (any, error) {
 				if err := gate.RequireAnywhere(ctx, permissions.InstanceRead); err != nil {

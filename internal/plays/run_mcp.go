@@ -81,40 +81,40 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 
 type playRunIn struct {
 	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
-	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the workspace's Decisions check play on a done ticket without looking up its play_id: pass it with target_type ticket and target_id, and no play_id or other run choices."`
-	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays on a ticket or doc the daily cap paused, instead of running a play: pass it with target_type and target_id only. Its count of automatic runs starts again and its queued runs go ahead."`
+	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the Decisions check play on a done ticket instead of a play_id; pass only target_type ticket and target_id."`
+	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays the daily cap paused on a ticket or doc, instead of running a play; pass only target_type and target_id. Its automatic-run count restarts and queued runs go ahead."`
 	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, interview, or stack."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
-	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
+	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to read before the run, from memory_list; its always-included ones come anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
-	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list, to run on this time. Omit to run on the first of the caller's computers that can take it."`
-	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project on that computer to run in, from computer_list with that computer's id, remembered as the target project's checkout there. Required when none of the caller's computers has a checkout of the project."`
-	Provider           string                  `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
-	Model              string                  `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
-	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies with model; an option left out keeps the harness default."`
+	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of your paired computers, from computer_list. Omit to use the first that can take the run."`
+	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project to run in, from computer_list with that computer's id, remembered as the target project's checkout there. Required when none of your computers has a checkout of the project."`
+	Provider           string                  `json:"provider,omitempty" jsonschema:"Harness provider, for example claude. Omit for the computer's default."`
+	Model              string                  `json:"model,omitempty" jsonschema:"Model, for example sonnet-5. Omit for the provider's default."`
+	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option, true or false for a switch, as the harness lists them per model. Only applies with model."`
 }
 
 type trailListIn struct {
 	ID         string     `json:"id,omitempty" jsonschema:"A trail's id. Returns that one trail with its run choices, open question, and newest steps instead of a list."`
-	TargetType TargetType `json:"target_type,omitempty" jsonschema:"Without id: the target kind to list trails for, ticket, doc, interview, or stack."`
+	TargetType TargetType `json:"target_type,omitempty" jsonschema:"Without id: the target kind, ticket, doc, interview, or stack."`
 	TargetID   string     `json:"target_id,omitempty" jsonschema:"Without id: the ticket's or doc's id, or for an interview the project's id."`
 	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the target's trails of this play."`
-	Steps      int        `json:"steps,omitzero" jsonschema:"With id: how many of the newest transcript steps to return, 1 to 300. Defaults to 50."`
+	Steps      int        `json:"steps,omitzero" jsonschema:"With id: newest transcript steps to return, 1 to 300. Defaults to 50."`
 	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first: queued, started, skipped, didn't run, or cancelled, each with why, plus whether the daily cap paused auto plays there."`
 	mcptool.PageArgs
 }
 
 // answerIn is harness.AnswerValue with schema descriptions; its fields must stay identical for the conversion in steerTrail.
 type answerIn struct {
-	Selected []string `json:"selected,omitempty" jsonschema:"The chosen options, each by its value or, when it has none, its label; several only for a multi-select question."`
+	Selected []string `json:"selected,omitempty" jsonschema:"The chosen options, each by its value or, when it has none, its label; several only for multi-select."`
 	Text     string   `json:"text,omitempty" jsonschema:"A typed answer, instead of choosing options."`
 }
 
 type trailUpdateIn struct {
 	ID       string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
-	Answer   map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
+	Answer   map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}."`
 	Stop     bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
-	Continue string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
+	Continue string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as its next turn, without the play's instructions again."`
 	Cancel   bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
 }
 
@@ -130,21 +130,17 @@ type queuePage struct {
 func RunMCPTools(r *Runner) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("play_run", "Run play",
-			"Starts a play on a ticket, a doc, or a project's interview as the calling user, on that user's own "+
-				"paired computer, and posts the run into the target's thread. Check play_list with type first to see "+
-				"which plays the caller may run there; one run at a time per target. A doc play locks its doc as the run "+
-				"starts and leaves it locked, so the doc's title and body refuse edits until someone unlocks it; "+
-				"Clarify via AI is the exception, its run opens the doc's next clarification round and unlocks the doc again "+
-				"when it ends, unless the doc was locked before. "+
-				"With decisions_check true instead "+
-				"of a play_id it runs the workspace's Decisions check play on a done ticket, which reads the ticket, its pull "+
-				"requests, and the project's decisions log, then adds an entry, marks a reversed one superseded, or "+
-				"leaves the log alone; use that when the ticket shows the decisions check didn't run. With "+
-				"resume_auto_plays true it resumes auto plays on a ticket or doc the daily cap paused, so its queued runs go "+
-				"ahead, and returns its queue as trail_list with queue does. Otherwise returns the trail "+
-				"in state starting; poll trail_list with its id for the outcome, and answer or stop it with trail_update. "+
-				"The first run in a project the caller has not linked needs computer_id and t3_project_id, which are then "+
-				"saved as their link there; without them it refuses rather than run on their pairing defaults.",
+			"Starts a play on a ticket, a doc, or a project's interview as the calling user, on their own "+
+				"paired computer, and posts the run into the target's thread; one run at a time per target. Check "+
+				"play_list with type first for the plays the caller may run there. A doc play locks its doc as the run "+
+				"starts and leaves it locked, so its title and body refuse edits until someone unlocks it; "+
+				"Clarify via AI instead opens the doc's next clarification round and unlocks the doc when it ends, "+
+				"unless it was locked before. With decisions_check true instead of a play_id it runs the Decisions "+
+				"check play on a done ticket, which reads it and its pull requests and updates the project's decisions "+
+				"log; use it when the ticket shows the check didn't run. With resume_auto_plays true it lets queued runs go ahead and "+
+				"returns the queue as trail_list with queue does. Otherwise returns the trail in state starting; poll "+
+				"trail_list with its id, and answer or stop it with trail_update. The first run in a project the "+
+				"caller has not linked needs computer_id and t3_project_id, saved as their link there.",
 			mcptool.Hints{},
 			func(ctx context.Context, in playRunIn) (any, error) {
 				if in.ResumeAutoPlays {
@@ -157,14 +153,11 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				return toTrailSummary(t), nil
 			}),
 		mcptool.New("trail_list", "List trails",
-			"Lists the trails of play runs on one target, newest first, filtered to one play with play_id: who "+
-				"started each, its state, and how it ended. With id it returns that one trail instead, with its run "+
-				"choices, the question a waiting run stopped on, and its newest transcript steps (summaries, not raw "+
-				"tool output). Pass either id, or target_type and target_id. With queue true it lists the target's auto "+
-				"runs instead: each queued, started, skipped, didn't-run, or cancelled run of an auto play with why, and "+
-				"whether the daily cap paused auto plays there. A trail reads to its starter and to whoever can see its "+
-				"play, and the doc's thread permission is needed for a doc trail; another trail, or a queued run of a play "+
-				"the caller can't see, is left out or not found.",
+			"Lists the trails of play runs on one target, newest first, optionally of one play. With id it returns that one trail instead, with its run "+
+				"choices, the question a waiting run stopped on, and its newest transcript steps. "+
+				"Pass either id, or target_type and target_id. With queue true it lists the target's auto "+
+				"runs instead. A trail is visible to its starter and to whoever can see its play (a doc trail also needs "+
+				"the doc's thread permission); others are left out or not found.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in trailListIn) (any, error) {
 				if in.Queue && in.ID == "" {
@@ -192,13 +185,12 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				return mcptool.Paginate(out, in.PageArgs), nil
 			}),
 		mcptool.New("trail_update", "Answer, stop, or continue play run",
-			"Steers a play run: answer gives a waiting trail the answers to its question so the run continues "+
+			"Steers a play run: answer gives a waiting trail its question's answers so the run continues "+
 				"on the same trail, stop true interrupts an active run, and continue sends a message to an ended run's "+
-				"own harness thread so it goes on as the same trail, without the play's instructions again. When that "+
-				"thread was deleted, continue starts the play again as a new run carrying the message and returns that "+
-				"trail. Pass exactly one of the three; trail_list with the trail's id shows the question and its ids. "+
-				"Returns the trail. Allowed for the run's starter or someone holding plays:write on its play; a run the caller can't read is not found. "+
-				"With cancel true instead, id names a queued auto run from trail_list with queue true, which is dropped "+
+				"harness thread, or starts the play again as a new run carrying it when that thread was deleted. "+
+				"trail_list with the trail's id shows the question and its ids. "+
+				"Returns the trail. Allowed for the run's starter or someone holding plays:write on its play. "+
+				"With cancel true instead, id names a queued auto run, which is dropped "+
 				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
