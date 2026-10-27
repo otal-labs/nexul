@@ -140,22 +140,22 @@ func ticketKey(prefix string, number int) string {
 }
 
 type ticketListIn struct {
-	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only tickets in this project, by its id from project_list."`
-	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, by its id."`
-	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and the text of notes on the ticket's thread, for example login timeout. Title and body matches come first, by relevance, then note-only matches."`
-	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets still waiting on a blocker whose pull request has not merged and that has not reached a done-stage column."`
-	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date, as YYYY-MM-DD such as 2026-10-01. Tickets without a due date are left out."`
-	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date, as YYYY-MM-DD such as 2026-10-31. Tickets without a due date are left out."`
+	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only tickets in this project, from project_list."`
+	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, from doc_list."`
+	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout. Title and body matches come first, by relevance, then note-only matches."`
+	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker with no merged pull request that is not in a done-stage column."`
+	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); tickets without a due date are left out."`
+	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD, such as 2026-10-31); tickets without a due date are left out."`
 	mcptool.PageArgs
 }
 
 func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_list", "List tickets",
-		"Lists tickets without their bodies: each with its id, key (such as REF-102), title, status column, type, "+
-			"category, people, due date (due_on, empty when none), labels, and, when it is blocked, the keys of the blockers it still waits on (waiting_on). "+
-			"Filter by project, by source doc, by a full-text query, by due date range (due_from and due_to, inclusive), or to blocked tickets only; filters combine. "+
+		"Lists tickets without their bodies: each with its id, key, title, status column, type, "+
+			"category, people, due_on, labels, and, when blocked, the keys of the blockers it still waits on (waiting_on). "+
+			"Filters combine: project, source doc, full-text query, due date range (inclusive), or blocked tickets only. "+
 			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Tickets come oldest first, "+
-			"by due date when a due date filter is given, and by relevance with a query; every match can be paged to. Returns at most 100 tickets per page.",
+			"by due date when a due date filter is given, and by relevance with a query.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketListIn) (any, error) {
 			if in.ProjectID != "" {
@@ -202,8 +202,8 @@ func linkedKey(l tickets.LinkedTicket) string {
 }
 
 type ticketGetIn struct {
-	ID        string `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
-	Workspace string `json:"workspace,omitempty" jsonschema:"The workspace to look a ticket key up in, by its id or slug from workspace_list, for example otal. Needed only when the key exists in more than one of your workspaces; an id needs none."`
+	ID        string `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
+	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
 }
 
 type ticketDetail struct {
@@ -247,7 +247,7 @@ type reviewResult struct {
 
 func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Service) mcptool.Tool {
 	return mcptool.New("ticket_get", "Get ticket",
-		"Returns one ticket with its markdown body, status column, type, category, people, due date, and labels, plus its "+
+		"Returns one ticket with its markdown body and fields, plus its "+
 			"linked pull requests and branches, the ticket it was found in and the bugs found in it, what blocks it "+
 			"and what it blocks (each with done read from its column's stage), the code reviews of its pull requests, "+
 			"and its test_target. Use it before changing a ticket with ticket_update, and before testing one: "+
@@ -326,26 +326,25 @@ func linkedAll(ls []tickets.LinkedTicket) []linkedResult {
 }
 
 type ticketCreateIn struct {
-	ProjectID     string `json:"project_id" jsonschema:"The project's id (a UUID), from project_list."`
-	Title         string `json:"title" jsonschema:"A short summary, for example Login times out on slow networks."`
-	Body          string `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omitted with a type_id, the ticket starts from that template."`
+	ProjectID     string `json:"project_id" jsonschema:"The project's id, from project_list."`
+	Title         string `json:"title" jsonschema:"A short summary."`
+	Body          string `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omit it with a type_id to start from that template."`
 	TypeID        string `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get. Omit for the project's first type."`
-	CategoryID    string `json:"category_id,omitempty" jsonschema:"The category's id, from project_get. Omit to leave it uncategorized."`
-	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, for example onik97."`
-	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it in its testing stage, for example lena."`
-	DocID         string `json:"doc_id,omitempty" jsonschema:"The id of the doc this ticket is derived from."`
-	OriginID      string `json:"origin_id,omitempty" jsonschema:"For a bug: the id or key of the ticket it was found in, for example REF-98."`
+	CategoryID    string `json:"category_id,omitempty" jsonschema:"The category's id, from project_get."`
+	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, such as onik97."`
+	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it, such as lena."`
+	DocID         string `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list."`
+	OriginID      string `json:"origin_id,omitempty" jsonschema:"For a bug: the id or key of the ticket it was found in, such as REF-98."`
 	OriginUnknown bool   `json:"origin_unknown,omitzero" jsonschema:"For a bug: true when nobody knows which ticket it was found in."`
 }
 
 func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_create", "Create ticket",
-		"Creates a ticket in a project and returns it with its key (such as REF-102). The reporter is recorded as "+
-			"Nexul on behalf of you; developer and tester are member logins. project_get lists the project's ticket "+
-			"types with their body_template: fill that template as the body, or omit the body with a type_id to start "+
-			"from it. A bug (the type named bug) needs origin_id, the ticket it was found in, or origin_unknown true "+
-			"when nobody knows; never guess an origin. Set its status column, labels, and blockers afterwards with "+
-			"ticket_update; it starts in the project's first backlog column.",
+		"Creates a ticket in a project and returns it with its key. The reporter is recorded as "+
+			"Nexul on behalf of you. project_get lists the project's ticket types with their body_template. "+
+			"A bug (the type named bug) needs origin_id, the ticket it was found in, or origin_unknown true "+
+			"when nobody knows; never guess an origin. It starts in the project's first backlog column; set its "+
+			"status, labels, and blockers afterwards with ticket_update.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in ticketCreateIn) (any, error) {
 			originID, err := originOf(ctx, t, w, in.ProjectID, in.OriginID)
@@ -395,9 +394,9 @@ func originOf(ctx context.Context, t *tickets.Service, w *workspace.Service, pro
 }
 
 type ticketUpdateIn struct {
-	ID               string        `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
-	Workspace        string        `json:"workspace,omitempty" jsonschema:"The workspace to look ticket keys up in, by its id or slug from workspace_list, for example otal. Needed only when id is a key that exists in more than one of your workspaces; the keys in found_in_id and the blocker fields resolve in the ticket's own workspace unless this names another."`
-	Title            *string       `json:"title,omitempty" jsonschema:"A new title; it cannot be empty."`
+	ID               string        `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
+	Workspace        string        `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when id is a key that exists in more than one of your workspaces. Keys in found_in_id and the blocker fields resolve in the ticket's own workspace unless this names another."`
+	Title            *string       `json:"title,omitempty" jsonschema:"A new title."`
 	Body             *string       `json:"body,omitempty" jsonschema:"The ticket's spec, as markdown; an empty string clears it. Change it only when a person asks; add anything you learn afterwards as a note with message_post's file, and if the spec looks wrong, say so and suggest the person edit it."`
 	ProjectID        *string       `json:"project_id,omitempty" jsonschema:"Move the ticket to this project, by its id from project_list; set status_id to one of its columns too."`
 	StatusID         *string       `json:"status_id,omitempty" jsonschema:"Move the ticket to this status column, by its id from project_get. It lands at the bottom of the column."`
@@ -406,39 +405,39 @@ type ticketUpdateIn struct {
 	CategoryID       *string       `json:"category_id,omitempty" jsonschema:"The category's id, from project_get; an empty string uncategorizes the ticket."`
 	Developer        *string       `json:"developer,omitempty" jsonschema:"The member login who builds it; an empty string clears it."`
 	Tester           *string       `json:"tester,omitempty" jsonschema:"The member login who tests it; an empty string clears it."`
-	DueOn            *string       `json:"due_on,omitempty" jsonschema:"The ticket's due date, a date as YYYY-MM-DD such as 2026-10-30; an empty string clears it. Needs tickets:write."`
-	DocID            *string       `json:"doc_id,omitempty" jsonschema:"The id of the doc this ticket is derived from, its source, from doc_list; an empty string clears it."`
-	AddLabels        []string      `json:"add_labels,omitempty" jsonschema:"Labels to attach, for example urgent."`
+	DueOn            *string       `json:"due_on,omitempty" jsonschema:"The due date, YYYY-MM-DD such as 2026-10-30; an empty string clears it."`
+	DocID            *string       `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list; an empty string clears it."`
+	AddLabels        []string      `json:"add_labels,omitempty" jsonschema:"Labels to attach."`
 	RemoveLabels     []string      `json:"remove_labels,omitempty" jsonschema:"Labels to detach."`
 	FoundInID        string        `json:"found_in_id,omitempty" jsonschema:"The id or key of the ticket this bug was found in; replaces any earlier found-in."`
-	FoundInUnknown   bool          `json:"found_in_unknown,omitzero" jsonschema:"True marks that nobody knows which ticket this bug was found in."`
-	ClearFoundIn     bool          `json:"clear_found_in,omitzero" jsonschema:"True removes the found-in link or the unknown marker."`
-	AddBlockerIDs    []string      `json:"add_blocker_ids,omitempty" jsonschema:"Ids or keys of tickets that must merge a pull request or reach a done-stage column first. A link that would form a cycle is refused."`
+	FoundInUnknown   bool          `json:"found_in_unknown,omitzero" jsonschema:"true marks the found-in ticket as unknown."`
+	ClearFoundIn     bool          `json:"clear_found_in,omitzero" jsonschema:"true removes the found-in link or unknown marker."`
+	AddBlockerIDs    []string      `json:"add_blocker_ids,omitempty" jsonschema:"Ids or keys of tickets that must merge a pull request or reach a done-stage column first."`
 	RemoveBlockerIDs []string      `json:"remove_blocker_ids,omitempty" jsonschema:"Ids or keys of blockers to remove."`
 	LinkPR           *prLinkIn     `json:"link_pr,omitempty" jsonschema:"A pull request to link to the ticket."`
 	LinkBranch       *branchLinkIn `json:"link_branch,omitempty" jsonschema:"A branch to link to the ticket."`
-	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink from the ticket; one that is not linked changes nothing."`
-	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink from the ticket; one that is not linked changes nothing."`
+	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink; one that is not linked changes nothing."`
+	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink; one that is not linked changes nothing."`
 }
 
 type prLinkIn struct {
-	Owner  string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
-	Repo   string `json:"repo" jsonschema:"The repository name, for example nexul."`
-	Number int    `json:"number" jsonschema:"The pull request number, for example 42."`
+	Owner  string `json:"owner" jsonschema:"The repository owner."`
+	Repo   string `json:"repo" jsonschema:"The repository name."`
+	Number int    `json:"number" jsonschema:"The pull request number."`
 	Title  string `json:"title,omitempty" jsonschema:"The pull request's title."`
 	SHA    string `json:"sha,omitempty" jsonschema:"The pull request's head commit."`
 }
 
 type prRefIn struct {
-	Owner  string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
-	Repo   string `json:"repo" jsonschema:"The repository name, for example nexul."`
-	Number int    `json:"number" jsonschema:"The pull request number, for example 42."`
+	Owner  string `json:"owner" jsonschema:"The repository owner."`
+	Repo   string `json:"repo" jsonschema:"The repository name."`
+	Number int    `json:"number" jsonschema:"The pull request number."`
 }
 
 type branchLinkIn struct {
-	Owner  string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
-	Repo   string `json:"repo" jsonschema:"The repository name, for example nexul."`
-	Branch string `json:"branch" jsonschema:"The branch name, for example fix/login-timeout."`
+	Owner  string `json:"owner" jsonschema:"The repository owner."`
+	Repo   string `json:"repo" jsonschema:"The repository name."`
+	Branch string `json:"branch" jsonschema:"The branch name."`
 }
 
 type ticketUpdateResult struct {
@@ -448,12 +447,11 @@ type ticketUpdateResult struct {
 
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
-		"Changes a ticket: its title and body, project, status column and place in it, type, category, developer "+
-			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. Only the fields "+
-			"you send change; an omitted field keeps its value. The changes apply in the order the fields are listed here and "+
-			"stop at the first failure, whose message names the field and the ones already applied. To record a test "+
-			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete. Returns "+
-			"the updated ticket and the list of fields applied.",
+		"Changes a ticket's title, body, project, status column and position, type, category, developer "+
+			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. "+
+			"The changes apply in the order the fields are listed here and "+
+			"stop at the first failure. To record a test "+
+			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in ticketUpdateIn) (any, error) {
 			if err := in.checkFoundIn(); err != nil {

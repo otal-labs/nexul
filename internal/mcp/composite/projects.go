@@ -74,20 +74,20 @@ type labelResult struct {
 }
 
 type projectGetIn struct {
-	ID string `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
+	ID string `json:"id" jsonschema:"The project's id, from project_list."`
 }
 
 func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
 	return mcptool.New("project_get", "Get project",
-		"Returns one project with everything needed to file and move its tickets: its status columns in board "+
+		"Returns one project with what filing and moving its tickets needs: its status columns in board "+
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
-			"(each with the body_template a new ticket fills), labels with this project's colors, repositories "+
-			"(each with its role, app or tests), where its tests live, its doc folders (the one-level groups every "+
-			"doc lives in exactly one of, the default Main first, where a new doc goes unless doc_create names "+
-			"another), delete_impact, the tickets, repositories, "+
-			"and services that block deleting it. Who is in the project is its rules', which permission_overwrite_list "+
-			"reads and permission_overwrite_update changes. Its setup says whether the project "+
-			"wizard was finished and which steps were done or skipped; an unfinished project still works in full. Call it before ticket_create or ticket_update to get valid "+
+			"(each with the body_template a new ticket fills), labels with colors, repositories "+
+			"(each with its role, app or tests), where its tests live, and its doc folders (the default Main first, "+
+			"where a new doc goes unless doc_create names another). It also returns delete_impact, the tickets, repositories, "+
+			"and services that block deleting it, and its setup: whether the project "+
+			"wizard was finished and which steps were done or skipped. "+
+			"Who is in the project is set by its rules, which permission_overwrite_list "+
+			"reads and permission_overwrite_update changes. Call it before ticket_create or ticket_update to get valid "+
 			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
 			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -189,10 +189,10 @@ func projectDocFolders(ctx context.Context, d DocFolders, projectID string) ([]d
 }
 
 type projectUpdateIn struct {
-	ID            string             `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
+	ID            string             `json:"id" jsonschema:"The project's id, from project_list."`
 	Name          *string            `json:"name,omitempty" jsonschema:"A new display name."`
 	Icon          *string            `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. An empty string clears it."`
-	Prefix        *string            `json:"prefix,omitempty" jsonschema:"2 to 5 letters or digits, starting with a letter, for a project that has no prefix yet, for example REF or P1. An existing prefix never changes, since ticket keys are built from it."`
+	Prefix        *string            `json:"prefix,omitempty" jsonschema:"2 to 5 letters or digits, starting with a letter, such as REF, for a project that has no prefix yet; an existing prefix never changes."`
 	Position      *int               `json:"position,omitempty" jsonschema:"The project's place in the workspace's order, 0 for first."`
 	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (in the repository that deploys), separate (in a tests repository), or an empty string to withdraw the answer."`
 	AddRepos      []repoAddIn        `json:"add_repos,omitempty" jsonschema:"Repositories to attach; a repository belongs to one project only."`
@@ -201,7 +201,7 @@ type projectUpdateIn struct {
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
 	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project, even for a label no ticket uses yet."`
-	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. A folder groups the project's docs one level deep and every doc lives in exactly one; the default folder, Main, takes new docs and can be renamed but never deleted. Needs docs:write."`
+	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. The default folder, Main, takes new docs and can be renamed but never deleted."`
 	Setup         *setupIn           `json:"setup,omitempty" jsonschema:"The project wizard's record of this project, as project_get shows it under setup."`
 }
 
@@ -215,11 +215,11 @@ type setupIn struct {
 type docFolderChanges struct {
 	Create []docFolderCreateIn `json:"create,omitempty" jsonschema:"New folders, listed after the existing ones."`
 	Update []docFolderUpdateIn `json:"update,omitempty" jsonschema:"Folders to rename, the default one included."`
-	Delete []string            `json:"delete,omitempty" jsonschema:"Ids of folders to delete; their docs move to the default folder, never deleted, and the default folder itself is refused."`
+	Delete []string            `json:"delete,omitempty" jsonschema:"Ids of folders to delete; their docs move to the default folder."`
 }
 
 type docFolderCreateIn struct {
-	Name string `json:"name" jsonschema:"The folder's name, unique in the project ignoring case, for example GetSource."`
+	Name string `json:"name" jsonschema:"The folder's name, unique in the project ignoring case."`
 }
 
 type docFolderUpdateIn struct {
@@ -228,32 +228,32 @@ type docFolderUpdateIn struct {
 }
 
 type repoAddIn struct {
-	Owner       string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
-	Name        string `json:"name" jsonschema:"The repository name, for example nexul."`
+	Owner       string `json:"owner" jsonschema:"The repository owner."`
+	Name        string `json:"name" jsonschema:"The repository name."`
 	ConnectorID string `json:"connector_id,omitempty" jsonschema:"The git connector that hosts it. Defaults to github."`
 	Role        string `json:"role,omitempty" jsonschema:"app (the default, the repository stacks build from) or tests (a tests repository, never deployed; attaching one records the tests location as separate)."`
 }
 
 type repoRefIn struct {
-	Owner string `json:"owner" jsonschema:"The repository owner, for example otal-labs."`
-	Name  string `json:"name" jsonschema:"The repository name, for example nexul."`
+	Owner string `json:"owner" jsonschema:"The repository owner."`
+	Name  string `json:"name" jsonschema:"The repository name."`
 }
 
 type statusChanges struct {
 	Create []statusCreateIn `json:"create,omitempty" jsonschema:"New columns, added at the end of the board."`
-	Update []statusUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing columns; omitted fields keep their values."`
+	Update []statusUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing columns."`
 	Delete []string         `json:"delete,omitempty" jsonschema:"Ids of columns to delete; a column still holding tickets is refused."`
 }
 
 type statusCreateIn struct {
-	Name  string `json:"name" jsonschema:"The column's name, for example In review."`
+	Name  string `json:"name" jsonschema:"The column's name."`
 	Stage string `json:"stage,omitempty" jsonschema:"The stage rules read: backlog, progress, review, testing, or done. Defaults to backlog."`
 	Icon  string `json:"icon,omitempty" jsonschema:"A display icon: CircleDashed, Circle, CircleDot, CircleEllipsis, CircleCheckBig, or CircleX."`
 }
 
 type statusUpdateIn struct {
 	ID       string  `json:"id" jsonschema:"The column's id, from project_get."`
-	Name     *string `json:"name,omitempty" jsonschema:"A new name; tickets keep their column."`
+	Name     *string `json:"name,omitempty" jsonschema:"A new name."`
 	Stage    *string `json:"stage,omitempty" jsonschema:"A new stage: backlog, progress, review, testing, or done."`
 	Icon     *string `json:"icon,omitempty" jsonschema:"A new icon from the list statuses.create gives; an empty string clears it."`
 	Position *int    `json:"position,omitempty" jsonschema:"The column's place on the board, 0 for first."`
@@ -261,12 +261,12 @@ type statusUpdateIn struct {
 
 type categoryChanges struct {
 	Create []categoryCreateIn `json:"create,omitempty" jsonschema:"New categories, added last."`
-	Update []categoryUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing categories; omitted fields keep their values."`
+	Update []categoryUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing categories."`
 	Delete []string           `json:"delete,omitempty" jsonschema:"Ids of categories to delete; their tickets become uncategorized, never deleted."`
 }
 
 type categoryCreateIn struct {
-	Name  string `json:"name" jsonschema:"The category's name, for example Sprint 1."`
+	Name  string `json:"name" jsonschema:"The category's name."`
 	Color string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, or lime."`
 }
 
@@ -279,26 +279,26 @@ type categoryUpdateIn struct {
 
 type ticketTypeChanges struct {
 	Create []ticketTypeCreateIn `json:"create,omitempty" jsonschema:"New ticket types, added last."`
-	Update []ticketTypeUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing ticket types; omitted fields keep their values."`
+	Update []ticketTypeUpdateIn `json:"update,omitempty" jsonschema:"Changes to existing ticket types."`
 	Delete []string             `json:"delete,omitempty" jsonschema:"Ids of ticket types to delete; a type still used by a ticket is refused."`
 }
 
 type ticketTypeCreateIn struct {
-	Name         string `json:"name" jsonschema:"The type's name, for example chore. A type named bug requires a found-in on its tickets."`
+	Name         string `json:"name" jsonschema:"The type's name. A type named bug requires a found-in on its tickets."`
 	Color        string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, or lime."`
 	BodyTemplate string `json:"body_template,omitempty" jsonschema:"Markdown sections that pre-fill a new ticket of this type."`
 }
 
 type ticketTypeUpdateIn struct {
 	ID           string  `json:"id" jsonschema:"The ticket type's id, from project_get."`
-	Name         *string `json:"name,omitempty" jsonschema:"A new name; tickets keep their type."`
+	Name         *string `json:"name,omitempty" jsonschema:"A new name."`
 	Color        *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, or lime; an empty string clears it."`
 	BodyTemplate *string `json:"body_template,omitempty" jsonschema:"A new body template in markdown; existing tickets are never rewritten, and an empty string clears it."`
 	Position     *int    `json:"position,omitempty" jsonschema:"The type's place in the project's order, 0 for first."`
 }
 
 type labelColorIn struct {
-	Label string `json:"label" jsonschema:"The label, for example urgent."`
+	Label string `json:"label" jsonschema:"The label."`
 	Color string `json:"color" jsonschema:"cyan, emerald, orange, fuchsia, or lime."`
 }
 
@@ -309,15 +309,14 @@ type projectUpdateResult struct {
 
 func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
 	return mcptool.New("project_update", "Update project",
-		"Changes a project: its name, icon, prefix (only when it has none), place in the workspace, and tests "+
+		"Changes a project's name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
-			"status columns, categories, and ticket types; sets label colors; and creates, renames, and deletes doc "+
-			"folders, the groups a project's docs live in (doc_update moves a doc between them); and finishes or reopens its setup "+
-			"and marks project wizard steps done or skipped. Only the fields you send change; "+
-			"an omitted field keeps its value. The changes apply in the order the fields are listed here, creates "+
-			"before updates before deletes, and stop at the first failure, whose message names the field and the "+
-			"ones already applied. Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
-			"shows it, with new ids, and the list of fields applied.",
+			"status columns, categories, and ticket types; sets label colors; creates, renames, and deletes doc "+
+			"folders (doc_update moves a doc between them); and finishes or reopens its setup "+
+			"and marks project wizard steps done or skipped. The changes apply in the order the fields are listed here, creates "+
+			"before updates before deletes, and stop at the first failure. "+
+			"Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
+			"shows it, with new ids.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in projectUpdateIn) (any, error) {
 			if err := requireOwnerActor(ctx); err != nil {

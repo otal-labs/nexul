@@ -11,16 +11,16 @@ import (
 )
 
 type notificationListIn struct {
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications about tickets, docs, memories, and stacks in this workspace, from workspace_list. Omit for every workspace."`
-	UnreadOnly  bool   `json:"unread_only,omitzero" jsonschema:"Only notifications you have not read yet. Defaults to false."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications in this workspace, from workspace_list."`
+	UnreadOnly  bool   `json:"unread_only,omitzero" jsonschema:"Only notifications you have not read yet."`
 	mcptool.PageArgs
 }
 
 type notificationUpdateIn struct {
-	ID          string `json:"id,omitempty" jsonschema:"One notification's id, from notification_list, to mark read."`
+	ID          string `json:"id,omitempty" jsonschema:"One notification's id, from notification_list."`
 	All         bool   `json:"all,omitzero" jsonschema:"true marks every one of your notifications read. Send instead of id."`
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"With all, marks only this workspace's notifications read, from workspace_list. Omit for every workspace."`
-	Unread      bool   `json:"unread,omitzero" jsonschema:"true with id puts that notification back to unread instead of marking it read. Not allowed with all."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"With all, only this workspace's notifications, from workspace_list."`
+	Unread      bool   `json:"unread,omitzero" jsonschema:"true with id puts that notification back to unread. Not allowed with all."`
 }
 
 type notificationResult struct {
@@ -49,9 +49,8 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 		mcptool.New("notification_list", "List notifications",
 			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, memory, or stack (subject), and whether you have read it. "+
 				"A stack's item is a service that crashed (service.container_stopped) or came back (service.container_recovered), or its 5xx share went over its error-rate rule (stack.error_rate_crossed) or back under it (stack.error_rate_recovered), worded in subject_title, and its subject_id is the stack to read with stack_get. "+
-				"A doc's item also names the folder the doc is in now (folder_id, folder_name, folder_is_default for its project's default folder), so items can be grouped by folder. "+
-				"Set workspace_id to see one workspace's inbox and unread_only to see only what is new, then mark items read with notification_update. "+
-				"It never shows another user's inbox.",
+				"A doc's item also names its current folder (folder_id, folder_name, folder_is_default). "+
+				"Mark items read with notification_update.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in notificationListIn) (any, error) {
 				userID, err := notificationCaller(ctx)
@@ -72,10 +71,9 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				return mcptool.PageOf(out, total, in.Window()), nil
 			}),
 		mcptool.New("notification_update", "Mark notifications read or unread",
-			"Marks one of your notifications read by id, or every one of them with all true; send exactly one of the two. "+
+			"Marks one of your notifications read by id, or every one of them with all true. "+
 				"With id and unread true it puts that notification back to unread instead, so it counts in your badge again. "+
-				"Use notification_list to find ids and what is unread. "+
-				"It only ever touches your own inbox, and marking a notification the way it already is changes nothing.",
+				"Use notification_list to find ids and what is unread.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in notificationUpdateIn) (any, error) {
 				userID, err := notificationCaller(ctx)

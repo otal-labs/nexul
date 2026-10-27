@@ -34,10 +34,10 @@ type watcherResult struct {
 }
 
 type docListIn struct {
-	Query           string `json:"query,omitempty" jsonschema:"Full-text search over titles and bodies, for example deploy rollback. Omit to browse. Archived docs never match a search."`
-	ProjectID       string `json:"project_id,omitempty" jsonschema:"Only docs in this project; project_list lists projects. Omit for every project."`
-	FolderID        string `json:"folder_id,omitempty" jsonschema:"Only docs in this folder. Every doc lives in exactly one folder of its project, the default folder Main unless placed elsewhere; project_get lists a project's doc_folders. Omit for every folder."`
-	IncludeArchived bool   `json:"include_archived,omitzero" jsonschema:"Also list archived docs when browsing without a query. Defaults to false."`
+	Query           string `json:"query,omitempty" jsonschema:"Full-text search over titles and bodies, such as deploy rollback. Archived docs never match."`
+	ProjectID       string `json:"project_id,omitempty" jsonschema:"Only docs in this project, from project_list."`
+	FolderID        string `json:"folder_id,omitempty" jsonschema:"Only docs in this folder, from project_get's doc_folders."`
+	IncludeArchived bool   `json:"include_archived,omitzero" jsonschema:"Also list archived docs when browsing without a query."`
 	mcptool.PageArgs
 }
 
@@ -46,27 +46,27 @@ type docGetIn struct {
 }
 
 type docCreateIn struct {
-	ProjectID   string `json:"project_id" jsonschema:"The project the doc belongs to; project_list lists projects."`
-	Title       string `json:"title,omitempty" jsonschema:"The doc's title, for example Storage spine. Required unless clone_from_id is set."`
-	Body        string `json:"body,omitempty" jsonschema:"The doc's body as markdown. Omit for an empty doc."`
-	FolderID    string `json:"folder_id,omitempty" jsonschema:"The folder of project_id the new doc goes in, from project_get's doc_folders; a folder groups a project's docs one level deep. Omit for the project's default folder, Main. Not allowed with clone_from_id."`
-	CloneFromID string `json:"clone_from_id,omitempty" jsonschema:"The id of a doc to copy, from doc_list, with its attachments, into project_id instead of writing a new one. Its own project_id duplicates it there."`
+	ProjectID   string `json:"project_id" jsonschema:"The project's id, from project_list."`
+	Title       string `json:"title,omitempty" jsonschema:"The doc's title. Required unless clone_from_id is set."`
+	Body        string `json:"body,omitempty" jsonschema:"The doc's body, as markdown."`
+	FolderID    string `json:"folder_id,omitempty" jsonschema:"The folder of project_id for the new doc, from project_get's doc_folders; omit for the default folder, Main. Not allowed with clone_from_id."`
+	CloneFromID string `json:"clone_from_id,omitempty" jsonschema:"A doc to copy, from doc_list, with its attachments, into project_id; its own project_id duplicates it there."`
 }
 
 type docUpdateIn struct {
 	ID       string  `json:"id" jsonschema:"The doc's id, from doc_list."`
-	Title    *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
-	Body     *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
-	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it. Omit to leave it as is."`
-	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it; either needs docs:lock. Omit to leave it as is."`
-	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; every doc lives in exactly one folder, and a locked doc moves too. Omit to leave it where it is."`
-	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher of the doc, so its edits reach your notifications; false stops that, and your own later edits do not start it again. Needs only read access. Omit to leave it as is."`
+	Title    *string `json:"title,omitempty" jsonschema:"New title."`
+	Body     *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body."`
+	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it."`
+	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it."`
+	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; a locked doc moves too."`
+	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher, so its edits reach your notifications; false stops that, and your own later edits do not start it again."`
 
-	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Needs docs:write, and works on a locked doc."`
-	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once by the run that round belongs to; anyone else is refused. Post them, then end the turn."`
-	AnythingElseReply   *string             `json:"anything_else_reply,omitempty" jsonschema:"The running Clarify round's one-line reply to the previous round's Anything else? text, when it had one; from that round's run only."`
-	NoGaps              bool                `json:"no_gaps,omitzero" jsonschema:"true from the running Clarify round's run when it found no gaps left, sent with body: the whole rewritten doc, which goes through the lock the run holds. Instead of questions; title is not allowed with it."`
-	ClarificationClosed *bool               `json:"clarification_closed,omitempty" jsonschema:"true closes the doc's clarification; it needs docs:write and plays:run on the Clarify via AI play, and a new round started with play_run reopens it. Omit to leave it as is."`
+	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Works on a locked doc."`
+	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once, only by that round's own run. Post them, then end the turn."`
+	AnythingElseReply   *string             `json:"anything_else_reply,omitempty" jsonschema:"One-line reply to the previous round's Anything else? text, when it had one; from the running Clarify round's run only."`
+	NoGaps              bool                `json:"no_gaps,omitzero" jsonschema:"true from the running Clarify round's run when no gaps are left, sent with body as the whole rewritten doc (it goes through the lock the run holds). Instead of questions; no title."`
+	ClarificationClosed *bool               `json:"clarification_closed,omitempty" jsonschema:"true closes the doc's clarification; a new round started with play_run reopens it."`
 }
 
 type clarifyAnswerIn struct {
@@ -78,10 +78,10 @@ type clarifyAnswerIn struct {
 }
 
 type clarifyQuestionIn struct {
-	Question    string          `json:"question" jsonschema:"The question as the people answering read it, in plain words."`
+	Question    string          `json:"question" jsonschema:"The question, in plain words."`
 	Why         string          `json:"why,omitempty" jsonschema:"One line on why the doc needs this answer."`
 	Options     []clarifyOption `json:"options,omitempty" jsonschema:"Two to four choices to pick from, each standing on its own; only the first may be labelled (Suggested). A free-text box is always offered beside them."`
-	MultiSelect bool            `json:"multi_select,omitzero" jsonschema:"true lets several options be picked. Defaults to false."`
+	MultiSelect bool            `json:"multi_select,omitzero" jsonschema:"true lets several options be picked."`
 }
 
 type clarifyOption struct {
@@ -101,11 +101,10 @@ func MCPTools(s *Service) []mcptool.Tool {
 func docListTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_list", "List docs",
 		"Lists docs by title, or full-text searches them when query is set, optionally within one project or one folder. "+
-			"A folder groups a project's docs one level deep: every doc lives in exactly one, the project's default folder Main unless placed elsewhere, and project_get lists them. "+
+			"A folder groups a project's docs one level deep: every doc lives in exactly one, the default folder Main unless placed elsewhere, and project_get lists them. "+
 			"Use it to find a doc's id, then doc_get to read its body. "+
 			"Returns items without bodies, each with its folder_id, ranked by relevance with a query and oldest first without one; "+
-			"a doc you cannot read is left out, browsing and searching alike. "+
-			"Archived docs are hidden unless include_archived is set.",
+			"archived docs are hidden unless include_archived is set.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docListIn) (any, error) {
 			f := DocFilter{ProjectID: in.ProjectID, FolderID: in.FolderID, Query: in.Query, IncludeArchived: in.IncludeArchived}
@@ -119,11 +118,10 @@ func docListTool(s *Service) mcptool.Tool {
 
 func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
-		"Returns one doc with its full body as markdown, its project, the folder it lives in (folder_id), version, archived and locked state, "+
-			"and its watchers: the people its edits notify, who are its creator, everyone who edited it, and anyone who chose to watch, with watching true when you are one. "+
-			"It also returns the doc's clarification: every round of questions with their answers, each round's Anything else? text and its reply, whether a round is running, and whether it is closed. "+
-			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
-			"Fails with not found when you cannot read the doc, as for one that does not exist.",
+		"Returns one doc with its full body as markdown, its folder_id, version, and archived and locked state. "+
+			"It also returns its watchers, the people its edits notify (its creator, everyone who edited it, and anyone who chose to watch), with watching true when you are one, "+
+			"and its clarification: every round of questions with their answers, each round's Anything else? text and reply, whether a round is running, and whether it is closed. "+
+			"Use it after doc_list has given you the id, and before doc_update so you edit the current text.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docGetIn) (any, error) {
 			d, err := s.Get(ctx, in.ID)
@@ -139,10 +137,8 @@ func docCreateTool(s *Service) mcptool.Tool {
 		"Creates a doc in a project from a markdown title and body, or copies one with clone_from_id, and makes you its owner. "+
 			"Use it for what people read to decide what to build: requirements, product scope, acceptance criteria, business processes, and plans. "+
 			"Reusable technical guidance meant to steer implementation, such as research, architecture, coding standards, and library choices, belongs in memory_create instead, however long or cited it is, unless the person asked for a doc; a mixed deliverable splits into a doc and a memory that link each other. "+
-			"Every doc lives in exactly one folder of its project: a new doc goes in folder_id, or the project's default folder Main when omitted, and a copy goes in the destination's default folder, or beside the original within its own project. "+
-			"project_get lists a project's folders and project_update creates them. "+
-			"Copying needs docs:clone on the source and docs:write in the destination project. "+
-			"Returns the new doc with its body as markdown.",
+			"A copy goes in the destination's default folder, or beside the original within its own project. "+
+			"project_get lists a project's folders and project_update creates them.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in docCreateIn) (any, error) {
 			d, err := createOrClone(withViaMCP(ctx), s, in)
@@ -165,17 +161,15 @@ func createOrClone(ctx context.Context, s *Service, in docCreateIn) (*Doc, error
 
 func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
-		"Changes a doc's title, body, folder, archived, or locked state, or whether you watch it; only the fields you send change. "+
-			"folder_id moves the doc to another folder of its project, one of the folders project_get lists. "+
-			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it; archiving keeps the doc, and doc_delete removes it for good. "+
+		"Changes a doc's title, body, folder, archived or locked state, or whether you watch it. "+
+			"A new title or body saves a new version; read the doc with doc_get first, because body replaces the whole body. "+
+			"Archived true hides the doc from search until archived false restores it, and doc_delete removes it for good. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
-			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts and leaves it locked, "+
+			"a doc play locks its doc when its run starts and leaves it locked, "+
 			"except a Clarify via AI or Update doc via AI run, which unlocks it when it ends if that run took the lock. "+
-			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
+			"A title or body edit makes you a watcher unless you stopped watching it; watch true or false starts or stops that for you alone. "+
 			"The answers field answers, skips, or clears clarification questions by id, and clarification_closed true closes the clarification; "+
-			"questions, anything_else_reply, and no_gaps with the new body come only from the running Clarify via AI or Update doc via AI round's own run. "+
-			"Read the doc with doc_get first, because body replaces the whole body. "+
-			"Returns the doc as it now stands.",
+			"questions, anything_else_reply, and no_gaps are for the running Clarify via AI or Update doc via AI round's own run.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docUpdateIn) (any, error) {
 			d, err := updateDoc(withViaMCP(ctx), s, in)
@@ -188,10 +182,10 @@ func docUpdateTool(s *Service) mcptool.Tool {
 
 func docDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_delete", "Delete doc",
-		"Deletes a doc for good, with its versions, thread, and attachments, the same as Delete in the doc's menu; it needs docs:delete and works on a locked or archived doc too. "+
-			"Archiving with doc_update archived true is the reversible alternative: it only hides the doc, which doc_get and doc_list include_archived still return. "+
-			"It fails with a conflict while tickets are filed from the doc; ticket_list with doc_id finds them, and ticket_update with an empty doc_id clears each one's source. "+
-			"Returns the deleted id with deleted true, and doc_get then answers not found.",
+		"Deletes a doc for good, with its versions, thread, and attachments; it works on a locked or archived doc too. "+
+			"Archiving with doc_update archived true is the reversible alternative: it only hides the doc. "+
+			"It is refused while tickets are filed from the doc; ticket_list with doc_id finds them, and ticket_update with an empty doc_id clears each one's source. "+
+			"Returns the deleted id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docDeleteIn) (any, error) {
 			if err := s.Delete(ctx, in.ID); err != nil {
