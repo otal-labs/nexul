@@ -51,11 +51,13 @@ const (
 	memoriesLine    = "Read these memories with memory_get before you start; they are your context:"
 	concludeLine    = "When the work is done, before your final reply, read these memories with memory_get and follow them to " +
 		"conclude the run, for example to decide which column the ticket now belongs in:"
+	replyLine = "Your final reply posts to this thread as the Agent by itself; never also message_post it here, which shows it as %s. " +
+		"A note, message_post with file, still shows as the Agent."
 )
 
 // PromptTexts returns the fixed texts a prompt hands the agent, so the MCP surface test can check the tools they name.
 func PromptTexts() []string {
-	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, linksLine, memoriesLine, concludeLine}
+	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, linksLine, memoriesLine, concludeLine, replyLine}
 }
 
 // MemoryItem is one of a project's memories as the pipeline sees it: enough to name it, never its body.
@@ -137,10 +139,10 @@ func ComposeIncrementalPrompt(in PromptInput) string {
 // contextSections is what is running and its context, every part named for the agent to read itself.
 func contextSections(in PromptInput) []string {
 	if in.Play == nil {
-		source := fmt.Sprintf("Right now you are running @Agent in a chat, mentioned by %s.", in.RequestAuthor)
+		source := fmt.Sprintf("Right now you are running @Agent in a chat, mentioned by %s.\n"+replyLine, in.RequestAuthor, in.RequestAuthor)
 		return []string{source, in.Target, memoriesBlock(in.Memories)}
 	}
-	sections := []string{fmt.Sprintf("Right now you are running a play, started by %s.", in.RequestAuthor)}
+	sections := []string{fmt.Sprintf("Right now you are running a play, started by %s.\n"+replyLine, in.RequestAuthor, in.RequestAuthor)}
 	if in.Play.Label != "" {
 		sections = append(sections, "Play: "+in.Play.Label+"\n"+in.Play.Instructions)
 	}

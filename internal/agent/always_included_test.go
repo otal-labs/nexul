@@ -71,7 +71,7 @@ func TestRunTurn_TicketThreadMention_NamesItsContextInsteadOfCarryingIt(t *testi
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent why?"})
 
 	assert.Equal(t, DefaultIntro+"\n\n"+
-		"Right now you are running @Agent in a chat, mentioned by u-1.\n\n"+
+		"Right now you are running @Agent in a chat, mentioned by u-1.\nYour final reply posts to this thread as the Agent by itself; never also message_post it here, which shows it as u-1. A note, message_post with file, still shows as the Agent.\n\n"+
 		"Ticket: SRC-3 \"Login fails\". Read it with ticket_get before you start.\n"+
 		"The images in its body are attached to this message, in order.\n\n"+
 		"Read these memories with memory_get before you start; they are your context:\n"+

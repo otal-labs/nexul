@@ -21,7 +21,7 @@ func playAnswer() PromptInput {
 
 func TestComposePrompt_PlayAnswer_CarriesThePlayAndTheAnswer(t *testing.T) {
 	assert.Equal(t, "INTRO\n\n"+
-		"Right now you are running a play, started by onik97.\n\n"+
+		"Right now you are running a play, started by onik97.\nYour final reply posts to this thread as the Agent by itself; never also message_post it here, which shows it as onik97. A note, message_post with file, still shows as the Agent.\n\n"+
 		"Play: Fix with AI\nFix the ticket.\n\n"+
 		`Ticket: SRC-3 "Fix login". Read it with ticket_get before you start.`+"\n\n"+
 		"Read these memories with memory_get before you start; they are your context:\n- Interview (id m-1)\n\n"+
@@ -90,4 +90,12 @@ func TestFitContext_NegativeBudgetDropsEverything(t *testing.T) {
 	lines, truncated := fitContext([]ContextMessage{{Author: "a", Body: "b"}}, -5)
 	assert.True(t, truncated)
 	assert.Empty(t, lines)
+}
+
+func TestComposePrompt_TellsTheAgentItsReplyPostsItself(t *testing.T) {
+	chat := playAnswer()
+	chat.Play = nil
+	for name, in := range map[string]PromptInput{"chat": chat, "play": playAnswer()} {
+		assert.Contains(t, ComposePrompt(in), "never also message_post it here, which shows it as onik97", name)
+	}
 }
