@@ -38,8 +38,11 @@ func (a mentionTicketSource) GetByID(ctx context.Context, id string) (*mentions.
 	return ticketToMentionTicket(t), nil
 }
 
-func (a mentionTicketSource) Search(ctx context.Context, query string, limit int) ([]mentions.SearchHit, error) {
-	return searchMentionHits(ctx, a.repo.Search, query, limit, func(h tickets.SearchResult) mentions.SearchHit {
+func (a mentionTicketSource) Search(ctx context.Context, workspaceID, query string, limit int) ([]mentions.SearchHit, error) {
+	search := func(ctx context.Context, query string, limit int) ([]tickets.SearchResult, error) {
+		return a.repo.SearchIn(ctx, workspaceID, query, limit)
+	}
+	return searchMentionHits(ctx, search, query, limit, func(h tickets.SearchResult) mentions.SearchHit {
 		return mentions.SearchHit{ID: h.ID, Title: h.Title}
 	})
 }
@@ -69,6 +72,7 @@ func ticketToMentionTicket(t *tickets.Ticket) *mentions.Ticket {
 		ProjectID: t.ProjectID,
 		TypeID:    t.TypeID,
 		Developer: t.Developer,
+		UpdatedAt: t.UpdatedAt,
 	}
 }
 
@@ -82,11 +86,14 @@ func (a mentionDocSource) GetByID(ctx context.Context, id string) (*mentions.Doc
 	if err != nil {
 		return nil, err
 	}
-	return &mentions.Doc{ID: d.ID, Title: d.Title}, nil
+	return &mentions.Doc{ID: d.ID, Title: d.Title, ProjectID: d.ProjectID, UpdatedAt: d.UpdatedAt}, nil
 }
 
-func (a mentionDocSource) Search(ctx context.Context, query string, limit int) ([]mentions.SearchHit, error) {
-	return searchMentionHits(ctx, a.repo.Search, query, limit, func(h docs.SearchResult) mentions.SearchHit {
+func (a mentionDocSource) Search(ctx context.Context, workspaceID, query string, limit int) ([]mentions.SearchHit, error) {
+	search := func(ctx context.Context, query string, limit int) ([]docs.SearchResult, error) {
+		return a.repo.SearchIn(ctx, workspaceID, query, limit)
+	}
+	return searchMentionHits(ctx, search, query, limit, func(h docs.SearchResult) mentions.SearchHit {
 		return mentions.SearchHit{ID: h.ID, Title: h.Title}
 	})
 }

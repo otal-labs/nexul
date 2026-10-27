@@ -82,6 +82,13 @@ SELECT pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state FROM ticket_pr_l
 -- name: ListTicketPRLinksBatch :many
 SELECT ticket_id, pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state FROM ticket_pr_links WHERE ticket_id IN (sqlc.slice('ids')) ORDER BY linked_at;
 
+-- name: SearchTicketPRLinksInWorkspace :many
+SELECT l.ticket_id, t.project_id, l.pr_owner, l.pr_repo, l.pr_number, l.pr_title, l.linked_at
+FROM ticket_pr_links l JOIN tickets t ON t.id = l.ticket_id JOIN projects p ON p.id = t.project_id
+WHERE p.workspace_id = sqlc.arg(workspace_id) AND instr(lower(l.pr_title), sqlc.arg(needle)) > 0
+ORDER BY l.linked_at DESC, l.pr_number DESC
+LIMIT sqlc.arg(row_limit);
+
 -- name: ListTicketIDsByPR :many
 SELECT ticket_id FROM ticket_pr_links WHERE pr_owner = ? AND pr_repo = ? AND pr_number = ?;
 

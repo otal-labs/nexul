@@ -1231,9 +1231,12 @@ key hints at its foot. Empty, it leads with what changed lately in the
 current project, then every page the sidebar reaches under the same
 permissions, every project's board, the create dialogs that already exist,
 the other workspaces and the light or dark switch; typed, pages and boards
-filter by every word alongside tickets and docs from the server's search
-and memories by title, each group ordered by its best match (a label that
-starts with the query first), and the palettes join the theme group. Group heads are
+filter by every word alongside the workspace search (`GET /api/search`): a
+group per kind of title hits (tickets, docs, pull requests, stacks,
+automations, channels, memories) in the server's order, then the tickets and
+docs found only in their text under In text, a quiet line when a kind had more
+than it shows, each group ordered by its best match (a label that starts with
+the query first), and the palettes join the theme group. Group heads are
 microheaders; a row is 36px with a muted icon, the label, a mono hint
 (ticket key, prefix, status) and an enter mark on the active row, which is the cursor and not the current
 page: the hover lift (`bg-accent`), a 2px `brand` edge and a `brand` icon. The highlight jumps, never slides: the palette is driven a dozen times

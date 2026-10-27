@@ -28,6 +28,8 @@ type Config struct {
 	TicketTypes TicketTypeSource
 	// People finds and resolves person mentions; without it neither search nor resolve returns people.
 	People PeopleSource
+	// Named lists the kinds the search box finds beside tickets and docs; a kind without a source finds nothing.
+	Named map[Kind]NamedSource
 }
 
 // Service resolves mention references and search targets for the @ picker.
@@ -124,11 +126,11 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 	if err != nil {
 		return nil, err
 	}
-	ticketHits, err := s.cfg.Tickets.Search(ctx, query, limit)
+	ticketHits, err := s.cfg.Tickets.Search(ctx, strings.TrimSpace(workspaceID), query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("search mention tickets: %w", err)
 	}
-	docHits, err := s.cfg.Docs.Search(ctx, query, limit)
+	docHits, err := s.cfg.Docs.Search(ctx, strings.TrimSpace(workspaceID), query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("search mention docs: %w", err)
 	}

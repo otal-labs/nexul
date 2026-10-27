@@ -101,6 +101,14 @@ type PRLink struct {
 	State PRState `json:"state"`
 }
 
+// PRLinkHit is a linked pull request whose title matched a search, beside the ticket it is linked to.
+type PRLinkHit struct {
+	PRRef
+	TicketID  string
+	ProjectID string
+	LinkedAt  time.Time
+}
+
 // BranchLink records a branch associated with a ticket; a branch or PR may be linked to multiple tickets.
 type BranchLink struct {
 	Owner  string `json:"owner"`

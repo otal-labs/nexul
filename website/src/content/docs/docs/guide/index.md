@@ -22,6 +22,6 @@ Keep [Upgrade](/docs/guide/upgrade/) for later. The rest of the guide covers pro
 
 ## Getting around
 
-Press ⌘K on a Mac, or Ctrl+K anywhere else, to open the command palette; the Search row at the top of the sidebar opens it too. Type to jump to any page, board, settings section or tab (Tokens, Team or Roles, say), find a ticket, doc or memory by name, start a new ticket, doc, channel or direct message, switch workspace, or change the theme. Empty, it lists what changed lately in your current project. Arrow keys move, Enter opens, Escape closes.
+Press ⌘K on a Mac, or Ctrl+K anywhere else, to open the command palette; the Search row at the top of the sidebar opens it too. Type to jump to any page, board, settings section or tab (Tokens, Team or Roles, say), search the workspace for tickets, docs, pull requests, stacks, automations, channels and memories you can open, start a new ticket, doc, channel or direct message, switch workspace, or change the theme. Results come in a group per kind, best match first: a name equal to what you typed, then one holding each word, then the most recently updated. Tickets and docs that mention your words only in their text sit under **In text**, and a pull request opens the ticket it is linked to. Empty, it lists what changed lately in your current project. Arrow keys move, Enter opens, Escape closes.
 
 **Settings → Appearance** shows each mode and theme as a small picture of the app in its colours; picking one applies it at once, in this browser.

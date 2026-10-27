@@ -355,6 +355,24 @@ func (r *TicketsRepo) ListPRLinks(ctx context.Context, id string) ([]tickets.PRL
 	return out, nil
 }
 
+// SearchPRLinks returns workspaceID's linked pull requests whose title contains needle, newest link first.
+func (r *TicketsRepo) SearchPRLinks(ctx context.Context, workspaceID, needle string, limit int) ([]tickets.PRLinkHit, error) {
+	rows, err := r.q.SearchTicketPRLinksInWorkspace(ctx, sqlcgen.SearchTicketPRLinksInWorkspaceParams{
+		WorkspaceID: workspaceID, Needle: strings.ToLower(needle), RowLimit: int64(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("search pr links in workspace %s: %w", workspaceID, err)
+	}
+	out := make([]tickets.PRLinkHit, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, tickets.PRLinkHit{
+			PRRef:    tickets.PRRef{Owner: row.PrOwner, Repo: row.PrRepo, Number: int(row.PrNumber), Title: row.PrTitle},
+			TicketID: row.TicketID, ProjectID: row.ProjectID.String, LinkedAt: time.Unix(row.LinkedAt, 0).UTC(),
+		})
+	}
+	return out, nil
+}
+
 func (r *TicketsRepo) ListPRLinksBatch(ctx context.Context, ids []string) (map[string][]tickets.PRLink, error) {
 	out := make(map[string][]tickets.PRLink, len(ids))
 	if len(ids) == 0 {

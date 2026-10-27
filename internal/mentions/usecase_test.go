@@ -24,6 +24,8 @@ type fakeTicketSource struct {
 	keyErr    error
 	// keyWorkspace is the workspace the last ListByKey call scoped to.
 	keyWorkspace string
+	// searchWorkspace is the workspace the last Search call scoped to.
+	searchWorkspace string
 }
 
 func (f *fakeTicketSource) GetByID(_ context.Context, id string) (*Ticket, error) {
@@ -34,7 +36,8 @@ func (f *fakeTicketSource) GetByID(_ context.Context, id string) (*Ticket, error
 	return &t, nil
 }
 
-func (f *fakeTicketSource) Search(_ context.Context, _ string, _ int) ([]SearchHit, error) {
+func (f *fakeTicketSource) Search(_ context.Context, workspaceID, _ string, _ int) ([]SearchHit, error) {
+	f.searchWorkspace = workspaceID
 	return f.search, f.searchErr
 }
 
@@ -65,7 +68,7 @@ func (f *fakeDocSource) GetByID(_ context.Context, id string) (*Doc, error) {
 	return &d, nil
 }
 
-func (f *fakeDocSource) Search(_ context.Context, _ string, _ int) ([]SearchHit, error) {
+func (f *fakeDocSource) Search(_ context.Context, _, _ string, _ int) ([]SearchHit, error) {
 	return f.search, f.searchErr
 }
 

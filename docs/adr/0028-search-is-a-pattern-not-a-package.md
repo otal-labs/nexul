@@ -26,3 +26,13 @@ enforce the same rule against the user the agent acts as.
 Superseded in part by ADR 0148: the doc list leaves out a doc the user cannot read, and its direct link
 answers not found. The pill rule changes: a mention pill shows its target locked and inert with "You don't have
 access", a doc's title or a ticket's title, status and developer, including from a project the user is not in.
+
+The search box (`GET /api/search`, `mention_search` with `kind`) fans out from the mentions service rather than a
+search package: tickets and docs through their FTS indexes held to the workspace, and pull requests, stacks,
+automations, channels and memories through a source per kind that lists what the caller opens with that domain's own
+access checks, matched on the title in Go. These name-only kinds take no FTS table; a pull request's title is read
+from its ticket link with a substring scan of the newest links, until a workspace links enough that it needs one.
+Ranking is the same for every kind and stable while typing: a title equal to the query, then one holding each word
+whole, then one holding each word as a prefix, ties to the most recently updated; a ticket or doc matched only in its
+body or notes is a separate body hit, ordered by recency. A word inside another word ("deploy" in "redeploy") is no
+match, as in the FTS index.
