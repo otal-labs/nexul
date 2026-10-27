@@ -71,11 +71,21 @@ func (s *Service) ListMessagesSince(ctx context.Context, conversationID string, 
 // PostMessage posts a markdown message to a conversation, parsing @user/@Agent mentions; a doc thread
 // gates the post behind docs:thread so the gateway and MCP tools agree (ADR 0057), and a channel behind channels:post.
 func (s *Service) PostMessage(ctx context.Context, conversationID, authorID, body string) (*Message, error) {
+	return s.postUserMessage(ctx, conversationID, authorID, body, false)
+}
+
+// PostQueuedMessage posts like PostMessage, but an Agent turn it starts while another is under way waits behind that
+// turn instead of steering into it (ADR 0172).
+func (s *Service) PostQueuedMessage(ctx context.Context, conversationID, authorID, body string) (*Message, error) {
+	return s.postUserMessage(ctx, conversationID, authorID, body, true)
+}
+
+func (s *Service) postUserMessage(ctx context.Context, conversationID, authorID, body string, queue bool) (*Message, error) {
 	m, err := s.newMessage(conversationID, authorID, body, AuthorUser)
 	if err != nil {
 		return nil, err
 	}
-	return s.createAs(ctx, m, authorID)
+	return s.post(ctx, m, authorID, queue)
 }
 
 // PostAgentMessage persists the Agent's final turn reply with the work it handed off; in-progress text only streams
@@ -157,7 +167,7 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c), botMessagePosted(m, c)); err != nil {
+	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c, false), botMessagePosted(m, c)); err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
@@ -305,6 +315,10 @@ func (s *Service) create(ctx context.Context, m *Message) (*Message, error) {
 
 // createAs stores m once posterID passes the posting check; empty, it posts as the server, unchecked.
 func (s *Service) createAs(ctx context.Context, m *Message, posterID string) (*Message, error) {
+	return s.post(ctx, m, posterID, false)
+}
+
+func (s *Service) post(ctx context.Context, m *Message, posterID string, queue bool) (*Message, error) {
 	c, err := s.repo.GetConversation(ctx, m.ConversationID)
 	if err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
@@ -314,7 +328,7 @@ func (s *Service) createAs(ctx context.Context, m *Message, posterID string) (*M
 			return nil, err
 		}
 	}
-	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, c)); err != nil {
+	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, c, queue)); err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
 	}
 	return m, nil
@@ -346,8 +360,8 @@ func (s *Service) newMessage(conversationID, authorID, body string, kind AuthorK
 	}, nil
 }
 
-func messageCreated(m *Message, c *Conversation) eventbus.OutboxEvent {
-	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: c.MembersOnly(), WorkspaceID: c.WorkspaceID}}
+func messageCreated(m *Message, c *Conversation, queue bool) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: c.MembersOnly(), WorkspaceID: c.WorkspaceID, Queue: queue}}
 }
 
 func botMessagePosted(m *Message, c *Conversation) eventbus.OutboxEvent {

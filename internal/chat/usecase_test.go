@@ -1268,6 +1268,18 @@ func TestPostMessage(t *testing.T) {
 		evts := repo.eventsFor(TopicMessageCreated)
 		require.Len(t, evts, 1)
 		assert.Equal(t, "w-1", evts[0].Payload.(MessageCreatedEvent).WorkspaceID, "the frame names its workspace for the unread counts")
+		assert.False(t, evts[0].Payload.(MessageCreatedEvent).Queue, "a plain post steers into the Agent's turn under way")
+	})
+	t.Run("a queued post says so on chat.message.created", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+		require.NoError(t, err)
+		_, err = s.PostQueuedMessage(t.Context(), c.ID, "u-1", "@Agent after that")
+		require.NoError(t, err)
+		evts := repo.eventsFor(TopicMessageCreated)
+		require.Len(t, evts, 1)
+		assert.True(t, evts[0].Payload.(MessageCreatedEvent).Queue)
 	})
 }
 

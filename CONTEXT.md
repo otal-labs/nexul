@@ -126,7 +126,8 @@ through MCP.
 **Steer**:
 Handing a mention whose Agent turn waits in the Harness's queue to the turn
 under way, whose reply then answers it; the steered turn ends with no reply of
-its own (ADR 0169).
+its own (ADR 0169). The default for a mention sent while a Nexul turn is under
+way; one sent to **Queue** waits its place instead (ADR 0172).
 _Avoid_: interrupt, push
 
 **Harness**:

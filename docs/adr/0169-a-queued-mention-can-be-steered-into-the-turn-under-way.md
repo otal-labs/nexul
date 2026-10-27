@@ -1,6 +1,7 @@
 # A queued mention can be steered into the turn under way
 
-Amends ADR 0114.
+Amends ADR 0114. Amended by ADR 0172: a mention now steers by default, and the mark and its Steer show only for one
+sent to queue or one T3 Code would not take.
 
 A mention sent while the Agent is busy queues in T3 Code behind the run under way (ADR 0114), and the thread showed it
 as sent: nothing said the Agent had not read it, and the only way to reach the Agent sooner was T3 Code's own Steer.

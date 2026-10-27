@@ -188,12 +188,18 @@ export const markCachedMessageDeleted = (client: QueryClient, conversationId: st
     old?.map((m) => (m.id === messageId ? { ...m, deleted_at: deletedAt } : m)),
   );
 
+// queue makes an Agent turn the message starts wait behind the one under way; without it the message steers into that turn.
+export interface PostMessageInput {
+  body: string;
+  queue?: boolean;
+}
+
 export const usePostMessage = (conversationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("channels:post", async (body: string) =>
-      (await api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body })).data),
-    onMutate: async (body) => {
+    mutationFn: requires("channels:post", async ({ body, queue }: PostMessageInput) =>
+      (await api.post<Message>(`/api/chat/conversations/${conversationId}/messages`, { body, ...(queue && { queue }) })).data),
+    onMutate: async ({ body }) => {
       await client.cancelQueries({ queryKey: [getChatMessagesKey, conversationId] });
       const now = new Date().toISOString();
       const pending: Message = {

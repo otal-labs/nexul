@@ -69,7 +69,7 @@ describe("usePostMessage", () => {
     vi.mocked(api.post).mockReturnValue(new Promise((resolve) => (resolvePost = resolve)));
 
     const { result } = renderHook(() => usePostMessage("c1"), { wrapper: wrapperWith });
-    act(() => result.current.mutate("hello"));
+    act(() => result.current.mutate({ body: "hello" }));
     await waitFor(() => expect(client.getQueryData(["getChatMessages", "c1", undefined])).toHaveLength(1));
     const [pending] = client.getQueryData<{ id: string }[]>(["getChatMessages", "c1", undefined])!;
     expect(pending).toMatchObject({ body: "hello", author_id: "u1", pending: true });
@@ -77,6 +77,19 @@ describe("usePostMessage", () => {
     act(() => resolvePost({ data: saved }));
     // The server copy keeps the pending row's key, so the row on screen is the same one and its entrance isn't cut short.
     await waitFor(() => expect(client.getQueryData(["getChatMessages", "c1", undefined])).toEqual([{ ...saved, client_key: pending!.id }]));
+  });
+
+  it("sends queue only when the message should wait behind the Agent's turn", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapperWith = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "m1", conversation_id: "c1" } });
+
+    const { result } = renderHook(() => usePostMessage("c1"), { wrapper: wrapperWith });
+    await act(() => result.current.mutateAsync({ body: "@Agent now" }));
+    await act(() => result.current.mutateAsync({ body: "@Agent later", queue: true }));
+    expect(vi.mocked(api.post).mock.calls.map((call) => call[1])).toEqual([{ body: "@Agent now" }, { body: "@Agent later", queue: true }]);
   });
 
   it("drops the pending row when the post fails", async () => {
@@ -88,7 +101,7 @@ describe("usePostMessage", () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
 
     const { result } = renderHook(() => usePostMessage("c1"), { wrapper: wrapperWith });
-    act(() => result.current.mutate("hello"));
+    act(() => result.current.mutate({ body: "hello" }));
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(client.getQueryData(["getChatMessages", "c1", undefined])).toEqual([]);
   });

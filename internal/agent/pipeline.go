@@ -252,6 +252,8 @@ type activeTurn struct {
 	// queue, under Service.mu.
 	requestMessageID string
 	queued           bool
+	// queue is whether the person asked the turn to wait its place rather than steer into the turn under way.
+	queue bool
 }
 
 // NewService wires the agent pipeline.
@@ -296,6 +298,7 @@ type messageCreatedPayload struct {
 		Mentions       []mentionPayload `json:"mentions"`
 		DeletedAt      *time.Time       `json:"deleted_at,omitempty"`
 	} `json:"message"`
+	Queue bool `json:"queue"`
 }
 
 // mentionAgentKind mirrors chat.MentionAgent's wire value.
@@ -318,19 +321,20 @@ func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) err
 		return nil
 	}
 	// ponytail: fire-and-forget, a turn runs minutes and must not block the bus handler.
-	go s.answerMention(p.Message.ConversationID, p.Message.AuthorID, p.Message.Body, p.Message.ID)
+	go s.answerMention(TurnRequest{ConversationID: p.Message.ConversationID, ViaUserID: p.Message.AuthorID, RequestBody: p.Message.Body,
+		RequestMessageID: p.Message.ID, Queue: p.Queue})
 	return nil
 }
 
 // answerMention continues the conversation's ended run when the continuer takes the mention, else runs a chat turn.
-func (s *Service) answerMention(conversationID, userID, body, messageID string) {
+func (s *Service) answerMention(req TurnRequest) {
 	s.mu.Lock()
 	continuer := s.continuer
 	s.mu.Unlock()
-	if continuer != nil && continuer.ContinueThread(context.Background(), conversationID, userID, body) {
+	if continuer != nil && continuer.ContinueThread(context.Background(), req.ConversationID, req.ViaUserID, req.RequestBody) {
 		return
 	}
-	s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body, RequestMessageID: messageID})
+	s.runChatTurn(req)
 }
 
 // runChatTurn runs a chat-started turn under chat's silence window; cancelling on return releases a turn the window ended.
@@ -358,6 +362,8 @@ type TurnRequest struct {
 	RequestBody string
 	// RequestMessageID is that message's id, which the thread marks while the harness queues the turn; "" for none.
 	RequestMessageID string
+	// Queue keeps such a turn waiting behind the turn under way; without it the harness's queue steers it into that turn.
+	Queue bool
 	// Play is set for a play run: it names the run's memories and replaces the conversation history (ADR 0111).
 	Play *PlayContext
 	// Target is optional; nil means resolve the caller's own project link or pairing defaults as usual.
@@ -430,7 +436,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
-	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), requestMessageID: req.RequestMessageID, target: harness.Target{
+	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), requestMessageID: req.RequestMessageID, queue: req.Queue, target: harness.Target{
 		Session:      target.Computer.Session(),
 		ProjectID:    target.HarnessProjectID,
 		Provider:     target.Provider,
@@ -1027,19 +1033,45 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 	obs.OnFinished(*term, replyID)
 }
 
-// setQueued marks or unmarks the turn's request message as waiting in the harness's queue, once per change.
+// setQueued marks or unmarks the turn's request message as waiting in the harness's queue, once per change; a mention
+// sent without Queue is steered into the turn under way instead, and marked only when that is refused (ADR 0172).
 func (s *Service) setQueued(ctx context.Context, conversationID string, turn *activeTurn, queued bool) {
 	s.mu.Lock()
 	changed := turn.queued != queued
 	turn.queued = queued
+	target := turn.target
 	s.mu.Unlock()
 	if !changed || turn.requestMessageID == "" {
+		return
+	}
+	if queued && !turn.queue && s.steerQueued(ctx, conversationID, turn, target) {
 		return
 	}
 	frame := StreamFrame{ConversationID: conversationID, QueuedMessageID: turn.requestMessageID, Queued: queued}
 	if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
 		s.log.Warn("agent: publish queued frame failed", "conversation", conversationID, "error", err)
 	}
+}
+
+// steerWithin bounds the steer a queued mention gets, which holds up the turn's own updates while it runs.
+const steerWithin = 30 * time.Second
+
+// steerQueued hands a queued mention to the conversation's turn under way, whose reply then answers it; never into a run
+// of the harness's own, whose reply nobody would post. False leaves it queued.
+func (s *Service) steerQueued(ctx context.Context, conversationID string, turn *activeTurn, target harness.Target) bool {
+	if !s.underWayBeside(conversationID, turn) {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(ctx, steerWithin)
+	defer cancel()
+	err := turn.client.Steer(ctx, target)
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, apperrs.ErrConflict) {
+		s.log.Warn("agent: steer queued mention failed", "conversation", conversationID, "error", err)
+	}
+	return false
 }
 
 // underWayBeside is whether a turn other than turn runs on the conversation outside the harness's queue.

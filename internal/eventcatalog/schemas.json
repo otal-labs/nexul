@@ -1568,6 +1568,10 @@
       "workspace_id": {
         "type": "string",
         "description": "The workspace of the message's conversation."
+      },
+      "queue": {
+        "type": "boolean",
+        "description": "Set when the author sent it to wait behind the Agent's turn under way instead of steering into that turn."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

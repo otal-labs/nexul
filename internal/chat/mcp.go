@@ -41,6 +41,7 @@ type messagePostIn struct {
 	Body        string      `json:"body,omitempty" jsonschema:"The message as markdown, required for a post. @login mentions a member and @Agent starts an agent turn."`
 	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec."`
 	Reaction    *reactionIn `json:"reaction,omitempty" jsonschema:"Reacts to an existing message with an emoji instead of posting, and leaves out the target, body, and file."`
+	Queue       bool        `json:"queue,omitempty" jsonschema:"True makes the @Agent turn the post starts wait behind the one under way instead of steering into it."`
 }
 
 type reactionIn struct {
@@ -259,7 +260,7 @@ func messagePostTool(s *Service) mcptool.Tool {
 		"Posts a markdown message as you to a conversation, or to a doc's, ticket's, or project interview's thread, "+
 			"starting that thread if it does not exist yet (which needs workspace_id). "+
 			"Name the target the same way as message_list: conversation_id, or exactly one of doc_id, ticket_id, or project_id. "+
-			"Mentioning @Agent starts an agent turn on your own paired computer. "+
+			"Mentioning @Agent starts an agent turn on your own paired computer; while another is under way on the thread, the message steers into it unless queue is set. "+
 			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, and carries the file; message_list returns it. "+
 			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+
 			"With reaction it adds or removes your emoji reaction on a message instead of posting. "+
@@ -281,7 +282,11 @@ func messagePostTool(s *Service) mcptool.Tool {
 				return nil, err
 			}
 			if in.File == nil {
-				m, err := s.PostMessage(ctx, id, caller, in.Body)
+				post := s.PostMessage
+				if in.Queue {
+					post = s.PostQueuedMessage
+				}
+				m, err := post(ctx, id, caller, in.Body)
 				if err != nil {
 					return nil, err
 				}
