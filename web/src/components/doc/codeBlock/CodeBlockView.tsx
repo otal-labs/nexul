@@ -1,8 +1,14 @@
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
+import { lazy, Suspense } from "react";
 
 import { codeLanguageOptions } from "@/components/doc/codeBlock/lowlight";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Lazy, with the diagram library behind it: only a body with a diagram loads either.
+const MermaidDiagram = lazy(() =>
+  import("@/components/doc/codeBlock/MermaidDiagram").then((m) => ({ default: m.MermaidDiagram })),
+);
 
 // Changing the language attribute alone re-runs CodeBlockLowlight's highlight — no separate call needed.
 // Read-only renders show the language as a plain label instead of a control.
@@ -35,6 +41,11 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
       <pre>
         <NodeViewContent<"code"> as="code" />
       </pre>
+      {language === "mermaid" && (
+        <Suspense fallback={null}>
+          <MermaidDiagram code={node.textContent} />
+        </Suspense>
+      )}
     </NodeViewWrapper>
   );
 };

@@ -28,6 +28,9 @@ const LABEL_OVERRIDES: Record<string, string> = {
   graphql: "GraphQL",
 };
 
+// Not a grammar: a code block in this language also draws its diagram (MermaidDiagram).
+const extraLanguages = ["mermaid"];
+
 function languageLabel(value: string): string {
   return LABEL_OVERRIDES[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -35,8 +38,7 @@ function languageLabel(value: string): string {
 // Sorted alphabetically by label so the dropdown is scannable instead of grammar-registration order.
 export const codeLanguageOptions: CodeLanguageOption[] = [
   { value: "plaintext", label: "Plain text" },
-  ...lowlight
-    .listLanguages()
+  ...[...lowlight.listLanguages(), ...extraLanguages]
     .filter((value) => value !== "plaintext")
     .map((value) => ({ value, label: languageLabel(value) }))
     .sort((a, b) => a.label.localeCompare(b.label)),

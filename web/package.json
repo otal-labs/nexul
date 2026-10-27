@@ -47,6 +47,7 @@
     "livekit-client": "^2.23.0",
     "lowlight": "^3.3.0",
     "lucide-react": "1.61.0",
+    "mermaid": "^12.2.0",
     "motion": "^14.5.0",
     "radix-ui": "1.8.1",
     "react": "^19.3.1",
