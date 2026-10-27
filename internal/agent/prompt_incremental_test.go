@@ -35,7 +35,7 @@ func TestComposeIncrementalPrompt_Play(t *testing.T) {
 	start.RequestBody = ""
 	start.Play.Blocks = []string{"This ticket was blocked by these tickets, all now done:\n- NEX-4 \"schema\": done"}
 	start.Play.Custom = "Touch only the docs."
-	assert.Equal(t, "Right now you are running a play, started by onik97.\n\n"+
+	assert.Equal(t, "Right now you are running a play, started by onik97.\nYour final reply posts to this thread as the Agent by itself; never also message_post it here, which shows it as onik97. A note, message_post with file, still shows as the Agent.\n\n"+
 		"Play: Fix with AI\nFix the ticket.\n\n"+
 		`Ticket: SRC-3 "Fix login". Read it with ticket_get before you start.`+"\n\n"+
 		"This ticket was blocked by these tickets, all now done:\n- NEX-4 \"schema\": done\n\n"+

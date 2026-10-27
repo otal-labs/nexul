@@ -618,7 +618,7 @@ func TestRun_AgainstHarness_TrailFollowsTheTurn(t *testing.T) {
 	assert.Equal(t, []string{"Opened PR #7"}, convs.replies)
 	assert.Equal(t, []TrailState{TrailStarting, TrailRunning, TrailRunning, TrailRunning, TrailRunning, TrailDone}, f.trails.recordedStates())
 
-	context := "Right now you are running a play, started by u-1.\n\n" +
+	context := "Right now you are running a play, started by u-1.\nYour final reply posts to this thread as the Agent by itself; never also message_post it here, which shows it as u-1. A note, message_post with file, still shows as the Agent.\n\n" +
 		"Play: Fix with AI\nFix the ticket.\n\n" +
 		"Ticket: NEX-1 \"Login fails\". Read it with ticket_get before you start.\n\n" +
 		"Read these memories with memory_get before you start; they are your context:\n" +
