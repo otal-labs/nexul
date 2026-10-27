@@ -134,6 +134,14 @@ describe("the pairing follower", () => {
     expect(keys.map((key) => isStale(client, key))).toEqual([false, true, false, true]);
   });
 
+  it("refetches the computer rows, whose skills_outdated lights the settings dot, when a setup turn confirms or withdraws a provider", async () => {
+    for (const topic of ["computer.setup_confirmed", "computer.setup_unconfirmed"]) {
+      const client = seeded([[["getComputers"], []]]);
+      await followFrame(pairingFollower, topic, { computer_id: "c1", user_id: "u1", provider: "codex" }, client);
+      expect(isStale(client, ["getComputers"])).toBe(true);
+    }
+  });
+
   it("refetches the computer rows and readiness when a computer finishes pairing", async () => {
     const client = seeded([
       [["getComputers"], []],

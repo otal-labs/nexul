@@ -86,11 +86,7 @@ describe("YourSettingsPage", () => {
   it("marks Computers and its Computers tab while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
-        return Promise.resolve({ data: { computers: [{ id: "c1", name: "Home", token_expires_at: "2099-01-01T00:00:00Z", kind: "t3code" }] } });
-      if (url === "/api/pairing/computers/c1/setup")
-        return Promise.resolve({
-          data: { computer_id: "c1", confirmed_at: "2026-09-20T00:00:00Z", turns: [], providers: [{ provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: [], skills_version: "old", skills_outdated: true }] },
-        });
+        return Promise.resolve({ data: { computers: [{ id: "c1", name: "Home", token_expires_at: "2099-01-01T00:00:00Z", kind: "t3code", skills_outdated: true }] } });
       return mockGet(url);
     });
     renderPage("/settings/pairing");

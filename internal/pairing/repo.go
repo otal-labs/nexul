@@ -68,6 +68,8 @@ type SetupStore interface {
 	SaveSetupChoices(ctx context.Context, userID, computerID string, choices SetupChoices) error
 	// ListProviderSetups returns a computer's per-provider rows, ordered by provider.
 	ListProviderSetups(ctx context.Context, computerID string) ([]ProviderSetup, error)
+	// ListOutdatedSkillsComputers returns userID's own computers with a confirmed provider whose skills are not version.
+	ListOutdatedSkillsComputers(ctx context.Context, userID, version string) ([]string, error)
 	// SaveProviderSetup upserts one provider's row on a computer; a nil ConfirmedAt records an un-confirmation.
 	SaveProviderSetup(ctx context.Context, computerID string, p ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error
 	// SaveSetupTurn upserts one provider's setup turn and its events; the transcript arrives redacted.

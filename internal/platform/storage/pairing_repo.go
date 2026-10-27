@@ -487,6 +487,14 @@ func (r *PairingRepo) ListProviderSetups(ctx context.Context, computerID string)
 	return out, nil
 }
 
+func (r *PairingRepo) ListOutdatedSkillsComputers(ctx context.Context, userID, version string) ([]string, error) {
+	ids, err := r.q.ListPairingComputersWithOutdatedSkills(ctx, sqlcgen.ListPairingComputersWithOutdatedSkillsParams{UserID: userID, SkillsVersion: version})
+	if err != nil {
+		return nil, fmt.Errorf("list computers with outdated skills for %s: %w", userID, err)
+	}
+	return ids, nil
+}
+
 func (r *PairingRepo) SaveProviderSetup(ctx context.Context, computerID string, p pairing.ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error {
 	skills, err := json.Marshal(p.Skills)
 	if err != nil {

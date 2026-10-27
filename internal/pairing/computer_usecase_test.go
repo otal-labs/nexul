@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 // fakeRunners is the runner domain's side of a computer: the codes it minted and the runners enrolled per computer.
@@ -217,6 +219,30 @@ func TestListComputers_ShowsEachComputersRunner(t *testing.T) {
 	}
 	assert.Nil(t, byID[waiting.Computer.ID].Runner)
 	assert.Equal(t, &ComputerRunner{Connected: true, LastSeen: testNow}, byID[connected.Computer.ID].Runner)
+}
+
+func TestListComputers_MarksAnOwnComputerWhoseConfirmedSkillsAreOlderThanShipped(t *testing.T) {
+	t.Parallel()
+	svc, repo, _ := newComputerService()
+	stale, err := svc.AddComputer(t.Context(), "u-alice", "Desk")
+	require.NoError(t, err)
+	current, err := svc.AddComputer(t.Context(), "u-alice", "Laptop")
+	require.NoError(t, err)
+	confirmed := testNow
+	repo.setups[stale.Computer.ID] = []ProviderSetup{{Provider: "codex", ConfirmedAt: &confirmed, SkillsVersion: "old"}}
+	repo.setups[current.Computer.ID] = []ProviderSetup{{Provider: "codex", ConfirmedAt: &confirmed, SkillsVersion: shipped.SetVersion}, {Provider: "claude", SkillsVersion: "old"}}
+
+	listed, err := svc.ListComputers(t.Context(), "u-alice")
+	require.NoError(t, err)
+	outdated := map[string]bool{}
+	for _, c := range listed {
+		outdated[c.ID] = c.SkillsOutdated
+	}
+	assert.Equal(t, map[string]bool{stale.Computer.ID: true, current.Computer.ID: false}, outdated, "an unconfirmed provider's skills don't count")
+
+	repo.listOutdatedErr = errors.New("disk gone")
+	_, err = svc.ListComputers(t.Context(), "u-alice")
+	require.ErrorContains(t, err, "disk gone")
 }
 
 func runnerEvent(t *testing.T, computerID, userID, state, hostname string) eventbus.Event {

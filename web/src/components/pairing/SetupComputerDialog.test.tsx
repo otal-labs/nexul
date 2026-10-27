@@ -33,6 +33,7 @@ const created = {
   runs_at_once: 1,
   running: 0,
   chat_project_id: "",
+  skills_outdated: false,
   updated_at: "2026-09-24T00:00:00Z",
 };
 

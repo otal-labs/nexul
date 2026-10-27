@@ -51,6 +51,8 @@ type Computer struct {
 	ChatProjectID string `json:"chat_project_id"`
 	// Running is how many play runs are going on it; set on a list only.
 	Running int `json:"running"`
+	// SkillsOutdated is whether a confirmed provider on it holds older skills than this server ships; set on a list only.
+	SkillsOutdated bool `json:"skills_outdated"`
 }
 
 // SharedComputer is whose a shared computer is and what the caller holds on it.
