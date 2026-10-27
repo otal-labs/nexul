@@ -2,6 +2,7 @@ import * as Application from "expo-application";
 import { useRouter } from "expo-router";
 import CalendarDays from "lucide-react-native/icons/calendar-days";
 import FileText from "lucide-react-native/icons/file-text";
+import Search from "lucide-react-native/icons/search";
 import Server from "lucide-react-native/icons/server";
 import Settings from "lucide-react-native/icons/settings";
 import { ScrollView, View } from "react-native";
@@ -28,7 +29,8 @@ export const MoreScreen = () => {
         <ScreenHeader eyebrow={workspace?.name} title="More" />
         <View className="gap-6 px-4">
           <SettingsCard>
-            <SettingsRow first icon={CalendarDays} label="Calendar" onPress={() => router.push("/more/calendar")} />
+            <SettingsRow first icon={Search} label="Search" onPress={() => router.push("/more/search")} />
+            <SettingsRow icon={CalendarDays} label="Calendar" onPress={() => router.push("/more/calendar")} />
             <SettingsRow icon={FileText} label="Docs" onPress={() => router.push("/more/docs")} />
             {showRunners && <SettingsRow icon={Server} label="Runners" onPress={() => router.push("/more/runners")} />}
           </SettingsCard>

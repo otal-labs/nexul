@@ -3,10 +3,9 @@
 **Status:** ready-for-agent
 
 Mostly shipped: `GET /api/search` fans out over tickets, docs, pull requests, stacks, automations, channels and
-memories in one workspace, ranked by title and recency with title and body hits apart (ADR 0028). The command palette
-and `mention_search` with `kind` both read it. Left: a phone search screen over the same endpoint, a palette row to see
-more of one kind (the endpoint's `kind` already returns up to 50), and scrolling a doc or ticket to the words a body hit
-matched.
+memories in one workspace, ranked by title and recency with title and body hits apart (ADR 0028). The command palette,
+the phone's More → Search and `mention_search` with `kind` all read it. Left: a palette row to see more of one kind (the
+endpoint's `kind` already returns up to 50), and scrolling a doc or ticket to the words a body hit matched.
 
 Carried over from the retired search requirements document, where it sat as a
 future direction. Search exists and works, but only from inside the docs and
