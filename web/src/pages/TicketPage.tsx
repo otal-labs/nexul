@@ -2,7 +2,6 @@ import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
-import { ErrorScreen } from "@/components/ErrorScreen";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { TicketPageBody } from "@/components/ticket/TicketPageBody";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
@@ -24,11 +23,12 @@ interface TicketPageProps {
 export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => {
   const { ticketId: routeTicketId } = useParams<{ ticketId: string }>();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { projects, ticketId, resolving, notFound } = useTicketPageResolution({
+  const { projects, ticketId, keyError } = useTicketPageResolution({
     ticketIdProp,
     routeTicketId,
   });
-  const { data, error, isPending } = useFetchTicket(ticketId);
+  const { data, error: ticketError, isPending } = useFetchTicket(ticketId);
+  const error = keyError ?? ticketError;
   const updateStatus = useUpdateTicketStatus();
   const setType = useSetTicketType();
   const addLabel = useAddLabel();
@@ -39,9 +39,8 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
 
   return (
     <Container className={ticketPageLayout(embedded).container}>
-      {(isPending || resolving) && <LoadingDisplay />}
+      {!error && isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={embedded} />}
-      {notFound && <ErrorScreen />}
       {data && (
         <TicketPageBody
           ticket={data}

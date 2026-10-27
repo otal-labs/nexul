@@ -8,8 +8,10 @@ import { api, errorMessage } from "@/api/client";
 import {
   useCreateTicket,
   useFetchTicket,
+  useFetchTicketIdByKey,
   useFetchTickets,
   useFetchTicketsByDoc,
+  useFetchTicketsByProject,
   useSetTicketDueOn,
   useUpdateTicket,
   useUpdateTicketPosition,
@@ -17,6 +19,7 @@ import {
   ticketFollower,
 } from "@/hooks/TicketHooks";
 import { TicketStatus, type Ticket } from "@/models/Ticket";
+import { queryClient } from "@/lib/queryClient";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 vi.mock("@/api/client", () => ({
   api: {
@@ -65,12 +68,36 @@ describe("ticket reads", () => {
     vi.mocked(api.get).mockResolvedValue({ data: [ticket] });
     const list = renderHook(() => useFetchTickets(), { wrapper });
     await waitFor(() => expect(list.result.current.data).toEqual([ticket]));
-    expect(api.get).toHaveBeenCalledWith("/api/tickets");
+    expect(api.get).toHaveBeenCalledWith("/api/tickets", { params: { without: "body" } });
 
     vi.mocked(api.get).mockResolvedValue({ data: ticket });
     const one = renderHook(() => useFetchTicket("t-1"), { wrapper });
     await waitFor(() => expect(one.result.current.data).toEqual(ticket));
     expect(api.get).toHaveBeenCalledWith("/api/tickets/t-1");
+  });
+});
+
+describe("useFetchTicketIdByKey", () => {
+  it("reads the one ticket a key names and seeds its view, so the page that opens it by id reads nothing again", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: ticket });
+    const client = new QueryClient({ defaultOptions: queryClient.getDefaultOptions() });
+    const shared = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const byKey = renderHook(() => useFetchTicketIdByKey("BE-7", "ws-1"), { wrapper: shared });
+    await waitFor(() => expect(byKey.result.current.data).toBe("t-1"));
+    const byId = renderHook(() => useFetchTicket("t-1"), { wrapper: shared });
+
+    expect(byId.result.current.data).toEqual(ticket);
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith("/api/tickets/BE-7", { params: { workspace: "ws-1" } });
+  });
+});
+
+describe("useFetchTicketsByProject", () => {
+  it("leaves bodies out, since the board and the pickers show titles only", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [ticket] });
+    const { result } = renderHook(() => useFetchTicketsByProject("p-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual([ticket]));
+    expect(api.get).toHaveBeenCalledWith("/api/tickets", { params: { project_id: "p-1", without: "body" } });
   });
 });
 

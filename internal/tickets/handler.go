@@ -157,31 +157,30 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, t)
 }
 
+// list takes ?without=body for a board, which shows titles only: bodies are most of a list's bytes.
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	if docID := r.URL.Query().Get("doc_id"); docID != "" {
-		ts, err := h.svc.ListByDoc(r.Context(), docID)
-		if err != nil {
-			httpx.WriteError(w, err)
-			return
-		}
-		httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
-		return
-	}
-	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
-		ts, err := h.svc.ListByProject(r.Context(), projectID)
-		if err != nil {
-			httpx.WriteError(w, err)
-			return
-		}
-		httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
-		return
-	}
-	ts, err := h.svc.List(r.Context())
+	ts, err := h.listFiltered(r)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
+	out := jsonList(ts)
+	if r.URL.Query().Get("without") == "body" {
+		for i := range out {
+			out[i].Body = ""
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) listFiltered(r *http.Request) ([]*Ticket, error) {
+	if docID := r.URL.Query().Get("doc_id"); docID != "" {
+		return h.svc.ListByDoc(r.Context(), docID)
+	}
+	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
+		return h.svc.ListByProject(r.Context(), projectID)
+	}
+	return h.svc.List(r.Context())
 }
 
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {

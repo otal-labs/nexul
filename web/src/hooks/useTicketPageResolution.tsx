@@ -1,29 +1,20 @@
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
-import { resolveProject } from "@/models/Project";
-import { parseTicketKey, type Ticket } from "@/models/Ticket";
-
-const pickKeyTicketId = (
-  key: ReturnType<typeof parseTicketKey>,
-  keyTickets: Ticket[] | undefined,
-  routeTicketId: string | undefined,
-) => (key ? keyTickets?.find((t) => t.number === key.number)?.id : routeTicketId);
+import { useFetchTicketIdByKey } from "@/hooks/TicketHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { parseTicketKey } from "@/models/Ticket";
 
 interface UseTicketPageResolutionArgs {
   ticketIdProp: string | undefined;
   routeTicketId: string | undefined;
 }
 
-// A PREFIX-NUMBER route param resolves client-side to the real UUID; a UUID param passes straight through.
+// A PREFIX-NUMBER route param resolves to the real UUID through the server's key lookup; a UUID param passes straight through.
 export const useTicketPageResolution = ({ ticketIdProp, routeTicketId }: UseTicketPageResolutionArgs) => {
-  const { data: projects = [], isPending: projectsPending } = useFetchProjects();
-  const key = !ticketIdProp && routeTicketId ? parseTicketKey(routeTicketId) : undefined;
-  const keyProject = key && resolveProject(projects, key.prefix);
-  const { data: keyTickets, isPending: keyTicketsPending } = useFetchTicketsByProject(keyProject?.id);
-  const ticketId = ticketIdProp ?? pickKeyTicketId(key, keyTickets, routeTicketId);
-  const stillResolvingKey = Boolean(key) && !ticketId;
-  const resolving = stillResolvingKey && (projectsPending || keyTicketsPending);
-  const notFound = stillResolvingKey && !resolving;
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: projects = [] } = useFetchProjects();
+  const key = !ticketIdProp && routeTicketId && parseTicketKey(routeTicketId) ? routeTicketId : undefined;
+  const { data: keyTicketId, error: keyError } = useFetchTicketIdByKey(key, workspaceId);
+  const ticketId = ticketIdProp ?? (key ? keyTicketId : routeTicketId);
 
-  return { projects, ticketId, resolving, notFound };
+  return { projects, ticketId, keyError };
 };
