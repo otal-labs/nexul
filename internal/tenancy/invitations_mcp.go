@@ -16,7 +16,7 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 }
 
 type invitationGrantIn struct {
-	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace the invitation admits the person to."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace, from workspace_list."`
 	Roles       []string `json:"roles" jsonschema:"The role ids they get in that workspace, at least one and never the Owner role; workspace_list with the workspace's id lists them."`
 }
 
@@ -53,13 +53,13 @@ type invitationListIn struct {
 }
 
 type invitationDeleteIn struct {
-	ID string `json:"id" jsonschema:"The invitation's id, from invitation_list."`
+	ID string `json:"id" jsonschema:"The invitation id, from invitation_list."`
 }
 
 func invitationCreateTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_create", "Create invitation",
 		"Creates a single-use invitation link that admits one person to the instance with the given roles in each "+
-			"listed workspace, and nothing per person. You need members:write in every one of them, and may give only "+
+			"listed workspace, and nothing per person. You may give only "+
 			"roles whose permissions you hold there; every role is checked again when the link is redeemed. Which "+
 			"projects the person is in is set on each project, with permission_overwrite_update. "+
 			"The returned url carries the only copy of the link's secret and is never shown again, so hand it straight "+
@@ -81,12 +81,9 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 
 func invitationListTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_list", "List invitations",
-		"Lists the invitations you may manage, meaning you hold members:write in every workspace each one grants: by "+
-			"default the unredeemed, unexpired ones; with state accepted those redeemed in the last 30 days, newest first, "+
-			"with who redeemed it (redeemed_by, an account id from account_list) and when; with state ended those that "+
-			"expired or were revoked in the last 30 days, newest first, expires_at being when the link stopped working. "+
-			"Each shows its workspaces with the roles it gives there (id, name, whether it is the Owner role), who "+
-			"invited, and when it was made, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
+		"Lists the invitations you may manage, each with its workspaces and the roles it gives there, who invited, and when, never its link. "+
+			"state selects open, accepted, or ended ones; an accepted one carries redeemed_by, an account id from account_list, and when. "+
+			"Use invitation_create for a new link and invitation_delete to revoke one.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in invitationListIn) (any, error) {
 			list, err := s.List(ctx, actorID(ctx))
@@ -107,9 +104,9 @@ func invitationListTool(s *InvitationService) mcptool.Tool {
 
 func invitationDeleteTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_delete", "Revoke invitation",
-		"Revokes an unredeemed invitation so its link stops working. You need members:write in every workspace it "+
-			"grants. An invitation already redeemed, expired, or revoked is not found; invitation_list shows the "+
-			"ones still open. Returns {id, deleted: true}.",
+		"Revokes an unredeemed invitation so its link stops working. "+
+			"An invitation already redeemed, expired, or revoked is not found; invitation_list shows the ones still open. "+
+			"Returns {id, deleted: true}.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in invitationDeleteIn) (any, error) {
 			if err := s.Revoke(ctx, actorID(ctx), in.ID); err != nil {

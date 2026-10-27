@@ -68,7 +68,7 @@ A failed deploy's page has **Retry**. It starts a new deploy of the same commit 
 
 - A deploy records the commit its runner checked out, shown beside its id. A deploy that failed before the checkout finished has no commit yet, so **Retry** builds the ref it was asked for. A single-container redeploy retries the same image.
 - The failed deploy stays in **Deploy history**, and the new one is a separate entry. **Retry** takes the `deploys:write` permission on the stack, the same as a deploy, and a stack runs one deploy at a time, so it is refused while another is pending or running.
-- Agents retry with `stack_deploy` and `retry` set to the failed deploy's id, and read each deploy's `ref` and `commit` with `deploy_get`.
+- Agents retry with `stack_deploy` and `retry` set to the failed deploy's id, and read each deploy's `ref` and `commit` with `deploy_list` and the deploy's `id`.
 
 ## Who can see and deploy a stack
 

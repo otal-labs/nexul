@@ -8,6 +8,11 @@ of these is a defect against that rule. Most predate the consolidation in
 ADR 0068; it made them visible. Each wants a field on an existing tool first,
 and a new tool only inside the budget (`toolBudget` in `internal/mcp/surface_test.go`).
 
+Since ADR 0171 the surface is 112 tools against a budget of 114, so one new
+tool fits; `machine_update` is the only gap below that plainly needs one. Every
+gap also spends the `advertisedBudget` on the size of `tools/list`: its text
+says each rule once, and a read that only adds detail is a list given an `id`.
+
 - **Machines.** Renaming a machine and setting its stack root
   (`PATCH /api/machines/{id}`). A `machine_update` tool, or fields elsewhere.
 - **Topology.** Moving or renaming nodes (`PUT /api/topology`, the canvas

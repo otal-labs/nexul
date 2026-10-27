@@ -11,7 +11,7 @@ import (
 )
 
 type skillGetIn struct {
-	Name string `json:"name" jsonschema:"The skill's name, for example nexul-memory or nexul-triage."`
+	Name string `json:"name" jsonschema:"The skill's name, such as nexul-memory."`
 }
 
 type skillResult struct {
@@ -26,8 +26,7 @@ func skillGetTool() mcptool.Tool {
 		"Returns the current version of a skill Nexul installs on paired computers, with the full SKILL.md content and "+
 			"the paths it belongs at. Compare its version with the metadata.version of the installed copy; when they "+
 			"differ, write the returned content over every listed path. Once every skill Nexul ships is current, report "+
-			"skills_version with computer_setup_update. computer_list flags a provider whose installed skills are out of date, and "+
-			"computer_setup_run with skills_only runs that update on the computer for you.",
+			"skills_version with computer_setup_update. computer_setup_run with skills_only runs this update on a computer for you.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(_ context.Context, in skillGetIn) (any, error) {
 			skill, ok := shipped.Get(in.Name)

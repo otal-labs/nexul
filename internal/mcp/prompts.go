@@ -63,8 +63,8 @@ func workflowPrompts() []prompt {
 			args:        []promptArg{{name: "stack_id", description: "The stack's id, from stack_list.", required: true}},
 			render: func(a map[string]string) string {
 				return fmt.Sprintf("Deploy stack %s with stack_deploy, which builds from the stack's ref or redeploys its "+
-					"last image. Then poll deploy_get with the returned deploy id, and stack_get for its services, until "+
-					"every service is healthy or the deploy fails. If it fails, read the log tail deploy_get returns and "+
+					"last image. Then poll deploy_list with the returned deploy id, and stack_get for its services, until "+
+					"every service is healthy or the deploy fails. If it fails, read the log tail deploy_list returns for it and "+
 					"say what went wrong.", a["stack_id"])
 			},
 		},
@@ -74,7 +74,7 @@ func workflowPrompts() []prompt {
 			description: "Investigate a failed deploy end to end and propose a fix as a ticket.",
 			args:        []promptArg{{name: "deploy_id", description: "The failed deploy's id.", required: true}},
 			render: func(a map[string]string) string {
-				return fmt.Sprintf("Investigate failed deploy %s. Read it and its log with deploy_get, check the stack's "+
+				return fmt.Sprintf("Investigate failed deploy %s. Read it and its log with deploy_list and its id, check the stack's "+
 					"services with stack_get and the topology with topology_get, and, if you hold instance:read, look "+
 					"for related failed events with dead_letter_list. Then propose a fix as a new ticket with "+
 					"ticket_create.", a["deploy_id"])
@@ -96,7 +96,7 @@ func workflowPrompts() []prompt {
 					"the repository is visible, then repository_scan with owner %[1]q and repo %[2]q to get its deploy "+
 					"candidates and default branch. Pick the best candidate (compose over a standalone Dockerfile when both "+
 					"exist) and call stack_create with project_id %[3]q, machine %[4]q, that candidate, this repository and "+
-					"branch as the build source, and deploy set to true. Poll deploy_get and stack_get until every service is "+
+					"branch as the build source, and deploy set to true. Poll deploy_list with the deploy id and stack_get until every service is "+
 					"healthy.", a["owner"], a["repo"], a["project_id"], a["machine"])
 				if a["hostname"] == "" {
 					return text

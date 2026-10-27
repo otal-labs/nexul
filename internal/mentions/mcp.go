@@ -20,7 +20,7 @@ type mentionSearchIn struct {
 	Query       string       `json:"query,omitempty" jsonschema:"Text to match against ticket and doc titles and bodies, ticket notes, and people's logins and display names, or a ticket key such as REF-102, which sorts first."`
 	WorkspaceID string       `json:"workspace_id,omitempty" jsonschema:"Only find people, tickets, and docs in this workspace, the ticket a key such as REF-102 names included; omit to search every workspace you share. Required with kind. With refs, a ticket ref given as a key resolves in this workspace."`
 	Kind        string       `json:"kind,omitempty" jsonschema:"Search like the app's search box instead of for mention targets: all for every kind, or one of ticket, doc, pull_request, stack, automation, channel, memory for more of that kind. Omit to find people, tickets, and docs to mention."`
-	Refs        []mentionRef `json:"refs,omitempty" jsonschema:"References to resolve to live chips instead of searching, for example the mentions found in a document."`
+	Refs        []mentionRef `json:"refs,omitempty" jsonschema:"References to resolve to live chips instead of searching."`
 	mcptool.PageArgs
 }
 
@@ -38,13 +38,13 @@ func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("mention_search", "Search mentions",
 			"Finds people, tickets, and docs to @-mention, or with refs resolves references already in a document to live chips. "+
-				"Send exactly one of query or refs. A search returns at most 50 matches, each with its type, id, title, and status; "+
+				"A search returns at most 50 matches, each with its type, id, title, and status; "+
 				"a person's title is their display name and carries their login. "+
 				"refs return the current title, status, project key parts, and whether you can open it, and leave out targets that no longer exist. "+
 				"With kind it searches like the app's search box over one workspace: tickets, docs, pull requests (which open their ticket), stacks, automations, channels, and memories, "+
 				"each hit marked in_body when only its body or notes matched; kind all returns up to 10 title and 10 body hits per kind and names the kinds cut short in more, "+
 				"and a single kind returns up to 50 of each. "+
-				"Things you cannot open are never found by a search. To mention a person in a doc or ticket body, write [@login](/people/<id>). "+
+				"To mention a person in a doc or ticket body, write [@login](/people/<id>). "+
 				"Use doc_list or ticket_list for filtered browsing.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in mentionSearchIn) (any, error) {

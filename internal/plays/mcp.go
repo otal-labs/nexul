@@ -37,36 +37,36 @@ func toPlayResult(p *Play) playResult {
 }
 
 type playListIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
-	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, interview, or stack. When set, lists only the plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
-	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id, so plays excluded from that project are left out."`
-	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done); only plays showing in that stage are listed."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, interview, or stack. Lists only plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
+	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id."`
+	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done)."`
 	mcptool.PageArgs
 }
 
 type playCreateIn struct {
-	WorkspaceID        string   `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
-	Label              string   `json:"label" jsonschema:"The button text people press, for example Fix with AI; unique in the workspace, ignoring case."`
+	WorkspaceID        string   `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	Label              string   `json:"label" jsonschema:"The button text; unique in the workspace, ignoring case."`
 	Type               Type     `json:"type" jsonschema:"What the play runs on: ticket, doc, interview, or stack. Fixed once created."`
-	Description        string   `json:"description,omitempty" jsonschema:"One line saying what the play does, shown under the button."`
-	Instructions       string   `json:"instructions,omitempty" jsonschema:"The base instructions the Agent gets on every run, as markdown."`
-	Enabled            bool     `json:"enabled,omitempty" jsonschema:"Whether the play shows and can run. Defaults to false."`
-	ShowWhenStage      Stage    `json:"show_when_stage,omitempty" jsonschema:"Required for a ticket play and refused for any other: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
+	Description        string   `json:"description,omitempty" jsonschema:"One line shown under the button."`
+	Instructions       string   `json:"instructions,omitempty" jsonschema:"Base instructions for every run, as markdown."`
+	Enabled            bool     `json:"enabled,omitempty" jsonschema:"Shows the play and lets it run. Defaults to false."`
+	ShowWhenStage      Stage    `json:"show_when_stage,omitempty" jsonschema:"Required for a ticket play, refused for any other: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
 	ExcludedProjectIDs []string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, from project_list."`
 }
 
 type playUpdateIn struct {
-	WorkspaceID        string             `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	WorkspaceID        string             `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
 	ID                 string             `json:"id" jsonschema:"The play's id, from play_list."`
-	Label              *string            `json:"label,omitempty" jsonschema:"New button text, unique in the workspace ignoring case; omit to keep it."`
-	Description        *string            `json:"description,omitempty" jsonschema:"New one-line description; omit to keep it, an empty string clears it."`
-	Instructions       *string            `json:"instructions,omitempty" jsonschema:"New base instructions as markdown, replacing the old ones whole; omit to keep them."`
-	Enabled            *bool              `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it; omit to keep it."`
-	ShowWhenStage      *Stage             `json:"show_when_stage,omitempty" jsonschema:"Ticket plays only: the board stage (backlog, progress, review, testing, or done) whose tickets show the button; omit to keep it."`
-	ExcludedProjectIDs *[]string          `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, replacing the whole list; an empty list clears it, omit to keep it."`
-	AddAutoPlays       []autoPlayIn       `json:"add_auto_plays,omitempty" jsonschema:"Auto plays to add to the play, each starting it by itself when its moment matches. A new one starts switched off; turn it on with update_auto_plays. Needs autoplays:write."`
-	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes to the play's auto plays by id, from play_list; only the fields passed change. Needs autoplays:write."`
-	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete from the play, from play_list. Needs autoplays:delete."`
+	Label              *string            `json:"label,omitempty" jsonschema:"New button text, unique in the workspace ignoring case."`
+	Description        *string            `json:"description,omitempty" jsonschema:"New one-line description; an empty string clears it."`
+	Instructions       *string            `json:"instructions,omitempty" jsonschema:"New base instructions as markdown, replacing the old ones whole."`
+	Enabled            *bool              `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it."`
+	ShowWhenStage      *Stage             `json:"show_when_stage,omitempty" jsonschema:"Ticket plays only: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
+	ExcludedProjectIDs *[]string          `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, replacing the whole list; an empty list clears it."`
+	AddAutoPlays       []autoPlayIn       `json:"add_auto_plays,omitempty" jsonschema:"Auto plays to add, each starting the play by itself when its moment matches. A new one starts switched off; turn it on with update_auto_plays."`
+	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes by auto play id, from play_list; only the fields passed change."`
+	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete, from play_list."`
 }
 
 func (in playUpdateIn) changesPlay() bool {
@@ -74,7 +74,7 @@ func (in playUpdateIn) changesPlay() bool {
 }
 
 type playDeleteIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
 	ID          string `json:"id" jsonschema:"The play's id, from play_list."`
 }
 
@@ -82,15 +82,12 @@ type playDeleteIn struct {
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("play_list", "List plays",
-			"Lists the plays of a workspace the caller can see, sorted by label, each with its type, instructions, "+
-				"enabled switch, stage, excluded projects, and whether the caller may run it; a play hidden from the caller (plays:read denied on it) is "+
-				"left out, and plays:read is what lets them see the rest. Without type it lists every definition, and a caller with "+
-				"autoplays:read also gets each play's auto_plays: the moment that starts it by itself, its conditions "+
-				"(all or any groups of rules, each a field, an op of is, is_not, set, or unset, and values), priority, "+
-				"once_within_minutes limit, run_on, and enabled switch. With type (and "+
+			"Lists the plays of a workspace the caller can see, each with its type, "+
+				"instructions, enabled switch, stage, excluded projects, and whether the caller may run it. Without type it "+
+				"lists every definition, and a caller with autoplays:read also gets each play's auto_plays: moment, "+
+				"conditions, priority, once_within_minutes, run_on, and enabled switch. With type (and "+
 				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
-				"which is what to check before play_run. The seeded Decisions check play is listed like any other: its auto play, "+
-				"off by default, runs it when a ticket enters done. Paged, 50 per page by default.",
+				"which is what to check before play_run.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in playListIn) (any, error) {
 				list, err := listPlays(ctx, s, in)
@@ -114,8 +111,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("play_create", "Create play",
 			"Creates a play: a button that starts a pre-configured Agent turn on a ticket, a doc, a project's "+
-				"interview, or a stack. A ticket play needs show_when_stage and no other type takes one; a new play is disabled "+
-				"unless enabled is true. Returns the created play; change it later with play_update, and start it "+
+				"interview, or a stack. Returns the created play; change it later with play_update, and start it "+
 				"with play_run. Needs plays:write.",
 			mcptool.Hints{Additive: true, Local: true},
 			func(ctx context.Context, in playCreateIn) (any, error) {
@@ -129,32 +125,22 @@ func MCPTools(s *Service) []mcptool.Tool {
 				return toPlayResult(p), nil
 			}),
 		mcptool.New("play_update", "Update play",
-			"Changes a play's label, description, instructions, enabled switch, stage, or excluded projects, and adds, "+
-				"changes, or removes its auto plays. Only the fields you pass change; the rest keep their values, and a "+
-				"play's type never changes. Use enabled false to hide a play without deleting it, and play_delete to remove it. "+
-				"An auto play starts the play by itself on a moment: ticket.unblocked, ticket.entered_stage (with "+
-				"moment_stage), ticket.created, ticket.developer_set, ticket.tester_set, or ticket.test_failed for a ticket "+
-				"play, doc.created or doc.changed for a doc play, stack.service_crashed, stack.service_recovered or stack.error_rate_crossed for a "+
-				"stack play, none for an interview play. Its conditions read a ticket's "+
-				"type, project, stage, status, category, label, developer, tester, source_doc, linked_pr, or blocked, a "+
-				"doc's project or folder, or a stack play's project, stack or service, with is and is_not over values or set and unset, at most 20 rules in all. "+
-				"run_on says whose computer runs it; computer, with computer_ids you own or may run agents on, picks "+
-				"computers in order, runs as you on the first that can take a run, and is the only choice for a stack play; "+
-				"an empty computer_ids means your own computers in their usual order. "+
-				"Play fields apply first, then add_auto_plays, update_auto_plays, and remove_auto_plays in that order, "+
-				"stopping at the first failure with what already took effect. Returns the play, with its auto plays when "+
-				"they changed. A new label still applies when automations call the play by its old one with runPlay, and "+
-				"warnings then names them, since they fail until their code changes. Needs plays:read, plays:write on the play for its fields, autoplays:write to add or change auto plays, "+
-				"and autoplays:delete to remove them. The decisions check is switched on or off through its play's auto play, "+
-				"with update_auto_plays and enabled.",
+			"Changes a play's fields and adds, changes, or removes its auto plays, which start the play by itself on a "+
+				"moment (interview plays have none). A play's type never changes. Use enabled false to hide a play "+
+				"without deleting it, and play_delete to remove it. Play fields apply first, then add_auto_plays, "+
+				"update_auto_plays, and remove_auto_plays, stopping at the first failure with what already took effect. "+
+				"Returns the play, with its auto plays when they changed. A new label still applies when automations "+
+				"call the play by its old one with runPlay; warnings then names them, since they fail until their code "+
+				"changes. Needs plays:write for its fields, autoplays:write to add or change auto plays, and "+
+				"autoplays:delete to remove them. The decisions check is switched on or off through its play's auto "+
+				"play, with update_auto_plays and enabled.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playUpdateIn) (any, error) {
 				return updatePlay(ctx, s, in)
 			}),
 		mcptool.New("play_delete", "Delete play",
-			"Deletes a play from its workspace and returns its id with deleted true. Trails of its past runs stay "+
-				"readable through trail_list. To hide a play without losing it, use play_update with enabled false "+
-				"instead. Needs plays:delete on the play.",
+			"Deletes a play from its workspace. Trails of its past runs stay readable through trail_list. "+
+				"To hide a play without losing it, use play_update with enabled false instead. Needs plays:delete on the play.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playDeleteIn) (any, error) {
 				if err := s.Delete(ctx, in.WorkspaceID, in.ID); err != nil {

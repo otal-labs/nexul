@@ -151,7 +151,7 @@ func TestStackRules_ADeniedStackLeavesTheListAndFrames(t *testing.T) {
 			require.ErrorIs(t, err, apperrs.ErrNotFound)
 		}
 		_, err = f.svc.deploySvc.Get(as(user), "deploy-"+stackProd)
-		assert.Equal(t, sees, err == nil, "%s: deploy_get", user)
+		assert.Equal(t, sees, err == nil, "%s: deploy_list with an id", user)
 		assert.Equal(t, sees, a.allows(as(user), deploy.TopicStackUpdated, deploy.StackEvent{Stack: *prod}), "%s: the stack's frame", user)
 		assert.Equal(t, sees, a.allows(as(user), deploy.TopicStackUpdated, deploy.StackEvent{Stack: *feat}), "%s: its branch deployment's frame", user)
 		assert.Equal(t, sees, a.allows(as(user), deploy.TopicDeployUpdated, deploy.DeployUpdatedEvent{ID: "deploy-" + stackProd, StackID: stackProd}), "%s: a deploy's frame", user)

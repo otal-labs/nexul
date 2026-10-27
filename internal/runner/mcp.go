@@ -78,13 +78,10 @@ type machineList struct {
 
 func machineListTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_list", "List machines",
-		"Lists the machines you can see, each with its stack root, its runners' connection state, "+
-			"version, and running job, and its automations hosts, plus the deploys queued for a runner on them; a "+
-			"build or deploy job's id is its "+
-			"deploy's id for deploy_get. A machine you are not on is left out, as it is everywhere else. Use a machine's "+
-			"name as stack_create's machine and its id for machine_discover, machine_import and, with kind machine, host_delete. open_enrollments lists "+
-			"the unused enrollment codes you may revoke, never the codes themselves; host_delete revokes one by its id. "+
-			"Returns at most 100 machines per page.",
+		"Lists the machines you can see with their stack root, runners, automations hosts, and queued deploys, whose "+
+			"job ids are deploy ids for deploy_list. Use a machine's name as stack_create's machine and its id for "+
+			"machine_discover, machine_import and, with kind machine, host_delete. open_enrollments lists unused "+
+			"enrollment codes you may revoke, never the codes themselves; host_delete revokes one by its id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in machineListIn) (any, error) {
 			machines, err := s.ListMachineViews(ctx)
@@ -184,11 +181,10 @@ type machineDiscoverIn struct {
 
 func machineDiscoverTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_discover", "Discover machine",
-		"Asks an idle runner on the machine to list what is running there and returns the containers no stack "+
-			"tracks yet, grouped by compose project, standalone containers, and recognised cloudflared gateways with "+
-			"the hostnames their tunnels already route, plus the machine's docker networks. Use it before "+
-			"machine_import and pass the names it returns. It needs Manage on the machine and answers not found for "+
-			"one you can't see. It changes nothing and fails if no runner on the machine is connected and idle.",
+		"Asks an idle runner on the machine what is running there and returns the containers no stack tracks yet "+
+			"(compose projects, standalone containers, cloudflared gateways with their routed hostnames) plus the "+
+			"machine's docker networks. Use it before machine_import and pass the names it returns. It changes nothing, "+
+			"needs Manage on the machine, and fails if no runner there is connected and idle.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in machineDiscoverIn) (any, error) {
 			grouped, err := s.DiscoverForImport(ctx, in.ID)
@@ -219,14 +215,12 @@ func withoutLabels(g GroupedDiscovery) GroupedDiscovery {
 
 func instanceGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_get", "Get instance",
-		"Returns the instance's running version and release channel, the channel's newest release, whether an "+
-			"upgrade can start now and if not why, and the latest upgrade record. Check it before instance_upgrade "+
-			"and poll it afterwards to see the upgrade complete or fail; refresh asks GitHub for a release published "+
-			"in the last few minutes. Pass logs to also read the instance's own logs, the server's, the browser's, "+
-			"and the runners' and automations hosts', newest first, 100 lines by default and at most 500, in the "+
-			"list shape with the until the read is pinned to: pass that until back with next_offset for the next "+
-			"page. That needs logs:read besides instance:read, and never reaches a container's output, which "+
-			"stack_get with logs reads. Needs instance:read in any workspace.",
+		"Returns the instance's running version and release channel, the channel's newest release, whether an upgrade "+
+			"can start now and if not why, and the latest upgrade record. Poll it after instance_upgrade; refresh asks "+
+			"GitHub for a release from the last few minutes. Pass logs to also read the instance's own logs (server, "+
+			"browser, runners, automations hosts), newest first, 100 lines by default, at most 500; pass the result's "+
+			"until back with next_offset for the next page. It needs logs:read besides instance:read and never includes a "+
+			"container's output; stack_get with logs reads that.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in instanceGetIn) (any, error) {
 			if in.Refresh {
@@ -249,10 +243,10 @@ type instanceDetail struct {
 
 func instanceUpgradeTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_upgrade", "Upgrade instance",
-		"Upgrades the instance to its channel's newest release, exactly as the settings page's Upgrade button "+
-			"does: the instance runner starts `nexul upgrade` on the host, which downloads the new release's binaries and restarts every Nexul service, so the "+
-			"server goes away for a while. It is refused with the reason when instance_get says an upgrade cannot "+
-			"start. Returns the pending upgrade record; poll instance_get for the outcome. Needs instance:write in any workspace.",
+		"Upgrades the instance to its channel's newest release, as the settings page's Upgrade button does: it runs "+
+			"`nexul upgrade` on the host, which restarts every Nexul service, so the server goes away for a while. It is "+
+			"refused with the reason when instance_get says an upgrade cannot start. Returns the pending upgrade record; "+
+			"poll instance_get for the outcome.",
 		mcptool.Hints{},
 		func(ctx context.Context, _ struct{}) (any, error) {
 			return s.RequestUpgrade(ctx, mcpUpgradeActor(ctx))
@@ -260,8 +254,8 @@ func instanceUpgradeTool(s *Service) mcptool.Tool {
 }
 
 type instanceGetIn struct {
-	Refresh bool             `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now. Defaults to false."`
-	Logs    *logstore.Params `json:"logs,omitzero" jsonschema:"Also read the instance's own logs, filtered by these fields; all of them are optional. Needs logs:read. Omit it for the upgrade facts alone."`
+	Refresh bool             `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now."`
+	Logs    *logstore.Params `json:"logs,omitzero" jsonschema:"Also read the instance's own logs, filtered by these optional fields. Needs logs:read."`
 }
 
 // mcpUpgradeActor is upgrade provenance for an MCP call (ADR 0049): "<user id>:mcp", empty with no actor.

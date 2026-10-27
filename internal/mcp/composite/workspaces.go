@@ -51,8 +51,8 @@ type RoleReader interface {
 }
 
 type workspaceListIn struct {
-	ID       string `json:"id,omitempty" jsonschema:"Only this workspace, with its people, its roles, and the permission catalog their permissions come from."`
-	Archived bool   `json:"archived,omitempty" jsonschema:"true lists the archived workspaces instead of yours, each with archived_at, for the instance Owner who restores them with workspace_update archived false. Defaults to false."`
+	ID       string `json:"id,omitempty" jsonschema:"Only this workspace, with its people, roles, and the permission catalog."`
+	Archived bool   `json:"archived,omitempty" jsonschema:"true lists the archived workspaces instead of yours, each with archived_at, for the instance Owner who restores them with workspace_update."`
 	mcptool.PageArgs
 }
 
@@ -73,12 +73,12 @@ type workspaceResult struct {
 
 type workspaceUpdateIn struct {
 	ID                   string   `json:"id" jsonschema:"The workspace to change, from workspace_list."`
-	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
-	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
-	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
-	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach from this workspace: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update. Needs projects:create in this workspace."`
-	Archived             *bool    `json:"archived,omitempty" jsonschema:"true archives the workspace: it leaves every list, search and live update for its members until the instance Owner restores it, and needs workspaces:delete there; false restores an archived workspace for everyone who was in it and needs instance:write, the instance Owner's. The instance's own workspace can't be archived. Omit to leave it as is."`
-	FinishAccessSetup    bool     `json:"finish_access_setup,omitempty" jsonschema:"true ends the workspace's one-time access setup, after an upgrade wiped who is in each project: the Owners' Set up access prompt goes and members waiting on their projects stop waiting. List roles and people on projects first with permission_overwrite_update (projects:open allow); a project left listing nobody is seen only by Owners. Needs the Owner role."`
+	Name                 *string  `json:"name,omitempty" jsonschema:"The new display name."`
+	Slug                 *string  `json:"slug,omitempty" jsonschema:"The new name in web links: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace."`
+	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"Automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays."`
+	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update."`
+	Archived             *bool    `json:"archived,omitempty" jsonschema:"true archives the workspace: it leaves every list, search and live update for its members until the instance Owner restores it; false restores it, which is the instance Owner's to do. The instance's own workspace can't be archived."`
+	FinishAccessSetup    bool     `json:"finish_access_setup,omitempty" jsonschema:"true ends the workspace's one-time access setup, after an upgrade wiped who is in each project: the Owners' Set up access prompt goes and members waiting on their projects stop waiting. List roles and people on projects first with permission_overwrite_update (projects:open allow); a project left listing nobody is seen only by Owners."`
 }
 
 type workspaceUpdateResult struct {
@@ -99,12 +99,10 @@ func WorkspaceTools(w WorkspaceService, r RoleReader, limits AutoPlayLimits, acc
 
 func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts GitHubAccounts, setup AccessSetup) mcptool.Tool {
 	return mcptool.New("workspace_update", "Rename workspace or change its settings",
-		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, how many runs a person may have going before their next auto run there waits, detaches GitHub accounts from it, finishes its one-time access setup, archives or restores it, or several; a field you omit keeps its value. "+
-			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; "+
-			"a rename that keeps the slug leaves every link working. "+
-			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap and auto_play_runs_at_once need autoplays:write; remove_github_accounts needs projects:create; finish_access_setup needs the Owner role and applies next to last. "+
-			"archived true needs workspaces:delete there and applies last; it hides the workspace from every list, search and live update of its members until archived false, which needs instance:write (the instance Owner's), restores it and applies first; the instance's own workspace can't be archived, and workspace_list with archived true finds the archived ones. "+
-			"Returns the workspace's id, name, and slug as they now stand, with the auto play limits and the GitHub accounts when they changed, and archived when you sent it; workspace_list finds the id.",
+		"Changes a workspace's display name, slug, daily cap on automatic runs per ticket, detaches GitHub accounts, finishes its one-time access setup, archives or restores it, or several. "+
+			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; a rename that keeps the slug leaves every link working. "+
+			"A restore applies first and an archive last. "+
+			"Returns the workspace's id, name, and slug as they now stand, with the auto play limits and the GitHub accounts when they changed.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in workspaceUpdateIn) (any, error) {
 			a, ok := identity.ActorFromCtx(ctx)
@@ -250,15 +248,13 @@ func memberWorkspace(ctx context.Context, w WorkspaceService, userID, id string)
 
 func workspaceListTool(w WorkspaceService, r RoleReader, limits AutoPlayLimits) mcptool.Tool {
 	return mcptool.New("workspace_list", "List workspaces",
-		"Lists the workspaces you belong to, with each one's id, name, slug (its name in web links and the workspace "+
-			"a ticket tool takes to tell apart keys two workspaces share), and your_roles, every role you hold there in "+
-			"the order given (id, name, whether it is the Owner role), none for a member who sees no project. Start here when a tool "+
-			"needs a workspace_id: project_list, play_list, and the memory, role, and invitation tools are scoped by "+
-			"workspace. With an id it returns only that workspace, with its people (user_id, login, display_name, avatar_url: "+
+		"Lists the workspaces you belong to, with each one's id, name, slug (its name in web links, and the workspace "+
+			"a ticket tool takes to tell apart keys two workspaces share), and your_roles, every role you hold there "+
+			"(id, name, whether it is the Owner role). Start here when a tool "+
+			"needs a workspace_id. With an id it returns only that workspace, with its people (user_id, login, display_name, avatar_url: "+
 			"how to name a chat message's author_id, and the login an @mention takes), its roles (id, name, whether it is "+
 			"the Owner role, and permissions), the permission_catalog of every valid permission, which role_update takes, and, "+
-			"with autoplays:read, its auto_play_daily_cap on automatic runs per ticket per day and its auto_play_runs_at_once, how many runs a person may have going before their next auto run there waits. "+
-			"It returns only workspaces you are a member of, never an archived one; archived true lists the archived workspaces instead for the instance Owner, who needs instance:write.",
+			"with autoplays:read, its auto_play_daily_cap.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in workspaceListIn) (any, error) {
 			a, ok := identity.ActorFromCtx(ctx)

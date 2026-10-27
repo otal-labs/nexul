@@ -81,7 +81,7 @@ type recordListIn struct {
 	ID               string     `json:"id,omitempty" jsonschema:"Only the record with this id."`
 	Name             string     `json:"name,omitempty" jsonschema:"Only records with this full name, for example api.example.com."`
 	Type             RecordType `json:"type,omitempty" jsonschema:"Only records of this type: A, AAAA, CNAME, or TXT."`
-	CheckPropagation bool       `json:"check_propagation,omitempty" jsonschema:"Also resolve each returned record through public DNS and set propagated. Defaults to false."`
+	CheckPropagation bool       `json:"check_propagation,omitempty" jsonschema:"Also resolve each returned record through public DNS and set propagated."`
 	mcptool.PageArgs
 }
 
@@ -100,18 +100,18 @@ type recordCreateIn struct {
 	Type    RecordType `json:"type" jsonschema:"The record type: A, AAAA, CNAME, or TXT."`
 	Name    string     `json:"name" jsonschema:"The record name, relative to the zone or in full, for example api or api.example.com; @ is the zone apex."`
 	Content string     `json:"content" jsonschema:"What the record answers: an IPv4 address for A, an IPv6 address for AAAA, a hostname for CNAME, text for TXT."`
-	TTL     int        `json:"ttl,omitzero" jsonschema:"Time to live in seconds, 60 to 86400. Defaults to 1, the provider's automatic TTL."`
-	Proxied bool       `json:"proxied,omitempty" jsonschema:"Route traffic through Cloudflare's proxy. Defaults to false; a CNAME to a tunnel (*.cfargotunnel.com) resolves only when proxied."`
+	TTL     int        `json:"ttl,omitzero" jsonschema:"Time to live in seconds, 60 to 86400. Defaults to 1, automatic."`
+	Proxied bool       `json:"proxied,omitempty" jsonschema:"Route traffic through Cloudflare's proxy. A CNAME to a tunnel (*.cfargotunnel.com) resolves only when proxied."`
 }
 
 type recordUpdateIn struct {
 	ZoneID  string      `json:"zone_id" jsonschema:"The zone's id, from dns_zone_list."`
 	ID      string      `json:"id" jsonschema:"The record's id, from dns_record_list."`
-	Type    *RecordType `json:"type,omitempty" jsonschema:"New record type: A, AAAA, CNAME, or TXT. Omit to keep it."`
-	Name    *string     `json:"name,omitempty" jsonschema:"New record name, for example api.example.com. Omit to keep it."`
-	Content *string     `json:"content,omitempty" jsonschema:"New content, for example 203.0.113.10. Omit to keep it."`
-	TTL     *int        `json:"ttl,omitempty" jsonschema:"New time to live in seconds; 1 is automatic. Omit to keep it."`
-	Proxied *bool       `json:"proxied,omitempty" jsonschema:"Whether Cloudflare's proxy serves the record. Omit to keep it."`
+	Type    *RecordType `json:"type,omitempty" jsonschema:"New record type: A, AAAA, CNAME, or TXT."`
+	Name    *string     `json:"name,omitempty" jsonschema:"New record name, for example api.example.com."`
+	Content *string     `json:"content,omitempty" jsonschema:"New content, as for dns_record_create."`
+	TTL     *int        `json:"ttl,omitempty" jsonschema:"New time to live in seconds; 1 is automatic."`
+	Proxied *bool       `json:"proxied,omitempty" jsonschema:"Whether Cloudflare's proxy serves the record."`
 }
 
 type recordDeleteIn struct {
@@ -122,10 +122,9 @@ type recordDeleteIn struct {
 func recordTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dns_zone_list", "List DNS zones",
-			"Lists the DNS zones the connected Cloudflare account can edit, with each zone's id and domain name. "+
-				"Call it first: dns_record_list, dns_record_create, gateway_create, and exposure_create all take a zone "+
-				"id and name from it. A successful call also confirms the Cloudflare credentials work; a missing or "+
-				"rejected token returns an error instead.",
+			"Lists the DNS zones the connected Cloudflare account can edit, with each zone's id and domain name. Call it "+
+				"first: dns_record_list, dns_record_create, gateway_create, and exposure_create all take a zone id and name "+
+				"from it. A successful call also confirms the Cloudflare credentials work.",
 			mcptool.Hints{ReadOnly: true},
 			func(ctx context.Context, in zoneListIn) (any, error) {
 				zones, err := s.ListZones(ctx)
@@ -135,11 +134,10 @@ func recordTools(s *Service) []mcptool.Tool {
 				return mcptool.Paginate(zones, in.PageArgs), nil
 			}),
 		mcptool.New("dns_record_list", "List DNS records",
-			"Lists a zone's DNS records at Cloudflare, optionally narrowed by id, name, or type. With "+
-				"check_propagation it also resolves each returned record through public DNS and sets propagated, "+
-				"which is how to confirm a new or changed record is live; a proxied record never reports propagated, "+
-				"because public DNS answers with Cloudflare's own addresses. Records an exposure or tunnel created "+
-				"appear here too; change those through exposure_delete or dns_tunnel_update so Nexul's own view stays true.",
+			"Lists a zone's DNS records at Cloudflare, optionally narrowed by id, name, or type. check_propagation "+
+				"confirms a new or changed record is live; a proxied record never reports propagated, because public DNS "+
+				"answers with Cloudflare's own addresses. Records an exposure or tunnel created appear here too; change those "+
+				"through exposure_delete or dns_tunnel_update so Nexul's own view stays true.",
 			mcptool.Hints{ReadOnly: true},
 			func(ctx context.Context, in recordListIn) (any, error) {
 				records, err := s.ListRecords(ctx, in.ZoneID)
@@ -167,10 +165,9 @@ func recordTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("dns_record_create", "Create DNS record",
 			"Creates an A, AAAA, CNAME, or TXT record in a zone at Cloudflare and returns it with its id. Use it for "+
-				"records Nexul does not manage on its own, such as the instance's own hostname; to make a deployed "+
-				"container reachable use exposure_create, which creates its record itself. It never replaces a record: "+
-				"a name another record already holds fails or adds a second answer, and dns_record_update changes an "+
-				"existing one.",
+				"records Nexul does not manage on its own, such as the instance's own hostname; to make a deployed container "+
+				"reachable use exposure_create, which creates its record itself. It never replaces a record: "+
+				"dns_record_update changes an existing one.",
 			mcptool.Hints{Additive: true},
 			func(ctx context.Context, in recordCreateIn) (any, error) {
 				ttl := in.TTL
@@ -186,10 +183,9 @@ func recordTools(s *Service) []mcptool.Tool {
 				return toRecordResult(*rec), nil
 			}),
 		mcptool.New("dns_record_update", "Update DNS record",
-			"Changes a DNS record at Cloudflare; only the fields you pass change, and every omitted field, proxied "+
-				"included, keeps its current value. Find the record's id with dns_record_list. Returns the record as "+
-				"stored after the change. A record an exposure or tunnel owns changes through exposure_delete and "+
-				"exposure_create or dns_tunnel_update instead.",
+			"Changes a DNS record at Cloudflare and returns it as stored. Find the record's id with dns_record_list. A "+
+				"record an exposure or tunnel owns changes through exposure_delete and exposure_create or dns_tunnel_update "+
+				"instead.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in recordUpdateIn) (any, error) {
 				cur, err := s.GetRecord(ctx, in.ZoneID, in.ID)
@@ -209,9 +205,8 @@ func recordTools(s *Service) []mcptool.Tool {
 				return toRecordResult(*rec), nil
 			}),
 		mcptool.New("dns_record_delete", "Delete DNS record",
-			"Deletes a DNS record from a zone at Cloudflare and returns its id with deleted set. Deleting a record "+
-				"that is already gone succeeds, so a repeat is safe. To take down a hostname an exposure routes, use "+
-				"exposure_delete, which removes the record and the exposure together.",
+			"Deletes a DNS record from a zone at Cloudflare. Deleting a record that is already gone succeeds. To take "+
+				"down a hostname an exposure routes, use exposure_delete, which removes the record and the exposure together.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in recordDeleteIn) (any, error) {
 				if err := s.DeleteRecord(ctx, in.ZoneID, in.ID); err != nil {

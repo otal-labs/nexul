@@ -50,40 +50,38 @@ func deref(s *string) string {
 }
 
 type automationListIn struct {
-	ID          string `json:"id,omitempty" jsonschema:"An automation's id. Returns that one automation, with the workspace it belongs to, instead of a list."`
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"A workspace's id (a UUID), from workspace_list. Lists the automations that belong to that workspace; omit to list every workspace's you can read."`
+	ID          string `json:"id,omitempty" jsonschema:"An automation's id. Returns that one automation instead of a list."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"A workspace's id, from workspace_list. Lists that workspace's automations; omit to list every workspace's you can read."`
 	mcptool.PageArgs
 }
 
 type automationCreateIn struct {
-	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace the automation belongs to, by id (a UUID) from workspace_list. It hears only that workspace's events, plus instance-level ones, and reads only its secrets."`
-	Name        string   `json:"name" jsonschema:"The automation's name, for example Close stale tickets. Its code overwrites it at the first dial-in."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace the automation belongs to, from workspace_list. It hears only that workspace's events, plus instance-level ones, and reads only its secrets."`
+	Name        string   `json:"name" jsonschema:"The automation's name. Its code overwrites it at the first dial-in."`
 	Scopes      []string `json:"scopes" jsonschema:"The permissions its token may use, as domain:action, for example tickets:read or tickets:write. At least one."`
 }
 
 type automationUpdateIn struct {
-	ID           string         `json:"id" jsonschema:"The automation's id, from automation_list; the change applies in the one workspace it belongs to."`
-	ConfigValues map[string]any `json:"config_values,omitempty" jsonschema:"The owner-set config as a JSON object, replacing the current values whole and checked by the automation against its config_schema; omit to keep them."`
-	Enabled      *bool          `json:"enabled,omitempty" jsonschema:"true delivers its workspace's events to the automation and runs its worker, false stops both and refuses its token until it is switched on again; other workspaces' copies keep their own switch. Omit to keep it."`
-	HostID       *string        `json:"host_id,omitempty" jsonschema:"The automations host to run it on, by id from machine_list, which needs Deploy to on its machine; an empty string moves it back to the bundled instance host; omit to keep it."`
-	RevokeToken  bool           `json:"revoke_token,omitempty" jsonschema:"true revokes the automation's token at once and drops its live connection; automation_token_create mints a new one to restore access."`
+	ID           string         `json:"id" jsonschema:"The automation's id, from automation_list."`
+	ConfigValues map[string]any `json:"config_values,omitempty" jsonschema:"The owner-set config as a JSON object, replacing the current values whole and checked against its config_schema."`
+	Enabled      *bool          `json:"enabled,omitempty" jsonschema:"true delivers its workspace's events to the automation and runs its worker, false stops both and refuses its token until switched on again; other workspaces' copies keep their own switch."`
+	HostID       *string        `json:"host_id,omitempty" jsonschema:"The automations host to run it on, by id from machine_list, which needs Deploy to on its machine; an empty string moves it back to the bundled instance host."`
+	RevokeToken  bool           `json:"revoke_token,omitempty" jsonschema:"true revokes the token at once and drops its live connection; automation_token_create mints a new one to restore access."`
 }
 
 type automationIDIn struct {
-	ID string `json:"id" jsonschema:"The automation's id, from automation_list; it belongs to one workspace."`
+	ID string `json:"id" jsonschema:"The automation's id, from automation_list."`
 }
 
 // MCPTools returns the automations tools.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("automation_list", "List a workspace's automations",
-			"Lists the automations that belong to a workspace, defaults and custom ones alike, or every workspace's you "+
-				"can read without workspace_id. Every automation belongs to one workspace and each workspace has its own "+
-				"copy of each default, each with its own switch. Each result carries its workspace_id, subscriptions, config "+
-				"schema and values, scopes, enabled switch, and whether its token is revoked. With id it returns that one "+
-				"automation instead of a list. The decisions check is a play, not an automation: play_list shows it with "+
-				"its auto play. Tokens never appear here; automation_token_create mints a new one. Paged, 50 per "+
-				"page by default. Needs automations:read in the automation's workspace.",
+			"Lists the automations of a workspace, or every workspace's you can read without workspace_id; "+
+				"each workspace has its own copy of each default. Each result carries its workspace_id and "+
+				"whether its token is revoked. With id it returns that one automation. The decisions check is a play, not an automation: play_list shows it with "+
+				"its auto play. Tokens never appear here; automation_token_create mints a new one. "+
+				"Needs automations:read in the automation's workspace.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in automationListIn) (any, error) {
 				if in.ID != "" {
@@ -105,8 +103,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("automation_create", "Create a workspace automation",
 			"Creates a custom automation shell in a workspace, disabled, and mints its scoped token. It belongs to that "+
-				"workspace for good: it hears only that workspace's events, plus instance-level ones, and reads only its "+
-				"secrets. The result carries the token this one time only; it is never shown again, so hand it to the "+
+				"workspace for good. The result carries the token this one time only, so hand it to the "+
 				"automation's code straight away, and use automation_token_create to replace a lost one. Enable it with "+
 				"automation_update once its code has dialed in. Needs automations:write in that workspace.",
 			mcptool.Hints{Additive: true, Local: true},
@@ -119,13 +116,13 @@ func MCPTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("automation_update", "Update or switch a workspace automation",
 			"Changes an automation's config values, switches it on or off, moves it to another automations host, or "+
-				"revokes its token. It acts on the one workspace the automation belongs to: switching a default off in "+
-				"one workspace leaves the other workspaces' copies as they are. Only the fields you pass change, applied in "+
+				"revokes its token, in its own workspace only: switching a default off in "+
+				"one workspace leaves the other copies as they are. Fields apply in "+
 				"the order config_values, enabled, host_id, revoke_token; it stops at the first failure and the error says "+
-				"which fields already took effect. Returns the updated automation. The decisions check is switched on its "+
+				"which already took effect. Returns the updated automation. The decisions check is switched on its "+
 				"play's auto play with play_update. To rotate the token use automation_token_create, and to remove "+
-				"the automation automation_delete. Needs automations:write in the automation's workspace; moving it to an "+
-				"automations host also needs Deploy to on the host's machine, and a host on a machine you can't see is not found.",
+				"the automation automation_delete. Needs automations:write in its workspace, and Deploy to on the "+
+				"host's machine to move it to a host.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationUpdateIn) (any, error) {
 				a, err := updateAutomation(ctx, s, in)
@@ -136,7 +133,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("automation_delete", "Delete a workspace automation",
 			"Deletes an automation from the workspace it belongs to, for good, and revokes its token, dropping its live "+
-				"connection. Returns its id with deleted true. To pause one instead, use automation_update with enabled "+
+				"connection. To pause one instead, use automation_update with enabled "+
 				"false. Needs automations:delete in the automation's workspace.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationIDIn) (any, error) {
@@ -149,8 +146,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			"Mints a new token for an automation, replacing its current or revoked one: the old token stops "+
 				"working at once and its live connection drops. The result carries the new token this one time "+
 				"only, so hand it to the automation's code straight away. To cut access without a replacement, "+
-				"use automation_update with revoke_token instead. Needs automations:write in the workspace the "+
-				"automation belongs to.",
+				"use automation_update with revoke_token instead. Needs automations:write in the automation's workspace.",
 			mcptool.Hints{Local: true},
 			func(ctx context.Context, in automationIDIn) (any, error) {
 				a, token, err := s.MintToken(ctx, actorIDFromCtx(ctx), in.ID)

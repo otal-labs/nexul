@@ -15,15 +15,15 @@ type gatewayListIn struct {
 
 type gatewayCreateIn struct {
 	Kind           GatewayKind `json:"kind" jsonschema:"tunnel (cloudflared dials out to a Cloudflare tunnel, no open ports) or proxy (Traefik listens on ports 80 and 443 of the machine and gets Let's Encrypt certificates)."`
-	Machine        string      `json:"machine,omitempty" jsonschema:"The machine the gateway's backing stack deploys to, by name, from machine_list; it needs Deploy to on it. Required unless instance_domain is set, where it defaults to the machine of the runner named instance."`
-	DockerNetwork  string      `json:"docker_network,omitempty" jsonschema:"The gateway's home docker network, for example shop_default; a network has at most one gateway. Required unless instance_domain is set, where it defaults to nexul_proxy."`
+	Machine        string      `json:"machine,omitempty" jsonschema:"The machine the backing stack deploys to, by name, from machine_list; needs Deploy to on it. Required unless instance_domain is set, then defaults to the machine of the runner named instance."`
+	DockerNetwork  string      `json:"docker_network,omitempty" jsonschema:"The gateway's home docker network, for example shop_default; a network has at most one gateway. Required unless instance_domain is set, then defaults to nexul_proxy."`
 	ZoneID         string      `json:"zone_id,omitempty" jsonschema:"The zone the gateway serves, from dns_zone_list. Required unless instance_domain is set."`
-	Zone           string      `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Required unless instance_domain is set."`
+	Zone           string      `json:"zone,omitempty" jsonschema:"That zone's domain name. Required unless instance_domain is set."`
 	TunnelID       string      `json:"tunnel_id,omitempty" jsonschema:"Required for kind tunnel: the tunnel cloudflared connects to, from dns_tunnel_list or dns_tunnel_create."`
-	ServerAddress  string      `json:"server_address,omitempty" jsonschema:"Required for kind proxy without instance_domain: the machine's public IP address or hostname that exposure records point at, for example 203.0.113.10."`
+	ServerAddress  string      `json:"server_address,omitempty" jsonschema:"Required for kind proxy without instance_domain: the machine's public IP address or hostname that exposure records point at."`
 	StackName      string      `json:"stack_name,omitempty" jsonschema:"The backing stack's name. Defaults to cloudflared-<tunnel name> or traefik-<random>."`
 	InstanceDomain string      `json:"instance_domain,omitempty" jsonschema:"Kind proxy only: a domain already resolving to the machine, for example nexul.example.com, that Traefik routes to this Nexul server over HTTPS."`
-	Email          string      `json:"email,omitempty" jsonschema:"With instance_domain: the email the Let's Encrypt account registers with, for example owner@example.com. Optional."`
+	Email          string      `json:"email,omitempty" jsonschema:"With instance_domain: the email for the Let's Encrypt account. Optional."`
 }
 
 type gatewayDeleteIn struct {
@@ -56,10 +56,9 @@ func toGatewayResult(g *Gateway) gatewayResult {
 func gatewayTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("gateway_list", "List gateways",
-			"Lists the gateways Nexul deployed, oldest first: each one's kind, home docker network and every network "+
-				"it joined since, machine, backing stack, and the tunnel or server address behind it. Use it to pick a "+
-				"gateway_id for exposure_create, or to find the gateway a network already has. It reads only Nexul's "+
-				"own records; a tunnel's live connection state is on dns_tunnel_list with the tunnel's id.",
+			"Lists the gateways Nexul deployed, oldest first, with kind, docker networks, machine, backing stack, and the "+
+				"tunnel or server address behind each. Use it to pick a gateway_id for exposure_create, or to find the "+
+				"gateway a network already has. A tunnel's live connection state is on dns_tunnel_list with the tunnel's id.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in gatewayListIn) (any, error) {
 				gws, err := s.ListGateways(ctx)
@@ -69,16 +68,12 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				return mcptool.Paginate(shapeAll(gws, toGatewayResult), in.PageArgs), nil
 			}),
 		mcptool.New("gateway_create", "Create gateway",
-			"Creates a gateway, the service giving one docker network's containers internet reachability, and "+
-				"deploys its backing stack on the machine: cloudflared for kind tunnel, Traefik for kind proxy. "+
-				"exposure_create already reuses or deploys a gateway on the container's machine, so use this to choose "+
-				"the kind, network, or tunnel yourself, or to give the instance's own network a gateway. A tunnel gateway "+
-				"needs a tunnel_id from dns_tunnel_create or dns_tunnel_list, and a proxy gateway needs the machine's "+
-				"public server_address. A network that already has a gateway fails with a conflict; gateway_list shows it. "+
-				"With kind proxy and instance_domain it instead routes that domain to this Nexul server: it reuses the "+
-				"machine's proxy gateway or deploys one, Traefik gets a Let's Encrypt certificate once the domain resolves "+
-				"to the machine and ports 80 and 443 are open, and calling it again redeploys the same stack. Returns "+
-				"the gateway; stack_id is the stack whose deploys show the rollout.",
+			"Creates a gateway and deploys its backing stack on the machine: cloudflared for kind tunnel, Traefik for "+
+				"kind proxy. exposure_create already reuses or deploys a gateway, so use this to choose the kind, network, or "+
+				"tunnel yourself, or to give the instance's own network one. With kind proxy and instance_domain it routes "+
+				"that domain to this Nexul server instead, reusing or deploying the machine's proxy gateway; the certificate "+
+				"is issued once the domain resolves to the machine and ports 80 and 443 are open, and calling again redeploys "+
+				"the stack. Returns the gateway; stack_id is the stack whose deploys show the rollout.",
 			mcptool.Hints{},
 			func(ctx context.Context, in gatewayCreateIn) (any, error) {
 				if in.InstanceDomain != "" {
@@ -95,10 +90,9 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				return toGatewayResult(g), nil
 			}),
 		mcptool.New("gateway_delete", "Delete gateway",
-			"Deletes a gateway and tears down its backing stack, returning its id with deleted set. It refuses while "+
-				"exposures still route through the gateway: exposure_list with gateway_id finds them and exposure_delete "+
-				"removes them. The tunnel behind a tunnel gateway stays, since other gateways or the instance may use "+
-				"it; dns_tunnel_delete removes it.",
+			"Deletes a gateway and tears down its backing stack. It refuses while exposures still route through the "+
+				"gateway: exposure_list with gateway_id finds them and exposure_delete removes them. The tunnel behind a "+
+				"tunnel gateway stays, since other gateways or the instance may use it; dns_tunnel_delete removes it.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in gatewayDeleteIn) (any, error) {
 				if err := s.DeleteGateway(ctx, in.ID); err != nil {
@@ -130,11 +124,11 @@ type exposureListIn struct {
 }
 
 type exposureCreateIn struct {
-	Hostname  string      `json:"hostname" jsonschema:"The public hostname, under zone, for example app.example.com."`
+	Hostname  string      `json:"hostname" jsonschema:"The public hostname under zone, for example app.example.com."`
 	ServiceID string      `json:"service_id" jsonschema:"The container to route to: a service id from stack_get."`
-	Port      int         `json:"port" jsonschema:"The container port to route to, for example 8080."`
+	Port      int         `json:"port" jsonschema:"The container port to route to."`
 	ZoneID    string      `json:"zone_id" jsonschema:"The hostname's zone, from dns_zone_list."`
-	Zone      string      `json:"zone" jsonschema:"That zone's domain name, for example example.com."`
+	Zone      string      `json:"zone" jsonschema:"That zone's domain name."`
 	GatewayID string      `json:"gateway_id,omitempty" jsonschema:"The gateway to route through, from gateway_list. Omit to reuse or deploy one on the container's machine."`
 	Kind      GatewayKind `json:"kind,omitempty" jsonschema:"tunnel or proxy: the kind of gateway to deploy when none is reused. Omit to pick tunnel when Cloudflare is connected and a tunnel exists, else proxy."`
 }
@@ -166,9 +160,8 @@ func exposureTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("exposure_list", "List exposures",
 			"Lists exposures, the hostnames Nexul routes through a gateway to a container, oldest first, optionally "+
-				"narrowed to one container or one gateway. Each carries its hostname, gateway_id, the container's "+
-				"service_id and service_name, the port, and the record_id of the DNS record behind it. Use it to find "+
-				"where a service is reachable, or the exposure id exposure_delete needs.",
+				"narrowed to one container or one gateway. Each carries the record_id of the DNS record behind it. Use it to "+
+				"find where a service is reachable, or the exposure id exposure_delete needs.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in exposureListIn) (any, error) {
 				exps, err := s.ListExposures(ctx)
@@ -181,12 +174,10 @@ func exposureTools(s *Service) []mcptool.Tool {
 				return mcptool.Paginate(shapeAll(exps, toExposureResult), in.PageArgs), nil
 			}),
 		mcptool.New("exposure_create", "Expose container",
-			"Makes a container reachable at a hostname: routes the hostname through a gateway to the container's "+
-				"port and creates its DNS record, a proxied CNAME to the tunnel or an A or AAAA record at the proxy's "+
-				"server address. Without gateway_id it reuses a gateway on the container's machine, preferring one "+
-				"already on the container's network, or deploys a new one of the given kind. The gateway joins the "+
-				"container's networks, right away when the container is running, else on its next deploy. Returns "+
-				"the exposure; exposure_delete reverses it.",
+			"Makes a container reachable at a hostname: routes it through a gateway to the container's port and creates "+
+				"its DNS record. Without gateway_id it reuses a gateway on the container's machine, preferring one on its "+
+				"network, or deploys one of the given kind; the gateway joins the container's networks when it is running, "+
+				"else on its next deploy. Returns the exposure; exposure_delete reverses it.",
 			mcptool.Hints{},
 			func(ctx context.Context, in exposureCreateIn) (any, error) {
 				e, err := s.CreateExposure(ctx, CreateExposureInput{
@@ -199,10 +190,9 @@ func exposureTools(s *Service) []mcptool.Tool {
 				return toExposureResult(e), nil
 			}),
 		mcptool.New("exposure_delete", "Delete exposure",
-			"Removes an exposure and returns its id with deleted set. It deletes the tunnel's ingress rule for the "+
-				"hostname on a tunnel gateway, the hostname's DNS record, and Nexul's record of the exposure. The "+
-				"container and the gateway keep running; gateway_delete removes a gateway once no exposure routes "+
-				"through it.",
+			"Removes an exposure: the tunnel's ingress rule for the hostname on a tunnel gateway, the hostname's DNS "+
+				"record, and Nexul's record of the exposure. The container and the gateway keep running. gateway_delete "+
+				"removes a gateway once no exposure routes through it.",
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in exposureDeleteIn) (any, error) {
 				if err := s.DeleteExposure(ctx, in.ID); err != nil {

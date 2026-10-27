@@ -16,7 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// defaultLogLines and maxLogLines bound the log tail deploy_get returns, so a long build never floods the context.
+// defaultLogLines and maxLogLines bound the log tail deploy_list returns for one deploy, so a long build never floods the context.
 const (
 	defaultLogLines = 200
 	maxLogLines     = 1000
@@ -29,7 +29,6 @@ const recentDeploys = 10
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		deployListTool(s),
-		deployGetTool(s),
 		deployCancelTool(s),
 		stackListTool(s),
 		stackGetTool(s),
@@ -42,18 +41,30 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type deployListIn struct {
-	StackID string `json:"stack_id,omitempty" jsonschema:"Only this stack's deploys, by the stack's id from stack_list."`
-	Status  string `json:"status,omitempty" jsonschema:"Only deploys in this state: pending, running, healthy, or failed."`
+	ID       string `json:"id,omitempty" jsonschema:"One deploy, from this list or stack_deploy's result, returned with its log instead of a page."`
+	LogLines int    `json:"log_lines,omitzero" jsonschema:"With an id, how many of the log's last lines to return, 1 to 1000, default 200."`
+	StackID  string `json:"stack_id,omitempty" jsonschema:"Only this stack's deploys, by its id from stack_list."`
+	Status   string `json:"status,omitempty" jsonschema:"Only deploys in this state: pending, running, healthy, or failed."`
 	mcptool.PageArgs
+}
+
+// deployDetail is a deploy with the tail of its log; log_total is the full log's length, so a cut tail shows.
+type deployDetail struct {
+	deployResult
+	Log      []LogLine `json:"log"`
+	LogTotal int       `json:"log_total"`
 }
 
 func deployListTool(s *Service) mcptool.Tool {
 	return mcptool.New("deploy_list", "List deploys",
-		"Lists deploys newest first, as summaries without their logs. Filter by stack_id to see one stack's "+
-			"history or by status to find what is running or failed; use deploy_get for one deploy with its log. "+
-			"Returns at most 100 per page.",
+		"Lists deploys newest first, filtered by stack_id or status. With an id it returns that one deploy with what "+
+			"triggered it and the tail of its log (log_total is the full length). Poll it with the id stack_deploy "+
+			"returned until the status is healthy or failed, and read the log to diagnose a failure.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in deployListIn) (any, error) {
+			if in.ID != "" {
+				return deployDetailOf(ctx, s, in.ID, in.LogLines)
+			}
 			ds, total, err := s.PageDeploys(ctx, DeployFilter{StackID: in.StackID, Status: Status(in.Status)}, in.Window())
 			if errors.Is(err, apperrs.ErrInvalid) {
 				return nil, fmt.Errorf("%w; status is one of pending, running, healthy, failed", err)
@@ -65,41 +76,21 @@ func deployListTool(s *Service) mcptool.Tool {
 		})
 }
 
-type deployGetIn struct {
-	ID       string `json:"id" jsonschema:"The deploy's id, from deploy_list or from the result of stack_deploy."`
-	LogLines int    `json:"log_lines,omitzero" jsonschema:"How many of the log's last lines to return, 1 to 1000. Defaults to 200."`
-}
-
-// deployDetail is a deploy with the tail of its log; log_total is the full log's length, so a cut tail shows.
-type deployDetail struct {
-	deployResult
-	Log      []LogLine `json:"log"`
-	LogTotal int       `json:"log_total"`
-}
-
-func deployGetTool(s *Service) mcptool.Tool {
-	return mcptool.New("deploy_get", "Get deploy",
-		"Returns one deploy with its status, what triggered it, and the last lines of its checkout, build, and "+
-			"deploy log (each line has a unix-millisecond ts and a phase). Poll it after stack_deploy until the status "+
-			"is healthy or failed, and read the log to diagnose a failure. The log tail defaults to 200 lines; "+
-			"log_total is the full length.",
-		mcptool.Hints{ReadOnly: true, Local: true},
-		func(ctx context.Context, in deployGetIn) (any, error) {
-			d, err := s.Get(ctx, in.ID)
-			if err != nil {
-				return nil, withHint(err, "deploy_list lists deploys")
-			}
-			lines, err := s.Log(ctx, in.ID)
-			if err != nil {
-				return nil, err
-			}
-			n := in.LogLines
-			if n < 1 {
-				n = defaultLogLines
-			}
-			n = min(n, maxLogLines)
-			return deployDetail{deployResult: toDeployResult(d), Log: lines[max(0, len(lines)-n):], LogTotal: len(lines)}, nil
-		})
+func deployDetailOf(ctx context.Context, s *Service, id string, logLines int) (deployDetail, error) {
+	d, err := s.Get(ctx, id)
+	if err != nil {
+		return deployDetail{}, withHint(err, "deploy_list without an id lists deploys")
+	}
+	lines, err := s.Log(ctx, id)
+	if err != nil {
+		return deployDetail{}, err
+	}
+	n := logLines
+	if n < 1 {
+		n = defaultLogLines
+	}
+	n = min(n, maxLogLines)
+	return deployDetail{deployResult: toDeployResult(d), Log: lines[max(0, len(lines)-n):], LogTotal: len(lines)}, nil
 }
 
 type deployCancelIn struct {
@@ -108,9 +99,8 @@ type deployCancelIn struct {
 
 func deployCancelTool(s *Service) mcptool.Tool {
 	return mcptool.New("deploy_cancel", "Cancel deploy",
-		"Asks the runner to stop a pending or running deploy; the deploy then lands failed with reason cancelled. "+
-			"Use deploy_get afterwards to see it land. A deploy that already finished cannot be cancelled and returns "+
-			"a conflict.",
+		"Asks the runner to stop a pending or running deploy; it then lands failed with reason cancelled. Poll "+
+			"deploy_list with its id to see it land. A finished deploy cannot be cancelled.",
 		mcptool.Hints{},
 		func(ctx context.Context, in deployCancelIn) (any, error) {
 			if err := s.Cancel(ctx, in.ID); err != nil {
@@ -129,8 +119,8 @@ type stackListIn struct {
 func stackListTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_list", "List stacks",
 		"Lists stacks, the deployable units of a project, with their machine, strategy, and repository. Branch "+
-			"deployments are not listed here; stack_get shows them under their base stack, along with the stack's "+
-			"services and recent deploys. Returns at most 100 per page.",
+			"deployments appear under their base stack in stack_get, not here. Use stack_get for a stack's services and "+
+			"recent deploys.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in stackListIn) (any, error) {
 			stacks, err := s.ListScopedStacks(ctx, in.ProjectID, in.WorkspaceID)
@@ -143,7 +133,7 @@ func stackListTool(s *Service) mcptool.Tool {
 
 type stackGetIn struct {
 	ID   string       `json:"id" jsonschema:"The stack's id, from stack_list."`
-	Logs *stackLogsIn `json:"logs,omitzero" jsonschema:"Also return the last lines a service's container printed. Needs the stacks:logs permission. Omit it for the stack alone."`
+	Logs *stackLogsIn `json:"logs,omitzero" jsonschema:"Also return the last lines a service's container printed. Needs stacks:logs."`
 }
 
 type stackLogsIn struct {
@@ -236,19 +226,12 @@ type serviceLogs struct {
 
 func stackGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_get", "Get stack",
-		"Returns one stack's definition with its services (the containers it runs, with image, status, networks, "+
-			"and ports), the services that are down now (open_outages: since when, exit code, whether it ran out of "+
-			"memory, how many times it crashed again; read the crashed container's output with logs), whether you "+
-			"watch it (watching: everyone who can read a stack does until they stop, and a watcher is notified when a "+
-			"service crashes and when it comes back), for a stack with a hostname its requests over the last hour "+
-			"(requests: counts per minute and totals, 5xx answers apart, null for a minute that could not be counted), "+
-			"the stack's error-rate rule (error_rate) with its open episode while the share of 5xx answers is over it "+
-			"(open_error_rate_episode), when the last one ended within the hour (error_rate_recovered_at) and why the "+
-			"rule cannot watch the stack (error_rate_unavailable), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
-			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
-			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
-			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
-			"stack_update or stack_deploy, and deploy_list for older deploys.",
+		"Returns one stack's definition, its services, open_outages (services down now), watching, the last hour's "+
+			"requests for a stack with a hostname, the error_rate rule and its episode fields, its ten latest deploys, "+
+			"and its branch deployments. Environment variables are listed by key only; values never leave the server. "+
+			"Pass logs with a service name to read that container's last lines (200 by default, at most 1000, each cut at "+
+			"2000 characters, environment values masked); that needs a connected runner on the stack's machine. Use it "+
+			"before stack_update or stack_deploy; deploy_list has older deploys.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in stackGetIn) (any, error) {
 			stack, err := s.GetStack(ctx, in.ID)
@@ -327,9 +310,9 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 }
 
 type buildSourceIn struct {
-	RepoOwner   string `json:"repo_owner" jsonschema:"The repository's owner, for example acme."`
-	RepoName    string `json:"repo_name" jsonschema:"The repository's name, for example api."`
-	Branch      string `json:"branch,omitempty" jsonschema:"The branch deploys build from by default, for example main."`
+	RepoOwner   string `json:"repo_owner" jsonschema:"The repository's owner."`
+	RepoName    string `json:"repo_name" jsonschema:"The repository's name."`
+	Branch      string `json:"branch,omitempty" jsonschema:"The branch deploys build from by default."`
 	Dockerfile  string `json:"dockerfile,omitempty" jsonschema:"Path of the Dockerfile to build, relative to the repository root."`
 	ComposePath string `json:"compose_path,omitempty" jsonschema:"Path of the compose file to build, relative to the repository root."`
 }
@@ -337,10 +320,10 @@ type buildSourceIn struct {
 type branchRuleIn struct {
 	Pattern          string            `json:"pattern" jsonschema:"An exact branch name, or one trailing wildcard such as feature/*."`
 	DockerNetwork    string            `json:"docker_network" jsonschema:"The docker network this branch's deployment joins."`
-	HostnameTemplate string            `json:"hostname_template,omitempty" jsonschema:"Hostname to expose the deployment on, where {branch} becomes the branch as a hostname label, for example {branch}.preview.example.com. Needs port and a gateway on the network."`
+	HostnameTemplate string            `json:"hostname_template,omitempty" jsonschema:"Hostname to expose the deployment on; {branch} becomes the branch as a hostname label, for example {branch}.preview.example.com. Needs port and a gateway on the network."`
 	Port             int               `json:"port,omitzero" jsonschema:"The container port the hostname template exposes."`
-	NameSuffix       string            `json:"name_suffix,omitempty" jsonschema:"Exact patterns only: deploy a clone named <stack>-<suffix> instead of redeploying the stack in place, for example qa."`
-	Overrides        map[string]string `json:"overrides,omitempty" jsonschema:"Env values that replace the stack's own in this rule's deployments; clone rules only. On stack_update, omit it to keep the current rule's overrides and send {} to clear them."`
+	NameSuffix       string            `json:"name_suffix,omitempty" jsonschema:"Exact patterns only: deploy a clone named <stack>-<suffix> instead of redeploying in place."`
+	Overrides        map[string]string `json:"overrides,omitempty" jsonschema:"Env values that replace the stack's own in this rule's deployments; clone rules only. On stack_update, omit to keep the current rule's overrides, send {} to clear them."`
 }
 
 type candidateBuildIn struct {
@@ -350,10 +333,10 @@ type candidateBuildIn struct {
 
 type candidateServiceIn struct {
 	Name    string            `json:"name" jsonschema:"The service's name."`
-	Image   string            `json:"image,omitempty" jsonschema:"The image the service runs, when it pulls instead of building."`
+	Image   string            `json:"image,omitempty" jsonschema:"The image, when the service pulls instead of building."`
 	Build   *candidateBuildIn `json:"build,omitempty" jsonschema:"How the service builds, when it builds."`
 	Ports   []int             `json:"ports,omitempty" jsonschema:"Ports the service publishes."`
-	Expose  []int             `json:"expose,omitempty" jsonschema:"Ignored; accepted so a repository_scan candidate passes unchanged."`
+	Expose  []int             `json:"expose,omitempty" jsonschema:"Ignored."`
 	EnvKeys []string          `json:"env_keys,omitempty" jsonschema:"Environment keys the service reads."`
 }
 
@@ -365,28 +348,28 @@ type candidateReachableIn struct {
 type candidateIn struct {
 	Kind      string                `json:"kind" jsonschema:"compose or dockerfile."`
 	Path      string                `json:"path" jsonschema:"The compose file or Dockerfile path within the repository."`
-	Name      string                `json:"name,omitempty" jsonschema:"Ignored; accepted so a repository_scan candidate passes unchanged."`
+	Name      string                `json:"name,omitempty" jsonschema:"Ignored."`
 	Services  []candidateServiceIn  `json:"services,omitempty" jsonschema:"The candidate's declared services."`
-	Reachable *candidateReachableIn `json:"reachable,omitempty" jsonschema:"Ignored; accepted so a repository_scan candidate passes unchanged."`
+	Reachable *candidateReachableIn `json:"reachable,omitempty" jsonschema:"Ignored."`
 }
 
 type stackCreateIn struct {
-	ProjectID         string            `json:"project_id,omitempty" jsonschema:"The project the stack belongs to, by id from project_list. Required with a build_source; omit only for the instance's own infrastructure, which belongs to no project."`
-	Machine           string            `json:"machine" jsonschema:"The name of the machine the stack runs on, from machine_list, for example prod-1. Needs Deploy to on it."`
-	Name              string            `json:"name,omitempty" jsonschema:"The stack's name; its slug is derived from it once. With a candidate it defaults to build_source.repo_name."`
+	ProjectID         string            `json:"project_id,omitempty" jsonschema:"The project the stack belongs to, by id from project_list. Required with a build_source; omit only for the instance's own infrastructure."`
+	Machine           string            `json:"machine" jsonschema:"The machine's name, from machine_list, for example prod-1. Needs Deploy to on it."`
+	Name              string            `json:"name,omitempty" jsonschema:"The stack's name; its slug is derived from it once. Defaults to build_source.repo_name with a candidate."`
 	Strategy          Strategy          `json:"strategy,omitempty" jsonschema:"compose or run. Required without a candidate; a candidate sets it from its kind."`
 	ComposePath       string            `json:"compose_path,omitempty" jsonschema:"The compose file's path for the compose strategy. Defaults to docker-compose.yml."`
-	DockerNetwork     string            `json:"docker_network,omitempty" jsonschema:"The docker network a run stack's container joins; required for the run strategy."`
+	DockerNetwork     string            `json:"docker_network,omitempty" jsonschema:"The docker network a run stack's container joins; required for run."`
 	Ports             []string          `json:"ports,omitempty" jsonschema:"Host-to-container port mappings for a run stack, for example 8080:80."`
 	Mounts            []string          `json:"mounts,omitempty" jsonschema:"Host-to-container bind mounts for a run stack, for example /srv/data:/data."`
 	Command           []string          `json:"command,omitempty" jsonschema:"Replaces the image's command for a run stack, one argument per item."`
 	Env               map[string]string `json:"env,omitempty" jsonschema:"Environment variables for the stack's containers."`
-	BuildSource       *buildSourceIn    `json:"build_source,omitempty" jsonschema:"The repository the stack builds from; without it the stack can only redeploy images."`
+	BuildSource       *buildSourceIn    `json:"build_source,omitempty" jsonschema:"The repository to build from; without it the stack can only redeploy images."`
 	BranchDeployRules []branchRuleIn    `json:"branch_deploy_rules,omitempty" jsonschema:"Rules that deploy pushed branches, each mapping a branch pattern to a network."`
-	Candidate         *candidateIn      `json:"candidate,omitempty" jsonschema:"A deployable candidate from repository_scan; it sets the strategy, compose path, and declared services."`
-	LinkRepository    bool              `json:"link_repository,omitzero" jsonschema:"Attach build_source's repository to the project first, so a repository not yet in the project is accepted."`
-	Deploy            bool              `json:"deploy,omitzero" jsonschema:"Start the first deploy right after creating the stack."`
-	Ref               string            `json:"ref,omitempty" jsonschema:"The branch, tag, or commit the first deploy builds, for example main. Defaults to build_source.branch."`
+	Candidate         *candidateIn      `json:"candidate,omitempty" jsonschema:"A candidate from repository_scan, passed unchanged; it sets the strategy, compose path, and services."`
+	LinkRepository    bool              `json:"link_repository,omitzero" jsonschema:"Attach build_source's repository to the project first if it is not in it."`
+	Deploy            bool              `json:"deploy,omitzero" jsonschema:"Also start the first deploy."`
+	Ref               string            `json:"ref,omitempty" jsonschema:"The branch, tag, or commit the first deploy builds. Defaults to build_source.branch."`
 }
 
 // stackCreated is the new stack, plus its first deploy when one was asked for.
@@ -397,10 +380,10 @@ type stackCreated struct {
 
 func stackCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_create", "Create stack",
-		"Creates a stack on a machine, from explicit fields or from a repository_scan candidate plus a build "+
-			"source, exactly as the project wizard does. Set deploy to also start its first deploy, then poll "+
-			"deploy_get; use stack_deploy for later deploys and stack_update to change it. Returns the stack and the "+
-			"started deploy; if the stack is created but its first deploy cannot start, the error says so.",
+		"Creates a stack on a machine, from explicit fields or from a repository_scan candidate plus a build source, "+
+			"as the project wizard does. Set deploy to also start its first deploy, then poll deploy_list with its id; "+
+			"use stack_deploy for later deploys and stack_update to change the stack. Returns the stack and the started "+
+			"deploy.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackCreateIn) (any, error) {
 			stack, declared, err := stackFromCreate(in)
@@ -496,9 +479,9 @@ type envPatchIn struct {
 }
 
 type buildSourcePatchIn struct {
-	RepoOwner   *string `json:"repo_owner,omitempty" jsonschema:"The repository's owner, for example acme."`
-	RepoName    *string `json:"repo_name,omitempty" jsonschema:"The repository's name, for example api."`
-	Branch      *string `json:"branch,omitempty" jsonschema:"The branch deploys build from by default, for example main."`
+	RepoOwner   *string `json:"repo_owner,omitempty" jsonschema:"The repository's owner."`
+	RepoName    *string `json:"repo_name,omitempty" jsonschema:"The repository's name."`
+	Branch      *string `json:"branch,omitempty" jsonschema:"The branch deploys build from by default."`
 	Dockerfile  *string `json:"dockerfile,omitempty" jsonschema:"Path of the Dockerfile to build; an empty string clears it."`
 	ComposePath *string `json:"compose_path,omitempty" jsonschema:"Path of the compose file to build; an empty string clears it."`
 }
@@ -517,20 +500,20 @@ type stackUpdateIn struct {
 	Env                       *envPatchIn         `json:"env,omitempty" jsonschema:"Changes to the environment variables; keys not named keep their values."`
 	BuildSource               *buildSourcePatchIn `json:"build_source,omitempty" jsonschema:"Changes to the repository the stack builds from; fields not sent keep their values."`
 	BranchDeployRules         []branchRuleIn      `json:"branch_deploy_rules,omitempty" jsonschema:"Replaces the whole list of branch deploy rules; send [] to remove them all."`
-	CrashTickets              *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or a recovery adds a comment to it; false stops. Only a stack with a project may switch it on."`
+	CrashTickets              *bool               `json:"crash_tickets,omitempty" jsonschema:"True opens one ticket in the stack's project when a service crashes, and a repeat crash or recovery comments on it; false stops. Only a stack with a project may switch it on."`
 	ErrorRate                 *errorRatePatchIn   `json:"error_rate,omitempty" jsonschema:"Changes to the error-rate rule; fields not sent keep their values."`
-	CrashNoticeConversationID *string             `json:"crash_notice_conversation_id,omitempty" jsonschema:"Posts each crash, error-rate episode and recovery, with a link to its crash ticket, into this channel of the stack's workspace, by id from conversation_list; you must be able to post there. An empty string stops the notices. Changing it without crash_notice_bot_id clears the bot."`
+	CrashNoticeConversationID *string             `json:"crash_notice_conversation_id,omitempty" jsonschema:"Posts each crash, error-rate episode and recovery, with a link to its crash ticket, into this channel, by id from conversation_list; you must be able to post there. An empty string stops the notices. Changing it without crash_notice_bot_id clears the bot."`
 	CrashNoticeBotID          *string             `json:"crash_notice_bot_id,omitempty" jsonschema:"Posts the notices as this bot of that conversation, by id from botwebhook_list; an empty string posts them as the instance."`
-	Watching                  *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher of the stack, notified when a service crashes and when it comes back; false stops that for you alone. Needs only read access. Omit to leave it as is."`
+	Watching                  *bool               `json:"watching,omitempty" jsonschema:"true makes you a watcher, notified when a service crashes and when it comes back; false stops that for you alone. Everyone who can read a stack watches until they stop."`
 }
 
 // errorRatePatchIn changes a stack's error-rate rule: it trips when the share of 5xx answers over the last minutes is
 // above percent with at least min_requests requests, and ends once each of those minutes has stayed under the limit.
 type errorRatePatchIn struct {
 	Enabled     *bool    `json:"enabled,omitempty" jsonschema:"True switches the rule on; false switches it off and ends an open episode. Needs a hostname on the stack, and for a Cloudflare tunnel hostname a token that can read analytics."`
-	Percent     *float64 `json:"percent,omitempty" jsonschema:"The share of 5xx answers, in percent, above which the rule trips, 0.1 to 100. 5 by default."`
-	Minutes     *int     `json:"minutes,omitempty" jsonschema:"How many minutes the share is read over, and how long it must stay under the limit to recover, 1 to 60. 5 by default."`
-	MinRequests *int     `json:"min_requests,omitempty" jsonschema:"The fewest requests in those minutes for the rule to trip, 1 or more. 20 by default."`
+	Percent     *float64 `json:"percent,omitempty" jsonschema:"The 5xx share, in percent, above which the rule trips, 0.1 to 100. Default 5."`
+	Minutes     *int     `json:"minutes,omitempty" jsonschema:"Minutes the share is read over, and how long it must stay under the limit to recover, 1 to 60. Default 5."`
+	MinRequests *int     `json:"min_requests,omitempty" jsonschema:"The fewest requests in those minutes for the rule to trip, 1 or more. Default 20."`
 }
 
 func patchErrorRate(cur ErrorRateRule, p *errorRatePatchIn) ErrorRateRule {
@@ -552,14 +535,11 @@ type stackUpdated struct {
 
 func stackUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_update", "Update stack",
-		"Changes a stack's definition; only the fields you send change, and every other field keeps its value. "+
-			"Env changes go through set and unset, so values you never saw are kept; branch_deploy_rules replaces "+
-			"the whole list, and a rule sent without overrides keeps the current overrides of the rule with the same "+
-			"pattern. crash_tickets switches the stack's crash tickets on or off, and crash_notice_conversation_id names a "+
-			"channel each crash and recovery is also posted to. error_rate sets the rule that watches the "+
-			"share of 5xx answers (on or off, the percent limit, the minutes and the request floor). watching true or false starts or "+
-			"stops your own notices of the stack's crashes and recoveries, and alone it needs only read access. It does "+
-			"not redeploy: use stack_deploy for that. Returns the updated stack and whether you watch it.",
+		"Changes a stack's definition. Env changes go through set and unset; branch_deploy_rules replaces the whole "+
+			"list, and a rule sent without overrides keeps the overrides of the rule with the same pattern. "+
+			"crash_tickets, crash_notice_conversation_id and error_rate set up crash tickets, channel notices, and the "+
+			"5xx-rate rule; watching starts or stops your own notices and alone needs only read access. It does not "+
+			"redeploy: use stack_deploy.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in stackUpdateIn) (any, error) {
 			cur, err := s.GetStack(ctx, in.ID)
@@ -698,9 +678,8 @@ type stackDeleteIn struct {
 
 func stackDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_delete", "Delete stack",
-		"Deletes a stack and its service records, releases every hostname routed to it from the gateway and DNS, "+
-			"and drops its nodes from the topology. Deploy history is kept. It does not stop containers already "+
-			"running on the machine. Returns the deleted id.",
+		"Deletes a stack and its service records, releases its hostnames from the gateway and DNS, and drops its "+
+			"nodes from the topology. Deploy history is kept. Containers already running on the machine are not stopped.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in stackDeleteIn) (any, error) {
 			if err := s.DeleteStack(ctx, in.ID); err != nil {
@@ -712,18 +691,18 @@ func stackDeleteTool(s *Service) mcptool.Tool {
 
 type stackDeployIn struct {
 	ID       string `json:"id" jsonschema:"The stack's id, from stack_list."`
-	Ref      string `json:"ref,omitempty" jsonschema:"Build and deploy this branch, tag, or commit of the stack's repository, for example main."`
-	Image    string `json:"image,omitempty" jsonschema:"Redeploy this already-built image instead of building, for example ghcr.io/acme/api:1.4.0."`
-	Rollback bool   `json:"rollback,omitzero" jsonschema:"Redeploy the stack's last healthy image; send it without ref or image."`
-	Retry    string `json:"retry,omitempty" jsonschema:"The id of one of this stack's failed deploys, from deploy_list. Starts it again on the commit it built with the stack's current settings; send it without ref, image or rollback."`
+	Ref      string `json:"ref,omitempty" jsonschema:"Build and deploy this branch, tag, or commit of the stack's repository."`
+	Image    string `json:"image,omitempty" jsonschema:"An already-built image to redeploy instead of building, for example ghcr.io/acme/api:1.4.0."`
+	Rollback bool   `json:"rollback,omitzero" jsonschema:"Redeploy the last healthy image; send it without ref or image."`
+	Retry    string `json:"retry,omitempty" jsonschema:"A failed deploy of this stack, from deploy_list. Runs it again on the commit it built, with the stack's current settings; send it without ref, image or rollback."`
 }
 
 func stackDeployTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_deploy", "Deploy stack",
-		"Starts a deploy of a stack on its machine, exactly as the deploy button does: build a ref of its repository, "+
-			"redeploy an image, roll back to the last healthy image, or retry a failed deploy on the commit it built with the "+
-			"stack's current settings, for example after fixing an environment variable. It is rejected while the stack already has a "+
-			"deploy pending or running. It needs Deploy to on the stack's machine. Returns the new deploy; poll deploy_get until it is healthy or failed.",
+		"Starts a deploy of a stack on its machine, as the deploy button does. Choose one source: ref builds a "+
+			"branch, tag, or commit, image redeploys an already-built image, rollback reuses the last healthy image, "+
+			"retry runs a failed deploy again. Returns the new deploy; poll deploy_list with its id until it is healthy "+
+			"or failed.",
 		mcptool.Hints{},
 		func(ctx context.Context, in stackDeployIn) (any, error) {
 			d, err := startDeploy(ctx, s, in)
@@ -787,11 +766,9 @@ type importResult struct {
 
 func machineImportTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_import", "Import from machine",
-		"Adopts containers already running on a machine as unmanaged stacks, using what machine_discover found: "+
-			"compose projects, standalone containers, and cloudflared gateways with their hostnames. Run "+
-			"machine_discover first and pass the names it returned. Re-importing updates the observed facts by "+
-			"container name and never deletes; a gateway that cannot be adopted carries its reason in the result. It needs "+
-			"Deploy to on the machine.",
+		"Adopts containers already running on a machine as unmanaged stacks, from what machine_discover found. Run "+
+			"machine_discover first and pass the names it returned. Re-importing updates the observed facts by container "+
+			"name and never deletes; a gateway that cannot be adopted carries its reason in the result.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in machineImportIn) (any, error) {
 			req := ImportRequest{ProjectID: in.ProjectID, Standalone: in.Standalone, Gateways: in.Gateways}

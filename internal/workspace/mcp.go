@@ -16,16 +16,15 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type projectListIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); every project and memory carries it as workspace_id."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
 	mcptool.PageArgs
 }
 
 func projectListTool(s *Service) mcptool.Tool {
 	return mcptool.New("project_list", "List projects",
 		"Lists a workspace's projects in board order, each with its id, name, and prefix (the tag in ticket keys "+
-			"such as REF-102). Use it to find a project's id; project_get then returns its statuses, categories, "+
-			"ticket types, labels, and repositories, which you need before filing or moving tickets. Returns at most "+
-			"100 projects per page.",
+			"such as REF-102). Use it to find a project's id. project_get then returns its statuses, categories, "+
+			"ticket types, labels, and repositories, which you need before filing or moving tickets.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in projectListIn) (any, error) {
 			projects, err := s.List(ctx, in.WorkspaceID)
@@ -37,18 +36,18 @@ func projectListTool(s *Service) mcptool.Tool {
 }
 
 type projectCreateIn struct {
-	WorkspaceID   string `json:"workspace_id" jsonschema:"The workspace's id (a UUID) the project belongs to."`
-	Name          string `json:"name" jsonschema:"The project's display name, for example Backend."`
-	Prefix        string `json:"prefix" jsonschema:"2 to 5 letters or digits, starting with a letter, that no other project uses. It starts the project's ticket keys, for example REF for REF-102 or P1 for P1-12, and cannot change later."`
-	Icon          string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. Omit for none."`
-	SetupFinished *bool  `json:"setup_finished,omitempty" jsonschema:"Omit, or true, for a project ready to use. false starts it in the project wizard's setup, so its sidebar offers Continue setup until someone finishes it."`
+	WorkspaceID   string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	Name          string `json:"name" jsonschema:"The project's display name."`
+	Prefix        string `json:"prefix" jsonschema:"2 to 5 letters or digits, starting with a letter, that no other project uses. It starts the project's ticket keys, such as REF for REF-102, and cannot change later."`
+	Icon          string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud."`
+	SetupFinished *bool  `json:"setup_finished,omitempty" jsonschema:"true or omitted: ready to use. false starts it in the project wizard's setup (Continue setup in the sidebar) until someone finishes it."`
 }
 
 func projectCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("project_create", "Create project",
 		"Creates a project, the grouping tickets, repositories, and stacks belong to, with the default status "+
-			"columns and ticket types (task, bug, feature), its setup finished unless setup_finished is false. It needs projects:create in the workspace, "+
-			"and lists you and each of your roles in the new project, so it opens for you and whoever holds those roles. Use project_update afterwards to rename it, "+
+			"columns and ticket types (task, bug, feature), its setup finished unless setup_finished is false. It lists you and each of your roles "+
+			"in the new project, so it opens for you and whoever holds those roles. Use project_update afterwards to rename it, "+
 			"attach repositories, or change its columns, categories, and ticket types. Returns the new project.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in projectCreateIn) (any, error) {
@@ -63,7 +62,7 @@ func projectCreateTool(s *Service) mcptool.Tool {
 }
 
 type projectDeleteIn struct {
-	ID string `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
+	ID string `json:"id" jsonschema:"The project's id, from project_list."`
 }
 
 func projectDeleteTool(s *Service) mcptool.Tool {

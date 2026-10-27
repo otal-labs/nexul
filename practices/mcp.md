@@ -159,7 +159,9 @@ decide whether an agent picks the right tool.
   is trying to do (ADR 0068):
   - One-field setters fold into a patch-style `update` on their object
     (an omitted field keeps its value; section 6).
-  - List variants fold into one `list` with optional filters.
+  - List variants fold into one `list` with optional filters, and a `get`
+    that only adds detail folds into its `list` given an `id`, which returns
+    that one record (`deploy_list`, `trail_list`, ADR 0171).
   - A child collection (a project's repositories, a ticket's labels) is read
     on its parent's `get` and changed through `add_*` and `remove_*` fields on
     the parent's `update`.
@@ -225,7 +227,10 @@ decide whether an agent picks the right tool.
   rejected. Before a
   tool runs, the adapter validates the arguments against that schema, so a
   tool never hand-checks types or required keys; the use-case still
-  validates business rules.
+  validates business rules. `tools/list` advertises a compact copy, without
+  a pointer's `null` alternative or the closed-object marker, because those
+  cost every session context and steer no call; validation keeps the full
+  schema (ADR 0171).
 - **Every parameter is described.** A `jsonschema:"..."` tag on every field
   states its meaning, its format, and a short example value where the format
   is not obvious (`"REF-102"`, `"2026-09-25T10:00:00Z"`). The schema is the
@@ -236,6 +241,16 @@ decide whether an agent picks the right tool.
   be cleared, the description says how (an empty string clears a category).
   Required fields in the schema are exactly the fields the call cannot run
   without.
+- **Say each rule once.** Every session pays for every word of
+  `tools/list`, which stays under `advertisedBudget` in
+  `internal/mcp/surface_test.go`. Patch semantics, paging, and ids live in
+  the server instructions, never in a description. A failure the use-case
+  reports with a message that says how to recover (a missing permission, a
+  conflict, a cap) is not described in advance. A rule two parameters share
+  goes on the tool or on the one parameter that carries it. What a
+  description never drops: sibling-tool routing, valid values, how to clear
+  a field, side effects, a secret returned once, and limits other than
+  paging.
 - **Descriptions are contracts.** At least three sentences, more for a
   consolidated tool: what the tool does,
   when to use it and which sibling to use instead for nearby cases, what it
@@ -359,7 +374,8 @@ decide whether an agent picks the right tool.
   on a name outside `[a-z0-9_]{1,52}` or not ending in a known verb, a
   missing title, a description shorter than three sentences, a parameter
   without a description, a read-shaped name (`_list`, `_get`, `_search`)
-  without `ReadOnly`, a count at or over the budget, and a prompt, server
+  without `ReadOnly`, a count at or over the budget, an advertised
+  `tools/list` at or over its size budget, and a prompt, server
   instruction, or built-in play that names a missing tool. A rule a test can
   check is checked by a test.
 - **Wiring changes get a live check.** Before merging a change to the
