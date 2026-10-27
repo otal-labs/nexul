@@ -8,8 +8,8 @@ export interface DocHeading {
   level: number;
 }
 
-// Duplicate heading text gets an index suffix so every row keeps a stable key.
-function slugify(text: string): string {
+// Duplicate heading text gets an index suffix so every row keeps a stable key; a search hit links its heading by it.
+export function slugify(text: string): string {
   const slug = text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -47,4 +47,18 @@ export function extractHeadingsFromJSON(json: JSONContent | null): DocHeading[] 
 
   visit(json);
   return out;
+}
+
+// Matches by text+level, not anchor ids, since the body view mounts its own Tiptap instance.
+export function findHeadingElement(heading: DocHeading): HTMLElement | null {
+  const els = document.querySelectorAll<HTMLElement>(
+    ".doc-body-view h1, .doc-body-view h2, .doc-body-view h3, .doc-body-view h4, .doc-body-view h5, .doc-body-view h6",
+  );
+  for (const el of els) {
+    if (el.textContent === heading.text && el.tagName === `H${heading.level}`) {
+      if (!el.dataset.docHeadingId) el.dataset.docHeadingId = heading.id;
+      return el;
+    }
+  }
+  return null;
 }

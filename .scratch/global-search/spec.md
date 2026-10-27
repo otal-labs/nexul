@@ -2,9 +2,10 @@
 
 **Status:** needs-triage
 
-Partly shipped: the command palette (Ctrl or Cmd+K) is the box, and it searches tickets and docs through the `@`
-picker's endpoint and lists memories. Not built: the fan-out endpoint, the workspace scope on its ticket and doc
-sources, and the services, pull requests and automations as searchable kinds.
+Partly shipped: the command palette (Ctrl or Cmd+K) is the box. It searches tickets and docs through the `@` picker's
+endpoint, scoped to the active workspace and ranked in sections (ADR 0171), opens a text match at its note or heading,
+and matches memories, stacks and automations by name from their lists. Not built: pull requests as a searchable kind,
+and a search screen in the phone app.
 
 Carried over from the retired search requirements document, where it sat as a
 future direction. Search exists and works, but only from inside the docs and
@@ -112,6 +113,5 @@ its own.
 
 The browser surface now exists as the command palette (⌘K, see
 `practices/design-language.md`): it searches tickets and docs through the `@`
-picker's endpoint and memories from their list, so this effort's fan-out
-endpoint would replace those two sources rather than add a box. That endpoint
-does not yet scope tickets and docs to the active workspace.
+picker's endpoint and memories, stacks and automations from their lists, so
+this effort's remaining kinds join that endpoint rather than add a box.

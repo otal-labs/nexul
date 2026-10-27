@@ -62,7 +62,7 @@ func TestMentionSearch_Errors(t *testing.T) {
 }
 
 func TestMentionSearch_Query(t *testing.T) {
-	out, err := callSearch(asUser(), `{"query":"a"}`)
+	out, err := callSearch(asUser(), `{"query":"f"}`)
 	require.NoError(t, err)
 	page := out.(mcptool.Page[SearchResult])
 	require.Len(t, page.Items, 2, "the doc the caller cannot open is not found")
@@ -70,7 +70,7 @@ func TestMentionSearch_Query(t *testing.T) {
 	assert.Equal(t, "Open", page.Items[0].StatusLabel)
 	assert.Equal(t, "d-1", page.Items[1].ID)
 
-	out, err = callSearch(asUser(), `{"query":"a","limit":1}`)
+	out, err = callSearch(asUser(), `{"query":"f","limit":1}`)
 	require.NoError(t, err)
 	assert.True(t, out.(mcptool.Page[SearchResult]).HasMore)
 }

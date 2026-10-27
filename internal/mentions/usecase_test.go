@@ -22,8 +22,9 @@ type fakeTicketSource struct {
 	search    []SearchHit
 	searchErr error
 	keyErr    error
-	// keyWorkspace is the workspace the last ListByKey call scoped to.
-	keyWorkspace string
+	// keyWorkspace and searchWorkspace are the workspaces the last ListByKey and Search calls scoped to.
+	keyWorkspace    string
+	searchWorkspace string
 }
 
 func (f *fakeTicketSource) GetByID(_ context.Context, id string) (*Ticket, error) {
@@ -34,7 +35,8 @@ func (f *fakeTicketSource) GetByID(_ context.Context, id string) (*Ticket, error
 	return &t, nil
 }
 
-func (f *fakeTicketSource) Search(_ context.Context, _ string, _ int) ([]SearchHit, error) {
+func (f *fakeTicketSource) Search(_ context.Context, _, workspaceID string, _ int) ([]SearchHit, error) {
+	f.searchWorkspace = workspaceID
 	return f.search, f.searchErr
 }
 
@@ -65,7 +67,7 @@ func (f *fakeDocSource) GetByID(_ context.Context, id string) (*Doc, error) {
 	return &d, nil
 }
 
-func (f *fakeDocSource) Search(_ context.Context, _ string, _ int) ([]SearchHit, error) {
+func (f *fakeDocSource) Search(_ context.Context, _, _ string, _ int) ([]SearchHit, error) {
 	return f.search, f.searchErr
 }
 
@@ -328,9 +330,9 @@ func TestResolve_TicketByKey(t *testing.T) {
 func TestSearch_CombinesAndFiltersDocs(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{
-			"t-1": {ID: "t-1", Title: "Fix login", Status: "in_progress"},
+			"t-1": {ID: "t-1", Title: "Fix auth login", Status: "in_progress"},
 		},
-		search: []SearchHit{{ID: "t-1", Title: "Fix login"}},
+		search: []SearchHit{{ID: "t-1", Title: "Fix auth login"}},
 	}
 	docs := &fakeDocSource{
 		docs: map[string]Doc{
@@ -394,7 +396,7 @@ func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
 			results, err := svc.Search(actorCtx("u-1"), key, "", 20)
 			require.NoError(t, err)
 			require.Len(t, results, 1)
-			assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true}, results[0])
+			assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true, Match: MatchTitle}, results[0])
 		})
 	}
 }
@@ -449,7 +451,7 @@ func TestSearch_KeyMatch_SortsFirstAndDedupsTitleHit(t *testing.T) {
 	for _, r := range results {
 		ids = append(ids, r.Type+":"+r.ID)
 	}
-	assert.Equal(t, []string{"ticket:t-1", "ticket:t-2", "doc:d-1"}, ids, "key match first, deduped title hit, then docs")
+	assert.Equal(t, []string{"ticket:t-1", "doc:d-1", "ticket:t-2"}, ids, "key match first, its title hit deduped, then title matches before text matches")
 }
 
 func TestSearch_LimitClamping(t *testing.T) {
@@ -533,4 +535,37 @@ func TestResolve_Person(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []Chip{{Type: "person", ID: "u-nor", Title: "Nor Wood", Login: "norwooddev", AvatarURL: "/api/people/u-nor/avatar?v=1", CanOpen: true}}, chips,
 		"a person the actor shares no workspace with is left out, like any missing target")
+}
+
+func TestSearch_TextMatches_CarryWhereTheyAreAndFollowTitleMatches(t *testing.T) {
+	tickets := &fakeTicketSource{
+		tickets: map[string]Ticket{
+			"t-1": {ID: "t-1", Title: "Slow board", Number: 7, ProjectID: "p-1"},
+			"t-2": {ID: "t-2", Title: "Websocket drops", Number: 8, ProjectID: "p-1"},
+		},
+		search: []SearchHit{
+			{ID: "t-1", Title: "Slow board", Rank: -9, Snippet: "the **websocket** keeps closing", NoteID: "m-1"},
+			{ID: "t-2", Title: "Websocket drops", Rank: -1, Snippet: "ignored for a title match", NoteID: "m-2"},
+		},
+	}
+	docs := &fakeDocSource{
+		docs:   map[string]Doc{"d-1": {ID: "d-1", Title: "Runbook"}},
+		search: []SearchHit{{ID: "d-1", Title: "Runbook", Rank: -3, Snippet: "restart the websocket", Heading: "Recovery"}},
+	}
+	svc := New(Config{
+		Tickets: tickets, Docs: docs, Statuses: &fakeStatusSource{statuses: map[string]Status{}},
+		Access:      &fakeAccessChecker{canOpen: map[string]bool{"d-1": true}},
+		Projects:    &fakeProjectSource{projects: map[string]Project{"p-1": {ID: "p-1", Prefix: "WEB"}}},
+		TicketTypes: &fakeTicketTypeSource{types: map[string]TicketType{}},
+	})
+
+	results, err := svc.Search(actorCtx("u-1"), "websocket", " ws-1 ", 20)
+	require.NoError(t, err)
+
+	assert.Equal(t, "ws-1", tickets.searchWorkspace, "tickets and docs are searched in the workspace asked for")
+	assert.Equal(t, []SearchResult{
+		{Type: "ticket", ID: "t-2", Title: "Websocket drops", CanOpen: true, Key: "WEB-8", Match: MatchTitle},
+		{Type: "ticket", ID: "t-1", Title: "Slow board", CanOpen: true, Key: "WEB-7", Match: MatchText, Snippet: "the websocket keeps closing", NoteID: "m-1"},
+		{Type: "doc", ID: "d-1", Title: "Runbook", CanOpen: true, Match: MatchText, Snippet: "restart the websocket", Heading: "Recovery"},
+	}, results)
 }

@@ -13,8 +13,8 @@ import (
 )
 
 // searchMentionHits runs an FTS query and maps rows onto SearchHit, the only flow shared across sources.
-func searchMentionHits[T any](ctx context.Context, search func(context.Context, string, int) ([]T, error), query string, limit int, project func(T) mentions.SearchHit) ([]mentions.SearchHit, error) {
-	hits, err := search(ctx, query, limit)
+func searchMentionHits[T any](ctx context.Context, search func(context.Context, string, string, int) ([]T, error), query, workspaceID string, limit int, project func(T) mentions.SearchHit) ([]mentions.SearchHit, error) {
+	hits, err := search(ctx, query, workspaceID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -38,9 +38,9 @@ func (a mentionTicketSource) GetByID(ctx context.Context, id string) (*mentions.
 	return ticketToMentionTicket(t), nil
 }
 
-func (a mentionTicketSource) Search(ctx context.Context, query string, limit int) ([]mentions.SearchHit, error) {
-	return searchMentionHits(ctx, a.repo.Search, query, limit, func(h tickets.SearchResult) mentions.SearchHit {
-		return mentions.SearchHit{ID: h.ID, Title: h.Title}
+func (a mentionTicketSource) Search(ctx context.Context, query, workspaceID string, limit int) ([]mentions.SearchHit, error) {
+	return searchMentionHits(ctx, a.repo.SearchIn, query, workspaceID, limit, func(h tickets.SearchResult) mentions.SearchHit {
+		return mentions.SearchHit{ID: h.ID, Title: h.Title, Rank: h.Rank, UpdatedAt: h.UpdatedAt, Snippet: h.Snippet, NoteID: h.NoteID}
 	})
 }
 
@@ -85,9 +85,9 @@ func (a mentionDocSource) GetByID(ctx context.Context, id string) (*mentions.Doc
 	return &mentions.Doc{ID: d.ID, Title: d.Title}, nil
 }
 
-func (a mentionDocSource) Search(ctx context.Context, query string, limit int) ([]mentions.SearchHit, error) {
-	return searchMentionHits(ctx, a.repo.Search, query, limit, func(h docs.SearchResult) mentions.SearchHit {
-		return mentions.SearchHit{ID: h.ID, Title: h.Title}
+func (a mentionDocSource) Search(ctx context.Context, query, workspaceID string, limit int) ([]mentions.SearchHit, error) {
+	return searchMentionHits(ctx, a.repo.SearchIn, query, workspaceID, limit, func(h docs.SearchResult) mentions.SearchHit {
+		return mentions.SearchHit{ID: h.ID, Title: h.Title, Rank: h.Rank, UpdatedAt: h.UpdatedAt, Snippet: h.Snippet, Heading: h.Heading}
 	})
 }
 

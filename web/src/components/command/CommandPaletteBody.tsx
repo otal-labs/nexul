@@ -7,6 +7,7 @@ import { CommandPaletteGroup } from "@/components/command/CommandPaletteGroup";
 import { Spinner } from "@/components/ui/spinner";
 import { useCommandActionItems } from "@/hooks/useCommandActionItems";
 import { useCommandNavItems } from "@/hooks/useCommandNavItems";
+import { useCommandRecordItems } from "@/hooks/useCommandRecordItems";
 import { useCommandSettingsItems } from "@/hooks/useCommandSettingsItems";
 import { useCommandSearch } from "@/hooks/useCommandSearch";
 import { useCommandPaletteStore } from "@/stores/commandPaletteStore";
@@ -31,10 +32,11 @@ export const CommandPaletteBody = () => {
   const nav = useCommandNavItems();
   const settings = useCommandSettingsItems(browsing);
   const actions = useCommandActionItems(browsing);
+  const records = useCommandRecordItems(browsing);
   const { groups: found, searching } = useCommandSearch(query, true);
 
   // Browsing leads with what changed lately; typing leads with pages, then what the search found.
-  const groups = filterCommandGroups(browsing ? [...found, ...nav, ...settings, ...actions] : [...nav, ...settings, ...found, ...actions], query);
+  const groups = filterCommandGroups(browsing ? [...found, ...nav, ...settings, ...actions] : [...nav, ...settings, ...found, ...records, ...actions], query);
   const items = groups.flatMap((group) => group.items);
   const activeIndex = Math.min(active, items.length - 1);
   const starts = groups.map((_, g) => groups.slice(0, g).reduce((sum, group) => sum + group.items.length, 0));
@@ -81,7 +83,7 @@ export const CommandPaletteBody = () => {
           aria-controls={LIST_ID}
           aria-autocomplete="list"
           aria-activedescendant={items.length > 0 ? commandOptionId(activeIndex) : undefined}
-          aria-label="Search pages, tickets, docs and memories"
+          aria-label="Search pages, tickets, docs, memories, stacks and automations"
           placeholder="Search or jump to…"
           value={query}
           onChange={(event) => {

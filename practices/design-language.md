@@ -1232,9 +1232,12 @@ current project, then every page the sidebar reaches under the same
 permissions, every project's board, the create dialogs that already exist,
 the other workspaces and the light or dark switch; typed, pages and boards
 filter by every word alongside tickets and docs from the server's search
-and memories by title, each group ordered by its best match (a label that
+(titles under Tickets and Docs, text matches under Found in tickets and Found
+in docs, in the server's order) and memories, stacks and automations by name,
+each group ordered by its best match (a label that
 starts with the query first), and the palettes join the theme group. Group heads are
-microheaders; a row is 36px with a muted icon, the label, a mono hint
+microheaders; a row is 36px with a muted icon, the label, a text match's
+muted snippet after it on the same line, a mono hint
 (ticket key, prefix, status) and an enter mark on the active row, which is the cursor and not the current
 page: the hover lift (`bg-accent`), a 2px `brand` edge and a `brand` icon. The highlight jumps, never slides: the palette is driven a dozen times
 an hour. Arrows wrap, Enter opens, Escape closes and hands focus back to

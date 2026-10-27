@@ -14,16 +14,27 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
-const permissions = ["tickets:read", "docs:read", "memories:read", "projects:read", "chat:write"];
+const permissions = ["tickets:read", "docs:read", "memories:read", "projects:read", "chat:write", "stacks:read", "automations:read"];
 
-const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
+const LocationSpy = () => {
+  const { pathname, search, hash } = useLocation();
+  return <div data-testid="location">{`${pathname}${search}${hash}`}</div>;
+};
+
+const hits = [
+  { type: "ticket", id: "t-1", title: "Renew the staging certificate", can_open: true, key: "BE-4", match: "title" },
+  { type: "ticket", id: "t-2", title: "Slow board", can_open: true, key: "BE-9", match: "text", snippet: "the certificate expired", note_id: "m-1" },
+  { type: "doc", id: "d-1", title: "Runbook", can_open: true, match: "text", snippet: "rotate the certificate", heading: "TLS certificates" },
+];
 
 const renderPalette = (extra: string[] = []) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: [...permissions, ...extra] } };
     if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
-    if (url === "/api/mentions/search") return { data: { results: [{ type: "ticket", id: "t-1", title: "Renew the staging certificate", can_open: true }] } };
+    if (url === "/api/mentions/search") return { data: { results: hits } };
+    if (url === "/api/stacks") return { data: [{ id: "s-1", project_id: "p-1", name: "Certificate renewer" }, { id: "s-2", project_id: "p-other", name: "Certificate elsewhere" }] };
+    if (url === "/api/automations") return { data: [{ id: "au-1", name: "Certificate alerts" }] };
     return { data: [] };
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -45,6 +56,29 @@ beforeEach(() => {
 });
 
 describe("CommandPalette", () => {
+  it("shows title matches apart from text matches, and opens a text match where its words are", async () => {
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "certificate");
+    const found = await screen.findByRole("group", { name: "Found in tickets" });
+    expect(screen.getByRole("group", { name: "Tickets" })).toHaveTextContent("Renew the staging certificateBE-4");
+    expect(found).toHaveTextContent("the certificate expired");
+    expect(screen.getByRole("group", { name: "Found in docs" })).toHaveTextContent("TLS certificates · rotate the certificate");
+    expect(await screen.findByRole("option", { name: /Certificate renewer/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Certificate elsewhere/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /Certificate alerts/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: /Slow board/ }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/tickets/BE-9/notes?note=m-1");
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.type(await screen.findByRole("combobox"), "certificate");
+    await user.click(await screen.findByRole("option", { name: /Runbook/ }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/docs/d-1#tls-certificates");
+  });
+
   it("opens on Ctrl+K, ranks an action named by the query above search hits, and opens a page with Enter", async () => {
     const user = userEvent.setup();
     renderPalette();

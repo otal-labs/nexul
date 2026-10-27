@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { DocHeading } from "@/components/doc/docHeadings";
+import { findHeadingElement, type DocHeading } from "@/components/doc/docHeadings";
 import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 
@@ -9,20 +9,6 @@ const MIN_HEADINGS = 2;
 
 interface DocTocProps {
   headings: DocHeading[];
-}
-
-// Matches by text+level, not anchor ids, since the body view mounts its own Tiptap instance.
-function findHeadingElement(heading: DocHeading): HTMLElement | null {
-  const els = document.querySelectorAll<HTMLElement>(
-    ".doc-body-view h1, .doc-body-view h2, .doc-body-view h3, .doc-body-view h4, .doc-body-view h5, .doc-body-view h6",
-  );
-  for (const el of els) {
-    if (el.textContent === heading.text && el.tagName === `H${heading.level}`) {
-      if (!el.dataset.docHeadingId) el.dataset.docHeadingId = heading.id;
-      return el;
-    }
-  }
-  return null;
 }
 
 // Spy attaches once heading elements exist (MutationObserver) since the editor renders async.

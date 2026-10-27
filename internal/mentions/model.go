@@ -3,6 +3,7 @@ package mentions
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -44,13 +45,21 @@ type Chip struct {
 	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
-// SearchResult is one autocomplete entry for the mention picker; docs the actor cannot open are excluded.
+// SearchResult is one entry of a search: the @ picker's and the command palette's; docs the actor cannot open are excluded.
 type SearchResult struct {
 	Type        string `json:"type"`
 	ID          string `json:"id"`
 	Title       string `json:"title"`
 	StatusLabel string `json:"status_label,omitempty"`
 	CanOpen     bool   `json:"can_open"`
+	// Key is a ticket's PREFIX-NUMBER.
+	Key string `json:"key,omitempty"`
+	// Match is MatchTitle or MatchText on tickets and docs: whether the title holds every word, or only the text does.
+	Match string `json:"match,omitempty"`
+	// Snippet is the matched words of a text match; Heading the heading of a doc above them, NoteID the ticket note they are in.
+	Snippet string `json:"snippet,omitempty"`
+	Heading string `json:"heading,omitempty"`
+	NoteID  string `json:"note_id,omitempty"`
 	// Login and AvatarURL are set on person results only; Title is the person's display name.
 	Login     string `json:"login,omitempty"`
 	AvatarURL string `json:"avatar_url,omitempty"`
@@ -106,16 +115,22 @@ type Status struct {
 	Name string
 }
 
-// SearchHit is one full-text hit from either the tickets or docs search.
+// SearchHit is one full-text hit from either the tickets or docs search; Rank is its bm25, lower is better.
 type SearchHit struct {
-	ID    string
-	Title string
+	ID        string
+	Title     string
+	Rank      float64
+	UpdatedAt time.Time
+	Snippet   string
+	Heading   string
+	NoteID    string
 }
 
 // TicketSource is the consumer-side slice of the tickets persistence layer the resolver needs.
 type TicketSource interface {
 	GetByID(ctx context.Context, id string) (*Ticket, error)
-	Search(ctx context.Context, query string, limit int) ([]SearchHit, error)
+	// Search finds tickets in workspaceID, or in every workspace when it is empty.
+	Search(ctx context.Context, query, workspaceID string, limit int) ([]SearchHit, error)
 	// ListByKey returns the tickets whose PREFIX-NUMBER key matches in workspaceID, or in every workspace when it is
 	// empty, since a key repeats across workspaces (ADR 0089).
 	ListByKey(ctx context.Context, workspaceID, prefix string, number int) ([]*Ticket, error)
@@ -124,7 +139,8 @@ type TicketSource interface {
 // DocSource is the consumer-side slice of the docs persistence layer the resolver needs.
 type DocSource interface {
 	GetByID(ctx context.Context, id string) (*Doc, error)
-	Search(ctx context.Context, query string, limit int) ([]SearchHit, error)
+	// Search finds docs in workspaceID, or in every workspace when it is empty.
+	Search(ctx context.Context, query, workspaceID string, limit int) ([]SearchHit, error)
 }
 
 // StatusSource reads a workspace status column by id for its display name.

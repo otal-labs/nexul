@@ -1,31 +1,35 @@
-import { BrainIcon, FileTextIcon, TicketIcon } from "lucide-react";
+import { FileTextIcon, TicketIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { slugify } from "@/components/doc/docHeadings";
 import { useFetchDocsByProject } from "@/hooks/DocHooks";
-import { useFetchMemories } from "@/hooks/MemoryHooks";
 import { useSearchMentions } from "@/hooks/MentionHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { CommandGroup, CommandItem } from "@/models/Command";
-import { memoryPath, projectTokenById } from "@/models/Project";
+import type { MentionSearchResult } from "@/models/Mention";
 import { ticketPath } from "@/models/Ticket";
 
 const RECENT = 5;
 
-// Browsing, the current project's recently updated tickets and docs; typing, tickets and docs from the server's search
-// and the workspace's memories by title. Nothing is fetched while the palette is closed.
+// A text match opens where its words are: a ticket's note, or a doc's heading above them.
+const hitPath = (hit: MentionSearchResult): string => {
+  if (hit.type === "doc") return `/docs/${hit.id}${hit.match === "text" && hit.heading ? `#${slugify(hit.heading)}` : ""}`;
+  const ticket = `/tickets/${hit.key ?? hit.id}`;
+  return hit.match === "text" && hit.note_id ? `${ticket}/notes?note=${hit.note_id}` : ticket;
+};
+
+// Browsing, the current project's recently updated tickets and docs; typing, tickets and docs from the server's search,
+// titles apart from text matches, in the server's order. Nothing is fetched while the palette is closed.
 export const useCommandSearch = (query: string, open: boolean): { groups: CommandGroup[]; searching: boolean } => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { projects, current } = useSidebarProject();
+  const { current } = useSidebarProject();
   const browsing = query.trim() === "";
   const projectId = open && browsing ? (current?.id ?? "") : "";
   const { data: tickets } = useFetchTicketsByProject(projectId || undefined);
   const { data: docs } = useFetchDocsByProject(projectId);
-  const { data: memories } = useFetchMemories(open && !browsing ? workspaceId : "");
   const { data: hits, isFetching } = useSearchMentions(open ? query : "");
   const go = (path: string) => () => void navigate(wsPath(path));
 
@@ -51,25 +55,24 @@ export const useCommandSearch = (query: string, open: boolean): { groups: Comman
   }
 
   const found = query.trim().length >= 2 ? (hits ?? []).filter((hit) => hit.can_open) : [];
-  const ticketHits: CommandItem[] = found
-    .filter((hit) => hit.type === "ticket")
-    .map((hit) => ({ id: `ticket:${hit.id}`, label: hit.title, icon: TicketIcon, hint: hit.status_label ?? "", run: go(`/tickets/${hit.id}`) }));
-  const docHits: CommandItem[] = found
-    .filter((hit) => hit.type === "doc")
-    .map((hit) => ({ id: `doc:${hit.id}`, label: hit.title, icon: FileTextIcon, run: go(`/docs/${hit.id}`) }));
-  const memoryItems: CommandItem[] = (memories ?? []).map((memory) => ({
-    id: `memory:${memory.id}`,
-    label: memory.title,
-    icon: BrainIcon,
-    keywords: "memory",
-    run: go(memoryPath(projectTokenById(projects ?? [], memory.project_id), memory.id)),
-  }));
+  const items = (type: MentionSearchResult["type"], text: boolean): CommandItem[] =>
+    found
+      .filter((hit) => hit.type === type && (hit.match === "text") === text)
+      .map((hit) => ({
+        id: `${type}:${hit.id}`,
+        label: hit.title,
+        icon: type === "ticket" ? TicketIcon : FileTextIcon,
+        hint: hit.key ?? hit.status_label ?? "",
+        ...(text && { detail: hit.heading ? `${hit.heading} · ${hit.snippet ?? ""}` : (hit.snippet ?? "") }),
+        run: go(hitPath(hit)),
+      }));
 
   return {
     groups: [
-      { heading: "Tickets", items: ticketHits, searched: true },
-      { heading: "Docs", items: docHits, searched: true },
-      { heading: "Memories", items: memoryItems },
+      { heading: "Tickets", items: items("ticket", false), searched: true },
+      { heading: "Docs", items: items("doc", false), searched: true },
+      { heading: "Found in tickets", items: items("ticket", true), searched: true },
+      { heading: "Found in docs", items: items("doc", true), searched: true },
     ],
     searching: isFetching,
   };

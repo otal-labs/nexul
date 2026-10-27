@@ -12,6 +12,10 @@ type SearchResult struct {
 	ID    string  `json:"id"`
 	Title string  `json:"title"`
 	Rank  float64 `json:"rank"`
+	// UpdatedAt, Snippet (the matched words of its body) and Heading (the heading above them) rank and place the hit.
+	UpdatedAt time.Time `json:"-"`
+	Snippet   string    `json:"-"`
+	Heading   string    `json:"-"`
 }
 
 // FolderRepo persists a project's doc folders; mutations carry events for the outbox write.

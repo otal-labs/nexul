@@ -10,6 +10,13 @@ export interface MentionSearchResult {
   title: string;
   status_label?: string;
   can_open: boolean;
+  // A ticket's PREFIX-NUMBER.
+  key?: string;
+  // Tickets and docs: the title holds every word, or only the text does; a text match says where its words are.
+  match?: "title" | "text";
+  snippet?: string;
+  heading?: string;
+  note_id?: string;
   // People only.
   login?: string;
   avatar_url?: string;

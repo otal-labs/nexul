@@ -306,3 +306,46 @@ func TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees(t *testing.T
 	assert.ElementsMatch(t, []string{"waits-on-open", "waits-on-hidden"}, pageTicketIDs(t, s, blocked, tickets.TicketScope{All: true}))
 	assert.ElementsMatch(t, []string{"waits-on-open"}, pageTicketIDs(t, s, blocked, tickets.TicketScope{ProjectIDs: []string{"project-general"}}))
 }
+
+// SearchIn holds tickets, their notes and docs to one workspace, and each hit carries the words it matched, the note
+// they are in and, for a doc, the heading above them.
+func TestSearchIn_HoldsToTheWorkspaceAndSaysWhereTheHitIs(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedChatUser(t, s, "u-1")
+	_, err := s.db.Exec(`INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-other', 'Other', 'other', 1, 1)`)
+	require.NoError(t, err)
+	seedProject(t, s, "p-other", "ws-other", "OTH")
+
+	here := seedNoteThread(t, s, "t-here", "Slow board", "columns lag")
+	here("n-1", "# Context\n\nthe websocket keeps closing")
+	elsewhere := newTestTicket("t-other", "")
+	elsewhere.Title, elsewhere.ProjectID = "Websocket drops", "p-other"
+	require.NoError(t, s.Tickets.Create(ctx, elsewhere))
+	d := newTestDoc("doc-here")
+	d.Title, d.Body = "Runbook", "# Runbook\n\nIntro.\n\n## Recovery\n\nRestart the websocket gateway."
+	require.NoError(t, s.Docs.Create(ctx, d))
+	other := newTestDoc("doc-other")
+	other.Title, other.Body, other.ProjectID = "Websocket notes", "nothing", "p-other"
+	require.NoError(t, s.Docs.Create(ctx, other))
+
+	ts, err := s.Tickets.SearchIn(ctx, "websocket", "workspace-default", 10)
+	require.NoError(t, err)
+	require.Len(t, ts, 1, "another workspace's ticket is left out")
+	assert.Equal(t, "t-here", ts[0].ID)
+	assert.Equal(t, "n-1", ts[0].NoteID)
+	assert.Contains(t, ts[0].Snippet, "websocket keeps closing")
+	assert.False(t, ts[0].UpdatedAt.IsZero())
+
+	ds, err := s.Docs.SearchIn(ctx, "websocket", "workspace-default", 10)
+	require.NoError(t, err)
+	require.Len(t, ds, 1, "another workspace's doc is left out")
+	assert.Equal(t, "doc-here", ds[0].ID)
+	assert.Equal(t, "Recovery", ds[0].Heading)
+	assert.Contains(t, ds[0].Snippet, "websocket")
+
+	all, err := s.Tickets.SearchIn(ctx, "websocket", "", 10)
+	require.NoError(t, err)
+	assert.Len(t, all, 2, "no workspace searches every one")
+}

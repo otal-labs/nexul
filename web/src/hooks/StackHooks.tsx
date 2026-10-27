@@ -28,7 +28,7 @@ export const stacksQuery = (projectId?: string) =>
       (await api.get<Stack[]>("/api/stacks", { params: projectId ? { project_id: projectId } : {} })).data,
   });
 
-export const useFetchStacks = (projectId?: string) => useQuery(stacksQuery(projectId));
+export const useFetchStacks = (projectId?: string, enabled = true) => useQuery({ ...stacksQuery(projectId), enabled });
 
 export const useFetchStack = (id: string | undefined) =>
   useQuery({

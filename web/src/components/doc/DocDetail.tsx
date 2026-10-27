@@ -27,6 +27,7 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useDocCrumbs } from "@/hooks/useDocCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useDocView } from "@/hooks/useDocView";
+import { useHashHeading } from "@/hooks/useHashHeading";
 import { useActionState } from "@/hooks/useActionState";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { effectiveAvatar } from "@/models/User";
@@ -66,6 +67,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
     ...(userAvatar ? { avatar: userAvatar } : {}),
   });
   const [headings, setHeadings] = useState<DocHeading[]>(() => extractDocHeadings(doc.body));
+  useHashHeading(headings);
   const participants = session?.participants ?? [];
   const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
   const { switchable, waiting, view, setView } = useDocView(doc);

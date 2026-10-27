@@ -11,13 +11,13 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 export const getAutomationsKey = "getAutomations";
 
 // Automations belong to a workspace: the page lists the selected one's.
-export const useFetchAutomations = () => {
+export const useFetchAutomations = (enabled = true) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   return useQuery({
     queryKey: [getAutomationsKey, workspaceId],
     queryFn: async () =>
       (await api.get<Automation[]>("/api/automations", { params: { workspace_id: workspaceId } })).data,
-    enabled: workspaceId !== "",
+    enabled: enabled && workspaceId !== "",
   });
 };
 

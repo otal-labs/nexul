@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -28,6 +29,8 @@ type Config struct {
 	TicketTypes TicketTypeSource
 	// People finds and resolves person mentions; without it neither search nor resolve returns people.
 	People PeopleSource
+	// Now is the clock search's recency boost reads; nil is the wall clock.
+	Now func() time.Time
 }
 
 // Service resolves mention references and search targets for the @ picker.
@@ -106,9 +109,10 @@ func (s *Service) resolveRef(ctx context.Context, actorID, workspaceID string, p
 	return Chip{}, false, nil
 }
 
-// Search returns autocomplete entries: people, tickets, and docs, filtered to what the actor can see. People come
-// from workspaceID's People, or from every workspace the actor shares when it is empty. A ticket key sorts first,
-// then people whose login or display name starts with the query, then tickets, docs, and the remaining people.
+// Search returns people, tickets, and docs, filtered to what the actor can see, from workspaceID or from every
+// workspace the actor shares when it is empty. A ticket key sorts first, then people whose login or display name
+// starts with the query, tickets and docs whose title holds every word, those matched in their text, and the
+// remaining people; rankHits orders the tickets and docs within each.
 func (s *Service) Search(ctx context.Context, query, workspaceID string, limit int) ([]SearchResult, error) {
 	if s.cfg.Tickets == nil || s.cfg.Docs == nil || s.cfg.Statuses == nil {
 		return nil, errors.New("mentions: resolution sources are not wired")
@@ -124,11 +128,12 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 	if err != nil {
 		return nil, err
 	}
-	ticketHits, err := s.cfg.Tickets.Search(ctx, query, limit)
+	workspaceID = strings.TrimSpace(workspaceID)
+	ticketHits, err := s.cfg.Tickets.Search(ctx, query, workspaceID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("search mention tickets: %w", err)
 	}
-	docHits, err := s.cfg.Docs.Search(ctx, query, limit)
+	docHits, err := s.cfg.Docs.Search(ctx, query, workspaceID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("search mention docs: %w", err)
 	}
@@ -150,9 +155,14 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 		seenTickets[r.ID] = true
 	}
 
+	words, now := tokens(query), s.now()
+	ticketResults := s.ticketSearchResults(ctx, rankHits(ticketHits, words, now), seenTickets)
+	docResults := s.docSearchResults(ctx, actor.ID, rankHits(docHits, words, now))
 	results = append(results, startsWith...)
-	results = append(results, s.ticketSearchResults(ctx, ticketHits, seenTickets)...)
-	results = append(results, s.docSearchResults(ctx, actor.ID, docHits)...)
+	results = append(results, inSection(ticketResults, MatchTitle)...)
+	results = append(results, inSection(docResults, MatchTitle)...)
+	results = append(results, inSection(ticketResults, MatchText)...)
+	results = append(results, inSection(docResults, MatchText)...)
 	results = append(results, contains...)
 	if len(results) > limit {
 		results = results[:limit]
@@ -177,13 +187,21 @@ func (s *Service) resolveMentionKey(ctx context.Context, query, workspaceID stri
 	var out []SearchResult
 	for _, t := range ts {
 		if s.canOpenTicket(ctx, t.ProjectID) {
-			out = append(out, SearchResult{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), CanOpen: true})
+			out = append(out, s.ticketResult(ctx, t, MatchTitle))
 		}
 	}
 	return out, nil
 }
 
-func (s *Service) ticketSearchResults(ctx context.Context, hits []SearchHit, seen map[string]bool) []SearchResult {
+func (s *Service) ticketResult(ctx context.Context, t *Ticket, match string) SearchResult {
+	r := SearchResult{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), CanOpen: true, Match: match}
+	if prefix := s.projectPrefix(ctx, t.ProjectID); prefix != "" && t.Number > 0 {
+		r.Key = prefix + "-" + strconv.Itoa(t.Number)
+	}
+	return r
+}
+
+func (s *Service) ticketSearchResults(ctx context.Context, hits []rankedHit, seen map[string]bool) []SearchResult {
 	results := make([]SearchResult, 0, len(hits))
 	for _, h := range hits {
 		if seen[h.ID] {
@@ -194,20 +212,45 @@ func (s *Service) ticketSearchResults(ctx context.Context, hits []SearchHit, see
 		if err != nil || !s.canOpenTicket(ctx, ticket.ProjectID) {
 			continue
 		}
-		results = append(results, SearchResult{Type: string(KindTicket), ID: h.ID, Title: h.Title, StatusLabel: s.statusLabel(ctx, ticket.Status), CanOpen: true})
+		r := s.ticketResult(ctx, ticket, h.match)
+		if h.match == MatchText {
+			r.Snippet, r.NoteID = plainSnippet(h.Snippet), h.NoteID
+		}
+		results = append(results, r)
 	}
 	return results
 }
 
-func (s *Service) docSearchResults(ctx context.Context, actorID string, hits []SearchHit) []SearchResult {
+func (s *Service) docSearchResults(ctx context.Context, actorID string, hits []rankedHit) []SearchResult {
 	results := make([]SearchResult, 0, len(hits))
 	for _, h := range hits {
 		if !s.canOpenDoc(ctx, actorID, h.ID) {
 			continue
 		}
-		results = append(results, SearchResult{Type: string(KindDoc), ID: h.ID, Title: h.Title, CanOpen: true})
+		r := SearchResult{Type: string(KindDoc), ID: h.ID, Title: h.Title, CanOpen: true, Match: h.match}
+		if h.match == MatchText {
+			r.Snippet, r.Heading = plainSnippet(h.Snippet), h.Heading
+		}
+		results = append(results, r)
 	}
 	return results
+}
+
+func inSection(results []SearchResult, match string) []SearchResult {
+	var out []SearchResult
+	for _, r := range results {
+		if r.Match == match {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (s *Service) now() time.Time {
+	if s.cfg.Now == nil {
+		return time.Now()
+	}
+	return s.cfg.Now()
 }
 
 // people reads the People the actor sees; a missing source means no people rather than an error.
@@ -339,7 +382,7 @@ func (s *Service) statusLabel(ctx context.Context, id string) string {
 
 // projectPrefix resolves a project to its Prefix (ADR 0004); a deleted or unset project degrades to "".
 func (s *Service) projectPrefix(ctx context.Context, projectID string) string {
-	if projectID == "" {
+	if projectID == "" || s.cfg.Projects == nil {
 		return ""
 	}
 	p, err := s.cfg.Projects.Get(ctx, projectID)

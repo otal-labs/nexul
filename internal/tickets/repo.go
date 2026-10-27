@@ -15,6 +15,11 @@ type SearchResult struct {
 	Title  string
 	Rank   float64
 	Ticket *Ticket `json:"-"`
+	// UpdatedAt and Snippet, the matched words of its body or note, let a caller rank and show the hit.
+	UpdatedAt time.Time `json:"-"`
+	Snippet   string    `json:"-"`
+	// NoteID is the note message whose text matched, when only a note did.
+	NoteID string `json:"-"`
 }
 
 // StatusStore is workspace's status columns, used to validate transitions without importing workspace (ADR 0017).

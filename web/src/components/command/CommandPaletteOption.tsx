@@ -30,6 +30,7 @@ export const CommandPaletteOption = ({ item, index, active, onHover, onSelect }:
       <Icon className={cn("size-4 shrink-0 text-muted-foreground", active && "text-brand")} />
       <span dir="auto" className="min-w-0 flex-1 truncate text-start">
         {item.label}
+        {item.detail && <span className={cn("ml-2", active ? "opacity-70" : "text-muted-foreground")}>{item.detail}</span>}
       </span>
       {item.hint && <span className={cn("shrink-0 font-mono text-xs tabular-nums", active ? "opacity-70" : "text-muted-foreground")}>{item.hint}</span>}
       <CornerDownLeftIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-70", !active && "invisible")} />

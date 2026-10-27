@@ -8,6 +8,8 @@ export interface CommandItem {
   keywords?: string;
   // Trails the label in mono: a ticket key, a project prefix.
   hint?: string;
+  // Follows the label, muted, never matched: the words a text match found.
+  detail?: string;
   run: () => void;
 }
 
