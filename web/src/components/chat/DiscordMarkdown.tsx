@@ -30,14 +30,30 @@ const Inline = ({ part }: { part: InlinePart }) => (
   </>
 );
 
+const NUMBERED = /^(\d+\.)(\s.*)$/s;
+
+// A numbered line's marker takes tabular figures, so "1." is as wide as "2." and the lines' text starts level.
+const TextLine = ({ parts }: { parts: InlinePart[] }) => {
+  const [first, ...rest] = parts;
+  const numbered = first?.kind === "text" ? NUMBERED.exec(first.text) : null;
+  return (
+    <p>
+      {!numbered && <InlineParts parts={parts} />}
+      {numbered && (
+        <>
+          <span className="tabular-nums">{numbered[1]}</span>
+          {numbered[2]}
+          <InlineParts parts={rest} />
+        </>
+      )}
+    </p>
+  );
+};
+
 const Line = ({ line }: { line: MarkdownLine }) => (
   <>
     {line.kind === "blank" && <p aria-hidden className="h-2" />}
-    {line.kind === "text" && (
-      <p>
-        <InlineParts parts={line.parts} />
-      </p>
-    )}
+    {line.kind === "text" && <TextLine parts={line.parts} />}
     {line.kind === "item" && (
       <p className="flex gap-1.5 pl-1">
         <span aria-hidden>•</span>
@@ -58,13 +74,22 @@ interface DiscordMarkdownProps {
   text: string;
   mentionHandles?: string[];
   className?: string | undefined;
+  // maxLines keeps the first source lines whole, where a clamp would cut the last one or end it in an ellipsis.
+  maxLines?: number | undefined;
 }
 
 // Bot content and a meeting's notes; people's and the Agent's messages keep their own renderers.
-export const DiscordMarkdown = ({ text, mentionHandles, className }: DiscordMarkdownProps) => (
+export const DiscordMarkdown = ({ text, mentionHandles, className, maxLines }: DiscordMarkdownProps) => (
   <div className={cn("wrap-anywhere", className)}>
-    {parseDiscordMarkdown(text, mentionHandles).map((line, i) => (
+    {parseDiscordMarkdown(text, mentionHandles).slice(0, maxLines).map((line, i) => (
       <Line key={i} line={line} />
     ))}
   </div>
+);
+
+// A one-line value inside a sentence of facts, so its link or code stays inline.
+export const DiscordInline = ({ text, className }: { text: string; className?: string | undefined }) => (
+  <span className={cn("wrap-anywhere", className)}>
+    {parseDiscordMarkdown(text).map((line, i) => line.kind !== "blank" && <InlineParts key={i} parts={line.parts} />)}
+  </span>
 );

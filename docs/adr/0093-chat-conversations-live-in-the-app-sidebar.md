@@ -18,6 +18,8 @@ click. The separate "open text chat" button existed only because the pane's
 voice row joined without navigating.
 
 The cost: with the sidebar collapsed to its rail there is no conversation list
-on screen, so switching conversations means expanding it. There is no separate
+on screen. The open conversation's name in its header stands in: it opens the
+sidebar's own conversation sections in a popover, with the unread count of the
+rest beside it, so switching needs no expanding. There is no separate
 Chat entry: the channel, voice, DM, and thread rows each carry their own unread
 badge, and a bare `/chat` still opens the first channel.

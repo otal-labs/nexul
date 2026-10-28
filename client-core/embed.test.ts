@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   dropEchoedAuthor,
   embedCardTone,
+  embedFacts,
+  embedFactsFoldLabel,
+  embedReportTone,
   embedFold,
   embedFoldLabel,
   embedTimestamp,
@@ -33,6 +36,58 @@ describe("embedFold", () => {
   it("names the embeds past two", () => {
     expect(moreEmbedsLabel(1)).toBe("Show 1 more embed");
     expect(moreEmbedsLabel(8)).toBe("Show 8 more embeds");
+  });
+});
+
+describe("embedFacts", () => {
+  const stacks = [
+    { name: "atlas-api", value: "healthy", inline: true },
+    { name: "cache", value: "stopped", inline: true },
+    { name: "search", value: "Healthy", inline: true },
+    { name: "worker", value: "failed", inline: true },
+    { name: "docs-site", value: "redeployed", inline: true },
+  ];
+
+  it("names the problems worst first and counts the rest by state", () => {
+    expect(embedFacts(stacks).tally).toEqual([
+      { tone: "destructive", name: "worker", value: "failed" },
+      { tone: "warning", name: "cache", value: "stopped" },
+      { tone: "info", value: "redeployed", count: 1 },
+      { tone: "success", value: "healthy", count: 2 },
+    ]);
+  });
+
+  it.each<[string, Embed, EmbedTone | null]>([
+    ["a title's state wins", { title: "api deployed", fields: stacks }, "success"],
+    ["a neutral title takes the worst problem", { title: "Nightly summary", fields: stacks }, "destructive"],
+    ["an all-healthy tally stays neutral", { title: "Nightly summary", fields: stacks.filter((f) => f.value.toLowerCase() === "healthy").concat(stacks[0]!) }, null],
+  ])("tone: %s", (_name, embed, tone) => {
+    expect(embedReportTone(embed, embedFacts(embed.fields))).toBe(tone);
+  });
+
+  it("keeps two state fields on the fact line, unlike three", () => {
+    const facts = embedFacts(stacks.slice(0, 2));
+    expect(facts.tally).toEqual([]);
+    expect(facts.line.map((f) => f.name)).toEqual(["atlas-api", "cache"]);
+  });
+
+  it("puts short inline facts on the line and long or full-width ones on their own", () => {
+    const facts = embedFacts([
+      { name: "Ticket", value: "ACC-3", inline: true },
+      { name: "Image", value: "ghcr.io/example-org/atlas-api:0.4.11-rc.1+build.7", inline: true },
+      { name: "Notes", value: "short" },
+    ]);
+    expect(facts.line.map((f) => f.name)).toEqual(["Ticket"]);
+    expect(facts.blocks.map((f) => f.name)).toEqual(["Image", "Notes"]);
+  });
+
+  it.each<[string, Embed, string | null]>([
+    ["a tally opens every field", { fields: stacks }, "Show all 5 fields"],
+    ["long facts past six fold", { fields: Array.from({ length: 8 }, (_, i) => ({ name: `f${i}`, value: "a sentence" })) }, "Show 2 more fields"],
+    ["a long description clamps", { description: "x".repeat(421) }, "Show the rest"],
+    ["short facts fold nothing", { fields: fields(9).map((f) => ({ ...f, inline: true })) }, null],
+  ])("%s", (_name, embed, label) => {
+    expect(embedFactsFoldLabel(embed, embedFacts(embed.fields))).toBe(label);
   });
 });
 

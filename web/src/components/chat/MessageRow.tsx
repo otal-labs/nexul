@@ -53,9 +53,9 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
   <div
     data-slot="bubble"
     className={cn(
-      "relative w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
+      "w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
       // Yours is the one bubble; everyone else's text runs plain under their name, so a long thread reads as a transcript.
-      own && "bg-brand text-brand-foreground selection:bg-brand-foreground/30",
+      own && "relative bg-brand text-brand-foreground selection:bg-brand-foreground/30",
       !own && "max-w-[72ch] px-0 py-0",
     )}
   >
@@ -156,7 +156,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
               />
             </MessageAvatar>
           )}
-          <MessageContent>
+          <MessageContent className="gap-0.5">
             {!continuation && <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />}
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
@@ -170,6 +170,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
                   !message.pending && (
                     <MessageActions
                       message={message}
+                      corner={align === "end" ? "bubble" : "row"}
                       onEdit={canEditOrDelete ? startEdit : undefined}
                       onDelete={canEditOrDelete ? () => void remove() : undefined}
                     />

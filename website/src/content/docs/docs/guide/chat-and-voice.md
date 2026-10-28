@@ -13,6 +13,8 @@ Press **+** beside Channels, Voice channels, or Direct messages. Every workspace
 
 A direct message shows in every workspace you and the other people all belong to, not only the one you started it in, so it stays in the sidebar when you switch.
 
+When the sidebar is folded to its icons, the conversation's name at the top of the page opens the same list, with the unread count of everything else beside it. A channel's header also holds its **Settings** gear, and a private channel's members, which open the same settings.
+
 Right-click a channel in the sidebar to rename it, open its **Settings** or **Permissions…**, or delete it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
 
 ## Who sees and posts in a channel
@@ -47,7 +49,7 @@ Hover one to see the full date, time, and zone. Click it for **Copy code**, whic
 
 ## Bots
 
-Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation through a webhook URL, the same JSON a Discord webhook takes. Their posts carry a **BOT** tag and show embeds as cards. Open a channel's **Settings**, or the **Bots** item in a direct message's or thread's menu, to create one. See [Bots](/docs/guide/bots/).
+Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation through a webhook URL, the same JSON a Discord webhook takes. Their posts carry a **BOT** tag and show embeds as short reports. Open a channel's **Settings**, or the **Bots** item in a direct message's or thread's menu, to create one. See [Bots](/docs/guide/bots/).
 
 ## Ask the agent
 
