@@ -34,7 +34,7 @@ interface TicketCardBodyProps {
   ticket: Ticket;
 }
 
-// At most two labels show on the meta line beside the key; the rest count as +N.
+// At most two labels show beside the type; the rest count as +N.
 const CARD_LABELS = 2;
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
@@ -50,8 +50,8 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
   const [labelsRef, fitting, labelSlack] = useFittingChildren<HTMLSpanElement>(Math.min(labels.length, CARD_LABELS));
-  // Only a bug shows its type, in its red: every other type's icon on every card said nothing a column of them did not.
-  const isBug = type.trim().toLowerCase() === "bug";
+  // A bug keeps its red; every other type's icon is muted, so the card's colour is its labels and its status, not a second accent.
+  const typeIconColor = type.trim().toLowerCase() === "bug" ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
@@ -77,7 +77,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         <span
           title={hiddenLabels.join(", ")}
           aria-label={`${hiddenLabels.length} more labels: ${hiddenLabels.join(", ")}`}
-          className="shrink-0"
+          className="shrink-0 font-mono"
           style={{ transform: `translateX(-${labelSlack + (fitting === 0 ? 8 : 0)}px)` }}
         >
           +{hiddenLabels.length}
@@ -94,11 +94,9 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
       )}
       {runState !== undefined && runState !== "waiting" && (
-        <span className="flex items-center gap-1">
-          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running" />
-          {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
-        </span>
+        <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running" />
       )}
+      {runState !== undefined && runState !== "waiting" && runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
     </>
   );
   const thread = hasThread && (
@@ -107,29 +105,27 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   return (
     <>
-      {/* The title leads with who acts next at its end; the key, the blocker and the labels share one quiet line under it. */}
-      <span className="flex items-start gap-2">
-        <span dir="auto" title={ticket.title} className="line-clamp-3 min-w-0 flex-1 lg:line-clamp-2 text-[13px] font-[450] leading-snug break-words text-pretty">{ticket.title}</span>
-        <span className="flex h-[1.125rem] shrink-0 items-center gap-1.5">
-          {run}
-          {thread}
-          {avatar}
-        </span>
-      </span>
-      <span className="flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap font-mono text-[11px] leading-4 text-muted-foreground">
+      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the labels a row of their own. */}
+      <span className="flex h-4 items-center gap-1.5 font-mono text-[11px] leading-4 text-muted-foreground">
         <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
-        <TicketBlockedLine ticketId={ticket.id} />
-        {isBug && (
-          // The zero-width space gives the icon a text line to centre on, as the blocker's keys do.
-          <span className="flex shrink-0 items-baseline">
-            {"\u200b"}
-            <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="self-center [&>svg]:size-3.5">
+        {/* The timer is the one mark that gives way: on a narrow card it wraps out of the clipped line, the spinner stays. */}
+        <span className="flex h-4 min-w-0 flex-1 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden">{run}</span>
+        {thread}
+        {avatar}
+      </span>
+      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words text-pretty">{ticket.title}</span>
+      <TicketBlockedLine ticketId={ticket.id} />
+      {(type !== "" || labels.length > 0) && (
+        <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] leading-4 text-muted-foreground">
+          {type !== "" && (
+            // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
+            <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} title={type} className="shrink-0 [&>svg]:size-3.5">
               <span className="sr-only">{type}</span>
             </NoFillBadge>
-          </span>
-        )}
-        {labelRun}
-      </span>
+          )}
+          {labelRun}
+        </span>
+      )}
     </>
   );
 });

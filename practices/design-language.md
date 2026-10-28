@@ -570,23 +570,22 @@ row while its lane scrolls: a chevron, the lane name in 13px semibold, and
 "4/11 done" in muted sans beside the name, a hairline under the band. Each
 stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
 rather than a colour so it reads in every palette; a black panel takes a lighter
-well instead) fills each lane's cell with the radius of a card and ends at the
-cell's last card, so every band sits between rounded wells, nothing is cut
-square, and a one-card cell is never a tall empty slab. The
-card's meta line and the lane band align their mixed fonts on one baseline,
-with icons centred on the line. A cell
+well instead) fills each lane's cell, as tall as the lane, with the radius of a
+card, so a card dropped anywhere below a cell's last card lands in that cell and
+every band sits between rounded wells. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
 a card is held, an empty cell and the folded Done cell show a card-tall
 dashed slot as the place to land.
 
-A card is two parts. The title comes first, in 13px at weight 450 (500 read as
-bold at that size on a dark card), at most two lines (three below 1024), with the run marks, the
-thread mark and the 16px avatar of whoever acts next at its end. Then one
-meta line in 11px mono: the key, the blocker as its key (the sentence in its
-tooltip and accessible name), a bug's red icon (no other type shows an icon),
-and at most two labels, each its 6px hue dot and its name without a pill, any
-more as "+N" naming them in its tooltip. When the line runs out of room the
-labels give way first, each dropping out whole rather than cut mid-word; the key and the blocker always show. The card pads 8px
+A card is three rows. An eyebrow in 11px mono leads: the key, then at its end
+the run marks, the thread mark and the 16px avatar of whoever acts next; on a
+narrow card the run timer gives way and the spinner stays. The title takes the
+card's full width under it, in 13px at weight 450 (500 read as bold at that
+size on a dark card), at most three lines. A blocked card adds "Blocked by" and
+the key on a line of its own. Last comes the type as its icon (a bug in its
+red, every other type muted) and at most two labels, each its 6px hue dot and
+its name without a pill, any more as "+N" naming them in its tooltip; labels
+drop out whole rather than cut mid-word. The card pads 8px
 top and bottom and 10px at the sides, `card` with the card shadow and its
 hairline, so the board reads as three surfaces: panel, well, card.
 
