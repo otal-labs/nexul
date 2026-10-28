@@ -1,9 +1,8 @@
 import { BookMarkedIcon } from "lucide-react";
 
 import { BranchRow } from "@/components/ticket/BranchRow";
-import { PRChip } from "@/components/ticket/PRChip";
+import { PRRow } from "@/components/ticket/PRRow";
 import { UnlinkBranchButton } from "@/components/ticket/UnlinkBranchButton";
-import { UnlinkPRButton } from "@/components/ticket/UnlinkPRButton";
 import type { RepoLinks } from "@/utils/TicketLinksUtility";
 
 interface RepoLinksRowProps {
@@ -34,14 +33,11 @@ export const RepoLinksRow = ({ ticketId, links }: RepoLinksRowProps) => (
       </ul>
     )}
     {links.prs.length > 0 && (
-      <div className="flex flex-wrap gap-x-3 gap-y-1 pl-5.5">
+      <ul className="flex flex-col gap-1 pl-5.5">
         {links.prs.map((pr) => (
-          <span key={pr.number} className="group inline-flex items-center gap-0.5">
-            <PRChip pr={pr} />
-            <UnlinkPRButton ticketId={ticketId} pr={pr} />
-          </span>
+          <PRRow key={pr.number} ticketId={ticketId} pr={pr} />
         ))}
-      </div>
+      </ul>
     )}
   </li>
 );

@@ -140,7 +140,7 @@ describe("TicketLinksSection", () => {
     expect(screen.queryByRole("img", { name: "Not done yet" })).not.toBeInTheDocument();
   });
 
-  it("shows only the key in a row and opens the title and description on keyboard focus", async () => {
+  it("shows the key and title in a row and opens the description on keyboard focus", async () => {
     mockApi({ ...emptySet, blocks: [linked("t-4", 4, "mobile /books")] });
     const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Port the list to mobile." }] }] });
     const get = vi.mocked(api.get).getMockImplementation()!;
@@ -149,10 +149,9 @@ describe("TicketLinksSection", () => {
     ));
     renderSection();
     const key = await screen.findByRole("link", { name: /BKS-4/ });
-    expect(key).toHaveTextContent(/^BKS-4$/);
+    expect(key).toHaveTextContent(/^BKS-4mobile \/books$/);
     act(() => key.focus());
     expect(await screen.findByText("Port the list to mobile.")).toBeInTheDocument();
-    expect(screen.getByText("mobile /books")).toBeInTheDocument();
   });
 
   it("removes a blocker and a found-in link", async () => {

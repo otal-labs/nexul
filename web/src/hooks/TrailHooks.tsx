@@ -14,7 +14,7 @@ import { conversationPlayTarget } from "@/models/Chat";
 import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 import type { LiveFollower } from "@/lib/live";
@@ -127,7 +127,7 @@ export const useMissedDecisionsCheck = (ticketId: string): Trail | undefined => 
   const { data: plays } = useApplicableTicketPlays(ticket);
   const frames = usePlayRunStore((s) => s.frames);
   const check = plays?.find((p) => p.builtin_key === DECISIONS_CHECK_KEY);
-  const latest = check && trails?.find((t) => t.play_id === check.id);
+  const latest = check && latestRunOf(trails, check.id);
   if (!latest || (frames[latest.id]?.state ?? latest.state) !== "failed") return undefined;
   return latest;
 };

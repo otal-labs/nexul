@@ -35,6 +35,9 @@ const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverPr
     setSearch("");
   };
 
+  // Beside chips it is the icon alone, so two labels and the add fit one line of the rail.
+  const compact = existingLabels.length > 0;
+
   return (
     <Popover
       open={open}
@@ -51,9 +54,10 @@ const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverPr
           variant="ghost"
           size="sm"
           icon={PlusIcon}
-          className="h-6 gap-1 px-1.5 text-xs text-muted-foreground"
+          aria-label="Add label"
+          className={cn("h-6 gap-1 px-1.5 text-xs text-muted-foreground", compact && "w-6 px-0")}
         >
-          Add label
+          {!compact && "Add label"}
         </ActionButton>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-52 p-1.5">
@@ -116,7 +120,7 @@ export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLab
               icon={XIcon}
               aria-label={`Remove label ${label}`}
               onClick={() => onRemoveLabel(ticket.id, label)}
-              className="size-4 rounded-sm text-muted-foreground opacity-0 transition-opacity duration-150 ease-standard focus-visible:opacity-100 group-hover/chip:opacity-100 [&_svg]:size-3"
+              className="size-4 w-0 rounded-sm text-muted-foreground opacity-0 transition-opacity duration-150 ease-standard focus-visible:w-4 focus-visible:opacity-100 group-hover/chip:w-4 group-hover/chip:opacity-100 [&_svg]:size-3"
             />
           </span>
         ))}

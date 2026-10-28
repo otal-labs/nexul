@@ -37,9 +37,12 @@ export const LinkedTicketRow = ({ ticket, waiting = false, onRemove, hostProject
           <Link
             to={wsPath(`/tickets/${key}`)}
             aria-label={`${key} ${ticket.title}`}
-            className="mr-auto min-w-0 truncate py-1 font-mono text-xs underline-offset-4 hover:underline"
+            className="flex min-w-0 flex-1 items-baseline gap-2 py-1 text-xs underline-offset-4 hover:underline"
           >
-            {key}
+            <span className="shrink-0 font-mono">{key}</span>
+            <span dir="auto" className="min-w-0 truncate text-muted-foreground">
+              {ticket.title}
+            </span>
           </Link>
         </HoverCardTrigger>
         <HoverCardContent side="left" align="start" sideOffset={32} className="w-72 p-3">

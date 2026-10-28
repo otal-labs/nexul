@@ -8,7 +8,7 @@ import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { boardPath } from "@/models/Project";
 import { usePlayRunStore } from "@/stores/playRunStore";
-import type { TrailState } from "@/models/Trail";
+import { latestRunOf, type TrailState } from "@/models/Trail";
 
 interface DocTicketsRunLineProps {
   workspaceId: string;
@@ -31,7 +31,7 @@ export const DocTicketsRunLine = ({ workspaceId, docId, projectId }: DocTicketsR
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
   const playId = plays?.find((p) => p.builtin_key === TO_TICKETS_KEY)?.id;
   const { data: trails } = useFetchTrails("doc", docId);
-  const latest = playId ? trails?.find((t) => t.play_id === playId) : undefined;
+  const latest = playId ? latestRunOf(trails, playId) : undefined;
   const state = usePlayRunStore((s) => (latest ? (s.frames[latest.id]?.state ?? latest.state) : undefined));
   const { data: tickets } = useFetchTicketsByDoc(latest ? docId : undefined);
   const { data: project } = useFetchProject(latest ? projectId : undefined);

@@ -55,14 +55,14 @@ On the [phone app](/docs/guide/phone-app/) the same **Doc | Questions** switch s
 
 Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. Set a **Developer** to build it and a **Tester** to check it, both optional.
 
-The ticket page has everything else:
+The ticket page has everything else. The line under the title shows where the ticket stands, on every tab: its key, its status, whoever acts next (the tester while it sits in a Testing column, otherwise the developer), each blocker still open, and its pull requests. The properties and the sections below sit beside the ticket and its thread; on a narrow window they fold behind **Details** above the tabs.
 
 - **Due date.** Pick a day in the **Due** row of the properties; the **×** in it clears the date. Anyone who can edit the ticket sets or clears it, and anyone who can see the ticket sees it. The date is a plain day with no time or timezone. Agents set it with `due_on` on `ticket_update` (a date as `2026-10-30`, or an empty string to clear it) and find tickets by day with `due_from` and `due_to` on `ticket_list`.
 
 - **Links.** The **+** adds **Blocked by…**, **Blocks…**, **Found in…**, or **Source doc…**. A blocked card shows an icon until every blocker has a merged pull request or is done, but still moves freely; a play on it asks you to confirm. A blocker that merged shows a merge icon, so a ticket can start on its code while the blocker waits in QA.
 - **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket. Point at a linked branch or pull request and press its **×** to unlink it, if you linked the wrong one; that needs permission to change the ticket, and the branch or PR itself is untouched. A pull request that still names the ticket in its description or branch name links itself again the next time GitHub reports it. Agents unlink with `unlink_pr` and `unlink_branch` on `ticket_update`.
 - **Testing.** In a Testing column it shows where to test and the acceptance criteria, with **Pass** and **Fail**. Fail asks for steps to reproduce, the expected and actual results, and a screenshot. It never points at production.
-- **Thread.** The ticket's conversation, where plays post their runs and agents leave notes. It has its own tab beside **Ticket**, under the title; a link that ends in `/thread` opens straight to it.
+- **Thread.** The ticket's conversation, where plays post their runs and agents leave notes. Its three latest lines show under the description, with **Open thread**. It has its own tab beside **Ticket**, under the title; a link that ends in `/thread` opens straight to it.
 - **Notes.** Shows once an agent has left a [note](/docs/guide/chat-and-voice/#notes-on-a-ticket) on the ticket: the newest note opens there, and the list beside it opens any other. A link that ends in `/notes` opens straight to it.
 
 A ticket opened inside the Inbox has the same tabs.

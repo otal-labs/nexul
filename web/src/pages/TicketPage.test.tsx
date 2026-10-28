@@ -193,14 +193,14 @@ describe("TicketPage sections", () => {
     expect(await screen.findByText("No play runs yet.")).toBeInTheDocument();
   });
 
-  it("shows the thread on its own tab, which a link opens straight to, in place of the description and rail", async () => {
+  it("shows the thread on its own tab, which a link opens straight to, in place of the description with the rail beside it", async () => {
     const user = userEvent.setup();
     mockTicket();
     const page = renderPage();
     await user.click(await screen.findByRole("tab", { name: "Thread" }));
     expect(await screen.findByRole("button", { name: "Start thread" })).toBeInTheDocument();
     expect(screen.queryByText("Add the runner.")).not.toBeInTheDocument();
-    expect(screen.queryByText("No bugs reported.")).not.toBeInTheDocument();
+    expect(screen.getByText("No bugs reported.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     page.unmount();
 
@@ -273,7 +273,56 @@ describe("TicketPage sections", () => {
     expect(screen.queryByRole("tab", { name: "Notes" })).not.toBeInTheDocument();
   });
 
-  it("puts Plays directly under Properties, above Development", async () => {
+  it("marks the blockers still open in the header strip, never a done one", async () => {
+    const linked = (id: string, number: number, done: boolean) => ({ id, project_id: "p-1", prefix: "BE", number, title: `Ticket ${number}`, status: "st-progress", done, finished: false });
+    mockTicket({
+      "/api/tickets/t-1/ticket-links": { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [linked("t-3", 3, false), linked("t-2", 2, true)], blocks: [], blocked: true },
+    });
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "Blocked by BE-3" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "BE-2 Ticket 2" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Blocked by BE-2" })).not.toBeInTheDocument();
+  });
+
+  it("never opens a thread for the preview when the ticket has none", async () => {
+    mockTicket();
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
+    expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalledWith("/api/chat/tickets/t-1/thread", expect.anything());
+    expect(screen.queryByRole("link", { name: "Open thread" })).not.toBeInTheDocument();
+  });
+
+  it("shows the thread's three latest lines under the body in the thread's wording, never a fence's JSON", async () => {
+    const message = (id: string, body: string, minute: number, author_kind = "user") => ({
+      id, conversation_id: "c-1", author_id: "u-1", author_kind, body, mentions: null, created_at: `2026-08-02T12:0${minute}:00Z`, updated_at: "",
+    });
+    const question = "```nexul-question\n" + JSON.stringify({ request_id: "q-1", questions: [{ id: "a", text: "Which branch?", options: [] }] }) + "\n```";
+    mockTicket({
+      "/api/chat/tickets/thread-status": { "t-1": true },
+      "/api/chat/conversations/c-1/messages": [
+        message("m5", "Fifth", 5),
+        message("m4", "The run failed", 4, "system"),
+        message("m3", question, 3, "agent"),
+        message("m2", "Second", 2),
+        message("m1", "First", 1),
+      ],
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "c-1", workspace_id: "ws-1", kind: "thread", ticket_id: "t-1" } });
+    renderPage();
+
+    const preview = await screen.findByRole("region", { name: "Thread" });
+    expect(await within(preview).findByText("Fifth")).toBeInTheDocument();
+    expect(within(preview).getByText("The run failed")).toBeInTheDocument();
+    expect(within(preview).getByText("Which branch?")).toBeInTheDocument();
+    expect(within(preview).queryByText("Second")).not.toBeInTheDocument();
+    expect(within(preview).queryByText(/nexul-question/)).not.toBeInTheDocument();
+    expect(within(preview).getByRole("link", { name: "Open thread" })).toHaveAttribute("href", "/tickets/t-1/thread");
+  });
+
+  it("puts links, pull requests and testing under Properties, above Plays", async () => {
     mockTicket({
       "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },
       "/api/workspaces/ws-1/plays/applicable": [{ id: "play-1", label: "Fix with AI", type: "ticket", description: "", show_when_stage: "progress", can_run: true }],
@@ -284,7 +333,7 @@ describe("TicketPage sections", () => {
     await screen.findByRole("button", { name: /Fix with AI/ });
     const rail = await headings();
     const properties = rail.indexOf("Properties");
-    expect(rail.slice(properties, properties + 3)).toEqual(["Properties", "Plays", "Development"]);
+    expect(rail.slice(properties, properties + 5)).toEqual(["Properties", "Links", "Development", "Testing", "Plays"]);
   });
 });
 

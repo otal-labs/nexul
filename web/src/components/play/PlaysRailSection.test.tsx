@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,7 +20,7 @@ const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog" } as Ticket;
 
 const play = { id: "play-1", label: "Fix with AI", type: "ticket", description: "Fix it", show_when_stage: "backlog", can_run: true } as ListedPlay;
 
-const mockApi = (plays: ListedPlay[], permissions = ["plays:run"], resolve: object = {}) =>
+const mockApi = (plays: ListedPlay[], permissions = ["plays:run"], resolve: object = {}, runs: object[] = []) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/pairing/resolve") return { data: resolve };
@@ -30,6 +30,7 @@ const mockApi = (plays: ListedPlay[], permissions = ["plays:run"], resolve: obje
     if (url === "/api/workspaces/ws-1/plays/applicable") return { data: plays };
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/computers") return { data: { computers: [] } };
+    if (url === "/api/plays/runs") return { data: runs };
     return { data: [] };
   });
 
@@ -55,6 +56,18 @@ describe("PlaysRailSection", () => {
     renderSection();
     expect(await screen.findByRole("heading", { name: "Plays" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /Fix with AI/ })).toBeInTheDocument();
+  });
+
+  it("ends each play's row with its own newest run's state, and a play never run with nothing", async () => {
+    const other = { ...play, id: "play-2", label: "Review with AI" };
+    const run = (id: string, play_id: string, state: string) => ({ id, play_id, state, started_at: new Date().toISOString(), activity: [] });
+    mockApi([play, other], ["plays:run"], {}, [run("tr-2", "play-1", "failed"), run("tr-1", "play-1", "done")]);
+    renderSection();
+    const fix = (await screen.findByRole("button", { name: /Fix with AI/ })).closest("div")!;
+    expect(await within(fix).findByRole("img", { name: "failed" })).toBeInTheDocument();
+    expect(within(fix).queryByRole("img", { name: "done" })).not.toBeInTheDocument();
+    const review = screen.getByRole("button", { name: /Review with AI/ }).closest("div")!;
+    expect(within(review).queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("renders nothing when no play applies", async () => {
