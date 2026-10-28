@@ -10,7 +10,7 @@ interface AccessSetupNavProps {
   collapsed: boolean;
 }
 
-const row = "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm";
+const row = "flex items-center gap-2.5 rounded-md px-2.5 py-1 text-[13px]";
 
 // While the one-time access setup is open: Set up access gets an Owner back to it, and a member sees why no project shows.
 export const AccessSetupNav = ({ setup, collapsed }: AccessSetupNavProps) => {

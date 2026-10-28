@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import { microheaderClass } from "@/components/Microheader";
 import type { RouteArea } from "@/models/Access";
 import { cn } from "@/lib/utils";
 
@@ -14,11 +13,12 @@ export interface SidebarNavEntry {
   wip?: boolean;
 }
 
-export const sectionLabelClass = cn(microheaderClass, "px-2.5 pt-4 pb-1");
+// Sentence case in the sans, quieter than the rows: a label names the group, it is not a row to read.
+export const sectionLabelClass = "px-2.5 pt-5 pb-1 text-xs font-medium text-muted-foreground/80";
 
 export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "nav-row relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm",
+    "nav-row relative flex items-center gap-2.5 rounded-md px-2.5 py-1 text-[13px]",
     isActive
       ? "font-medium text-foreground"
       : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground active:bg-accent",
