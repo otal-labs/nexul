@@ -6,8 +6,7 @@ import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { PageHeader, pageTitleClassFor } from "@/components/PageHeader";
-import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/PageHeader";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -75,16 +74,16 @@ export const ProjectBoardSection = ({
   const people = new Set(projectTickets?.flatMap((t) => [ticketDeveloper(t).key, ticketTester(t).key]).filter(Boolean)).size;
   return (
     <>
-      {/* Title and count only: the sidebar's switchers already show the workspace and the project's mark, and each column counts its own stage. */}
+      {/* One line of title and count: the board is a work surface, so its header is the UI sans and the cards start high on the page. */}
       <PageHeader
         className="border-b-0 pb-0"
         title={
-          <div className="min-w-0">
-            <h1 dir="auto" className={cn(pageTitleClassFor(project?.name ?? "Board"), "text-2xl")}>
+          <div className="flex min-w-0 items-baseline gap-3">
+            <h1 dir="auto" className="truncate text-base font-semibold tracking-[-0.011em]">
               {project?.name ?? "Board"}
             </h1>
             {ticketCount !== undefined && (
-              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+              <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
                 {people > 0 && ` · ${people} ${people === 1 ? "person" : "people"}`}
               </p>
