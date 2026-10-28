@@ -183,7 +183,7 @@ export const KanbanBoard = ({
             {/* Each stage's well is drawn once behind every lane, so a stage is one column from the stage row to the end of the board. */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-9 bottom-0 grid gap-2"
+              className="pointer-events-none absolute inset-x-0 top-12 bottom-0 grid gap-2"
               style={{ gridTemplateColumns: boardGridTemplate(shownColumns, doneOpen) }}
             >
               {shownColumns.map((column) => (

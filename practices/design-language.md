@@ -86,7 +86,7 @@ in the three token files; this table holds the roles.
 |---|---|---|---|---|
 | `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
-| `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 4% | the board's column well, laid over the panel as a shade so it separates in every palette | web only |
+| `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 4% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
@@ -564,7 +564,8 @@ A swimlane is a 28px band across the stage columns, pinned under the stage
 row while its lane scrolls: a chevron, the lane name in 13px semibold, and
 "4/11 done" in muted sans beside the name, a hairline under the band. Each
 stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
-rather than a colour so it reads in every palette) is drawn once behind every
+rather than a colour so it reads in every palette; a black panel takes a lighter
+well instead) is drawn once behind every
 lane, from the stage row to the end of the board, so a stage is one unbroken
 column; under a band each cell is only as tall as its own cards, top-aligned, so a one-card stage is never a tall empty slab. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While

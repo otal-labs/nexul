@@ -22,7 +22,8 @@ type Role =
   | "brand-foreground"
   | "border"
   | "input"
-  | "ring";
+  | "ring"
+  | "well-shade";
 
 type ThemeRoleOverrides = Partial<Record<Role, string>>;
 
@@ -501,7 +502,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
       dark: {
         background: "oklch(0.0 0.0 0.0)",
         foreground: "oklch(1.0 0.0 0.0)",
-        card: "oklch(0.1457 0.0 0.0)",
+        card: "oklch(0.21 0.0 0.0)",
         "card-foreground": "oklch(1.0 0.0 0.0)",
         popover: "oklch(0.1457 0.0 0.0)",
         "popover-foreground": "oklch(1.0 0.0 0.0)",
@@ -517,6 +518,8 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         input: "oklch(1.0 0.0 0.0)",
         ring: "oklch(0.628 0.2577 29.23)",
         "surface-2": "oklch(0.1157 0.0 0.0)",
+        // A black panel has no darker step to give, so its column wells sit a step lighter instead.
+        "well-shade": "oklch(1.0 0.0 0.0 / 0.025)",
       },
     },
     radius: { sm: "0px", md: "0px", lg: "0px", xl: "0px", "2xl": "0px" },
@@ -547,6 +550,7 @@ const ROLE_CSS_VAR: Record<Role, string> = {
   border: "--border",
   input: "--input",
   ring: "--ring",
+  "well-shade": "--well-shade",
 };
 
 const RADIUS_CSS_VAR: Record<"sm" | "md" | "lg" | "xl" | "2xl", string> = {
