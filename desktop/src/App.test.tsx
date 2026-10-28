@@ -21,15 +21,17 @@ interface BridgeHarness {
   remove: ReturnType<typeof vi.fn>;
   refresh: ReturnType<typeof vi.fn>;
   onStateChanged: ReturnType<typeof vi.fn>;
+  unsubscribe: ReturnType<typeof vi.fn>;
 }
 
 const makeBridge = (initial: PublicVaultState = makeState()): BridgeHarness => {
   let listener: ((state: PublicVaultState) => void) | null = null;
+  const unsubscribe = vi.fn(() => {
+    listener = null;
+  });
   const onStateChanged = vi.fn((cb: (state: PublicVaultState) => void) => {
     listener = cb;
-    return () => {
-      listener = null;
-    };
+    return unsubscribe;
   });
   const importToken = vi.fn(async (token: string) => {
     if (token.includes("bad")) return { ok: false, error: "not a connection token" };
@@ -41,7 +43,7 @@ const makeBridge = (initial: PublicVaultState = makeState()): BridgeHarness => {
   const remove = vi.fn(async () => ({ ok: true }));
   const refresh = vi.fn(async () => {});
   const push = (state: PublicVaultState) => listener?.(state);
-  return { bridge: { onStateChanged, importToken, listInstances, connect, remove, refresh }, push, importToken, listInstances, connect, remove, refresh, onStateChanged };
+  return { bridge: { onStateChanged, importToken, listInstances, connect, remove, refresh }, push, importToken, listInstances, connect, remove, refresh, onStateChanged, unsubscribe };
 };
 
 const instance = (overrides: Partial<PublicVaultState["instances"][number]> = {}) => ({
@@ -70,11 +72,9 @@ describe("App", () => {
     const harness = makeBridge();
     const { unmount } = render(<App bridge={harness.bridge} />);
     await screen.findByText("No instances yet — import a connection token above.");
-    const unsubscribe = harness.onStateChanged.mock.results[0]?.value as () => void;
-    const spy = vi.fn(unsubscribe);
+    expect(harness.unsubscribe).not.toHaveBeenCalled();
     unmount();
-    spy();
-    expect(spy).toHaveBeenCalled();
+    expect(harness.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   it("renders instances from the initial listing with their real status", async () => {
@@ -131,14 +131,26 @@ describe("App", () => {
     expect(screen.getByLabelText("Connection token")).toHaveValue("bad.token");
   });
 
-  it("disables import for an empty or in-flight token", async () => {
+  it("disables import for an empty token and while an import is in flight", async () => {
     const user = userEvent.setup();
     const harness = makeBridge();
+    let finishImport: (result: { ok: boolean; id: string }) => void = () => {};
+    harness.importToken.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishImport = resolve;
+        }),
+    );
     render(<App bridge={harness.bridge} />);
-    const importButton = screen.getByRole("button", { name: "Import" });
-    expect(importButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
     await user.type(screen.getByLabelText("Connection token"), "x");
-    expect(importButton).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Import" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(screen.getByRole("button", { name: "Importing…" })).toBeDisabled();
+
+    finishImport({ ok: true, id: "a" });
+    expect(await screen.findByRole("button", { name: "Import" })).toBeDisabled();
   });
 
   it("connects and removes via the bridge", async () => {

@@ -9,8 +9,9 @@ import type { ConfigSchema } from "../src/config-schema.ts";
 // users to take.
 class FakeWebSocket extends EventTarget {
   static instances: FakeWebSocket[] = [];
-  sent: unknown[] = [];
+  sent: Array<Record<string, unknown> & { type: string }> = [];
   readyState = 0;
+  private waiters: Array<() => void> = [];
 
   constructor(public url: string) {
     super();
@@ -23,6 +24,16 @@ class FakeWebSocket extends EventTarget {
 
   send(data: string): void {
     this.sent.push(JSON.parse(data));
+    for (const wake of this.waiters.splice(0)) wake();
+  }
+
+  // sentFrame resolves with the first sent frame of this type, waking on each send instead of sleeping.
+  async sentFrame(...types: string[]): Promise<{ type: string }> {
+    for (;;) {
+      const frame = this.sent.find((f) => types.includes(f.type));
+      if (frame) return frame;
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+    }
   }
 
   close(): void {
@@ -33,10 +44,6 @@ class FakeWebSocket extends EventTarget {
   emit(frame: unknown): void {
     this.dispatchEvent(Object.assign(new Event("message"), { data: JSON.stringify(frame) }));
   }
-}
-
-function tick(ms = 5): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 let realWebSocket: typeof WebSocket;
@@ -53,10 +60,9 @@ afterEach(() => {
 
 async function connect<S extends ConfigSchema>(client: DialinClient<S>) {
   const runPromise = client.run();
-  await tick();
   const ws = FakeWebSocket.instances[0]!;
+  await ws.sentFrame("announce");
   ws.emit({ type: "hello", config_values: {}, secrets: { API_KEY: "s3cr3t" } });
-  await tick();
   return { ws, runPromise };
 }
 
@@ -83,7 +89,7 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: { ticket: { id: "t1" } } });
-    await tick();
+    await ws.sentFrame("run_finished", "run_crashed");
 
     expect(seenSecret).toBe("s3cr3t");
     expect(ws.sent).toContainEqual({ type: "run_started", run_id: "r1" });
@@ -98,7 +104,7 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
-    await tick();
+    await ws.sentFrame("run_finished", "run_crashed");
 
     expect(ws.sent).toContainEqual({ type: "run_finished", run_id: "r1", outcome: "failure" });
     client.stop();
@@ -113,7 +119,7 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
-    await tick();
+    await ws.sentFrame("run_finished", "run_crashed");
 
     expect(ws.sent).toContainEqual({ type: "run_crashed", run_id: "r1", error: "boom" });
     client.stop();
@@ -126,9 +132,10 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
-    await tick(50);
+    await ws.sentFrame("run_finished", "run_crashed");
 
     expect(ws.sent).toContainEqual({ type: "run_finished", run_id: "r1", outcome: "failure" });
+    expect(ws.sent.map((f) => f.type)).not.toContain("run_crashed");
     client.stop();
   });
 
@@ -138,7 +145,7 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "doc.created", payload: {} });
-    await tick();
+    await ws.sentFrame("run_crashed");
 
     const crashed = ws.sent.find((f) => (f as { type: string }).type === "run_crashed") as { error: string } | undefined;
     expect(crashed?.error).toMatch(/no handler registered/);
@@ -155,7 +162,7 @@ describe("DialinClient protocol", () => {
     const { ws } = await connect(client);
 
     ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
-    await tick();
+    await ws.sentFrame("run_finished", "run_crashed");
 
     const logFrame = ws.sent.find((f) => (f as { type: string }).type === "run_log") as { log: string } | undefined;
     expect(logFrame?.log).toContain("hello from handler");

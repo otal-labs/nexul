@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { FLUSH_MS, LogShipper } from "../src/log-shipper.ts";
+import { afterEach, describe, expect, jest, spyOn, test } from "bun:test";
+import { LogShipper } from "../src/log-shipper.ts";
 import { log, logScript, LogQueue, MAX_BATCH, QUEUE_LIMIT, shipLogsTo, type LogRecord } from "../src/log.ts";
 
 function rec(message: string, extra: Partial<LogRecord> = {}): LogRecord {
@@ -170,22 +170,32 @@ describe("LogShipper", () => {
     expect(calls).toBe(1);
   });
 
-  test("start flushes on a timer until stopped", async () => {
-    const q = new LogQueue();
-    const posted: number[] = [];
-    const shipper = new LogShipper(q, async (records) => {
-      posted.push(records.length);
-    });
-    expect(FLUSH_MS).toBe(2000);
+  test("start flushes on every interval until stopped", async () => {
+    jest.useFakeTimers();
+    try {
+      const q = new LogQueue();
+      const posted: string[][] = [];
+      const shipper = new LogShipper(q, async (records) => {
+        posted.push(records.map((r) => r.message));
+      });
 
-    shipper.start(5);
-    q.add(rec("tick"));
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    shipper.stop();
-    q.add(rec("after stop"));
-    await new Promise((resolve) => setTimeout(resolve, 40));
+      shipper.start(5);
+      q.add(rec("first"));
+      jest.advanceTimersByTime(5);
+      expect(posted).toEqual([["first"]]);
+      await shipper.flush();
+      q.add(rec("second"));
+      jest.advanceTimersByTime(5);
+      expect(posted).toEqual([["first"], ["second"]]);
+      await shipper.flush();
 
-    expect(posted).toEqual([1]);
-    expect(q.length).toBe(1);
+      shipper.stop();
+      q.add(rec("after stop"));
+      jest.advanceTimersByTime(1000);
+      expect(posted).toHaveLength(2);
+      expect(q.length).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
