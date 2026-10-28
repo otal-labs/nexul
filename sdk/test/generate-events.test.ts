@@ -34,9 +34,12 @@ describe("generateSource", () => {
   });
 
   it("produces a fixture value for every topic", () => {
-    const catalog = readCatalog(`{"t.three":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}}`);
+    const catalog = readCatalog(
+      `{"t.three":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}},"t.six":{"type":"object","properties":{"n":{"type":"integer"},"done":{"type":"boolean"}}}}`,
+    );
     const source = generateSource(catalog);
     expect(source).toContain(`"t.three": {"id":"fixture-id"}`);
+    expect(source).toContain(`"t.six": {"n":1,"done":false}`);
   });
 
   it("types a nullable list as a list or null, and fills its fixture with an element", () => {
