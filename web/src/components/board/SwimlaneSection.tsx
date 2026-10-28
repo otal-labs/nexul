@@ -55,7 +55,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
-          className="group/lane flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-md bg-foreground/[0.04] px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent dark:bg-surface-2"
+          className="group/lane flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-md bg-foreground/[0.04] px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent dark:bg-background/50"
         >
           <span className="sticky left-2 flex min-w-0 items-center gap-2">
             <ChevronDownIcon

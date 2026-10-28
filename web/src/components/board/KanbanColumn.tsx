@@ -63,7 +63,7 @@ const KanbanColumnImpl = ({
       }}
       className={cn(
         // Three surface steps: the panel, the column's well, the card raised on it.
-        "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-surface-2",
+        "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-background/50",
         empty ? "w-18 shrink-0 items-center xl:w-32 xl:items-stretch" : "w-37 flex-1 lg:w-42 xl:w-50",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
