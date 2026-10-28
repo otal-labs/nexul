@@ -63,19 +63,22 @@ func TestOnSessionUpdate_NewsNoTurnWatches_IsCaughtUpFromWhatWasSeen(t *testing.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := newFollowRig(t, "run-7")
+			synctest.Test(t, func(t *testing.T) {
+				r := newFollowRig(t, "run-7")
 
-			r.svc.OnSessionUpdate("u-1", "c-2", tt.update)
+				r.svc.OnSessionUpdate("u-1", "c-2", tt.update)
+				synctest.Wait()
 
-			target := r.nextWatch(t)
-			assert.Equal(t, "th-1", target.SessionID)
-			assert.Equal(t, "run-7", target.Since, "the catch-up starts after the last turn seen to end")
-			waitFor(t, 5*time.Second, func() bool { return r.conv.seenMarker("conv-1") == "run-9" })
-			replies, _ := r.conv.snapshot()
-			require.Len(t, replies, 1)
-			assert.Equal(t, "Built the worker.", replies[0].body)
-			assert.Equal(t, "u-1", replies[0].viaUserID, "it runs as the person whose computer reported it")
-			assert.Equal(t, &TargetOverride{ComputerID: "c-2"}, r.targets.override, "on the computer that reported it")
+				target := r.nextWatch(t)
+				assert.Equal(t, "th-1", target.SessionID)
+				assert.Equal(t, "run-7", target.Since, "the catch-up starts after the last turn seen to end")
+				assert.Equal(t, "run-9", r.conv.seenMarker("conv-1"))
+				replies, _ := r.conv.snapshot()
+				require.Len(t, replies, 1)
+				assert.Equal(t, "Built the worker.", replies[0].body)
+				assert.Equal(t, "u-1", replies[0].viaUserID, "it runs as the person whose computer reported it")
+				assert.Equal(t, &TargetOverride{ComputerID: "c-2"}, r.targets.override, "on the computer that reported it")
+			})
 		})
 	}
 }
@@ -139,23 +142,22 @@ func (f *fakeFollower) FollowThread(_ context.Context, conversationID, threadID,
 
 func TestOnSessionUpdate_FollowerTakesIt_HoldsTheConversationUntilItsTurnEnds(t *testing.T) {
 	t.Parallel()
-	r := newFollowRig(t, "run-7")
-	f := &fakeFollower{calls: make(chan []string, 4), release: make(chan struct{})}
-	r.svc.SetFollower(f)
+	synctest.Test(t, func(t *testing.T) {
+		r := newFollowRig(t, "run-7")
+		f := &fakeFollower{calls: make(chan []string, 4), release: make(chan struct{})}
+		r.svc.SetFollower(f)
 
-	r.svc.OnSessionUpdate("u-1", "c-2", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8"})
-	assert.Equal(t, []string{"conv-1", "th-1", "u-1", "c-2", "run-7"}, <-f.calls)
-	r.svc.OnSessionUpdate("u-1", "c-2", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8", Working: true})
-	assert.Empty(t, f.calls, "a second update while the catch-up runs starts nothing")
-	assert.Empty(t, r.watched, "the follower's turn, not a plain one")
+		r.svc.OnSessionUpdate("u-1", "c-2", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8"})
+		assert.Equal(t, []string{"conv-1", "th-1", "u-1", "c-2", "run-7"}, <-f.calls)
+		r.svc.OnSessionUpdate("u-1", "c-2", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8", Working: true})
+		assert.Empty(t, f.calls, "a second update while the catch-up runs starts nothing")
+		assert.Empty(t, r.watched, "the follower's turn, not a plain one")
+		synctest.Wait()
+		assert.False(t, r.svc.claimFollow("conv-1"), "the conversation is held while the follower's turn runs")
 
-	close(f.release)
-	waitFor(t, 5*time.Second, func() bool {
-		if !r.svc.claimFollow("conv-1") {
-			return false
-		}
-		r.svc.releaseFollow("conv-1")
-		return true
+		close(f.release)
+		synctest.Wait()
+		assert.True(t, r.svc.claimFollow("conv-1"), "the conversation is free once its turn ends")
 	})
 }
 
