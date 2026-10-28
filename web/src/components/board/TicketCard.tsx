@@ -33,6 +33,9 @@ interface TicketCardBodyProps {
   ticket: Ticket;
 }
 
+// Two chips beside the type fit a 220px column on one row; the rest count as +N, named in its tooltip.
+const CARD_LABELS = 2;
+
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
 export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const { prefix, ticketTypes, labelColors, threadIndicators, statuses, activeTrails, people } = useBoardCardData();
@@ -52,15 +55,23 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
     </span>
   );
   const pills = (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+    <span className="flex min-w-0 flex-wrap items-center gap-1">
       {type !== "" && (
         <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)}>
           {type}
         </NoFillBadge>
       )}
-      {labels.map((label) => (
-        <LabelChip key={label} label={label} color={labelColors?.[label]} />
+      {labels.slice(0, CARD_LABELS).map((label) => (
+        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 px-1.5 text-[11px]" />
       ))}
+      {labels.length > CARD_LABELS && (
+        <span
+          title={labels.slice(CARD_LABELS).join(", ")}
+          className="rounded-full border border-border bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+        >
+          +{labels.length - CARD_LABELS}
+        </span>
+      )}
     </span>
   );
   const run = (
@@ -85,19 +96,17 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   return (
     <>
-      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next sits opposite the pills. */}
-      <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the pills a row of their own. */}
+      <span className="flex h-5 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
         <span className="tabular-nums">{prefix}-{ticket.number}</span>
         <span className="flex-1" />
         {run}
         {thread}
-      </span>
-      <span dir="auto" title={ticket.title} className="-mt-0.5 line-clamp-3 text-[13px] font-medium leading-snug break-words">{ticket.title}</span>
-      <TicketBlockedLine ticketId={ticket.id} />
-      <span className="flex items-end justify-between gap-2">
-        {pills}
         {avatar}
       </span>
+      <span dir="auto" title={ticket.title} className="-mt-1 line-clamp-3 text-[13px] font-medium leading-snug break-words">{ticket.title}</span>
+      <TicketBlockedLine ticketId={ticket.id} />
+      {(type !== "" || labels.length > 0) && pills}
     </>
   );
 });

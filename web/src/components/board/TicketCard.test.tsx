@@ -101,6 +101,13 @@ describe("TicketCard", () => {
     expect(chip).not.toHaveClass(labelDotColor("urgent"));
   });
 
+  it("shows two label chips and counts the rest in a +N chip that names them", () => {
+    const { container } = renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent", "i18n", "ux"] }} />);
+    expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
+    expect(screen.queryByText("i18n")).not.toBeInTheDocument();
+    expect(screen.getByText("+2")).toHaveAttribute("title", "i18n, ux");
+  });
+
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
     mockTicketType("Widget");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);

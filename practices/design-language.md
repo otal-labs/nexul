@@ -542,10 +542,11 @@ action (`BoardStageSummary`): a legend of dot, stage and mono count on one
 row, backlog's dot at half strength. It counts every ticket in the project,
 whatever the filters show. No breadcrumb: the sidebar's switchers already
 name the workspace and the project. A card is the mono key as an eyebrow
-(with the run timer and thread mark trailing on its line), the title at full
-width in 13px medium, the blocked line, then the type (its icon in its hue
-beside plain text) and the label chips with the 20px avatar of whoever acts
-next opposite, at 10px padding. A swimlane is a 32px bar on `surface-2` with
+(with the run timer, the thread mark and the 20px avatar of whoever acts
+next trailing on its line), the title at full width in 13px medium, the
+blocked line, then the type (its icon in its hue beside plain text) and at most two
+label chips (11px on the card) on a row of their own, any more counted in a mono "+N" chip that
+names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 220px minimum, so all
 five stages fit at 1440 beside the sidebar, and grow with their cards while
@@ -1259,7 +1260,7 @@ The web app's pattern decisions, each with what it was picked over.
 |---|---|
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
 | A dark card sits at least 0.029 of OKLCH lightness above its panel (2026-10-26) | Against each palette keeping its own card step: the card sits straight on the panel, and the panel is the card mixed 60% into the canvas, so a palette whose card is only a few points above its canvas puts the card 0.012 to 0.020 above the panel and it dissolves into the page. 0.029 is the step Ember, Ocean and Grove hold (0.030), the default holding 0.039; a palette short of it lifts `card` (and `popover` where the two share a value) and keeps its hue and chroma. Light palettes are exempt: a white or near-white card has no lightness left to give, and the ring and shadow separate it. Guarded per palette in `themeContrast.test.ts` |
-| Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Board cards: the key as an eyebrow with the person at its end, the pills on a row of their own (2026-10-28) | Against the avatar-beside-title card, a card with a ruled footer, and the person opposite the pills: with the avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the key's line had room the pills' row did not, where a 20px avatar pushed a third chip onto another line in a 220px column; the footer rule made every card taller for a line that spacing already separates |
 | Board: no column has a well at rest, every one takes it while a card is held | Against the full-height `surface-2` well on every column, and against a well only on populated ones: the page is already a panel, so cards on a well were three nested surfaces, and a well on some columns made two kinds of column side by side; the card's own surface and hairline carry it on the panel, and the well and the dashed slot appear when a card is held, where they say where it can drop |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
 | Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
