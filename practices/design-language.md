@@ -1127,7 +1127,7 @@ the mono time on its first line and the summary under it.
 Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
 outline tag, running the column's width when it carries an embed. Each embed is a report on
-the panel, no box: a 3px rounded leading edge, 12px of indent, then the
+the panel, no box: a 3px rounded leading edge, 16px of indent, then the
 heading, the description, the facts and a footer line. The server drops the sender's
 color, so the report's state is read from its title's words (`embedTone`:
 failed, healthy, stopped, running and their kin, worst first) and colours the
@@ -1143,8 +1143,10 @@ and the rest counted ("● cache stopped · 2 redeployed · 6 healthy"); fewer
 keep their dot on the fact line. The footer text and time follow as one mono
 11px line with the ghost fold toggle after it ("Show all 9 fields" for a tally,
 "Show 6 more fields" past six long ones, "Show the rest" for a long
-description, which shows its first six lines whole rather than a clamp that cuts the last or ends it in an ellipsis); opened, the fields lay out as the sender's grid, a mono
-microheader over each value, inline ones three across (two in a narrow pane).
+description, which shows its first six lines whole rather than a clamp that cuts the last or ends it in an ellipsis); opened, the fields lay out as the sender's grid, each name in
+muted 12px sans over its value, as the fact line names it, inline ones three
+across (two in a narrow pane). A numbered line's marker takes tabular figures,
+so the lines start level.
 Past two embeds the same toggle opens the rest. Only a bot's
 text renders Discord's markdown subset. `BotMessageRow`, `EmbedCard` and
 `EmbedFactLines` in `web/src/components/chat/` are the reference.

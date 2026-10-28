@@ -30,14 +30,30 @@ const Inline = ({ part }: { part: InlinePart }) => (
   </>
 );
 
+const NUMBERED = /^(\d+\.)(\s.*)$/s;
+
+// A numbered line's marker takes tabular figures, so "1." is as wide as "2." and the lines' text starts level.
+const TextLine = ({ parts }: { parts: InlinePart[] }) => {
+  const [first, ...rest] = parts;
+  const numbered = first?.kind === "text" ? NUMBERED.exec(first.text) : null;
+  return (
+    <p>
+      {!numbered && <InlineParts parts={parts} />}
+      {numbered && (
+        <>
+          <span className="tabular-nums">{numbered[1]}</span>
+          {numbered[2]}
+          <InlineParts parts={rest} />
+        </>
+      )}
+    </p>
+  );
+};
+
 const Line = ({ line }: { line: MarkdownLine }) => (
   <>
     {line.kind === "blank" && <p aria-hidden className="h-2" />}
-    {line.kind === "text" && (
-      <p>
-        <InlineParts parts={line.parts} />
-      </p>
-    )}
+    {line.kind === "text" && <TextLine parts={line.parts} />}
     {line.kind === "item" && (
       <p className="flex gap-1.5 pl-1">
         <span aria-hidden>•</span>

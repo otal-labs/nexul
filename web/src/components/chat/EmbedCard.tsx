@@ -26,7 +26,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const manyLines = clamp && (embed.description ?? "").split("\n").length > DESCRIPTION_LINES;
 
   return (
-    <article className="@container relative pl-3">
+    <article className="@container relative pl-4">
       <span aria-hidden className={cn("absolute inset-y-0.5 left-0 w-[3px] rounded-full", tone ? toneBg[tone] : "bg-muted-foreground/40")} />
       <div className="flex flex-col-reverse gap-3 @[22rem]:flex-row">
         <div className="min-w-0 flex-1 space-y-1">
@@ -35,7 +35,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
             <DiscordMarkdown
               text={embed.description}
               maxLines={manyLines ? DESCRIPTION_LINES : undefined}
-              className={cn("space-y-0.5 text-[13px] leading-5 text-foreground/80 tabular-nums", clamp && !manyLines && "line-clamp-6")}
+              className={cn("space-y-0.5 text-[13px] leading-5 text-foreground/80", clamp && !manyLines && "line-clamp-6")}
             />
           )}
           {!open && <EmbedFactLines facts={facts} />}

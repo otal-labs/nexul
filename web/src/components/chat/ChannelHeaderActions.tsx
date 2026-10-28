@@ -41,7 +41,7 @@ const MemberStack = ({ channel, onOpen }: { channel: Conversation; onOpen: (() =
 export const ChannelHeaderActions = ({ channel }: { channel: Conversation }) => {
   const { onSettings, settingsDialog } = useChannelRowActions(channel);
   return (
-    <div className="ml-auto flex shrink-0 items-center gap-1">
+    <div className="-mr-1.5 ml-auto flex shrink-0 items-center gap-1">
       {channel.private && <MemberStack channel={channel} onOpen={onSettings} />}
       {onSettings && (
         <Tooltip>
