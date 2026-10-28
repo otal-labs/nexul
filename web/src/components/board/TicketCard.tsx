@@ -157,7 +157,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
         if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
-        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 shadow-card dark:border-transparent transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         draggable && "cursor-grab active:cursor-grabbing",
         !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.

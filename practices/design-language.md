@@ -552,12 +552,12 @@ and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
 N" row mounts the next. A column with no cards in its lane folds to a 40px strip:
 its stage mark, its name set vertically in muted ink, its count and its `+`,
-so an empty stage never takes the width of one with work. A column has no
-well at rest: its header (flush with the cards' edges) over the cards, so the
-cards sit on the page panel and the gap and the header separate the columns.
-While a card is held every column takes its `surface-2` well and an empty
-strip shows the dashed slot, still the column's full height, as the place a
-card can land.
+so an empty stage never takes the width of one with work. Every column
+sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
+with the cards' edges, and its cards are raised on it: `card` with the card
+shadow, the hairline only in light, so the board reads as three surfaces
+(panel, well, card). While a card is held an empty strip shows the dashed
+slot at the column's full height, as the place a card can land.
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
@@ -1264,7 +1264,7 @@ The web app's pattern decisions, each with what it was picked over.
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
 | A dark card sits at least 0.029 of OKLCH lightness above its panel (2026-10-26) | Against each palette keeping its own card step: the card sits straight on the panel, and the panel is the card mixed 60% into the canvas, so a palette whose card is only a few points above its canvas puts the card 0.012 to 0.020 above the panel and it dissolves into the page. 0.029 is the step Ember, Ocean and Grove hold (0.030), the default holding 0.039; a palette short of it lifts `card` (and `popover` where the two share a value) and keeps its hue and chroma. Light palettes are exempt: a white or near-white card has no lightness left to give, and the ring and shadow separate it. Guarded per palette in `themeContrast.test.ts` |
 | Board cards: the key as an eyebrow with the person at its end, the pills on a row of their own (2026-10-28) | Against the avatar-beside-title card, a card with a ruled footer, and the person opposite the pills: with the avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the key's line had room the pills' row did not, where a 20px avatar pushed a third chip onto another line in a 220px column; the footer rule made every card taller for a line that spacing already separates |
-| Board: no column has a well at rest, every one takes it while a card is held | Against the full-height `surface-2` well on every column, and against a well only on populated ones: the page is already a panel, so cards on a well were three nested surfaces, and a well on some columns made two kinds of column side by side; the card's own surface and hairline carry it on the panel, and the well and the dashed slot appear when a card is held, where they say where it can drop |
+| Board: every column on a well, cards raised on it (2026-10-28) | Against no well at rest, each column taking it only while a card is held: the cards and the columns shared the page panel, separated by a hairline, so in dark the board read as a wireframe and in light as white boxes on white. Three surface steps (panel, well, card) carry the depth, and the card drops its hairline in dark, where its fill already separates it. This reverses the earlier call that a well under the cards made three nested surfaces: on the board the nesting is the structure |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
 | Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
