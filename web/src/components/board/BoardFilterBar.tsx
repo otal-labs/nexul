@@ -98,9 +98,20 @@ export const BoardFilterBar = ({
 
   return (
     <div className="@container">
-      {/* Filters lead, search and Create trail at the right edge; a narrow board wraps them onto a second row. */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 *:shrink-0">
+      {/* The text filter leads the filters it works with; Create alone holds the right edge. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 *:shrink-0">
+          <div className="relative w-60">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              type="search"
+              aria-label="Filter tickets"
+              placeholder="Filter tickets"
+              value={filters.search}
+              onChange={(e) => onSearch(e.target.value)}
+              className="h-8 pl-8 text-[13px]"
+            />
+          </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs">
@@ -139,18 +150,7 @@ export const BoardFilterBar = ({
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
         </div>
-        <div className="flex min-w-56 flex-1 items-center justify-end gap-2">
-          <div className="relative w-full max-w-64">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              type="search"
-              aria-label="Filter tickets"
-              placeholder="Filter tickets"
-              value={filters.search}
-              onChange={(e) => onSearch(e.target.value)}
-              className="h-8 pl-8 text-[13px]"
-            />
-          </div>
+        <div className="flex shrink-0 items-center">
           <BoardCreateMenu projectId={projectId} onNewTicket={onNewTicket} onNewCategory={onNewCategory} />
         </div>
       </div>

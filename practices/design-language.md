@@ -569,12 +569,11 @@ Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
 bg-card px-3 text-sm`, with a chevron if it opens a popover), an `×`-removable
 chip per active filter, and an optional saved-view or sort control trailing
-right. The board's bar is 32px controls: the filters lead, the
-developer filter among them as a stack of three 28px avatars and a "+N" that
-lists the rest, and a text filter of up to 16rem ("Filter tickets", so it
-never reads as a second copy of the sidebar's Search) with the labelled
-Create button beside it trails at the right edge, staying on the filters' row down
-to 14rem for the pair and wrapping onto a second row below that. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+right. The board's bar is 32px controls: a 15rem text filter ("Filter tickets", so
+it never reads as a second copy of the sidebar's Search) leads, then the
+Filter menu, the developer filter as a stack of three 28px avatars and a "+N"
+that lists the rest, and the toggles, wrapping inside their group when the
+board is narrow; the labelled Create button alone holds the right edge. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.
