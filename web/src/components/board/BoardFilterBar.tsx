@@ -144,8 +144,8 @@ export const BoardFilterBar = ({
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
               type="search"
-              aria-label="Search tickets"
-              placeholder="Search"
+              aria-label="Filter tickets"
+              placeholder="Filter tickets"
               value={filters.search}
               onChange={(e) => onSearch(e.target.value)}
               className="h-8 pl-8 text-[13px]"
