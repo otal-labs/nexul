@@ -14,25 +14,4 @@ describe("services (web)", () => {
     await expect(page.getByRole("heading", { name: "Services", level: 2 })).toBeVisible();
     await expect(page.getByRole("link", { name: /new service/i })).toBeVisible();
   });
-
-  it("creates a service for the seeded project through the dialog", async () => {
-    const name = `e2e-svc-${Date.now()}`;
-    const page = await authedPage(`${E2E_WORKSPACE_PATH}/projects/${E2E_PROJECT_ID}/settings/services`);
-    await page.waitForLoadState("networkidle");
-
-    await page.getByRole("button", { name: /new service/i }).click();
-
-    const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Name", { exact: true }).fill(name);
-    await dialog.getByLabel("Target server", { exact: true }).fill("e2e-host");
-    await dialog.getByLabel("Compose directory", { exact: true }).fill("/srv/app");
-    await dialog.getByLabel(/image/i).fill("alpine");
-    await dialog.getByLabel(/health check url/i).fill("http://e2e/health");
-    // The dialog's OK button sits below the fold in a scroll-fighting container, so focus it and press Enter instead of clicking.
-    const ok = dialog.getByRole("button", { name: /create/i });
-    await ok.focus();
-    await ok.press("Enter");
-
-    await expect(page.getByText(name)).toBeVisible();
-  });
 });

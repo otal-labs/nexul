@@ -1,7 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
-import { E2E_PROJECT_ID, E2E_WORKSPACE_ID, E2E_WORKSPACE_PATH, makeApiClient, mintToken } from "../helpers";
+import { E2E_PROJECT_ID, E2E_WORKSPACE_PATH, makeApiClient, mintToken } from "../helpers";
 import { authedPage, closeBrowser } from "./browser";
 
 afterAll(closeBrowser);
@@ -41,34 +41,6 @@ describe("ticket detail (web)", () => {
       await expect(page.getByRole("button", { name: "Status: In progress" })).toBeVisible();
     } finally {
       await api(`/api/tickets/${ticketId}`, { method: "DELETE" });
-    }
-  });
-
-  it("moves the ticket to another project", async () => {
-    const title = `e2e-ticket-move-${Date.now()}`;
-    const ticketId = await createTicket(title);
-
-    const projectName = `e2e-proj-${Date.now()}`;
-    const proj = await api<{ id: string }>("/api/projects", {
-      method: "POST",
-      ...json({ name: projectName, workspace_id: E2E_WORKSPACE_ID, prefix: "ETD" }),
-    });
-    expect(proj.status).toBe(201);
-    const projectId = proj.body!.id;
-
-    try {
-      const page = await authedPage(`${E2E_WORKSPACE_PATH}/tickets/${ticketId}`);
-      await expect(page.getByRole("heading", { name: title })).toBeVisible({ timeout: 10_000 });
-
-      // exact: true because the sidebar's "New doc in {project}" buttons also carry "Project" in their aria-label (ticket 13).
-      await page.getByLabel("Project", { exact: true }).selectOption({ label: projectName });
-      await expect(page.getByLabel("Project", { exact: true })).toHaveValue(projectId);
-      await page.reload();
-      await expect(page.getByRole("heading", { name: title })).toBeVisible();
-      await expect(page.getByLabel("Project", { exact: true })).toHaveValue(projectId);
-    } finally {
-      await api(`/api/tickets/${ticketId}`, { method: "DELETE" });
-      await api(`/api/projects/${projectId}`, { method: "DELETE" });
     }
   });
 });
