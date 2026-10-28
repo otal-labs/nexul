@@ -552,14 +552,14 @@ name in 11px muted text with no pill, on a row of their own, any more counted in
 names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
-below 1024, beside the rail), so
+below 1280), so
 three stages with cards and two empty columns fit at 1024 beside the sidebar
 and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
-N" row mounts the next. A column with no cards in its lane gives its width to the
-columns with work: from 1280px it narrows to 160px with the same header and
-one muted "No tickets" line; below that it is a 40px well of stage mark,
-count and `+`, its name in the header's tooltip and for screen readers. Every column
+N" row mounts the next. A column with no cards in its lane is a 72px rail on its well:
+its stage mark, its name in 11px semibold wrapping to two lines, its count and
+its `+`, so an empty stage keeps its name in reading order and gives its width
+to the columns with work. Every column
 sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
 with the cards' edges, and its cards are raised on it: `card` with the card
 shadow and its hairline, so the board reads as three surfaces
@@ -1281,7 +1281,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
 | Board title in the sans on one line with its count (2026-10-28) | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
 | Board header: the title and its count line only (2026-10-28) | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
-| An empty column narrows to 160px in its lane from 1280px, a 40px well of mark and count below (2026-10-28) | Against a 40px strip with the name set vertically at every width (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
+| An empty column is a 72px rail with its name in two lines (2026-10-28) | Against a 160px column with its full header (two of them still took a fifth of the board to say No tickets), a 40px well of mark and count (In progress and Testing could not be told apart), a 40px strip with the name set vertically (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
 | Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | The light field is derived from the palette, never a fixed hue | The blue and pink glows of the first field showed in every palette: a cool wash behind the sidebar of Ember, Clay and Grove, a magenta bloom beside a teal or blue brand on sign-in, a taupe stain on Zen from a near-black brand at 30%. Each glow is now a relative colour (the brand's hue and chroma at a fixed lightness, so a grey brand adds nothing) or a lift of `card`, held to 40% alpha or less. Rejected: a per-palette field override (a value to keep in step with every palette) and a mix of the brand with the canvas (a dark brand darkens a light canvas into a stain) |
