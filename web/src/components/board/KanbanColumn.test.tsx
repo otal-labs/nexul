@@ -105,9 +105,16 @@ describe("KanbanColumn", () => {
     expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
   });
 
-  it("shows the empty hint when no tickets match", () => {
+  it("folds an empty column to a narrow strip that still names it and says it is empty", () => {
     renderColumn({ tickets: [] });
-    expect(screen.getByText("No tickets")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).toHaveClass("w-10");
+    expect(screen.getByText("Open")).toBeInTheDocument();
+    expect(screen.getByText("No tickets")).toHaveClass("sr-only");
+  });
+
+  it("gives a column with cards the full width", () => {
+    renderColumn();
+    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).not.toHaveClass("w-10");
   });
 
   it("navigates to the ticket detail page on click", async () => {
