@@ -101,11 +101,12 @@ export const DocToc = ({ headings, onJump }: DocTocProps) => {
               title={heading.text}
               aria-current={currentId === heading.id ? "true" : undefined}
               className={cn(
-                "-ml-px block truncate border-l-2 border-transparent py-1 pr-2 text-[13px] text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground",
-                heading.level === topLevel && "pl-3",
-                heading.level === topLevel + 1 && "pl-5",
-                heading.level >= topLevel + 2 && "pl-7",
-                currentId === heading.id && "border-brand font-medium text-foreground",
+                // The edge is a bar, not a border, so the link can round its corners for the focus ring.
+                "relative -ml-px block truncate rounded-md py-1 pr-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 ease-standard before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full hover:text-foreground",
+                heading.level === topLevel && "pl-3.5",
+                heading.level === topLevel + 1 && "pl-[1.375rem]",
+                heading.level >= topLevel + 2 && "pl-[1.875rem]",
+                currentId === heading.id && "font-medium text-foreground before:bg-brand",
               )}
             >
               {heading.text}

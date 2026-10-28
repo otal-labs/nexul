@@ -24,6 +24,7 @@ export const TrailRow = ({ workspaceId, trail, onOpen, layout = "inline" }: Trai
   const lookup = usePersonLookup(workspaceId);
   const lastStep = trail.activity[trail.activity.length - 1];
   const stacked = layout === "stacked";
+  const summary = trailSummary(state, trail.last_error, activity ?? lastStep);
 
   return (
     <li>
@@ -37,9 +38,9 @@ export const TrailRow = ({ workspaceId, trail, onOpen, layout = "inline" }: Trai
       >
         <TrailStateIcon state={state} className={cn(stacked && "mt-0.5")} />
         <span className={cn("flex min-w-0 flex-1 gap-2", stacked ? "flex-col gap-0.5" : "items-center")}>
-          <span className={cn("min-w-0 truncate text-xs", !stacked && "flex-1")}>
+          <span className={cn("min-w-0 truncate text-xs", !stacked && "flex-1")} title={`${trail.play_label} · ${summary}`}>
             <span className="font-medium">{trail.play_label}</span>
-            <span className="text-muted-foreground"> · {trailSummary(state, trail.last_error, activity ?? lastStep)}</span>
+            <span className="text-muted-foreground"> · {summary}</span>
           </span>
           <span className={cn("font-mono text-xs text-muted-foreground", stacked ? "truncate" : "shrink-0")}>
             {personLabel(lookup(trail.starter_id))} · {formatUpdatedAgo(trail.started_at)}

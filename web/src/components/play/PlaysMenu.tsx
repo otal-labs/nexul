@@ -56,7 +56,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
     <>
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="h-7 text-xs">
             <Sparkles className="size-3.5" aria-hidden />
             Plays
             <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
