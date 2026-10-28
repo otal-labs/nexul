@@ -1,7 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
-import { BASE_URL, E2E_PROJECT_ID, mintToken } from "../helpers";
+import { BASE_URL, E2E_PROJECT_ID, E2E_WORKSPACE_PATH, mintToken } from "../helpers";
 import { authedPage, closeBrowser } from "./browser";
 
 afterAll(closeBrowser);
@@ -9,7 +9,7 @@ afterAll(closeBrowser);
 describe("live updates (WebSocket push)", () => {
   it("shows a new ticket on the board without a reload", async () => {
     const title = `live-${Date.now()}`;
-    const page = await authedPage("/board");
+    const page = await authedPage(`${E2E_WORKSPACE_PATH}/board`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(title)).not.toBeVisible();
 

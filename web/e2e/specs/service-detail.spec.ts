@@ -1,7 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
-import { E2E_PROJECT_ID, makeApiClient, mintToken } from "../helpers";
+import { E2E_MACHINE, E2E_PROJECT_ID, E2E_WORKSPACE_PATH, makeApiClient, mintToken } from "../helpers";
 import { authedPage, closeBrowser } from "./browser";
 
 afterAll(closeBrowser);
@@ -12,44 +12,45 @@ const api = makeApiClient(TOKEN);
 const json = <T = unknown>(body: T) => ({ body: JSON.stringify(body) });
 
 describe("service detail (web)", () => {
-  it("shows the service settings and deploys an image from the page", async () => {
+  it("shows the service settings and its deploy history", async () => {
     const name = `e2e-svc-detail-${Date.now()}`;
-    const created = await api<{ id: string }>("/api/services", {
+    const created = await api<{ id: string }>("/api/stacks", {
       method: "POST",
       ...json({
         project_id: E2E_PROJECT_ID,
         name,
-        target: "e2e-host",
+        machine: E2E_MACHINE,
         strategy: "run",
         docker_network: "e2e-net",
-        health_check: { url: "http://e2e/health" },
       }),
     });
     expect(created.status).toBe(201);
     const serviceId = created.body!.id;
 
     try {
-      const page = await authedPage(`/services/${serviceId}`);
-      await expect(page.getByRole("heading", { name })).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-      await expect(page.getByText("Target server")).toBeVisible();
-      await expect(page.getByText("e2e-host", { exact: true })).toBeVisible();
-      await expect(page.getByText("run strategy · e2e-host", { exact: true })).toBeVisible();
+      const page = await authedPage(`${E2E_WORKSPACE_PATH}/stacks/${serviceId}`);
+      await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole("heading", { name: "Deploy", level: 2 })).toBeVisible();
+      await expect(page.getByTitle("Runner", { exact: true })).toHaveText(E2E_MACHINE);
+      await expect(page.getByTitle("Strategy", { exact: true })).toHaveText("run");
 
-      // a fresh service has no healthy deploy, so rollback explains itself
+      // a fresh stack has no repository and nothing running, so the page offers no deploy and no rollback and says why
       await expect(
-        page.getByText(/Rollback needs at least one healthy deploy/),
+        page.getByText(/no repository to build from and nothing running to redeploy/),
       ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Rollback" })).toHaveCount(0);
 
+      // the page no longer deploys an image itself; a deploy requested elsewhere shows up in its history
       const image = `e2e-img-${Date.now()}`;
-      await page.getByLabel("Deploy image").fill(image);
-      await page.getByRole("button", { name: /^Deploy$/ }).click();
-      await expect(page.getByText("Deploy history")).toBeVisible();
-      await expect(page.getByText(image, { exact: true })).toBeVisible({
+      const deploy = await api("/api/deploys", { method: "POST", ...json({ service_id: serviceId, image }) });
+      expect(deploy.status).toBe(201);
+      await page.getByRole("link", { name: "Deploy history", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Deploy history", level: 2 })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Deploy history" }).getByText(image, { exact: true })).toBeVisible({
         timeout: 10_000,
       });
     } finally {
-      await api(`/api/services/${serviceId}`, { method: "DELETE" });
+      await api(`/api/stacks/${serviceId}`, { method: "DELETE" });
     }
   });
 });

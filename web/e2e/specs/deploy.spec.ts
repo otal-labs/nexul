@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { E2E_PROJECT_ID, makeApiClient, mintToken } from "../helpers";
+import { E2E_MACHINE, E2E_PROJECT_ID, makeApiClient, mintToken } from "../helpers";
 
 const TOKEN = mintToken();
 const api = makeApiClient(TOKEN);
@@ -31,7 +31,7 @@ describe("deploy execution (real runner)", () => {
         ...json({
           project_id: E2E_PROJECT_ID,
           name,
-          target: "e2e-host",
+          machine: E2E_MACHINE,
           strategy: "run",
           docker_network: "e2e-net",
           health_check: { url: `http://${name}` },

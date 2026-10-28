@@ -1,7 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
-import { BASE_URL, E2E_UID_2, mintToken } from "../helpers";
+import { BASE_URL, E2E_PROJECT_ID, E2E_UID_2, E2E_WORKSPACE_PATH, mintToken } from "../helpers";
 import { createDocWith } from "../setup/db";
 import { authedPage, closeBrowser, getBrowser } from "./browser";
 
@@ -11,6 +11,23 @@ describe("real-time collaboration (two users, one doc)", () => {
   it("shows live edits across two sessions", async () => {
     const title = `collab-${Date.now()}`;
     const docId = await createDocWith(mintToken(), title);
+
+    // A member sees only the projects they were let into, so the partner is let into the seeded one first.
+    const open = await fetch(`${BASE_URL}/api/permissions`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${mintToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        resource_type: "project",
+        resource_ids: [E2E_PROJECT_ID],
+        user_ids: [E2E_UID_2],
+        actions: ["projects:open"],
+        grant: true,
+      }),
+    });
+    expect(open.status).toBe(204);
 
     // Docs are permission-scoped: the creator must share the doc before a second member can open it (ADR 0042).
     const share = await fetch(`${BASE_URL}/api/permissions`, {
@@ -22,14 +39,14 @@ describe("real-time collaboration (two users, one doc)", () => {
       body: JSON.stringify({
         doc_ids: [docId],
         user_ids: [E2E_UID_2],
-        actions: ["read", "edit"],
+        actions: ["docs:read", "docs:write"],
         grant: true,
       }),
     });
     expect(share.status).toBe(204);
 
     // Docs are inline-editable with no separate "Edit" mode toggle; DocPage/DocDetail render the ProseMirror body directly for anyone with write access.
-    const userA = await authedPage(`/docs/${docId}`);
+    const userA = await authedPage(`${E2E_WORKSPACE_PATH}/docs/${docId}`);
     await userA.waitForLoadState("networkidle");
     await userA.locator(".ProseMirror").waitFor({ state: "visible" });
 
@@ -41,7 +58,7 @@ describe("real-time collaboration (two users, one doc)", () => {
       { value: JSON.stringify({ state: { token: mintToken(E2E_UID_2), isLoggedIn: true }, version: 0 }) },
     );
     const userB = await ctxB.newPage();
-    await userB.goto(`/docs/${docId}`);
+    await userB.goto(`${E2E_WORKSPACE_PATH}/docs/${docId}`);
     await userB.waitForLoadState("networkidle");
     await userB.locator(".ProseMirror").waitFor({ state: "visible" });
 

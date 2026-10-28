@@ -1,6 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
+import { BASE_URL, E2E_WORKSPACE_PATH } from "../helpers";
 import { authedPage, closeBrowser } from "./browser";
 import { clearDefaultWorkspaceOwnership, restoreDefaultWorkspaceOwnership, updateUser } from "../setup/db";
 
@@ -14,14 +15,14 @@ afterAll(() => {
 describe("onboarding wizards", () => {
   it("welcome wizard: opens at first sign-in, and finishing later continues into the app", async () => {
     updateUser({ first_login_done: 0 });
-    const page = await authedPage("/docs");
+    const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForURL("**/wizard/welcome?step=profile");
     await expect(page.getByRole("heading", { name: "Introduce yourself" })).toBeVisible();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get("step") !== "profile");
     await page.getByRole("button", { name: "Finish later", exact: true }).click();
-    await page.waitForURL("**/");
-    await expect(page.getByRole("heading", { name: /docs become tickets/i })).toBeVisible();
+    await page.waitForURL(`${BASE_URL}${E2E_WORKSPACE_PATH}`);
+    await expect(page.getByRole("heading", { name: /docs, tickets, chat, and deploys/i })).toBeVisible();
   });
 
   it("owner wizard: first user sets up their workspace, connects tools, and finishes with no computer", async () => {
@@ -42,17 +43,20 @@ describe("onboarding wizards", () => {
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Workspace ready" })).toBeVisible();
 
-    // The Welcome wizard takes over on the owner's first step not done, past the profile the owner wizard already set.
-    await page.waitForURL((url) => url.pathname === "/wizard/welcome" && ["github", "computer"].includes(url.searchParams.get("step") ?? ""));
+    // The Welcome wizard takes over at its finish view, listing what is still the owner's to set up, past the profile the owner wizard already set.
+    await page.waitForURL((url) => url.pathname === "/wizard/welcome" && url.searchParams.get("step") === "finish");
+    await expect(page.getByRole("heading", { name: "2 things left for later" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Connect GitHub" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Your computer" })).toBeVisible();
     await page.getByRole("button", { name: "Finish later", exact: true }).click();
     await page.waitForURL((url) => !url.pathname.startsWith("/wizard/welcome"));
   });
 
   it("dns onboarding renders and can be skipped", async () => {
-    const page = await authedPage("/onboarding/dns");
+    const page = await authedPage("/wizard/onboarding/dns");
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByRole("heading", { name: /connect your dns provider/i }),
+      page.getByRole("heading", { name: /set up dns/i }),
     ).toBeVisible();
     await page.getByRole("button", { name: /skip for now/i }).click();
     await page.waitForURL("**/");
