@@ -362,6 +362,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
 | Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
 | One flat low-chroma fill per person without a photo | One of 12 hues per login, at a chroma that reads as a colour at 20px, still tells people apart at a glance where one grey circle for everyone did not. Against the seeded multi-hue gradient (the loudest colour on a chat or board in every palette, and a blue-violet or green one competed with the brand beside it) |
+| Brutalism's hairlines at 20% ink, its fields solid (2026-10-28) | Against solid ink on every `border`: every card and every label chip on the board drew a full-black outline, so a board of twenty cards was forty black rectangles and the chips outweighed the titles; the palette keeps its zero radius, its red and its solid field edges, which is where hard ink earns its place |
 | Stroked icons draw at 1.75 (web and site) | Beside 13 to 14px Inter in dense chrome (the sidebar, menus, the ticket rail, toolbars) a 2px stroke carries more weight than the text it labels; 1.75 sits level with it. Rejected: the library's 2 |
 
 ## Web app
@@ -387,7 +388,8 @@ surface and text roles; a palette's `primary` becomes its `brand` (and so the
 field's warm glow) unless it names a brand of its own, and its panels follow
 its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
 zero radius applies to panels too, and its field edge is the same hard ink as
-its panel edge. Every palette's field edge stays at least 1.1:1 against its
+its panel edge; its hairlines (`border`, on cards and chips) are ink at 20%,
+while its fields keep the solid ink edge. Every palette's field edge stays at least 1.1:1 against its
 card, so a field never vanishes. In every dark palette a card sits at least 0.029
 of OKLCH lightness above the panel it is drawn on, the panel taken as it renders
 (its `card` mix over the canvas at `--panel-opacity`), so cards read as raised on
