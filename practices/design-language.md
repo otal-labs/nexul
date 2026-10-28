@@ -553,14 +553,15 @@ names them in its tooltip, at 8px padding top and bottom and 10px at the sides w
 dark, ink at 4% in light, where some palettes' `surface-2` equals the panel) with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
-below 1280), so
-three stages with cards and two empty columns fit at 1024 beside the sidebar
+below 1280, 148px below 1024), so three stages with cards and two empty
+columns fit at 768 beside the rail and at 1024 beside the sidebar
 and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
 N" row mounts the next. A column with no cards in its lane narrows on its well so the
 width goes to the columns with work: from 1280px to 128px with its header on
-one line (mark, name, count), below that to a 72px rail with the name in two
-lines over its count; no `+`, since Create picks the stage, so an empty stage keeps its name in reading order and gives its width
+one line (mark, name, count), below that to a 72px rail with its name in 11px
+semibold on one line over its count (a larger name wrapped "In / progress /
+0" onto three lines); no `+`, since Create picks the stage, so an empty stage keeps its name in reading order and gives its width
 to the columns with work. Every column
 sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
 with the cards' edges, and its cards are raised on it: `card` with the card
