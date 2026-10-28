@@ -85,6 +85,64 @@ export const embedCardTone = (embed: Embed): EmbedTone | null => embedTone(embed
 // A field whose value is a state word or two ("healthy", "timed out") gets a status dot; a sentence stays plain.
 export const fieldTone = (value: string): EmbedTone | null => (value.split(/\s+/).length <= 3 ? embedTone(value) : null);
 
+// One entry of a report's state tally: a problem by its field's name, or a count of the fields in one state.
+export interface EmbedTallyEntry {
+  tone: EmbedTone;
+  value: string;
+  name?: string;
+  count?: number;
+}
+
+export interface EmbedFacts {
+  line: EmbedField[];
+  blocks: EmbedField[];
+  tally: EmbedTallyEntry[];
+  folded: number;
+}
+
+const TALLY_MIN = 3;
+const SHORT_FACT = 40;
+const TONE_RANK: Record<EmbedTone, number> = { destructive: 0, warning: 1, info: 2, success: 3 };
+
+// Problems by name, worst first, then the rest counted by their state word: "cache stopped · 8 healthy".
+const tallyOf = (stated: { field: EmbedField; tone: EmbedTone }[]): EmbedTallyEntry[] => {
+  const ranked = [...stated].sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone]);
+  const problems = ranked
+    .filter((s) => s.tone === "destructive" || s.tone === "warning")
+    .map(({ field, tone }) => ({ tone, name: field.name, value: field.value }));
+  const counts = new Map<string, EmbedTallyEntry>();
+  for (const { field, tone } of ranked) {
+    if (tone === "destructive" || tone === "warning") continue;
+    const key = field.value.toLowerCase();
+    const entry = counts.get(key) ?? { tone, value: key, count: 0 };
+    counts.set(key, { ...entry, count: (entry.count ?? 0) + 1 });
+  }
+  return [...problems, ...counts.values()];
+};
+
+// A closed report's facts: short ones on one line, long ones a line each, three or more state fields as a tally.
+export const embedFacts = (fields: EmbedField[] = []): EmbedFacts => {
+  const toned = fields.map((field) => ({ field, tone: fieldTone(field.value) }));
+  const stated = toned.flatMap(({ field, tone }) => (tone ? [{ field, tone }] : []));
+  const tallied = stated.length >= TALLY_MIN;
+  const rest = tallied ? toned.filter((t) => !t.tone).map((t) => t.field) : fields;
+  const line = rest.filter((f) => f.inline && f.value.length <= SHORT_FACT && !f.value.includes("\n"));
+  const blocks = rest.filter((f) => !line.includes(f));
+  return {
+    line,
+    blocks: blocks.slice(0, EMBED_FIELD_LIMIT),
+    tally: tallied ? tallyOf(stated) : [],
+    folded: Math.max(0, blocks.length - EMBED_FIELD_LIMIT),
+  };
+};
+
+// The report's fold label while closed: a tally opens every field, else what the closed report hides; null for nothing.
+export const embedFactsFoldLabel = (embed: Embed, facts: EmbedFacts): string | null => {
+  if (facts.tally.length > 0) return `Show all ${embed.fields?.length ?? 0} fields`;
+  if (facts.folded > 0) return `Show ${plural(facts.folded, "field")}`;
+  return embedFoldLabel({ hiddenFields: 0, longDescription: embedFold(embed).longDescription });
+};
+
 // An author line that only names the bot posting it repeats the message header above the card.
 export const dropEchoedAuthor = (embed: Embed, botName: string): Embed => {
   if (embed.author?.name !== botName || embed.author.url || embed.author.icon_url) return embed;

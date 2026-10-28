@@ -15,7 +15,7 @@ import type { Message as ChatMessage } from "@/models/Chat";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
-  <MessageHeader className="gap-2 px-1">
+  <MessageHeader className="gap-2 px-0">
     <span className="min-w-0 truncate text-xs font-semibold text-foreground">{message.author_name || "Bot"}</span>
     <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
       Bot
@@ -35,7 +35,7 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
       data-slot="bubble"
       className={cn(
         "relative w-fit max-w-[72ch] space-y-1.5 text-sm break-words",
-        embeds.length > 0 && "w-full max-w-[38rem]",
+        embeds.length > 0 && "w-full max-w-none",
       )}
     >
       <MessageActions message={message} />
@@ -64,7 +64,7 @@ export const BotMessageRow = ({ message, continuation }: { message: ChatMessage;
           />
         </MessageAvatar>
       )}
-      <MessageContent>
+      <MessageContent className="gap-0.5">
         {!continuation && <BotMessageHeader message={message} />}
         <BotMessageBubble message={message} />
         <MessageReactions message={message} />

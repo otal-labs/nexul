@@ -16,7 +16,7 @@ export const FoldBar = ({ label, open, onToggle, className }: FoldBarProps) => (
     onClick={onToggle}
     aria-expanded={open}
     className={cn(
-      "-mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+      "-mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-px text-xs font-medium text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
       className,
     )}
   >

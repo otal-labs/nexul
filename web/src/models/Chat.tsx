@@ -137,6 +137,12 @@ export const groupConversations = (conversations: Conversation[]): GroupedConver
   docThreads: conversations.filter((c) => c.kind === "doc_thread"),
 });
 
+// The unread messages in the sidebar's lists outside the open conversation; a ticket thread is counted on its ticket.
+export const listedUnread = (conversations: Conversation[], unread: Record<string, number>, openId: string): number => {
+  const { channels, voiceChannels, dms, docThreads } = groupConversations(conversations);
+  return [...channels, ...voiceChannels, ...dms, ...docThreads].reduce((sum, c) => (c.id === openId ? sum : sum + (unread[c.id] ?? 0)), 0);
+};
+
 // What a bare /chat opens: never a voice channel, since opening one there would not join it.
 export const defaultConversation = (conversations: Conversation[]): Conversation | undefined => {
   const { channels, dms, docThreads } = groupConversations(conversations);

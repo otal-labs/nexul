@@ -155,8 +155,8 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   };
 
   return (
-    <div className="px-3 pt-1 pb-3" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-      <div className="relative mx-auto w-full max-w-3xl">
+    <div className="pt-1 pb-3" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div className="relative mx-auto w-full max-w-3xl px-3">
         {trigger && matches.length > 0 && (
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
         )}

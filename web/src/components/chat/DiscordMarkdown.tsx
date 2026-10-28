@@ -68,3 +68,10 @@ export const DiscordMarkdown = ({ text, mentionHandles, className }: DiscordMark
     ))}
   </div>
 );
+
+// A one-line value inside a sentence of facts, so its link or code stays inline.
+export const DiscordInline = ({ text, className }: { text: string; className?: string | undefined }) => (
+  <span className={cn("wrap-anywhere", className)}>
+    {parseDiscordMarkdown(text).map((line, i) => line.kind !== "blank" && <InlineParts key={i} parts={line.parts} />)}
+  </span>
+);

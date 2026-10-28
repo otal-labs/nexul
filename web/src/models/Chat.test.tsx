@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 import type { Person } from "@nexul/client-core/person";
 
-import { buildMentionCandidates, composeMessageBody, conversationPlayTarget, findMentionTrigger, groupConversations, matchesMentionPrefix } from "@/models/Chat";
+import { buildMentionCandidates, composeMessageBody, conversationPlayTarget, findMentionTrigger, groupConversations, listedUnread, matchesMentionPrefix } from "@/models/Chat";
 import type { Attachment } from "@/models/Attachment";
 
 const conversation = (overrides: Partial<Conversation>): Conversation => ({
@@ -39,6 +39,18 @@ const members: Person[] = [
   { user_id: "u1", login: "onik97", display_name: "Onik", avatar_url: "" },
   { user_id: "u2", login: "olive", display_name: "", avatar_url: "" },
 ];
+
+describe("listedUnread", () => {
+  it("counts the listed conversations but the open one, leaving ticket threads to their tickets", () => {
+    const list = [
+      conversation({ id: "open", kind: "channel" }),
+      conversation({ id: "c2", kind: "channel" }),
+      conversation({ id: "dm", kind: "dm" }),
+      conversation({ id: "t1", kind: "ticket_thread" }),
+    ];
+    expect(listedUnread(list, { open: 4, c2: 3, dm: 1, t1: 5 }, "open")).toBe(4);
+  });
+});
 
 describe("buildMentionCandidates", () => {
   it("always offers @Agent first, then every workspace member", () => {

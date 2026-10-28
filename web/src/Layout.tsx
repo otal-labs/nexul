@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
@@ -16,11 +16,12 @@ import { useReportTimezone } from "@/hooks/useReportTimezone";
 import { useUnreadTitle } from "@/hooks/useUnreadTitle";
 import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import { useIsViewingAs } from "@/stores/viewAsStore";
 
 export const Layout = () => {
-  // At 768px an open sidebar leaves the page too little width, so it starts as the icon rail below 1024px.
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
+  const collapsed = useSidebarStore((s) => s.collapsed);
+  const toggleCollapsed = useSidebarStore((s) => s.toggleCollapsed);
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
   const token = useSessionStore((s) => s.token);
   const viewing = useIsViewingAs();
@@ -49,7 +50,7 @@ export const Layout = () => {
         <div className="flex h-dvh">
           <div className="light-field" aria-hidden />
           {!onboarding && (
-            <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} unreadCount={unread?.count ?? 0} />
+            <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} unreadCount={unread?.count ?? 0} />
           )}
           {!onboarding && <CommandPalette />}
           <div className="flex min-w-0 flex-1 flex-col">

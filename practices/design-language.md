@@ -1072,18 +1072,27 @@ are the reference.
 
 Chat stream. The messages run in one centred column up to 48rem wide, the
 composer under it at the same width, so your bubble on the right never sits a
-panel away from the line it answers. The conversation header's
-hairline and background run the panel's width, but its icon and name sit in the
-same column, starting on the messages' left edge. Your own messages are the one bubble
+panel away from the line it answers. The column has two edges: its own left
+edge holds the header's icon and name, the avatars, the day divider's rules
+and the composer's frame, and the body indent (avatar and gap) holds what a
+message carries, its name line, text and a bot's report. The scroller keeps a
+gutter on both sides, so the column centres on the header and composer. The
+conversation header is 48px, its hairline running the panel's width: the icon
+(a private channel's lock) and name, then on the right a private channel's
+members as three 20px avatars and a mono count, and the channel settings gear
+for whoever has settings there, both opening the dialog the sidebar row's menu
+opens. While the sidebar is the icon rail, the name is a switcher: a chevron and the
+mono unread count of every other listed conversation, opening a popover of the
+sidebar's own conversation sections. Your own messages are the one bubble
 (`brand`); everyone else's text runs plain under a 32px avatar and a header
 of the name in 13px semibold and the mono clock time (the full time on hover),
-held to 72ch, so a long thread reads as a transcript instead of a stack of
-boxes. A run of one person's messages drops the avatar and header after the
+2px over the text and held to 72ch, so a long thread reads as a transcript instead of a stack of
+boxes. A new author starts 12px under the last message; a run of one person's messages drops the avatar and header after the
 first and keeps 6px between messages. Each day opens with a divider: the
 microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
 is not this one) between two hairlines. The composer is one framed field
 (`bg-card`, `rounded-lg`, the `input` ring turning to the focus ring) holding
-attach, the text and emoji. `MessageList` and `ChatComposer` are the
+attach, the text and emoji. `MessageList`, `ConversationHeader` and `ChatComposer` are the
 reference.
 
 Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
@@ -1112,22 +1121,27 @@ the mono time on its first line and the summary under it.
 
 Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
-outline tag, widened to 38rem when it carries an embed. Each embed is a card
-(`bg-card`, hairline ring, `shadow-card`). The server drops the sender's
-color, so the card's state is read from its title's words (`embedTone`:
-failed, healthy, stopped, running and their kin, worst first) and shows as a
-3px leading edge and an icon before the title in the status hue, the way a
-topology node shows its status; a title that names no state leaves the card
-neutral. An author line that only repeats the bot's name is dropped. Fields
-are facts: a mono microheader over the value, inline fields three across
-(two in a narrow pane), a value past 24 characters across two, a field the
-sender did not mark inline across the row, and a value that is a state word
-or two gets its status dot. The footer text and time sit in a hairline strip
-at the card's foot in mono 11px, with the ghost fold toggle ("Show 3 more
-fields", its chevron turning) on its right, past six fields or a long
-description; past two embeds the same toggle opens the rest. Only a bot's
-text renders Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
-`web/src/components/chat/` are the reference.
+outline tag, running the column's width when it carries an embed. Each embed is a report on
+the panel, no box: a 3px rounded leading edge, 12px of indent, then the
+heading, the description, the facts and a footer line. The server drops the sender's
+color, so the report's state is read from its title's words (`embedTone`:
+failed, healthy, stopped, running and their kin, worst first) and colours the
+edge and an icon before the title in the status hue, the way a
+topology node shows its status; a title that names no state leaves the edge in
+`border`. An author line that only repeats the bot's name is dropped. Closed,
+the facts read as sentences (`embedFacts`): short inline fields share one
+13px line, each label muted then its value in mono, dot-separated; a long or
+full-width field takes a line of its own, six at most; three or more fields
+whose value is a state word become one tally, the problems by name worst first
+and the rest counted ("● cache stopped · 2 redeployed · 6 healthy"); fewer
+keep their dot on the fact line. The footer text and time follow as one mono
+11px line with the ghost fold toggle after it ("Show all 9 fields" for a tally,
+"Show 6 more fields" past six long ones, "Show the rest" for a long
+description); opened, the fields lay out as the sender's grid, a mono
+microheader over each value, inline ones three across (two in a narrow pane).
+Past two embeds the same toggle opens the rest. Only a bot's
+text renders Discord's markdown subset. `BotMessageRow`, `EmbedCard` and
+`EmbedFactLines` in `web/src/components/chat/` are the reference.
 
 Time code. A `<t:…>` code in a message, a thread or a body is a live
 reference chip (`mention-chip`): a clock and the time in the reader's zone,
@@ -1329,7 +1343,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
-| Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
+| Bot embeds as status-edged reports, facts as sentences and a state tally (2026-10-28) | As cards (fill, ring, shadow, a label grid and a footer strip) two deploy posts took about 400 of the 750px a channel shows at 1440, a summary spent a 3×3 grid saying "healthy" to report one stopped cache, and the people sat in the bottom third. Without the box and with the facts on a line a deploy is about 90px and a summary names its one problem. Against folding every healthy post to one line behind a chevron (the facts are what people read in a deploy channel, so it traded height for a click on every post) and against dropping the edge (with the box gone it is what marks where a report starts); the leading edge is the topology node's status signal reused, picked earlier over a 2px bar across the top, which read as the accent's decoration rather than state |
 | List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |

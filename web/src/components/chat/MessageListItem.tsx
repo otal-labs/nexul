@@ -37,7 +37,7 @@ export const MessageListItem = memo(
       // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
       // The newest row renders eagerly: its 10rem placeholder would park a just-sent message above the bottom edge.
       className={cn(
-        continuation ? "pt-1.5 [overflow-clip-margin:1rem]" : "pt-4",
+        continuation ? "pt-1.5 [overflow-clip-margin:1rem]" : "pt-3",
         newest && "[content-visibility:visible]",
         entrance === "arrive" && "arrive",
       )}

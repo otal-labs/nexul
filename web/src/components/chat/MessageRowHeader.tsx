@@ -33,7 +33,7 @@ interface MessageRowHeaderProps {
 export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRowHeaderProps) => (
   <>
     {align === "start" && (
-      <MessageHeader className="gap-2 px-1">
+      <MessageHeader className="gap-2 px-0">
         <span className="truncate text-[13px] font-semibold text-foreground">{isAgent ? "Agent" : personLabel(author)}</span>
         {isAgent && (
           <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
@@ -49,7 +49,7 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
       </MessageHeader>
     )}
     {align === "end" && (
-      <MessageHeader className="justify-end gap-2 px-1">
+      <MessageHeader className="justify-end gap-2 px-0">
         <span className="shrink-0 font-mono" title={formatFullTime(message.created_at)}>
           {formatClockTime(message.created_at)}
         </span>

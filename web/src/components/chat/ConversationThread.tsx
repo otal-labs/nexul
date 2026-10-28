@@ -1,11 +1,11 @@
-import { FileText, Hash, Ticket as TicketIcon, Users, Volume2, type LucideIcon } from "lucide-react";
+import { FileText, Hash, Lock, Ticket as TicketIcon, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
-import { Link } from "react-router";
 
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { ConversationHeader } from "@/components/chat/ConversationHeader";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
@@ -26,7 +26,6 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useChannelPostRefusal } from "@/hooks/useChannelPosting";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { channelMention } from "@/models/Chat";
 import { type Doc } from "@/models/Doc";
@@ -73,7 +72,6 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const { data: ticket } = useFetchTicket(conversation.kind === "ticket_thread" ? conversation.ticket_id : undefined);
   const label = doc?.title ?? ticket?.title ?? conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
   const { data: projects } = useFetchProjects();
-  const wsPath = useWorkspacePath();
   const subjectPath = subjectPathOf(doc, ticket, projects);
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
@@ -101,33 +99,13 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
     await remove(messageId);
   }, [remove]);
 
-  const Icon = CONVERSATION_ICONS[conversation.kind] ?? Hash;
+  // A private channel leads with its lock, as its sidebar row does.
+  const Icon = conversation.private ? Lock : (CONVERSATION_ICONS[conversation.kind] ?? Hash);
 
   return (
     <CalendarTitleContext value={label}>
       <div className="flex h-full min-h-0 flex-col">
-        {showHeader && (
-          <div className="h-14 shrink-0 border-b border-border">
-            <div className="mx-auto flex h-full w-full max-w-3xl items-center gap-2 px-3">
-              <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              {subjectPath && (
-                <Link
-                  to={wsPath(subjectPath)}
-                  dir="auto"
-                  title={label}
-                  className="min-w-0 truncate text-sm font-semibold underline-offset-4 hover:underline"
-                >
-                  {label}
-                </Link>
-              )}
-              {!subjectPath && (
-                <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
-                  {label}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        {showHeader && <ConversationHeader conversation={conversation} label={label} icon={Icon} subjectPath={subjectPath} />}
         {isVoiceChannel && (
           <Suspense fallback={<LoadingDisplay label="Loading voice…" />}>
             <LazyVoiceCallSection conversation={conversation} active={isCallActive} />

@@ -127,15 +127,18 @@ describe("MessageRow for a bot", () => {
     expect(api.get).toHaveBeenCalledWith("/api/botwebhooks/b-ci/avatar?v=2", { responseType: "blob" });
   });
 
-  it("folds the worst-case post: six of 25 fields, two of ten embeds, the long name truncated not dropped", async () => {
+  it("folds the worst-case post: the short facts on a line, six long ones, two of ten embeds, the long name truncated not dropped", async () => {
     const user = userEvent.setup();
     const name = "Nightly backup verifier for acme-production-eu-west-2-replica-database-cluster";
     renderBot(botMessage({ author_name: name, embeds: worstEmbeds() }));
     expect(screen.getByText(name)).toBeInTheDocument();
-    expect(screen.getAllByRole("term")).toHaveLength(6);
+    expect(screen.queryByRole("term")).not.toBeInTheDocument();
+    expect(screen.getByText("public.table_25")).toBeInTheDocument();
+    expect(screen.getByText("public.table_12")).toBeInTheDocument();
+    expect(screen.queryByText("public.table_14")).not.toBeInTheDocument();
     expect(screen.queryByText("Report part 3")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Show 19 more fields" }));
+    await user.click(screen.getByRole("button", { name: "Show 6 more fields" }));
     expect(screen.getAllByRole("term")).toHaveLength(25);
     expect(screen.getByText(unbreakable)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");

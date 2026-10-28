@@ -156,7 +156,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
               />
             </MessageAvatar>
           )}
-          <MessageContent>
+          <MessageContent className="gap-0.5">
             {!continuation && <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />}
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
