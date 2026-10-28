@@ -98,12 +98,12 @@ export const BoardFilterBar = ({
 
   return (
     <div className="@container">
-      {/* Equal side tracks centre search and Create on the board; a narrow board stacks them under the filters instead. */}
-      <div className="grid grid-cols-1 items-center gap-2 @2xl:grid-cols-[minmax(max-content,1fr)_minmax(16rem,36rem)_1fr]">
+      {/* Filters lead, search and Create trail at the right edge; a narrow board wraps them onto a second row. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 *:shrink-0">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 px-3 text-xs">
+              <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs">
                 <FilterIcon className="size-3.5" />
                 {activeCount > 0 ? `Filter (${activeCount})` : "Filter"}
               </Button>
@@ -119,7 +119,7 @@ export const BoardFilterBar = ({
               size="sm"
               aria-pressed={filters.waitingForMeToTest}
               onClick={onToggleWaitingForMeToTest}
-              className="h-9 px-3 text-xs"
+              className="h-8 px-2.5 text-xs"
             >
               <FlaskConicalIcon className="size-3.5" />
               Mine to test
@@ -131,7 +131,7 @@ export const BoardFilterBar = ({
               size="sm"
               aria-pressed={filters.playing}
               onClick={onTogglePlaying}
-              className="h-9 px-3 text-xs"
+              className="h-8 px-2.5 text-xs"
             >
               <SparklesIcon className="size-3.5" />
               Playing
@@ -139,8 +139,8 @@ export const BoardFilterBar = ({
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex min-w-72 flex-1 items-center justify-end gap-2">
+          <div className="relative w-full max-w-64">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
               type="search"
@@ -148,7 +148,7 @@ export const BoardFilterBar = ({
               placeholder="Search"
               value={filters.search}
               onChange={(e) => onSearch(e.target.value)}
-              className="h-9 pl-8 text-sm"
+              className="h-8 pl-8 text-[13px]"
             />
           </div>
           <BoardCreateMenu projectId={projectId} onNewTicket={onNewTicket} onNewCategory={onNewCategory} />

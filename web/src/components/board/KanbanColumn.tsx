@@ -62,7 +62,7 @@ const KanbanColumnImpl = ({
       }}
       className={cn(
         // No well at rest, so the cards sit on the page panel; every column takes its well while a card is held, to read as a drop target.
-        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
+        "flex w-55 flex-1 flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
@@ -95,8 +95,8 @@ const KanbanColumnImpl = ({
           className="size-6 text-muted-foreground/60"
         />
       </h4>
-      {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count; the 1px top padding is room for a card's hover lift. */}
-      <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-1 flex-col gap-1.5 overflow-y-auto pt-px">
+      {/* The column grows with its cards and the page scrolls; the 1px top padding is room for a card's hover lift. */}
+      <EnterList as="div" className="-mt-px flex min-h-16 flex-1 flex-col gap-1.5 pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {shown.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
