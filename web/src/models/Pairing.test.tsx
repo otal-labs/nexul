@@ -6,6 +6,7 @@ import {
   setupModelChoices,
   setupRunRows,
   setupRunning,
+  setupSummary,
   type ComputerSetup,
   type HarnessProvider,
   type SetupTurnSummary,
@@ -145,5 +146,13 @@ describe("setupModelChoices", () => {
   it("falls back to the provider's own default when the defaults name a model it does not list", () => {
     expect(setupModelChoices(providers, { provider: "claude", model: "gone", placement: "in_order", clone_automatically: false })[0]?.preselected).toBe("claude-small");
     expect(setupModelChoices(providers, undefined)[0]?.preselected).toBe("claude-small");
+  });
+});
+
+describe("setupSummary", () => {
+  const setup = (overrides: Partial<ComputerSetup>): ComputerSetup => ({ computer_id: "c1", confirmed_at: "2026-09-24T00:00:00Z", providers: [], skipped_providers: [], models: {}, model_options: {}, folder: "", turns: [], ...overrides });
+
+  it("names no providers when a confirmed setup lists none", () => {
+    expect(setupSummary(setup({})).providers).toBeUndefined();
   });
 });
