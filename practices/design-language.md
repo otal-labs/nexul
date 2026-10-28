@@ -549,7 +549,8 @@ blocked line, then the type (its icon in its hue beside plain text) and at most 
 label chips (11px on the card) on a row of their own, any more counted in a mono "+N" chip that
 names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
-trailing. Columns share the panel's width down to a 200px minimum, so
+trailing. Columns share the panel's width down to a 200px minimum (168px
+below 1024, beside the rail), so
 three stages with cards and two empty columns fit at 1024 beside the sidebar
 and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
