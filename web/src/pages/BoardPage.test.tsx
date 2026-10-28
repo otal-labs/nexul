@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { getTicketsKey } from "@/hooks/TicketCache";
 import { BoardPage } from "@/pages/BoardPage";
+import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
 
@@ -18,7 +19,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-// Every card and column is a sortable, so counting useSortable calls counts their renders.
+// Every card and stage header cell is a sortable, so counting useSortable calls counts their renders.
 const sortable = vi.hoisted(() => ({ calls: 0 }));
 vi.mock("@dnd-kit/sortable", async () => {
   const actual = await vi.importActual<typeof import("@dnd-kit/sortable")>("@dnd-kit/sortable");
@@ -142,6 +143,7 @@ beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   useWorkspaceStore.persist.clearStorage();
   localStorage.clear();
+  useBoardStore.setState({ doneOpen: false });
 });
 
 describe("BoardPage", () => {
@@ -343,6 +345,7 @@ describe("BoardPage filters", () => {
       ticket("t-1", "p-1", "Fix login", "open", "c-1"),
       ticket("t-2", "p-1", "Wire FTS", "done", "c-1"),
     ]);
+    useBoardStore.setState({ doneOpen: true });
     renderPage();
     await openFilterPopover(user);
     await user.click(screen.getByRole("button", { name: "Done" }));
@@ -376,7 +379,7 @@ describe("BoardPage label filter", () => {
 });
 
 describe("BoardPage live updates", () => {
-  it("re-renders only the changed ticket's card and column when a refetch brings one changed ticket", async () => {
+  it("re-renders only the changed ticket's card, and no stage header cell, when a refetch brings one changed ticket", async () => {
     const tickets = [
       ticket("t-1", "p-1", "Fix login", "open", "c-1"),
       ticket("t-2", "p-1", "Wire FTS", "open", "c-1"),
@@ -386,6 +389,7 @@ describe("BoardPage live updates", () => {
     ];
     // A refetch hands back fresh objects for every ticket, as the network does.
     mockGet(structuredClone(tickets));
+    useBoardStore.setState({ doneOpen: true });
     const { client } = renderPage();
     expect(await screen.findByText("Rotate keys")).toBeInTheDocument();
 
@@ -394,6 +398,6 @@ describe("BoardPage live updates", () => {
     await act(() => client.invalidateQueries({ queryKey: [getTicketsKey] }));
 
     expect(await screen.findByText("Fix login flow")).toBeInTheDocument();
-    expect(sortable.calls).toBe(2);
+    expect(sortable.calls).toBe(1);
   });
 });

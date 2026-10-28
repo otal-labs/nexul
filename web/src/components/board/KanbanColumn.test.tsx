@@ -69,7 +69,7 @@ const renderColumn = (props: Partial<Parameters<typeof KanbanColumn>[0]> = {}) =
           column={column}
           collapsed={false}
           tickets={[ticket("t-1", "Fix login", "open")]}
-          onAddTicket={() => {}}
+          folded={false}
           {...props}
         />
       </BoardCardProvider>
@@ -83,19 +83,16 @@ beforeEach(() => {
 });
 
 describe("KanbanColumn", () => {
-  it("names the column, counts its tickets and shows a card for each", () => {
+  it("shows a card for each ticket", () => {
     renderColumn({ tickets: [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "open")] });
-    expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Fix login")).toBeInTheDocument();
     expect(screen.getByText("Wire FTS")).toBeInTheDocument();
   });
 
-  it("mounts a long column 10 cards at a time, counting every ticket in the header", async () => {
+  it("mounts a long cell 10 cards at a time", async () => {
     const user = userEvent.setup();
     const many = Array.from({ length: 25 }, (_, i) => ticket(`t-${i}`, `Ticket ${i}`, "open", i));
     renderColumn({ tickets: many });
-    expect(screen.getByLabelText("25 tickets")).toBeInTheDocument();
     expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(10);
 
     await user.click(screen.getByRole("button", { name: "Show 10 more of 15" }));
@@ -105,79 +102,37 @@ describe("KanbanColumn", () => {
     expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
   });
 
-  it("narrows an empty column, still named and saying it is empty", () => {
+  it("says an empty cell has no tickets", () => {
     renderColumn({ tickets: [] });
     const region = screen.getByRole("region", { name: "Open column in Sprint 1" });
-    expect(region).toHaveClass("w-18");
-    expect(within(region).getByRole("heading", { level: 4 })).toHaveTextContent("Open");
-    expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("No tickets")).toBeInTheDocument();
+    expect(within(region).getByText("No tickets")).toBeInTheDocument();
   });
 
-  it("gives a column with cards the full width", () => {
-    renderColumn();
-    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).not.toHaveClass("w-18");
+  it("shows a folded cell as its ticket count and mounts no card", () => {
+    renderColumn({ folded: true, tickets: [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "open")] });
+    expect(screen.getByText("2 tickets, folded")).toBeInTheDocument();
+    expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
   });
 
-  it("calls onAddTicket with this column's status id when the + button is clicked", async () => {
+  it("opens a card's ticket on click", async () => {
     const user = userEvent.setup();
-    const onAddTicket = vi.fn();
-    renderColumn({ onAddTicket });
-    await user.click(await screen.findByRole("button", { name: "New ticket in Open" }));
-    expect(onAddTicket).toHaveBeenCalledWith("open");
-  });
-
-  it("makes the header's name and count the column's drag surface, leaving the add button outside it", async () => {
     renderColumn();
-    const surface = await screen.findByRole("button", { name: "Reorder Open" });
-    const add = screen.getByRole("button", { name: "New ticket in Open" });
-    expect(surface).toHaveAttribute("aria-roledescription", "sortable");
-    expect(surface).not.toBe(add);
-    expect(surface).not.toContainElement(add);
-    expect(surface).toHaveTextContent("Open");
-  });
-
-  it("renders the chosen icon instead of the dot when set", () => {
-    renderColumn({ column: { ...column, icon: "CircleCheckBig" } });
-    const heading = screen.getByRole("heading", { level: 4 });
-    expect(heading.querySelector(".rounded-full.bg-info")).not.toBeInTheDocument();
-    expect(heading.querySelector("span > svg")).toBeInTheDocument();
-  });
-
-  it("falls back to the dot for an unrecognized icon value instead of rendering nothing", () => {
-    renderColumn({ column: { ...column, icon: "not-a-real-icon" } });
-    const heading = screen.getByRole("heading", { level: 4 });
-    expect(heading.querySelector("span > svg")).not.toBeInTheDocument();
-    expect(heading.querySelector(".rounded-full.bg-info")).toBeInTheDocument();
+    await user.click(screen.getByText("Fix login"));
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 
   describe("for a member who may read the board and not write it", () => {
     const readOnly = (showLocked: boolean) => vi.mocked(api.get).mockImplementation(asViewer(memberWho(["tickets:read", "projects:read"], showLocked)));
 
-    it("shows the column and its cards, which open but cannot be dragged, with no control that writes", async () => {
+    it("shows cards that open but cannot be dragged", async () => {
       readOnly(false);
       const user = userEvent.setup();
       renderColumn();
 
       const card = (await screen.findByText("Fix login")).closest("[aria-disabled]");
       expect(card).toHaveAttribute("aria-disabled", "true");
-      expect(screen.queryByRole("button", { name: "Reorder Open" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "New ticket in Open" })).not.toBeInTheDocument();
       await user.click(screen.getByText("Fix login"));
       expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
-    });
-
-    it("locks the add button and offers no way to drag the column when a role shows locked actions", async () => {
-      readOnly(true);
-      const user = userEvent.setup();
-      const onAddTicket = vi.fn();
-      renderColumn({ onAddTicket });
-
-      const add = await screen.findByRole("button", { name: "New ticket in Open" });
-      expect(add).toHaveAttribute("aria-disabled", "true");
-      expect(screen.queryByRole("button", { name: "Reorder Open" })).not.toBeInTheDocument();
-      await user.click(add);
-      expect(onAddTicket).not.toHaveBeenCalled();
     });
   });
 });

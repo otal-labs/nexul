@@ -33,7 +33,7 @@ interface TicketCardBodyProps {
   ticket: Ticket;
 }
 
-// Two chips beside the type fit a 220px column on one row; the rest count as +N, named in its tooltip.
+// Two labels fit the meta line beside the key; the rest count as +N, named in its tooltip.
 const CARD_LABELS = 2;
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
@@ -48,30 +48,22 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
-  // A bug keeps its red; every other type's icon is muted, so the card's colour is its labels and its status, not a second accent.
-  const typeIconColor = type.trim().toLowerCase() === "bug" ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
+  // Only a bug shows its type, in its red: every other type's icon on every card said nothing a column of them did not.
+  const isBug = type.trim().toLowerCase() === "bug";
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
       <PersonAvatar login={person.login} src={shown.avatar_url} className="size-4 text-[10px]" />
     </span>
   );
-  const pills = (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-      {type !== "" && (
-        // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
-        <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} title={type} className="mr-0.5 [&>svg]:size-3.5">
-          <span className="sr-only">{type}</span>
-        </NoFillBadge>
-      )}
+  const labelRun = labels.length > 0 && (
+    // Labels give way first when the meta line runs out of room; the key, the blocker and a bug's icon stay.
+    <span className="flex min-w-0 items-center gap-2 overflow-hidden">
       {labels.slice(0, CARD_LABELS).map((label) => (
-        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 border-transparent bg-transparent px-0 text-[11px]" />
+        <LabelChip key={label} label={label} color={labelColors?.[label]} className="shrink-0 gap-1 border-transparent bg-transparent px-0 font-sans text-[11px]" />
       ))}
       {labels.length > CARD_LABELS && (
-        <span
-          title={labels.slice(CARD_LABELS).join(", ")}
-          className="font-mono text-[11px] text-muted-foreground"
-        >
+        <span title={labels.slice(CARD_LABELS).join(", ")} className="shrink-0">
           +{labels.length - CARD_LABELS}
         </span>
       )}
@@ -99,17 +91,25 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   return (
     <>
-      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the pills a row of their own. */}
-      <span className="flex h-4 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-        <span className="tabular-nums">{prefix}-{ticket.number}</span>
-        <span className="flex-1" />
-        {run}
-        {thread}
-        {avatar}
+      {/* The title leads with who acts next at its end; the key, the blocker and the labels share one quiet line under it. */}
+      <span className="flex items-start gap-2">
+        <span dir="auto" title={ticket.title} className="line-clamp-2 min-w-0 flex-1 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
+        <span className="flex h-[1.125rem] shrink-0 items-center gap-1.5">
+          {run}
+          {thread}
+          {avatar}
+        </span>
       </span>
-      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
-      <TicketBlockedLine ticketId={ticket.id} />
-      {(type !== "" || labels.length > 0) && pills}
+      <span className="flex h-4 min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+        <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
+        <TicketBlockedLine ticketId={ticket.id} />
+        {isBug && (
+          <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="shrink-0 [&>svg]:size-3.5">
+            <span className="sr-only">{type}</span>
+          </NoFillBadge>
+        )}
+        {labelRun}
+      </span>
     </>
   );
 });

@@ -1,9 +1,8 @@
 import { useDroppable } from "@dnd-kit/core";
-import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
-import { useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 
+import { boardGridTemplate, isFolded } from "@/components/board/boardGrid";
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { DropTargetData } from "@/components/board/dragMove";
@@ -17,22 +16,19 @@ import { useBoardStore } from "@/stores/boardStore";
 interface SwimlaneSectionProps {
   lane: Swimlane;
   columns: BoardStatus[];
-  onAddTicket: (categoryId: string | null, statusId: string) => void;
 }
 
-export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionProps) => {
+export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
   const { projectId: routeParam = "" } = useParams();
   const { data: projects = [] } = useFetchProjects();
   const projectId = resolveProject(projects, routeParam)?.id ?? routeParam;
   const collapsed = useBoardStore((s) => s.collapsedLanes[projectId]?.includes(lane.key) ?? false);
   const toggleLane = useBoardStore((s) => s.toggleLane);
+  const doneOpen = useBoardStore((s) => s.doneOpen);
   const runs = useTicketRunCounts(lane.tickets[0]?.project_id, lane.tickets.map((t) => t.id));
   const doneStatusIds = new Set(columns.filter((c) => c.kind === "done").map((c) => c.id));
   const doneCount = lane.tickets.filter((t) => doneStatusIds.has(t.status)).length;
   const allDone = lane.tickets.length > 0 && doneCount === lane.tickets.length;
-  // dnd-kit rebuilds its context, and re-renders every sortable under it, whenever items is a new array.
-  const columnIds = useMemo(() => columns.map((column) => `column-${lane.key}-${column.id}`), [columns, lane.key]);
-  const addInLane = useCallback((statusId: string) => onAddTicket(lane.categoryId, statusId), [onAddTicket, lane.categoryId]);
   const { setNodeRef, isOver } = useDroppable(
     lane.categoryId === null
       ? { id: `lane-${lane.key}`, disabled: true }
@@ -43,26 +39,26 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
     <section
       ref={setNodeRef}
       aria-label={`${lane.label} swimlane`}
-      // Columns share the panel width down to their minimum, then overflow into the shared scroll; the lane bar spans them all.
+      // A band across the stage columns, then this lane's cells on the board's shared grid.
       className={cn(
-        "w-max min-w-full space-y-1.5 rounded-md transition-[box-shadow] duration-150 ease-standard",
+        "space-y-1.5 rounded-md transition-[box-shadow] duration-150 ease-standard",
         isOver && "ring-1 ring-inset ring-ring",
       )}
     >
-      <h3>
-        {/* The whole bar toggles collapse; label and count stay sticky against the horizontal scroll. */}
+      {/* Pinned under the stage header while its lane scrolls; label and count also stay put against the horizontal scroll. */}
+      <h3 className="sticky top-9 z-10 bg-[var(--panel)]">
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
-          className="group/lane flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-md bg-foreground/[0.04] px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent dark:bg-background/50"
+          className="group/lane flex h-7 w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
           <span className="sticky left-2 flex min-w-0 items-center gap-2">
             <ChevronDownIcon
               className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
             />
-            <span title={lane.label} className="min-w-0 truncate text-[13px] font-medium">{lane.label}</span>{" "}
+            <span title={lane.label} className="min-w-0 truncate text-[13px] font-semibold">{lane.label}</span>{" "}
             {allDone && <CircleCheckBig className="size-3 shrink-0 text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
               <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
@@ -77,7 +73,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
               </span>
             )}
           </span>{" "}
-          <span className="sticky right-2 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+          <span className="sticky right-2 shrink-0 text-xs tabular-nums text-muted-foreground">
             {doneCount}/{lane.tickets.length} done
           </span>
         </button>
@@ -90,8 +86,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         className={cn("disclosure", collapsed && "contain-inline-size")}
       >
         <div className="min-h-0 overflow-hidden">
-          <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex gap-2">
+          <div className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
               {columns.map((column) => (
                 <KanbanColumn
                   key={`${lane.key}-${column.id}`}
@@ -100,12 +95,11 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
                   categoryId={lane.categoryId ?? ""}
                   column={column}
                   collapsed={collapsed}
+                  folded={isFolded(column, doneOpen)}
                   tickets={lane.tickets.filter((t) => t.status === column.id).sort((a, b) => a.position - b.position)}
-                  onAddTicket={addInLane}
                 />
               ))}
-            </div>
-          </SortableContext>
+          </div>
         </div>
       </div>
     </section>

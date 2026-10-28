@@ -86,6 +86,7 @@ in the three token files; this table holds the roles.
 |---|---|---|---|---|
 | `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
+| `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 4% | the board's column well, laid over the panel as a shade so it separates in every palette | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
@@ -537,38 +538,46 @@ kept per browser; inside it a title drops a leading folder name. Every other
 notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
 
-Board. The header is one line: the title in the UI sans at 16px semibold
-with a muted "55 tickets · 8 people" beside it on its baseline, nothing else.
-The board is the one page whose title is not the display face: it is a work
-surface opened all day, and its height is cards. There is no breadcrumb, no
-project mark and no stage summary,
-because the sidebar's switchers already show the workspace and the project's
-mark, and each column counts its own stage. A card is the mono key as an eyebrow
-(with the run timer, the thread mark and the 16px avatar of whoever acts
-next trailing on its 16px line), the title at full width in 13px at weight 450 (500 read as bold at that size on a dark card), the
-blocked line, then the type as its icon alone, in muted ink except a bug's
-red (its name in the tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
-name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
-names them in its tooltip, at 8px padding top and bottom and 10px at the sides with 6px between its rows, so a one-line card is about 78px. A swimlane is a 32px bar on the columns' well tone (the canvas at 50% in
-dark, ink at 4% in light: some palettes set `surface-2` to their panel's own
-colour, so neither well uses it) with
-a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
-trailing. Columns share the panel's width down to a 200px minimum (168px
-below 1280, 148px below 1024), so three stages with cards and two empty
-columns fit at 768 beside the rail and at 1024 beside the sidebar
-and all five stages at 1440, and grow with their cards while
-the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
-N" row mounts the next. A column with no cards in its lane narrows on its well so the
-width goes to the columns with work: from 1280px to 128px with its header on
-one line (mark, name, count), below that to a 72px rail with its name in 11px
-semibold on one line over its count (a larger name wrapped "In / progress /
-0" onto three lines); no `+`, since Create picks the stage, so an empty stage keeps its name in reading order and gives its width
-to the columns with work. Every column
-sits on a well (the canvas at 50% over the panel in dark, ink at 4% in light), its header flush
-with the cards' edges, and its cards are raised on it: `card` with the card
-shadow and its hairline, so the board reads as three surfaces
-(panel, well, card). While a card is held an empty column shows the dashed
-slot at its full height, as the place a card can land.
+Board. One grid. The header is one row from 1280px: the title in the UI sans
+at 16px semibold with a muted "55 tickets · 8 people" on its baseline, then
+the toolbar, Create at the right edge; below 1280 the toolbar sits under the
+title. The board is the one page whose title is not the display face: it is a
+work surface opened all day, and its height is cards. No breadcrumb, project
+mark or stage summary: the sidebar's switchers show the workspace and the
+mark, and the stage row counts every stage.
+
+The board scrolls on its own, both ways, under the header row. Its stage row
+(`BoardStageHeader`) is drawn once and pinned at the top of that scroll: each
+stage's mark, its name in 13px semibold, its count across every lane, and its
+`+`; the name and count are the stage's drag handle for reordering. Done
+starts folded to a 44px strip of mark and count (its name in the tooltip);
+the strip opens it, a fold button in its header closes it, and the choice is
+kept per browser, because finished work is counted, not read, on a board kept
+open all day. Every lane's row and the stage row share one grid template
+(`boardGridTemplate`): 180px minimum and an equal share for each open stage,
+2.75rem for folded Done, so a stage is one column down the whole board; past
+the panel's width the board scrolls sideways and never squeezes a title.
+
+A swimlane is a 28px band across the stage columns, pinned under the stage
+row while its lane scrolls: a chevron, the lane name in 13px semibold, and
+"4/11 done" in muted sans trailing. Under it each stage's cell sits on the
+column well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
+rather than a colour so it reads in every palette) and is only as tall as its
+own cards, top-aligned, so a one-card stage is never a tall empty slab. A cell
+mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
+a card is held, an empty cell and the folded Done strip show a card-tall
+dashed slot as the place to land.
+
+A card is two parts. The title comes first, in 13px at weight 450 (500 read as
+bold at that size on a dark card), at most two lines, with the run marks, the
+thread mark and the 16px avatar of whoever acts next at its end. Then one
+meta line in 11px mono: the key, the blocker as its key (the sentence in its
+tooltip and accessible name), a bug's red icon (no other type shows an icon),
+and at most two labels, each its 6px hue dot and its name without a pill, any
+more as "+N" naming them in its tooltip. When the line runs out of room the
+labels give way first; the key and the blocker always show. The card pads 8px
+top and bottom and 10px at the sides, `card` with the card shadow and its
+hairline, so the board reads as three surfaces: panel, well, card.
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
@@ -578,7 +587,7 @@ right. The board's bar is 32px controls: a 15rem text filter ("Filter tickets", 
 it never reads as a second copy of the sidebar's Search) leads, then the
 Filter menu, the developer filter as a stack of three 28px avatars and a "+N"
 that lists the rest, and the toggles (Mine to test, Playing), ghost in muted
-ink until on, wrapping inside their group when the board is narrow; the labelled Create button alone holds the right edge. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+ink until on and icon-only below 1280 (named by their tooltips), wrapping inside their group when the board is narrow; the labelled Create button alone holds the right edge. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.
@@ -1285,6 +1294,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
 | Board title in the sans on one line with its count (2026-10-28) | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
 | Board header: the title and its count line only (2026-10-28) | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
+| The board is one grid: stage row once, lanes as bands, Done folded (2026-10-28) | Agreed by a review council after six score-driven rounds left it at 6: each lane had drawn its own five-column board, so the stage headers repeated per lane, a one-card stage stretched to the tallest stage in its lane, one lane filled 1440×900, and Done took a fifth of the width. Against dropping lanes for a category label (lanes carry per-category collapse and drag to recategorise) and against no wells (with lanes as bands the stages need their columns). Replaces the folded 72px and 128px rails and the per-lane column headers |
 | An empty column is a 72px rail with its name in two lines (2026-10-28) | Against a 160px column with its full header (two of them still took a fifth of the board to say No tickets), a 40px well of mark and count (In progress and Testing could not be told apart), a 40px strip with the name set vertically (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
 | Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
