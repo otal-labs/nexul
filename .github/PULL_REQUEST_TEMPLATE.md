@@ -18,7 +18,7 @@
 
 ## Screenshots / recordings
 
-<!-- Frontend changes: attach screenshots at 320 / 375 / 414 / 768px, dark and light -->
+<!-- UI changes: before and after, dark and light. Web app at 768 / 1024 / 1440px, website at 320 / 375 / 414 / 768px -->
 
 ## Notes for reviewers
 

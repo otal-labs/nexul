@@ -1,20 +1,20 @@
 # Contributing to Nexul
 
-Thanks for taking the time. The full contributor guide lives on the docs site;
-this page is the short version.
+Thanks for taking the time. This is the short version; the
+[contributor guide](https://nexul.io/docs/contributing/) has the rest.
 
 ## Before your first pull request
 
 - Read the [Contributor License Agreement](CLA.md). Nexul is open core
-  (AGPL-3.0 outside `ee/`, commercial inside), so the project needs a CLA to
-  keep licensing both parts. You agree to it by ticking the box in the pull
-  request template. See [Licensing](https://nexul.io/docs/contributing/licensing/).
-- Open an issue or a discussion first for anything larger than a bug fix, so
-  we agree on the shape before you spend time on it.
+  (AGPL-3.0 outside `ee/`, commercial inside), and the CLA lets the project
+  keep licensing both parts. Tick the box in the pull request template to
+  agree. See [Licensing](https://nexul.io/docs/contributing/licensing/).
+- For anything bigger than a bug fix, open an issue or a discussion first so
+  we agree on the shape before you build it.
 
 ## Setting up
 
-Go (version pinned in `go.mod`) and Bun are the only prerequisites.
+Go (version in `go.mod`) and Bun are the only prerequisites.
 
 ```sh
 go run ./server/cmd          # API server
@@ -22,34 +22,34 @@ bun install && bun run --cwd web dev   # web app
 make test                    # Go tests
 ```
 
-The debug compose stack, make targets, and test commands are described in
-[Local development](https://nexul.io/docs/contributing/local-development/).
+[Local development](https://nexul.io/docs/contributing/local-development/)
+covers the debug compose stack, make targets, and tests.
 
 ## Standards
 
-Every change is reviewed against the files in [`practices/`](practices/README.md).
-Read the one for the language you are touching before you write code; the
+Changes are reviewed against [`practices/`](practices/README.md). Read the
+file for your language before writing code; the
 [coding standards](https://nexul.io/docs/contributing/coding-standards/) page
-on the docs site is a digest of them.
+is a digest of them.
 
-- Read `AGENTS.md` and `CONTEXT.md` before touching code. `CONTEXT.md` is the
-  vocabulary and it is authoritative.
-- Durable decisions get an ADR in `docs/adr/`. Open work is tracked in
-  `.scratch/`.
-- Go changes keep the coverage gate green (`make coverage`). Web changes pass
+- Read `AGENTS.md` and `CONTEXT.md` first. `CONTEXT.md` is the vocabulary, and
+  it wins any naming argument.
+- Durable decisions get an ADR in `docs/adr/`. Open work lives in `.scratch/`.
+- Go changes keep `make coverage` green. Web changes pass
   `bun run --cwd web lint` and `bun run --cwd web test`.
-- SQL lives in `internal/platform/storage/queries/*.sql`; run `make sqlc` and commit the generated code.
+- SQL lives in `internal/platform/storage/queries/*.sql`. Run `make sqlc` and
+  commit the generated code.
 
 ## Pull requests
 
-- One topic per PR, branched from `master`. PRs are squash-merged.
-- Fill in the PR template. CI has to be green before merge.
-- Frontend changes include screenshots at 320, 375, 414, and 768 px, dark and
-  light.
+- One topic per PR, branched from `master`, squash-merged.
+- Fill in the PR template. CI must be green before merge.
+- UI changes include before and after screenshots, dark and light: 768, 1024,
+  and 1440 px for the web app, 320, 375, 414, and 768 px for the website.
 - Write commit messages and PR descriptions from the code's point of view:
-  what changed and why it matters.
+  what changed and why.
 
-## Reporting bugs and security issues
+## Bugs and security issues
 
-Bugs go through the issue templates. Security issues do not: read
-[SECURITY.md](SECURITY.md) instead.
+Bugs go through the issue templates. Security issues don't: see
+[SECURITY.md](SECURITY.md).
