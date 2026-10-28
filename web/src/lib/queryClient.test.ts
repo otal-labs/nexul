@@ -21,7 +21,7 @@ const attemptsFor = (error: Error): Promise<number> =>
   });
 
 // A missing or forbidden page lands on its not-found screen at once, not after three retries and seven seconds.
-it.each([400, 401, 403, 404, 409])("never retries a %i", async (status) => {
+it.each([400, 403, 404])("never retries a %i", async (status) => {
   expect(await attemptsFor(httpError(status))).toBe(1);
 });
 

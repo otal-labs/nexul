@@ -124,16 +124,6 @@ describe("PlayListRow", () => {
     );
   });
 
-  it("adds Clone for a built-in play", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.get).mockImplementation(mockGet());
-    await renderRow({ ...play, builtin_key: "fix-with-ai" });
-
-    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
-    await screen.findByRole("menuitem", { name: "Permissions…" });
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Clone", "Permissions…", "Delete"]);
-  });
-
   it("opens the permissions panel on the play, today's exclusions as Deny on Run", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(

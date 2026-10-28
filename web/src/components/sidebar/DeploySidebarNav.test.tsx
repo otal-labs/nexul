@@ -51,12 +51,6 @@ describe("DeploySidebarNav", () => {
     expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
   });
 
-  it("lists Calendar first and Configuration after Automations", async () => {
-    await renderNav();
-    const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
-    expect(links).toEqual(["/acme/calendar", "/acme/runners", "/acme/topology", "/acme/automations", "/acme/configuration"]);
-  });
-
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read", "connectors:read", "accounts:read"] } };

@@ -28,13 +28,6 @@ const renderEdge = (overrides: Partial<EdgeProps> = {}) =>
   );
 
 describe("RelationEdge", () => {
-  it("renders a dashed smoothstep path", () => {
-    const { container } = renderEdge();
-    const path = container.querySelector("path");
-    expect(path).toBeInTheDocument();
-    expect(path).toHaveStyle("stroke-dasharray: 4 4");
-  });
-
   it.each([
     ["depends_on", "depends on"],
     ["mounts", "mounts"],

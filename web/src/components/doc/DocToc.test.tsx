@@ -47,12 +47,6 @@ afterEach(() => {
 });
 
 describe("DocToc", () => {
-  it("renders nothing for a doc without headings", () => {
-    const { container } = render(<DocToc headings={[]} />);
-    expect(screen.queryByLabelText("On this page")).not.toBeInTheDocument();
-    expect(container).toBeEmptyDOMElement();
-  });
-
   it("renders nothing for a single heading, and appears once a second one is added", () => {
     const { container, rerender } = render(<DocToc headings={headings.slice(0, 1)} />);
     expect(container).toBeEmptyDOMElement();

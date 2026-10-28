@@ -115,7 +115,7 @@ export const findMentionTrigger = (textBeforeCaret: string): MentionTriggerState
 };
 
 // The one line an uploaded image occupies in a message body, matching the doc editor's bodyToMarkdown shape.
-export const attachmentMarkdown = (attachment: Attachment): string =>
+const attachmentMarkdown = (attachment: Attachment): string =>
   `![${attachment.name}](${attachmentPath(attachment.id)})`;
 
 export const composeMessageBody = (text: string, attachments: Attachment[]): string =>
