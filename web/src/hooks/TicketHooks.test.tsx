@@ -111,9 +111,15 @@ describe("useFetchTicketsByDoc", () => {
 });
 
 describe("useCreateTicket", () => {
-  it("posts and invalidates", async () => {
+  it("posts and refetches the project lists that hold the new ticket", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: ticket });
-    const { result } = renderHook(() => useCreateTicket(), { wrapper });
+    const client = seeded([
+      [["getTicketsByProject", "p-1"], []],
+      [["getTicketsByProject", "p-2"], []],
+    ]);
+    const { result } = renderHook(() => useCreateTicket(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     await result.current.mutateAsync({ title: "Fix storage", body: "write migrations", project_id: "p-1", doc_id: "doc-1", developer: "onik97" });
     expect(api.post).toHaveBeenCalledWith("/api/tickets", {
       title: "Fix storage",
@@ -122,7 +128,8 @@ describe("useCreateTicket", () => {
       doc_id: "doc-1",
       developer: "onik97",
     });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(true);
+    expect(isStale(client, ["getTicketsByProject", "p-2"])).toBe(false);
   });
 });
 

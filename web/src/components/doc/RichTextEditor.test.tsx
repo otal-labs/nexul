@@ -336,14 +336,28 @@ describe("RichTextEditor", () => {
 
     it("is left alone while another editor is in the room", async () => {
       const onChange = vi.fn();
+      let awareness: RelayCollabProvider["awareness"] | undefined;
       renderCollabEditor("", onChange, oldRoom(), false, (provider) => {
+        awareness = provider.awareness;
         provider.awareness.states.set(7, { user: { name: "Bea", activity: "editing" } });
       });
-
       await screen.findByText("[x] two");
-      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // An awareness change schedules the conversion on a timer; run that timer now so the peer check has certainly happened.
+      const changed = { added: [], updated: [7], removed: [] };
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        awareness!.emit("change", [changed, "test"]);
+        vi.advanceTimersByTime(0);
+      } finally {
+        vi.useRealTimers();
+      }
       expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
       expect(onChange.mock.calls.some(([json]) => (json as string).includes("taskList"))).toBe(false);
+
+      awareness!.states.delete(7);
+      awareness!.emit("change", [{ added: [], updated: [], removed: [7] }, "test"]);
+      expect(await screen.findAllByRole("checkbox")).toHaveLength(2);
     });
   });
 

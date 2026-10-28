@@ -42,13 +42,13 @@ describe("StatusRow", () => {
   // The kind is stated once by the group header (BoardSettingsSection), so
   // the row carries it as a colored icon/dot only — never as a repeated
   // text badge.
-  it("colors the progress stage's indicator without repeating the kind as text", () => {
+  it("shows a progress stage in the info hue without repeating the kind as text", () => {
     const { container } = renderRow({ kind: StatusKind.Progress });
     expect(screen.queryByText("progress")).not.toBeInTheDocument();
     expect(container.querySelector(".bg-info")).toBeInTheDocument();
   });
 
-  it("colors the done stage's indicator", () => {
+  it("shows a done stage in the success hue without repeating the kind as text", () => {
     const { container } = renderRow({ kind: StatusKind.Done });
     expect(screen.queryByText("done")).not.toBeInTheDocument();
     expect(container.querySelector(".bg-success")).toBeInTheDocument();

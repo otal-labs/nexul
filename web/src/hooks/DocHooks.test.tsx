@@ -79,10 +79,13 @@ describe("useFetchDoc", () => {
 describe("useCreateDoc", () => {
   it("posts and invalidates the list", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: doc });
-    const { result } = renderHook(() => useCreateDoc(), { wrapper });
+    const client = seeded([[["getDocs"], []]]);
+    const { result } = renderHook(() => useCreateDoc(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     await result.current.mutateAsync({ project_id: "project-1", title: "Spec", body: "body" });
     expect(api.post).toHaveBeenCalledWith("/api/docs", { project_id: "project-1", title: "Spec", body: "body" });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(isStale(client, ["getDocs"])).toBe(true);
   });
 });
 

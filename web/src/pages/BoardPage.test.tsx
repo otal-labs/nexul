@@ -245,9 +245,9 @@ describe("BoardPage", () => {
   it("does not show the empty state while tickets are still loading", async () => {
     mockGet(null);
     renderPage();
-    expect(
-      screen.queryByText("No tickets match these filters."),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Loading board…")).toBeInTheDocument();
+    expect(screen.queryByText("No tickets yet. Create one to start the board.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No tickets match these filters.")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Filter" })).not.toBeInTheDocument();
   });
 });

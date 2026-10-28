@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import {
   useCompleteOwnerWizard,
+  useFetchMe,
   useUpdateSettings,
   authFollower,
 } from "@/hooks/AuthHooks";
@@ -66,12 +67,18 @@ describe("useCompleteOwnerWizard", () => {
   it("posts the instance URL and invalidates /me", async () => {
     const completed = { ...me, needs_owner_wizard: false, needs_first_login_wizard: false };
     vi.mocked(api.post).mockResolvedValue({ data: completed });
-    const { result } = renderHook(() => useCompleteOwnerWizard(), { wrapper });
-    await result.current.mutateAsync("https://deploy.example.com");
+    vi.mocked(api.get).mockResolvedValue({ data: completed });
+    const client = seeded([[["getMe"], me]]);
+    const { result } = renderHook(() => ({ me: useFetchMe(), wizard: useCompleteOwnerWizard() }), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+    expect(api.get).not.toHaveBeenCalled();
+    await result.current.wizard.mutateAsync("https://deploy.example.com");
     expect(api.post).toHaveBeenCalledWith("/api/auth/onboarding/owner", {
       instance_url: "https://deploy.example.com",
     });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith("/api/auth/me");
+    expect(client.getQueryData(["getMe"])).toEqual(completed);
   });
 });
 

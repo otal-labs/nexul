@@ -5,6 +5,7 @@ import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { labelDotColor } from "@/components/board/ticketTypeColor";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketStatus, type Ticket } from "@/models/Ticket";
 import { withOwner } from "@/test/viewer";
@@ -141,8 +142,9 @@ describe("TicketPropertiesPanel", () => {
   it("draws a label's configured color on its dot, as the board card does", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { backend: "orange" } });
     renderPanel();
+    expect(labelDotColor("backend")).not.toBe(labelDotColor("backend", "orange"));
     await vi.waitFor(() => {
-      expect(screen.getByText("backend").closest('[data-slot="label-chip"]')?.querySelector("[aria-hidden]")).toHaveClass("bg-orange-500");
+      expect(screen.getByText("backend").closest('[data-slot="label-chip"]')?.querySelector("[aria-hidden]")).toHaveClass(labelDotColor("backend", "orange"));
     });
   });
 

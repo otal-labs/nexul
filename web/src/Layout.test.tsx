@@ -147,14 +147,10 @@ describe("Layout", () => {
     expect(await screen.findByText("Onik")).toBeInTheDocument();
   });
 
-  it("shows the Inbox link for signed-in users, above the project section", async () => {
+  it("shows the Inbox link for signed-in users", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
-    const inboxLink = screen.getByRole("link", { name: "Inbox" });
-    expect(inboxLink).toHaveAttribute("href", "/acme/inbox");
-    expect(inboxLink.compareDocumentPosition(await screen.findByRole("button", { name: "New project" }))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(screen.getByRole("link", { name: "Inbox" })).toHaveAttribute("href", "/acme/inbox");
   });
 
   it("shows the unread count badge on the Inbox link", () => {

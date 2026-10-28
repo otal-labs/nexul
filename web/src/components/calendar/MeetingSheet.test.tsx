@@ -175,6 +175,9 @@ describe("cancelling", () => {
     renderSheet(["calendar:write"], weekly, SLOT);
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
     await user.click(await screen.findByRole("button", { name: "Keep" }));
+    await waitFor(() => expect(screen.queryByRole("radio", { name: "This meeting" })).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Standup" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(api.patch).not.toHaveBeenCalled();
   });
 });

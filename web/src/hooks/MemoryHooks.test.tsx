@@ -106,7 +106,10 @@ describe("useFetchMemory", () => {
 describe("useCreateMemory", () => {
   it("posts and invalidates the list", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: memory });
-    const { result } = renderHook(() => useCreateMemory(), { wrapper });
+    const client = seeded([[["getMemories", "byProject", "project-1"], []]]);
+    const { result } = renderHook(() => useCreateMemory(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     await result.current.mutateAsync({
       project_id: "project-1",
       title: "Deploy quirks",
@@ -119,7 +122,7 @@ describe("useCreateMemory", () => {
       when_to_use: "use this if touching deploy config",
       always_included: false,
     });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(isStale(client, ["getMemories", "byProject", "project-1"])).toBe(true);
   });
 });
 
@@ -154,9 +157,13 @@ describe("useUpdateMemory", () => {
 describe("useDeleteMemory", () => {
   it("deletes and invalidates the list", async () => {
     vi.mocked(api.delete).mockResolvedValue({});
-    const { result } = renderHook(() => useDeleteMemory(), { wrapper });
+    const client = seeded([[["getMemories", "byProject", "project-1"], [memory]]]);
+    const { result } = renderHook(() => useDeleteMemory(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     await result.current.mutateAsync("mem-1");
     expect(api.delete).toHaveBeenCalledWith("/api/memories/mem-1");
+    expect(isStale(client, ["getMemories", "byProject", "project-1"])).toBe(true);
   });
 });
 
@@ -186,10 +193,14 @@ describe("useRevertMemory", () => {
 describe("useCloneMemory", () => {
   it("posts the destination project and invalidates the list", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ...memory, id: "mem-2", project_id: "project-2" } });
-    const { result } = renderHook(() => useCloneMemory(), { wrapper });
+    const client = seeded([[["getMemories", "byProject", "project-2"], []]]);
+    const { result } = renderHook(() => useCloneMemory(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     const clone = await result.current.mutateAsync({ id: "mem-1", projectId: "project-2" });
     expect(api.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", { project_id: "project-2" });
     expect(clone.id).toBe("mem-2");
+    expect(isStale(client, ["getMemories", "byProject", "project-2"])).toBe(true);
   });
 });
 

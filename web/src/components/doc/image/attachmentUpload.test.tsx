@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -29,7 +29,7 @@ const renderEditor = (onChange: (json: string) => void, attachTo?: AttachmentOwn
 
 const pasteFile = (file: File) => {
   const body = screen.getByLabelText(/doc body/i);
-  fireEvent.paste(body, {
+  return fireEvent.paste(body, {
     clipboardData: { files: [file], items: [], types: ["Files"], getData: () => "" },
   });
 };
@@ -88,10 +88,12 @@ describe("attachment upload in the editor", () => {
     const onChange = vi.fn();
     renderEditor(onChange);
 
-    pasteFile(new File(["png"], "image.png", { type: "image/png" }));
+    const notHandled = pasteFile(new File(["png"], "image.png", { type: "image/png" }));
+    await act(async () => {});
 
-    await new Promise((r) => setTimeout(r, 20));
+    expect(notHandled).toBe(true);
     expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === "/api/attachments")).toHaveLength(0);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("renders stored images in the read-only body through the authenticated client", async () => {

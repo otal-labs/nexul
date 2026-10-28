@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
@@ -45,6 +46,7 @@ describe("InstanceUrlSection", () => {
     mocks.patch.mockReset();
     mocks.del.mockReset();
     mocks.errorMessage.mockClear();
+    vi.mocked(toast.error).mockClear();
   });
 
   it("seeds the form with the current instance url", () => {
@@ -87,7 +89,7 @@ describe("InstanceUrlSection", () => {
     expect(screen.getByText(/enter a valid url/i)).toBeInTheDocument();
   });
 
-  it("shows an error when the save fails and keeps the form open", async () => {
+  it("toasts the error when the save fails and keeps the form open", async () => {
     mocks.put.mockRejectedValue(new Error("boom"));
     mocks.errorMessage.mockReturnValue("Save failed");
     const user = userEvent.setup();
@@ -98,6 +100,7 @@ describe("InstanceUrlSection", () => {
     await user.type(input, "https://new.example.com");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("Save failed"));
     expect(screen.getByLabelText(/instance url/i)).toHaveValue("https://new.example.com");
   });
 });

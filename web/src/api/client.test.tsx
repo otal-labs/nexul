@@ -12,7 +12,6 @@ describe("errorMessage", () => {
   it.each([
     ["field error wins", { message: "m", code: "c", errors: { title: ["Title is required"] } }, "Title is required"],
     ["falls back to message", { message: "not found", code: "not_found" }, "not found"],
-    ["falls back to axios message", { message: "Network Error" }, "Network Error"],
     ["a refusal shows the sentence of the rule behind it", { message: "forbidden: docs:lock required (Denied on doc Spec for role Client)", code: "FORBIDDEN", details: { action: "docs:lock", sentence: "Denied on doc Spec for role Client" } }, "Denied on doc Spec for role Client"],
     ["a refusal with no sentence keeps its message", { message: "forbidden: docs:lock required", code: "FORBIDDEN", details: { sentence: "" } }, "forbidden: docs:lock required"],
     ["falls back to default", undefined, "Something went wrong"],
@@ -23,6 +22,10 @@ describe("errorMessage", () => {
     }
     const error = { response: { data } };
     expect(errorMessage(error)).toBe(expected);
+  });
+
+  it("falls back to the axios error's own message when the response has no body", () => {
+    expect(errorMessage(new Error("Network Error"))).toBe("Network Error");
   });
 
   it("returns the first field error even when a message exists", () => {

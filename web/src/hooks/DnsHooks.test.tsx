@@ -42,10 +42,13 @@ describe("DnsHooks tunnel hooks", () => {
 
   it("useCreateTunnel posts and invalidates the list", async () => {
     mocks.post.mockResolvedValue({ data: { id: "t1", name: "one" } });
-    mocks.get.mockResolvedValue({ data: [] });
-    const { result } = renderHook(() => useCreateTunnel(), { wrapper });
+    const client = seeded([[["dnsTunnels"], []]]);
+    const { result } = renderHook(() => useCreateTunnel(), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
     result.current.mutate({ name: "one", account_id: "acct-1" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(isStale(client, ["dnsTunnels"])).toBe(true);
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "one", account_id: "acct-1" });
     expect(mocks.toast.success).toHaveBeenCalledWith("Tunnel created");
   });

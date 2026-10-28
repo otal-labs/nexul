@@ -195,6 +195,7 @@ describe("ServiceHostnameSection", () => {
       "/api/dns/exposures",
       expect.objectContaining({ hostname: "api.example.com", service_id: "svc-api", zone_id: "z1", zone: "example.com" }),
     );
+    expect(mocks.post.mock.calls.at(-1)?.[1]).not.toHaveProperty("gateway_id");
   });
 
   it.each([
