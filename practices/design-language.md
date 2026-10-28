@@ -1208,7 +1208,7 @@ row with a small `warning` dot trailing the label (on the rail, on the
 icon's corner), and a muted Being set up line for whoever cannot change the
 project; while the workspace's access setup is open, an Owner keeps the
 project and its pages with a Set up access row trailing them, and a member,
-who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section, and last the conversations:
+who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section (folded until a browser first opens it, so the conversations start above the fold), and last the conversations:
 Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are 12px medium sans in
@@ -1299,6 +1299,7 @@ The web app's pattern decisions, each with what it was picked over.
 | The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |
 | Sidebar rows at 13px, about 28px tall, in a 224px sidebar, with sentence-case labels (2026-10-28) | Against 14px rows near 34px tall in 240px under mono uppercase labels: the labels were the most tracked-out, most technical-looking text in the chrome for the least important words, and the tall rows pushed Voice channels to the fold at 900px; the compact rows sit level with the board's 13px card titles and give the panel 16px |
 | Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |
+| Sidebar: the Workspace section starts folded (2026-10-28) | Against it starting open: with the project's pages listed, the seven workspace pages (Calendar to Configuration, visited a few times a week) pushed every channel under the account row at 900px, where the last one faded half-drawn into the footer; folded, the project and the conversations fit, and a browser that opens it keeps it open |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
