@@ -13,7 +13,7 @@ interface ProjectSetupNavProps {
   collapsed: boolean;
 }
 
-const row = "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm";
+const row = "flex items-center gap-2.5 rounded-md px-2.5 py-1 text-[13px]";
 
 // While setup is open the project's one row is Continue setup, or Being set up for whoever can't change it (ADR 0143).
 export const ProjectSetupNav = ({ project, collapsed }: ProjectSetupNavProps) => {

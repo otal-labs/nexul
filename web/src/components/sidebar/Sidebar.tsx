@@ -30,7 +30,7 @@ export const Sidebar = ({ collapsed, onToggleCollapse, unreadCount }: SidebarPro
       ref={ref}
       className={cn(
         "relative z-20 flex h-full shrink-0 flex-col",
-        collapsed ? "w-17" : "w-60",
+        collapsed ? "w-17" : "w-56",
       )}
     >
       <SidebarHeader collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
