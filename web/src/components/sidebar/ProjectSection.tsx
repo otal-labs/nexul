@@ -28,10 +28,11 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const canCreate = !!can && canRunWizard(can, true);
   // The switcher only earns its place when the viewer can open something inside some project.
   const readsProjects = !!can && (["projects", "tickets", "memories", "docs"] as const).some((area) => can(area));
-  // While the one-time access setup is open its row stands in for the project's pages.
+  // While the one-time access setup is open an Owner keeps the project and its pages, with Set up access beside them;
+  // a member, who sees no project until it is done, gets the setup row alone.
   const setup = useAccessSetupState();
   const offerCreate = !setup && !!projects && projects.length === 0 && canCreate;
-  const showSwitcher = !setup && readsProjects && !!current;
+  const showSwitcher = setup !== "member" && readsProjects && !!current;
 
   if (!offerCreate && !showSwitcher && !setup) return null;
   return (

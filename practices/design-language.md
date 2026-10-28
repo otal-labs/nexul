@@ -1194,7 +1194,9 @@ Inbox, the project (its switcher leads with the project mark at 28px, then
 its pages, or while its setup is open one Continue setup row, a plain nav
 row with a small `warning` dot trailing the label (on the rail, on the
 icon's corner), and a muted Being set up line for whoever cannot change the
-project; Set up access in the workspace's setup works the same), the foldable Workspace section, and last the conversations:
+project; while the workspace's access setup is open, an Owner keeps the
+project and its pages with a Set up access row trailing them, and a member,
+who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section, and last the conversations:
 Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are 12px medium sans in
