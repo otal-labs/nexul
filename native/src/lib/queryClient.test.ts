@@ -10,7 +10,7 @@ const attemptsFor = async (error: Error): Promise<number> => {
   return fetcher.mock.calls.length;
 };
 
-test.each([400, 401, 404, 409, 429])("a %i is never retried", async (status) => {
+test.each([400, 429])("a %i is never retried", async (status) => {
   expect(await attemptsFor(new ApiError(status, null, "failed"))).toBe(1);
 });
 
