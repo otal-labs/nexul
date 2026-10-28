@@ -550,32 +550,35 @@ The board scrolls on its own, both ways, under the header row. Its stage row
 (`BoardStageHeader`) is drawn once and pinned at the top of that scroll: each
 stage's mark, its name in 13px semibold, its count across every lane, and its
 `+`; the name and count are the stage's drag handle for reordering. Done
-starts folded to a 44px strip of mark and count (its name in the tooltip);
-the strip opens it, a fold button in its header closes it, and the choice is
+starts folded to a 44px rail, its mark and count on one line in the stage row
+(its name in the tooltip); the rail opens it, a fold button in its header closes it, and the choice is
 kept per browser, because finished work is counted, not read, on a board kept
 open all day. Every lane's row and the stage row share one grid template
 (`boardGridTemplate`): 180px minimum and an equal share for each open stage,
 2.75rem for folded Done, so a stage is one column down the whole board; past
-the panel's width the board scrolls sideways and never squeezes a title.
+the panel's width the board scrolls sideways and never squeezes a title, and
+below 1024 its right edge fades so a column cut at the panel reads as more
+board.
 
 A swimlane is a 28px band across the stage columns, pinned under the stage
 row while its lane scrolls: a chevron, the lane name in 13px semibold, and
-"4/11 done" in muted sans trailing. Under it each stage's cell sits on the
-column well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
-rather than a colour so it reads in every palette) and is only as tall as its
-own cards, top-aligned, so a one-card stage is never a tall empty slab. A cell
+"4/11 done" in muted sans beside the name, a hairline under the band. Each
+stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
+rather than a colour so it reads in every palette) is drawn once behind every
+lane, from the stage row to the end of the board, so a stage is one unbroken
+column; under a band each cell is only as tall as its own cards, top-aligned, so a one-card stage is never a tall empty slab. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
-a card is held, an empty cell and the folded Done strip show a card-tall
+a card is held, an empty cell and the folded Done rail show a card-tall
 dashed slot as the place to land.
 
 A card is two parts. The title comes first, in 13px at weight 450 (500 read as
-bold at that size on a dark card), at most two lines, with the run marks, the
+bold at that size on a dark card), at most two lines (three below 1024), with the run marks, the
 thread mark and the 16px avatar of whoever acts next at its end. Then one
 meta line in 11px mono: the key, the blocker as its key (the sentence in its
 tooltip and accessible name), a bug's red icon (no other type shows an icon),
 and at most two labels, each its 6px hue dot and its name without a pill, any
 more as "+N" naming them in its tooltip. When the line runs out of room the
-labels give way first; the key and the blocker always show. The card pads 8px
+labels give way first, each dropping out whole rather than cut mid-word; the key and the blocker always show. The card pads 8px
 top and bottom and 10px at the sides, `card` with the card shadow and its
 hairline, so the board reads as three surfaces: panel, well, card.
 

@@ -17,6 +17,8 @@ import { createPortal } from "react-dom";
 
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { BoardStageHeader } from "@/components/board/BoardStageHeader";
+import { boardGridMinWidth, boardGridTemplate } from "@/components/board/boardGrid";
+import { useBoardStore } from "@/stores/boardStore";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
 import { boardKeyboardCoordinates } from "@/components/board/dragKeyboardCoordinates";
@@ -154,6 +156,7 @@ export const KanbanBoard = ({
 
   const shownSwimlanes = settled ?? displaySwimlanes;
   const shownColumns = settledColumns ?? columns;
+  const doneOpen = useBoardStore((s) => s.doneOpen);
   const counts: Record<string, number> = {};
   for (const ticket of shownSwimlanes.flatMap((lane) => lane.tickets)) counts[ticket.status] = (counts[ticket.status] ?? 0) + 1;
 
@@ -171,11 +174,29 @@ export const KanbanBoard = ({
         }}
       >
         {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
-        <div data-card-drag={activeTicket ? "" : undefined} className="group/board min-h-0 flex-1 space-y-3 overflow-auto pb-2">
-          <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
-          {shownSwimlanes.map((lane) => (
-            <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
-          ))}
+        {/* Below 1024 the right edge fades, so a column cut at the panel reads as more board to scroll to. */}
+        <div
+          data-card-drag={activeTicket ? "" : undefined}
+          className="group/board min-h-0 flex-1 overflow-auto pb-2 max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]"
+        >
+          <div className="relative min-h-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
+            {/* Each stage's well is drawn once behind every lane, so a stage is one column from the stage row to the end of the board. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-9 bottom-0 grid gap-2"
+              style={{ gridTemplateColumns: boardGridTemplate(shownColumns, doneOpen) }}
+            >
+              {shownColumns.map((column) => (
+                <div key={column.id} className="rounded-lg bg-well-shade" />
+              ))}
+            </div>
+            <div className="relative space-y-3">
+              <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
+              {shownSwimlanes.map((lane) => (
+                <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
+              ))}
+            </div>
+          </div>
         </div>
         {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
         {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}

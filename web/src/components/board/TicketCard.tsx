@@ -58,7 +58,8 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   );
   const labelRun = labels.length > 0 && (
     // Labels give way first when the meta line runs out of room; the key, the blocker and a bug's icon stay.
-    <span className="flex min-w-0 items-center gap-2 overflow-hidden">
+    // A label that does not fit wraps onto a hidden second row, so it drops out whole instead of being cut mid-word.
+    <span className="flex h-4 min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
       {labels.slice(0, CARD_LABELS).map((label) => (
         <LabelChip key={label} label={label} color={labelColors?.[label]} className="shrink-0 gap-1 border-transparent bg-transparent px-0 font-sans text-[11px]" />
       ))}
@@ -93,7 +94,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
     <>
       {/* The title leads with who acts next at its end; the key, the blocker and the labels share one quiet line under it. */}
       <span className="flex items-start gap-2">
-        <span dir="auto" title={ticket.title} className="line-clamp-2 min-w-0 flex-1 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
+        <span dir="auto" title={ticket.title} className="line-clamp-3 min-w-0 flex-1 lg:line-clamp-2 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
         <span className="flex h-[1.125rem] shrink-0 items-center gap-1.5">
           {run}
           {thread}
