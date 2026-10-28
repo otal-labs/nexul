@@ -9,6 +9,8 @@ const MIN_HEADINGS = 2;
 
 interface DocTocProps {
   headings: DocHeading[];
+  /** Called after a jump, so a popover holding the outline can close. */
+  onJump?: () => void;
 }
 
 // Matches by text+level, not anchor ids, since the body view mounts its own Tiptap instance.
@@ -26,7 +28,7 @@ function findHeadingElement(heading: DocHeading): HTMLElement | null {
 }
 
 // Spy attaches once heading elements exist (MutationObserver) since the editor renders async.
-export const DocToc = ({ headings }: DocTocProps) => {
+export const DocToc = ({ headings, onJump }: DocTocProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,8 +69,14 @@ export const DocToc = ({ headings }: DocTocProps) => {
     };
   }, [headings]);
 
+  // Before the reader scrolls, the first heading is where they are.
+  const currentId = activeId ?? headings[0]?.id;
+  // Indents count from the doc's top heading level, so a doc that starts at h2 doesn't open one step in.
+  const topLevel = Math.min(...headings.map((heading) => heading.level));
+
   const jump = (heading: DocHeading) => {
     setActiveId(heading.id);
+    onJump?.();
     const el = findHeadingElement(heading);
     if (!el) return;
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -90,13 +98,14 @@ export const DocToc = ({ headings }: DocTocProps) => {
                 event.preventDefault();
                 jump(heading);
               }}
-              aria-current={activeId === heading.id ? "true" : undefined}
+              title={heading.text}
+              aria-current={currentId === heading.id ? "true" : undefined}
               className={cn(
-                "-ml-px block border-l-2 border-transparent py-1 pr-2 text-sm text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground",
-                heading.level === 1 && "pl-3",
-                heading.level === 2 && "pl-5",
-                heading.level >= 3 && "pl-7",
-                activeId === heading.id && "border-brand font-medium text-foreground",
+                "-ml-px block truncate border-l-2 border-transparent py-1 pr-2 text-[13px] text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground",
+                heading.level === topLevel && "pl-3",
+                heading.level === topLevel + 1 && "pl-5",
+                heading.level >= topLevel + 2 && "pl-7",
+                currentId === heading.id && "border-brand font-medium text-foreground",
               )}
             >
               {heading.text}

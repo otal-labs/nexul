@@ -612,16 +612,26 @@ an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
 A list pane (Docs, Memories, Plays, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
-to its list and folder (Docs › Runbooks), no workspace crumb. Its body sits
-straight on the page panel (no fill, ring or shadow, no side margin) in a
-reading measure (`max-w-3xl`) that starts at the column's left edge, so
-without the table of contents the body lines up with the title. From a 48rem
-page the table of contents (a 12rem column) sits to its left once the body
-has two headings; with fewer the column is not drawn and the body takes the
-width. A memory's body sits on the panel the same way.
+to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
+is three lines with no closing hairline (`actionsOn="crumbs"`): the
+breadcrumb with the actions on its right (Doc | Questions first, then a
+hairline divider, Plays, watch, thread and the `…` menu; they wrap under the
+breadcrumb rather than cut it), the title with the pane's full width, and
+the meta line (up to three 24px faces, the live dot named by its tooltip,
+the mono date). Watch is always the open eye with its count, ink while you
+watch and muted while you don't. The body sits straight on the page panel
+(no fill, ring or shadow, no side margin), 24px under the meta line, in a
+42rem reading measure that starts at the title's left edge. Once the doc's
+content is 50rem wide (a 35rem body, the 2rem gap and the rail) the table of
+contents is a 13rem rail pinned to the right, its top level with the body,
+once the body has two headings: one line per entry with the heading in its
+tooltip, indented from the doc's top level, and the section in view (the
+first before any scroll) in ink with the 2px `brand` edge. Narrower, the
+rail is not drawn and an "On this page" icon in the actions opens the same
+outline in a popover. A memory's body sits on the panel the same way.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
-16px at 1.75, headings in Inter 600 at 20, 18 and 16px for `h1` to `h3` (the
+16px at 1.75, headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
 28px serif page title stays the top of the hierarchy, and no heading is
 smaller than the text it opens), closer to their text than to the paragraph
 above (1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
@@ -1287,6 +1297,8 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
+| A doc's outline is a right rail, and its actions sit on the breadcrumb's line (2026-10-28) | Against the 12rem outline to the body's left: beside the app sidebar and the docs list it was a third navigation column, it started the body about 220px right of its own title, and its entries wrapped. On the title's line the actions pushed the title onto two lines at 768 and 1024 |
+| Rich-text `h2` at 20px and `h1` at 22px (2026-10-28) | Against 18 and 20px: an 18px `h2` over 16px text did not step up, so a runbook's sections read as one block |
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
 | A dark card sits at least 0.029 of OKLCH lightness above its panel (2026-10-26) | Against each palette keeping its own card step: the card sits straight on the panel, and the panel is the card mixed 60% into the canvas, so a palette whose card is only a few points above its canvas puts the card 0.012 to 0.020 above the panel and it dissolves into the page. 0.029 is the step Ember, Ocean and Grove hold (0.030), the default holding 0.039; a palette short of it lifts `card` (and `popover` where the two share a value) and keeps its hue and chroma. Light palettes are exempt: a white or near-white card has no lightness left to give, and the ring and shadow separate it. Guarded per palette in `themeContrast.test.ts` |
 | A board card's type is its icon alone (2026-10-28) | Against the icon beside the type's name: on a card the name was a third kind of label in the meta row, beside the mono key and the label chips, and it took the width a second label needed; the type is a bounded set whose hue and icon already tell bug from feature, and the name stays in the tooltip and for screen readers |

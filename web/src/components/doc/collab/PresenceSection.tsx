@@ -18,7 +18,7 @@ export const PresenceSection = ({ participants, max = 4 }: PresenceSectionProps)
           key={p.clientID}
           title={`${p.name} (${p.activity})`}
           aria-label={`${p.name} ${p.activity}`}
-          className="flex size-7 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white shadow-card ring-2 ring-background transition-transform duration-150 ease-standard hover:z-10 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+          className="flex size-6 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white shadow-card ring-2 ring-background transition-transform duration-150 ease-standard hover:z-10 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
           style={{ backgroundColor: p.color }}
           data-testid="presence-avatar"
         >
@@ -31,7 +31,7 @@ export const PresenceSection = ({ participants, max = 4 }: PresenceSectionProps)
       {overflow > 0 && (
         <span
           aria-label={`${overflow} more`}
-          className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-2 ring-background"
+          className="flex size-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-2 ring-background"
         >
           +{overflow}
         </span>

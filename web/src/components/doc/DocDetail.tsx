@@ -13,6 +13,7 @@ import { DocTicketsRunLine } from "@/components/doc/DocTicketsRunLine";
 import { DocTitleField } from "@/components/doc/DocTitleField";
 import { DocWatchButton } from "@/components/doc/DocWatchButton";
 import { DocToc } from "@/components/doc/DocToc";
+import { DocTocButton } from "@/components/doc/DocTocButton";
 import { DocQuestionsPanel } from "@/components/doc/clarification/DocQuestionsPanel";
 import { DocViewSwitch } from "@/components/doc/clarification/DocViewSwitch";
 import { PointerOverlay } from "@/components/doc/collab/PointerOverlay";
@@ -77,6 +78,8 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
     <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl duration-200 ease-out">
       <PageHeader
         crumbs={crumbs}
+        actionsOn="crumbs"
+        className="border-b-0 pb-0"
         title={
           <DocTitleField
             editable={!!session}
@@ -90,7 +93,10 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
         meta={<DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />}
         actions={
           <>
+            {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
+            {switchable && <span aria-hidden className="h-4 w-px bg-border" />}
             {doc.locked && <DocLockedSignal docId={doc.id} />}
+            {view === "doc" && <DocTocButton headings={headings} className="size-7 @min-[50rem]:hidden" />}
             <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
             <DocWatchButton docId={doc.id} />
             <DocThreadButton workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />
@@ -104,27 +110,10 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           </>
         }
       />
-      <div className="mt-6 @3xl:flex @3xl:gap-8">
-        {/* Hidden below @3xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
-        <div className="hidden w-48 shrink-0 @3xl:has-[section]:block">
-          <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
-            <DocToc headings={view === "doc" ? headings : []} />
-            {canThread && <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />}
-            {canThread && (
-              <TrailSection
-                workspaceId={workspaceId}
-                targetType="doc"
-                targetId={doc.id}
-                rowLayout="stacked"
-                className="-mx-2 border-t-0 pt-0"
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-4">
+      {/* The rail needs 50rem: a 35rem body, the gap and its 13rem; spare width sits between the body and the rail. */}
+      <div className="mt-6 @min-[50rem]:flex @min-[50rem]:justify-between @min-[50rem]:gap-8">
+        <div className="min-w-0 max-w-[42rem] flex-1 space-y-4">
           {canThread && <DocTicketsRunLine workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />}
-          {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
           {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
           {/* Hidden, not unmounted, behind Questions so the editor keeps its session. */}
           <article
@@ -140,13 +129,30 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             </CalendarTitleContext>
           </article>
 
-          {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}
+          {/* The rail holds the trail once it is drawn; both read the same query, so there is one request. */}
           {canThread && (
-            <div className="space-y-4 @3xl:hidden">
+            <div className="space-y-4 @min-[50rem]:hidden">
               <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />
               <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
             </div>
           )}
+        </div>
+
+        {/* After the body, so the body keeps the title's edge; has() skips the rail when no section renders. */}
+        <div className="hidden w-52 shrink-0 @min-[50rem]:has-[section]:block">
+          <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
+            <DocToc headings={view === "doc" ? headings : []} />
+            {canThread && <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />}
+            {canThread && (
+              <TrailSection
+                workspaceId={workspaceId}
+                targetType="doc"
+                targetId={doc.id}
+                rowLayout="stacked"
+                className="-mx-2 border-t-0 pt-0"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

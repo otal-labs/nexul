@@ -142,7 +142,7 @@ describe("TicketDetail", () => {
     // The e2e suite finds tickets by heading name, so the <h1> takes its name from the input's value.
     expect(screen.getByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(await screen.findByLabelText("Ticket description")).toBeInTheDocument();
-    expect(await screen.findByText("Live")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Live" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument();
   });
 
