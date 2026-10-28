@@ -68,14 +68,22 @@ interface PageHeaderProps {
   crumbs?: Crumb[];
   meta?: ReactNode;
   actions?: ReactNode;
+  // "crumbs" puts the actions on the breadcrumb's line, so the title keeps the pane's full width (the doc pane).
+  actionsOn?: "title" | "crumbs";
   // A mark before the title and its meta line, centred on the pair: the board's project mark.
   leading?: ReactNode;
   className?: string;
 }
 
-export const PageHeader = ({ title, crumbs, meta, actions, leading, className }: PageHeaderProps) => (
+export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", leading, className }: PageHeaderProps) => (
   <header className={cn("border-b border-border pb-5", className)}>
-    {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="mb-2" />}
+    {actionsOn === "crumbs" && (
+      <div className="mb-2 flex min-h-7 flex-wrap items-center gap-x-4 gap-y-2">
+        {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="min-w-0" />}
+        {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
+      </div>
+    )}
+    {actionsOn === "title" && crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="mb-2" />}
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-1 basis-80 items-center gap-3.5">
         {leading}
@@ -95,7 +103,7 @@ export const PageHeader = ({ title, crumbs, meta, actions, leading, className }:
           )}
         </div>
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actionsOn === "title" && actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   </header>
 );

@@ -1,4 +1,4 @@
-import { SettingsIcon } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
@@ -23,7 +23,7 @@ export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, 
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="size-7" aria-label="Doc actions">
-          <SettingsIcon className="size-4" />
+          <Ellipsis className="size-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">

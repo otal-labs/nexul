@@ -18,7 +18,8 @@ Write in the editor with formatting, tables, task lists, and code blocks; type `
 - **Attach** files by pasting, dropping, or `/` then **Image**. The doc's files are listed under the body.
 - **Preview** a file by clicking its name in the list, on a doc, a ticket or a memory. Images and SVGs show in place, PDFs open in the browser's viewer, audio plays, and a CSV or TSV shows its header and first 100 rows. A SQLite database or any other type shows **Download** instead; so does a file over 10 MiB. **Download** is always in the preview's header.
 - **Diagrams**: a code block in **Mermaid** (a ```` ```mermaid ```` fence in markdown) draws its diagram under the code, in docs, tickets, memories and ticket notes alike. It redraws when you stop typing, and a diagram that doesn't parse says why instead. Labels show as text only, so nothing written in a diagram can run in the page.
-- **Watch** with the eye button in the doc's header. Watchers hear about edits. You start watching a doc when you create it or save an edit, and **Stop watching** sticks until you choose to watch again.
+- **Watch** with the eye button in the doc's header; it shows the watcher count and is dimmed while you aren't watching. Watchers hear about edits. You start watching a doc when you create it or save an edit, and **Stop watching** sticks until you choose to watch again.
+- **On this page** lists a doc's headings once it has two. On a wide window it sits to the right of the body and marks the section you're reading; on a narrower one, the list icon in the header opens it.
 
 ### Folders
 

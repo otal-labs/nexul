@@ -571,11 +571,11 @@ body {
 
 /* Body headings stay under the 28px serif page title; none is smaller than the 16px text it opens. */
 .prose-rich h1 {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
 }
 
 .prose-rich h2 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
 }
 
 .prose-rich h3 {

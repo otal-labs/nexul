@@ -45,17 +45,17 @@ describe("DocWatchButton", () => {
     const user = userEvent.setup();
     renderButton();
 
-    await user.click(await screen.findByRole("button", { name: "Watchers: 1" }));
+    await user.click(await screen.findByRole("button", { name: "Not watching, 1 watcher" }));
     expect(await screen.findByText("u-onik")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Watch" }));
 
     expect(api.put).toHaveBeenCalledWith("/api/docs/doc-1/watchers/me");
-    expect(await screen.findByRole("button", { name: "Watchers: 2" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Watching, 2 watchers" })).toBeInTheDocument();
     expect(screen.getByText("you")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Stop watching" }));
     expect(api.delete).toHaveBeenCalledWith("/api/docs/doc-1/watchers/me");
-    expect(await screen.findByRole("button", { name: "Watchers: 1" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Not watching, 1 watcher" })).toBeInTheDocument();
     expect(screen.queryByText("you")).not.toBeInTheDocument();
   });
 
@@ -67,7 +67,7 @@ describe("DocWatchButton", () => {
     const user = userEvent.setup();
     renderButton();
 
-    await user.click(await screen.findByRole("button", { name: "Watchers: 0" }));
+    await user.click(await screen.findByRole("button", { name: "Not watching, 0 watchers" }));
     expect(await screen.findByText("No watchers yet")).toBeInTheDocument();
   });
 });

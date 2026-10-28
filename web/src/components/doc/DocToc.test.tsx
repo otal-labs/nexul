@@ -64,6 +64,12 @@ describe("DocToc", () => {
     expect(screen.getByRole("link", { name: "Backup" })).toBeInTheDocument();
   });
 
+  it("marks the first heading current before the reader scrolls", () => {
+    render(<DocToc headings={headings} />);
+    expect(screen.getByRole("link", { name: "Storage" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("link", { name: "Backup" })).not.toHaveAttribute("aria-current");
+  });
+
   it("scrolls the matching heading element on click", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
