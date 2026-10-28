@@ -91,17 +91,17 @@ describe("KanbanColumn", () => {
     expect(screen.getByText("Wire FTS")).toBeInTheDocument();
   });
 
-  it("mounts a long column 25 cards at a time, counting every ticket in the header", async () => {
+  it("mounts a long column 10 cards at a time, counting every ticket in the header", async () => {
     const user = userEvent.setup();
-    const many = Array.from({ length: 60 }, (_, i) => ticket(`t-${i}`, `Ticket ${i}`, "open", i));
+    const many = Array.from({ length: 25 }, (_, i) => ticket(`t-${i}`, `Ticket ${i}`, "open", i));
     renderColumn({ tickets: many });
-    expect(screen.getByLabelText("60 tickets")).toBeInTheDocument();
-    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(25);
+    expect(screen.getByLabelText("25 tickets")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(10);
 
-    await user.click(screen.getByRole("button", { name: "Show 25 more of 35" }));
-    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(50);
-    await user.click(screen.getByRole("button", { name: "Show 10 more of 10" }));
-    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(60);
+    await user.click(screen.getByRole("button", { name: "Show 10 more of 15" }));
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(20);
+    await user.click(screen.getByRole("button", { name: "Show 5 more of 5" }));
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(25);
     expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
   });
 
