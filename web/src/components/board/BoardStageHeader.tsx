@@ -1,18 +1,15 @@
 import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
-import { ChevronsRightLeftIcon, PlusIcon } from "lucide-react";
+import { ChevronRightIcon, ChevronsRightLeftIcon, PlusIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { boardGridTemplate, isFolded } from "@/components/board/boardGrid";
 import { StatusMark } from "@/components/board/StatusIcon";
-import type { DropTargetData } from "@/components/board/dragMove";
+import { STAGE_HEADER, type DropTargetData } from "@/components/board/dragMove";
 import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
 import type { BoardStatus } from "@/models/Status";
 import { useBoardStore } from "@/stores/boardStore";
-
-// The header's sortables carry this in place of a lane, so a stage drag only ever swaps with other header cells.
-export const STAGE_HEADER = "__stage-header__";
 
 interface BoardStageHeaderProps {
   columns: BoardStatus[];
@@ -44,16 +41,21 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
   return (
     <>
       {folded && (
-      <div ref={setNodeRef} style={style} className="flex justify-center">
+      // Folded Done names itself and opens on a click; a card dropped on it lands in Done in its own lane.
+      <div ref={setNodeRef} style={style}>
         <button
           type="button"
           onClick={toggleDone}
           aria-label={`Show ${column.name}, ${count} tickets`}
-          title={`${column.name}: ${count}`}
-          className="flex h-8 w-full items-center justify-center gap-1 rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground"
+          title={`Show ${column.name}`}
+          className="flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground group-data-[card-drag]/board:bg-accent"
         >
-          <StatusMark status={column} className="size-3.5" />
-          <span className="font-mono text-xs tabular-nums">{count}</span>
+          <StatusMark status={column} className="size-3.5 shrink-0" />
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <span className="truncate text-[13px] font-semibold text-foreground">{column.name}</span>
+            <span className="font-mono text-xs tabular-nums">{count}</span>
+          </span>
+          <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden />
         </button>
       </div>
       )}

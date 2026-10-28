@@ -11,6 +11,13 @@ export type DragMoveAction =
   | { kind: "category"; ticketId: string; categoryId: string }
   | { kind: "reorder"; updates: { ticketId: string; position: number }[] };
 
+// The stage row's targets carry this in place of a lane: a stage drag swaps only with other stage cells, and a card dropped there keeps its own lane.
+export const STAGE_HEADER = "__stage-header__";
+
+// A card over the stage row lands in that stage within its own lane, never in a lane named after the row.
+export const inOwnLane = (target: DropTargetData | undefined, activeCategoryId: string): DropTargetData | undefined =>
+  target?.type === "column" && target.categoryId === STAGE_HEADER ? { ...target, categoryId: activeCategoryId } : target;
+
 /** The dragged ticket, and the other tickets it's shared some drop target with. */
 export interface DragTicket {
   id: string;
@@ -41,6 +48,7 @@ export const resolveDragMove = (
   // The target cell's tickets in displayed order (the previewed ghost included when it's there), carrying their real positions.
   cellTickets: DragTicket[],
 ): DragMoveAction[] => {
+  target = inOwnLane(target, active.categoryId);
   if (!target) return [];
   if (target.type === "card" && target.ticketId === active.id) return [];
 
