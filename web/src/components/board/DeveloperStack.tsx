@@ -22,7 +22,7 @@ interface DeveloperToggleProps {
   onToggle: (developer: string) => void;
 }
 
-const MAX_VISIBLE = 5;
+const MAX_VISIBLE = 3;
 
 const DeveloperStackAvatar = ({ developer, active, dimmed, onToggle }: DeveloperToggleProps) => {
   const person = useTicketPerson(developer);
@@ -38,7 +38,7 @@ const DeveloperStackAvatar = ({ developer, active, dimmed, onToggle }: Developer
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={person.login} src={person.avatar_url} className="size-8 text-xs" />
+    <PersonAvatar login={person.login} src={person.avatar_url} className="size-7 text-[11px]" />
   </button>
   );
 };
@@ -85,7 +85,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
             <button
               type="button"
               aria-label={`${overflow.length} more developers`}
-              className="relative flex size-8 items-center justify-center rounded-full bg-muted font-mono text-xs text-muted-foreground ring-2 ring-card transition-[color,background-color] duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
+              className="relative flex size-7 items-center justify-center rounded-full bg-muted font-mono text-[11px] text-muted-foreground ring-2 ring-card transition-[color,background-color] duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
             >
               +{overflow.length}
             </button>
