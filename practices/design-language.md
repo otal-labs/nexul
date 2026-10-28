@@ -183,7 +183,8 @@ icon, on the phone card and ticket screen; the web board card shows the icon alo
 card the type is never a filled shape beside the palette's accent. A label is a neutral chip: a
 `rounded-full` hairline pill at `foreground` 4% with `muted-foreground` text,
 its own hue only on a 6px leading dot (`LabelChip` on the web, drawn once for
-the board card, the ticket rail and the board's label filter; the phone card
+the ticket rail and the board's label filter, and without its pill on the
+board card, where a row of pills outweighed the title; the phone card
 has the same chip). A destructive button is white on `destructive-fill`.
 
 A disabled button keeps its shape but loses its fill and shadow and takes
@@ -546,8 +547,8 @@ mark, and each column counts its own stage. A card is the mono key as an eyebrow
 (with the run timer, the thread mark and the 20px avatar of whoever acts
 next trailing on its line), the title at full width in 13px medium, the
 blocked line, then the type as its icon alone in its hue (its name in the
-tooltip and for screen readers) and at most two label chips (11px on the card,
-borderless in dark) on a row of their own, any more counted in a mono "+N" chip that
+tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
+name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
 names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
@@ -561,7 +562,7 @@ one muted "No tickets" line; below that it is a 40px well of stage mark,
 count and `+`, its name in the header's tooltip and for screen readers. Every column
 sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
 with the cards' edges, and its cards are raised on it: `card` with the card
-shadow, the hairline only in light, so the board reads as three surfaces
+shadow and its hairline, so the board reads as three surfaces
 (panel, well, card). While a card is held an empty column shows the dashed
 slot at its full height, as the place a card can land.
 
