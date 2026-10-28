@@ -51,7 +51,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-      <PersonAvatar login={person.login} src={shown.avatar_url} className="size-5 text-[10px]" />
+      <PersonAvatar login={person.login} src={shown.avatar_url} className="size-4 text-[10px]" />
     </span>
   );
   const pills = (
@@ -98,14 +98,14 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   return (
     <>
       {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the pills a row of their own. */}
-      <span className="flex h-5 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+      <span className="flex h-4 items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
         <span className="tabular-nums">{prefix}-{ticket.number}</span>
         <span className="flex-1" />
         {run}
         {thread}
         {avatar}
       </span>
-      <span dir="auto" title={ticket.title} className="-mt-1 line-clamp-3 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
+      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
       {(type !== "" || labels.length > 0) && pills}
     </>
@@ -158,7 +158,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
         if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
-        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         draggable && "cursor-grab active:cursor-grabbing",
         !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
