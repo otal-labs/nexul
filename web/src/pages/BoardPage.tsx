@@ -64,7 +64,7 @@ export const BoardPage = () => {
 
   return (
     // Full-bleed: the board is the one page where width is columns, so it gets the whole panel.
-    <Container className="max-w-none space-y-4 py-6">
+    <Container className="max-w-none space-y-3 py-5">
       {!routeParam && (
         <BoardUnscopedStates
           isLoading={isPending}

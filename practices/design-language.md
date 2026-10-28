@@ -203,7 +203,7 @@ is a render-blocking dependency the product does not control. No script face,
 and no fourth family.
 
 - Fraunces is the display face, and only that: page, screen and record
-  titles, empty-state headlines, and the headlines of the showcase screens
+  titles (except the board's, a work surface titled in the sans), empty-state headlines, and the headlines of the showcase screens
   (the web app's signed-out, onboarding and error pages) and the site's
   landing pages.
   Never under 20px (20pt on the phone), where the soft serif turns muddy.
@@ -536,8 +536,11 @@ kept per browser; inside it a title drops a leading folder name. Every other
 notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
 
-Board. The header is the title at 24px over a mono "55 tickets · 8 people"
-line, nothing else: no breadcrumb, no project mark and no stage summary,
+Board. The header is one line: the title in the UI sans at 16px semibold
+with a muted "55 tickets · 8 people" beside it on its baseline, nothing else.
+The board is the one page whose title is not the display face: it is a work
+surface opened all day, and its height is cards. There is no breadcrumb, no
+project mark and no stage summary,
 because the sidebar's switchers already show the workspace and the project's
 mark, and each column counts its own stage. A card is the mono key as an eyebrow
 (with the run timer, the thread mark and the 20px avatar of whoever acts
@@ -1272,6 +1275,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
+| Board title in the sans on one line with its count (2026-10-28) | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
 | Board header: the title and its count line only (2026-10-28) | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
 | An empty column narrows to 160px in its lane from 1280px, a 40px well of mark and count below (2026-10-28) | Against a 40px strip with the name set vertically at every width (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
 | Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
