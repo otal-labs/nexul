@@ -35,6 +35,10 @@ beforeEach(() => {
 });
 
 describe("DeploySidebarNav", () => {
+  it("starts folded in a browser that has never opened it", () => {
+    expect(useSidebarStore.getInitialState().workspaceNavOpen).toBe(false);
+  });
+
   it("folds down to its header and opens again", async () => {
     const user = userEvent.setup();
     await renderNav();
