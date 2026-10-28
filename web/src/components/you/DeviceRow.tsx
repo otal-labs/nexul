@@ -38,7 +38,8 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
         <p className="truncate text-sm font-medium">{name}</p>
         <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           {session.current && <SettingsStatus tone="success">This device</SettingsStatus>}
-          {!session.current && <span>Active {formatRelativeTime(session.last_active_at)}</span>}
+          {!session.current && <span>Last active {formatRelativeTime(session.last_active_at)}</span>}
+          <span aria-hidden>·</span>
           <span className="truncate font-mono tabular-nums">{session.ip}</span>
         </p>
       </div>

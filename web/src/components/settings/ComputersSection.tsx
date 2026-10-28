@@ -23,7 +23,7 @@ export const ComputersSection = () => {
       footer={
         <AddComputerDialog
           trigger={
-            <Button type="button" size="sm">
+            <Button type="button" size="sm" className="ml-auto">
               <PlusIcon className="size-4" aria-hidden />
               Add a computer
             </Button>

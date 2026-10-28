@@ -5,6 +5,7 @@ import type { ActionGate } from "@nexul/client-core/actionState";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDestroyButtonProps {
   icon: LucideIcon;
@@ -68,7 +69,7 @@ export const ConfirmDestroyButton = ({
           size="sm"
           aria-label={label ?? (labelled ? undefined : idleLabel)}
           title={labelled ? undefined : idleLabel}
-          className="hover:text-destructive"
+          className={cn("hover:text-destructive", labelled && "text-muted-foreground")}
           disabled={disabled}
           loading={loading}
           onClick={() => setArmed(true)}
