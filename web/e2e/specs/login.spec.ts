@@ -1,7 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
-import { BASE_URL } from "../helpers";
+import { BASE_URL, E2E_WORKSPACE_PATH } from "../helpers";
 import { anonPage, authedPage, closeBrowser } from "./browser";
 
 afterAll(closeBrowser);
@@ -11,7 +11,7 @@ describe("login / auth surface", () => {
     const page = await anonPage("/");
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByRole("heading", { name: /docs become tickets/i }),
+      page.getByRole("heading", { name: /docs, tickets, chat, and deploys/i }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /sign in/i })).toBeVisible();
   });
@@ -25,11 +25,11 @@ describe("login / auth surface", () => {
   it("boots authenticated when a session is present", async () => {
     const page = await authedPage("/");
     await page.waitForLoadState("networkidle");
-    expect(page.url()).toBe(`${BASE_URL}/`);
+    expect(page.url()).toBe(`${BASE_URL}${E2E_WORKSPACE_PATH}`);
     await expect(
-      page.getByRole("heading", { name: /docs become tickets/i }),
+      page.getByRole("heading", { name: /docs, tickets, chat, and deploys/i }),
     ).toBeVisible();
     // Docs live in the per-project sidebar tree (ticket 13); there's no generic "Docs" link on the home page, so assert the logged-in CTA instead.
-    await expect(page.getByRole("link", { name: /open the board/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /open board/i })).toBeVisible();
   });
 });

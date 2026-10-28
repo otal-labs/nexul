@@ -1,10 +1,11 @@
 # Builds the server image from source, web UI embedded (used by docker-compose.e2e.yml). Build context: ./server;
-# the `root` named context supplies the Go module, internal/, and web/. Releases ship the server as a host binary instead.
+# the `root` named context supplies the Go module, internal/, web/ and the client-core/ it imports. Releases ship the server as a host binary instead.
 FROM --platform=$BUILDPLATFORM oven/bun:alpine AS web
 WORKDIR /web
 COPY --from=root web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY --from=root web/ ./
+COPY --from=root client-core/ /client-core/
 RUN VITE_API_URL=/ bun run build
 
 # Cross-compile from the build host: an emulated arm64 Go build under QEMU takes many times longer.

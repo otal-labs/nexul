@@ -1,6 +1,7 @@
 import { expect } from "playwright/test";
 import { afterAll, describe, it } from "vitest";
 
+import { E2E_WORKSPACE_PATH } from "../helpers";
 import { closeBrowser, authedPage } from "./browser";
 
 afterAll(closeBrowser);
@@ -9,13 +10,13 @@ const TITLE = `e2e-doc-${Date.now()}`;
 
 describe("docs (web)", () => {
   it("shows the docs page and an empty state on a fresh instance", async () => {
-    const page = await authedPage("/docs");
+    const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: "Docs", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Docs/, level: 1 })).toBeVisible();
   });
 
   it("creates a doc through the UI and sees it in the list", async () => {
-    const page = await authedPage("/docs");
+    const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForLoadState("networkidle");
 
     // The sidebar also has a "New doc in {project}" button per project (ticket 13), so use the page-level exact "New doc" button instead of an ambiguous regex.
@@ -29,7 +30,7 @@ describe("docs (web)", () => {
   });
 
   it("opens the doc detail view", async () => {
-    const page = await authedPage("/docs");
+    const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForLoadState("networkidle");
     await page.getByRole("main").getByText(TITLE).click();
     await page.waitForLoadState("networkidle");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { E2E_PROJECT_ID, makeApiClient, mintToken } from "../helpers";
+import { E2E_MACHINE, E2E_PROJECT_ID, makeApiClient, mintToken, progressStatusId } from "../helpers";
 
 const TOKEN = mintToken();
 const api = makeApiClient(TOKEN);
@@ -14,7 +14,7 @@ describe("api depth (HTTP gateway)", () => {
       ...json({
         project_id: E2E_PROJECT_ID,
         name: `e2e-host-svc-${Date.now()}`,
-        target: "e2e-host",
+        machine: E2E_MACHINE,
         strategy: "run",
         docker_network: "e2e-net",
         health_check: { url: "http://e2e/health" },
@@ -119,7 +119,7 @@ describe("api depth (HTTP gateway)", () => {
       ...json({
         project_id: E2E_PROJECT_ID,
         name: `e2e-rollback-${Date.now()}`,
-        target: "e2e-host",
+        machine: E2E_MACHINE,
         strategy: "run",
         docker_network: "e2e-net",
         health_check: { url: "http://e2e/health" },
@@ -149,7 +149,7 @@ describe("api depth (HTTP gateway)", () => {
       expect(
         (await api(`/api/tickets/${ticketId}/status`, {
           method: "PATCH",
-          ...json({ status: "in_progress" }),
+          ...json({ status: await progressStatusId(api) }),
         })).status,
       ).toBe(200);
 

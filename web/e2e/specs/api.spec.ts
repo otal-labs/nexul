@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   BASE_URL,
+  E2E_MACHINE,
   E2E_PROJECT_ID,
   E2E_WORKSPACE_ID,
   MCP_URL,
-  mcpHeaders,
   makeApiClient,
+  mcpHeaders,
   mintToken,
+  progressStatusId,
 } from "../helpers";
 
 const TOKEN = mintToken();
@@ -50,7 +52,7 @@ describe("api (HTTP gateway)", () => {
     const id = created.body!.id;
 
     expect((await api(`/api/tickets/${id}/labels`, { method: "POST", ...json({ label: "e2e" }) })).status).toBe(200);
-    expect((await api(`/api/tickets/${id}/status`, { method: "PATCH", ...json({ status: "in_progress" }) })).status).toBe(200);
+    expect((await api(`/api/tickets/${id}/status`, { method: "PATCH", ...json({ status: await progressStatusId(api) }) })).status).toBe(200);
     expect((await api(`/api/tickets/${id}`, { method: "DELETE" })).status).toBe(204);
   });
 
@@ -62,8 +64,8 @@ describe("api (HTTP gateway)", () => {
     });
     expect(cat.status).toBe(201);
     expect((await api(`/api/categories/${cat.body!.id}`, { method: "DELETE" })).status).toBe(204);
-    expect((await api("/api/statuses")).status).toBe(200);
-    expect((await api("/api/ticket-types")).status).toBe(200);
+    expect((await api(`/api/statuses?project_id=${E2E_PROJECT_ID}`)).status).toBe(200);
+    expect((await api(`/api/ticket-types?project_id=${E2E_PROJECT_ID}`)).status).toBe(200);
   });
 
   it("services: create → update → deploy enqueue → cancel → delete", async () => {
@@ -72,7 +74,7 @@ describe("api (HTTP gateway)", () => {
       ...json({
         project_id: E2E_PROJECT_ID,
         name: `e2e-api-svc-${Date.now()}`,
-        target: "e2e-host",
+        machine: E2E_MACHINE,
         strategy: "run",
         docker_network: "e2e-net",
         health_check: { url: "http://e2e/health" },
@@ -91,10 +93,10 @@ describe("api (HTTP gateway)", () => {
   });
 
   it("automations: create → config → enable → mint/revoke token → delete", async () => {
-    expect((await api("/api/automations")).status).toBe(200);
+    expect((await api(`/api/automations?workspace_id=${E2E_WORKSPACE_ID}`)).status).toBe(200);
     const created = await api<{ automation: { id: string }; token: string }>("/api/automations", {
       method: "POST",
-      ...json({ name: `e2e-automation-${Date.now()}`, scopes: ["tickets:read"] }),
+      ...json({ workspace_id: E2E_WORKSPACE_ID, name: `e2e-automation-${Date.now()}`, scopes: ["tickets:read"] }),
     });
     expect(created.status).toBe(201);
     expect(created.body!.token).toBeTruthy();
@@ -122,7 +124,7 @@ describe("api (HTTP gateway)", () => {
     expect((await api("/api/audit")).status).toBe(200);
     expect((await api("/api/events/catalog")).status).toBe(200);
     expect((await api("/api/integrations")).status).toBe(200);
-    expect((await api("/api/dns/status")).status).toBe(200);
+    expect((await api("/api/connectors")).status).toBe(200);
   });
 
   it("topology: get + round-trip put", async () => {
