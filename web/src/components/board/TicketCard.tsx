@@ -92,7 +92,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         {run}
         {thread}
       </span>
-      <span dir="auto" title={ticket.title} className="-mt-1 line-clamp-3 text-sm font-medium leading-snug break-words">{ticket.title}</span>
+      <span dir="auto" title={ticket.title} className="-mt-0.5 line-clamp-3 text-[13px] font-medium leading-snug break-words">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
       <span className="flex items-end justify-between gap-2">
         {pills}
@@ -148,7 +148,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
         if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
-        "group relative flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         draggable && "cursor-grab active:cursor-grabbing",
         !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.

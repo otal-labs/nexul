@@ -534,31 +534,36 @@ kept per browser; inside it a title drops a leading folder name. Every other
 notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
 
-Board. The header leads with the project mark (`ProjectMark`: the prefix in
-mono on a flat fill seeded from it, 44px, 8px radius, the same fill as a
-person's avatar) beside the title, a mono "55 tickets · 8 people" line under
-it, and the stage summary as the header's action (`BoardStageSummary`): one
-6px bar split by stage in the stage hues, backlog at half strength, over a
-legend of dot, stage and mono count, which stays on one row at the width of its entries, the bar matching it (under the title when the header is too narrow for both). It counts every ticket in the project,
-whatever the filters show, and moves as the Motion baseline's Board entry says. A card is the
-mono key as an eyebrow (with the run timer and thread mark trailing on its
-line), the title at full width, the blocked line, then the type (its icon in its
-hue beside plain text) and the label chips with the 20px avatar of whoever acts next opposite. A swimlane header is a leading
-chevron, the lane name, and a 56px done bar beside the mono "4/11 tickets".
-A column has no well at rest, populated or empty: its header (flush with the
-cards' edges) over the cards, or over one muted "No tickets" line, so the
-cards sit on the page panel and the gap and the header separate the columns.
-While a card is held every column takes its `surface-2` well and an empty one
-shows the dashed slot, still the column's full height, as the place a card
-can land.
+Board. The header is one compact row: the project mark (`ProjectMark`: the
+prefix in mono on a flat fill seeded from it, 36px on the board, 6px radius,
+the same fill as a person's avatar) beside the title at 24px, a mono "55
+tickets · 8 people" line under it, and the stage summary as the header's
+action (`BoardStageSummary`): a legend of dot, stage and mono count on one
+row, backlog's dot at half strength. It counts every ticket in the project,
+whatever the filters show. No breadcrumb: the sidebar's switchers already
+name the workspace and the project. A card is the mono key as an eyebrow
+(with the run timer and thread mark trailing on its line), the title at full
+width in 13px medium, the blocked line, then the type (its icon in its hue
+beside plain text) and the label chips with the 20px avatar of whoever acts
+next opposite, at 10px padding. A swimlane is a 32px bar on `surface-2` with
+a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
+trailing. Columns share the panel's width down to a 220px minimum, so all
+five stages fit at 1440 beside the sidebar, and grow with their cards while
+the page scrolls; a column mounts its first 25 cards and a "Show 25 more of
+N" row mounts the next. A column has no well at rest, populated or empty:
+its header (flush with the cards' edges) over the cards, or over one muted
+"No tickets" line, so the cards sit on the page panel and the gap and the
+header separate the columns. While a card is held every column takes its
+`surface-2` well and an empty one shows the dashed slot, still the column's
+full height, as the place a card can land.
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
 bg-card px-3 text-sm`, with a chevron if it opens a popover), an `×`-removable
 chip per active filter, and an optional saved-view or sort control trailing
-right. The board's bar centres its search field with a labelled Create button
-beside it, the filters on its left, and stacks the two under each other when
-the board is narrow. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+right. The board's bar is 32px controls: the filters lead, and a
+16rem search field with the labelled Create button beside it trails at the
+right edge, wrapping onto a second row when the board is narrow. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.
@@ -1260,7 +1265,8 @@ The web app's pattern decisions, each with what it was picked over.
 | Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
-| Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
+| Board header: one compact row, the project mark and title beside a stage legend with no bar (2026-10-28) | Against the five-colour stage bar beside the title, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name, and the strip and the row cost 50 to 80px of height on the page where height is cards; the legend's dots and counts say the same thing quietly. The breadcrumb went too: it repeated the sidebar's workspace switcher |
+| Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | The light field is derived from the palette, never a fixed hue | The blue and pink glows of the first field showed in every palette: a cool wash behind the sidebar of Ember, Clay and Grove, a magenta bloom beside a teal or blue brand on sign-in, a taupe stain on Zen from a near-black brand at 30%. Each glow is now a relative colour (the brand's hue and chroma at a fixed lightness, so a grey brand adds nothing) or a lift of `card`, held to 40% alpha or less. Rejected: a per-palette field override (a value to keep in step with every palette) and a mix of the brand with the canvas (a dark brand darkens a light canvas into a stain) |
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
@@ -1395,13 +1401,6 @@ writing its own.
 - Board: a ticket that lands in a done-stage column from a working one gets
   a success wash, the `success` hue at 15% fading out over 800ms (400ms under
   reduced motion).
-- Board stage bar (`BoardStageSummary`, `stageBarMotion.ts`): the first time
-  it shows, each segment grows from its own left edge, `scaleX` over 300ms
-  `--ease-out`, all together, so the bar never moves as a whole. When tickets
-  change stage each segment glides to its new place and share (a FLIP of
-  `translateX` and `scaleX`) over 250ms `--ease-standard`, and a count that
-  changed rises 6px as it fades in over 200ms. Reduced motion: no scale, the
-  changed count fades in 150ms.
 - Empty state (`.empty-state` in `index.css`): a whole-page one turns its
   orbit into place. The outer ring settles from 0.92 (520ms), the dashed one
   turns in from -40° and 0.9 (620ms), the brand and muted dots swing 75° along
@@ -1511,15 +1510,6 @@ Agent's live step: decided 2026-10-15.
 Decided 2026-10-09 without the owner in the loop: each built as two to four
 live variants on the real surface with seeded data, scrubbed frame by frame
 and recorded at 1x and 0.25x, and judged against the baseline above.
-
-Board stage bar.
-- Load: each segment grows from its own edge, all together (300ms). Rejected:
-  the whole bar scaling from the left (the gaps and caps squashed and every
-  segment slid right as it grew) and a 30ms cascade across the segments (it
-  ran 340ms and read as five bars arriving, not one measure).
-- Change: glide plus the changed counts rising in. Rejected: a glide alone,
-  which showed the shares moving but not which stages changed when someone
-  else moved a ticket.
 
 Command palette.
 - Open and close: no motion from a key (⌘K, Escape, Enter) or a pick, the

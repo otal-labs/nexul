@@ -23,7 +23,7 @@ export const BoardCreateMenu = ({ projectId, onNewTicket, onNewCategory }: Board
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" className="h-9 px-3">
+        <Button size="sm" className="h-8 px-3">
           <PlusIcon />
           Create
         </Button>

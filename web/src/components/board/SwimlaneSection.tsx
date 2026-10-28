@@ -43,26 +43,26 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
     <section
       ref={setNodeRef}
       aria-label={`${lane.label} swimlane`}
-      // Fixed-width columns overflow into the shared scroll container instead of wrapping; the lane header spans them all.
+      // Columns share the panel width down to their minimum, then overflow into the shared scroll; the lane bar spans them all.
       className={cn(
-        "w-max min-w-full space-y-2 rounded-md transition-[box-shadow] duration-150 ease-standard",
+        "w-max min-w-full space-y-1.5 rounded-md transition-[box-shadow] duration-150 ease-standard",
         isOver && "ring-1 ring-inset ring-ring",
       )}
     >
-      <h3 className="border-b border-border pb-1">
-        {/* The whole header row toggles collapse; label and count stay sticky against the horizontal scroll. */}
+      <h3>
+        {/* The whole bar toggles collapse; label and count stay sticky against the horizontal scroll. */}
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
-          className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+          className="group/lane flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-md bg-surface-2 px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
-          <span className="sticky left-0 flex min-w-0 items-center gap-2">
+          <span className="sticky left-2 flex min-w-0 items-center gap-2">
             <ChevronDownIcon
               className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
             />
-            <span title={lane.label} className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
+            <span title={lane.label} className="min-w-0 truncate text-[13px] font-medium">{lane.label}</span>{" "}
             {allDone && <CircleCheckBig className="size-3 shrink-0 text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
               <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
@@ -77,14 +77,8 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
               </span>
             )}
           </span>{" "}
-          <span className="sticky right-0 flex shrink-0 items-center gap-2.5 font-mono text-xs tabular-nums text-muted-foreground">
-            <span className="h-1 w-14 overflow-hidden rounded-full bg-border" aria-hidden>
-              <span
-                className="block h-full origin-left rounded-full bg-success transition-transform duration-250 ease-standard"
-                style={{ transform: `scaleX(${lane.tickets.length > 0 ? doneCount / lane.tickets.length : 0})` }}
-              />
-            </span>
-            {doneCount}/{lane.tickets.length} tickets
+          <span className="sticky right-2 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+            {doneCount}/{lane.tickets.length} done
           </span>
         </button>
       </h3>
@@ -97,7 +91,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
       >
         <div className="min-h-0 overflow-hidden">
           <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {columns.map((column) => (
                 <KanbanColumn
                   key={`${lane.key}-${column.id}`}
