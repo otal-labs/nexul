@@ -15,7 +15,7 @@ import { isStructuredBody, parseBodyToJSON } from "@/utils/RichtextUtility";
 
 interface DocBodyViewProps {
   body: string;
-  /** `text-sm` sets it at the small prose size, for a body quoted inside a rail. */
+  /** `text-sm` or `text-xs` sets it at a small prose size, for a body quoted in a bubble or a rail. */
   className?: string;
 }
 

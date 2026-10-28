@@ -101,7 +101,7 @@ export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLab
   const { data: labelColors } = useFetchLabelColors(ticket.project_id);
 
   return (
-    <div className={cn(rowClass, "items-start")}>
+    <div className={cn(rowClass, "items-start py-0.5")}>
       <span className={cn(rowIconClass, "mt-1")}>
         <TagIcon className="size-3.5" aria-hidden />
       </span>

@@ -638,7 +638,7 @@ rail is not drawn and an "On this page" icon in the actions opens the same
 outline in a popover. A memory's body sits on the panel the same way.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
-16px at 1.75, headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
+16px at 1.75 (quoted in a chat bubble 14px, in a rail 12px, both at 1.6), headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
 28px serif page title stays the top of the hierarchy, and no heading is
 smaller than the text it opens), closer to their text than to the paragraph
 above (1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
@@ -738,7 +738,8 @@ segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
 rail sits beside the tabs behind a hairline rule, level with the tab row, on
 Ticket and Thread alike, and the tabs and the rail scroll on their own;
 narrower, the rail folds behind a Details row above the tab row, closed by
-default, so the body starts under the header. Notes is laid out as Ticket: the
+default, so the body starts under the header; open, it takes the height the
+tabs leave above 10rem. Notes is laid out as Ticket: the
 picked note open on the left at the body's measure, headed as its dialog is,
 and a Notes rail of rows (file, time, the summary clamped to two lines) with
 the picked one on the active edge, in place of the ticket's rail; the newest

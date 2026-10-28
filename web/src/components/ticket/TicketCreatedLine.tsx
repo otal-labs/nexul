@@ -13,7 +13,7 @@ export const TicketCreatedLine = ({ ticket }: TicketCreatedLineProps) => {
   const person = usePerson(ticket.reporter.login ?? "");
   const reporter = reporterLabel(ticket.reporter, () => personLabel(person));
   return (
-    <p className="border-t border-border px-2 pt-4 font-mono text-xs text-muted-foreground">
+    <p className="mx-2 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
       created {formatUpdatedAgo(ticket.created_at)}
       {reporter && ` by ${reporter}`}
     </p>
