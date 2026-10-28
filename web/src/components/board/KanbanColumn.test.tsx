@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -105,11 +105,13 @@ describe("KanbanColumn", () => {
     expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
   });
 
-  it("folds an empty column to a narrow strip that still names it and says it is empty", () => {
+  it("narrows an empty column, still named and saying it is empty", () => {
     renderColumn({ tickets: [] });
-    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).toHaveClass("w-10");
+    const region = screen.getByRole("region", { name: "Open column in Sprint 1" });
+    expect(region).toHaveClass("w-10", "xl:w-40");
+    expect(within(region).getByRole("heading", { level: 4 })).toHaveAttribute("title", "Open");
     expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("No tickets")).toHaveClass("sr-only");
+    expect(screen.getByText("No tickets")).toBeInTheDocument();
   });
 
   it("gives a column with cards the full width", () => {
