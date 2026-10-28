@@ -19,6 +19,7 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { getProjectKey } from "@/hooks/ProjectHooks";
 import { useRunState } from "@/hooks/TrailHooks";
+import { useFittingChildren } from "@/hooks/useFittingChildren";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
@@ -33,7 +34,7 @@ interface TicketCardBodyProps {
   ticket: Ticket;
 }
 
-// Two labels fit the meta line beside the key; the rest count as +N, named in its tooltip.
+// At most two labels show on the meta line beside the key; the rest count as +N.
 const CARD_LABELS = 2;
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
@@ -48,6 +49,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
+  const [labelsRef, fitting] = useFittingChildren<HTMLSpanElement>(Math.min(labels.length, CARD_LABELS));
   // Only a bug shows its type, in its red: every other type's icon on every card said nothing a column of them did not.
   const isBug = type.trim().toLowerCase() === "bug";
 
@@ -56,19 +58,26 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
       <PersonAvatar login={person.login} src={shown.avatar_url} className="size-4 text-[10px]" />
     </span>
   );
+  const hiddenLabels = labels.slice(fitting);
   const labelRun = labels.length > 0 && (
-    // Labels give way first when the meta line runs out of room; the key, the blocker and a bug's icon stay.
-    // A label that does not fit wraps onto a hidden second row, so it drops out whole instead of being cut mid-word.
-    <span className="flex h-4 min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
-      {labels.slice(0, CARD_LABELS).map((label) => (
-        <LabelChip key={label} label={label} color={labelColors?.[label]} className="shrink-0 gap-1 border-transparent bg-transparent px-0 font-sans text-[11px]" />
-      ))}
-      {labels.length > CARD_LABELS && (
-        <span title={labels.slice(CARD_LABELS).join(", ")} className="shrink-0">
-          +{labels.length - CARD_LABELS}
+    <>
+      {/* Labels give way first and drop out whole, never cut mid-word; what dropped is counted in +N, named in its tooltip. */}
+      <span ref={labelsRef} className="relative flex h-4 min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
+        {labels.slice(0, CARD_LABELS).map((label, index) => (
+          <LabelChip
+            key={label}
+            label={label}
+            color={labelColors?.[label]}
+            className={cn("max-w-none shrink-0 gap-1 border-transparent bg-transparent px-0 font-sans text-[11px]", index >= fitting && "invisible")}
+          />
+        ))}
+      </span>
+      {hiddenLabels.length > 0 && (
+        <span title={hiddenLabels.join(", ")} aria-label={`${hiddenLabels.length} more labels: ${hiddenLabels.join(", ")}`} className="shrink-0">
+          +{hiddenLabels.length}
         </span>
       )}
-    </span>
+    </>
   );
   const run = (
     <>

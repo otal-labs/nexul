@@ -69,7 +69,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
   const anySelected = selected.length > 0;
 
   return (
-    <div role="group" aria-label="Filter by developer" className="flex items-center -space-x-2">
+    <div role="group" aria-label="Filter by developer" className="flex items-center -space-x-1.5">
       {visible.map((developer) => (
         <DeveloperStackAvatar
           key={developer.key}
