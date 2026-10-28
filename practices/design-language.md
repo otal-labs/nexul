@@ -549,8 +549,9 @@ next trailing on its 16px line), the title at full width in 13px at weight 450 (
 blocked line, then the type as its icon alone in its hue (its name in the
 tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
 name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
-names them in its tooltip, at 8px padding top and bottom and 10px at the sides with 6px between its rows, so a one-line card is about 78px. A swimlane is a 32px bar on the columns' well tone (`surface-2` in
-dark, ink at 4% in light, where some palettes' `surface-2` equals the panel) with
+names them in its tooltip, at 8px padding top and bottom and 10px at the sides with 6px between its rows, so a one-line card is about 78px. A swimlane is a 32px bar on the columns' well tone (the canvas at 50% in
+dark, ink at 4% in light: some palettes set `surface-2` to their panel's own
+colour, so neither well uses it) with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
 below 1280, 148px below 1024), so three stages with cards and two empty
@@ -563,7 +564,7 @@ one line (mark, name, count), below that to a 72px rail with its name in 11px
 semibold on one line over its count (a larger name wrapped "In / progress /
 0" onto three lines); no `+`, since Create picks the stage, so an empty stage keeps its name in reading order and gives its width
 to the columns with work. Every column
-sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
+sits on a well (the canvas at 50% over the panel in dark, ink at 4% in light), its header flush
 with the cards' edges, and its cards are raised on it: `card` with the card
 shadow and its hairline, so the board reads as three surfaces
 (panel, well, card). While a card is held an empty column shows the dashed
