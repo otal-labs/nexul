@@ -50,10 +50,10 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
           onClick={toggleDone}
           aria-label={`Show ${column.name}, ${count} tickets`}
           title={`${column.name}: ${count}`}
-          className="flex h-8 w-full flex-col items-center justify-center gap-0.5 rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground"
+          className="flex h-8 w-full items-center justify-center gap-1 rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground"
         >
           <StatusMark status={column} className="size-3.5" />
-          <span className="font-mono text-[11px] tabular-nums">{count}</span>
+          <span className="font-mono text-xs tabular-nums">{count}</span>
         </button>
       </div>
       )}

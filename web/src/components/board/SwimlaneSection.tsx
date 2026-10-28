@@ -46,12 +46,12 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
       )}
     >
       {/* Pinned under the stage header while its lane scrolls; label and count also stay put against the horizontal scroll. */}
-      <h3 className="sticky top-9 z-10 bg-[var(--panel)]">
+      <h3 className="sticky top-9 z-10 border-b border-border bg-[var(--panel)]">
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
-          className="group/lane flex h-7 w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
+          className="group/lane flex h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
           <span className="sticky left-2 flex min-w-0 items-center gap-2">
             <ChevronDownIcon
@@ -71,10 +71,11 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
                   {runs.waiting} {runs.waiting === 1 ? "ticket" : "tickets"}
                 </span>
               </span>
-            )}
-          </span>{" "}
-          <span className="sticky right-2 shrink-0 text-xs tabular-nums text-muted-foreground">
-            {doneCount}/{lane.tickets.length} done
+            )}{" "}
+            {/* Beside the name, not at the right edge, where it sat over the folded Done strip. */}
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {doneCount}/{lane.tickets.length} done
+            </span>
           </span>
         </button>
       </h3>
