@@ -2,20 +2,18 @@
 
 ## Supported versions
 
-Only the latest stable release and the current `master` branch receive
-security fixes.
+Security fixes land on `master` and in the latest stable release only.
 
 ## Reporting a vulnerability
 
 Report it privately through
-[GitHub's vulnerability reporting](https://github.com/otal-labs/nexul/security/advisories/new)
-with a description of the issue, the steps to reproduce it, and the version or
-commit you tested against. Only maintainers can see the report. Do not open a
-public issue for a vulnerability.
+[GitHub's vulnerability reporting](https://github.com/otal-labs/nexul/security/advisories/new).
+Include what's wrong, how to reproduce it, and the version or commit you
+tested. Only maintainers see the report. Please don't open a public issue.
 
-You will get an acknowledgement within three working days, and the advisory
-tracks the fix. Once it is released, we credit reporters in the release notes
-unless they ask us not to.
+We acknowledge reports within three working days and track the fix in the
+advisory. Once the fix ships, we credit you in the release notes unless you'd
+rather we didn't.
 
 ## Scope
 
