@@ -547,6 +547,12 @@ body {
   line-height: 1.6;
 }
 
+/* A body quoted in a rail takes the rail's 12px text. */
+.prose-rich.text-xs {
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
 /* Remembered block sizes let a list-pane drag skip laying out off-screen blocks without the scroll height jumping. */
 .doc-body-view .ProseMirror > * {
   contain-intrinsic-size: auto none;

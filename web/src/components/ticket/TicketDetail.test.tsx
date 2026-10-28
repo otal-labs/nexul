@@ -115,14 +115,6 @@ describe("TicketDetail", () => {
     expect(urls).toHaveLength(0);
   });
 
-  it("names the reporter in the meta line, as Nexul for a person when an agent filed it", async () => {
-    const { unmount } = await renderDetail(ticket);
-    expect(screen.getByText(/ by onik97$/)).toBeInTheDocument();
-    unmount();
-    await renderDetail({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
-    expect(screen.getByText(/ by Nexul · from lena$/)).toBeInTheDocument();
-  });
-
   it("falls back to the raw ticket id when no project is provided", async () => {
     await renderDetail(ticket);
     expect(screen.getByText("t-1")).toBeInTheDocument();

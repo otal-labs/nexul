@@ -10,14 +10,17 @@ import {
 } from "@/components/doc/mention/editorExtensions";
 import { publishChips } from "@/components/doc/mention/mentionChipsStore";
 import { useResolveMentions } from "@/hooks/MentionHooks";
+import { cn } from "@/lib/utils";
 import { isStructuredBody, parseBodyToJSON } from "@/utils/RichtextUtility";
 
 interface DocBodyViewProps {
   body: string;
+  /** `text-sm` or `text-xs` sets it at a small prose size, for a body quoted in a bubble or a rail. */
+  className?: string;
 }
 
 // Resolves every mention ref in one batched request before publishing chips.
-export const DocBodyView = ({ body }: DocBodyViewProps) => {
+export const DocBodyView = ({ body, className }: DocBodyViewProps) => {
   const editor = useEditor({
     extensions: buildEditorExtensions(),
     content: isStructuredBody(body) ? parseBodyToJSON(body) : body,
@@ -37,7 +40,7 @@ export const DocBodyView = ({ body }: DocBodyViewProps) => {
   }, [data]);
 
   return (
-    <div className="doc-body-view doc-readonly prose-rich">
+    <div className={cn("doc-body-view doc-readonly prose-rich", className)}>
       <DiscordTimeLayer>
         <EditorContent editor={editor} />
       </DiscordTimeLayer>

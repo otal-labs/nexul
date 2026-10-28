@@ -5,7 +5,6 @@ import { TicketCategoryRow } from "@/components/ticket/TicketCategoryRow";
 import { TicketDueRow } from "@/components/ticket/TicketDueRow";
 import { TicketLabelsRow } from "@/components/ticket/TicketLabelsRow";
 import { TicketPersonRow } from "@/components/ticket/TicketPersonRow";
-import { TicketReporterRow } from "@/components/ticket/TicketReporterRow";
 import { TicketStatusRow } from "@/components/ticket/TicketStatusRow";
 import { TicketTypeRow } from "@/components/ticket/TicketTypeRow";
 import { TicketRole, type Ticket } from "@/models/Ticket";
@@ -31,17 +30,16 @@ export const TicketPropertiesPanel = ({
   onAddLabel,
   onRemoveLabel,
 }: TicketPropertiesPanelProps) => (
-  <aside className="min-w-0 space-y-5 self-start text-sm lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto">
+  <aside className="min-w-0 space-y-5 text-sm">
     <section className="space-y-0.5">
       <h2 className={cn(microheaderClass, "px-2 pb-1")}>Properties</h2>
       <div className="flex flex-col">
         <TicketStatusRow ticket={ticket} onTransition={onTransition} />
-        <TicketCategoryRow ticket={ticket} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Developer} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Tester} />
         <TicketDueRow ticket={ticket} />
-        <TicketReporterRow ticket={ticket} />
         <TicketLabelsRow ticket={ticket} onAddLabel={onAddLabel} onRemoveLabel={onRemoveLabel} />
+        <TicketCategoryRow ticket={ticket} />
         <TicketTypeRow ticket={ticket} onSetType={onSetType} />
       </div>
     </section>

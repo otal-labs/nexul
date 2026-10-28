@@ -8,11 +8,12 @@ interface DocPresenceBarProps {
   participants: CollabParticipant[];
   connected: boolean | undefined;
   updatedAt: string;
+  size?: "sm" | "md";
 }
 
-export const DocPresenceBar = ({ participants, connected, updatedAt }: DocPresenceBarProps) => (
+export const DocPresenceBar = ({ participants, connected, updatedAt, size }: DocPresenceBarProps) => (
   <div className="flex items-center gap-3">
-    <PresenceSection participants={participants} max={3} />
+    <PresenceSection participants={participants} max={3} {...(size ? { size } : {})} />
     {connected != null && (
       <Tooltip>
         <TooltipTrigger asChild>

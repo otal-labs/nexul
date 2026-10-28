@@ -5,6 +5,7 @@ import { PlaysRailSection } from "@/components/play/PlaysRailSection";
 import { TrailSection } from "@/components/play/TrailSection";
 import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
 import { TicketBugsSection } from "@/components/ticket/TicketBugsSection";
+import { TicketCreatedLine } from "@/components/ticket/TicketCreatedLine";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketTestSection } from "@/components/ticket/TicketTestSection";
@@ -27,13 +28,13 @@ export const TicketRail = ({ ticket, workspaceId, onTransition, onSetType, onAdd
     onAddLabel={onAddLabel}
     onRemoveLabel={onRemoveLabel}
   >
-    <PlaysRailSection ticket={ticket} />
+    <TicketLinksSection ticket={ticket} />
     <DevelopmentSection ticketId={ticket.id} />
     <ReviewPanel ticketId={ticket.id} />
-    <AttachmentsSection owner={{ ticket_id: ticket.id }} projectId={ticket.project_id} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
-    <TicketLinksSection ticket={ticket} />
-    <DecisionsCheckNotice ticketId={ticket.id} />
     <TicketTestSection ticket={ticket} />
+    <PlaysRailSection ticket={ticket} />
+    <DecisionsCheckNotice ticketId={ticket.id} />
+    <AttachmentsSection owner={{ ticket_id: ticket.id }} projectId={ticket.project_id} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
     <TicketBugsSection ticket={ticket} />
     {workspaceId !== "" && (
       <TrailSection
@@ -44,5 +45,6 @@ export const TicketRail = ({ ticket, workspaceId, onTransition, onSetType, onAdd
         className="border-t-0 pt-0"
       />
     )}
+    <TicketCreatedLine ticket={ticket} />
   </TicketPropertiesPanel>
 );

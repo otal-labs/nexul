@@ -29,8 +29,10 @@ export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, 
   if (!error && loadedEmpty && !emptyMessage) return null;
 
   return (
-    <section className={cn("space-y-0.5 border-t border-border pt-6", className)}>
-      <h2 className={cn(microheaderClass, "px-2 pb-1")}>Trail</h2>
+    <section className={cn("space-y-2 border-t border-border pt-6", className)}>
+      <div className="flex h-5 items-center px-2">
+        <h2 className={microheaderClass}>Trail</h2>
+      </div>
       {error && <ErrorDisplay error={error} title="Couldn't load the trail." />}
       {loadedEmpty && <p className="px-2 text-xs text-muted-foreground">{emptyMessage}</p>}
       {trails && trails.length > 0 && (

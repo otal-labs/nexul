@@ -56,7 +56,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
 
   return (
     // A disabled button takes no pointer events, so the reason's tooltip sits on the wrapper.
-    <span className={cn("inline-flex items-center gap-1", className)} title={ownRun ? undefined : reason || play.description}>
+    <span className={cn("inline-flex items-center gap-1", className)} title={ownRun ? undefined : reason || play.description || play.label}>
       {ownRun && (
         <Button
           variant={variant === "default" ? "outline" : variant}
@@ -89,12 +89,12 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           size="sm"
           className={mainClassName}
           disabled={reason !== "" || blocked === undefined}
-          title={reason || play.description}
+          title={reason || play.description || play.label}
           onClick={() => setDialogOpen(true)}
         >
           {outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning" />}
           {!outOfDate && <Sparkles className="size-3.5" aria-hidden />}
-          {label ?? play.label}
+          <span className="min-w-0 truncate">{label ?? play.label}</span>
         </Button>
       )}
       {activeTrail && <TrailDetail trailId={trailOpen ? activeTrail.id : null} onClose={() => setTrailOpen(false)} />}

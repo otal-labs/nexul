@@ -1,13 +1,19 @@
+import { useId, useState } from "react";
+
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
 import { TicketNotesTab } from "@/components/note/TicketNotesTab";
 import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
+import { TicketDetailsToggle } from "@/components/ticket/TicketDetailsToggle";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TicketRail } from "@/components/ticket/TicketRail";
+import { TicketThreadPreview } from "@/components/ticket/TicketThreadPreview";
 import { useFetchTicketNotes } from "@/hooks/NoteHooks";
 import { useTicketRunState } from "@/hooks/TrailHooks";
+import { useTabPath } from "@/hooks/useTabPath";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
+import { cn } from "@/lib/utils";
 
 interface TicketPageBodyProps {
   ticket: Ticket;
@@ -24,11 +30,14 @@ interface TicketPageBodyProps {
 export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...handlers }: TicketPageBodyProps) => {
   const layout = ticketPageLayout(embedded);
   const hasThread = workspaceId !== "";
-  const rail = <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />;
   const projectProp = project ? { project } : {};
   const { data: notes } = useFetchTicketNotes(ticket.id);
   const hasNotes = !!notes && notes.notes.length > 0;
   const waiting = useTicketRunState(ticket.project_id, ticket.id) === "waiting";
+  const { current, tabPath } = useTabPath();
+  const onNotes = hasNotes && current === "notes";
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsId = useId();
 
   const tabs: PageTab[] = [
     { value: "ticket", label: "Ticket" },
@@ -43,24 +52,32 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
         layout={layout}
         {...projectProp}
         frameBody={(article) => (
-          <PageTabs label="Ticket sections" tabs={tabs} className={layout.tabs}>
-            <PageTabsContent value="ticket" className={layout.ticketTab}>
-              <div className={layout.ticketGrid}>
-                {article}
-                <div className={layout.rail}>{rail}</div>
+          <div className={layout.body}>
+            {!onNotes && <TicketDetailsToggle open={detailsOpen} onOpenChange={setDetailsOpen} controls={detailsId} className={layout.detailsToggle} />}
+            {!onNotes && (
+              <div id={detailsId} className={cn(layout.rail, detailsOpen && layout.railOpen)}>
+                <div className={layout.railScroll}>
+                  <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />
+                </div>
               </div>
-            </PageTabsContent>
-            {hasThread && (
-              <PageTabsContent value="thread" className={layout.thread}>
-                <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane />
-              </PageTabsContent>
             )}
-            {notes && hasNotes && (
-              <PageTabsContent value="notes" className={layout.ticketTab}>
-                <TicketNotesTab ticketId={ticket.id} notes={notes} gridClassName={layout.ticketGrid} railClassName={layout.rail} />
+            <PageTabs label="Ticket sections" tabs={tabs} className={cn(layout.tabs, onNotes && layout.tabsWide)}>
+              <PageTabsContent value="ticket" className={layout.ticketTab}>
+                {article}
+                {hasThread && <TicketThreadPreview workspaceId={workspaceId} ticketId={ticket.id} threadPath={tabPath("thread")} />}
               </PageTabsContent>
-            )}
-          </PageTabs>
+              {hasThread && (
+                <PageTabsContent value="thread" className={layout.thread}>
+                  <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane />
+                </PageTabsContent>
+              )}
+              {notes && hasNotes && (
+                <PageTabsContent value="notes" className={layout.ticketTab}>
+                  <TicketNotesTab ticketId={ticket.id} notes={notes} gridClassName={layout.notesGrid} railClassName={layout.notesRail} />
+                </PageTabsContent>
+              )}
+            </PageTabs>
+          </div>
         )}
       />
     </div>

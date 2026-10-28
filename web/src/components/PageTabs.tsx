@@ -63,6 +63,12 @@ export const PageTabs = ({ label, tabs, children, className, trailing }: PageTab
                 key={tab.value}
                 value={tab.value}
                 className="flex-none px-3 after:hidden"
+                onMouseDown={(event) => {
+                  // Radix focuses the trigger from script on mousedown, which Chrome draws as keyboard focus.
+                  if (event.button !== 0 || event.ctrlKey) return;
+                  event.preventDefault();
+                  if (tab.value !== active.value) select(tab.value);
+                }}
               >
                 <span className="relative">
                   {tab.label}

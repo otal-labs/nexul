@@ -38,6 +38,8 @@ export interface CollabUser {
 
 export interface CollabParticipant {
   clientID: number;
+  /** The account id, when the client sent one. */
+  id?: string;
   name: string;
   color: string;
   activity: "viewing" | "editing";
@@ -83,6 +85,7 @@ const participantsFrom = (states: Map<number, unknown>): CollabParticipant[] => 
     if (byPerson.has(key)) continue;
     byPerson.set(key, {
       clientID,
+      ...(u.id ? { id: u.id } : {}),
       name: u.name,
       color: u.color ?? colorFor(clientID),
       activity: u.activity === "viewing" ? "viewing" : "editing",

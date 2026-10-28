@@ -30,16 +30,19 @@ export const LinkedTicketRow = ({ ticket, waiting = false, onRemove, hostProject
   const wsPath = useWorkspacePath();
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-0 has-[a:focus-visible]:outline-[color:var(--focus)]">
       <Icon className={cn("size-3.5 shrink-0", color)} role="img" aria-label={label} />
       <HoverCard openDelay={300} closeDelay={100}>
         <HoverCardTrigger asChild>
           <Link
             to={wsPath(`/tickets/${key}`)}
             aria-label={`${key} ${ticket.title}`}
-            className="mr-auto min-w-0 truncate py-1 font-mono text-xs underline-offset-4 hover:underline"
+            className="quiet-focus flex min-w-0 flex-1 items-baseline gap-2 py-1 text-xs underline-offset-4 hover:underline"
           >
-            {key}
+            <span className="shrink-0 font-mono">{key}</span>
+            <span dir="auto" className="min-w-0 truncate text-muted-foreground">
+              {ticket.title}
+            </span>
           </Link>
         </HoverCardTrigger>
         <HoverCardContent side="left" align="start" sideOffset={32} className="w-72 p-3">

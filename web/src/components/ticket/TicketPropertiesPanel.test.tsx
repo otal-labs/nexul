@@ -113,23 +113,6 @@ describe("TicketPropertiesPanel", () => {
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/tester", { login: "" });
   });
 
-  it("shows a person reporter by login", () => {
-    renderPanel();
-    expect(screen.getByText("Reporter")).toBeInTheDocument();
-    expect(screen.getAllByText("onik97").length).toBeGreaterThan(0);
-  });
-
-  it("shows Nexul with the person it filed from, or the automation's name", () => {
-    const { rerenderWithTicket } = renderPanel();
-    rerenderWithTicket({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
-    expect(screen.getByText("Nexul")).toBeInTheDocument();
-    expect(screen.getByText("from lena")).toBeInTheDocument();
-
-    rerenderWithTicket({ ...ticket, reporter: { kind: "automation", automation_id: "a-1", automation_name: "Triage" } });
-    expect(screen.getByText("Nexul")).toBeInTheDocument();
-    expect(screen.getByText("Triage")).toBeInTheDocument();
-  });
-
   it("renders labels as chips and shows None when there are no labels", () => {
     const { rerenderWithTicket } = renderPanel();
     expect(screen.getByText("backend")).toBeInTheDocument();

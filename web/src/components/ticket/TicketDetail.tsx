@@ -1,5 +1,4 @@
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
-import { personLabel } from "@nexul/client-core/person";
 import type { ReactNode } from "react";
 
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
@@ -8,21 +7,19 @@ import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
-import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
-import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
+import { TicketHeaderStrip } from "@/components/ticket/TicketHeaderStrip";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
 import { useActionState } from "@/hooks/useActionState";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketCache";
 import { useTicketActions } from "@/hooks/useTicketActions";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import type { Project } from "@/models/Project";
-import { reporterLabel, type Ticket } from "@/models/Ticket";
+import type { Ticket } from "@/models/Ticket";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
 import { cn } from "@/lib/utils";
@@ -54,8 +51,6 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
     ...(avatar ? { avatar } : {}),
   });
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
-  const reporterPerson = usePerson(ticket.reporter.login ?? "");
-  const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
 
   const ticketLabel = project ? `${project.prefix}-${ticket.number}` : ticket.id;
   const menu = useTicketActions(ticket, ticketLabel, project);
@@ -114,15 +109,10 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
         actions={<RowActionsMenu subject={ticketLabel} projectId={ticket.project_id} actions={menu} />}
         meta={
           <>
-            <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-foreground">
-              {ticketLabel}
+            <TicketHeaderStrip ticket={ticket} ticketLabel={ticketLabel} />
+            <span className="border-l border-border pl-3">
+              <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} size="sm" />
             </span>
-            <TicketStatusBadge ticket={ticket} />
-            <span className="font-mono text-xs">
-              created {formatUpdatedAgo(ticket.created_at)}
-              {reporter && ` by ${reporter}`}
-            </span>
-            <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} />
           </>
         }
       />

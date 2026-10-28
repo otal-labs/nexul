@@ -638,7 +638,7 @@ rail is not drawn and an "On this page" icon in the actions opens the same
 outline in a popover. A memory's body sits on the panel the same way.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
-16px at 1.75, headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
+16px at 1.75 (quoted in a chat bubble 14px, in a rail 12px, both at 1.6), headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
 28px serif page title stays the top of the hierarchy, and no heading is
 smaller than the text it opens), closer to their text than to the paragraph
 above (1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
@@ -727,22 +727,38 @@ form dialog at 36rem.
 
 Ticket page. The page runs the full width beside the sidebar, with no centred
 cap, as one full-height panel. Its header spans the panel, so a long title
-reads across it, and under it a line tab row holds Ticket and Thread, each tab
-past the first at its own path segment, and Notes once the ticket has a note.
-Notes is laid out as Ticket: the picked note open on the left at the body's
-measure, headed as its dialog is, and a Notes rail of rows (file, time, the
-summary clamped to two lines) with the picked one on the active edge; the
-newest opens first. Ticket scrolls under the tab row: the body
-and a 19.5rem rail behind a hairline rule. Thread fills the rest of the panel
-with the composer at its foot. The body sits open on the panel, no card, held
-to a 68ch measure; a card around it only framed the empty editing space. The
-rail joins the body once the panel is 52rem wide, under a hairline above it
-until then. A ticket opened inside
-another page (the Inbox split view) fills its detail pane with the same tabs. The rail
-is a run of sections, each a mono uppercase microheader with its one action
-trailing as a ghost `+`, compact rows, and a muted one-line sentence
-when empty ("No bugs reported."): Properties, Plays, Development, Reviews,
-Attachments, Links, Testing, Bugs, Trail. Plays is stage-bound, so it is
+reads across it, and stays put while the rest scrolls. Its meta line is the
+ticket's standing in the board card's marks, the same on every tab: the key in
+mono, the status dot and word, whoever acts next as the card picks them (the
+tester in a testing-stage column, else the developer) as a 16px avatar and
+name, one `⦸ KEY` per blocker still open, one pull request mark per linked PR,
+then the presence bar; it is read only, and the rail edits. Under the header a
+line tab row holds Ticket and Thread, each tab past the first at its own path
+segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
+rail sits beside the tabs behind a hairline rule, level with the tab row, on
+Ticket and Thread alike, and the tabs and the rail scroll on their own;
+narrower, the rail folds behind a Details row above the tab row, closed by
+default, so the body starts under the header; open, it takes the height the
+tabs leave above 10rem. Notes is laid out as Ticket: the
+picked note open on the left at the body's measure, headed as its dialog is,
+and a Notes rail of rows (file, time, the summary clamped to two lines) with
+the picked one on the active edge, in place of the ticket's rail; the newest
+opens first. Ticket holds the body, open on the panel with no card and held to
+a 68ch measure (a card around it only framed the empty editing space), then,
+once the ticket has a thread, its three latest lines behind a hairline: a
+`Thread` microheader with an "Open thread" link, and one line each (a 20px
+avatar, the name, a mono time, the text muted and truncated; a system line has
+no avatar or name; a question or secret request says what it asks). Thread
+fills the rest of the column with the composer at its foot. A ticket opened
+inside another page (the Inbox split view) fills its detail pane with the same
+tabs. The rail is a run of sections, each a mono uppercase microheader with its
+one action trailing as a ghost `+`, compact rows, and a muted one-line sentence
+when empty ("No bugs reported."), ordered by what decides where the ticket
+stands: Properties (Status, Developer, Tester, Due, Labels wrapping inline,
+Category, Type), Links, Development, Reviews, Testing, Plays, then
+Attachments, Bugs and Trail, and a muted mono foot line, "created 17 Aug by
+<reporter>". A play is one line, its full prompt in the tooltip, ending in its
+latest run's state icon and mono time. Plays is stage-bound, so it is
 absent, not empty, when no play applies to the ticket's stage, unless an auto play waits there or the daily cap paused
 it: a queued run is an `info` clock over "<person> · <why it waits>", a paused ticket a `warning` pause over its runs
 today, each with its one ghost action (Cancel, Resume); its person also reads each of their computers' reasons in the why,
@@ -750,7 +766,7 @@ for that person only. What an auto play already did is an event line in the Thre
 at its time: a small icon in a circle under the avatar column, the play's name in medium weight, the rest muted, a mono
 time, and an outline "Run it" on a didn't-run. Links leads with the Source group
 when the ticket has one: a muted file icon and the doc's title as a link. A linked ticket is its
-status icon and mono key only; hovering or focusing the key opens a hover
+status icon, its mono key and its title, muted and truncated to one line; hovering or focusing it opens a hover
 card with the title, two clamped lines of description, and the status, and a
 remove `×` shows on the row's hover and focus. `TicketPageBody` is the
 reference.
@@ -1342,6 +1358,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Board title in the sans on one line with its count (2026-10-28) | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
 | Board header: the title and its count line only (2026-10-28) | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
 | The board is one grid: stage row once, lanes as bands, Done folded (2026-10-28) | Agreed by a review council after six score-driven rounds left it at 6: each lane had drawn its own five-column board, so the stage headers repeated per lane, a one-card stage stretched to the tallest stage in its lane, one lane filled 1440×900, and Done took a fifth of the width. Against dropping lanes for a category label (lanes carry per-category collapse and drag to recategorise) and against no wells (with lanes as bands the stages need their columns). Replaces the folded 72px and 128px rails and the per-lane column headers |
+| The ticket page keeps its standing on screen: a header strip in the board card's marks, the rail beside Ticket and Thread, Details below 52rem (2026-10-28) | The blockers, the pull request and the test result sat below the fold of a rail ordered by data type, the rail fell under the whole body at 768 and left the Thread tab entirely, and the meta line repeated the status while leaving out what the card shows. Against one scroll with the thread under the body (the thread is its own virtualised scroller with its own path, so the body shows its three latest lines instead) and against moving the rail inward off the panel edge (it stays where every issue page puts it) |
 | An empty column is a 72px rail with its name in two lines (2026-10-28) | Against a 160px column with its full header (two of them still took a fifth of the board to say No tickets), a 40px well of mark and count (In progress and Testing could not be told apart), a 40px strip with the name set vertically (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
 | Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |

@@ -11,6 +11,9 @@ import type { HarnessQuestion, QuestionAnswer } from "@/models/Question";
 export const TRAIL_STATES = ["starting", "running", "waiting", "done", "failed", "interrupted"] as const;
 export type TrailState = (typeof TRAIL_STATES)[number];
 
+// A target's runs come newest first, so a play's latest run is its first one in the list.
+export const latestRunOf = (trails: Trail[] | undefined, playId: string): Trail | undefined => trails?.find((t) => t.play_id === playId);
+
 export const isTrailActive = (state: TrailState): boolean => state === "starting" || state === "running" || state === "waiting";
 
 // Mirrors internal/plays.TrailQuestion: the question a run stopped on, with its answer beside it once given.
