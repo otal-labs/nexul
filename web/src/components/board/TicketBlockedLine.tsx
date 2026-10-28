@@ -13,12 +13,13 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
   const waitingOn = blockers?.[ticketId] ?? [];
   if (waitingOn.length === 0) return null;
 
+  const keys = waitingOn.map(linkedTicketKey).join(", ");
+
+  // The blocking key, never truncated, on the card's meta line; the sentence is its tooltip and its accessible name.
   return (
-    <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+    <span role="img" aria-label={`Blocked by ${keys}`} title={`Blocked by ${keys}`} className="flex shrink-0 items-center gap-1">
       <Ban className="size-3 shrink-0 text-warning" aria-hidden />
-      <span className="truncate">
-        Blocked by <span className="font-mono">{waitingOn.map(linkedTicketKey).join(", ")}</span>
-      </span>
+      {keys}
     </span>
   );
 };

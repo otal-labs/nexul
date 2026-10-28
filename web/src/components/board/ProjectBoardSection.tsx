@@ -74,9 +74,10 @@ export const ProjectBoardSection = ({
   const people = new Set(projectTickets?.flatMap((t) => [ticketDeveloper(t).key, ticketTester(t).key]).filter(Boolean)).size;
   return (
     <>
-      {/* One line of title and count: the board is a work surface, so its header is the UI sans and the cards start high on the page. */}
+      {/* Title, count and toolbar share one row from 1280px: the board is a work surface, so the cards start high on the page. */}
+      <div className="flex shrink-0 flex-col gap-3 xl:flex-row xl:items-center">
       <PageHeader
-        className="border-b-0 pb-0"
+        className="shrink-0 border-b-0 pb-0"
         title={
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 dir="auto" className="truncate text-base font-semibold tracking-[-0.011em]">
@@ -91,10 +92,9 @@ export const ProjectBoardSection = ({
           </div>
         }
       />
-      {isLoading && <LoadingDisplay label="Loading board…" />}
-      {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
       {tickets && (
         // The board is always project-scoped (ticket 08), so the multi-project filter row would always be redundant with the URL.
+        <div className="min-w-0 flex-1">
         <BoardFilterBar
           projectId={projectId}
           hideProjectFilter
@@ -115,7 +115,11 @@ export const ProjectBoardSection = ({
           onNewTicket={onNewTicket}
           onNewCategory={onNewCategory}
         />
+        </div>
       )}
+      </div>
+      {isLoading && <LoadingDisplay label="Loading board…" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
       {tickets && swimlanes.length === 0 && (
         <NoDataDisplay
           message={

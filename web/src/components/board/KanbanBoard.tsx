@@ -16,6 +16,7 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
+import { BoardStageHeader } from "@/components/board/BoardStageHeader";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
 import { boardKeyboardCoordinates } from "@/components/board/dragKeyboardCoordinates";
@@ -153,6 +154,8 @@ export const KanbanBoard = ({
 
   const shownSwimlanes = settled ?? displaySwimlanes;
   const shownColumns = settledColumns ?? columns;
+  const counts: Record<string, number> = {};
+  for (const ticket of shownSwimlanes.flatMap((lane) => lane.tickets)) counts[ticket.status] = (counts[ticket.status] ?? 0) + 1;
 
   return (
     <BoardCardProvider projectId={projectId}>
@@ -167,10 +170,11 @@ export const KanbanBoard = ({
           setOverCell(null);
         }}
       >
-        {/* One shared horizontal scroll for every lane so column positions stay aligned across swimlanes. */}
-        <div data-card-drag={activeTicket ? "" : undefined} className="group/board space-y-6 overflow-x-auto pb-2">
+        {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
+        <div data-card-drag={activeTicket ? "" : undefined} className="group/board min-h-0 flex-1 space-y-3 overflow-auto pb-2">
+          <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
           {shownSwimlanes.map((lane) => (
-            <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} onAddTicket={onAddTicket} />
+            <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
           ))}
         </div>
         {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}

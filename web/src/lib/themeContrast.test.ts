@@ -157,6 +157,32 @@ describe("palette field edge", () => {
   );
 });
 
+// The board's column well as its classes draw it: black at 45% over the panel in dark, ink at 4% in light.
+const boardWell = (mode: Mode): Rgb => {
+  const { panel } = surfaces(mode);
+  const over: Rgb = mode === "dark" ? [0, 0, 0] : ink(mode, "foreground");
+  const share = mode === "dark" ? 0.45 : 0.04;
+  return over.map((v, i) => v * share + panel![i]! * (1 - share)) as Rgb;
+};
+
+describe("board surface steps", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.flatMap((theme) => (["light", "dark"] as const).map((mode) => ({ id: theme.id, label: theme.label, mode }))))(
+    "$label $mode sets a column well a step below the panel and a card a clear step above the well",
+    ({ id, mode }) => {
+      applyThemePalette(id, mode);
+      const { panel, card } = surfaces(mode);
+      const well = boardWell(mode);
+      // A panel within 0.1 of black (Brutalism) has no darker step left to give; its card's lift above the well separates instead.
+      if (lightness(panel!) >= 0.1) expect(lightness(panel!) - lightness(well)).toBeGreaterThanOrEqual(0.02);
+      if (mode === "dark") expect(lightness(card!) - lightness(well)).toBeGreaterThanOrEqual(0.05);
+    },
+  );
+});
+
 describe("palette card lift", () => {
   beforeEach(() => {
     document.documentElement.removeAttribute("style");

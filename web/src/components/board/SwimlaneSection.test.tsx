@@ -72,7 +72,6 @@ const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {
                 <SwimlaneSection
                   lane={lane("c-1", [ticket("t-1", "Fix login", "open")])}
                   columns={columns}
-                  onAddTicket={() => {}}
                   {...props}
                 />
               }
@@ -87,7 +86,7 @@ const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {
 describe("SwimlaneSection", () => {
   // The board store is module-global and persisted; reset so a collapse in one test can't leak into the next.
   beforeEach(() => {
-    useBoardStore.setState({ collapsedLanes: {} });
+    useBoardStore.setState({ collapsedLanes: {}, doneOpen: false });
     usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
   });
 
@@ -158,7 +157,15 @@ describe("SwimlaneSection", () => {
     expect(screen.getByRole("button", { name: "Sprint 1 0/1 done" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("splits lane tickets across one column per status", () => {
+  it("folds the Done cell to its count until Done is opened", () => {
+    renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "done")]) });
+    const done = screen.getByRole("region", { name: "Done column in Sprint 1" });
+    expect(within(done).getByText("1 tickets, folded")).toBeInTheDocument();
+    expect(within(done).queryByText("Wire FTS")).not.toBeInTheDocument();
+  });
+
+  it("splits lane tickets across one cell per status", () => {
+    useBoardStore.setState({ doneOpen: true });
     renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "done")]) });
     const open = screen.getByRole("region", { name: "Open column in Sprint 1" });
     const done = screen.getByRole("region", { name: "Done column in Sprint 1" });

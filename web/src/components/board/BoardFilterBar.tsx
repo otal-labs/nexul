@@ -131,10 +131,12 @@ export const BoardFilterBar = ({
               size="sm"
               aria-pressed={filters.waitingForMeToTest}
               onClick={onToggleWaitingForMeToTest}
+              title="Mine to test"
               className={cn("h-8 px-2.5 text-xs", !filters.waitingForMeToTest && "text-muted-foreground")}
             >
               <FlaskConicalIcon className="size-3.5" />
-              Mine to test
+              {/* Icon-only below 1280, named by its tooltip, so the toolbar keeps one row under the title. */}
+              <span className="max-xl:sr-only">Mine to test</span>
             </Button>
           )}
           {showPlaying && (
@@ -143,10 +145,11 @@ export const BoardFilterBar = ({
               size="sm"
               aria-pressed={filters.playing}
               onClick={onTogglePlaying}
+              title="Playing"
               className={cn("h-8 px-2.5 text-xs", !filters.playing && "text-muted-foreground")}
             >
               <SparklesIcon className="size-3.5" />
-              Playing
+              <span className="max-xl:sr-only">Playing</span>
             </Button>
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}

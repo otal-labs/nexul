@@ -103,11 +103,20 @@ describe("TicketCard", () => {
     expect(chip).not.toHaveClass(labelDotColor("urgent"));
   });
 
-  it("mutes every type icon but a bug's, so the type never adds a second accent to the card", async () => {
+  it("shows no type icon for a type other than bug, and does not render its name", async () => {
     mockTicketType("Feature");
+    const { container } = renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(await screen.findByText("REF-142")).toBeInTheDocument();
+    expect(screen.queryByText("Feature")).not.toBeInTheDocument();
+    expect(container.querySelector('[data-slot="no-fill-badge"]')).not.toBeInTheDocument();
+  });
+
+  it("keeps a bug icon's configured colour over the hashed one", async () => {
+    mockTicketType("Bug", "cyan");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const badge = (await screen.findByText("Feature")).closest('[data-slot="no-fill-badge"]');
-    expect(badge?.querySelector("svg")).toHaveClass("text-muted-foreground");
+    const badge = (await screen.findByText("Bug")).closest('[data-slot="no-fill-badge"]');
+    expect(badge?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug", "cyan").split(" "));
+    expect(badge?.querySelector("svg")).not.toHaveClass(...ticketTypeColor("Bug").split(" "));
   });
 
   it("shows two label chips and counts the rest in a +N chip that names them", () => {
@@ -115,14 +124,6 @@ describe("TicketCard", () => {
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
     expect(screen.queryByText("i18n")).not.toBeInTheDocument();
     expect(screen.getByText("+2")).toHaveAttribute("title", "i18n, ux");
-  });
-
-  it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
-    mockTicketType("Widget");
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const name = await screen.findByText("Widget");
-    expect(name.closest('[data-slot="no-fill-badge"]')?.querySelector("svg")).toBeInTheDocument();
-    expect(screen.getByText("Fix login")).toBeInTheDocument();
   });
 
   it("renders the developer's GitHub avatar outside testing columns", () => {
@@ -141,14 +142,13 @@ describe("TicketCard", () => {
       return base(url, config);
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(await screen.findByText("REF-7")).toBeInTheDocument();
-    expect(screen.getByText(/Blocked by/)).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Blocked by REF-7" })).toHaveTextContent("REF-7");
   });
 
   it("shows no blocked line for a ticket with no uncleared blockers", async () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByText("REF-142")).toBeInTheDocument();
-    expect(screen.queryByText(/Blocked by/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /Blocked by/ })).not.toBeInTheDocument();
   });
 
   it("switches to the tester's avatar in a testing-stage column", async () => {

@@ -7,6 +7,7 @@ import type { ReactElement } from "react";
 
 import { api } from "@/api/client";
 import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
+import { useBoardStore } from "@/stores/boardStore";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 
@@ -113,6 +114,7 @@ beforeEach(() => {
   viewer.holds = new Set(["tickets:write", "projects:write"]);
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockResolvedValue({ data: [] });
+  useBoardStore.setState({ doneOpen: true });
 });
 
 describe("KanbanBoard", () => {

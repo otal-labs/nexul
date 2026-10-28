@@ -1,14 +1,11 @@
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { PlusIcon } from "lucide-react";
+import { useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { memo, useMemo, useState } from "react";
 
-import { ActionButton } from "@/components/action/ActionButton";
-import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
-import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -19,89 +16,36 @@ interface KanbanColumnProps {
   categoryId: string;
   column: BoardStatus;
   collapsed: boolean;
+  // Done folded to its strip: the cell still takes drops, its cards are counted in the stage header instead.
+  folded: boolean;
   tickets: Ticket[];
-  onAddTicket: (statusId: string) => void;
 }
 
 // A column mounts this many cards and grows by as many on "Show more": every card is a sortable, so a long column mounted all at once stalls the board.
 const CARD_WINDOW = 10;
 
-const KanbanColumnImpl = ({
-  droppableId,
-  laneLabel,
-  categoryId,
-  column,
-  collapsed,
-  tickets,
-  onAddTicket,
-}: KanbanColumnProps) => {
-  // An empty column narrows so the width goes to the columns with cards: one header line in 128px from 1280px, a 72px rail with an 11px name below.
+// One stage's cell in one lane: as tall as its own cards, on the stage's well; the stage header is drawn once above every lane.
+const KanbanColumnImpl = ({ droppableId, laneLabel, categoryId, column, collapsed, folded, tickets }: KanbanColumnProps) => {
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
-  const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
-  const hidden = tickets.length - shown.length;
+  const windowed = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
+  const shown = folded ? [] : windowed;
+  const hidden = folded ? 0 : tickets.length - shown.length;
   const data: DropTargetData = { type: "column", statusId: column.id, categoryId, kind: column.kind };
   // Keyed on the ids, not the array: a new items array re-renders every card in the column.
   const idsKey = shown.map((t) => t.id).join(" ");
   const ticketIds = useMemo(() => (idsKey === "" ? [] : idsKey.split(" ")), [idsKey]);
-  // Both a drop target for cards and a sortable in its lane's column row; only the header activates the sort.
-  const draggable = useActionState({ permission: "projects:write" }).state === "live";
-  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
-    id: droppableId,
-    // A collapsed lane's columns keep their full height under the clip, over the lane below, so they take no drop.
-    disabled: { draggable: !draggable || collapsed, droppable: collapsed },
-    data,
-  });
+  // A collapsed lane's cells keep their height under the clip, over the lane below, so they take no drop.
+  const { setNodeRef } = useDroppable({ id: droppableId, disabled: collapsed, data });
 
   return (
     <section
       ref={setNodeRef}
       aria-label={`${column.name} column in ${laneLabel}`}
-      style={{
-        transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
-        transition,
-      }}
-      className={cn(
-        // Three surface steps: the panel, the column's well, the card raised on it.
-        "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-background/50",
-        empty ? "w-18 shrink-0 items-center xl:w-32 xl:items-stretch" : "w-37 flex-1 lg:w-42 xl:w-50",
-        // Columns drag in place (no overlay), so the moving one floats above its siblings.
-        isDragging && "relative z-10 shadow-elevated",
-      )}
+      className="flex min-w-0 flex-col gap-1.5 self-start rounded-lg bg-well-shade p-1.5"
     >
-      <h4 className={cn("flex min-h-7 items-center gap-1.5 pt-1", empty && "max-xl:flex-col")}>
-        <span
-          ref={setActivatorNodeRef}
-          {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
-            empty && "max-xl:flex-col max-xl:gap-1 max-xl:text-center",
-            draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
-          )}
-        >
-          <span className={cn("flex min-w-0 items-center gap-1.5", empty && "max-xl:flex-col max-xl:gap-1")}>
-            <StatusMark status={column} className="size-3.5" />
-            <span className={cn("text-sm font-medium", empty ? "whitespace-nowrap max-xl:text-[11px] max-xl:font-semibold" : "truncate")}>{column.name}</span>
-          </span>
-          <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
-            {tickets.length}
-          </span>
-        </span>
-        {!empty && (
-          <ActionButton
-            permission="tickets:write"
-            verb="create tickets"
-            variant="ghost"
-            size="icon"
-            icon={PlusIcon}
-            onClick={() => onAddTicket(column.id)}
-            aria-label={`New ticket in ${column.name}`}
-            className="size-6 text-muted-foreground/60"
-          />
-        )}
-      </h4>
-      {/* The column grows with its cards and the page scrolls; the 1px top padding is room for a card's hover lift. */}
-      <EnterList as="div" className="-mt-px flex min-h-16 flex-1 flex-col gap-1.5 pt-px">
+      {/* The 1px top padding is room for a card's hover lift. */}
+      <EnterList as="div" className="-mt-px flex flex-col gap-1.5 pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {shown.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
@@ -116,10 +60,15 @@ const KanbanColumnImpl = ({
             Show {Math.min(hidden, CARD_WINDOW)} more of <span className="font-mono tabular-nums">{hidden}</span>
           </button>
         )}
-        {empty && (
-          // The dashed slot only shows while a card is held: then it reads as somewhere a card can land.
-          <EmptyRow className="flex-1 self-stretch rounded-md border border-dashed border-transparent px-2 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
-            <span className="sr-only">No tickets</span>
+        {(empty || folded) && (
+          // Card-tall while a card is held, so an empty cell or the folded Done strip reads as somewhere to land.
+          <EmptyRow
+            flush
+            className={cn(
+              "h-6 rounded-md border border-dashed border-transparent transition-colors duration-150 ease-standard group-data-[card-drag]/board:h-20 group-data-[card-drag]/board:border-border",
+            )}
+          >
+            <span className="sr-only">{folded ? `${tickets.length} tickets, folded` : "No tickets"}</span>
           </EmptyRow>
         )}
       </EnterList>
@@ -134,7 +83,7 @@ const sameColumn = (prev: KanbanColumnProps, next: KanbanColumnProps) =>
   prev.categoryId === next.categoryId &&
   prev.column === next.column &&
   prev.collapsed === next.collapsed &&
-  prev.onAddTicket === next.onAddTicket &&
+  prev.folded === next.folded &&
   prev.tickets.length === next.tickets.length &&
   prev.tickets.every((ticket, i) => ticket === next.tickets[i]);
 
