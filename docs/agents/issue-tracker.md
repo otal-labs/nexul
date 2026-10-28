@@ -67,6 +67,9 @@ git history, and anything durable it decided is an ADR.
   first ready one, runs at once per computer, and the Computers and Projects tabs
   rebuilt around them (ADRs 0165, 0166). Left: 04, clone automatically, and 05,
   a chosen-computer auto play's ordered list.
+- `.scratch/change-history/` — a wayfinder map toward a spec for version
+  history with a "what changed" diff on docs, tickets, plays, memories and
+  automations. Ticket 01 is resolved, and its findings are in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
