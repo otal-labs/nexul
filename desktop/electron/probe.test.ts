@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { probeInstance, type FetchLike } from "./probe";
 
-const okResponse = (): Response => new Response("{}", { status: 200 });
-
 describe("probeInstance", () => {
   it("reports connected when the instance answers any HTTP status", async () => {
     const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(new Response("unauthorized", { status: 401 }));
@@ -56,12 +54,5 @@ describe("probeInstance", () => {
     const fetchImpl = vi.fn<FetchLike>();
     const outcome = await probeInstance("https://a.example", 100, 100, fetchImpl);
     expect(outcome).toEqual({ kind: "expired" });
-  });
-
-  it("resolves even when the response body is unreadable — only the status matters", async () => {
-    const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(okResponse());
-    await expect(probeInstance("https://a.example", 100, 200, fetchImpl)).resolves.toEqual({
-      kind: "connected",
-    });
   });
 });

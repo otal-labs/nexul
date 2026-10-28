@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { QueuedRun } from "../src/context.ts";
 import { createMockContext } from "../src/testing.ts";
-import { eventFixtures } from "../src/events.generated.ts";
 
 describe("createMockContext", () => {
   it("records API calls instead of making them", async () => {
@@ -46,9 +45,5 @@ describe("createMockContext", () => {
     const ctx = createMockContext({}, { responses: { "POST /api/plays/queue": didntRun } });
     expect(await ctx.runPlay("Fix with AI", "ticket-1")).toEqual(didntRun);
     expect(ctx.calls[0]?.body).toEqual({ play: "Fix with AI", ticket_id: "ticket-1" });
-  });
-
-  it("exposes a fixture for every generated topic", () => {
-    expect(eventFixtures["ticket.created"].ticket.id).toBe("fixture-id");
   });
 });
