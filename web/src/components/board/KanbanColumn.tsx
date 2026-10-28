@@ -35,7 +35,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
-  // An empty column narrows so the width goes to the columns with cards: one header line in 128px from 1280px, a 72px rail with the name in two lines below.
+  // An empty column narrows so the width goes to the columns with cards: one header line in 128px from 1280px, a 72px rail with an 11px name below.
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
   const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
@@ -64,7 +64,7 @@ const KanbanColumnImpl = ({
       className={cn(
         // Three surface steps: the panel, the column's well, the card raised on it.
         "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-surface-2",
-        empty ? "w-18 shrink-0 items-center xl:w-32 xl:items-stretch" : "w-42 flex-1 xl:w-50",
+        empty ? "w-18 shrink-0 items-center xl:w-32 xl:items-stretch" : "w-37 flex-1 lg:w-42 xl:w-50",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
@@ -81,7 +81,7 @@ const KanbanColumnImpl = ({
         >
           <span className={cn("flex min-w-0 items-center gap-1.5", empty && "max-xl:flex-col max-xl:gap-1")}>
             <StatusMark status={column} className="size-3.5" />
-            <span className={cn("text-sm font-medium", empty ? "max-xl:leading-tight max-xl:text-balance xl:whitespace-nowrap" : "truncate")}>{column.name}</span>
+            <span className={cn("text-sm font-medium", empty ? "whitespace-nowrap max-xl:text-[11px] max-xl:font-semibold" : "truncate")}>{column.name}</span>
           </span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
             {tickets.length}
