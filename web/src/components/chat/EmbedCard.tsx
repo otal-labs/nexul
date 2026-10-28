@@ -22,7 +22,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const tone = embedReportTone(embed, facts);
   const hasFooter = !!(embed.footer || embed.timestamp);
   const clamp = embedFold(embed).longDescription && !open;
-  // A many-line description keeps its first six lines whole and fades the last, since an ellipsis after a full stop reads as a typo.
+  // A many-line description keeps its first six lines whole, since a clamp cut the last or ended it in an ellipsis after a full stop.
   const manyLines = clamp && (embed.description ?? "").split("\n").length > DESCRIPTION_LINES;
 
   return (
@@ -35,7 +35,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
             <DiscordMarkdown
               text={embed.description}
               maxLines={manyLines ? DESCRIPTION_LINES : undefined}
-              className={cn("space-y-0.5 text-[13px] leading-5 text-foreground/80", manyLines && "title-clamp-fade", clamp && !manyLines && "line-clamp-6")}
+              className={cn("space-y-0.5 text-[13px] leading-5 text-foreground/80 tabular-nums", clamp && !manyLines && "line-clamp-6")}
             />
           )}
           {!open && <EmbedFactLines facts={facts} />}

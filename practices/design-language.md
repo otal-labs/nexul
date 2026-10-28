@@ -1075,8 +1075,11 @@ composer under it at the same width, so your bubble on the right never sits a
 panel away from the line it answers. The column has two edges: its own left
 edge holds the header's icon and name, the avatars, the day divider's rules
 and the composer's frame, and the body indent (avatar and gap) holds what a
-message carries, its name line, text and a bot's report. The scroller keeps a
-gutter on both sides, so the column centres on the header and composer. The
+message carries, its name line, text and a bot's report. From a 50rem stream
+the scroller keeps a scrollbar gutter on both sides, so the column centres on
+the header and composer; narrower it draws no scrollbar, so the column spans
+their width. The stream fades out over 16px under the header and 12px over the
+composer, never cut on a flat line. The
 conversation header is 48px, its hairline running the panel's width: the icon
 (a private channel's lock) and name, then on the right a private channel's
 members as three 20px avatars and a mono count, and the channel settings gear
@@ -1140,7 +1143,7 @@ and the rest counted ("● cache stopped · 2 redeployed · 6 healthy"); fewer
 keep their dot on the fact line. The footer text and time follow as one mono
 11px line with the ghost fold toggle after it ("Show all 9 fields" for a tally,
 "Show 6 more fields" past six long ones, "Show the rest" for a long
-description, which keeps its first six lines whole and fades the last instead of an ellipsis); opened, the fields lay out as the sender's grid, a mono
+description, which shows its first six lines whole rather than a clamp that cuts the last or ends it in an ellipsis); opened, the fields lay out as the sender's grid, a mono
 microheader over each value, inline ones three across (two in a narrow pane).
 Past two embeds the same toggle opens the rest. Only a bot's
 text renders Discord's markdown subset. `BotMessageRow`, `EmbedCard` and

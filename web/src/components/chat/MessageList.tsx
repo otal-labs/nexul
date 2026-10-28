@@ -109,9 +109,9 @@ export const MessageList = ({
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
           <MessageScroller className="@container/scroller min-h-0 flex-1">
-            {/* Once the column stops filling the pane, a gutter each side centres it on the header and composer. */}
-            <MessageScrollerViewport className="@min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]!">
-              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
+            {/* A gutter each side centres the column on the header and composer; narrower, no scrollbar takes the column's width. */}
+            <MessageScrollerViewport className="[mask-image:linear-gradient(to_bottom,transparent,black_1rem,black_calc(100%-0.75rem),transparent)] [scrollbar-gutter:auto]! [scrollbar-width:none]! @min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]! @min-[50rem]/scroller:[scrollbar-width:thin]!">
+              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 pt-2 pb-3" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
                   const own = message.author_id === currentUserId;
                   const newest = i === messages.length - 1;

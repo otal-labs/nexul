@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
 import { UnreadBadge } from "@/components/UnreadBadge";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { cn } from "@/lib/utils";
 import { listedUnread } from "@/models/Chat";
 
 interface ConversationSwitcherProps {
@@ -13,6 +14,12 @@ interface ConversationSwitcherProps {
   label: string;
   icon: LucideIcon;
 }
+
+// The sidebar marks the open row with its sliding block, which the popover lacks; this draws the same tint and edge.
+const openRowClass = cn(
+  "[&_a[aria-current=page]]:bg-brand/12 dark:[&_a[aria-current=page]]:bg-brand/16",
+  "[&_a[aria-current=page]]:before:absolute [&_a[aria-current=page]]:before:inset-y-2 [&_a[aria-current=page]]:before:left-0 [&_a[aria-current=page]]:before:w-0.5 [&_a[aria-current=page]]:before:rounded-full [&_a[aria-current=page]]:before:bg-brand [&_a[aria-current=page]]:before:content-['']",
+);
 
 // While the sidebar is the icon rail, the open conversation's name opens the sidebar's own conversation list.
 export const ConversationSwitcher = ({ workspaceId, conversationId, label, icon: Icon }: ConversationSwitcherProps) => {
@@ -41,7 +48,7 @@ export const ConversationSwitcher = ({ workspaceId, conversationId, label, icon:
           <UnreadBadge count={waiting} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="max-h-[min(32rem,70dvh)] w-64 overflow-y-auto p-1.5" onClickCapture={closeOnPick}>
+      <PopoverContent className={cn("max-h-[min(32rem,70dvh)] w-64 overflow-y-auto p-1.5", openRowClass)} onClickCapture={closeOnPick}>
         <ChatSidebarSection collapsed={false} />
       </PopoverContent>
     </Popover>

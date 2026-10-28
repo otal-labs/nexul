@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const Dot = ({ field, tone }: { field?: EmbedField; tone?: EmbedTallyEntry["tone"] | null }) => {
   const hue = tone ?? (field && fieldTone(field.value));
   if (!hue) return null;
-  return <span aria-hidden className={cn("size-1.5 shrink-0 translate-y-[-1px] self-center rounded-full", toneBg[hue])} />;
+  return <span aria-hidden className={cn("size-1.5 shrink-0 translate-y-[-1px] rounded-full", toneBg[hue])} />;
 };
 
 const Separated = ({ children, first }: { children: ReactNode; first: boolean }) => (
@@ -20,7 +20,7 @@ const Separated = ({ children, first }: { children: ReactNode; first: boolean })
 );
 
 const FactLine = ({ fields }: { fields: EmbedField[] }) => (
-  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-5">
+  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[13px] leading-5">
     {fields.map((field, i) => (
       <Separated key={i} first={i === 0}>
         <span className="text-muted-foreground">{field.name}</span>
@@ -32,7 +32,7 @@ const FactLine = ({ fields }: { fields: EmbedField[] }) => (
 );
 
 const TallyLine = ({ tally }: { tally: EmbedTallyEntry[] }) => (
-  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-5">
+  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[13px] leading-5">
     {tally.map((entry, i) => (
       <Separated key={i} first={i === 0}>
         <Dot tone={entry.tone} />
