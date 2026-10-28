@@ -91,6 +91,20 @@ describe("KanbanColumn", () => {
     expect(screen.getByText("Wire FTS")).toBeInTheDocument();
   });
 
+  it("mounts a long column 25 cards at a time, counting every ticket in the header", async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 60 }, (_, i) => ticket(`t-${i}`, `Ticket ${i}`, "open", i));
+    renderColumn({ tickets: many });
+    expect(screen.getByLabelText("60 tickets")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(25);
+
+    await user.click(screen.getByRole("button", { name: "Show 25 more of 35" }));
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(50);
+    await user.click(screen.getByRole("button", { name: "Show 10 more of 10" }));
+    expect(screen.getAllByText(/^Ticket \d+$/)).toHaveLength(60);
+    expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
+  });
+
   it("shows the empty hint when no tickets match", () => {
     renderColumn({ tickets: [] });
     expect(screen.getByText("No tickets")).toBeInTheDocument();

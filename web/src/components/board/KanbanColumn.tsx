@@ -1,6 +1,6 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { StatusMark } from "@/components/board/StatusIcon";
@@ -23,6 +23,9 @@ interface KanbanColumnProps {
   onAddTicket: (statusId: string) => void;
 }
 
+// A column mounts this many cards and grows by as many on "Show more": every card is a sortable, so a long column mounted all at once stalls the board.
+const CARD_WINDOW = 25;
+
 const KanbanColumnImpl = ({
   droppableId,
   laneLabel,
@@ -33,9 +36,12 @@ const KanbanColumnImpl = ({
   onAddTicket,
 }: KanbanColumnProps) => {
   const empty = tickets.length === 0;
+  const [shownCount, setShownCount] = useState(CARD_WINDOW);
+  const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
+  const hidden = tickets.length - shown.length;
   const data: DropTargetData = { type: "column", statusId: column.id, categoryId, kind: column.kind };
   // Keyed on the ids, not the array: a new items array re-renders every card in the column.
-  const idsKey = tickets.map((t) => t.id).join(" ");
+  const idsKey = shown.map((t) => t.id).join(" ");
   const ticketIds = useMemo(() => (idsKey === "" ? [] : idsKey.split(" ")), [idsKey]);
   // Both a drop target for cards and a sortable in its lane's column row; only the header activates the sort.
   const draggable = useActionState({ permission: "projects:write" }).state === "live";
@@ -92,10 +98,19 @@ const KanbanColumnImpl = ({
       {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count; the 1px top padding is room for a card's hover lift. */}
       <EnterList as="div" className="-mt-px flex max-h-[calc(31.5rem+1px)] min-h-16 flex-1 flex-col gap-1.5 overflow-y-auto pt-px">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
-          {tickets.map((ticket) => (
+          {shown.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
           ))}
         </SortableContext>
+        {hidden > 0 && (
+          <button
+            type="button"
+            onClick={() => setShownCount((count) => count + CARD_WINDOW)}
+            className="shrink-0 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground"
+          >
+            Show {Math.min(hidden, CARD_WINDOW)} more of <span className="font-mono tabular-nums">{hidden}</span>
+          </button>
+        )}
         {empty && (
           // The dashed slot only shows while a card is held: then it reads as somewhere a card can land.
           <EmptyRow className="flex-1 rounded-md border border-dashed border-transparent px-2 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
