@@ -97,8 +97,17 @@ func inspectLine(name, state string, exit int, oom bool, finished string, labels
 // framesFrom starts a machine runner against a socket that records every frame it sends.
 func framesFrom(t *testing.T, w *ContainerWatch, personal bool) <-chan Frame {
 	t.Helper()
+	return framesAfter(t, w, personal, nil)
+}
+
+// framesAfter is framesFrom with hello run on the server's end of the socket as soon as the runner connects.
+func framesAfter(t *testing.T, w *ContainerWatch, personal bool, hello func(ctx context.Context, conn *websocket.Conn)) <-chan Frame {
+	t.Helper()
 	frames := make(chan Frame, 256)
 	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+		if hello != nil {
+			hello(ctx, conn)
+		}
 		for {
 			var f Frame
 			if err := wsjson.Read(ctx, conn, &f); err != nil {
@@ -217,13 +226,18 @@ func TestContainerWatch_ANonMachineRunnerWatchesNothing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			docker := &fakeHostDocker{ps: "id1\n", inspect: func([]string) string { return "" }}
-			frames := framesFrom(t, tt.watch(docker), tt.personal)
+			// The runner answers this frame only after starting its watches, so any container frame would arrive first.
+			frames := framesAfter(t, tt.watch(docker), tt.personal, func(ctx context.Context, conn *websocket.Conn) {
+				_ = wsjson.Write(ctx, conn, Frame{Type: FrameGatewayRoutes, GatewayContainer: "gw", GatewayRoutes: `{"routers":{},"services":{}}`})
+			})
+			require.Equal(t, FrameGatewayRoutesResult, nextFrame(t, frames).Type)
 			select {
 			case f := <-frames:
 				t.Fatalf("unexpected %s frame", f.Type)
-			case <-time.After(200 * time.Millisecond):
+			default:
 			}
 			assert.Zero(t, docker.streamRuns())
+			assert.Zero(t, docker.inspectCalls())
 		})
 	}
 }

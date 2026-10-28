@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,7 +72,10 @@ type fakeTraefikHost struct {
 	addresses map[string]string
 	pages     map[string][]string
 	fetchErr  error
+	psErr     error
 	urls      []string
+	// listed is signalled once per gateway read; a full channel drops the signal so the runner never blocks.
+	listed chan struct{}
 }
 
 func (h *fakeTraefikHost) watch() *ContainerWatch {
@@ -86,7 +90,13 @@ func (h *fakeTraefikHost) output(_ context.Context, args ...string) (string, err
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if args[0] == "ps" {
-		return h.ps, nil
+		if h.listed != nil && slices.Contains(args, psGatewaysFormat) {
+			select {
+			case h.listed <- struct{}{}:
+			default:
+			}
+		}
+		return h.ps, h.psErr
 	}
 	if args[0] == "inspect" && len(args) == 4 {
 		return h.addresses[args[3]], nil
@@ -116,6 +126,34 @@ func (h *fakeTraefikHost) failWith(err error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.fetchErr = err
+}
+
+// healWith makes the host answer a read the way the happy path does, with a gateway whose counter moves by 4.
+func (h *fakeTraefikHost) healWith(ps string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.ps, h.psErr, h.fetchErr = ps, nil, nil
+	h.addresses = map[string]string{"gw1": "172.20.0.2 \n"}
+	h.pages = map[string][]string{"http://172.20.0.2:8082/metrics": {page(1, 0), page(5, 0)}}
+}
+
+// waitReads returns once the runner has started n reads, so every read before the last has finished.
+func (h *fakeTraefikHost) waitReads(t *testing.T, n int) {
+	t.Helper()
+	for range n {
+		select {
+		case <-h.listed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the runner did not read the host")
+		}
+	}
+}
+
+// assertFirstFramesAreTheHealedReads fails when a failed read sent a frame, since that frame would arrive first.
+func assertFirstFramesAreTheHealedReads(t *testing.T, frames <-chan Frame) {
+	t.Helper()
+	assert.Empty(t, nextFrame(t, frames).Counts, "the first read that worked is the baseline")
+	assert.Equal(t, []RouterCount{{Router: "nexul-e1@file", Requests: 4}}, nextFrame(t, frames).Counts)
 }
 
 func countsClient(t *testing.T, h *fakeTraefikHost) <-chan Frame {
@@ -166,28 +204,33 @@ func TestWatchRequests_ARead_ThatFailsSendsNothing(t *testing.T) {
 	h := &fakeTraefikHost{
 		ps:        "gw1 traefik:v3\n",
 		addresses: map[string]string{"gw1": "172.20.0.2 \n"},
-		pages:     map[string][]string{"http://172.20.0.2:8082/metrics": {page(1, 0)}},
+		listed:    make(chan struct{}, 64),
 	}
 	h.failWith(errors.New("metrics are not on"))
 	frames := countsClient(t, h)
 
-	select {
-	case f := <-frames:
-		t.Fatalf("unexpected frame %+v", f)
-	case <-time.After(150 * time.Millisecond):
-	}
-
-	h.failWith(nil)
-	assert.Empty(t, nextFrame(t, frames).Counts, "the first successful read is a baseline")
+	h.waitReads(t, 2)
+	h.healWith(h.ps)
+	assertFirstFramesAreTheHealedReads(t, frames)
 }
 
 func TestWatchRequests_AHostWithoutAGatewayOrWithoutDockerSendsNothing(t *testing.T) {
-	h := &fakeTraefikHost{ps: "db1 postgres:16\n"}
-	frames := countsClient(t, h)
-	select {
-	case f := <-frames:
-		t.Fatalf("unexpected frame %+v", f)
-	case <-time.After(150 * time.Millisecond):
+	tests := []struct {
+		name string
+		host *fakeTraefikHost
+	}{
+		{"no gateway runs", &fakeTraefikHost{ps: "db1 postgres:16\n"}},
+		{"docker does not answer", &fakeTraefikHost{psErr: errors.New("cannot connect to the docker daemon")}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.host.listed = make(chan struct{}, 64)
+			frames := countsClient(t, tt.host)
+
+			tt.host.waitReads(t, 2)
+			tt.host.healWith("gw1 traefik:v3\n")
+			assertFirstFramesAreTheHealedReads(t, frames)
+		})
 	}
 }
 

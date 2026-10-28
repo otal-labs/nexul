@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,8 +26,20 @@ const testReleaseRepo = "otal-labs/nexul"
 // (one asset, nexul-runner-linux-amd64, plus checksums.txt) and the asset bytes.
 func fakeGitHub(t *testing.T, tag, assetBody string) *httptest.Server {
 	t.Helper()
+	srv, _ := fakeGitHubRecording(t, tag, assetBody)
+	return srv
+}
+
+// fakeGitHubRecording is fakeGitHub that also returns the release lookup paths it was asked for, in order.
+func fakeGitHubRecording(t *testing.T, tag, assetBody string) (*httptest.Server, func() []string) {
+	t.Helper()
+	var mu sync.Mutex
+	var lookups []string
 	mux := http.NewServeMux()
 	respond := func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		lookups = append(lookups, r.URL.Path)
+		mu.Unlock()
 		type ghAsset struct {
 			Name string `json:"name"`
 			URL  string `json:"url"`
@@ -54,7 +68,11 @@ func fakeGitHub(t *testing.T, tag, assetBody string) *httptest.Server {
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(lookups)
+	}
 }
 
 func newDownloadService(apiBase string) *Service {
@@ -114,23 +132,25 @@ func TestService_Download(t *testing.T) {
 
 	t.Run("release build resolves its own version", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		srv := fakeGitHub(t, "v0.2.0", "binary-bytes")
+		srv, lookups := fakeGitHubRecording(t, "v0.2.0", "binary-bytes")
 		svc := newDownloadService(srv.URL)
 
 		asset, err := svc.Download(context.Background(), "linux-amd64", "")
 		require.NoError(t, err)
 		require.NoError(t, asset.Body.Close())
 		assert.Equal(t, "deadbeef", asset.Sha256)
+		assert.Equal(t, []string{"/repos/" + testReleaseRepo + "/releases/tags/v0.2.0"}, lookups())
 	})
 
 	t.Run("an explicit tag is used regardless of the server's own version", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		srv := fakeGitHub(t, "v0.1.5", "binary-bytes")
+		srv, lookups := fakeGitHubRecording(t, "v0.1.5", "binary-bytes")
 		svc := newDownloadService(srv.URL)
 
 		asset, err := svc.Download(context.Background(), "linux-amd64", "v0.1.5")
 		require.NoError(t, err)
 		require.NoError(t, asset.Body.Close())
+		assert.Equal(t, []string{"/repos/" + testReleaseRepo + "/releases/tags/v0.1.5"}, lookups())
 	})
 
 	t.Run("unknown target is rejected before any github call", func(t *testing.T) {
@@ -279,7 +299,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 	})
 
 	t.Run("explicit ?version= is forwarded to the release lookup", func(t *testing.T) {
-		gh := fakeGitHub(t, "v0.1.5", "binary-bytes")
+		gh, lookups := fakeGitHubRecording(t, "v0.1.5", "binary-bytes")
 		repo := newFakeRunnerRepo()
 		client := release.New(release.Config{APIBase: gh.URL})
 		svc := NewService(repo, &fakeDispatch{}).WithInstall(InstallConfig{Release: client})
@@ -293,6 +313,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, resp.Body.Close()) }()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, []string{"/repos/" + testReleaseRepo + "/releases/tags/v0.1.5"}, lookups())
 	})
 
 	t.Run("404 from github propagates as a not-found status", func(t *testing.T) {
