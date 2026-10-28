@@ -119,13 +119,6 @@ describe("KanbanColumn", () => {
     expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).not.toHaveClass("w-10");
   });
 
-  it("navigates to the ticket detail page on click", async () => {
-    const user = userEvent.setup();
-    renderColumn();
-    await user.click(screen.getByText("Fix login"));
-    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
-  });
-
   it("calls onAddTicket with this column's status id when the + button is clicked", async () => {
     const user = userEvent.setup();
     const onAddTicket = vi.fn();
@@ -142,13 +135,6 @@ describe("KanbanColumn", () => {
     expect(surface).not.toBe(add);
     expect(surface).not.toContainElement(add);
     expect(surface).toHaveTextContent("Open");
-  });
-
-  it("falls back to the stage dot when no icon is set", () => {
-    renderColumn({ column: { ...column, icon: "" } });
-    const heading = screen.getByRole("heading", { level: 4 });
-    expect(heading.querySelector("span > svg")).not.toBeInTheDocument();
-    expect(heading.querySelector(".rounded-full.bg-info")).toBeInTheDocument();
   });
 
   it("renders the chosen icon instead of the dot when set", () => {

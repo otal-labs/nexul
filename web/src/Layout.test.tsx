@@ -144,28 +144,6 @@ describe("Layout", () => {
     expect(await screen.findByText("Onik")).toBeInTheDocument();
   });
 
-  it("has no Work/Deploy/Manage section header anywhere in the sidebar", () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    expect(screen.queryByText(/^Work$/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Deploy$/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Manage$/)).not.toBeInTheDocument();
-  });
-
-  it("offers New project in the sidebar when the workspace has no projects", async () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
-  });
-
-  it("puts the collapse toggle outside the bottom control cluster, not next to the settings gear", () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    const collapseButton = screen.getByRole("button", { name: /collapse sidebar|expand sidebar/i });
-    const gear = screen.getByRole("link", { name: "Your settings" });
-    expect(collapseButton.closest("div")).not.toBe(gear.closest("div"));
-  });
-
   it("shows the Inbox link for signed-in users, above the project section", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();

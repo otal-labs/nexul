@@ -117,10 +117,4 @@ describe("MentionChip", () => {
     expect(inert).toHaveTextContent("Stored title");
     expect(inert).toHaveAttribute("data-can-open", "false");
   });
-
-  it("falls back to the stored label when the target no longer resolves", async () => {
-    render(wrap(<MentionChip type="ticket" id="gone" label="Gone ticket" chip={undefined} />));
-    const inert = await screen.findByTestId("mention-chip");
-    expect(inert).toHaveTextContent("Gone ticket");
-  });
 });

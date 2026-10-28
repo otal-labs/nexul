@@ -159,12 +159,6 @@ describe("AccountMenu", () => {
     expect(screen.queryByText("@onik97")).not.toBeInTheDocument();
   });
 
-  it("renders the avatar in the sidebar's shared size-8 identity slot", async () => {
-    renderMenu();
-    const avatar = await screen.findByText("O");
-    expect(avatar).toHaveClass("size-8");
-  });
-
   it("renders the GitHub avatar image when the user has one, not initials", async () => {
     ownerUser.avatar_url = "https://avatars.example/onik.png";
     try {

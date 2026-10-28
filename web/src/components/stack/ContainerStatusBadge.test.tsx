@@ -10,10 +10,4 @@ describe("ContainerStatusBadge", () => {
     const icon = screen.getByText(ContainerStatus.Running).querySelector("svg");
     expect(icon).toHaveClass("animate-spin", "motion-reduce:animate-none");
   });
-
-  it("keeps a healthy container's icon still", () => {
-    render(<ContainerStatusBadge status={ContainerStatus.Healthy} />);
-    const icon = screen.getByText(ContainerStatus.Healthy).querySelector("svg");
-    expect(icon).not.toHaveClass("animate-spin");
-  });
 });

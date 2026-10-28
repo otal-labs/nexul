@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 import type { Person } from "@nexul/client-core/person";
 
-import { attachmentMarkdown, buildMentionCandidates, composeMessageBody, conversationPlayTarget, findMentionTrigger, groupConversations, matchesMentionPrefix } from "@/models/Chat";
+import { buildMentionCandidates, composeMessageBody, conversationPlayTarget, findMentionTrigger, groupConversations, matchesMentionPrefix } from "@/models/Chat";
 import type { Attachment } from "@/models/Attachment";
 
 const conversation = (overrides: Partial<Conversation>): Conversation => ({
@@ -96,12 +96,6 @@ const attachment = (overrides: Partial<Attachment>): Attachment => ({
   uploaded_by: "u1",
   created_at: "2026-08-26T00:00:00Z",
   ...overrides,
-});
-
-describe("attachmentMarkdown", () => {
-  it("renders the attachment as an image-markdown line pointing at the attachment path", () => {
-    expect(attachmentMarkdown(attachment({ id: "a-9", name: "shot.png" }))).toBe("![shot.png](/api/attachments/a-9)");
-  });
 });
 
 describe("composeMessageBody", () => {

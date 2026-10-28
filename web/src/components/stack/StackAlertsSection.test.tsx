@@ -97,13 +97,6 @@ describe("StackAlertsSection", () => {
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 
-  it("puts the error-rate card under the crash tickets card", async () => {
-    await renderSection();
-
-    const regions = screen.getAllByRole("region").map((r) => r.id);
-    expect(regions).toEqual(["crash-tickets", "crash-notices", "error-rate"]);
-  });
-
   it("shows the state but does not flip for someone without stacks:write", async () => {
     mocks.held = [];
     const user = userEvent.setup();

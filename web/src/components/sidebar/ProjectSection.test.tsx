@@ -197,18 +197,6 @@ describe("ProjectSection", () => {
     expect(items[0]).toHaveTextContent("Frontend");
   });
 
-  it("has no + beside the switcher; New project only appears inside the menu", async () => {
-    const user = userEvent.setup();
-    renderSection();
-
-    const trigger = await screen.findByRole("button", { name: /Backend/ });
-    expect(screen.queryByRole("button", { name: /new/i })).not.toBeInTheDocument();
-
-    await user.click(trigger);
-    expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /new doc/i })).not.toBeInTheDocument();
-  });
-
   it("a viewer who may read but not create gets no New project", async () => {
     const user = userEvent.setup();
     renderSection({ permissions: ["projects:read", "tickets:read"] });

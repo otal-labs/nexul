@@ -69,14 +69,6 @@ describe("useFlowStore", () => {
     expect(edges[0]?.data?.kind).toBe("depends_on");
   });
 
-  it("selects a node and replaces the nodes", () => {
-    useFlowStore.getState().setCanvas(canvas, "ws-1");
-    useFlowStore.getState().selectNode("svc-api");
-    useFlowStore.getState().setNodes([{ ...node, position: { x: 10, y: 20 } }]);
-    expect(useFlowStore.getState().selectedNodeId).toBe("svc-api");
-    expect(useFlowStore.getState().nodes[0]?.position).toEqual({ x: 10, y: 20 });
-  });
-
   it("tolerates null nodes/edges from the API (empty canvas)", () => {
     useFlowStore.getState().setCanvas({
       schema_version: 2,

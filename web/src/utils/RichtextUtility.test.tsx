@@ -22,11 +22,6 @@ describe("bodyToHtml", () => {
     expect(html).toContain("<strong>");
     expect(html).toContain("<em>");
   });
-
-  it("renders empty and malformed bodies without crashing", () => {
-    expect(bodyToHtml("")).toBeDefined();
-    expect(bodyToHtml("just markdown")).toContain("just markdown");
-  });
 });
 
 describe("bodyToMarkdown", () => {

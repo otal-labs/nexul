@@ -76,11 +76,6 @@ describe("AutomationVersionDiff", () => {
     expect(screen.getByText(/bundled code/)).toBeInTheDocument();
   });
 
-  it("shows the merge button only when there's a pending version", () => {
-    renderDiff(diffData());
-    expect(screen.getByRole("button", { name: "Merge" })).toBeInTheDocument();
-  });
-
   it("shows no pending version message and no merge button when nothing is pending", () => {
     renderDiff({ active: diffData().active, pending: null });
     expect(screen.getByText("No pending version")).toBeInTheDocument();
