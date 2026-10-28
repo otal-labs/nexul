@@ -304,13 +304,17 @@ export interface SetupSummary {
   tone: SetupSummaryTone;
   text: string;
   // The providers the status is about, shown as their marks after it.
-  providers?: ProviderSetupLine[];
+  providers?: ProviderSetupLine[] | undefined;
 }
 
 // A computer's setup in one status: what is running, then what failed, then what is missing, then stale skills.
 export const setupSummary = (setup: ComputerSetup): SetupSummary => {
   const lines = providerSetupLines(setup);
-  const only = (state: ProviderSetupLine["state"]) => lines.filter((l) => l.state === state);
+  // No provider in that state leaves the marks out, so the status never trails an empty detail.
+  const only = (state: ProviderSetupLine["state"]) => {
+    const matching = lines.filter((l) => l.state === state);
+    return matching.length > 0 ? matching : undefined;
+  };
   const running = lines.find((l) => l.state === "running");
   if (running) return { state: "running", tone: "warning", text: running.kind === "skills" ? "Updating skills" : `Setting up ${running.name}` };
   if (lines.some((l) => l.state === "failed")) return { state: "failed", tone: "destructive", text: "Setup failed", providers: only("failed") };
