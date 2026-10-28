@@ -734,7 +734,7 @@ tester in a testing-stage column, else the developer) as a 16px avatar and
 name, one `⦸ KEY` per blocker still open, one pull request mark per linked PR,
 then the presence bar; it is read only, and the rail edits. Under the header a
 line tab row holds Ticket and Thread, each tab past the first at its own path
-segment, and Notes once the ticket has a note. From a 52rem panel the 19.5rem
+segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
 rail sits beside the tabs behind a hairline rule, level with the tab row, on
 Ticket and Thread alike, and the tabs and the rail scroll on their own;
 narrower, the rail folds behind a Details row above the tab row, closed by

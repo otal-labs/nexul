@@ -102,10 +102,10 @@ export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLab
 
   return (
     <div className={cn(rowClass, "items-start")}>
-      <span className={cn(rowIconClass, "mt-0.5")}>
+      <span className={cn(rowIconClass, "mt-1")}>
         <TagIcon className="size-3.5" aria-hidden />
       </span>
-      <span className={cn(rowLabelClass, "mt-0.5")}>Labels</span>
+      <span className={cn(rowLabelClass, "mt-1")}>Labels</span>
       <div className="flex flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
         {labels.length === 0 && <span className="text-xs text-muted-foreground">None</span>}
         {labels.map((label) => (

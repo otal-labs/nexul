@@ -56,7 +56,9 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
             {!onNotes && <TicketDetailsToggle open={detailsOpen} onOpenChange={setDetailsOpen} controls={detailsId} className={layout.detailsToggle} />}
             {!onNotes && (
               <div id={detailsId} className={cn(layout.rail, detailsOpen && layout.railOpen)}>
-                <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />
+                <div className={layout.railScroll}>
+                  <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />
+                </div>
               </div>
             )}
             <PageTabs label="Ticket sections" tabs={tabs} className={cn(layout.tabs, onNotes && layout.tabsWide)}>

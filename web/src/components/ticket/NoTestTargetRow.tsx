@@ -15,7 +15,7 @@ export const NoTestTargetRow = ({ projectId }: NoTestTargetRowProps) => {
   const { data: stacks } = useFetchStacks(projectId);
   const stack = stacks?.find((s) => !s.derived_from);
   return (
-    <p role="status" className="rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground">
+    <p role="status" className="mx-2 rounded-lg border border-border px-3 py-2.5 text-xs text-muted-foreground">
       No test environment yet. Testing never uses production, so add a branch deploy rule with its own network
       {stack && canOpenStack && (
         <>

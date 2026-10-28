@@ -5,6 +5,7 @@ export interface TicketPageLayout {
   body: string;
   detailsToggle: string;
   rail: string;
+  railScroll: string;
   railOpen: string;
   tabs: string;
   tabsWide: string;
@@ -23,16 +24,17 @@ const PANE: TicketPageLayout = {
   container: "h-full max-w-none px-0 sm:px-0",
   page: `panel ${PAGE}`,
   header: "min-w-0 shrink-0",
-  body: "grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)] @min-[52rem]/main:grid-cols-[minmax(0,1fr)_19.5rem] @min-[52rem]/main:grid-rows-[minmax(0,1fr)] @min-[52rem]/main:gap-x-10",
+  body: "grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)] @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:grid-rows-[minmax(0,1fr)] @min-[52rem]/main:gap-x-10",
   detailsToggle: "@min-[52rem]/main:hidden",
-  rail: "hidden min-h-0 min-w-0 overflow-y-auto @min-[52rem]/main:col-start-2 @min-[52rem]/main:row-start-1 @min-[52rem]/main:block @min-[52rem]/main:max-h-none @min-[52rem]/main:border-b-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pt-0 @min-[52rem]/main:pb-6 @min-[52rem]/main:pl-6",
-  railOpen: "mb-4 block max-h-[45dvh] border-b border-border pt-2 pb-4",
+  rail: "hidden min-h-0 min-w-0 @min-[52rem]/main:col-start-2 @min-[52rem]/main:row-start-1 @min-[52rem]/main:block @min-[52rem]/main:border-b-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pl-6",
+  railScroll: "scroll-edge -mx-2 h-full max-h-[45dvh] overflow-y-auto pt-2 pb-6 @min-[52rem]/main:mx-0 @min-[52rem]/main:max-h-none @min-[52rem]/main:pt-0",
+  railOpen: "mb-4 block border-b border-border @min-[52rem]/main:mb-0",
   tabs: "min-h-0 min-w-0 @min-[52rem]/main:col-start-1 @min-[52rem]/main:row-start-1",
   tabsWide: "@min-[52rem]/main:col-span-2",
-  ticketTab: "min-h-0 overflow-y-auto pb-6",
+  ticketTab: "scroll-edge min-h-0 overflow-y-auto pb-6",
   article: "min-w-0",
   thread: "flex min-h-0 flex-col pb-4",
-  notesGrid: "grid content-start gap-8 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_19.5rem] @min-[52rem]/main:gap-x-10",
+  notesGrid: "grid content-start gap-8 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:gap-x-10",
   notesRail: "min-w-0 border-t border-border pt-6 @min-[52rem]/main:border-t-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pt-0 @min-[52rem]/main:pl-6",
 };
 

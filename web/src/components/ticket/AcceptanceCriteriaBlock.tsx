@@ -19,8 +19,8 @@ export const AcceptanceCriteriaBlock = ({ ticket }: AcceptanceCriteriaBlockProps
         </p>
       )}
       {criteria !== "" && (
-        <div className="px-2">
-          <DocBodyView key={criteria} body={criteria} />
+        <div className="px-2 [&_li_p]:text-balance!">
+          <DocBodyView key={criteria} body={criteria} className="text-sm" />
         </div>
       )}
     </div>

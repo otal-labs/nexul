@@ -41,16 +41,18 @@ export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => 
       {!isAgent && !isSystem && (
         <PersonAvatar login={author.login} src={message.author_avatar_url || author.avatar_url} className="size-5 text-[10px]" />
       )}
-      {!isSystem && (
-        <span dir="auto" className="shrink-0 font-medium text-foreground">
-          {nameOf(message, author)}
+      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+        {!isSystem && (
+          <span dir="auto" className="shrink-0 font-medium text-foreground">
+            {nameOf(message, author)}
+          </span>
+        )}
+        <time dateTime={message.created_at} className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+          {formatUpdatedAgo(message.created_at)}
+        </time>
+        <span dir="auto" className="min-w-0 truncate text-muted-foreground">
+          {lineOf(message.body)}
         </span>
-      )}
-      <time dateTime={message.created_at} className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-        {formatUpdatedAgo(message.created_at)}
-      </time>
-      <span dir="auto" className="min-w-0 truncate text-muted-foreground">
-        {lineOf(message.body)}
       </span>
     </li>
   );
