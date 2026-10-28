@@ -99,8 +99,10 @@ func TestCreate_BugOriginUnknown_RecordsMarker(t *testing.T) {
 func TestCreate_FoundInWriteFails_NothingReturned(t *testing.T) {
 	s, repo, origin := newBugService(t)
 	repo.ticketLinkErr = errors.New("disk full")
-	_, err := s.Create(t.Context(), "p-1", "Crash", "", "", "", CreateOptions{TypeID: "tt-bug", OriginID: origin.ID})
-	require.Error(t, err)
+	bug, err := s.Create(t.Context(), "p-1", "Crash", "", "", "", CreateOptions{TypeID: "tt-bug", OriginID: origin.ID})
+	require.ErrorContains(t, err, "disk full")
+	assert.Nil(t, bug)
+	assert.Len(t, repo.tickets, 1, "only the origin ticket exists")
 }
 
 func TestCreate_TypeLookupFails_Propagates(t *testing.T) {

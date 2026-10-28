@@ -77,7 +77,11 @@ func TestNotificationHandler_List(t *testing.T) {
 		repo.create(t, mkNotif("n1", "u1"))
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodGet, "/api/notifications?limit=abc", "")
-		assert.Equal(t, http.StatusOK, rec.Code)
+		require.Equal(t, http.StatusOK, rec.Code)
+		var ns []*Notification
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &ns))
+		require.Len(t, ns, 1, "the default window still returns the seeded notification")
+		assert.Equal(t, "n1", ns[0].ID)
 	})
 }
 

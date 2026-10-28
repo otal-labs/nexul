@@ -62,6 +62,7 @@ func TestSecretsHandler_SetListDelete(t *testing.T) {
 	t.Run("malformed set body is 400 and never echoes the raw body", func(t *testing.T) {
 		rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/API_KEY?workspace_id=ws-1", `{not json`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.NotContains(t, rec.Body.String(), "not json")
 	})
 
 	t.Run("non-privileged actor is 403 on delete", func(t *testing.T) {

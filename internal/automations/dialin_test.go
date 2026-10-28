@@ -116,6 +116,18 @@ func dialAnnounce(t *testing.T, url string, announce automations.Frame) *websock
 	return conn
 }
 
+// readClosedByServer fails when the read only ran out its deadline, which also returns an error.
+func readClosedByServer(t *testing.T, conn *websocket.Conn) error {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	var f automations.Frame
+	err := wsjson.Read(ctx, conn, &f)
+	require.Error(t, err)
+	require.NoError(t, ctx.Err(), "the server never closed the connection: %v", err)
+	return err
+}
+
 func TestDialinHandler_ServeHTTP_RevokedToken_Refuses(t *testing.T) {
 	setup := newDialinSetup(t)
 	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
@@ -213,9 +225,11 @@ func TestDialinHandler_DeliversSubscribedEvent_RunSuccess_AdvancesCursor(t *test
 	assert.Equal(t, "ev-1", runs[0].EventID)
 	assert.Equal(t, "handled\n", runs[0].Logs)
 
-	_, ok, err := store.AutomationCursors.Get(context.Background(), created.ID)
-	require.NoError(t, err)
-	assert.True(t, ok)
+	// The cursor is set after the run row is written, and connect already stored a baseline with an empty id.
+	require.Eventually(t, func() bool {
+		cursor, ok, err := store.AutomationCursors.Get(context.Background(), created.ID)
+		return err == nil && ok && cursor.ID == "ev-1"
+	}, 2*time.Second, 10*time.Millisecond, "a clean finish advances the cursor to the delivered event")
 }
 
 func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
@@ -416,9 +430,9 @@ func TestDialinHandler_RunFinishedFailure_StillAdvancesCursor(t *testing.T) {
 
 	store := storage.New(setup.db, []byte("0123456789abcdef0123456789abcdef"))
 	require.Eventually(t, func() bool {
-		_, ok, err := store.AutomationCursors.Get(context.Background(), created.ID)
-		return err == nil && ok
-	}, 2*time.Second, 10*time.Millisecond)
+		cursor, ok, err := store.AutomationCursors.Get(context.Background(), created.ID)
+		return err == nil && ok && cursor.ID == "ev-1"
+	}, 2*time.Second, 10*time.Millisecond, "a reported failure still advances the cursor past the event")
 }
 
 func TestDialinHandler_UnexpectedFrameFromAutomation_LoggedNotFatal(t *testing.T) {
@@ -463,10 +477,7 @@ func TestDialinHandler_SwitchOffWhileConnected_DisconnectsSocket(t *testing.T) {
 	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, false)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-	var f automations.Frame
-	require.Error(t, wsjson.Read(ctx, conn, &f), "switching off must force-close the live connection")
+	_ = readClosedByServer(t, conn)
 }
 
 type fixedSecrets map[string]string
@@ -531,11 +542,8 @@ func TestDialinHandler_CloseAll_ClosesEveryLiveConnection(t *testing.T) {
 
 	setup.dh.CloseAll("shutdown")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	var f automations.Frame
-	require.Error(t, wsjson.Read(ctx, conn1, &f))
-	require.Error(t, wsjson.Read(ctx, conn2, &f))
+	_ = readClosedByServer(t, conn1)
+	_ = readClosedByServer(t, conn2)
 }
 
 func TestDialinHandler_AnnounceBlankAfterTrim_ClosesConnection(t *testing.T) {
@@ -553,10 +561,8 @@ func TestDialinHandler_AnnounceBlankAfterTrim_ClosesConnection(t *testing.T) {
 
 	require.NoError(t, wsjson.Write(context.Background(), conn, automations.Frame{Type: automations.FrameAnnounce, Name: "   "}))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	var f automations.Frame
-	require.Error(t, wsjson.Read(ctx, conn, &f))
+	err = readClosedByServer(t, conn)
+	assert.Equal(t, websocket.StatusPolicyViolation, websocket.CloseStatus(err))
 }
 
 func TestDialinHandler_NewConnectionReplacesOld(t *testing.T) {
@@ -565,14 +571,9 @@ func TestDialinHandler_NewConnectionReplacesOld(t *testing.T) {
 	require.NoError(t, err)
 
 	conn1 := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
-	conn2 := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
-	_ = conn2
+	dialAnnounce(t, setup.wsURL(token), automations.Frame{})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	var f automations.Frame
-	err = wsjson.Read(ctx, conn1, &f)
-	require.Error(t, err, "the older connection must be replaced, not left dangling")
+	_ = readClosedByServer(t, conn1)
 }
 
 func TestDialinHandler_ServeHTTP_UnknownOrMissingToken_Refuses(t *testing.T) {

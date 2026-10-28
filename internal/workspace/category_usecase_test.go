@@ -143,8 +143,11 @@ func TestMoveTicketToCategory(t *testing.T) {
 	})
 	t.Run("empty category uncategorizes", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
+		s.SetTicketProjects(fakeTicketProjects{"t-1": "p-1"})
 		repo.projects["p-1"] = &Project{ID: "p-1"}
 		require.NoError(t, s.MoveTicketToCategory(context.Background(), "t-1", "  "))
+		require.Len(t, catRepo(s).moved, 1)
+		assert.Equal(t, TicketCategoryChangedEvent{TicketID: "t-1", CategoryID: "", ProjectID: "p-1"}, catRepo(s).moved[0].Payload)
 	})
 }
 

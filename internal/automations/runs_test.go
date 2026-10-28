@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -90,7 +91,7 @@ func TestRunsService_Get_WrongAutomation_ReturnsNotFound(t *testing.T) {
 
 	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 	_, err := svc.Get(context.Background(), "u1", "a2", "r1")
-	require.Error(t, err)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestRunsService_Get_Matching_ReturnsRun(t *testing.T) {
@@ -237,19 +238,30 @@ func TestRunsHandler_Get_Found_ReturnsRun(t *testing.T) {
 
 func TestRunsHandler_List_DefaultAndCustomLimit(t *testing.T) {
 	repo := newFakeRunsRepo()
-	for i := 0; i < 3; i++ {
-		require.NoError(t, repo.Create(context.Background(), &Run{ID: string(rune('a' + i)), AutomationID: "a1", CreatedAt: time.Now()}))
+	for i := 0; i < defaultRunsLimit+1; i++ {
+		require.NoError(t, repo.Create(context.Background(), &Run{ID: fmt.Sprintf("r%d", i), AutomationID: "a1", CreatedAt: time.Now()}))
 	}
 	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
 
-	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs?limit=2", nil), "u1")
-	req.SetPathValue("id", "a1")
-	rec := httptest.NewRecorder()
-	h.Routes().ServeHTTP(rec, req)
+	for name, tc := range map[string]struct {
+		query string
+		want  int
+	}{
+		"no limit takes the default": {"", defaultRunsLimit},
+		"custom limit":               {"?limit=2", 2},
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs"+tc.query, nil), "u1")
+			req.SetPathValue("id", "a1")
+			rec := httptest.NewRecorder()
+			h.Routes().ServeHTTP(rec, req)
 
-	var runs []Run
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &runs))
-	assert.Len(t, runs, 2)
+			require.Equal(t, http.StatusOK, rec.Code)
+			var runs []Run
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &runs))
+			assert.Len(t, runs, tc.want)
+		})
+	}
 }
 
 // runsAutomations holds the automations a1 and a2 the run tests read, both in ws-1.

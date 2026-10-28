@@ -398,15 +398,12 @@ func TestTicketLinks_RepoFailure_IsWrapped(t *testing.T) {
 		"set found in":   func() error { _, err := s.SetFoundIn(t.Context(), ts[0].ID, ts[1].ID, false); return err },
 		"remove found":   func() error { _, err := s.RemoveFoundIn(t.Context(), ts[0].ID); return err },
 		"uncleared":      func() error { _, err := s.UnclearedBlockers(t.Context()); return err },
-		"links missing":  func() error { _, err := s.Links(t.Context(), ""); return err },
 	}
 	for name, call := range calls {
 		t.Run(name, func(t *testing.T) {
-			require.Error(t, call())
+			require.ErrorIs(t, call(), boom)
 		})
 	}
-	_, err := s.Links(t.Context(), ts[0].ID)
-	require.ErrorIs(t, err, boom)
 }
 
 func TestUnblocked_EachPathNamesItsCauseAndActor(t *testing.T) {
