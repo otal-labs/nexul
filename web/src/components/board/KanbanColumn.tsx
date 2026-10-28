@@ -24,7 +24,7 @@ interface KanbanColumnProps {
 }
 
 // A column mounts this many cards and grows by as many on "Show more": every card is a sortable, so a long column mounted all at once stalls the board.
-const CARD_WINDOW = 25;
+const CARD_WINDOW = 10;
 
 const KanbanColumnImpl = ({
   droppableId,

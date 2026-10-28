@@ -549,7 +549,7 @@ next opposite, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 220px minimum, so all
 five stages fit at 1440 beside the sidebar, and grow with their cards while
-the page scrolls; a column mounts its first 25 cards and a "Show 25 more of
+the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
 N" row mounts the next. A column has no well at rest, populated or empty:
 its header (flush with the cards' edges) over the cards, or over one muted
 "No tickets" line, so the cards sit on the page panel and the gap and the
