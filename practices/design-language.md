@@ -545,7 +545,7 @@ project mark and no stage summary,
 because the sidebar's switchers already show the workspace and the project's
 mark, and each column counts its own stage. A card is the mono key as an eyebrow
 (with the run timer, the thread mark and the 20px avatar of whoever acts
-next trailing on its line), the title at full width in 13px medium, the
+next trailing on its line), the title at full width in 13px at weight 450 (500 read as bold at that size on a dark card), the
 blocked line, then the type as its icon alone in its hue (its name in the
 tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
 name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
