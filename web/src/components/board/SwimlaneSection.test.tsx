@@ -108,7 +108,7 @@ describe("SwimlaneSection", () => {
 
     frame("t-1", "done");
     frame("t-2", "done");
-    expect(screen.getByRole("button", { name: "Sprint 1 Running 0 tickets Waiting for an answer 1 ticket 1/3 done" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sprint 1 Waiting for an answer 1 ticket 1/3 done" })).toBeInTheDocument();
 
     frame("t-3", "done");
     expect(screen.getByRole("button", { name: "Sprint 1 1/3 done" })).toBeInTheDocument();

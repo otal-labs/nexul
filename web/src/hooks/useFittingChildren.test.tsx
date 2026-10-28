@@ -15,7 +15,7 @@ const place = (element: HTMLElement, boxes: [number, number, number][]) => {
 };
 
 const Probe = ({ boxes }: { boxes: [number, number, number][] }) => {
-  const [ref, fitting] = useFittingChildren<HTMLDivElement>(boxes.length);
+  const [ref, fitting, slack] = useFittingChildren<HTMLDivElement>(boxes.length);
   return (
     <>
       <div ref={(element) => {
@@ -25,17 +25,19 @@ const Probe = ({ boxes }: { boxes: [number, number, number][] }) => {
         {boxes.map((_, index) => <span key={index} />)}
       </div>
       <output>{fitting}</output>
+      <data>{slack}</data>
     </>
   );
 };
 
 describe("useFittingChildren", () => {
   it.each([
-    { name: "every child on the first row", boxes: [[0, 0, 40], [0, 48, 40]] as [number, number, number][], fitting: "2" },
-    { name: "a child wrapped to the second row", boxes: [[0, 0, 40], [16, 0, 40]] as [number, number, number][], fitting: "1" },
-    { name: "a first child wider than the row", boxes: [[0, 0, 140]] as [number, number, number][], fitting: "0" },
-  ])("counts $name", ({ boxes, fitting }) => {
+    { name: "every child on the first row", boxes: [[0, 0, 40], [0, 48, 40]] as [number, number, number][], fitting: "2", slack: "12" },
+    { name: "a child wrapped to the second row", boxes: [[0, 0, 40], [16, 0, 40]] as [number, number, number][], fitting: "1", slack: "60" },
+    { name: "a first child wider than the row", boxes: [[0, 0, 140]] as [number, number, number][], fitting: "0", slack: "100" },
+  ])("counts $name and the width left after the last that fits", ({ boxes, fitting, slack }) => {
     const { container } = render(<Probe boxes={boxes} />);
     expect(container.querySelector("output")?.textContent).toBe(fitting);
+    expect(container.querySelector("data")?.textContent).toBe(slack);
   });
 });

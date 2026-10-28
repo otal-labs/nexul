@@ -17,8 +17,8 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
 
   // The blocking key, never truncated, on the card's meta line; the sentence is its tooltip and its accessible name.
   return (
-    <span role="img" aria-label={`Blocked by ${keys}`} title={`Blocked by ${keys}`} className="flex shrink-0 items-center gap-1">
-      <Ban className="size-3 shrink-0 text-warning" aria-hidden />
+    <span role="img" aria-label={`Blocked by ${keys}`} title={`Blocked by ${keys}`} className="flex shrink-0 items-baseline gap-1">
+      <Ban className="size-3 shrink-0 self-center text-warning" aria-hidden />
       {keys}
     </span>
   );

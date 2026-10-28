@@ -109,7 +109,7 @@ export const BoardStageHeader = ({ columns, counts, onAddTicket }: BoardStageHea
   const doneOpen = useBoardStore((s) => s.doneOpen);
   const ids = useMemo(() => columns.map((column) => `column-header-${column.id}`), [columns]);
   return (
-    <div className="sticky top-0 z-20 bg-[var(--panel)] pb-1">
+    <div className="sticky top-0 z-20 rounded-md bg-[var(--panel)] pb-1">
       <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
         <div className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
           {columns.map((column) => (

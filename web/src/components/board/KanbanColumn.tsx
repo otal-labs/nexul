@@ -42,7 +42,7 @@ const KanbanColumnImpl = ({ droppableId, laneLabel, categoryId, column, collapse
     <section
       ref={setNodeRef}
       aria-label={`${column.name} column in ${laneLabel}`}
-      className="flex min-w-0 flex-col gap-1.5 self-start p-1.5"
+      className="flex min-w-0 flex-col gap-1.5 rounded-lg bg-well-shade p-1.5"
     >
       {/* The 1px top padding is room for a card's hover lift. */}
       <EnterList as="div" className="-mt-px flex flex-col gap-1.5 pt-px">
