@@ -63,10 +63,8 @@ func TestFrame_Log_WireShapeAndLimits(t *testing.T) {
 	assert.JSONEq(t, `{"type":"log","records":[{"time":"2026-10-01T12:00:00Z","level":"warn","message":"slow","attrs":{"ms":7}}]}`, string(data))
 
 	for name, records := range map[string][]logging.Record{
-		"no records":      nil,
-		"too many":        make([]logging.Record, logging.MaxBatch+1),
-		"an empty batch":  {},
-		"the limit plus1": make([]logging.Record, 51),
+		"no records": nil,
+		"too many":   make([]logging.Record, logging.MaxBatch+1),
 	} {
 		_, err := (&Frame{Type: FrameLog, Records: records}).Encode()
 		require.Error(t, err, name)

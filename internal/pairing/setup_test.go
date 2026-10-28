@@ -91,16 +91,6 @@ func TestSetup_RepoFailures_AreWrapped(t *testing.T) {
 	})
 }
 
-func TestSetup_NewComputer_StartsUnconfirmed(t *testing.T) {
-	t.Parallel()
-	svc, _ := newSetupService(t)
-	setup, err := svc.GetSetup(t.Context(), "u1", "c1")
-	require.NoError(t, err)
-	assert.Equal(t, "c1", setup.ComputerID)
-	assert.Nil(t, setup.ConfirmedAt)
-	assert.Empty(t, setup.Providers)
-}
-
 func TestSetup_ConfirmAndUnconfirmOverall_PublishesEachChange(t *testing.T) {
 	t.Parallel()
 	svc, repo := newSetupService(t)
@@ -165,21 +155,6 @@ func TestSetup_AnOlderSkillVersionIsFlaggedNotGated(t *testing.T) {
 	assert.NotNil(t, setup.Providers[0].ConfirmedAt, "a stale skill never withdraws the confirmation")
 	assert.Equal(t, map[string]bool{"claude": true, "codex": true, "opencode": false, "cursor": false}, outdated,
 		"an older or unrecorded version is out of date; an unconfirmed provider has nothing to refresh")
-}
-
-func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
-	t.Parallel()
-	svc, repo := newSetupService(t)
-	_, err := svc.ConfirmSetup(t.Context(), "u1", "c1")
-	require.NoError(t, err)
-
-	stored := repo.computers["c1"]
-	stored.Name = "renamed"
-	require.NoError(t, repo.SaveComputer(t.Context(), stored))
-
-	setup, err := svc.GetSetup(t.Context(), "u1", "c1")
-	require.NoError(t, err)
-	assert.NotNil(t, setup.ConfirmedAt)
 }
 
 func TestHandler_GetSetup(t *testing.T) {

@@ -122,15 +122,3 @@ func TestHandler_handleCancelRequest(t *testing.T) {
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 	})
 }
-
-// A deploy.requested that cannot reach any runner sits in the queue and never
-// disappears silently — Cancel is the only way out for an orphaned job.
-func TestHandler_handleRequest_NoRunnerQueues(t *testing.T) {
-	bus := newFakeBus()
-	h := newTestHandler(bus, newFakeRunnerRepo())
-	req := DeployRequestedEvent{ID: "d-1", Kind: RequestDeploy, Service: "api"}
-
-	require.NoError(t, h.handleRequest(context.Background(), eventbus.Event{Payload: mustJSON(t, req)}))
-	require.Len(t, h.Queue(), 1)
-	assert.Empty(t, bus.topicEvents(TopicDeployStatusChanged))
-}

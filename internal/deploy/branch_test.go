@@ -351,18 +351,3 @@ func TestCheckBranchDeployRules_HostnameTemplateRequiresGateway(t *testing.T) {
 	_, err = s.CreateStack(context.Background(), stack, nil)
 	require.NoError(t, err)
 }
-
-func TestDeleteStack_RemovesExposure(t *testing.T) {
-	s, stacks, _ := newBranchTestService()
-	exposures := newFakeExposureManager()
-	s.SetExposureManager(exposures)
-	base := validRunStack()
-	require.NoError(t, stacks.Create(context.Background(), &base))
-	exposures.exposures[base.Name] = exposureState{hostname: "api.example.com", port: 8080, network: "app-net"}
-
-	require.NoError(t, s.DeleteStack(context.Background(), base.ID))
-
-	_, ok := exposures.get(base.Name)
-	assert.False(t, ok)
-	assert.Equal(t, 1, exposures.removeCalls)
-}

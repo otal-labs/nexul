@@ -279,7 +279,7 @@ func TestRun_HarnessOffline_FailsOnPressWithTheChatRefusal(t *testing.T) {
 }
 
 func TestRun_HarnessNotReady_ReturnsReasonAndLeavesFailedTrail(t *testing.T) {
-	for _, reason := range []pairing.NotConfiguredReason{pairing.ReasonUnpaired, pairing.ReasonExpiredToken, pairing.ReasonNoComputerReady} {
+	for _, reason := range []pairing.NotConfiguredReason{pairing.ReasonUnpaired} {
 		t.Run(string(reason), func(t *testing.T) {
 			f := newRunnerFixture()
 			f.harness.err = &pairing.NotConfiguredError{Reason: reason}

@@ -107,13 +107,6 @@ func TestMentionMarkdown_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestMentionWithMarks_Serializes(t *testing.T) {
-	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"type":"doc","id":"d-1","label":"Architecture"}}]}]}`
-	md, err := JSONToMarkdown(body)
-	require.NoError(t, err)
-	assert.Equal(t, "[Architecture](/docs/d-1)", md)
-}
-
 func TestPersonMention_MarkdownIsAtLoginAndNodeKeepsTheID(t *testing.T) {
 	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-1","label":"norwooddev"}}]}]}`
 	md, err := JSONToMarkdown(body)

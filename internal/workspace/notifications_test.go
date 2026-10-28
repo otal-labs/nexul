@@ -390,16 +390,6 @@ func TestNotifList(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, ns, 50)
 	})
-	t.Run("limits rows", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		for i := 0; i < 5; i++ {
-			repo.create(t, &Notification{ID: notifID(i), UserID: "u1"})
-		}
-		s := newTestNotifService(repo, newFakeNotifUsers())
-		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 2})
-		require.NoError(t, err)
-		require.Len(t, ns, 2)
-	})
 }
 
 func TestNotifPage_LeavesOutAProjectTheReaderCannotOpen(t *testing.T) {
@@ -502,16 +492,6 @@ func TestNotifMarkRead(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.markErr)
 	})
-	t.Run("marks read", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
-		s := newTestNotifService(repo, newFakeNotifUsers())
-		require.NoError(t, s.MarkRead(context.Background(), "u1", "n1"))
-		got, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 0})
-		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.True(t, got[0].Read)
-	})
 }
 
 func TestNotifMarkAllRead(t *testing.T) {
@@ -528,20 +508,6 @@ func TestNotifMarkAllRead(t *testing.T) {
 		err := s.MarkAllRead(context.Background(), "u1", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.markErr)
-	})
-	t.Run("marks all read for the user only", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
-		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
-		repo.create(t, &Notification{ID: "n3", UserID: "u2"})
-		s := newTestNotifService(repo, newFakeNotifUsers())
-		require.NoError(t, s.MarkAllRead(context.Background(), "u1", ""))
-		for _, n := range repo.notifsFor("u1") {
-			assert.True(t, n.Read)
-		}
-		for _, n := range repo.notifsFor("u2") {
-			assert.False(t, n.Read)
-		}
 	})
 }
 

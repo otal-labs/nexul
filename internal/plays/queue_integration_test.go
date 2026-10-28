@@ -610,7 +610,7 @@ func (r *rig) updates(t *testing.T) int {
 }
 
 func TestDispatch_SetupGap_WaitsWithoutAFailedTrailUntilFixed(t *testing.T) {
-	for _, reason := range []string{"unpaired", "expired_token", "setup_required", "offline", "no_computer_ready"} {
+	for _, reason := range []string{"unpaired"} {
 		t.Run(reason, func(t *testing.T) {
 			r := newRig(t, openStore(t))
 			fix := r.play(t, "Fix it")

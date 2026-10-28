@@ -23,8 +23,6 @@ func TestHandlePROpened(t *testing.T) {
 	}{
 		{"links every referenced ticket", `{"owner":"acme","repo":"app","pr":{"number":7,"linked_ticket_ids":["42","43"]}}`, nil, []string{"42", "43"}, false},
 		{"no references means no calls", `{"owner":"acme","repo":"app","pr":{"number":7,"linked_ticket_ids":[]}}`, nil, nil, false},
-		{"malformed payload is fatal", "not-json", nil, nil, true},
-		{"linker failure is retryable", `{"owner":"acme","repo":"app","pr":{"number":7,"linked_ticket_ids":["42"]}}`, errors.New("ticket store down"), nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

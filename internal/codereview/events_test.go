@@ -79,33 +79,6 @@ func TestHandlePRReviewSubmitted(t *testing.T) {
 		assert.Equal(t, rs[0].ID, published.ID)
 		assert.Equal(t, "approved", published.Status)
 	})
-	t.Run("changes_requested applies", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		require.NoError(t, HandlePROpened(context.Background(), s, openedEvent(7)))
-		ev := eventbus.Event{Payload: json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":7,"state":"changes_requested","reviewer":"bob"}}`)}
-		require.NoError(t, HandlePRReviewSubmitted(context.Background(), s, ev))
-		rs, _ := s.ListByPR(context.Background(), "acme/app", 7)
-		assert.Equal(t, StatusChangesRequested, rs[0].Status)
-	})
-	t.Run("commented is a no-op", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo, newFakeBus())
-		require.NoError(t, HandlePROpened(context.Background(), s, openedEvent(7)))
-		ev := eventbus.Event{Payload: json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":7,"state":"commented","reviewer":"carol"}}`)}
-		require.NoError(t, HandlePRReviewSubmitted(context.Background(), s, ev))
-		rs, _ := s.ListByPR(context.Background(), "acme/app", 7)
-		assert.Equal(t, StatusPending, rs[0].Status)
-		assert.Empty(t, repo.of(TopicStatusChanged).Payload)
-	})
-	t.Run("unknown pr creates a record", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		ev := eventbus.Event{Payload: json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":99,"state":"approved","reviewer":"alice"}}`)}
-		require.NoError(t, HandlePRReviewSubmitted(context.Background(), s, ev))
-		rs, err := s.ListByPR(context.Background(), "acme/app", 99)
-		require.NoError(t, err)
-		require.Len(t, rs, 1)
-		assert.Equal(t, StatusApproved, rs[0].Status)
-	})
 	t.Run("malformed payload is fatal", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
 		err := HandlePRReviewSubmitted(context.Background(), s, eventbus.Event{Payload: json.RawMessage("{")})

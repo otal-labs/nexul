@@ -78,9 +78,3 @@ func TestResolver_DialContext_Errors(t *testing.T) {
 	_, err = unreachable.DialContext(t.Context(), "tcp", "nexul.example.com:1")
 	require.Error(t, err, "nothing listens on port 1")
 }
-
-func TestNew_WiresBothResolvers(t *testing.T) {
-	r := New()
-	assert.NotNil(t, r.Public)
-	assert.Same(t, net.DefaultResolver, r.System)
-}

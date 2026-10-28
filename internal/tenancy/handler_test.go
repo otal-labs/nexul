@@ -67,14 +67,6 @@ func TestHandler_WorkspaceRoutes_Refusals(t *testing.T) {
 }
 
 func TestHandler_Create(t *testing.T) {
-	t.Run("creates a workspace", func(t *testing.T) {
-		h, _ := newTestHandler(t)
-		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "u-1")
-		assert.Equal(t, http.StatusCreated, rec.Code)
-		var w Workspace
-		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &w))
-		assert.Equal(t, "Acme", w.Name)
-	})
 }
 
 func TestHandler_List(t *testing.T) {

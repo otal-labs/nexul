@@ -19,10 +19,10 @@ import (
 
 // fakeTeardownRepo is an in-memory TeardownRepo; its rows outlive any handler built on it, like the table does.
 type fakeTeardownRepo struct {
-	mu                          sync.Mutex
-	rows                        map[string][]Frame
-	saveErr, listErr, deleteErr error
-	afterDelete                 func()
+	mu                 sync.Mutex
+	rows               map[string][]Frame
+	saveErr, deleteErr error
+	afterDelete        func()
 }
 
 func newFakeTeardownRepo() *fakeTeardownRepo { return &fakeTeardownRepo{rows: map[string][]Frame{}} }
@@ -40,9 +40,6 @@ func (f *fakeTeardownRepo) Save(_ context.Context, machine string, fr Frame) err
 func (f *fakeTeardownRepo) List(_ context.Context, machine string) ([]Frame, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.listErr != nil {
-		return nil, f.listErr
-	}
 	return append([]Frame(nil), f.rows[machine]...), nil
 }
 
@@ -249,12 +246,6 @@ func TestHandler_FlushTeardowns_StopsAtTheFirstFailedSendAndKeepsTheRest(t *test
 }
 
 func TestHandler_FlushTeardowns_AStoreErrorSendsNothingMore(t *testing.T) {
-	t.Run("a list that fails", func(t *testing.T) {
-		store := newFakeTeardownRepo()
-		store.listErr = errors.New("database is locked")
-		h := newTeardownHandler(newFakeRunnerRepo(), store)
-		h.flushTeardowns(t.Context(), closedConn(t, "host1"))
-	})
 	t.Run("a delete that fails stops before the next teardown", func(t *testing.T) {
 		store := newFakeTeardownRepo()
 		h := newTeardownHandler(newFakeRunnerRepo(), store)

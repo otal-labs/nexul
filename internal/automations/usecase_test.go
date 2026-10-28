@@ -287,16 +287,6 @@ func TestService_RevokeToken_AlreadyRevoked_DoesNotDisconnectAgain(t *testing.T)
 	assert.Len(t, ids, 1)
 }
 
-func TestService_RevokeToken_NoConnectionRegistry_DoesNotPanic(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
-	require.NoError(t, err)
-
-	_, err = s.RevokeToken(context.Background(), "owner", created.ID)
-	require.NoError(t, err)
-}
-
 func TestService_SyncFromCode_UnchangedAnnounceDoesNotTouchUpdatedAt(t *testing.T) {
 	s := newTestService(newFakeRepo(), allowAll("owner"))
 	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})

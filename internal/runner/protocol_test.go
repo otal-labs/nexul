@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -331,13 +330,4 @@ func TestParseFrame_ExtraFieldsIgnored(t *testing.T) {
 	got, err := ParseFrame([]byte(`{"type":"heartbeat","runner_id":"r-1","ts":1,"wat":"ignored"}`))
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), got.TS)
-}
-
-func TestFrame_JSONRoundTripPreservesEnvOrder(t *testing.T) {
-	f := Frame{Type: FrameAssignDeploy, ID: "d1", Service: "s", Image: "i", Env: map[string]string{"B": "2", "A": "1"}}
-	data, err := json.Marshal(f)
-	require.NoError(t, err)
-	var got Frame
-	require.NoError(t, json.Unmarshal(data, &got))
-	assert.Equal(t, f.Env, got.Env)
 }

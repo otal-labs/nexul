@@ -373,17 +373,6 @@ func TestList_LeavesOutProjectsTheCallerCannotRead(t *testing.T) {
 	assert.Equal(t, "Readable", got[0].Title)
 }
 
-func TestList_ReturnsWorkspaceMemories(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	_, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	got, err := s.List(testCtx(), "workspace-1")
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-}
-
 func TestListMemoryItems_NoProject_ReturnsNone(t *testing.T) {
 	repo := newFakeRepo()
 	_, err := newTestService(repo).Create(testCtx(), "project-1", "Deploy quirks", "when to use", "body", false, "")

@@ -614,9 +614,6 @@ func TestCreate(t *testing.T) {
 	})
 }
 
-func TestGet(t *testing.T) {
-}
-
 func TestResolve(t *testing.T) {
 	repo := newFakeRepo()
 	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1", "p-nor": "WEB", "p-otal": "WEB"}

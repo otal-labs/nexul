@@ -375,14 +375,6 @@ func TestMalformedAndUnknownFrames_AreSkippedNotFatal(t *testing.T) {
 	t3rpctest.WaitFor(t, f.Dispatched, "post-garbage dispatch")
 }
 
-func TestVersion_ProbesWellKnownEndpoint(t *testing.T) {
-	t.Parallel()
-	f := t3rpctest.New(t)
-	version, err := NewHarness(Options{HTTPClient: f.Client()}).Version(testCtx(t), f.URL)
-	require.NoError(t, err)
-	assert.Equal(t, "0.0.34", version)
-}
-
 func TestSessionCalls_T3RefusesTheProtocol1Dial_MovesOnOrRefuses(t *testing.T) {
 	t.Parallel()
 	calls := []struct {

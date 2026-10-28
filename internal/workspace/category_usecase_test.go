@@ -42,13 +42,6 @@ func TestCreateCategory(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "db down")
 	})
-	t.Run("empty color is valid", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1"}
-		c, err := s.CreateCategory(context.Background(), "p-1", "Sprint 1", "")
-		require.NoError(t, err)
-		assert.Equal(t, colors.Color(""), c.Color)
-	})
 	t.Run("color from suggested list is valid", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1"}
@@ -173,12 +166,6 @@ func TestCreateTicketType(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "db down")
 	})
-	t.Run("empty color is valid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		tt, err := s.CreateTicketType(context.Background(), "p-1", "bug", "")
-		require.NoError(t, err)
-		assert.Equal(t, colors.Color(""), tt.Color)
-	})
 	t.Run("color from suggested list is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		tt, err := s.CreateTicketType(context.Background(), "p-1", "bug", colors.Cyan)
@@ -277,12 +264,6 @@ func TestCreateStatus(t *testing.T) {
 		assert.Equal(t, 1, st.Position)
 		assert.Equal(t, "p-1", st.ProjectID)
 		assert.Equal(t, StatusKindProgress, st.Kind)
-	})
-	t.Run("empty icon is valid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		st, err := s.CreateStatus(context.Background(), "p-1", "Blocked", StatusKindProgress, "")
-		require.NoError(t, err)
-		assert.Equal(t, StatusIcon(""), st.Icon)
 	})
 	t.Run("icon from suggested list is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)

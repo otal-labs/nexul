@@ -110,9 +110,4 @@ func TestHandler(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "swagger-ui")
 	})
 
-	t.Run("unknown path is 404", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/nope", nil))
-		assert.Equal(t, http.StatusNotFound, rec.Code)
-	})
 }

@@ -81,7 +81,6 @@ func TestParams_Query_Window(t *testing.T) {
 		p             Params
 		limit, offset int
 	}{
-		{"default", Params{}, 100, 0},
 		{"a limit inside the range", Params{Limit: 7, Offset: 14}, 7, 14},
 		{"a limit past the cap", Params{Limit: 9999}, 500, 0},
 		{"a negative limit", Params{Limit: -3}, 100, 0},

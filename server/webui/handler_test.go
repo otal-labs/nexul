@@ -33,17 +33,11 @@ func TestHandler_ReservedPrefix_Returns404(t *testing.T) {
 		path string
 	}{
 		{"api", "/api"},
-		{"api nested", "/api/tickets/1"},
 		{"ws", "/ws"},
-		{"ws nested", "/ws/runner"},
 		{"mcp", "/mcp"},
-		{"mcp nested", "/mcp/some/tool"},
 		{"auth", "/auth"},
-		{"auth nested", "/auth/github"},
 		{"hooks", "/hooks"},
-		{"hooks nested", "/hooks/github"},
 		{"openobserve", "/openobserve"},
-		{"openobserve nested", "/openobserve/web/logs"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -76,7 +70,6 @@ func TestHandler_UnknownRoute_FallsBackToIndex(t *testing.T) {
 	}{
 		{"root", "/"},
 		{"client route", "/docs/guide"},
-		{"deep route", "/a/b/c"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

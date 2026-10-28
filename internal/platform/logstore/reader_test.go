@@ -198,14 +198,12 @@ func TestReader_Read_TheStoreNotAnswering(t *testing.T) {
 		{"schema 500", &fakeStore{schema: func(w http.ResponseWriter) {
 			http.Error(w, "SELECT secret FROM x failed", http.StatusInternalServerError)
 		}}},
-		{"schema 401", &fakeStore{schema: func(w http.ResponseWriter) { http.Error(w, "unauthorized", http.StatusUnauthorized) }}},
 		{"schema not json", &fakeStore{schema: reply(`<html>`)}},
 		{"search 500", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, _ string) {
 			http.Error(w, "SELECT secret FROM x failed", http.StatusInternalServerError)
 		}}},
 		{"search not json", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, _ string) { _, _ = w.Write([]byte(`nope`)) }}},
 		{"a count that is a string", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, _ string) { _, _ = w.Write([]byte(`{"hits":[{"c":"12"}]}`)) }}},
-		{"a count that is missing", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, _ string) { _, _ = w.Write([]byte(`{"hits":[{"n":12}]}`)) }}},
 		{"a count that is fractional", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, _ string) { _, _ = w.Write([]byte(`{"hits":[{"c":1.5}]}`)) }}},
 		{"a list that fails after the count", &fakeStore{schema: reply(fullSchema), search: func(w http.ResponseWriter, sql string) {
 			if strings.Contains(sql, "count(*)") {

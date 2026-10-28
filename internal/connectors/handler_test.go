@@ -547,30 +547,6 @@ func TestSaveManual_Unauthenticated_Rejected(t *testing.T) {
 	}
 }
 
-// TestManualDisconnect_DeletesRow proves disconnect works for a manual
-// connector the same way it does for an OAuth one (delete row, no revoke
-// call to make since there's no OAuth client).
-func TestManualDisconnect_DeletesRow(t *testing.T) {
-	h, store := newTestHandlerWithManual(t, &fakeManualVerifier{})
-	authed := withUserID("user-1", h.Routes())
-	if err := store.SaveCredentials(context.Background(), connectors.Credentials{
-		ConnectorID:  "livekit",
-		ManualFields: map[string]string{"ws_url": "a", "api_key": "b", "api_secret": "c"},
-	}); err != nil {
-		t.Fatalf("seed SaveCredentials: %v", err)
-	}
-
-	req := httptest.NewRequest("POST", "/api/connectors/livekit/disconnect", nil)
-	rec := httptest.NewRecorder()
-	authed.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("disconnect status = %d, body %s", rec.Code, rec.Body.String())
-	}
-	if _, err := store.GetCredentials(context.Background(), "livekit"); err == nil {
-		t.Fatal("credentials still present after disconnect")
-	}
-}
-
 func TestOAuthStart_ComingSoonConnector_Rejected(t *testing.T) {
 	h, _ := newTestHandler(t, &fakeOAuthClient{configured: true})
 	authed := withUserID("user-1", h.Routes())

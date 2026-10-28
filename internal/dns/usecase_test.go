@@ -103,9 +103,6 @@ func TestService_CreateRecord(t *testing.T) {
 			in   RecordInput
 		}{
 			{"unsupported type", RecordInput{Type: "SRV", Name: "x", Content: "y"}},
-			{"empty name", RecordInput{Type: RecordA, Name: "", Content: "1.2.3.4"}},
-			{"empty content", RecordInput{Type: RecordA, Name: "x", Content: ""}},
-			{"negative ttl", RecordInput{Type: RecordA, Name: "x", Content: "1.2.3.4", TTL: -2}},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {

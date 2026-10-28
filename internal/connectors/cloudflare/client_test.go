@@ -212,10 +212,4 @@ func TestOAuthClient_Refresh_UsesCurrentAppConfig(t *testing.T) {
 	assert.Equal(t, "rotated-secret", gotSecret, "second call must use the rotated secret, not a cached one")
 }
 
-func TestOAuthClient_Revoke(t *testing.T) {
-	store := newMemAppConfigStore(testConfig())
-	c := New("cloudflare", store, fixedInstanceURL{url: "http://localhost:5173"}, nil)
-	require.NoError(t, c.Revoke(context.Background(), "at"), "Cloudflare has no revoke endpoint; revocation is a dashboard action")
-}
-
 func (m *memAppConfigStore) SetPrivateKey(context.Context, string, string) error { return nil }

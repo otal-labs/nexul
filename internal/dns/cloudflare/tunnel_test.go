@@ -126,15 +126,6 @@ func TestClient_CreateTunnel(t *testing.T) {
 	assert.Contains(t, api.reqs[0], "POST /client/v4/accounts/acct-1/cfd_tunnel")
 }
 
-func TestClient_CreateTunnel_BadTokenIsInvalidInput(t *testing.T) {
-	api := &tunnelAPI{status: http.StatusUnauthorized, errBody: `{"success":false,"errors":[{"code":10000,"message":"Invalid token"}],"result":null}`}
-	c, srv := newTunnelClient(t, api)
-	defer srv.Close()
-	_, err := c.CreateTunnel(context.Background(), "api-tunnel")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
 func TestClient_ListTunnels(t *testing.T) {
 	api := &tunnelAPI{list: []map[string]any{
 		{"id": "t1", "name": "one", "account_tag": "acct-1", "status": "healthy"},

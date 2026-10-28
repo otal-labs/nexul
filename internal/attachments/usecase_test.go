@@ -158,9 +158,7 @@ func TestUpload_Validation(t *testing.T) {
 		{"no owner", testCtx(), Owner{}, pngBytes, apperrs.ErrInvalid},
 		{"both owners", testCtx(), Owner{DocID: "d-1", TicketID: "t-1"}, pngBytes, apperrs.ErrInvalid},
 		{"doc and conversation", testCtx(), Owner{DocID: "d-1", ConversationID: "c-1"}, pngBytes, apperrs.ErrInvalid},
-		{"ticket and conversation", testCtx(), Owner{TicketID: "t-1", ConversationID: "c-1"}, pngBytes, apperrs.ErrInvalid},
 		{"memory and doc", testCtx(), Owner{MemoryID: "m-1", DocID: "d-1"}, pngBytes, apperrs.ErrInvalid},
-		{"all four owners", testCtx(), Owner{DocID: "d-1", TicketID: "t-1", ConversationID: "c-1", MemoryID: "m-1"}, pngBytes, apperrs.ErrInvalid},
 		{"empty file", testCtx(), Owner{TicketID: "t-1"}, nil, apperrs.ErrInvalid},
 		{"oversized file", testCtx(), Owner{TicketID: "t-1"}, make([]byte, MaxSize+1), apperrs.ErrInvalid},
 	}

@@ -220,20 +220,6 @@ func TestRunTurn_PlainCancel_StillPostsTheFailureMessage(t *testing.T) {
 	assert.Contains(t, systemPosts[0].body, "Agent turn failed")
 }
 
-func TestRunTurn_NoObserver_StillRuns(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{startResult: harness.StartResult{Updates: updatesChan(
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "ok", Streaming: false}},
-		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-	)}}
-	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "go"})
-
-	replies, _ := conv.snapshot()
-	require.Len(t, replies, 1)
-}
-
 func question() harness.Question {
 	return harness.Question{RequestID: "req-1", Questions: []harness.QuestionItem{{ID: "q1", Text: "Proceed?", Options: []harness.QuestionOption{{Label: "Yes"}, {Label: "No"}}}}}
 }

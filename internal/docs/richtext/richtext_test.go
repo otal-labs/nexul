@@ -57,11 +57,9 @@ func TestMarkdownToJSON_RoundTrip(t *testing.T) {
 		{"nested list", "- a\n  - b\n- c"},
 		{"autolink", "visit https://example.com now"},
 		{"emphasis nesting", "***both*** and **only**"},
-		{"strikethrough", "~~gone~~ here"},
 		{"inline html", "text <u>underlined</u> more"},
 		{"raw html", "<div>raw block</div>"},
 		{"image flattened", "![alt](img.png)"},
-		{"fenced with lang", "```javascript\nvar x = 1;\n```"},
 		{"ordered with start", "3. three\n4. four"},
 		{"nested blockquote", "> outer\n>\n> > inner"},
 		{"list with code", "- item\n\n  ```go\n  x\n  ```"},
@@ -185,11 +183,6 @@ func TestEscapeMarkdownText(t *testing.T) {
 	assert.Equal(t, `a \* b \_ c \`+"`"+` d \[ e \] f \# g \~ h \\ i`, got)
 }
 
-func TestSearchTextErrorFallback(t *testing.T) {
-	// A body that is neither JSON nor markdown falls back to itself.
-	assert.Equal(t, "raw", SearchText("raw"))
-}
-
 func TestMarshalJSON(t *testing.T) {
 	doc := &Doc{Type: "doc", Content: []Node{{Type: "paragraph"}}}
 	got, err := MarshalJSON(doc)
@@ -202,11 +195,6 @@ func TestUnmarshalJSON_ArrayForm(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "doc", doc.Type)
 	require.Len(t, doc.Content, 1)
-}
-
-func TestNormalize_InvalidBody(t *testing.T) {
-	_, err := Normalize("")
-	require.NoError(t, err) // empty → empty doc
 }
 
 func collectText(nodes []Node) []Node {

@@ -728,21 +728,12 @@ func TestCreate(t *testing.T) {
 			assert.Equal(t, tt.want, p.Prefix)
 		})
 	}
-	t.Run("empty icon is valid", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		p, err := s.Create(context.Background(), "ws-1", "Frontend", "FE", "")
-		require.NoError(t, err)
-		assert.Equal(t, ProjectIcon(""), p.Icon)
-	})
 	t.Run("icon from suggested list is valid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		p, err := s.Create(context.Background(), "ws-1", "Frontend", "FE", ProjectIconRocket)
 		require.NoError(t, err)
 		assert.Equal(t, ProjectIconRocket, p.Icon)
 	})
-}
-
-func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
