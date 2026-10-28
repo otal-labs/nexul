@@ -35,6 +35,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
+  // An empty column folds to a 40px strip with its name set vertically, so the width goes to the columns with cards.
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
   const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
@@ -62,23 +63,25 @@ const KanbanColumnImpl = ({
       }}
       className={cn(
         // No well at rest, so the cards sit on the page panel; every column takes its well while a card is held, to read as a drop target.
-        "flex w-55 flex-1 flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
+        "flex flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
+        empty ? "w-10 shrink-0 items-center" : "w-55 flex-1",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
     >
-      <h4 className="flex items-center gap-1.5 pt-1">
+      <h4 className={cn("flex gap-1.5 pt-1", empty ? "flex-col items-center" : "items-center")}>
         <span
           ref={setActivatorNodeRef}
           {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
+            empty && "flex-col gap-2",
             draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className={cn("flex min-w-0 items-center gap-1.5", empty && "flex-col gap-2")}>
             <StatusMark status={column} className="size-3.5" />
-            <span className="truncate text-sm font-medium">{column.name}</span>
+            <span className={cn("text-sm font-medium", empty ? "whitespace-nowrap text-muted-foreground [writing-mode:vertical-rl]" : "truncate")}>{column.name}</span>
           </span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
             {tickets.length}
@@ -96,7 +99,7 @@ const KanbanColumnImpl = ({
         />
       </h4>
       {/* The column grows with its cards and the page scrolls; the 1px top padding is room for a card's hover lift. */}
-      <EnterList as="div" className="-mt-px flex min-h-16 flex-1 flex-col gap-1.5 pt-px">
+      <EnterList as="div" className={cn("-mt-px flex min-h-16 flex-1 flex-col gap-1.5 pt-px", empty && "w-full")}>
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {shown.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} collapsed={collapsed} />
@@ -113,8 +116,8 @@ const KanbanColumnImpl = ({
         )}
         {empty && (
           // The dashed slot only shows while a card is held: then it reads as somewhere a card can land.
-          <EmptyRow className="flex-1 rounded-md border border-dashed border-transparent px-2 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
-            No tickets
+          <EmptyRow className="flex-1 rounded-md border border-dashed border-transparent px-0 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
+            <span className="sr-only">No tickets</span>
           </EmptyRow>
         )}
       </EnterList>
