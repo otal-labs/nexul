@@ -35,7 +35,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
-  // An empty column is a 72px rail (mark, name in the header style wrapping to two lines, count), so the width goes to the columns with cards.
+  // An empty column narrows so the width goes to the columns with cards: one header line in 128px from 1280px, a 72px rail with the name in two lines below.
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
   const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
@@ -64,24 +64,24 @@ const KanbanColumnImpl = ({
       className={cn(
         // Three surface steps: the panel, the column's well, the card raised on it.
         "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-surface-2",
-        empty ? "w-18 shrink-0 items-center" : "w-42 flex-1 xl:w-50",
+        empty ? "w-18 shrink-0 items-center xl:w-32 xl:items-stretch" : "w-42 flex-1 xl:w-50",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
     >
-      <h4 className={cn("flex items-center gap-1.5 pt-1", empty && "flex-col")}>
+      <h4 className={cn("flex min-h-7 items-center gap-1.5 pt-1", empty && "max-xl:flex-col")}>
         <span
           ref={setActivatorNodeRef}
           {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
-            empty && "flex-col gap-1 text-center",
+            empty && "max-xl:flex-col max-xl:gap-1 max-xl:text-center",
             draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
           )}
         >
-          <span className={cn("flex min-w-0 items-center gap-1.5", empty && "flex-col gap-1")}>
+          <span className={cn("flex min-w-0 items-center gap-1.5", empty && "max-xl:flex-col max-xl:gap-1")}>
             <StatusMark status={column} className="size-3.5" />
-            <span className={cn("text-sm font-medium", empty ? "leading-tight text-balance" : "truncate")}>{column.name}</span>
+            <span className={cn("text-sm font-medium", empty ? "max-xl:leading-tight max-xl:text-balance xl:whitespace-nowrap" : "truncate")}>{column.name}</span>
           </span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
             {tickets.length}
