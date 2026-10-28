@@ -139,7 +139,7 @@ export const BoardFilterBar = ({
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
         </div>
-        <div className="flex min-w-72 flex-1 items-center justify-end gap-2">
+        <div className="flex min-w-56 flex-1 items-center justify-end gap-2">
           <div className="relative w-full max-w-64">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
