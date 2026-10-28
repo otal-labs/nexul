@@ -265,15 +265,15 @@ func TestService_DeleteTunnel(t *testing.T) {
 
 // newTunnelServiceOver is newTunnelService with the DNS provider the test also reads back.
 func newTunnelServiceOver(repo *fakeRepo, dnsp *fakeProvider) *Service {
-	return newTunnelServiceWith(repo, dnsp, nil, "https://deploy.example.com")
+	return newTunnelServiceWith(repo, dnsp, newFakeTunnelProvider(), nil, "https://deploy.example.com")
 }
 
 // newTunnelServiceWith also sets the instance URL and the lookup that resolves a tunnel's cloudflared stack.
-func newTunnelServiceWith(repo *fakeRepo, dnsp *fakeProvider, containers ContainerLookup, instanceURL string) *Service {
+func newTunnelServiceWith(repo *fakeRepo, dnsp *fakeProvider, tunnels *fakeTunnelProvider, containers ContainerLookup, instanceURL string) *Service {
 	return NewService(Config{
 		Repo:           repo,
 		Provider:       dnsp,
-		TunnelProvider: newFakeTunnelProvider(),
+		TunnelProvider: tunnels,
 		Containers:     containers,
 		EncryptionKey:  []byte("0123456789abcdef0123456789abcdef"),
 		Settings:       &fakeSettings{instanceURL: instanceURL},
@@ -296,7 +296,7 @@ func TestService_DeleteTunnel_RefusedWhileInUse(t *testing.T) {
 	tunnels.tunnels["t1"] = &Tunnel{ID: "t1"}
 	containers := newFakeContainerLookup()
 	containers.add("cloudflared-edge", ExposureTarget{ContainerID: "c-agent", Name: "cloudflared-edge", StackID: "s-agent"})
-	s := newTunnelServiceWith(repo, newFakeProvider(), containers, "https://deploy.example.com")
+	s := newTunnelServiceWith(repo, newFakeProvider(), tunnels, containers, "https://deploy.example.com")
 
 	err := s.DeleteTunnel(ctx, "t1")
 
@@ -314,7 +314,7 @@ func TestService_DeleteTunnel_RefusedWhileItServesTheInstanceAddress(t *testing.
 	ctx := context.Background()
 	repo := newFakeRepo()
 	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", Hostname: "nexul.example.com", ZoneID: "z1", RecordID: "r1"}))
-	s := newTunnelServiceWith(repo, newFakeProvider(), nil, "https://Nexul.example.com:8443")
+	s := newTunnelServiceWith(repo, newFakeProvider(), newFakeTunnelProvider(), nil, "https://Nexul.example.com:8443")
 
 	err := s.DeleteTunnel(ctx, "t1")
 
@@ -329,7 +329,7 @@ func TestService_DeleteTunnel_RemovedCloudflaredStackNoLongerBlocks(t *testing.T
 	ctx := context.Background()
 	repo := newFakeRepo()
 	require.NoError(t, repo.SaveTunnel(ctx, Tunnel{ID: "t1", Name: "edge", AgentServiceID: "s-gone"}))
-	s := newTunnelServiceWith(repo, newFakeProvider(), newFakeContainerLookup(), "https://deploy.example.com")
+	s := newTunnelServiceWith(repo, newFakeProvider(), newFakeTunnelProvider(), newFakeContainerLookup(), "https://deploy.example.com")
 
 	require.NoError(t, s.DeleteTunnel(ctx, "t1"))
 }

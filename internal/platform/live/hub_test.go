@@ -173,17 +173,22 @@ func TestHub_Publish_ASocketThatStopsReadingHoldsUpNobody(t *testing.T) {
 		}
 	}()
 	payload := map[string]string{"text": strings.Repeat("x", 64<<10)}
+	published := make(chan struct{})
 	go func() {
+		defer close(published)
 		for range frames {
 			_ = hub.Publish(ctx, "chat.agent.stream", payload)
 		}
 	}()
 
-	select {
-	case <-received:
-	case <-time.After(WriteTimeout / 2):
-		t.Fatal("the reader waited on the stalled socket")
+	for _, done := range []chan struct{}{received, published} {
+		select {
+		case <-done:
+		case <-time.After(WriteTimeout / 2):
+			t.Fatal("the reader waited on the stalled socket")
+		}
 	}
+	// Publish drops a full client before it returns, so the last Publish returning is the signal that it is gone.
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 	assert.Len(t, hub.clients, 1, "the stalled socket was dropped")

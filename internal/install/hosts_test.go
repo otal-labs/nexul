@@ -284,7 +284,7 @@ func TestUninstallHost_Detach(t *testing.T) {
 		th := newTestHost(t)
 		th.GOOS = "windows"
 		th.StartDetached = func(string, []string, string) error { return errors.New("access denied") }
-		require.ErrorContains(t, th.runUpgrade(t.Context(), []string{"--detach"}), "access denied")
+		require.ErrorContains(t, th.runUninstall(t.Context(), []string{"runner", "edge", "--detach"}), "access denied")
 	})
 }
 

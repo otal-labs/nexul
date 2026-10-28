@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func TestExchange_Success(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "bearer-xyz", "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
-			"token_type": "Bearer", "expires_in": 2592000, "scope": clientScopes,
+			"token_type": "Bearer", "expires_in": 3600, "scope": clientScopes,
 		})
 	}))
 	defer srv.Close()
@@ -36,7 +37,7 @@ func TestExchange_Success(t *testing.T) {
 	token, expiresIn, err := Exchange(context.Background(), srv.Client(), srv.URL, "one-time-token")
 	require.NoError(t, err)
 	assert.Equal(t, "bearer-xyz", token)
-	assert.Equal(t, 30*24*3600, int(expiresIn.Seconds()))
+	assert.Equal(t, time.Hour, expiresIn, "the lifetime T3 reported, not the 30-day default")
 }
 
 func TestExchange_FallsBackToTheLegacyScopesWhenT3RefusesTheCurrentOnes(t *testing.T) {

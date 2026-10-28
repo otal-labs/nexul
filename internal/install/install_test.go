@@ -3,6 +3,7 @@ package install
 import (
 	"bufio"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -635,5 +636,7 @@ func TestExecCommander_FailureCarriesTheOutput(t *testing.T) {
 func TestLocalPort_ReturnsAPortThatCanBeBound(t *testing.T) {
 	port, err := localPort()
 	require.NoError(t, err)
-	assert.Positive(t, port)
+	l, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	require.NoError(t, err, "the probe listener is closed, so the port is free to bind")
+	require.NoError(t, l.Close())
 }

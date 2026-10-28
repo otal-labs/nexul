@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -38,10 +39,9 @@ func TestBackoff_Wait_Cancelled(t *testing.T) {
 	b := NewBackoff(time.Hour, time.Hour, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	start := time.Now()
-	ok := b.Wait(ctx, 0)
-	assert.False(t, ok)
-	assert.Less(t, time.Since(start), 50*time.Millisecond)
+	synctest.Test(t, func(t *testing.T) {
+		assert.False(t, b.Wait(ctx, 0), "a cancelled context wins over an hour-long delay")
+	})
 }
 
 func TestBackoff_Wait_Expires(t *testing.T) {

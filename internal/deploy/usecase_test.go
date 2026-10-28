@@ -371,7 +371,7 @@ func TestRollback(t *testing.T) {
 		payload := deployRequestedPayload(t, repo.of(TopicDeployRequested))
 		assert.Equal(t, "img:v2", payload.Image)
 	})
-	t.Run("no healthy deploy is a conflict", func(t *testing.T) {
+	t.Run("no healthy deploy is not found", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
 		_, err := s.Rollback(context.Background(), "svc-1", "user-1")
 		require.Error(t, err)
