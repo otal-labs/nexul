@@ -24,12 +24,12 @@ const MemberStack = ({ channel, onOpen }: { channel: Conversation; onOpen: (() =
           aria-label={label}
           className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground disabled:hover:bg-transparent"
         >
-          <span className="flex -space-x-1.5">
+          <span className="flex -space-x-1">
             {ids.slice(0, SHOWN_MEMBERS).map((id) => (
               <PersonAvatar key={id} login={resolvePerson(id).login} src={resolvePerson(id).avatar_url} className="size-5 text-[10px] ring-2 ring-panel" />
             ))}
           </span>
-          <span className="font-mono text-xs tabular-nums">{ids.length}</span>
+          {ids.length > SHOWN_MEMBERS && <span className="translate-y-px font-mono text-xs tabular-nums">+{ids.length - SHOWN_MEMBERS}</span>}
         </button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

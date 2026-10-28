@@ -34,11 +34,11 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
     <div
       data-slot="bubble"
       className={cn(
-        "relative w-fit max-w-[72ch] space-y-1.5 text-sm break-words",
+        "w-fit max-w-[72ch] space-y-1.5 text-sm break-words",
         embeds.length > 0 && "w-full max-w-none",
       )}
     >
-      <MessageActions message={message} />
+      <MessageActions message={message} corner="row" />
       {message.body !== "" && (
         <DiscordMarkdown text={message.body} mentionHandles={(message.mentions ?? []).map((m) => m.handle)} className="space-y-0.5" />
       )}

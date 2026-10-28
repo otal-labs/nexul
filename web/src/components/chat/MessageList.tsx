@@ -108,9 +108,9 @@ export const MessageList = ({
       )}
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
-          <MessageScroller className="min-h-0 flex-1">
-            {/* Both gutters, so the column centres on the header and composer above and below it. */}
-            <MessageScrollerViewport className="[scrollbar-gutter:stable_both-edges]!">
+          <MessageScroller className="@container/scroller min-h-0 flex-1">
+            {/* Once the column stops filling the pane, a gutter each side centres it on the header and composer. */}
+            <MessageScrollerViewport className="@min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]!">
               <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
                   const own = message.author_id === currentUserId;

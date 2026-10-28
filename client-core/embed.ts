@@ -136,6 +136,10 @@ export const embedFacts = (fields: EmbedField[] = []): EmbedFacts => {
   };
 };
 
+// A title that names no state takes the tally's worst problem, so a summary reporting a stopped cache reads as a warning.
+export const embedReportTone = (embed: Embed, facts: EmbedFacts): EmbedTone | null =>
+  embedCardTone(embed) ?? facts.tally.find((entry) => entry.name)?.tone ?? null;
+
 // The report's fold label while closed: a tally opens every field, else what the closed report hides; null for nothing.
 export const embedFactsFoldLabel = (embed: Embed, facts: EmbedFacts): string | null => {
   if (facts.tally.length > 0) return `Show all ${embed.fields?.length ?? 0} fields`;

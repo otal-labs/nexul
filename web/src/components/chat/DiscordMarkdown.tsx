@@ -58,12 +58,14 @@ interface DiscordMarkdownProps {
   text: string;
   mentionHandles?: string[];
   className?: string | undefined;
+  // maxLines keeps the first source lines whole, where a clamp would cut the last one or end it in an ellipsis.
+  maxLines?: number | undefined;
 }
 
 // Bot content and a meeting's notes; people's and the Agent's messages keep their own renderers.
-export const DiscordMarkdown = ({ text, mentionHandles, className }: DiscordMarkdownProps) => (
+export const DiscordMarkdown = ({ text, mentionHandles, className, maxLines }: DiscordMarkdownProps) => (
   <div className={cn("wrap-anywhere", className)}>
-    {parseDiscordMarkdown(text, mentionHandles).map((line, i) => (
+    {parseDiscordMarkdown(text, mentionHandles).slice(0, maxLines).map((line, i) => (
       <Line key={i} line={line} />
     ))}
   </div>

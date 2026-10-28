@@ -1088,7 +1088,9 @@ sidebar's own conversation sections. Your own messages are the one bubble
 of the name in 13px semibold and the mono clock time (the full time on hover),
 2px over the text and held to 72ch, so a long thread reads as a transcript instead of a stack of
 boxes. A new author starts 12px under the last message; a run of one person's messages drops the avatar and header after the
-first and keeps 6px between messages. Each day opens with a divider: the
+first and keeps 6px between messages. On hover or focus a row's actions pill
+sits at the row's top-right, beside the header line and clear of the 72ch text;
+your own bubble keeps it on the bubble's corner. Each day opens with a divider: the
 microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
 is not this one) between two hairlines. The composer is one framed field
 (`bg-card`, `rounded-lg`, the `input` ring turning to the focus ring) holding
@@ -1127,8 +1129,9 @@ heading, the description, the facts and a footer line. The server drops the send
 color, so the report's state is read from its title's words (`embedTone`:
 failed, healthy, stopped, running and their kin, worst first) and colours the
 edge and an icon before the title in the status hue, the way a
-topology node shows its status; a title that names no state leaves the edge in
-`border`. An author line that only repeats the bot's name is dropped. Closed,
+topology node shows its status; a title that names no state takes its tally's
+worst problem (a summary with a stopped cache reads as a warning), and with none
+the edge is `muted-foreground` at 40%. An author line that only repeats the bot's name is dropped. Closed,
 the facts read as sentences (`embedFacts`): short inline fields share one
 13px line, each label muted then its value in mono, dot-separated; a long or
 full-width field takes a line of its own, six at most; three or more fields
@@ -1137,7 +1140,7 @@ and the rest counted ("● cache stopped · 2 redeployed · 6 healthy"); fewer
 keep their dot on the fact line. The footer text and time follow as one mono
 11px line with the ghost fold toggle after it ("Show all 9 fields" for a tally,
 "Show 6 more fields" past six long ones, "Show the rest" for a long
-description); opened, the fields lay out as the sender's grid, a mono
+description, which keeps its first six lines whole and fades the last instead of an ellipsis); opened, the fields lay out as the sender's grid, a mono
 microheader over each value, inline ones three across (two in a narrow pane).
 Past two embeds the same toggle opens the rest. Only a bot's
 text renders Discord's markdown subset. `BotMessageRow`, `EmbedCard` and

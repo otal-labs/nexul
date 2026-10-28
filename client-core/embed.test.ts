@@ -6,6 +6,7 @@ import {
   embedCardTone,
   embedFacts,
   embedFactsFoldLabel,
+  embedReportTone,
   embedFold,
   embedFoldLabel,
   embedTimestamp,
@@ -54,6 +55,14 @@ describe("embedFacts", () => {
       { tone: "info", value: "redeployed", count: 1 },
       { tone: "success", value: "healthy", count: 2 },
     ]);
+  });
+
+  it.each<[string, Embed, EmbedTone | null]>([
+    ["a title's state wins", { title: "api deployed", fields: stacks }, "success"],
+    ["a neutral title takes the worst problem", { title: "Nightly summary", fields: stacks }, "destructive"],
+    ["an all-healthy tally stays neutral", { title: "Nightly summary", fields: stacks.filter((f) => f.value.toLowerCase() === "healthy").concat(stacks[0]!) }, null],
+  ])("tone: %s", (_name, embed, tone) => {
+    expect(embedReportTone(embed, embedFacts(embed.fields))).toBe(tone);
   });
 
   it("keeps two state fields on the fact line, unlike three", () => {
