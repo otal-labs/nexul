@@ -1081,7 +1081,7 @@ func TestLinkBranch(t *testing.T) {
 	})
 }
 
-func TestService_Refusals_ChangeNothing(t *testing.T) {
+func TestService_Refusals_ReturnTheirNamedError(t *testing.T) {
 	ctx := context.Background()
 	errDown := errors.New("db down")
 	tests := []struct {

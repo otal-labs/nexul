@@ -129,17 +129,15 @@ func TestLabelColors(t *testing.T) {
 	})
 }
 
-func TestUpdateStatus_ConfiguredOnly(t *testing.T) {
-	t.Run("status store error is retried", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := NewService(repo, fakeStatusStore{err: errors.New("db down")}, nil)
-		s.now = func() time.Time { return fixedNow }
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		_, err = s.UpdateStatus(context.Background(), created.ID, StatusDone)
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "db down")
-	})
+func TestUpdateStatus_StatusLookupFails_WrapsError(t *testing.T) {
+	repo := newFakeRepo()
+	s := NewService(repo, fakeStatusStore{err: errors.New("db down")}, nil)
+	s.now = func() time.Time { return fixedNow }
+	created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
+	require.NoError(t, err)
+	_, err = s.UpdateStatus(context.Background(), created.ID, StatusDone)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "db down")
 }
 
 func TestLabelRefusals(t *testing.T) {

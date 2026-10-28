@@ -59,13 +59,22 @@ func TestIntegration_LiveTicket(t *testing.T) {
 	})
 
 	t.Run("a body written from outside resets the room and drops the stale commit", func(t *testing.T) {
+		viewer := dialTicket(t, srv, ticketID, uReader, "view")
+		require.Equal(t, "init", readCollab(t, viewer).Type)
 		_, err := s.ticketsSvc.UpdateTicket(as(uWriter), ticketID, "Renamed live", paragraphBody("from an agent"))
 		require.NoError(t, err)
 		for frame := readCollab(t, editor); frame.Type != "reset"; frame = readCollab(t, editor) {
 		}
+		for frame := readCollab(t, viewer); frame.Type != "reset"; frame = readCollab(t, viewer) {
+		}
 		sendCollab(t, editor, collab.ClientMsg{Type: "commit", Update: "c3RhbGU=", BaseSeq: init.Seq, Body: paragraphBody("stale edit")})
+		// The editor's frames are handled in order, so its presence relay proves the stale commit was handled first.
 		sendCollab(t, editor, collab.ClientMsg{Type: "presence", ClientID: 7, Payload: "cA=="})
-		time.Sleep(100 * time.Millisecond)
+		var seen []string
+		for frame := readCollab(t, viewer); frame.Type != "presence"; frame = readCollab(t, viewer) {
+			seen = append(seen, frame.Type)
+		}
+		assert.Empty(t, seen, "the viewer never hears a relay of the stale commit")
 		_, body := stored()
 		assert.Equal(t, paragraphBody("from an agent"), body)
 	})

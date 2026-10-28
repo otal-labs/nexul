@@ -93,56 +93,35 @@ func (f *fakeAppConfigStore) SetPrivateKey(_ context.Context, connectorID, key s
 // TestGitProviderRouter_ResolvesCorrectConnectorPerRepo proves the router never shares one global client across repos.
 func TestGitProviderRouter_ResolvesCorrectConnectorPerRepo(t *testing.T) {
 	t.Parallel()
-	tokens := &fakeGitTokenResolver{tokens: map[string]string{
-		"github": "token-public",
-		"gitlab": "token-acme-gitlab",
-	}}
-	appConfigs := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{
-		"gitlab": {ConnectorID: "gitlab", BaseURL: "https://gitlab.acme.example.com/api/v4/"},
-	}}
+	var seen []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.URL.Path+" "+r.Header.Get("Authorization"))
+		_, _ = w.Write([]byte(`{"full_name":"acme/widgets","owner":{"login":"acme"}}`)) // test server: write errors are irrelevant
+	}))
+	t.Cleanup(srv.Close)
 	router := gitProviderRouter{
 		workspace: &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{
 			"acme/widgets": {Owner: "acme", Name: "widgets", FullName: "acme/widgets", ConnectorID: "github"},
 			"acme/other":   {Owner: "acme", Name: "other", FullName: "acme/other", ConnectorID: "gitlab"},
 		}},
-		connectors: tokens,
-		appConfigs: appConfigs,
+		connectors: &fakeGitTokenResolver{tokens: map[string]string{
+			"github": "token-public",
+			"gitlab": "token-acme-gitlab",
+		}},
+		appConfigs: &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{
+			"github": {ConnectorID: "github", BaseURL: srv.URL},
+			"gitlab": {ConnectorID: "gitlab", BaseURL: "https://gitlab.acme.example.com/api/v4/"},
+		}},
 	}
 
-	// acme/widgets: connector "github", the one real dispatchable client.
-	p1, err := router.resolve(context.Background(), "acme", "widgets")
-	if err != nil {
-		t.Fatalf("resolve acme/widgets: %v", err)
-	}
-	if p1 == nil {
-		t.Fatal("resolve acme/widgets: nil provider")
-	}
+	_, err := router.GetRepo(t.Context(), "acme", "widgets")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/repos/acme/widgets Bearer token-public"}, seen, "a github repo is read with the github connector's token")
 
-	// acme/other's "gitlab" has no concrete client, so this fails at dispatch, after resolving its own token/URL.
-	if _, err := router.resolve(context.Background(), "acme", "other"); err == nil {
-		t.Fatal("resolve acme/other: want error (no gitlab client wired), got nil")
-	}
-
-	wantTokenCalls := []string{"github", "gitlab"}
-	if got := tokens.calls; !equalStrings(got, wantTokenCalls) {
-		t.Fatalf("AccessToken calls = %v, want %v (each repo must resolve its own connector)", got, wantTokenCalls)
-	}
-	wantConfigCalls := []string{"github", "gitlab"}
-	if got := appConfigs.calls; !equalStrings(got, wantConfigCalls) {
-		t.Fatalf("GetAppConfig calls = %v, want %v (each repo must resolve its own connector)", got, wantConfigCalls)
-	}
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+	_, err = router.GetRepo(t.Context(), "acme", "other")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a gitlab repo is never served by the github client")
+	assert.ErrorContains(t, err, "gitlab")
+	assert.Len(t, seen, 1, "the github server is not contacted for the gitlab repo")
 }
 
 func TestGitProviderRouter_BadBaseURLFailsClearly(t *testing.T) {
