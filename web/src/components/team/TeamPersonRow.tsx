@@ -24,9 +24,10 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
         type="button"
         onClick={() => onOpen(person.id)}
         aria-label={`Open ${personName(person)}`}
-        className="-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        className="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
-        <span className="relative shrink-0">
+        {/* Top-aligned like the other multi-line rows: each piece sits on the name's 24px line, the 14px presence nudged onto its baseline. */}
+        <span className="relative -mt-1 shrink-0">
           <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />
           <span
             aria-hidden
@@ -50,10 +51,10 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <TeamGapLine person={person} />
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm text-muted-foreground">
-          <span className={cn(person.online && "text-foreground")}>{presenceText(person)}</span>
+          <span className={cn("translate-y-px leading-6", person.online && "text-foreground")}>{presenceText(person)}</span>
           <AccountStatusLabel status={person.status} />
         </span>
-        <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
       </button>
     </li>
   );
