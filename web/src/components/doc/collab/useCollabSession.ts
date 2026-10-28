@@ -3,6 +3,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 
 import * as Y from "yjs";
 
+import { avatarFill } from "@nexul/client-core/avatarFill";
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
 
 import { getDocKey } from "@/hooks/DocHooks";
@@ -64,6 +65,8 @@ export interface CollabSession {
 
 export interface CollabSessionOptions {
   userId?: string;
+  /** Colours this person's face and cursor with their avatar fill, the same in every session. */
+  login?: string;
   wsFactory?: (url: string) => LiveSocket;
   avatar?: string;
   /** The query a reset reloads before the fresh session starts; a doc room reloads its doc. */
@@ -121,7 +124,7 @@ export const useCollabSession = (
     const doc = new Y.Doc();
     const user: CollabUser = {
       name: name || "You",
-      color: colorFor(doc.clientID),
+      color: opts.login ? avatarFill(opts.login) : colorFor(doc.clientID),
       activity: mode === "edit" ? "editing" : "viewing",
       ...(opts.userId ? { id: opts.userId } : {}),
       ...(opts.avatar ? { avatar: opts.avatar } : {}),
@@ -169,7 +172,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, opts.userId, queryClient]);
+  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, opts.userId, opts.login, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {

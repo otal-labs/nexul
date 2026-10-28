@@ -24,6 +24,7 @@ export const DocLockedSignal = ({ docId }: DocLockedSignalProps) => {
         verb="unlock docs"
         variant="ghost"
         size="sm"
+        className="h-7 text-xs"
         loading={setLocked.isPending}
         onClick={() => setLocked.mutate({ id: docId, locked: false })}
       >

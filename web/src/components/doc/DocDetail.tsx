@@ -37,6 +37,7 @@ import type { MeResponse } from "@/models/User";
 
 const collabIdentity = (me: MeResponse | undefined) => ({
   id: me?.user?.id ?? "",
+  login: me?.user?.login ?? "",
   name: me?.user?.name ?? "",
   avatar: me?.user ? effectiveAvatar(me.user) : "",
 });
@@ -59,11 +60,12 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   const canWrite = useActionState({ permission: "docs:write", projectId: doc.project_id, answer: answer("docs:write") }).state === "live";
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
-  const { id: userId, name: userName, avatar: userAvatar } = collabIdentity(me);
+  const { id: userId, login: userLogin, name: userName, avatar: userAvatar } = collabIdentity(me);
   // A locked doc, or a reader the server would refuse an edit session, renders the title and body read-only.
   const session = useCollabSession(doc.locked || !canWrite ? undefined : doc.id, "edit", userName, token, {
     ...(wsFactory ? { wsFactory } : {}),
     ...(userId ? { userId } : {}),
+    ...(userLogin ? { login: userLogin } : {}),
     ...(userAvatar ? { avatar: userAvatar } : {}),
   });
   const [headings, setHeadings] = useState<DocHeading[]>(() => extractDocHeadings(doc.body));

@@ -85,7 +85,7 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
           </>
         }
       />
-      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
         {groups && groups.folders.length === 0 && !searching && !showArchived && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}

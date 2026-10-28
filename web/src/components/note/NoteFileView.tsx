@@ -38,6 +38,7 @@ export const NoteFileView = ({ message, fileName, canEdit, inline = false }: Not
   const session = useCollabSession(editable && me ? `notes/${message.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getNoteTextKey, message.attachment_id],
     ...(me?.user?.id ? { userId: me.user.id } : {}),
+    ...(me?.user?.login ? { login: me.user.login } : {}),
     ...(avatar ? { avatar } : {}),
   });
 
