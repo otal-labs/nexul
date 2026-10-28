@@ -204,12 +204,13 @@ describe("BoardFilterBar", () => {
     expect(onToggleDeveloper).toHaveBeenCalledWith("u-bob");
   });
 
-  it("collapses developers past the fifth into a count that opens the rest", async () => {
+  it("collapses developers past the third into a count that opens the rest", async () => {
     const user = userEvent.setup();
     const onToggleDeveloper = vi.fn();
     renderFilterBar({ developers: devs("a", "b", "c", "d", "e", "f", "g"), onToggleDeveloper });
-    const more = await screen.findByRole("button", { name: "2 more developers" });
-    expect(more).toHaveTextContent("+2");
+    const more = await screen.findByRole("button", { name: "4 more developers" });
+    expect(more).toHaveTextContent("+4");
+    expect(screen.queryByRole("button", { name: "Developer d" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Developer f" })).not.toBeInTheDocument();
     await user.click(more);
     await user.click(await screen.findByRole("button", { name: "Developer f" }));
@@ -219,7 +220,7 @@ describe("BoardFilterBar", () => {
   it("moves a selected developer into the visible stack even when they'd otherwise overflow", async () => {
     renderFilterBar({ developers: devs("a", "b", "c", "d", "e", "f", "g"), filters: filters({ developers: ["g"] }) });
     expect(await screen.findByRole("button", { name: "Developer g" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("button", { name: "Developer e" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Developer c" })).not.toBeInTheDocument();
   });
 
   it("offers the waiting-for-me-to-test toggle only when asked, and reports its state", async () => {
