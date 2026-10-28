@@ -35,7 +35,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
-  // An empty column is a 72px rail (mark, name wrapping in two lines, count, +), so the width goes to the columns with cards.
+  // An empty column is a 72px rail (mark, name in the header style wrapping to two lines, count), so the width goes to the columns with cards.
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
   const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
@@ -81,22 +81,24 @@ const KanbanColumnImpl = ({
         >
           <span className={cn("flex min-w-0 items-center gap-1.5", empty && "flex-col gap-1")}>
             <StatusMark status={column} className="size-3.5" />
-            <span className={cn("text-sm font-medium", empty ? "text-[11px] leading-tight font-semibold text-balance" : "truncate")}>{column.name}</span>
+            <span className={cn("text-sm font-medium", empty ? "leading-tight text-balance" : "truncate")}>{column.name}</span>
           </span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
             {tickets.length}
           </span>
         </span>
-        <ActionButton
-          permission="tickets:write"
-          verb="create tickets"
-          variant="ghost"
-          size="icon"
-          icon={PlusIcon}
-          onClick={() => onAddTicket(column.id)}
-          aria-label={`New ticket in ${column.name}`}
-          className="size-6 text-muted-foreground/60"
-        />
+        {!empty && (
+          <ActionButton
+            permission="tickets:write"
+            verb="create tickets"
+            variant="ghost"
+            size="icon"
+            icon={PlusIcon}
+            onClick={() => onAddTicket(column.id)}
+            aria-label={`New ticket in ${column.name}`}
+            className="size-6 text-muted-foreground/60"
+          />
+        )}
       </h4>
       {/* The column grows with its cards and the page scrolls; the 1px top padding is room for a card's hover lift. */}
       <EnterList as="div" className="-mt-px flex min-h-16 flex-1 flex-col gap-1.5 pt-px">

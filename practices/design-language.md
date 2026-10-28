@@ -558,8 +558,8 @@ three stages with cards and two empty columns fit at 1024 beside the sidebar
 and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
 N" row mounts the next. A column with no cards in its lane is a 72px rail on its well:
-its stage mark, its name in 11px semibold wrapping to two lines, its count and
-its `+`, so an empty stage keeps its name in reading order and gives its width
+its stage mark, its name in the column header's own 14px medium wrapping to
+two lines, and its count; no `+`, since Create picks the stage, so an empty stage keeps its name in reading order and gives its width
 to the columns with work. Every column
 sits on a well (`surface-2` in dark, ink at 4% in light), its header flush
 with the cards' edges, and its cards are raised on it: `card` with the card
