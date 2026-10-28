@@ -64,10 +64,10 @@ beforeEach(() => {
 });
 
 describe("ProjectSection", () => {
-  it("while the access setup is open, offers the Owner Set up access in place of the project's pages", async () => {
+  it("while the access setup is open, offers the Owner Set up access beside the project's pages", async () => {
     renderSection({ me: { roles: [{ id: "r-o", name: "Owner", is_owner: true }], access_setup_finished: false } });
     expect(await screen.findByRole("link", { name: "Set up access" })).toHaveAttribute("href", "/acme/access");
-    expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Board" })).toBeInTheDocument();
   });
 
   it("while the access setup is open, tells a member no project lists that theirs are on the way", async () => {
