@@ -108,15 +108,15 @@ describe("KanbanColumn", () => {
   it("narrows an empty column, still named and saying it is empty", () => {
     renderColumn({ tickets: [] });
     const region = screen.getByRole("region", { name: "Open column in Sprint 1" });
-    expect(region).toHaveClass("w-10", "xl:w-40");
-    expect(within(region).getByRole("heading", { level: 4 })).toHaveAttribute("title", "Open");
+    expect(region).toHaveClass("w-18");
+    expect(within(region).getByRole("heading", { level: 4 })).toHaveTextContent("Open");
     expect(screen.getByText("Open")).toBeInTheDocument();
     expect(screen.getByText("No tickets")).toBeInTheDocument();
   });
 
   it("gives a column with cards the full width", () => {
     renderColumn();
-    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).not.toHaveClass("w-10");
+    expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).not.toHaveClass("w-18");
   });
 
   it("calls onAddTicket with this column's status id when the + button is clicked", async () => {

@@ -35,7 +35,7 @@ const KanbanColumnImpl = ({
   tickets,
   onAddTicket,
 }: KanbanColumnProps) => {
-  // An empty column gives its width to the columns with cards: 160px with its header from 1280px, a 40px well of dot, count and + below, named by its tooltip.
+  // An empty column is a 72px rail (mark, name wrapping in two lines, count, +), so the width goes to the columns with cards.
   const empty = tickets.length === 0;
   const [shownCount, setShownCount] = useState(CARD_WINDOW);
   const shown = tickets.length > shownCount ? tickets.slice(0, shownCount) : tickets;
@@ -64,24 +64,24 @@ const KanbanColumnImpl = ({
       className={cn(
         // Three surface steps: the panel, the column's well, the card raised on it.
         "flex flex-col gap-1.5 rounded-lg bg-foreground/[0.04] p-1.5 dark:bg-surface-2",
-        empty ? "w-10 shrink-0 items-center xl:w-40 xl:items-stretch" : "w-42 flex-1 lg:w-50",
+        empty ? "w-18 shrink-0 items-center" : "w-42 flex-1 xl:w-50",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
     >
-      <h4 title={empty ? column.name : undefined} className={cn("flex items-center gap-1.5 pt-1", empty && "max-xl:flex-col")}>
+      <h4 className={cn("flex items-center gap-1.5 pt-1", empty && "flex-col")}>
         <span
           ref={setActivatorNodeRef}
           {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
-            empty && "max-xl:flex-col",
+            empty && "flex-col gap-1 text-center",
             draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className={cn("flex min-w-0 items-center gap-1.5", empty && "flex-col gap-1")}>
             <StatusMark status={column} className="size-3.5" />
-            <span className={cn("truncate text-sm font-medium", empty && "max-xl:sr-only")}>{column.name}</span>
+            <span className={cn("text-sm font-medium", empty ? "text-[11px] leading-tight font-semibold text-balance" : "truncate")}>{column.name}</span>
           </span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>
             {tickets.length}
@@ -117,7 +117,7 @@ const KanbanColumnImpl = ({
         {empty && (
           // The dashed slot only shows while a card is held: then it reads as somewhere a card can land.
           <EmptyRow className="flex-1 self-stretch rounded-md border border-dashed border-transparent px-2 py-6 text-center text-xs transition-colors duration-150 ease-standard group-data-[card-drag]/board:border-border">
-            <span className="max-xl:sr-only">No tickets</span>
+            <span className="sr-only">No tickets</span>
           </EmptyRow>
         )}
       </EnterList>
