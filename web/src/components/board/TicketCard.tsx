@@ -48,6 +48,8 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
+  // A bug keeps its red; every other type's icon is muted, so the card's colour is its labels and its status, not a second accent.
+  const typeIconColor = type.trim().toLowerCase() === "bug" ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
@@ -58,7 +60,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
     <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
       {type !== "" && (
         // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
-        <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="mr-0.5 [&>svg]:size-3.5">
+        <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} title={type} className="mr-0.5 [&>svg]:size-3.5">
           <span className="sr-only">{type}</span>
         </NoFillBadge>
       )}

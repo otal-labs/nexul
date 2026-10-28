@@ -103,6 +103,13 @@ describe("TicketCard", () => {
     expect(chip).not.toHaveClass(labelDotColor("urgent"));
   });
 
+  it("mutes every type icon but a bug's, so the type never adds a second accent to the card", async () => {
+    mockTicketType("Feature");
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    const badge = (await screen.findByText("Feature")).closest('[data-slot="no-fill-badge"]');
+    expect(badge?.querySelector("svg")).toHaveClass("text-muted-foreground");
+  });
+
   it("shows two label chips and counts the rest in a +N chip that names them", () => {
     const { container } = renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent", "i18n", "ux"] }} />);
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
