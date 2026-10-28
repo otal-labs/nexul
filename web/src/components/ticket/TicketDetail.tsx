@@ -111,7 +111,7 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
           <>
             <TicketHeaderStrip ticket={ticket} ticketLabel={ticketLabel} />
             <span className="border-l border-border pl-3">
-              <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} />
+              <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} size="sm" />
             </span>
           </>
         }

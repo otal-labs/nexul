@@ -31,6 +31,7 @@ const nameOf = (message: Message, author: Person): string => {
 export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => {
   const isAgent = message.author_kind === "agent";
   const isSystem = message.author_kind === "system";
+  const line = lineOf(message.body);
   return (
     <li className="flex min-w-0 items-center gap-2 py-1 text-sm">
       {isAgent && (
@@ -50,8 +51,8 @@ export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => 
         <time dateTime={message.created_at} className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
           {formatUpdatedAgo(message.created_at)}
         </time>
-        <span dir="auto" className="min-w-0 truncate text-muted-foreground">
-          {lineOf(message.body)}
+        <span dir="auto" className="min-w-0 truncate text-muted-foreground" title={line}>
+          {line}
         </span>
       </span>
     </li>

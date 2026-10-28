@@ -37,7 +37,7 @@ export const LinkedTicketRow = ({ ticket, waiting = false, onRemove, hostProject
           <Link
             to={wsPath(`/tickets/${key}`)}
             aria-label={`${key} ${ticket.title}`}
-            className="flex min-w-0 flex-1 items-baseline gap-2 rounded-sm py-1 text-xs underline-offset-4 hover:underline"
+            className="-mx-1 flex min-w-0 flex-1 items-baseline gap-2 rounded-sm px-1 py-1 text-xs underline-offset-4 hover:underline"
           >
             <span className="shrink-0 font-mono">{key}</span>
             <span dir="auto" className="min-w-0 truncate text-muted-foreground">

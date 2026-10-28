@@ -18,8 +18,8 @@ export interface TicketPageLayout {
 
 const PAGE = "@container/main flex h-full flex-col gap-6 overflow-hidden px-6 pt-6";
 
-// One full-height panel: the header stays put, and under it the tabs and the rail scroll on their own. From a 52rem
-// panel the rail sits beside every tab but Notes; narrower it folds behind a Details row above the tabs.
+// The header stays put; the tabs and the rail scroll on their own, faded at both ends and padded so nothing fades at rest.
+// From a 52rem panel the rail sits beside every tab but Notes; narrower it folds behind a Details row above the tabs.
 const PANE: TicketPageLayout = {
   container: "h-full max-w-none px-0 sm:px-0",
   page: `panel ${PAGE}`,
@@ -27,11 +27,11 @@ const PANE: TicketPageLayout = {
   body: "grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)] @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:grid-rows-[minmax(0,1fr)] @min-[52rem]/main:gap-x-10",
   detailsToggle: "@min-[52rem]/main:hidden",
   rail: "hidden min-h-0 min-w-0 @min-[52rem]/main:col-start-2 @min-[52rem]/main:row-start-1 @min-[52rem]/main:block @min-[52rem]/main:border-b-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pl-6",
-  railScroll: "scroll-edge -mx-2 h-full max-h-[45dvh] overflow-y-auto pt-2 pb-6 @min-[52rem]/main:mx-0 @min-[52rem]/main:max-h-none @min-[52rem]/main:pt-0",
+  railScroll: "-mx-2 h-full max-h-[45dvh] overflow-y-auto pt-3 pb-6 [mask-image:linear-gradient(to_bottom,transparent,#000_12px,#000_calc(100%-24px),transparent)] @min-[52rem]/main:mx-0 @min-[52rem]/main:-mt-3 @min-[52rem]/main:max-h-none",
   railOpen: "mb-4 block border-b border-border @min-[52rem]/main:mb-0",
   tabs: "min-h-0 min-w-0 @min-[52rem]/main:col-start-1 @min-[52rem]/main:row-start-1",
   tabsWide: "@min-[52rem]/main:col-span-2",
-  ticketTab: "scroll-edge min-h-0 overflow-y-auto pb-6",
+  ticketTab: "-mt-3 min-h-0 overflow-y-auto pt-3 pb-6 [mask-image:linear-gradient(to_bottom,transparent,#000_12px,#000_calc(100%-24px),transparent)]",
   article: "min-w-0",
   thread: "flex min-h-0 flex-col pb-4",
   notesGrid: "grid content-start gap-8 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:gap-x-10",
