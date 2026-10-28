@@ -40,7 +40,7 @@ export const MemoriesListPane = ({ memories, project, selectedId }: MemoriesList
         search={search}
         onSearch={setSearch}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
         {memories.length === 0 && <ListPaneEmpty icon={BrainIcon} message="No memories yet" />}
         {memories.length > 0 && groups.length === 0 && <ListPaneNoMatch onClear={() => setSearch("")} />}
         {memories.length > 0 &&

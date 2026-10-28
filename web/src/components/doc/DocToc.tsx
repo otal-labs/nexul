@@ -27,45 +27,44 @@ function findHeadingElement(heading: DocHeading): HTMLElement | null {
   return null;
 }
 
-// Spy attaches once heading elements exist (MutationObserver) since the editor renders async.
+// The section being read is the last heading above this share of the window's height.
+const READING_LINE = 0.25;
+
+// Which heading the reader is in. It looks the elements up fresh each time, since the editor replaces its nodes when a session syncs.
+const headingInView = (headings: DocHeading[], scroller: Element | null): string | null => {
+  const atEnd = scroller !== null && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+  const line = atEnd ? window.innerHeight : window.innerHeight * READING_LINE;
+  let current: string | null = null;
+  for (const heading of headings) {
+    const el = findHeadingElement(heading);
+    if (!el) continue;
+    if (el.getBoundingClientRect().top > line) break;
+    current = heading.id;
+  }
+  return current;
+};
+
 export const DocToc = ({ headings, onJump }: DocTocProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
     if (headings.length < MIN_HEADINGS) return;
-    let observer: IntersectionObserver | null = null;
-    let mutation: MutationObserver | null = null;
-
-    const attach = () => {
-      const els = headings
-        .map(findHeadingElement)
-        .filter((el): el is HTMLElement => el !== null);
-      if (els.length === 0) return false;
-      if (typeof IntersectionObserver === "undefined") return true;
-      observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting && entry.target instanceof HTMLElement) {
-              const id = entry.target.dataset.docHeadingId;
-              if (id) setActiveId(id);
-            }
-          }
-        },
-        { rootMargin: "-20% 0px -70% 0px" },
-      );
-      for (const el of els) observer.observe(el);
-      return true;
-    };
-
-    if (!attach()) {
-      mutation = new MutationObserver(() => {
-        if (attach()) mutation?.disconnect();
+    let frame = 0;
+    // Scroll doesn't bubble, so a capturing listener hears the pane's own scroll box, whichever element that is.
+    const onScroll = (event: Event) => {
+      if (frame) return;
+      const scroller = event.target instanceof Element ? event.target : document.scrollingElement;
+      // Only the box that scrolls the body moves its headings; the docs list or a popover scrolling says nothing.
+      if (!scroller?.querySelector(".doc-body-view")) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setActiveId(headingInView(headings, scroller));
       });
-      mutation.observe(document.body, { childList: true, subtree: true });
-    }
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      observer?.disconnect();
-      mutation?.disconnect();
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      cancelAnimationFrame(frame);
     };
   }, [headings]);
 
@@ -89,7 +88,7 @@ export const DocToc = ({ headings, onJump }: DocTocProps) => {
       <h2 className={microheaderClass}>
         On this page
       </h2>
-      <ul className="mt-2.5 space-y-0.5 border-l border-border">
+      <ul className="mt-2.5 space-y-0.5 border-l border-border pl-1">
         {headings.map((heading) => (
           <li key={heading.id}>
             <a
@@ -101,15 +100,15 @@ export const DocToc = ({ headings, onJump }: DocTocProps) => {
               title={heading.text}
               aria-current={currentId === heading.id ? "true" : undefined}
               className={cn(
-                // The edge is a bar, not a border, so the link can round its corners for the focus ring.
-                "relative -ml-px block truncate rounded-md py-1 pr-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 ease-standard before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full hover:text-foreground",
-                heading.level === topLevel && "pl-3.5",
-                heading.level === topLevel + 1 && "pl-[1.375rem]",
-                heading.level >= topLevel + 2 && "pl-[1.875rem]",
+                // The edge is a bar laid on the track and entries start past it, so the rounded focus ring never crosses the track.
+                "relative block rounded-md py-1 pr-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 ease-standard before:absolute before:inset-y-1.5 before:-left-[5.5px] before:w-0.5 before:rounded-full hover:text-foreground",
+                heading.level === topLevel && "pl-2.5",
+                heading.level === topLevel + 1 && "pl-[1.125rem]",
+                heading.level >= topLevel + 2 && "pl-[1.625rem]",
                 currentId === heading.id && "font-medium text-foreground before:bg-brand",
               )}
             >
-              {heading.text}
+              <span className="block truncate">{heading.text}</span>
             </a>
           </li>
         ))}

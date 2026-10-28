@@ -34,7 +34,7 @@ export const PlaysListPane = ({ plays, selectedId }: PlaysListPaneProps) => {
         search={search}
         onSearch={setSearch}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
         {plays.length === 0 && <ListPaneEmpty icon={SparklesIcon} message="No plays yet" />}
         {plays.length > 0 && groups.length === 0 && <ListPaneNoMatch onClear={() => setSearch("")} />}
         {groups.map((group) => (

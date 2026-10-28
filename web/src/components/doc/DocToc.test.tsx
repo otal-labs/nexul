@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -10,35 +10,20 @@ const headings: DocHeading[] = [
   { id: "backup", text: "Backup", level: 2 },
 ];
 
-class MockIntersectionObserver {
-  static instance: MockIntersectionObserver | null = null;
-  callback: IntersectionObserverCallback;
-  targets = new Set<Element>();
-  constructor(callback: IntersectionObserverCallback) {
-    this.callback = callback;
-    MockIntersectionObserver.instance = this;
-  }
-  observe(target: Element) {
-    this.targets.add(target);
-  }
-  unobserve(target: Element) {
-    this.targets.delete(target);
-  }
-  disconnect() {
-    MockIntersectionObserver.instance = null;
-  }
-  intersect(...els: Element[]) {
-    this.callback(
-      els.map((target) => ({ target, isIntersecting: true }) as IntersectionObserverEntry),
-      this as unknown as IntersectionObserver,
-    );
-  }
-}
-
 const scrollIntoView = vi.fn();
 const bodyView = (markup: string) => {
-  document.body.insertAdjacentHTML("afterbegin", `<div class="doc-body-view">${markup}</div>`);
+  document.body.insertAdjacentHTML("afterbegin", `<div class="pane"><div class="doc-body-view">${markup}</div></div>`);
 };
+
+// jsdom lays nothing out, so each heading is given the top a scroll would leave it at.
+const placeHeadings = (tops: Record<string, number>) => {
+  for (const el of document.querySelectorAll<HTMLElement>(".doc-body-view h1, .doc-body-view h2")) {
+    const top = tops[el.textContent ?? ""] ?? 0;
+    el.getBoundingClientRect = () => ({ top }) as DOMRect;
+  }
+};
+
+const scrollPane = () => document.querySelector(".pane")?.dispatchEvent(new Event("scroll"));
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -72,7 +57,6 @@ describe("DocToc", () => {
 
   it("scrolls the matching heading element on click", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
     bodyView("<h1>Storage</h1><h2>Backup</h2>");
     Element.prototype.scrollIntoView = scrollIntoView;
 
@@ -85,26 +69,38 @@ describe("DocToc", () => {
     expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true");
   });
 
-  it("marks the section in view with the ember active state", () => {
-    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+  it("marks the last heading above the reading line as the pane scrolls", async () => {
     bodyView("<h1>Storage</h1><h2>Backup</h2>");
-
     render(<DocToc headings={headings} />);
-    const h2 = document.querySelector("h2");
-    expect(h2).not.toBeNull();
-    act(() => MockIntersectionObserver.instance?.intersect(h2!));
+    placeHeadings({ Storage: -400, Backup: 100 });
 
-    expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true");
+    scrollPane();
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true"));
     expect(screen.getByRole("link", { name: "Storage" })).not.toHaveAttribute("aria-current");
   });
 
-  it("attaches the spy once the body view renders (MutationObserver fallback)", async () => {
-    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+  it("follows headings the editor renders after the outline mounts, as a session sync replaces them", async () => {
     render(<DocToc headings={headings} />);
-    expect(MockIntersectionObserver.instance).toBeNull();
-
     bodyView("<h1>Storage</h1><h2>Backup</h2>");
-    await vi.waitFor(() => expect(MockIntersectionObserver.instance).not.toBeNull());
+    placeHeadings({ Storage: -400, Backup: 100 });
+
+    scrollPane();
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true"));
+  });
+
+  it("ignores a scroll box that doesn't hold the body, such as the docs list", async () => {
+    bodyView("<h1>Storage</h1><h2>Backup</h2>");
+    render(<DocToc headings={headings} />);
+    placeHeadings({ Storage: -400, Backup: 100 });
+    const list = document.createElement("div");
+    document.body.appendChild(list);
+
+    list.dispatchEvent(new Event("scroll"));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(screen.getByRole("link", { name: "Storage" })).toHaveAttribute("aria-current", "true");
   });
 
   it("tolerates a missing body view", async () => {

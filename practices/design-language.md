@@ -525,9 +525,10 @@ one muted line. A search shows matching docs inside their folders, hides the
 folders without a match, and opens collapsed ones while it runs. The header
 puts a ghost `FolderPlus` (New folder) beside the `+`, for writers only. No
 folder carries a color. Below 1024px one pane
-shows at a time. The open record scrolls inside its panel, which stays still,
-and fades over its last 24px (`scroll-edge`), so the content never meets the
-panel's rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
+shows at a time. The list and the open record each scroll inside a panel
+that stays still and fade over their last 24px (`scroll-edge`), with bottom
+padding that clears the fade at the end, so content never meets a panel's
+rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
 Inbox. One row per doc however many notifications it has: the title with

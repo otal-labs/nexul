@@ -49,6 +49,7 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
   const session = useCollabSession(canEdit && me ? `tickets/${ticket.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getTicketKey, ticket.id],
     ...(me?.user?.id ? { userId: me.user.id } : {}),
+    ...(me?.user?.login ? { login: me.user.login } : {}),
     ...(wsFactory ? { wsFactory } : {}),
     ...(avatar ? { avatar } : {}),
   });

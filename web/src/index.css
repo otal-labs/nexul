@@ -634,7 +634,7 @@ body {
 }
 
 .prose-rich ul[data-type="taskList"] > li > div > p {
-  margin: 0.2em 0;
+  margin: 0.25em 0;
 }
 
 .prose-rich ul[data-type="taskList"] > li > label {
@@ -643,7 +643,7 @@ body {
   flex: none;
   align-items: center;
   height: 1lh;
-  margin-top: 0.2em;
+  margin-top: 0.25em;
   user-select: none;
   /* Only an editable body toggles; a read-only body and a rendered reply show the state and ignore the pointer. */
   pointer-events: none;
