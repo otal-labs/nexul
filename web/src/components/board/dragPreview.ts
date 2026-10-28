@@ -1,6 +1,6 @@
 import { defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable";
 
-import type { DragMoveAction, DropTargetData } from "@/components/board/dragMove";
+import { inOwnLane, type DragMoveAction, type DropTargetData } from "@/components/board/dragMove";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { Ticket } from "@/models/Ticket";
 
@@ -16,6 +16,7 @@ export const resolveDragCell = (
   target: DropTargetData | undefined,
   after = false,
 ): DragCell | null => {
+  target = inOwnLane(target, active.categoryId);
   if (!target) return null;
   if (target.type === "lane") return { status: active.status, categoryId: target.categoryId };
   if (target.type === "column") return { status: target.statusId, categoryId: target.categoryId };

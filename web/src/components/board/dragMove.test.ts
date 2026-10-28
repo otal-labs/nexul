@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveDragMove, ticketsInCell, type DragTicket } from "@/components/board/dragMove";
+import { resolveDragMove, STAGE_HEADER, ticketsInCell, type DragTicket } from "@/components/board/dragMove";
 
 const active: DragTicket = { id: "t-1", status: "open", categoryId: "c-1", position: 1 };
 
@@ -53,6 +53,13 @@ describe("resolveDragMove", () => {
     expect(resolveDragMove(active, { type: "column", statusId: "done", categoryId: "c-9" }, [])).toEqual([
       { kind: "status", ticketId: "t-1", status: "done" },
       { kind: "category", ticketId: "t-1", categoryId: "c-9" },
+      { kind: "reorder", updates: [{ ticketId: "t-1", position: 0 }] },
+    ]);
+  });
+
+  it("moves a card dropped on the stage row to that stage in its own lane", () => {
+    expect(resolveDragMove(active, { type: "column", statusId: "done", categoryId: STAGE_HEADER, kind: "done" }, [])).toEqual([
+      { kind: "status", ticketId: "t-1", status: "done" },
       { kind: "reorder", updates: [{ ticketId: "t-1", position: 0 }] },
     ]);
   });

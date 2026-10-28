@@ -102,7 +102,7 @@ export const BoardFilterBar = ({
       {/* The text filter leads the filters it works with; Create alone holds the right edge. */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2 *:shrink-0">
-          <div className="relative w-60">
+          <div className="relative w-60 max-xl:w-40">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
               type="search"
@@ -136,7 +136,7 @@ export const BoardFilterBar = ({
             >
               <FlaskConicalIcon className="size-3.5" />
               {/* Icon-only below 1280, named by its tooltip, so the toolbar keeps one row under the title. */}
-              <span className="max-xl:sr-only">Mine to test</span>
+              <span>Mine to test</span>
             </Button>
           )}
           {showPlaying && (

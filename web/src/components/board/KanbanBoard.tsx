@@ -177,7 +177,7 @@ export const KanbanBoard = ({
         {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
         <div
           data-card-drag={activeTicket ? "" : undefined}
-          className="group/board min-h-0 flex-1 overflow-auto pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)] max-lg:[mask-composite:intersect] max-lg:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-2rem),transparent)]"
+          className="group/board min-h-0 flex-1 overflow-auto pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)] max-lg:[mask-composite:intersect] max-lg:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-0.75rem),transparent)]"
         >
           <div className="relative min-h-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
             <div className="relative space-y-3">

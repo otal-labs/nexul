@@ -550,28 +550,30 @@ The board scrolls on its own, both ways, under the header row. Its stage row
 (`BoardStageHeader`) is drawn once and pinned at the top of that scroll: each
 stage's mark, its name in 13px semibold, its count across every lane, and its
 `+`; the name and count are the stage's drag handle for reordering. Done
-starts folded to a 44px rail, its mark and count on one line in the stage row
-(its name in the tooltip); the rail opens it, a fold button in its header closes it, and the choice is
+starts folded to a "Done 10 ›" control at the end of the stage row (mark,
+name, count, chevron) with no well under it in any lane; the control opens it
+and takes drops while a card is held, a fold button in its header closes it, and the choice is
 kept per browser, because finished work is counted, not read, on a board kept
 open all day. Every lane's row and the stage row share one grid template
 (`boardGridTemplate`): 180px minimum and an equal share for each open stage,
-2.75rem for folded Done, so a stage is one column down the whole board; past
+7.5rem for folded Done, so a stage is one column down the whole board; past
 the panel's width the board scrolls sideways and never squeezes a title, and
-below 1024 its right edge fades so a column cut at the panel reads as more
-board.
+below 1024 its right edge fades over 0.75rem, short enough that a cut
+column's titles stay readable, and the bottom fades into the panel's edge.
+A card dropped on the stage row lands in that stage in its own lane.
 
 A swimlane is a 28px band across the stage columns, pinned under the stage
 row while its lane scrolls: a chevron, the lane name in 13px semibold, and
 "4/11 done" in muted sans beside the name, a hairline under the band. Each
 stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
 rather than a colour so it reads in every palette; a black panel takes a lighter
-well instead) fills each lane's cell with the radius of a card, the cells of a
-lane sharing the height of its tallest, so every band sits between rounded
-wells and nothing is cut square; cards stack at the top of the cell. The
+well instead) fills each lane's cell with the radius of a card and ends at the
+cell's last card, so every band sits between rounded wells, nothing is cut
+square, and a one-card cell is never a tall empty slab. The
 card's meta line and the lane band align their mixed fonts on one baseline,
 with icons centred on the line. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
-a card is held, an empty cell and the folded Done rail show a card-tall
+a card is held, an empty cell and the folded Done cell show a card-tall
 dashed slot as the place to land.
 
 A card is two parts. The title comes first, in 13px at weight 450 (500 read as
@@ -593,7 +595,9 @@ right. The board's bar is 32px controls: a 15rem text filter ("Filter tickets", 
 it never reads as a second copy of the sidebar's Search) leads, then the
 Filter menu, the developer filter as a stack of three 28px avatars and a "+N"
 that lists the rest, and the toggles (Mine to test, Playing), ghost in muted
-ink until on and icon-only below 1280 (named by their tooltips), wrapping inside their group when the board is narrow; the labelled Create button alone holds the right edge. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+ink until on; below 1280 Playing is icon-only (named by its tooltip) while
+Mine to test keeps its label, and the search field narrows to 160px to hold
+them, wrapping inside their group when the board is narrow; the labelled Create button alone holds the right edge. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.
