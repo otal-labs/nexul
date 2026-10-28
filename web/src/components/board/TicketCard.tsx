@@ -55,7 +55,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
     </span>
   );
   const pills = (
-    <span className="flex min-w-0 flex-wrap items-center gap-1">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
       {type !== "" && (
         // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
         <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="mr-0.5 [&>svg]:size-3.5">
@@ -63,12 +63,12 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         </NoFillBadge>
       )}
       {labels.slice(0, CARD_LABELS).map((label) => (
-        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 px-1.5 text-[11px] dark:border-transparent" />
+        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 border-transparent bg-transparent px-0 text-[11px]" />
       ))}
       {labels.length > CARD_LABELS && (
         <span
           title={labels.slice(CARD_LABELS).join(", ")}
-          className="rounded-full border border-border bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+          className="font-mono text-[11px] text-muted-foreground"
         >
           +{labels.length - CARD_LABELS}
         </span>
@@ -158,7 +158,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
         if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
-        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 shadow-card dark:border-transparent transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-2 rounded-lg border border-border bg-card p-2.5 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         draggable && "cursor-grab active:cursor-grabbing",
         !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
