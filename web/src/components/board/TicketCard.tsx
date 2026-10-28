@@ -57,12 +57,13 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const pills = (
     <span className="flex min-w-0 flex-wrap items-center gap-1">
       {type !== "" && (
-        <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)}>
-          {type}
+        // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
+        <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="mr-0.5 [&>svg]:size-3.5">
+          <span className="sr-only">{type}</span>
         </NoFillBadge>
       )}
       {labels.slice(0, CARD_LABELS).map((label) => (
-        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 px-1.5 text-[11px]" />
+        <LabelChip key={label} label={label} color={labelColors?.[label]} className="gap-1 px-1.5 text-[11px] dark:border-transparent" />
       ))}
       {labels.length > CARD_LABELS && (
         <span

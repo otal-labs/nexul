@@ -84,11 +84,13 @@ describe("TicketCard", () => {
     expect(screen.queryByText("t-142", { exact: false })).not.toBeInTheDocument();
   });
 
-  it("renders the ticket type as its icon in the type hue beside plain text, with no pill", async () => {
+  it("renders the ticket type as its icon in the type hue, named by its tooltip and for screen readers, with no pill", async () => {
     mockTicketType("Bug");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const badge = (await screen.findByText("Bug")).closest("span");
-    expect(badge).toHaveAttribute("data-slot", "no-fill-badge");
+    const name = await screen.findByText("Bug");
+    expect(name).toHaveClass("sr-only");
+    const badge = name.closest('[data-slot="no-fill-badge"]');
+    expect(badge).toHaveAttribute("title", "Bug");
     expect(badge).not.toHaveClass("rounded-full");
     expect(badge?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug").split(" "));
   });
@@ -276,7 +278,7 @@ describe("TicketCard", () => {
       renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
       await screen.findByText("Bug");
       await vi.waitFor(() => {
-        expect(screen.getByText("Bug").closest("span")?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug", "cyan").split(" "));
+        expect(screen.getByText("Bug").closest('[data-slot="no-fill-badge"]')?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug", "cyan").split(" "));
       });
       // ticketTypeColor("Bug") on its own would hash to red, proving the configured color won, not a coincidence.
       expect(ticketTypeColor("Bug")).toMatch(/red/);

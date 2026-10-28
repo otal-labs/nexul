@@ -179,7 +179,7 @@ Status is a coloured dot or icon in its own hue (`success`, `warning`,
 tinted-background chip: readable in both themes, and it keeps status from
 competing with the accent. A ticket's type follows the same rule: its icon in
 the type hue leads and the name stays `muted-foreground` (`NoFillBadge` with an
-icon, on the web board card and the phone card and ticket screen), so on a
+icon, on the phone card and ticket screen; the web board card shows the icon alone, named by its tooltip), so on a
 card the type is never a filled shape beside the palette's accent. A label is a neutral chip: a
 `rounded-full` hairline pill at `foreground` 4% with `muted-foreground` text,
 its own hue only on a 6px leading dot (`LabelChip` on the web, drawn once for
@@ -545,8 +545,9 @@ because the sidebar's switchers already show the workspace and the project's
 mark, and each column counts its own stage. A card is the mono key as an eyebrow
 (with the run timer, the thread mark and the 20px avatar of whoever acts
 next trailing on its line), the title at full width in 13px medium, the
-blocked line, then the type (its icon in its hue beside plain text) and at most two
-label chips (11px on the card) on a row of their own, any more counted in a mono "+N" chip that
+blocked line, then the type as its icon alone in its hue (its name in the
+tooltip and for screen readers) and at most two label chips (11px on the card,
+borderless in dark) on a row of their own, any more counted in a mono "+N" chip that
 names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
@@ -1269,6 +1270,7 @@ The web app's pattern decisions, each with what it was picked over.
 |---|---|
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
 | A dark card sits at least 0.029 of OKLCH lightness above its panel (2026-10-26) | Against each palette keeping its own card step: the card sits straight on the panel, and the panel is the card mixed 60% into the canvas, so a palette whose card is only a few points above its canvas puts the card 0.012 to 0.020 above the panel and it dissolves into the page. 0.029 is the step Ember, Ocean and Grove hold (0.030), the default holding 0.039; a palette short of it lifts `card` (and `popover` where the two share a value) and keeps its hue and chroma. Light palettes are exempt: a white or near-white card has no lightness left to give, and the ring and shadow separate it. Guarded per palette in `themeContrast.test.ts` |
+| A board card's type is its icon alone (2026-10-28) | Against the icon beside the type's name: on a card the name was a third kind of label in the meta row, beside the mono key and the label chips, and it took the width a second label needed; the type is a bounded set whose hue and icon already tell bug from feature, and the name stays in the tooltip and for screen readers |
 | Board cards: the key as an eyebrow with the person at its end, the pills on a row of their own (2026-10-28) | Against the avatar-beside-title card, a card with a ruled footer, and the person opposite the pills: with the avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the key's line had room the pills' row did not, where a 20px avatar pushed a third chip onto another line in a 220px column; the footer rule made every card taller for a line that spacing already separates |
 | Board: every column on a well, cards raised on it (2026-10-28) | Against no well at rest, each column taking it only while a card is held: the cards and the columns shared the page panel, separated by a hairline, so in dark the board read as a wireframe and in light as white boxes on white. Three surface steps (panel, well, card) carry the depth, and the card drops its hairline in dark, where its fill already separates it. This reverses the earlier call that a well under the cards made three nested surfaces: on the board the nesting is the structure |
 | Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
