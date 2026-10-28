@@ -23,7 +23,7 @@ export const SidebarHeader = ({ collapsed, onToggleCollapse }: SidebarHeaderProp
               <Logo />
               <span className="text-base">Nexul</span>
             </Link>
-            <span title={server?.version} className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span title={server?.version} className="rounded-full bg-foreground/[0.07] px-2 py-0.5 text-xs font-medium text-muted-foreground">
               Beta
             </span>
             <div className="ml-auto flex items-center gap-0.5">
