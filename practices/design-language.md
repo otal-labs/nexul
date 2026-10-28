@@ -544,12 +544,12 @@ surface opened all day, and its height is cards. There is no breadcrumb, no
 project mark and no stage summary,
 because the sidebar's switchers already show the workspace and the project's
 mark, and each column counts its own stage. A card is the mono key as an eyebrow
-(with the run timer, the thread mark and the 20px avatar of whoever acts
-next trailing on its line), the title at full width in 13px at weight 450 (500 read as bold at that size on a dark card), the
+(with the run timer, the thread mark and the 16px avatar of whoever acts
+next trailing on its 16px line), the title at full width in 13px at weight 450 (500 read as bold at that size on a dark card), the
 blocked line, then the type as its icon alone in its hue (its name in the
 tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
 name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
-names them in its tooltip, at 10px padding. A swimlane is a 32px bar on the columns' well tone (`surface-2` in
+names them in its tooltip, at 8px padding top and bottom and 10px at the sides with 6px between its rows, so a one-line card is about 78px. A swimlane is a 32px bar on the columns' well tone (`surface-2` in
 dark, ink at 4% in light, where some palettes' `surface-2` equals the panel) with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
