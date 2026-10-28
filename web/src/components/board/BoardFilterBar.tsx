@@ -24,6 +24,7 @@ import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
+import { cn } from "@/lib/utils";
 
 export type { BoardFilters } from "@/components/board/boardFilterChipBuilders";
 
@@ -126,11 +127,11 @@ export const BoardFilterBar = ({
           )}
           {showWaitingForMeToTest && (
             <Button
-              variant={filters.waitingForMeToTest ? "default" : "outline"}
+              variant={filters.waitingForMeToTest ? "default" : "ghost"}
               size="sm"
               aria-pressed={filters.waitingForMeToTest}
               onClick={onToggleWaitingForMeToTest}
-              className="h-8 px-2.5 text-xs"
+              className={cn("h-8 px-2.5 text-xs", !filters.waitingForMeToTest && "text-muted-foreground")}
             >
               <FlaskConicalIcon className="size-3.5" />
               Mine to test
@@ -138,11 +139,11 @@ export const BoardFilterBar = ({
           )}
           {showPlaying && (
             <Button
-              variant={filters.playing ? "default" : "outline"}
+              variant={filters.playing ? "default" : "ghost"}
               size="sm"
               aria-pressed={filters.playing}
               onClick={onTogglePlaying}
-              className="h-8 px-2.5 text-xs"
+              className={cn("h-8 px-2.5 text-xs", !filters.playing && "text-muted-foreground")}
             >
               <SparklesIcon className="size-3.5" />
               Playing
