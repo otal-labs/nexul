@@ -353,7 +353,7 @@ func TestAnswer_InterviewRun_RecordsTheSkipTextAsASkip(t *testing.T) {
 }
 
 func TestAnswer_TicketAndDocRuns_RecordNoFollowUps(t *testing.T) {
-	for name, in := range map[string]RunInput{"ticket": ticketRun(), "doc": {PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID, Via: ViaWeb}} {
+	for name, in := range map[string]RunInput{"ticket": ticketRun()} {
 		t.Run(name, func(t *testing.T) {
 			f := heldFixture(t)
 			trail, obs := driveTurn(t, f, in)

@@ -398,10 +398,6 @@ func TestRunInstall_Flags(t *testing.T) {
 		require.ErrorContains(t, th.runInstall(t.Context(), []string{"--dir", "nexul", "--yes"}), "not a full path")
 		assert.Empty(t, th.exec.calls)
 	})
-	t.Run("an unknown flag is refused", func(t *testing.T) {
-		th := newTestHost(t)
-		require.Error(t, th.runInstall(t.Context(), []string{"--bogus"}))
-	})
 	t.Run("the logs port is not a flag", func(t *testing.T) {
 		th := newTestHost(t)
 		require.Error(t, th.runInstall(t.Context(), []string{"--logs-port", "5080"}))

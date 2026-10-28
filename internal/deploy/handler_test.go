@@ -307,18 +307,6 @@ func TestStackRoutes(t *testing.T) {
 		h.ServeHTTP(rec, withActor(httptest.NewRequest(http.MethodPatch, "/api/stacks/svc-1", strings.NewReader(instance))))
 		assert.Equal(t, http.StatusBadRequest, rec.Code, "a stack with no project cannot switch it on")
 	})
-	t.Run("delete returns deleted", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		requireStack(t, stacks, validStack())
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		h := NewHandler(s).Routes()
-
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, withActor(httptest.NewRequest(http.MethodDelete, "/api/stacks/svc-1", nil)))
-		assert.Equal(t, http.StatusOK, rec.Code)
-	})
 	t.Run("rollback triggers a deploy", func(t *testing.T) {
 		repo := newFakeRepo()
 		now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)

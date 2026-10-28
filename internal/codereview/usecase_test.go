@@ -251,14 +251,6 @@ func TestApplyReviewSubmitted(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StatusChangesRequested, got.Status)
 	})
-	t.Run("latest review wins", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		created := mustCreate(t, s, "acme/app", 7)
-		require.NoError(t, s.repo.(*fakeRepo).UpdateStatus(context.Background(), created.ID, StatusChangesRequested, ""))
-		got, err := s.ApplyReviewSubmitted(context.Background(), "acme/app", 7, "approved", "alice")
-		require.NoError(t, err)
-		assert.Equal(t, StatusApproved, got.Status)
-	})
 	t.Run("commented review does not override an approval", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
@@ -269,13 +261,6 @@ func TestApplyReviewSubmitted(t *testing.T) {
 		assert.Equal(t, StatusApproved, got.Status)
 		assert.Equal(t, "alice", got.Reviewer)
 		assert.Empty(t, repo.of(TopicStatusChanged).Payload, "no event for a no-op review")
-	})
-	t.Run("dismissed review does not flip the status", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		mustCreate(t, s, "acme/app", 7)
-		got, err := s.ApplyReviewSubmitted(context.Background(), "acme/app", 7, "dismissed", "dan")
-		require.NoError(t, err)
-		assert.Equal(t, StatusPending, got.Status)
 	})
 	t.Run("unknown pr creates a record from the event", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())

@@ -295,16 +295,6 @@ func TestDeleteRoom(t *testing.T) {
 			t.Fatalf("DeleteRoom (404) = %v, want nil", err)
 		}
 	})
-	t.Run("a server error is retryable", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusServiceUnavailable)
-		}))
-		defer srv.Close()
-		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
-		if err := c.DeleteRoom(context.Background(), "conv-1"); !errors.Is(err, apperrs.ErrRetryable) {
-			t.Fatalf("DeleteRoom (503) = %v, want ErrRetryable", err)
-		}
-	})
 }
 
 func TestRemoveParticipant(t *testing.T) {

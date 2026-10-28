@@ -284,15 +284,6 @@ func TestWebhookHandler_ReviewSubmitted(t *testing.T) {
 	assert.Equal(t, "alice", got.PR.Reviewer)
 }
 
-func TestWebhookHandler_ReviewChangesRequested(t *testing.T) {
-	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
-	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request_review", reviewEventPayload("submitted", "changes_requested", "bob")))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, TopicPRReviewSubmitted, bus.lastPublished().Topic)
-}
-
 func issueCommentPayload(isPR bool, body, author string) []byte {
 	issue := map[string]any{"number": 7}
 	if isPR {

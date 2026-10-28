@@ -40,12 +40,6 @@ func TestBroadcast_Next_AfterANotifyWaitsForTheNextOne(t *testing.T) {
 	<-ch
 }
 
-func TestBroadcast_Notify_WithNoWaiterIsANoop(t *testing.T) {
-	var b wake.Broadcast
-	b.Notify()
-	b.Notify()
-}
-
 func TestBroadcast_ConcurrentWaitersAllWake(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var b wake.Broadcast

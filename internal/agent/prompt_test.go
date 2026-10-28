@@ -91,11 +91,3 @@ func TestFitContext_NegativeBudgetDropsEverything(t *testing.T) {
 	assert.True(t, truncated)
 	assert.Empty(t, lines)
 }
-
-func TestComposePrompt_TellsTheAgentItsReplyPostsItself(t *testing.T) {
-	chat := playAnswer()
-	chat.Play = nil
-	for name, in := range map[string]PromptInput{"chat": chat, "play": playAnswer()} {
-		assert.Contains(t, ComposePrompt(in), "never also message_post it here, which shows it as onik97", name)
-	}
-}

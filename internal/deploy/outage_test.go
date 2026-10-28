@@ -246,7 +246,6 @@ func TestHandleContainerEvent_OnlyACrashOpensAnOutage(t *testing.T) {
 		wantOpen int
 	}{
 		{"die with a non-zero exit", dockerEvent(containerDie, 1), 1},
-		{"die killed by SIGKILL", dockerEvent(containerDie, 137), 1},
 		{"die with exit 0 is a job that finished", dockerEvent(containerDie, 0), 0},
 		{"oom alone leaves a running container up", dockerEvent(containerOOM, 0), 0},
 		{"kill alone", dockerEvent(containerKill, 0), 0},

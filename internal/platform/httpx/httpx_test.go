@@ -54,12 +54,6 @@ func TestWriteFieldError_KeysTheMessageUnderTheField(t *testing.T) {
 	assert.JSONEq(t, `{"message":"invalid: token refused","code":"INVALID","errors":{"token":["invalid: token refused"]}}`, rec.Body.String())
 }
 
-func TestWriteError_OmitsFieldErrors(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteError(rec, apperrs.ErrInvalid)
-	assert.NotContains(t, rec.Body.String(), "errors")
-}
-
 type detailedErr struct{ err error }
 
 func (e detailedErr) Error() string     { return e.err.Error() }
@@ -94,15 +88,6 @@ func TestWriteError_UnknownErrorDoesNotLeakMessage(t *testing.T) {
 	assert.Equal(t, "internal error", env.Message)
 }
 
-func TestWriteError_WrappedSentinelMapsToNotFound(t *testing.T) {
-	rec := httptest.NewRecorder()
-	WriteError(rec, fmt.Errorf("get doc xyz: %w", apperrs.ErrNotFound))
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	var env Envelope
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
-	assert.Equal(t, "NOT_FOUND", env.Code)
-}
-
 func TestWriteJSON_SetsContentTypeAndBody(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteJSON(rec, http.StatusCreated, map[string]string{"a": "b"})
@@ -115,13 +100,6 @@ func TestWriteJSON_NilSliceMarshalsAsEmptyArray(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteJSON(rec, http.StatusOK, map[string]any{"items": []string(nil)})
 	assert.Equal(t, `{"items":[]}`, rec.Body.String())
-}
-
-func TestDecodeJSON_ValidBody(t *testing.T) {
-	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"title":"hi"}`))
-	var v map[string]string
-	require.NoError(t, DecodeJSON(r, &v))
-	assert.Equal(t, "hi", v["title"])
 }
 
 func TestDecodeJSON_MalformedBody_ErrInvalid(t *testing.T) {

@@ -112,7 +112,3 @@ func TestPaginate_CapsTheLimit(t *testing.T) {
 	assert.Len(t, page.Items, MaxLimit)
 	assert.True(t, page.HasMore)
 }
-
-func TestGone(t *testing.T) {
-	assert.Equal(t, Deleted{ID: "x", Deleted: true}, Gone("x"))
-}

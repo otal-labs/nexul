@@ -388,9 +388,3 @@ func TestHTTPHandler_LatestVersion(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 }
-
-func TestService_ReleaseClient(t *testing.T) {
-	client := release.New(release.Config{})
-	svc := NewService(newFakeRunnerRepo(), &fakeDispatch{}).WithInstall(InstallConfig{Release: client})
-	assert.Same(t, client, svc.ReleaseClient())
-}

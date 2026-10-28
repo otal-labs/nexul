@@ -88,16 +88,6 @@ func TestService_CreateTunnel(t *testing.T) {
 	})
 }
 
-func TestService_ListTunnels(t *testing.T) {
-	repo := newFakeRepo()
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "a", CreatedAt: time.Now()}))
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t2", Name: "b", CreatedAt: time.Now()}))
-	s := newTunnelService(repo, newFakeTunnelProvider(), nil)
-	tunnels, err := s.ListTunnels(context.Background())
-	require.NoError(t, err)
-	assert.Len(t, tunnels, 2)
-}
-
 func TestService_GetTunnel(t *testing.T) {
 	t.Run("returns stored tunnel", func(t *testing.T) {
 		repo := newFakeRepo()

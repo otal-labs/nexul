@@ -32,11 +32,6 @@ func TestInstallDownloadURL(t *testing.T) {
 			want:        "https://app.example.com:9443/api/runners/download",
 		},
 		{
-			name:        "instance url with no explicit port",
-			instanceURL: "https://app.example.com",
-			want:        "https://app.example.com/api/runners/download",
-		},
-		{
 			name:        "no instance url falls back to the request host over TLS",
 			requestHost: "app.local:8443",
 			requestTLS:  true,

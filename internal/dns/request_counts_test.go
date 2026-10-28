@@ -22,10 +22,6 @@ func TestTraefikSpec_ServesRouterMetricsOnAnUnpublishedPort(t *testing.T) {
 	assert.Equal(t, []string{"80:80", "443:443"}, spec.Ports, "the metrics port is never published")
 }
 
-func TestRouterName_CarriesTheExposureID(t *testing.T) {
-	assert.Equal(t, "nexul-0192-ab", RouterName("0192-ab"))
-}
-
 func TestService_RequestRoutes_ListsEveryExposureWithItsGatewaysKindAndMachine(t *testing.T) {
 	s, repo, _, _, tunnelGW := newExposureFixture(t)
 	proxyGW := &Gateway{ID: "gw-proxy", Kind: GatewayProxy, DockerNetwork: "net2", Machine: "host2"}

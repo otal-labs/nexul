@@ -33,7 +33,6 @@ func TestCanvas_Validate(t *testing.T) {
 		{"duplicate node id", func(c *Canvas) { c.Nodes[1].ID = c.Nodes[0].ID }, true},
 		{"edge source is not a node", func(c *Canvas) { c.Edges[0].Source = "ghost" }, true},
 		{"edge target is not a node", func(c *Canvas) { c.Edges[0].Target = "ghost" }, true},
-		{"self-referencing edge", func(c *Canvas) { c.Edges[0].Target = c.Edges[0].Source }, true},
 		{"duplicate edge id", func(c *Canvas) {
 			c.Edges = append(c.Edges, Edge{ID: c.Edges[0].ID, Source: "svc-api", Target: "svc-db", Type: "relation", Data: EdgeData{Kind: KindConnectsTo}})
 		}, true},

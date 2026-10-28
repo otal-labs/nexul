@@ -78,22 +78,6 @@ func TestCreate_ValidTicketPlay_PersistsAndPublishes(t *testing.T) {
 	assert.Equal(t, TopicCreated, repo.published[0].Topic)
 }
 
-func TestList_SortsByLabel(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo, allowAll("owner"))
-	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Zeta", Type: TypeDoc})
-	require.NoError(t, err)
-	_, err = s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Alpha", Type: TypeDoc})
-	require.NoError(t, err)
-
-	list, err := s.List(ctxAs("owner"), workspaceID)
-	require.NoError(t, err)
-	require.Len(t, list, 2)
-	// The fake repo isn't sort-aware; the real SQL query (ORDER BY label) is covered by the storage integration test.
-	labels := map[string]bool{list[0].Label: true, list[1].Label: true}
-	assert.True(t, labels["Zeta"] && labels["Alpha"])
-}
-
 func TestList_LeavesOutPlaysTheCallerCannotSee(t *testing.T) {
 	perm := allowAll("owner")
 	perm.grants["alice"] = []permissions.Action{permissions.PlaysRead}

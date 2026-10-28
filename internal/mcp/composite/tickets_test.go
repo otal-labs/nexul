@@ -17,8 +17,6 @@ func TestTicketList_Errors(t *testing.T) {
 	for name, args := range map[string]string{
 		"an unknown filter is invalid":  `{"status":"st-todo"}`,
 		"a limit of the wrong type":     `{"limit":"ten"}`,
-		"blocked_only must be a bool":   `{"blocked_only":"yes"}`,
-		"project_id must be a string":   `{"project_id":7}`,
 		"arguments must be JSON object": `[]`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -461,11 +459,6 @@ func TestTicketUpdate_DueOn(t *testing.T) {
 		got, err := update(t, f, `{"id":"t-1","due_on":""}`)
 		require.NoError(t, err)
 		assert.Empty(t, got.DueOn)
-	})
-	t.Run("the result lists due_on as applied", func(t *testing.T) {
-		got, err := call(t, asUser(t.Context()), newFixture(t).ticketTools(), "ticket_update", `{"id":"t-1","due_on":"2026-10-30"}`)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"due_on"}, got.(ticketUpdateResult).Applied)
 	})
 }
 

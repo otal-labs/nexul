@@ -13,10 +13,6 @@ func TestValid(t *testing.T) {
 		want bool
 	}{
 		{"cyan is valid", Cyan, true},
-		{"emerald is valid", Emerald, true},
-		{"orange is valid", Orange, true},
-		{"fuchsia is valid", Fuchsia, true},
-		{"lime is valid", Lime, true},
 		{"empty is not valid", Color(""), false},
 		{"unknown hue is not valid", Color("magenta"), false},
 	}

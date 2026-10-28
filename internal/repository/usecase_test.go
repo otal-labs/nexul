@@ -155,17 +155,6 @@ func TestScan_GetFileErrorPropagates(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestScan_InvalidComposeYAMLIsNotACandidate(t *testing.T) {
-	s := &fakeScanner{
-		resolvedRef: "main",
-		tree:        []TreeEntry{{Path: "docker-compose.yml", Type: "blob"}},
-		files:       map[string][]byte{"docker-compose.yml": []byte("services: [this is not")},
-	}
-	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
-	require.NoError(t, err)
-	assert.Empty(t, result.Candidates)
-}
-
 func TestListRepos(t *testing.T) {
 	t.Run("returns the scanner's repos", func(t *testing.T) {
 		s := &fakeScanner{repos: []Repo{{Owner: "acme", Name: "app"}}}

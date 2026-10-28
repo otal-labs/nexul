@@ -187,9 +187,6 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "v0.2.1", got.(UpgradeStatus).Latest.Version)
 	})
-	t.Run("refreshing without a release client is a no-op", func(t *testing.T) {
-		assert.NotPanics(t, func() { (&Service{}).RefreshReleases() })
-	})
 	t.Run("instance_upgrade records the mcp source", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")

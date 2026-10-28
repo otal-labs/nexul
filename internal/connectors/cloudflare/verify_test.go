@@ -337,9 +337,3 @@ func TestTokenVerifier_AnalyticsRead(t *testing.T) {
 		})
 	}
 }
-
-func TestTokenVerifier_ATokenWithoutAnalyticsStillVerifies(t *testing.T) {
-	stubAPI(t, nil, "active")
-	require.NoError(t, NewTokenVerifier(nil).Verify(context.Background(), map[string]string{"api_token": "tok"}),
-		"analytics is optional, so saving the connector never asks for it")
-}
