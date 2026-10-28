@@ -6,9 +6,7 @@ import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { BoardStageSummary } from "@/components/board/BoardStageSummary";
 import { PageHeader, pageTitleClassFor } from "@/components/PageHeader";
-import { ProjectMark } from "@/components/project/ProjectMark";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
@@ -77,26 +75,22 @@ export const ProjectBoardSection = ({
   const people = new Set(projectTickets?.flatMap((t) => [ticketDeveloper(t).key, ticketTester(t).key]).filter(Boolean)).size;
   return (
     <>
-      {/* No crumb: the sidebar's switchers already name the workspace and project, and the board's height is its cards. */}
+      {/* Title and count only: the sidebar's switchers already show the workspace and the project's mark, and each column counts its own stage. */}
       <PageHeader
         className="border-b-0 pb-0"
         title={
-          <div className="flex items-center gap-3">
-            {project && <ProjectMark project={project} className="size-9 rounded-md text-xs shadow-none" />}
-            <div className="min-w-0">
-              <h1 dir="auto" className={cn(pageTitleClassFor(project?.name ?? "Board"), "text-2xl")}>
-                {project?.name ?? "Board"}
-              </h1>
-              {ticketCount !== undefined && (
-                <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
-                  {people > 0 && ` · ${people} ${people === 1 ? "person" : "people"}`}
-                </p>
-              )}
-            </div>
+          <div className="min-w-0">
+            <h1 dir="auto" className={cn(pageTitleClassFor(project?.name ?? "Board"), "text-2xl")}>
+              {project?.name ?? "Board"}
+            </h1>
+            {ticketCount !== undefined && (
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
+                {people > 0 && ` · ${people} ${people === 1 ? "person" : "people"}`}
+              </p>
+            )}
           </div>
         }
-        actions={<BoardStageSummary projectId={projectId} className="w-fit" />}
       />
       {isLoading && <LoadingDisplay label="Loading board…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
