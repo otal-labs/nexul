@@ -565,9 +565,11 @@ row while its lane scrolls: a chevron, the lane name in 13px semibold, and
 "4/11 done" in muted sans beside the name, a hairline under the band. Each
 stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
 rather than a colour so it reads in every palette; a black panel takes a lighter
-well instead) is drawn once behind every
-lane, from the stage row to the end of the board, so a stage is one unbroken
-column; under a band each cell is only as tall as its own cards, top-aligned, so a one-card stage is never a tall empty slab. A cell
+well instead) fills each lane's cell with the radius of a card, the cells of a
+lane sharing the height of its tallest, so every band sits between rounded
+wells and nothing is cut square; cards stack at the top of the cell. The
+card's meta line and the lane band align their mixed fonts on one baseline,
+with icons centred on the line. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
 a card is held, an empty cell and the folded Done rail show a card-tall
 dashed slot as the place to land.

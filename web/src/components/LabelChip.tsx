@@ -12,12 +12,12 @@ export const LabelChip = ({ label, color, className, ...props }: LabelChipProps)
   <span
     data-slot="label-chip"
     className={cn(
-      "inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5 text-xs font-medium text-muted-foreground",
+      "inline-flex max-w-full min-w-0 items-baseline gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5 text-xs font-medium text-muted-foreground",
       className,
     )}
     {...props}
   >
-    <span className={cn("size-1.5 shrink-0 rounded-full", labelDotColor(label, color))} aria-hidden />
+    <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} aria-hidden />
     <span className="truncate">{label}</span>
   </span>
 );

@@ -46,30 +46,34 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
       )}
     >
       {/* Pinned under the stage header while its lane scrolls; label and count also stay put against the horizontal scroll. */}
-      <h3 className="sticky top-9 z-10 border-b border-border bg-[var(--panel)]">
+      <h3 className="sticky top-9 z-10 rounded-md border-b border-border bg-[var(--panel)]">
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
           className="group/lane flex h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
-          <span className="sticky left-2 flex min-w-0 items-center gap-2">
+          <span className="sticky left-2 flex min-w-0 items-baseline gap-2">
             <ChevronDownIcon
-              className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
+              className={cn("size-3.5 shrink-0 self-center text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
             />
             <span title={lane.label} className="min-w-0 truncate text-[13px] font-semibold">{lane.label}</span>{" "}
-            {allDone && <CircleCheckBig className="size-3 shrink-0 text-success" role="img" aria-label="All done" />}{" "}
+            {allDone && <CircleCheckBig className="size-3 shrink-0 self-center text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
-              <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <LoaderCircle className="size-3 animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running" />{" "}
-                  {runs.running} {runs.running === 1 ? "ticket" : "tickets"}
-                </span>{" "}
-                <span className="flex items-center gap-1">
-                  <CircleHelp className="size-3 text-info" role="img" aria-label="Waiting for an answer" />{" "}
-                  {runs.waiting} {runs.waiting === 1 ? "ticket" : "tickets"}
-                </span>
+              <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-xs text-muted-foreground">
+                {runs.running > 0 && (
+                  <span className="flex items-baseline gap-1">
+                    <LoaderCircle className="size-3 self-center animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running" />{" "}
+                    {runs.running} {runs.running === 1 ? "ticket" : "tickets"}
+                  </span>
+                )}{" "}
+                {runs.waiting > 0 && (
+                  <span className="flex items-baseline gap-1">
+                    <CircleHelp className="size-3 self-center text-info" role="img" aria-label="Waiting for an answer" />{" "}
+                    {runs.waiting} {runs.waiting === 1 ? "ticket" : "tickets"}
+                  </span>
+                )}
               </span>
             )}{" "}
             {/* Beside the name, not at the right edge, where it sat over the folded Done strip. */}

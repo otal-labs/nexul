@@ -49,7 +49,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
-  const [labelsRef, fitting] = useFittingChildren<HTMLSpanElement>(Math.min(labels.length, CARD_LABELS));
+  const [labelsRef, fitting, labelSlack] = useFittingChildren<HTMLSpanElement>(Math.min(labels.length, CARD_LABELS));
   // Only a bug shows its type, in its red: every other type's icon on every card said nothing a column of them did not.
   const isBug = type.trim().toLowerCase() === "bug";
 
@@ -62,18 +62,24 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const labelRun = labels.length > 0 && (
     <>
       {/* Labels give way first and drop out whole, never cut mid-word; what dropped is counted in +N, named in its tooltip. */}
-      <span ref={labelsRef} className="relative flex h-4 min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
+      <span ref={labelsRef} className="relative flex h-4 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden">
         {labels.slice(0, CARD_LABELS).map((label, index) => (
           <LabelChip
             key={label}
             label={label}
             color={labelColors?.[label]}
-            className={cn("max-w-none shrink-0 gap-1 border-transparent bg-transparent px-0 font-sans text-[11px]", index >= fitting && "invisible")}
+            className={cn("max-w-none shrink-0 gap-1 border-transparent bg-transparent px-0 py-0 font-sans text-[11px] leading-4", index >= fitting && "invisible")}
           />
         ))}
       </span>
       {hiddenLabels.length > 0 && (
-        <span title={hiddenLabels.join(", ")} aria-label={`${hiddenLabels.length} more labels: ${hiddenLabels.join(", ")}`} className="shrink-0">
+        // Its slot stays at the line's end so the fit never shifts; it is drawn right after the last label it extends (8px is the line's gap).
+        <span
+          title={hiddenLabels.join(", ")}
+          aria-label={`${hiddenLabels.length} more labels: ${hiddenLabels.join(", ")}`}
+          className="shrink-0"
+          style={{ transform: `translateX(-${labelSlack + (fitting === 0 ? 8 : 0)}px)` }}
+        >
           +{hiddenLabels.length}
         </span>
       )}
@@ -110,13 +116,17 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
           {avatar}
         </span>
       </span>
-      <span className="flex h-4 min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+      <span className="flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap font-mono text-[11px] leading-4 text-muted-foreground">
         <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
         <TicketBlockedLine ticketId={ticket.id} />
         {isBug && (
-          <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="shrink-0 [&>svg]:size-3.5">
-            <span className="sr-only">{type}</span>
-          </NoFillBadge>
+          // The zero-width space gives the icon a text line to centre on, as the blocker's keys do.
+          <span className="flex shrink-0 items-baseline">
+            {"\u200b"}
+            <NoFillBadge icon={ticketTypeIcon(type)} color={ticketTypeColor(type, ticketType?.color)} title={type} className="self-center [&>svg]:size-3.5">
+              <span className="sr-only">{type}</span>
+            </NoFillBadge>
+          </span>
         )}
         {labelRun}
       </span>
