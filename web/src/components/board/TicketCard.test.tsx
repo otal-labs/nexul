@@ -113,7 +113,8 @@ describe("TicketCard", () => {
   it("falls back to a generic type icon for an unrecognized ticket type, without crashing", async () => {
     mockTicketType("Widget");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(await screen.findByText("Widget")).toBeInTheDocument();
+    const name = await screen.findByText("Widget");
+    expect(name.closest('[data-slot="no-fill-badge"]')?.querySelector("svg")).toBeInTheDocument();
     expect(screen.getByText("Fix login")).toBeInTheDocument();
   });
 

@@ -274,6 +274,7 @@ describe("CreateTicketForm", () => {
   it("shows a removable doc chip and clears doc_id when it's removed", async () => {
     const user = userEvent.setup();
     mockReferenceData({ docTitle: "Runbook" });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "t-14" } });
     renderWithRoot(<TicketHarness docId="doc-9" />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
@@ -281,7 +282,12 @@ describe("CreateTicketForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Remove doc link" }));
     expect(screen.queryByText("Runbook")).not.toBeInTheDocument();
-    await user.keyboard("{Escape}");
+    await user.type(screen.getByLabelText("Title"), "Unlinked");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    await vi.waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({ title: "Unlinked", doc_id: "" })),
+    );
   });
 
   it("re-seeds the type and clears a category that belonged to the old project on a project switch", async () => {

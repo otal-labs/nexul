@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationRunsFeed } from "@/components/automation/AutomationRunsFeed";
 import { AutomationRunOutcome } from "@/enums/Automation";
@@ -42,16 +42,23 @@ describe("AutomationRunsFeed", () => {
     mocks.get.mockReset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows an empty state with no runs", () => {
     renderFeed([]);
     expect(screen.getByText("No runs yet")).toBeInTheDocument();
   });
 
   it("lists runs with outcome, duration, and relative time", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-27T12:05:00Z"));
     renderFeed([run()]);
     expect(screen.getByText("ticket.pr_merged")).toBeInTheDocument();
     expect(screen.getByText("Success")).toBeInTheDocument();
     expect(screen.getByText("340ms")).toBeInTheDocument();
+    expect(screen.getByText("5m ago")).toBeInTheDocument();
   });
 
   it("opens the run detail sheet with logs on click", async () => {

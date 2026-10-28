@@ -6,7 +6,7 @@ import { WizardConfirmation } from "@/components/auth/WizardConfirmation";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 
 describe("WizardLayout", () => {
-  it("renders the step indicator, serif title, and muted subtitle", () => {
+  it("renders the step indicator, title, subtitle, and content", () => {
     render(
       <WizardLayout step={{ current: 1, total: 2 }} title="Set up your instance" subtitle="First step.">
         <p>step content</p>
@@ -42,7 +42,7 @@ describe("WizardLayout", () => {
 });
 
 describe("WizardConfirmation", () => {
-  it("renders the success check with the headline and subtitle", () => {
+  it("renders the headline and subtitle", () => {
     render(<WizardConfirmation title="Instance registered" subtitle="One more step." />);
     expect(screen.getByRole("heading", { name: "Instance registered" })).toBeInTheDocument();
     expect(screen.getByText("One more step.")).toBeInTheDocument();

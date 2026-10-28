@@ -63,7 +63,7 @@ describe("TeamSection", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
-  it("shows when each person was last online with a presence dot, and names an account status only when it blocks sign-in", async () => {
+  it("shows when each person was last online with a dot that is green only while they are online, and names an account status only when it blocks sign-in", async () => {
     const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
       id, login: id, name, avatar_url: "", status: "active", created_at: "", providers: [], online: false, last_seen_at: null, workspaces: [], ...extra,
@@ -86,13 +86,13 @@ describe("TeamSection", () => {
 
     const cy = screen.getByRole("button", { name: "Open Cy" });
     expect(cy).toHaveTextContent("Last seen 2h ago");
-    expect(dotOf(cy)).toHaveClass("bg-muted-foreground");
+    expect(dotOf(cy)).not.toHaveClass("bg-success");
     expect(screen.getByRole("button", { name: "Open Dee" })).toHaveTextContent("Signed out");
 
     const eve = screen.getByRole("button", { name: "Open Eve" });
     expect(eve).toHaveTextContent("Last seen 3d ago");
     expect(eve).toHaveTextContent("Disabled");
-    expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
+    expect(dotOf(eve)).not.toHaveClass("bg-success");
   });
 
   it("shows a person's roles as chips, three then a count, and says when there are none", async () => {

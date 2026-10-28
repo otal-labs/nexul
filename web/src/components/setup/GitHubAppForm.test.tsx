@@ -175,7 +175,7 @@ describe("GitHubAppForm", () => {
         ? Promise.resolve({})
         : Promise.reject({ response: { status: 409, data: { message: "already configured" } } }),
     );
-    mocks.errorMessage.mockReturnValue("already configured");
+    mocks.errorMessage.mockReturnValue("generic failure");
     const user = userEvent.setup();
     renderPage();
 
@@ -185,7 +185,8 @@ describe("GitHubAppForm", () => {
     await verifyAndPass(user);
     await user.click(screen.getByRole("button", { name: /set up instance/i }));
 
-    expect(await screen.findByText(/already configured/i)).toBeInTheDocument();
+    expect(await screen.findByText("This instance is already configured. Refresh the page and sign in.")).toBeInTheDocument();
+    expect(screen.queryByText("generic failure")).not.toBeInTheDocument();
     expect(mocks.assign).not.toHaveBeenCalled();
   });
 });

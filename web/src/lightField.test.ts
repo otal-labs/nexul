@@ -8,11 +8,15 @@ const LITERAL_COLOUR = /#[0-9a-f]{3,8}\b|\b(?:rgb|hsl|hwb|lab|lch)a?\(|\boklch\(
 const literals = (text: string): string[] => text.match(LITERAL_COLOUR) ?? [];
 
 const fieldTokens = [...css.matchAll(/--field-[\w-]+:\s*([^;]+);/g)].map((m) => m[1]!);
+const declaredIn = (block: string): string[] => [...block.matchAll(/(--field-[\w-]+):/g)].map((m) => m[1]!).sort();
+const lightMode = css.match(/\n:root \{([\s\S]*?)\n\}/)?.[1] ?? "";
+const darkMode = css.match(/\n\.dark \{([\s\S]*?)\n\}/)?.[1] ?? "";
 const lightField = css.match(/\.light-field \{([\s\S]*?)\n\}/)?.[1] ?? "";
 
 describe("the light field's colours", () => {
   it("are declared in both modes", () => {
-    expect(fieldTokens).toHaveLength(6);
+    expect(declaredIn(lightMode)).not.toEqual([]);
+    expect(declaredIn(darkMode)).toEqual(declaredIn(lightMode));
   });
 
   it("are never a literal colour, so every palette retints them", () => {

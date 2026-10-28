@@ -39,9 +39,12 @@ describe("applyThemePalette", () => {
   it("Brutalism dark writes --shape-md and --foreground", () => {
     applyThemePalette(ThemeId.Brutalism, "dark");
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--shape-md")).toBe("0px");
-    expect(root.style.getPropertyValue("--shape-2xl")).toBe("0px");
-    expect(root.style.getPropertyValue("--foreground")).toBe("oklch(1.0 0.0 0.0)");
+    const brutalism = getThemeDefinition(ThemeId.Brutalism);
+    expect(root.style.getPropertyValue("--shape-md")).toBe(brutalism.radius?.md);
+    expect(root.style.getPropertyValue("--shape-2xl")).toBe(brutalism.radius?.["2xl"]);
+    expect(root.style.getPropertyValue("--foreground")).toBe(brutalism.colors?.dark.foreground);
+    expect(root.style.getPropertyValue("--shape-md")).not.toBe("");
+    expect(root.style.getPropertyValue("--foreground")).not.toBe("");
   });
 
   it("switching to Ember removes Brutalism's --shape-md and --foreground", () => {

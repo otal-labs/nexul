@@ -167,19 +167,26 @@ describe("RelayCollabProvider", () => {
   });
 
   it("commits converged state when dirty, with the applied seq as base", () => {
-    const { doc, socket, provider } = setup({
-      getState: () => ({ title: "Spec", body: '{"type":"doc"}' }),
-      commitIntervalMs: 50,
-    });
-    doc.getText("body").insert(0, "draft");
-    socket.dispatch(JSON.stringify({ type: "update", from: "bob", seq: 4, payload: encode(new Y.Doc()) }));
+    vi.useFakeTimers();
+    try {
+      const { doc, socket, provider } = setup({
+        getState: () => ({ title: "Spec", body: '{"type":"doc"}' }),
+        commitIntervalMs: 50,
+      });
+      doc.getText("body").insert(0, "draft");
+      socket.dispatch(JSON.stringify({ type: "update", from: "bob", seq: 4, payload: encode(new Y.Doc()) }));
+      expect(socket.framesOf("commit")).toHaveLength(0);
 
-    vi.waitFor(() => {
+      vi.advanceTimersByTime(50);
+
       const commits = socket.framesOf("commit") as unknown as { base_seq: number; title: string; body: string; update: string }[];
-      expect(commits.length).toBeGreaterThan(0);
+      expect(commits).toHaveLength(1);
       expect(commits[0]).toMatchObject({ base_seq: 4, title: "Spec", body: '{"type":"doc"}' });
       expect(provider.dirty).toBe(false);
-    });
+      provider.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("skips commits while clean and flushes on demand", () => {
@@ -244,9 +251,18 @@ describe("RelayCollabProvider", () => {
   });
 
   it("drops malformed frames without dying", () => {
-    const { socket } = setup();
-    expect(() => socket.dispatch("not json")).not.toThrow();
+    const { doc, socket, provider } = setup();
+    const other = new Y.Doc();
+    other.getText("body").insert(0, "theirs");
+
+    socket.dispatch("not json");
     socket.dispatch(JSON.stringify({ type: "nope" }));
+    expect(doc.getText("body").toString()).toBe("");
+    expect(provider.lastSeq).toBe(0);
+
+    socket.dispatch(JSON.stringify({ type: "update", from: "bob", seq: 2, payload: encode(other) }));
+    expect(doc.getText("body").toString()).toBe("theirs");
+    expect(provider.lastSeq).toBe(2);
   });
 
   it("surfaces apply errors for unresolvable payloads", () => {

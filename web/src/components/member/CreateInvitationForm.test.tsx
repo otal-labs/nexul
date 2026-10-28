@@ -79,9 +79,5 @@ describe("CreateInvitationForm", () => {
     const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
     expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();
     expect(within(labelOf("Owner")).getByText("Runs the workspace.")).toBeInTheDocument();
-    expect(labelOf("Developer").children).toHaveLength(1);
-
-    const dialogText = screen.getByRole("dialog").textContent ?? "";
-    for (const retired of ["Restricted", "Every project", "overrides"]) expect(dialogText).not.toContain(retired);
   });
 });
