@@ -544,8 +544,9 @@ blocked line, then the type (its icon in its hue beside plain text) and at most 
 label chips (11px on the card) on a row of their own, any more counted in a mono "+N" chip that
 names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
-trailing. Columns share the panel's width down to a 220px minimum, so all
-five stages fit at 1440 beside the sidebar, and grow with their cards while
+trailing. Columns share the panel's width down to a 200px minimum, so
+three stages with cards and two empty strips fit at 1024 beside the sidebar
+and all five stages at 1440, and grow with their cards while
 the page scrolls; a column mounts its first 10 cards and a "Show 10 more of
 N" row mounts the next. A column with no cards in its lane folds to a 40px strip:
 its stage mark, its name set vertically in muted ink, its count and its `+`,
@@ -561,8 +562,9 @@ a search field, then filter pills (`h-9 rounded-md border border-border
 bg-card px-3 text-sm`, with a chevron if it opens a popover), an `×`-removable
 chip per active filter, and an optional saved-view or sort control trailing
 right. The board's bar is 32px controls: the filters lead, and a
-16rem search field with the labelled Create button beside it trails at the
-right edge, wrapping onto a second row when the board is narrow. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+search field of up to 16rem with the labelled Create button beside it trails
+at the right edge, staying on the filters' row down to 14rem for the pair
+and wrapping onto a second row below that. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.

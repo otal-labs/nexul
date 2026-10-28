@@ -64,7 +64,7 @@ const KanbanColumnImpl = ({
       className={cn(
         // No well at rest, so the cards sit on the page panel; every column takes its well while a card is held, to read as a drop target.
         "flex flex-col gap-1.5 rounded-lg bg-transparent p-1.5 transition-colors duration-150 ease-standard group-data-[card-drag]/board:bg-surface-2",
-        empty ? "w-10 shrink-0 items-center" : "w-55 flex-1",
+        empty ? "w-10 shrink-0 items-center" : "w-50 flex-1",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
