@@ -549,7 +549,8 @@ next trailing on its line), the title at full width in 13px medium, the
 blocked line, then the type as its icon alone in its hue (its name in the
 tooltip and for screen readers) and at most two labels, each its 6px hue dot and its
 name in 11px muted text with no pill, on a row of their own, any more counted in a mono "+N" chip that
-names them in its tooltip, at 10px padding. A swimlane is a 32px bar on `surface-2` with
+names them in its tooltip, at 10px padding. A swimlane is a 32px bar on the columns' well tone (`surface-2` in
+dark, ink at 4% in light, where some palettes' `surface-2` equals the panel) with
 a leading chevron, the lane name in 13px medium, and the mono "4/11 done"
 trailing. Columns share the panel's width down to a 200px minimum (168px
 below 1280), so
