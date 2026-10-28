@@ -91,7 +91,7 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           verb="disconnect connectors"
           size="sm"
           variant="ghost"
-          className="text-muted-foreground"
+          className="-mr-3 text-muted-foreground"
           liveClassName="hover:text-destructive"
           onClick={() => void onDisconnect()}
           loading={disconnect.isPending}

@@ -59,7 +59,8 @@ describe("ConnectPhoneRow", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/auth/connect-codes");
     expect(screen.getByText("7Q4F-K92M-3XYZ")).toBeInTheDocument();
     expect(screen.getByText(/expires in 1:\d\d/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /generate code|new code/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate code" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New code" })).toBeInTheDocument();
   });
 
   it("starts the countdown from the moment of Generate, not from when the card opened", async () => {
@@ -94,7 +95,7 @@ describe("ConnectPhoneRow", () => {
     expect(mocks.post).toHaveBeenCalledTimes(2);
   });
 
-  it("offers a new code over the faded QR once the code has expired, and issues one on click", async () => {
+  it("keeps New code beside the code, faded once it has expired, and issues one on click", async () => {
     mocks.post.mockResolvedValueOnce({ data: dead }).mockResolvedValue({ data: live });
     const user = userEvent.setup();
     renderCard();

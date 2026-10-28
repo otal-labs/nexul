@@ -42,9 +42,14 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <span dir="auto" className="line-clamp-2 font-medium break-words" title={personName(person)}>
             {personName(person)}
           </span>
-          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
+          {/* The 20px chips overhang the 16px line instead of growing it, so both meta lines keep one height. */}
+          <span className="flex min-w-0 items-center gap-1.5 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
             <TeamSignInAccounts person={person} />
-            {only && !several && <RoleChipRow roles={heldRoles(only)} />}
+            {only && !several && (
+              <span className="-my-0.5 flex min-w-0">
+                <RoleChipRow roles={heldRoles(only)} />
+              </span>
+            )}
             {several && <span className="truncate">{person.workspaces.length} workspaces</span>}
             {!only && <span className="truncate">No workspace</span>}
           </span>

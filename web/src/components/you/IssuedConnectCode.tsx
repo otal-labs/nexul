@@ -16,7 +16,8 @@ const formatRemaining = (ms: number) => {
 
 interface IssuedConnectCodeProps {
   code: ConnectCode;
-  onNewCode: () => void;
+  // Without it the expired code offers no New code of its own, for a row that keeps that button beside it.
+  onNewCode?: () => void;
   generating: boolean;
   // Off where the row above already says how long the code lasts.
   hint?: boolean;
@@ -33,7 +34,8 @@ export const IssuedConnectCode = ({ code, onNewCode, generating, hint = true }: 
       link={connectLink(code)}
       dimmed={expired}
       action={
-        expired && (
+        expired &&
+        onNewCode && (
           <Button
             size="sm"
             className="absolute inset-0 m-auto w-fit animate-in fade-in-0 zoom-in-[0.97] duration-150 ease-out"

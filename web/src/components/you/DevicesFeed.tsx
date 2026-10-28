@@ -45,20 +45,22 @@ export const DevicesFeed = () => {
       id="devices"
       title="Signed-in devices"
       description="Sign out any you don't recognise."
+      // With no other device there is nothing to sign out of, so the strip and its sentence go.
       footer={
-        <>
-          <SettingsHint>Every other device will have to sign in again.</SettingsHint>
-          <Button
-            variant="destructive"
-            size="sm"
-            loading={signOutOthers.isPending}
-            disabled={others.length === 0}
-            onClick={signOutAll}
-          >
-            <LogOut className="size-4" aria-hidden />
-            Sign out everywhere else
-          </Button>
-        </>
+        others.length > 0 && (
+          <>
+            <SettingsHint>Every other device will have to sign in again.</SettingsHint>
+            <Button
+              variant="destructive"
+              size="sm"
+              loading={signOutOthers.isPending}
+              onClick={signOutAll}
+            >
+              <LogOut className="size-4" aria-hidden />
+              Sign out everywhere else
+            </Button>
+          </>
+        )
       }
     >
       {isPending && <LoadingDisplay />}

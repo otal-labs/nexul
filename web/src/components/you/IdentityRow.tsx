@@ -48,8 +48,10 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
       {identity && !onlyOne && (
         <ConfirmDestroyButton
           icon={Unlink}
-          idleLabel={`Unlink ${label}`}
+          idleLabel="Unlink"
+          label={`Unlink ${label}`}
           confirmLabel="Unlink"
+          labelled
           loading={unlink.isPending}
           onConfirm={() => unlink.mutate(provider)}
         />

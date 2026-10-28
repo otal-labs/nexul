@@ -38,7 +38,15 @@ export const PATRow = ({ token }: PATRowProps) => {
         </p>
       </div>
       {!token.revoked_at && (
-        <ConfirmDestroyButton icon={Trash2} idleLabel="Revoke" loading={revoke.isPending} onConfirm={() => revoke.mutate(token.id)} />
+        <ConfirmDestroyButton
+          icon={Trash2}
+          idleLabel="Revoke"
+          label={`Revoke ${token.name}`}
+          confirmLabel="Revoke"
+          labelled
+          loading={revoke.isPending}
+          onConfirm={() => revoke.mutate(token.id)}
+        />
       )}
     </li>
   );

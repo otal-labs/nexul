@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { QrCode } from "lucide-react";
+import { QrCode, RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -20,10 +20,17 @@ export const ConnectPhoneRow = () => {
   return (
     <div>
       <SettingsRow label="Phone app" description="Scan the code with the Nexul phone app. The code works once, for two minutes." className="last:pb-4">
+        {/* The button keeps its slot once a code shows, so the row holds its width and a fresh code is one click away. */}
         {!connected && !data && (
           <Button variant="outline" size="sm" onClick={generate} loading={isPending}>
             <QrCode className="size-4" aria-hidden />
             {error ? "Try again" : "Generate code"}
+          </Button>
+        )}
+        {!connected && data && (
+          <Button variant="outline" size="sm" onClick={generate} loading={isPending}>
+            <RefreshCw className="size-4" aria-hidden />
+            New code
           </Button>
         )}
       </SettingsRow>
@@ -39,7 +46,7 @@ export const ConnectPhoneRow = () => {
       )}
       {!connected && data && (
         <div className="pb-4">
-          <IssuedConnectCode code={data} onNewCode={generate} generating={isPending} hint={false} />
+          <IssuedConnectCode code={data} generating={isPending} hint={false} />
         </div>
       )}
     </div>

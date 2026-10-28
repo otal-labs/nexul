@@ -90,11 +90,11 @@ describe("DevicesFeed", () => {
     expect(screen.getByRole("button", { name: "Sign out everywhere else" })).toBeEnabled();
   });
 
-  it("shows an empty row and disables sign out everywhere when only this device is signed in", async () => {
+  it("shows an empty row and no sign out everywhere when only this device is signed in", async () => {
     mocks.get.mockResolvedValue({ data: { sessions: [current] } });
     renderFeed();
     expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign out everywhere else" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Sign out everywhere else" })).not.toBeInTheDocument();
   });
 
   it("signs a device out and removes its row once the list refetches", async () => {
