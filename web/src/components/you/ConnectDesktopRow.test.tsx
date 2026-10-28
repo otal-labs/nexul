@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConnectDesktopCard } from "@/components/you/ConnectDesktopCard";
+import { ConnectDesktopRow } from "@/components/you/ConnectDesktopRow";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -22,7 +22,7 @@ const renderCard = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ConnectDesktopCard />
+      <ConnectDesktopRow />
     </QueryClientProvider>,
   );
 };
@@ -34,7 +34,7 @@ const setupUser = (writeText: ReturnType<typeof vi.fn>) => {
   return user;
 };
 
-describe("ConnectDesktopCard", () => {
+describe("ConnectDesktopRow", () => {
   const writeText = vi.fn();
 
   beforeEach(() => {

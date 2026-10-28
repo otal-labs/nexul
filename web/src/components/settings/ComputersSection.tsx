@@ -18,12 +18,12 @@ export const ComputersSection = () => {
   return (
     <SettingsCard
       id="pairing-computers"
-      title="Your computers"
+      title="Run order"
       description="Runs go to the first ready computer. Drag to reorder."
       footer={
         <AddComputerDialog
           trigger={
-            <Button type="button" size="sm">
+            <Button type="button" size="sm" className="ml-auto">
               <PlusIcon className="size-4" aria-hidden />
               Add a computer
             </Button>

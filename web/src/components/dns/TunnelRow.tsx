@@ -1,4 +1,4 @@
-import { CloudIcon, Trash2 } from "lucide-react";
+import { CloudIcon } from "lucide-react";
 
 import { TunnelDeleteDetails } from "@/components/dns/TunnelDeleteDetails";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
@@ -27,8 +27,9 @@ export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
   };
 
   return (
-    <li className="flex items-start gap-3 px-3 py-3.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
+    // Top-aligned for its several lines; the tile and Delete centre on the 20px title line.
+    <li className="flex items-start gap-3 py-3.5">
+      <span className="-mt-2 flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <CloudIcon className="size-4 text-muted-foreground" aria-hidden />
       </span>
       <div className="min-w-0 flex-1 space-y-1">
@@ -41,15 +42,15 @@ export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
         verb="delete tunnels"
         type="button"
         variant="ghost"
-        size="icon"
-        icon={Trash2}
+        size="sm"
         aria-label={`Delete tunnel ${tunnel.name}`}
-        title={`Delete tunnel ${tunnel.name}`}
-        className="size-8"
+        className="-mt-1.5 -mr-3 text-muted-foreground"
         liveClassName="hover:text-destructive"
         loading={deleteTunnel.isPending}
         onClick={() => void onDelete()}
-      />
+      >
+        Delete
+      </ActionButton>
     </li>
   );
 };

@@ -93,7 +93,7 @@ describe("ComputersSection", () => {
     expect(await screen.findByRole("heading", { name: "Shared with you" })).toBeInTheDocument();
     expect(screen.getByText("Bob's Laptop (shared)")).toBeInTheDocument();
     expect(screen.getByText("Online")).toBeInTheDocument();
-    expect(screen.getByText("· Run commands")).toBeInTheDocument();
+    expect(screen.getByText("Run commands")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Actions for Laptop" })).not.toBeInTheDocument();
   });
 

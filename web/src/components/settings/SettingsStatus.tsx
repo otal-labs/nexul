@@ -25,6 +25,13 @@ export const SettingsStatus = ({ tone, children, detail, className }: SettingsSt
   <span className={cn("inline-flex min-w-0 items-center gap-1.5 text-xs", className)}>
     <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard", dotClass[tone])} />
     <span className={cn("shrink-0 font-medium", tone === "muted" ? "text-muted-foreground" : "text-foreground")}>{children}</span>
-    {detail && <span className="min-w-0 truncate text-muted-foreground">· {detail}</span>}
+    {/* The dot takes the same gap on both sides as everything else on the line; the hidden space keeps the text readable. */}
+    {detail && (
+      <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+        <span aria-hidden>·</span>
+        <span className="sr-only"> </span>
+        <span className="min-w-0 truncate">{detail}</span>
+      </span>
+    )}
   </span>
 );

@@ -20,8 +20,9 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
   const Icon = gateway.kind === "tunnel" ? CloudIcon : RouteIcon;
 
   return (
-    <li className="flex items-start gap-3 px-3 py-3.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
+    // Top-aligned for its several lines; the tile and Delete centre on the 20px title line.
+    <li className="flex items-start gap-3 py-3.5">
+      <span className="-mt-2 flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <Icon className="size-4 text-muted-foreground" aria-hidden />
       </span>
       <div className="min-w-0 flex-1 space-y-1">
@@ -32,24 +33,28 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
         {hostnames && hostnames.length > 0 && (
           <>
             <SettingsStatus tone="success">{hostnames.length === 1 ? "Routes 1 hostname" : `Routes ${hostnames.length} hostnames`}</SettingsStatus>
-            <p className="font-mono text-xs break-all text-foreground/80">{hostnames.join("  ")}</p>
+            <p className="font-mono text-xs break-all text-foreground/80">{hostnames.join(" · ")}</p>
           </>
         )}
         {hostnames && hostnames.length === 0 && <SettingsStatus tone="muted">No hostnames yet</SettingsStatus>}
-        <p className="flex min-w-0 flex-wrap gap-x-2 font-mono text-xs text-muted-foreground">
-          {gateway.service_name && <span className="truncate">{gateway.service_name}</span>}
-          {gateway.machine && <span className="truncate">on {gateway.machine}</span>}
-          <span className="truncate">zone {gateway.zone}</span>
+        <p className="truncate font-mono text-xs text-muted-foreground">
+          {[[gateway.service_name, gateway.machine && `on ${gateway.machine}`].filter(Boolean).join(" "), `zone ${gateway.zone}`]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       </div>
-      <ConfirmDestroyButton
-        icon={Trash2}
-        gate={{ permission: "dns:delete", verb: "delete gateways" }}
-        idleLabel={`Delete gateway on ${gateway.docker_network}`}
-        confirmLabel="Delete"
-        loading={deleteGateway.isPending}
-        onConfirm={() => deleteGateway.mutate(gateway.id)}
-      />
+      <span className="-mt-1.5">
+        <ConfirmDestroyButton
+          icon={Trash2}
+          gate={{ permission: "dns:delete", verb: "delete gateways" }}
+          idleLabel="Delete"
+          label={`Delete gateway on ${gateway.docker_network}`}
+          confirmLabel="Delete"
+          labelled
+          loading={deleteGateway.isPending}
+          onConfirm={() => deleteGateway.mutate(gateway.id)}
+        />
+      </span>
     </li>
   );
 };

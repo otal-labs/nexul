@@ -1,6 +1,7 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { GitHubAccessRow } from "@/components/you/GitHubAccessRow";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { useFetchGitHubLink } from "@/hooks/GitHubLinkHooks";
@@ -20,7 +21,7 @@ export const GitHubAccessSection = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {link && (
-        <ul className="overflow-hidden rounded-md border border-border">
+        <ul className={settingsListClass}>
           <GitHubAccessRow link={link} />
         </ul>
       )}

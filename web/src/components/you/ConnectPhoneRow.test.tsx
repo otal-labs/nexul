@@ -3,7 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConnectPhoneCard } from "@/components/you/ConnectPhoneCard";
+import { ConnectPhoneRow } from "@/components/you/ConnectPhoneRow";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 
 const mocks = vi.hoisted(() => ({
@@ -23,12 +23,12 @@ const renderCard = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ConnectPhoneCard />
+      <ConnectPhoneRow />
     </QueryClientProvider>,
   );
 };
 
-describe("ConnectPhoneCard", () => {
+describe("ConnectPhoneRow", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.errorMessage.mockReset();
@@ -40,7 +40,7 @@ describe("ConnectPhoneCard", () => {
 
     expect(mocks.post).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Generate code" })).toBeInTheDocument();
-    expect(screen.getByText("The code works once, for two minutes.")).toBeInTheDocument();
+    expect(screen.getByText(/The code works once, for two minutes\./)).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Sign-in code for the Nexul app" })).not.toBeInTheDocument();
     expect(screen.queryByText(/expires in/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Code/)).not.toBeInTheDocument();
@@ -59,7 +59,8 @@ describe("ConnectPhoneCard", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/auth/connect-codes");
     expect(screen.getByText("7Q4F-K92M-3XYZ")).toBeInTheDocument();
     expect(screen.getByText(/expires in 1:\d\d/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /generate code|new code/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate code" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New code" })).toBeInTheDocument();
   });
 
   it("starts the countdown from the moment of Generate, not from when the card opened", async () => {
@@ -94,7 +95,7 @@ describe("ConnectPhoneCard", () => {
     expect(mocks.post).toHaveBeenCalledTimes(2);
   });
 
-  it("offers a new code over the faded QR once the code has expired, and issues one on click", async () => {
+  it("keeps New code beside the code, faded once it has expired, and issues one on click", async () => {
     mocks.post.mockResolvedValueOnce({ data: dead }).mockResolvedValue({ data: live });
     const user = userEvent.setup();
     renderCard();

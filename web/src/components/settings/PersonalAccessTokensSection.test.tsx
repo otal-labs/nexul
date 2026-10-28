@@ -122,7 +122,7 @@ describe("PersonalAccessTokensSection", () => {
     expect(screen.getByText(/^Revoked/)).toBeInTheDocument();
 
     // Only the live token offers Revoke; the revoked one shows its state instead.
-    expect(screen.getAllByRole("button", { name: /^revoke$/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^revoke /i })).toHaveLength(1);
   });
 
   it("revokes a personal access token after arming the confirm step", async () => {
@@ -131,11 +131,11 @@ describe("PersonalAccessTokensSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    const revoke = await screen.findByRole("button", { name: /^revoke$/i });
+    const revoke = await screen.findByRole("button", { name: /^revoke /i });
     await user.click(revoke);
     expect(mocks.del).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await user.click(screen.getByRole("button", { name: /^revoke$/i }));
 
     await vi.waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/auth/tokens/pat-1"));
   });
@@ -145,10 +145,10 @@ describe("PersonalAccessTokensSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /^revoke$/i }));
+    await user.click(await screen.findByRole("button", { name: /^revoke /i }));
     await user.click(screen.getByRole("button", { name: /^cancel$/i }));
 
     expect(mocks.del).not.toHaveBeenCalled();
-    expect(await screen.findByRole("button", { name: /^revoke$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^revoke /i })).toBeInTheDocument();
   });
 });

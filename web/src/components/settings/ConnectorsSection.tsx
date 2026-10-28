@@ -8,6 +8,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ConnectorCard } from "@/components/settings/ConnectorCard";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
 
@@ -70,7 +71,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
 
           {filtered.length === 0 && <EmptyRow>No connectors here</EmptyRow>}
           {filtered.length > 0 && (
-            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className={settingsListClass}>
               {filtered.map((entry) => (
                 <ConnectorCard key={entry.connector.id} entry={entry} />
               ))}
@@ -86,7 +87,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
   return (
     <SettingsCard
       id="connectors"
-      title="Connectors"
+      title="Connected tools"
       description="Third-party tools this instance calls for you, each with one stored credential."
     >
       {content}

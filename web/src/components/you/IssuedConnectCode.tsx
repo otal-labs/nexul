@@ -16,12 +16,15 @@ const formatRemaining = (ms: number) => {
 
 interface IssuedConnectCodeProps {
   code: ConnectCode;
-  onNewCode: () => void;
+  // Without it the expired code offers no New code of its own, for a row that keeps that button beside it.
+  onNewCode?: () => void;
   generating: boolean;
+  // Off where the row above already says how long the code lasts.
+  hint?: boolean;
 }
 
 // Mounts when a code arrives, so the countdown clock starts at that moment and not when the page opened.
-export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnectCodeProps) => {
+export const IssuedConnectCode = ({ code, onNewCode, generating, hint = true }: IssuedConnectCodeProps) => {
   const now = useNow(true);
   const remaining = new Date(code.expires_at).getTime() - now;
   const expired = remaining <= 0;
@@ -31,7 +34,8 @@ export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnect
       link={connectLink(code)}
       dimmed={expired}
       action={
-        expired && (
+        expired &&
+        onNewCode && (
           <Button
             size="sm"
             className="absolute inset-0 m-auto w-fit animate-in fade-in-0 zoom-in-[0.97] duration-150 ease-out"
@@ -44,7 +48,7 @@ export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnect
         )
       }
     >
-      <SettingsHint>Works once, for two minutes.</SettingsHint>
+      {hint && <SettingsHint>Works once, for two minutes.</SettingsHint>}
       <p className="font-mono text-xs tabular-nums">
         <span className="text-muted-foreground">Code </span>
         {code.code}

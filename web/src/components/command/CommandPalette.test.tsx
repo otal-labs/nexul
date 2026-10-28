@@ -92,20 +92,20 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
   });
 
-  it("lists no settings until something is typed, then finds a tab by name and opens its path", async () => {
+  it("lists no settings until something is typed, then finds a section by its keywords and opens its path", async () => {
     const user = userEvent.setup();
     renderPalette();
 
     await user.keyboard("{Control>}k{/Control}");
     const input = await screen.findByRole("combobox");
-    expect(screen.queryByRole("option", { name: /Tokens/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Security/ })).not.toBeInTheDocument();
 
     await user.type(input, "tokens");
-    const tokens = await screen.findByRole("option", { name: /Tokens/ });
-    expect(tokens).toHaveTextContent("Settings › Security");
+    const security = await screen.findByRole("option", { name: /Security/ });
+    expect(security).toHaveTextContent("Settings");
 
     await user.keyboard("{Enter}");
-    expect(screen.getByTestId("location")).toHaveTextContent("/settings/security/tokens");
+    expect(screen.getByTestId("location")).toHaveTextContent("/settings/security");
   });
 
   it("offers the Roles tab only to someone who can write roles", async () => {

@@ -11,7 +11,7 @@ A [paired computer](/docs/guide/paired-computers/) needs none of this: its [setu
 
 ## Connect
 
-1. Open **Settings → Security → Tokens** and create a token. Copy it now; the raw token (`dep_…`) is shown once.
+1. Open **Settings → Security** and create a token under **Personal access tokens**. Copy it now; the raw token (`dep_…`) is shown once.
 2. Add the server to your tool, with your instance's URL and the token.
 
 **Claude Code**, in the top-level `mcpServers` object of `~/.claude.json` (your user scope, every project):

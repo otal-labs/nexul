@@ -60,7 +60,7 @@ describe("ConnectorsSettingsPanel GitHub App tab", () => {
   it("drops the tab for a viewer who could see neither card", async () => {
     renderPanel(["connectors:read"], { configured: false });
 
-    expect(await screen.findByRole("heading", { name: "Connectors" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Connected tools" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "GitHub App" })).not.toBeInTheDocument();
   });
 });

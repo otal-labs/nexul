@@ -49,7 +49,7 @@ const renderFeed = () => {
 };
 
 const armAndConfirm = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole("button", { name: "Sign out" }));
+  await user.click(await screen.findByRole("button", { name: "Sign out Android · Pixel 8" }));
   await user.click(screen.getByRole("button", { name: "Sign out" }));
 };
 
@@ -68,7 +68,7 @@ describe("DevicesFeed", () => {
     renderFeed();
 
     expect(await screen.findByText("Android · Pixel 8")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Sign out Android · Pixel 8" })).toBeEnabled();
   });
 
   it("shows an error when the list fails to load", async () => {
@@ -90,11 +90,11 @@ describe("DevicesFeed", () => {
     expect(screen.getByRole("button", { name: "Sign out everywhere else" })).toBeEnabled();
   });
 
-  it("shows an empty row and disables sign out everywhere when only this device is signed in", async () => {
+  it("shows an empty row and no sign out everywhere when only this device is signed in", async () => {
     mocks.get.mockResolvedValue({ data: { sessions: [current] } });
     renderFeed();
     expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign out everywhere else" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Sign out everywhere else" })).not.toBeInTheDocument();
   });
 
   it("signs a device out and removes its row once the list refetches", async () => {
@@ -123,7 +123,7 @@ describe("DevicesFeed", () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not sign out"));
     expect(screen.getByText("Android · Pixel 8")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Sign out Android · Pixel 8" })).toBeEnabled();
   });
 
   it("signs out everywhere else and leaves only this device", async () => {

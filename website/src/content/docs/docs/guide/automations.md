@@ -38,7 +38,7 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
 ## Write your own
 
 1. On the **Automations** page, press **New automation**. Name it and pick its **Scopes**: what its token may read and change, from the same [permissions](/docs/guide/api-and-tokens/) integrations use. The dialog then shows the commands for the next steps, with your instance URL and the automation's id filled in.
-2. In an empty folder, run `bun add @otal-labs/nexul-sdk`; its commands need Bun. Then run `bunx nexul init --url <your instance URL> --id <automation-id>`. It asks for a personal access token from **Settings → Security → Tokens**, keeps both in `nexul.config.json` (added to `.gitignore`, since it holds the token), and writes `src/index.ts`, named after the automation, and a `tsconfig.json` so your editor knows the SDK's types. The name and description in your code are the ones Nexul shows once it runs.
+2. In an empty folder, run `bun add @otal-labs/nexul-sdk`; its commands need Bun. Then run `bunx nexul init --url <your instance URL> --id <automation-id>`. It asks for a personal access token from **Settings → Security**, keeps both in `nexul.config.json` (added to `.gitignore`, since it holds the token), and writes `src/index.ts`, named after the automation, and a `tsconfig.json` so your editor knows the SDK's types. The name and description in your code are the ones Nexul shows once it runs.
 3. Write your handlers:
 
    ```ts

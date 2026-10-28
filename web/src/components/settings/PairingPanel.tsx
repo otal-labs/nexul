@@ -11,7 +11,7 @@ export const PairingPanel = () => {
     <PageTabs
       label="Computers settings"
       tabs={[
-        { value: "computers", label: "Computers", dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
+        { value: "computers", label: "Your computers", dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
         { value: "projects", label: "Projects" },
       ]}
     >

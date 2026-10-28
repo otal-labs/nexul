@@ -18,7 +18,7 @@ export const ProfileCard = ({ user }: { user: User }) => {
   return (
     <SettingsCard
       id="profile"
-      title="Profile"
+      title="Name and picture"
       description="How everyone in your workspaces sees you."
       footer={
         <SettingsSaveBar
@@ -38,7 +38,7 @@ export const ProfileCard = ({ user }: { user: User }) => {
               <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 Upload
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={removeAvatar} disabled={!avatarOverrideUrl}>
+              <Button type="button" variant="ghost" size="sm" className="-mr-3" onClick={removeAvatar} disabled={!avatarOverrideUrl}>
                 Remove
               </Button>
               <input

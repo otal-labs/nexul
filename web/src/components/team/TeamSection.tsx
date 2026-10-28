@@ -50,7 +50,7 @@ export const TeamSection = () => {
   return (
     <SettingsCard
       id="team"
-      title="Team"
+      title="People"
       description={description}
       footer={<CreateInvitationDialog onCreated={showCreated} />}
     >

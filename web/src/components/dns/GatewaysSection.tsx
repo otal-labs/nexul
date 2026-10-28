@@ -1,4 +1,5 @@
 import { EnterList } from "@/components/EnterList";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { CreateGatewayDialog } from "@/components/dns/CreateGatewayDialog";
 import { GatewayRow } from "@/components/dns/GatewayRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -30,7 +31,7 @@ export const GatewaysSection = () => {
       {error && <ErrorDisplay error={error} title="Couldn't load gateways." />}
       {gateways && gateways.length === 0 && <EmptyRow>No gateways yet. Create one to reach a network from the internet.</EmptyRow>}
       {gateways && gateways.length > 0 && (
-        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className={settingsListClass}>
           {gateways.map((gateway) => (
             <GatewayRow key={gateway.id} gateway={gateway} />
           ))}

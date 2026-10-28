@@ -24,9 +24,10 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
         type="button"
         onClick={() => onOpen(person.id)}
         aria-label={`Open ${personName(person)}`}
-        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+        className="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
-        <span className="relative shrink-0">
+        {/* Top-aligned like the other multi-line rows: each piece sits on the name's 24px line, the 14px presence nudged onto its baseline. */}
+        <span className="relative -mt-1 shrink-0">
           <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />
           <span
             aria-hidden
@@ -41,19 +42,24 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <span dir="auto" className="line-clamp-2 font-medium break-words" title={personName(person)}>
             {personName(person)}
           </span>
-          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
+          {/* The 20px chips overhang the 16px line instead of growing it, so both meta lines keep one height. */}
+          <span className="flex min-w-0 items-center gap-1.5 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
             <TeamSignInAccounts person={person} />
-            {only && !several && <RoleChipRow roles={heldRoles(only)} />}
+            {only && !several && (
+              <span className="-my-0.5 flex min-w-0">
+                <RoleChipRow roles={heldRoles(only)} />
+              </span>
+            )}
             {several && <span className="truncate">{person.workspaces.length} workspaces</span>}
             {!only && <span className="truncate">No workspace</span>}
           </span>
           <TeamGapLine person={person} />
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm text-muted-foreground">
-          <span className={cn(person.online && "text-foreground")}>{presenceText(person)}</span>
+          <span className={cn("translate-y-px leading-6", person.online && "text-foreground")}>{presenceText(person)}</span>
           <AccountStatusLabel status={person.status} />
         </span>
-        <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
       </button>
     </li>
   );

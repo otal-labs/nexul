@@ -11,7 +11,7 @@ export const InstanceTemplatesSection = () => {
   return (
     <SettingsCard
       id="instance-templates"
-      title="Templates"
+      title="Starting templates"
       description="What workspaces and projects start from."
     >
       {isPending && <LoadingDisplay />}

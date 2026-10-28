@@ -96,7 +96,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   ];
 
   return (
-    <div className="px-3 py-3">
+    <div className="py-3">
       <div className="flex flex-wrap items-center gap-2">
         {grip}
         <button
@@ -155,7 +155,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
         )}
         <RowActionsMenu subject={name} actions={actions} />
       </div>
-      <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-12" : "pl-6")}>
+      <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-18" : "pl-6")}>
         {computerLanes(computer, presence, pairNow.isPending).map((lane) => (
           <SettingsStatus key={lane.text} tone={lane.tone} detail={lane.detail}>
             {lane.text}
@@ -169,7 +169,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
       </p>
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>
-          <div className={cn("pt-3", grip ? "pl-12" : "pl-6")}>
+          <div className={cn("pt-3", grip ? "pl-18" : "pl-6")}>
             <ComputerDetails computer={computer} setup={setup} />
           </div>
         </div>

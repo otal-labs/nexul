@@ -13,18 +13,18 @@ export const ProfileSection = () => {
   return (
     <>
       {isPending && (
-        <SettingsCard id="profile" title="Profile">
+        <SettingsCard id="profile" title="Name and picture">
           <LoadingDisplay />
         </SettingsCard>
       )}
       {error && (
-        <SettingsCard id="profile" title="Profile">
+        <SettingsCard id="profile" title="Name and picture">
           <ErrorDisplay error={error} />
         </SettingsCard>
       )}
       {data && <ProfileCard user={data.user} />}
-      <YourRolesCard />
       <SignInAccountsSection />
+      <YourRolesCard />
       <GitHubAccessSection />
     </>
   );

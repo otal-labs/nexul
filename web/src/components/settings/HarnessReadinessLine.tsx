@@ -14,8 +14,8 @@ export const HarnessReadinessLine = () => {
   const computerName = ready ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
   const passes = readiness.state === "no_computer_ready" ? (readiness.passedOver ?? []) : [];
   return (
-    <p className="flex items-start gap-2 text-sm">
-      <span aria-hidden className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", ready ? "bg-success" : "bg-warning")} />
+    <p className="flex items-start gap-1.5 text-xs">
+      <span aria-hidden className={cn("mt-[5px] size-1.5 shrink-0 rounded-full", ready ? "bg-success" : "bg-warning")} />
       {ready && `${CHATS} start on ${computerName ?? "your first computer"}.`}
       {readiness.state === "no_computer_ready" && (
         <span className="text-muted-foreground">
