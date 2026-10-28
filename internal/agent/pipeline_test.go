@@ -321,18 +321,6 @@ func (f *fakeLive) snapshot() []StreamFrame {
 	return append([]StreamFrame{}, f.frames...)
 }
 
-func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(time.Millisecond)
-	}
-	t.Fatal("condition never became true")
-}
-
 func registryOf(h *fakeHarness) harness.Registry {
 	return harness.Registry{harness.KindT3Code: h}
 }
@@ -433,55 +421,65 @@ func TestHandleMessageCreated_IgnoresNonMentionMessages(t *testing.T) {
 }
 
 func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "the actual reply", Streaming: true}},
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "", Streaming: false}},
-		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-	)}}
-	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent hi", true)))
-	waitFor(t, time.Second, func() bool { replies, _ := conv.snapshot(); return len(replies) == 1 })
-	replies, systemPosts := conv.snapshot()
-	assert.Equal(t, "the actual reply", replies[0].body)
-	assert.Empty(t, systemPosts)
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "the actual reply", Streaming: true}},
+			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "", Streaming: false}},
+			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+		)}}
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent hi", true)))
+		synctest.Wait()
+		replies, systemPosts := conv.snapshot()
+		require.Len(t, replies, 1)
+		assert.Equal(t, "the actual reply", replies[0].body)
+		assert.Empty(t, systemPosts)
+	})
 }
 
 func TestRunTurn_MessageFinishedMidTurn_KeepsStreaming(t *testing.T) {
-	live := &fakeLive{}
-	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Reading the handler.", Streaming: false}},
-		harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "Read", Summary: "Read main.go"}},
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-2", Text: "", Streaming: false}},
-		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-	)}}
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { r, _ := conv.snapshot(); return len(r) == 1 })
+	synctest.Test(t, func(t *testing.T) {
+		live := &fakeLive{}
+		client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Reading the handler.", Streaming: false}},
+			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "Read", Summary: "Read main.go"}},
+			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-2", Text: "", Streaming: false}},
+			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+		)}}
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+		r, _ := conv.snapshot()
+		require.Len(t, r, 1)
 
-	frames := live.snapshot()
-	require.Len(t, frames, 4)
-	for _, f := range frames {
-		assert.True(t, f.Streaming, "a finished message or an empty close marker mid-turn must not end the bubble: %+v", f)
-	}
-	assert.Equal(t, "Read main.go", frames[2].Activity)
+		frames := live.snapshot()
+		require.Len(t, frames, 4)
+		for _, f := range frames {
+			assert.True(t, f.Streaming, "a finished message or an empty close marker mid-turn must not end the bubble: %+v", f)
+		}
+		assert.Equal(t, "Read main.go", frames[2].Activity)
+	})
 }
 
 func TestRunTurn_ReplyPersistFails_ClearsTheBubble(t *testing.T) {
-	live := &fakeLive{}
-	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
-		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
-		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-	)}}
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	conv.postReplyErr = errors.New("disk full")
-	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { f := live.snapshot(); return len(f) > 0 && !f[len(f)-1].Streaming })
+	synctest.Test(t, func(t *testing.T) {
+		live := &fakeLive{}
+		client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
+			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+		)}}
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		conv.postReplyErr = errors.New("disk full")
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
 
-	frames := live.snapshot()
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: false}, frames[len(frames)-1])
+		frames := live.snapshot()
+		require.NotEmpty(t, frames)
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: false}, frames[len(frames)-1])
+	})
 }
 
 // --- resolution failure -> system reply -------------------------------------
@@ -514,19 +512,22 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {
-			conv := newFakeConversations(Conversation{ID: "conv-1"})
-			client := &fakeHarness{}
-			svc := NewService(Config{
-				Conversations: conv,
-				Targets:       &fakeTargets{err: tc.err},
-				Harnesses:     registryOf(client),
-				Live:          &fakeLive{},
+			synctest.Test(t, func(t *testing.T) {
+				conv := newFakeConversations(Conversation{ID: "conv-1"})
+				client := &fakeHarness{}
+				svc := NewService(Config{
+					Conversations: conv,
+					Targets:       &fakeTargets{err: tc.err},
+					Harnesses:     registryOf(client),
+					Live:          &fakeLive{},
+				})
+				require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent help", true)))
+				synctest.Wait()
+				_, systemPosts := conv.snapshot()
+				require.Len(t, systemPosts, 1)
+				assert.Contains(t, systemPosts[0].body, tc.want)
+				assert.Equal(t, "u-1", systemPosts[0].viaUserID)
 			})
-			require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent help", true)))
-			waitFor(t, time.Second, func() bool { _, systemPosts := conv.snapshot(); return len(systemPosts) == 1 })
-			_, systemPosts := conv.snapshot()
-			assert.Contains(t, systemPosts[0].body, tc.want)
-			assert.Equal(t, "u-1", systemPosts[0].viaUserID)
 		})
 	}
 }
@@ -534,46 +535,48 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 // --- happy path: streamed frames + final persisted message ------------------
 
 func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-old"})
-	live := &fakeLive{}
-	client := &fakeHarness{startResult: harness.StartResult{
-		SessionID: "thread-new",
-		Updates: updatesChan(
-			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "c-1", Tool: "Read", Summary: "Read main.go started"}},
-			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "wor", Streaming: true}},
-			harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolResult, CallID: "c-2", Tool: "Bash", Summary: "Bash"}},
-			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "working on it", Streaming: true}},
-			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
-			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-		),
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Live:          live,
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-old"})
+		live := &fakeLive{}
+		client := &fakeHarness{startResult: harness.StartResult{
+			SessionID: "thread-new",
+			Updates: updatesChan(
+				harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "c-1", Tool: "Read", Summary: "Read main.go started"}},
+				harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "wor", Streaming: true}},
+				harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolResult, CallID: "c-2", Tool: "Bash", Summary: "Bash"}},
+				harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "working on it", Streaming: true}},
+				harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
+				harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+			),
+		}}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Live:          live,
+		})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		frames := live.snapshot()
+		require.Len(t, frames, 6)
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true}, frames[0], "an immediate empty working frame precedes the first snapshot")
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read", ActivityCallID: "c-1"}, frames[1], "a tool step publishes before any text")
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true}, frames[2], "text clears the stale tool step")
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash", ActivityCallID: "c-2"}, frames[3], "a tool step keeps the text so far")
+		assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "done!", Streaming: true}, frames[5], "the persisted reply, not the last snapshot, ends the bubble")
+
+		replies, systemPosts := conv.snapshot()
+		require.Len(t, replies, 1)
+		assert.Equal(t, "done!", replies[0].body)
+		assert.Equal(t, "u-1", replies[0].viaUserID)
+		assert.Nil(t, replies[0].handoffs, "a turn that handed nothing off stores none")
+		assert.Empty(t, systemPosts)
+
+		assert.Equal(t, "thread-new", conv.threads["conv-1"])
+		assert.Contains(t, client.lastPrompt, "New message from")
 	})
-
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { r, _ := conv.snapshot(); return len(r) == 1 })
-
-	frames := live.snapshot()
-	require.Len(t, frames, 6)
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true}, frames[0], "an immediate empty working frame precedes the first snapshot")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read", ActivityCallID: "c-1"}, frames[1], "a tool step publishes before any text")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true}, frames[2], "text clears the stale tool step")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash", ActivityCallID: "c-2"}, frames[3], "a tool step keeps the text so far")
-	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "done!", Streaming: true}, frames[5], "the persisted reply, not the last snapshot, ends the bubble")
-
-	replies, systemPosts := conv.snapshot()
-	require.Len(t, replies, 1)
-	assert.Equal(t, "done!", replies[0].body)
-	assert.Equal(t, "u-1", replies[0].viaUserID)
-	assert.Nil(t, replies[0].handoffs, "a turn that handed nothing off stores none")
-	assert.Empty(t, systemPosts)
-
-	assert.Equal(t, "thread-new", conv.threads["conv-1"])
-	assert.Contains(t, client.lastPrompt, "New message from")
 }
 
 func TestRunTurn_MessageWrittenInTheHarness_IsRelayedAsTheUsersOwnAndRecordedNotStreamed(t *testing.T) {
@@ -647,107 +650,122 @@ func TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp(t *testing.T) 
 // --- memories index wiring ---------------------------------------------
 
 func TestRunTurn_PlainChat_NamesNoMemories(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default"})
-	client := &fakeHarness{startResult: harness.StartResult{
-		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
-	}}
-	mem := &fakeMemories{items: []MemoryItem{{ID: "m-1", Name: "Coding style", AlwaysIncluded: true}}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Memories:      mem,
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default"})
+		client := &fakeHarness{startResult: harness.StartResult{
+			Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
+		}}
+		mem := &fakeMemories{items: []MemoryItem{{ID: "m-1", Name: "Coding style", AlwaysIncluded: true}}}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Memories:      mem,
+			Live:          &fakeLive{},
+		})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		require.NotEmpty(t, client.snapshotPrompt(), "the turn ran")
+		assert.False(t, mem.called, "a conversation with no ticket or doc has no project, so no memories (ADR 0099)")
+		assert.NotContains(t, client.snapshotPrompt(), "Coding style")
+		assert.NotContains(t, client.snapshotPrompt(), memoriesLine)
 	})
-
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
-
-	assert.False(t, mem.called, "a conversation with no ticket or doc has no project, so no memories (ADR 0099)")
-	assert.NotContains(t, client.snapshotPrompt(), "Coding style")
-	assert.NotContains(t, client.snapshotPrompt(), memoriesLine)
 }
 
 func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", ProjectID: "proj-7"})
-	client := &fakeHarness{startResult: harness.StartResult{
-		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
-	}}
-	mem := &fakeMemories{err: errors.New("docs unavailable")}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Memories:      mem,
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1", ProjectID: "proj-7"})
+		client := &fakeHarness{startResult: harness.StartResult{
+			Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
+		}}
+		mem := &fakeMemories{err: errors.New("docs unavailable")}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Memories:      mem,
+			Live:          &fakeLive{},
+		})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		require.NotEmpty(t, client.snapshotPrompt(), "the turn ran")
+		mem.mu.Lock()
+		defer mem.mu.Unlock()
+		require.True(t, mem.called)
+		assert.NotContains(t, client.snapshotPrompt(), memoriesLine, "a failed lookup names no memories rather than blocking the turn")
 	})
-
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
-
-	mem.mu.Lock()
-	defer mem.mu.Unlock()
-	require.True(t, mem.called)
-	assert.NotContains(t, client.snapshotPrompt(), memoriesLine, "a failed lookup names no memories rather than blocking the turn")
 }
 
 func TestRunTurn_TurnError_PostsSystemMessageWithLastError(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{startResult: harness.StartResult{
-		SessionID: "thread-1",
-		Updates: updatesChan(
-			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: "provider unreachable"}},
-		),
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{startResult: harness.StartResult{
+			SessionID: "thread-1",
+			Updates: updatesChan(
+				harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: "provider unreachable"}},
+			),
+		}}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Live:          &fakeLive{},
+		})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1)
+		assert.Contains(t, systemPosts[0].body, "provider unreachable")
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, systemPosts := conv.snapshot()
-	assert.Contains(t, systemPosts[0].body, "provider unreachable")
 }
 
 func TestRunTurn_StartTurnFails_PostsSystemMessage(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{startErr: errors.New("connect refused")}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{startErr: errors.New("connect refused")}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Live:          &fakeLive{},
+		})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1)
+		assert.Contains(t, systemPosts[0].body, "connect refused")
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, systemPosts := conv.snapshot()
-	assert.Contains(t, systemPosts[0].body, "connect refused")
 }
 
 // --- approval decline ---------------------------------------------------------
 
 func TestRunTurn_ApprovalUpdate_PostsSystemMessage(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{startResult: harness.StartResult{
-		SessionID: "thread-1",
-		Updates: updatesChan(
-			harness.Update{Approval: &harness.Approval{Kind: "shell", Summary: "rm -rf /"}},
-			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
-		),
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{startResult: harness.StartResult{
+			SessionID: "thread-1",
+			Updates: updatesChan(
+				harness.Update{Approval: &harness.Approval{Kind: "shell", Summary: "rm -rf /"}},
+				harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+			),
+		}}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Live:          &fakeLive{},
+		})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1)
+		assert.Contains(t, systemPosts[0].body, "auto-declined")
+		assert.Contains(t, systemPosts[0].body, "shell")
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, systemPosts := conv.snapshot()
-	assert.Contains(t, systemPosts[0].body, "auto-declined")
-	assert.Contains(t, systemPosts[0].body, "shell")
 }
 
 // --- version warning -----------------------------------------------------------
@@ -778,8 +796,7 @@ func TestRunTurn_VersionCheck_WarnsOnlyOnBaseReleaseChange(t *testing.T) {
 			Harnesses:     registryOf(client),
 			Live:          &fakeLive{},
 		})
-		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-		waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
+		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 		_, systemPosts := conv.snapshot()
 		require.Len(t, systemPosts, 1)
 		assert.Contains(t, systemPosts[0].body, "0.0.34")
@@ -808,25 +825,28 @@ func TestRunTurn_ContextMessagesAreCapped(t *testing.T) {
 }
 
 func TestRunTurn_InterviewThread_LoadsItsProjectsMemories(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default", ProjectID: "proj-7"})
-	client := &fakeHarness{startResult: harness.StartResult{
-		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
-	}}
-	mem := &fakeMemories{}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Memories:      mem,
-		Live:          &fakeLive{},
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default", ProjectID: "proj-7"})
+		client := &fakeHarness{startResult: harness.StartResult{
+			Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
+		}}
+		mem := &fakeMemories{}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Memories:      mem,
+			Live:          &fakeLive{},
+		})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		require.NotEmpty(t, client.snapshotPrompt(), "the turn ran")
+		mem.mu.Lock()
+		defer mem.mu.Unlock()
+		assert.Equal(t, "proj-7", mem.calledProject)
 	})
-
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
-
-	mem.mu.Lock()
-	defer mem.mu.Unlock()
-	assert.Equal(t, "proj-7", mem.calledProject)
 }
 
 func TestRunTurn_SessionTitle_NamesWhatTheConversationIsAbout(t *testing.T) {
@@ -1064,36 +1084,32 @@ func TestInterrupt_NoActiveTurn_ReturnsNotFound(t *testing.T) {
 }
 
 func TestInterrupt_CallsHarnessWithTheActiveTarget(t *testing.T) {
-	release := make(chan harness.Update)
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	client := &fakeHarness{
-		startResult: harness.StartResult{SessionID: "thread-1", Updates: release},
-		interruptCh: make(chan struct{}),
-	}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Live:          &fakeLive{},
-	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan harness.Update)
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{
+			startResult: harness.StartResult{SessionID: "thread-1", Updates: release},
+			interruptCh: make(chan struct{}),
+		}
+		svc := NewService(Config{
+			Conversations: conv,
+			Targets:       &fakeTargets{target: testTarget()},
+			Harnesses:     registryOf(client),
+			Live:          &fakeLive{},
+		})
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 
-	// Wait until the turn is registered as active (the client has been asked
-	// to start, but the update stream is still open).
-	waitFor(t, time.Second, func() bool {
-		err := svc.Interrupt(context.Background(), "missing-conversation")
-		return errors.Is(err, apperrs.ErrNotFound) // sanity: service is up and routing correctly
-	})
-	waitFor(t, time.Second, func() bool {
+		// The turn is blocked draining its open update stream once it is registered as active.
+		synctest.Wait()
 		svc.mu.Lock()
-		_, ok := svc.active["conv-1"]
+		_, active := svc.active["conv-1"]
 		svc.mu.Unlock()
-		return ok
-	})
+		require.True(t, active)
 
-	require.NoError(t, svc.Interrupt(context.Background(), "conv-1"))
-	<-client.interruptCh
-	close(release)
+		require.NoError(t, svc.Interrupt(context.Background(), "conv-1"))
+		<-client.interruptCh
+		close(release)
+	})
 }
 
 func TestInterruptAndAnswer_TwoMentionsInOneConversation_ReachEveryLiveTurn(t *testing.T) {
@@ -1153,48 +1169,50 @@ func TestInterruptAndAnswer_TwoMentionsInOneConversation_ReachEveryLiveTurn(t *t
 }
 
 func TestSteer_MentionSentToQueue_MarksItsMessageAndHandsItToTheTurnUnderWay(t *testing.T) {
-	first, second := make(chan harness.Update), make(chan harness.Update)
-	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
-	steered := make(chan harness.Target, 1)
-	client := h.client()
-	client.SteerFn = func(_ context.Context, target harness.Target) error {
-		steered <- target
-		return nil
-	}
-	live := &fakeLive{}
-	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
-		Harnesses: harnesstest.Registry(client), Live: live})
-	firstDone := make(chan struct{})
-	go func() {
-		defer close(firstDone)
-		svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
-	}()
-	first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
-	require.NoError(t, svc.HandleMessageCreated(t.Context(), queuedMessageEvent(t, "conv-1", "u-1", "@Agent also this")))
-	second <- harness.Update{Queued: new(true)}
+	synctest.Test(t, func(t *testing.T) {
+		first, second := make(chan harness.Update), make(chan harness.Update)
+		h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
+		steered := make(chan harness.Target, 1)
+		client := h.client()
+		client.SteerFn = func(_ context.Context, target harness.Target) error {
+			steered <- target
+			return nil
+		}
+		live := &fakeLive{}
+		svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+			Harnesses: harnesstest.Registry(client), Live: live})
+		firstDone := make(chan struct{})
+		go func() {
+			defer close(firstDone)
+			svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
+		}()
+		first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+		require.NoError(t, svc.HandleMessageCreated(t.Context(), queuedMessageEvent(t, "conv-1", "u-1", "@Agent also this")))
+		second <- harness.Update{Queued: new(true)}
 
-	queuedFrame := StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true}
-	waitFor(t, time.Second, func() bool { return slices.Contains(live.snapshot(), queuedFrame) })
-	assert.Empty(t, steered, "a mention sent to queue waits for its Steer")
-	require.ErrorIs(t, svc.Steer(t.Context(), "conv-1", "msg-0"), apperrs.ErrNotFound, "the turn under way is not queued")
-	require.NoError(t, svc.Steer(t.Context(), "conv-1", "msg-1"))
-	assert.Equal(t, "thread-1", (<-steered).SessionID)
+		queuedFrame := StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1", Queued: true}
+		synctest.Wait()
+		require.Contains(t, live.snapshot(), queuedFrame)
+		assert.Empty(t, steered, "a mention sent to queue waits for its Steer")
+		require.ErrorIs(t, svc.Steer(t.Context(), "conv-1", "msg-0"), apperrs.ErrNotFound, "the turn under way is not queued")
+		require.NoError(t, svc.Steer(t.Context(), "conv-1", "msg-1"))
+		require.Len(t, steered, 1)
+		assert.Equal(t, "thread-1", (<-steered).SessionID)
 
-	before := len(live.snapshot())
-	second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
-	close(second)
-	waitFor(t, time.Second, func() bool {
-		return slices.Contains(live.snapshot(), StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1"})
-	})
-	waitFor(t, time.Second, func() bool {
+		before := len(live.snapshot())
+		second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+		close(second)
+		synctest.Wait()
+		require.Contains(t, live.snapshot(), StreamFrame{ConversationID: "conv-1", QueuedMessageID: "msg-1"})
 		svc.mu.Lock()
-		defer svc.mu.Unlock()
-		return len(svc.active["conv-1"]) == 1
-	})
-	assert.NotContains(t, live.snapshot()[before:], StreamFrame{ConversationID: "conv-1"}, "the first turn's bubble stays while it runs")
+		underWay := len(svc.active["conv-1"])
+		svc.mu.Unlock()
+		require.Equal(t, 1, underWay)
+		assert.NotContains(t, live.snapshot()[before:], StreamFrame{ConversationID: "conv-1"}, "the first turn's bubble stays while it runs")
 
-	close(first)
-	<-firstDone
+		close(first)
+		<-firstDone
+	})
 }
 
 func TestSteer_QueuedMention_SteersIntoTheTurnUnderWayUnlessRefused(t *testing.T) {
@@ -1210,36 +1228,39 @@ func TestSteer_QueuedMention_SteersIntoTheTurnUnderWayUnlessRefused(t *testing.T
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			first, second := make(chan harness.Update), make(chan harness.Update)
-			h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
-			steered := make(chan harness.Target, 1)
-			client := h.client()
-			client.SteerFn = func(_ context.Context, target harness.Target) error {
-				steered <- target
-				return tt.steerErr
-			}
-			live := &fakeLive{}
-			svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
-				Harnesses: harnesstest.Registry(client), Live: live})
-			firstDone := make(chan struct{})
-			go func() {
-				defer close(firstDone)
-				svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
-			}()
-			first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
-			require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent also this", true)))
-			second <- harness.Update{Queued: new(true)}
+			synctest.Test(t, func(t *testing.T) {
+				first, second := make(chan harness.Update), make(chan harness.Update)
+				h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{first, second}}
+				steered := make(chan harness.Target, 1)
+				client := h.client()
+				client.SteerFn = func(_ context.Context, target harness.Target) error {
+					steered <- target
+					return tt.steerErr
+				}
+				live := &fakeLive{}
+				svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+					Harnesses: harnesstest.Registry(client), Live: live})
+				firstDone := make(chan struct{})
+				go func() {
+					defer close(firstDone)
+					svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first", RequestMessageID: "msg-0"})
+				}()
+				first <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+				require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent also this", true)))
+				second <- harness.Update{Queued: new(true)}
 
-			waitFor(t, time.Second, func() bool { return len(steered) == 1 })
-			assert.Equal(t, "thread-1", (<-steered).SessionID, "the mention goes to the turn under way unasked")
-			// Taken once the queued update was handled, so the mark is settled by then.
-			second <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Waiting"}}
-			assert.Equal(t, tt.wantMarked, slices.Contains(live.snapshot(), queuedFrame))
+				synctest.Wait()
+				require.Len(t, steered, 1)
+				assert.Equal(t, "thread-1", (<-steered).SessionID, "the mention goes to the turn under way unasked")
+				// Taken once the queued update was handled, so the mark is settled by then.
+				second <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Waiting"}}
+				assert.Equal(t, tt.wantMarked, slices.Contains(live.snapshot(), queuedFrame))
 
-			second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
-			close(second)
-			close(first)
-			<-firstDone
+				second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+				close(second)
+				close(first)
+				<-firstDone
+			})
 		})
 	}
 }
