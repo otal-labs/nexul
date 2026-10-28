@@ -3,7 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConnectPhoneCard } from "@/components/you/ConnectPhoneCard";
+import { ConnectPhoneRow } from "@/components/you/ConnectPhoneRow";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 
 const mocks = vi.hoisted(() => ({
@@ -23,12 +23,12 @@ const renderCard = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ConnectPhoneCard />
+      <ConnectPhoneRow />
     </QueryClientProvider>,
   );
 };
 
-describe("ConnectPhoneCard", () => {
+describe("ConnectPhoneRow", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.errorMessage.mockReset();
@@ -40,7 +40,7 @@ describe("ConnectPhoneCard", () => {
 
     expect(mocks.post).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Generate code" })).toBeInTheDocument();
-    expect(screen.getByText("The code works once, for two minutes.")).toBeInTheDocument();
+    expect(screen.getByText(/The code works once, for two minutes\./)).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Sign-in code for the Nexul app" })).not.toBeInTheDocument();
     expect(screen.queryByText(/expires in/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Code/)).not.toBeInTheDocument();

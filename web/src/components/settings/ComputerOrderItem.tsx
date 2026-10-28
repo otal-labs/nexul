@@ -17,7 +17,7 @@ interface ComputerOrderItemProps {
   onMove: (from: number, to: number) => void;
 }
 
-// One computer in Your computers: its rank in the gutter, a grip that drags it, and the row itself (ADR 0165).
+// One computer in Your computers: its rank and a grip that drags it at the row's start, then the row itself (ADR 0165).
 export const ComputerOrderItem = ({ computer, index, count, presence, onMove }: ComputerOrderItemProps) => {
   const movable = count > 1;
   const reduced = useReducedMotion() ?? false;
@@ -30,7 +30,15 @@ export const ComputerOrderItem = ({ computer, index, count, presence, onMove }: 
   const { setNodeRef, transform, transition, isDragging } = sortable;
   const order = useMemo(
     () => ({
-      grip: movable && <RowGrip name={name} sortable={sortable} />,
+      grip: movable && (
+        <span className="flex shrink-0 items-center gap-1">
+          {/* Centred, 12px mono sits 1px above the 14px name's baseline; the nudge puts the rank on it. */}
+          <span aria-hidden className="w-5 translate-y-px font-mono text-xs text-muted-foreground tabular-nums">
+            #{index + 1}
+          </span>
+          <RowGrip name={name} sortable={sortable} />
+        </span>
+      ),
       moveActions: movable
         ? [
             { label: "Move up", disabled: index === 0, onSelect: () => onMove(index, index - 1) },
@@ -45,11 +53,8 @@ export const ComputerOrderItem = ({ computer, index, count, presence, onMove }: 
     <li
       ref={setNodeRef}
       style={{ transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined, transition }}
-      className={cn("relative bg-card first:rounded-t-md last:rounded-b-md", isDragging && "z-10 rounded-md shadow-elevated")}
+      className={cn("relative", isDragging && "z-10 rounded-md bg-card shadow-elevated")}
     >
-      <span aria-hidden className="absolute top-3.5 -left-10 w-8 text-right font-mono text-xs text-muted-foreground tabular-nums">
-        #{index + 1}
-      </span>
       {/* A move from the menu glides so the eye follows the row; one made with the keyboard lands at once. */}
       <motion.div layout={!reduced && !lastInputWasKeyboard() ? "position" : false} layoutDependency={index} transition={{ layout: ROW_GLIDE }}>
         <ComputerOrderProvider value={order}>

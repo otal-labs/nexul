@@ -18,7 +18,7 @@ export const ComputersSection = () => {
   return (
     <SettingsCard
       id="pairing-computers"
-      title="Your computers"
+      title="Run order"
       description="Runs go to the first ready computer. Drag to reorder."
       footer={
         <AddComputerDialog

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import type { Computer } from "@/models/Pairing";
+import { cn } from "@/lib/utils";
 
 const detailOf = (computer: Computer) => {
   if (computer.pair_error) return `Not moved yet: ${computer.pair_error}`;
@@ -11,11 +12,12 @@ const detailOf = (computer: Computer) => {
 interface MoveNoticeProps {
   computer: Computer;
   onMove: () => void;
+  className?: string;
 }
 
 // The notice on a computer paired before the Nexul app: one command moves it, and a move under way says how far it got.
-export const MoveNotice = ({ computer, onMove }: MoveNoticeProps) => (
-  <div className="mt-2 flex min-w-0 items-center gap-3 pl-6">
+export const MoveNotice = ({ computer, onMove, className }: MoveNoticeProps) => (
+  <div className={cn("mt-2 flex min-w-0 items-center gap-3", className)}>
     <div className="min-w-0 flex-1 space-y-0.5">
       <SettingsStatus tone={computer.pair_error ? "destructive" : "info"}>Move this computer to the Nexul app</SettingsStatus>
       <p className="pl-3 text-xs break-words text-muted-foreground">{detailOf(computer)}</p>

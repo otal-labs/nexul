@@ -16,7 +16,7 @@ export const PATRow = ({ token }: PATRowProps) => {
   const lastUsed = token.last_used_at ? `last used ${formatRelativeTime(token.last_used_at)}` : "never used";
 
   return (
-    <li className="flex items-center justify-between gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex min-h-14 items-center justify-between gap-3 py-2.5">
       <div className="min-w-0 space-y-1">
         <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
           <span className="truncate" title={token.name}>

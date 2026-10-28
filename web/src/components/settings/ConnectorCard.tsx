@@ -61,7 +61,7 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   };
 
   return (
-    <li className="flex items-center gap-3 px-3 py-3.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-3 py-3.5">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <Icon className="size-4" />
       </span>

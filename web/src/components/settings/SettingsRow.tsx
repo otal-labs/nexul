@@ -50,3 +50,6 @@ interface SettingsRowsProps {
 export const SettingsRows = ({ children, className }: SettingsRowsProps) => (
   <div className={cn("@container divide-y divide-border border-t border-border", className)}>{children}</div>
 );
+
+// A list inside a settings card: hairline rows straight on the card, under the rule that opens its body.
+export const settingsListClass = "divide-y divide-border border-t border-border";

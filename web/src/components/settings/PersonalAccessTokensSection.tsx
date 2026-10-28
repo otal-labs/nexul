@@ -10,6 +10,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { CopyButton } from "@/components/settings/CopyButton";
 import { PATRow } from "@/components/settings/PATRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { useListPATs, useMintPAT } from "@/hooks/AuthHooks";
 import { PATNameFormSchema, type PATNameFormData } from "@/models/User";
@@ -65,7 +66,7 @@ export const PersonalAccessTokensSection = () => {
           )}
           {data.tokens.length === 0 && <EmptyRow flush>No personal access tokens yet. Name one below to create it.</EmptyRow>}
           {data.tokens.length > 0 && (
-            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className={settingsListClass}>
               {data.tokens.map((token) => (
                 <PATRow key={token.id} token={token} />
               ))}

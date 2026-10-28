@@ -9,7 +9,7 @@ The desktop app opens your instance's web app in a window of its own. It has no 
 
 ## Connecting
 
-1. In the web app, open **Settings → Security → Devices** and click **Copy connection token** on **Connect the desktop app**. The token holds your instance's address, not your account, and expires after 30 days.
+1. In the web app, open **Settings → Security** and click **Copy connection token** on the **Desktop app** row of **Connect a device**. The token holds your instance's address, not your account, and expires after 30 days.
 2. In the desktop app, paste it under **Add instance** and click **Import**.
 3. The instance appears under **Instances** with its status: **Connected**, **Unreachable** or **Token expired**.
 4. Click **Connect** and sign in.

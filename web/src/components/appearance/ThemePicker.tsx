@@ -16,7 +16,7 @@ export const ThemePicker = () => {
   const pick = (id: string) => setThemeId(id as ThemeId);
 
   return (
-    <RadioGroupPrimitive.Root aria-label="Theme" value={themeId} onValueChange={pick} className="grid grid-cols-3 gap-3 @lg:grid-cols-4">
+    <RadioGroupPrimitive.Root aria-label="Theme" value={themeId} onValueChange={pick} className="grid grid-cols-3 gap-3 @lg:grid-cols-4 @2xl:grid-cols-6">
       {THEME_DEFINITIONS.map((definition) => (
         <ThemeTile key={definition.id} value={definition.id} label={definition.label} selected={themeId === definition.id}>
           <ThemeMiniature colors={themePreviewColors(definition.id, theme)} />

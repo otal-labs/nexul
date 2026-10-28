@@ -23,18 +23,20 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
   const account = identity && identityAccount(identity);
 
   return (
-    <li className="flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex min-h-14 items-center gap-3 py-2.5">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 [&_svg]:size-4">
         <ProviderMark provider={provider} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
-        {account && (
-          <SettingsStatus tone="success" detail={<span className="font-mono">{account}</span>}>
-            Linked
-          </SettingsStatus>
-        )}
-        {!account && <SettingsStatus tone="muted">Not linked</SettingsStatus>}
+        <p className="flex min-w-0">
+          {account && (
+            <SettingsStatus tone="success" detail={<span className="font-mono">{account}</span>}>
+              Linked
+            </SettingsStatus>
+          )}
+          {!account && <SettingsStatus tone="muted">Not linked</SettingsStatus>}
+        </p>
       </div>
       {identity && provider === "github" && canOpenConnectors && (
         <Button asChild variant="ghost" size="sm" aria-label="GitHub App settings" title="GitHub App settings">

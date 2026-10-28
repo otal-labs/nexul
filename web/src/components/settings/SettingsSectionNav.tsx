@@ -14,6 +14,15 @@ const itemClass = (isActive: boolean) =>
     isActive ? "font-medium text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
+// Once the narrow top row is scrolled its left edge fades too, so a label cut there reads as more, not as half a word.
+const markScrolled = (el: HTMLUListElement | null) => {
+  if (!el) return;
+  const mark = () => el.toggleAttribute("data-scrolled", el.scrollLeft > 0);
+  mark();
+  el.addEventListener("scroll", mark, { passive: true });
+  return () => el.removeEventListener("scroll", mark);
+};
+
 // A deep link can land on an item past the right edge of the narrow top row; bring it into view.
 const revealActive = (el: HTMLAnchorElement | null) => el?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 
@@ -38,22 +47,21 @@ interface SettingsSectionNavProps {
 // A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
-    <ul className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
+    <ul
+      ref={markScrolled}
+      className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none scroll-px-6 pb-1 max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-1.5rem),transparent)] max-lg:data-scrolled:[mask-image:linear-gradient(to_right,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)] lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0"
+    >
       <ActiveIndicator selector='[aria-current="page"]' className={cn("rounded-md", currentRowFillClass)}>
         <CurrentRowEdge className="hidden lg:block" />
       </ActiveIndicator>
       {items.map((item, index) => (
         <Fragment key={item.section}>
+          {/* In the narrow top row a group is a hairline after the last one, not a label that reads as one more item. */}
+          {item.group !== undefined && item.group !== items[index - 1]?.group && index > 0 && (
+            <li aria-hidden className="mx-2 h-4 w-px shrink-0 bg-border lg:hidden" />
+          )}
           {item.group !== undefined && item.group !== items[index - 1]?.group && (
-            <li
-              className={cn(
-                microheaderClass,
-                "shrink-0 px-3 lg:pb-1",
-                index > 0 && "ml-2 lg:ml-0 lg:pt-4",
-              )}
-            >
-              {item.group}
-            </li>
+            <li className={cn(microheaderClass, "hidden shrink-0 px-3 lg:block lg:pb-1", index > 0 && "lg:pt-4")}>{item.group}</li>
           )}
           <li className={cn("shrink-0", item.danger && index > 0 && "ml-2 lg:ml-0 lg:mt-3 lg:border-t lg:border-border lg:pt-3")}>
             <Link
@@ -70,6 +78,8 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           </li>
         </Fragment>
       ))}
+      {/* Room past the last label, so scrolled to the end it clears the fade. */}
+      <li aria-hidden className="w-6 shrink-0 lg:hidden" />
     </ul>
   </nav>
 );

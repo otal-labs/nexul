@@ -14,6 +14,10 @@ interface ConfirmDestroyButtonProps {
   disabled?: boolean;
   loading?: boolean;
   armMs?: number;
+  // Shows the idle label as the button's text instead of the icon, for a row with room for the word.
+  labelled?: boolean;
+  // The accessible name when it needs more than the visible word, such as which row it acts on.
+  label?: string;
   // The permission the delete needs; without it the button is always live.
   gate?: ActionGate;
 }
@@ -27,6 +31,8 @@ export const ConfirmDestroyButton = ({
   disabled = false,
   loading = false,
   armMs = 4000,
+  labelled = false,
+  label,
   gate,
 }: ConfirmDestroyButtonProps) => {
   const [armed, setArmed] = useState(false);
@@ -60,14 +66,15 @@ export const ConfirmDestroyButton = ({
           type="button"
           variant="ghost"
           size="sm"
-          aria-label={idleLabel}
-          title={idleLabel}
+          aria-label={label ?? (labelled ? undefined : idleLabel)}
+          title={labelled ? undefined : idleLabel}
           className="hover:text-destructive"
           disabled={disabled}
           loading={loading}
           onClick={() => setArmed(true)}
         >
-          <Icon className="size-4" />
+          {!labelled && <Icon className="size-4" />}
+          {labelled && idleLabel}
         </Button>
       )}
       {armed && (

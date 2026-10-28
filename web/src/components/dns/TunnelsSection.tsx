@@ -1,4 +1,5 @@
 import { EnterList } from "@/components/EnterList";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { TunnelRow } from "@/components/dns/TunnelRow";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -20,7 +21,7 @@ export const TunnelsSection = () => {
       {error && <ErrorDisplay error={error} title="Couldn't load tunnels." />}
       {tunnels && tunnels.length === 0 && <EmptyRow>No tunnels yet. Set up DNS creates one.</EmptyRow>}
       {tunnels && tunnels.length > 0 && (
-        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className={settingsListClass}>
           {tunnels.map((tunnel) => (
             <TunnelRow key={tunnel.id} tunnel={tunnel} />
           ))}

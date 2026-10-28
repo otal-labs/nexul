@@ -11,7 +11,7 @@ interface SharedComputerRowProps {
 export const SharedComputerRow = ({ computer }: SharedComputerRowProps) => {
   const presence = runnerPresence(computer.runner);
   return (
-    <li className="bg-card px-3 py-3">
+    <li className="py-3">
       <p className="line-clamp-2 text-sm font-medium break-words">{sharedComputerName(computer)}</p>
       <p className="mt-1 flex min-w-0 items-center">
         <SettingsStatus tone={presence.tone} detail={computer.shared && sharedComputerAbilities(computer.shared)}>

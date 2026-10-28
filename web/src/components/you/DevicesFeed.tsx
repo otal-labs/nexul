@@ -4,9 +4,9 @@ import { LogOut } from "lucide-react";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsHint } from "@/components/settings/SettingsHint";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { DeviceRow } from "@/components/you/DeviceRow";
 import { useListSessions, useSignOutOtherSessions, useSignOutSession } from "@/hooks/AuthHooks";
@@ -64,32 +64,25 @@ export const DevicesFeed = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {data && (
-        <div className="space-y-6">
-          <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
-            {current.map((session) => (
-              <DeviceRow key={session.id} session={session} />
-            ))}
-          </ul>
-          <div className="space-y-2">
-            <Microheader>Other devices</Microheader>
-            {others.length === 0 && (
-              <EmptyRow className="animate-in fade-in-0 duration-200 ease-out">No other devices signed in.</EmptyRow>
-            )}
-            {others.length > 0 && (
-              <ul ref={glideRef} className="divide-y divide-border overflow-hidden rounded-md border border-border">
-                {others.map((session) => (
-                  <DeviceRow
-                    key={session.id}
-                    session={session}
-                    arrived={arrived(session.id)}
-                    leaving={leaving.includes(session.id)}
-                    onSignOut={() => signOutOne(session.id)}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <ul ref={glideRef} className={settingsListClass}>
+          {current.map((session) => (
+            <DeviceRow key={session.id} session={session} />
+          ))}
+          {others.map((session) => (
+            <DeviceRow
+              key={session.id}
+              session={session}
+              arrived={arrived(session.id)}
+              leaving={leaving.includes(session.id)}
+              onSignOut={() => signOutOne(session.id)}
+            />
+          ))}
+        </ul>
+      )}
+      {data && others.length === 0 && (
+        <EmptyRow flush className="animate-in fade-in-0 pt-3 duration-200 ease-out">
+          No other devices signed in.
+        </EmptyRow>
       )}
     </SettingsCard>
   );

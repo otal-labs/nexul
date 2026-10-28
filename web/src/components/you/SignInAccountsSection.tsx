@@ -2,6 +2,7 @@ import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { IdentityRow } from "@/components/you/IdentityRow";
 import { useBootstrapStatus, useFetchIdentities } from "@/hooks/AuthHooks";
 import { useLinkResultToast } from "@/hooks/useLinkResultToast";
@@ -31,7 +32,7 @@ export const SignInAccountsSection = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {identities.data && status.data && (
-        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        <EnterList className={settingsListClass}>
           {enabledProviders(status.data).map((provider) => (
             <IdentityRow
               key={provider}

@@ -27,15 +27,12 @@ const tabRows = (base: string, hint: string, tabs: Tab[]): Row[] =>
 
 const YOUR_KEYWORDS: Partial<Record<YourSettingsSection, string>> = {
   appearance: "theme dark light mode palette colours",
+  security: "devices phone sessions sign out tokens api mcp personal access key",
   pairing: "pair t3 computer",
 };
 
 // Computers' first tab is the section row itself, so only its other tabs are listed.
 const YOUR_TABS: Partial<Record<YourSettingsSection, Tab[]>> = {
-  security: [
-    ["", "Devices", "phone sessions sign out"],
-    ["tokens", "Tokens", "api token mcp personal access key"],
-  ],
   pairing: [
     ["projects", "Projects"],
     ["defaults", "Defaults"],

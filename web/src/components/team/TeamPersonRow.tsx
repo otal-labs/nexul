@@ -24,7 +24,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
         type="button"
         onClick={() => onOpen(person.id)}
         aria-label={`Open ${personName(person)}`}
-        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+        className="-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
         <span className="relative shrink-0">
           <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />

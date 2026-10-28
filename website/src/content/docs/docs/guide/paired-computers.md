@@ -182,7 +182,7 @@ The **Computers** settings page has two tabs, **Computers** and **Projects**.
 
 ### Your computers, in order
 
-**Your computers** on the Computers tab is one ordered list, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer by its grip to change the order, or use **Move up** and **Move down** in its **…** menu. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
+**Run order**, on the **Your computers** tab, is one ordered list, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer by its grip to change the order, or use **Move up** and **Move down** in its **…** menu. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
 
 Above the list, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own row says whether it can take a project's runs.
 

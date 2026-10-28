@@ -105,7 +105,7 @@ async function cmdInit(args: string[]): Promise<void> {
   const url = (flag(args, "url") ?? (await prompt("Nexul instance URL (e.g. https://deploy.example.com): "))).replace(/\/+$/, "");
   let token = flag(args, "token");
   if (!token) {
-    console.log(`\nMint a personal access token at ${url}/settings/security?tab=tokens (Your settings -> Security -> Tokens), then paste it below.\n`);
+    console.log(`\nMint a personal access token at ${url}/settings/security (Your settings -> Security -> Personal access tokens), then paste it below.\n`);
     token = await prompt("Personal access token: ");
   }
   closePrompts();

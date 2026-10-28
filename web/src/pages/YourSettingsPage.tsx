@@ -5,12 +5,13 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { SettingsHeaderMeta } from "@/components/settings/SettingsHeaderMeta";
 import { InstanceSettingsContent } from "@/components/settings/InstanceSettingsContent";
-import { isSettingsSection } from "@/components/settings/SettingsNav";
+import { isSettingsSection, sectionLabels as instanceLabels } from "@/components/settings/SettingsNav";
 import { YourSettingsContent } from "@/components/you/YourSettingsContent";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import {
   DEFAULT_YOUR_SETTINGS_SECTION,
   isYourSettingsSection,
+  sectionLabels,
   YourSettingsNav,
 } from "@/components/you/YourSettingsNav";
 import { useHasInstancePermission, useInstanceSettingsSections, useVisibleSettingsSections } from "@/hooks/AccessHooks";
@@ -32,6 +33,9 @@ export const YourSettingsPage = () => {
   // An instance link holds its place until permissions answer, so a deep link never flashes Profile first.
   const resolving = !instanceSections && isSettingsSection(rawSection);
   const section = isYourSettingsSection(rawSection) ? rawSection : DEFAULT_YOUR_SETTINGS_SECTION;
+  // The open section names the page, so the title says where you are instead of repeating "Settings".
+  const yourTitle = resolving ? "Settings" : sectionLabels[section];
+  const title = instanceSection ? instanceLabels[instanceSection] : yourTitle;
 
   return (
     <>
@@ -40,7 +44,8 @@ export const YourSettingsPage = () => {
         <Container size="page" className="py-8">
           <PageHeader
             className="mb-8"
-            title="Settings"
+            crumbs={[{ label: "Settings", to: "/settings" }]}
+            title={title}
             meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
           />
           <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>

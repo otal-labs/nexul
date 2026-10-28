@@ -23,7 +23,7 @@ The app's releases are tagged `phone-v<version>-beta` on the [releases page](htt
 
 The phone signs in with a code from a computer where you're already signed in. There's no password to type.
 
-1. In the web app, open **Settings → Security → Devices** and press **Generate code** under **Connect a phone**.
+1. In the web app, open **Settings → Security** and press **Generate code** on the **Phone app** row of **Connect a device**.
 2. In the app, press **Scan the code** and point the camera at the QR code. Your phone's own camera app works too.
 3. The card in the web app shows your phone as connected.
 

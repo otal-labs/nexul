@@ -20,7 +20,7 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
   const Icon = gateway.kind === "tunnel" ? CloudIcon : RouteIcon;
 
   return (
-    <li className="flex items-start gap-3 px-3 py-3.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-start gap-3 py-3.5">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <Icon className="size-4 text-muted-foreground" aria-hidden />
       </span>

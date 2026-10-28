@@ -10,7 +10,7 @@ export const ComputerLoad = ({ computer }: ComputerLoadProps) => {
   const full = computer.running >= computer.runs_at_once;
   return (
     <span
-      className={cn("shrink-0 font-mono text-xs tabular-nums", computer.running > 0 ? "text-foreground" : "text-muted-foreground")}
+      className={cn("shrink-0 translate-y-px font-mono text-xs tabular-nums", computer.running > 0 ? "text-foreground" : "text-muted-foreground")}
       title={full ? "Full: new runs wait or go to your next computer" : undefined}
     >
       {computer.running} of {computer.runs_at_once} running

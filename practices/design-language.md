@@ -928,14 +928,15 @@ Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);
 a nav with two jobs (Your settings' You and Instance settings)
-labels each group with a mono microheader, and a group with nothing the
-viewer may open shows no label. Environment is one card of mono name and
+labels each group with a mono microheader in the side column and a hairline
+between the groups in the top row, which fades over its last 24px, and a group
+with nothing the viewer may open shows no label. Environment is one card of mono name and
 value rows, values dots until the card's Reveal toggle, with Deploy now in the footer beside Save; someone who can't change
 the stack sees the names over dots and nothing to edit. A card's action lives in its footer strip (`footer` prop: Rollback,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
-card are hairline rows in one bordered box, except permission and access rows
-(Permission rows, below) and the Services rows, which sit straight on the card or dialog surface.
+card are hairline rows straight on the card, under the rule that opens its body (`settingsListClass`), never a bordered box
+inside the card; permission and access rows (Permission rows, below) and a list whose rows each fold open an editor (Run settings) keep their bordered list.
 Nothing nests a card inside a card. The Services card has no column headers: each row is the service name and
 status (a status icon, its word in `muted-foreground`, or `foreground` when it is exited) over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
@@ -974,13 +975,14 @@ a footer strip's line) is 12px at normal weight in `muted-foreground`, set
 that sits among settings cards takes the same three levels. A label is never
 muted and a hint is never medium. The card opens with its title and an
 optional description, no rule under them, then the body and the
-optional footer strip (`bg-muted/30` behind a hairline). The card's state, or
+optional footer strip (`bg-muted/30` behind a hairline), which only a card with something to save or one real action carries. The card's state, or
 one quiet action, sits top right beside the title (`aside`: Up to date,
 Enabled, Registered). Inside, settings are rows (`SettingsRow` in
 `SettingsRows`): the label over its description on the left, the control on
 the right once the card is 34rem wide and under
 the text below that; a rule above the first row and between rows. A list
-inside a card keeps the bordered box of hairline rows. State is a
+inside a card is the same: hairline rows straight on the card, about 56px, no
+box of their own and no hover lift unless the row is a link. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
 detail (Connected · by Alice 20d ago, Active · last used 9d ago, Revoked 8 Oct),
 never a chip; an active account says nothing, only one that can't sign in
@@ -995,7 +997,13 @@ Saved with a check for 1.4s. Settings that apply the moment they are picked
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
-instance sections Instance-wide.
+instance sections Instance-wide. On Your settings the open section is the page
+title ("Security", under a `Settings` crumb), so no card or tab restates it: a
+card that only named the section names its job instead (Name and picture,
+People). Security is one page in the order of the job: Signed-in devices (this
+device first, a ghost Sign out on each other row), Personal access tokens, then
+Connect a device as two rows, Phone app and Desktop app, the QR opening under
+its row only once a code is generated.
 
 Role rows. The Roles tab of the Access page lists one row per role: a chevron and
 the name, the people who hold it as overlapping 24px avatars with a mono
@@ -1035,7 +1043,9 @@ Appearance. Mode and Theme are radio groups of tiles, each a miniature of the
 app (`ThemeMiniature`: canvas, sidebar with its brand marker, a panel with a
 title, two text lines, a brand button and an outline one) drawn from the
 palette's own roles in the mode being shown (`themePreviewColors`); System is
-light with the dark miniature clipped across its right side. The picked tile
+light with the dark miniature clipped across its right side. Mode is three across at every width; Theme runs six across from
+a 42rem card body, four from 32rem and three below, so the twelve themes sit in
+two rows above the fold at 1440. The picked tile
 gets a 2px `brand` ring and a check badge top right; arrow keys move the pick.
 "Dim behind dialogs" is a row with a miniature of a dialog over the scrim at
 the slider's strength.
@@ -1179,7 +1189,7 @@ buttons, Add to calendar opening the system's new-event screen.
 `DiscordTimeChip`, `DiscordTimeCard`, `DiscordTimes` and the phone's
 `DiscordTimePopover` are the reference.
 
-Paired computers. One row per computer in the Computers card: a chevron and the name, then at most one outline button for what needs doing and the `…` menu, which asks before Remove. Under the name one line of `SettingsStatus`. A computer added with its app (a personal runner) reads each lane on its own: Online or Offline (with when it was last seen) for the computer, then T3 Code answering, Open T3 Code for a closed desktop app, Re-pairing (`info`) while Re-pair now runs, or why T3 Code is not answering; its one action is Add this computer again once its app is gone, Re-pair now when a pairing failed or ran out, else Set up or Update skills, and its menu holds Set up or Re-run setup, Re-pair now, Rename, then Remove. Until the app reports a hostname the row reads "New computer" in muted text. A computer paired through a tunnel or by URL keeps its old row until it moves: the connection, an expiry warning and the setup state, with Pair, Re-pair (the pairing-link form), Set up and Update skills. The name folds the rest open in a `surface-2` well: address, harness version, paired-until date, one line per provider, and the MCP token with its Replace and Revoke. A computer reached through its runner never shows its relay address: the well leads with T3 Code's state as a status line (port, version and install in mono after it), and its facts follow as more label rows (provider CLIs with their sign-in status, T3 projects, the computer, git identity, GitHub sign-in with a warning when there is none, free disk, versions, when they changed); `ComputerFactRows` is the reference. A computer of yours trails its name with a mono "0 of 5 running", names its set-up providers by their marks after its setup state, and its well opens with **Runs at once** as a 1–5 segmented control and **Chat folder** as a select over one muted line; each label sits on its value's baseline. Add a computer is one dialog in two steps. The first puts the command beside the live state, the command in the site's install snippet (a macOS / Linux | Windows segmented control, one raised row (`canvas-card`) whose line scrolls under a faded edge with the `brand` copy button inside, then a one-line muted note and the guide link; no terminal chrome) under one muted paragraph on what it needs (sudo on Linux and macOS, no administrator on Windows, and the account it installs for), and the state as the two-tile connection panel over a Checks card of three check rows (an icon tile, the name over a mono line of what it found, the state as a dot and a word): Computer connected, T3 Code found, Paired. A check that cannot pass says what to do in its mono line. Below 42rem the checks drop under the command. The footer's Set up stays disabled until Paired passes, then opens the setup step. The setup step is one column: the run's state over a 2px `brand` bar filling as providers confirm, with its one action, Set up all (brand until the computer is confirmed, then outline, while Done takes the brand); then one row per provider T3 Code lists, each a switch, the provider mark, the name over a muted line with the state glyph (Not set up yet, the running status, Confirmed, the failure, or "Off · plays leave it out"), its model picker, and one thing at the end: Set up or Retry (outline) while it waits on the person, a ghost Play icon to run it again once confirmed, nothing while it runs or is off. The first row waiting on the person is lifted (`accent` at 40%). The name opens the row's transcript in a well under it, the running or failed row opening by itself. Under the list, one muted line picks the folder the turns run in and one says what they install. The switch saves at once; Done keeps the models and folder. A tunnel computer still pairing keeps its Tunnel and Pair T3 Code step tabs, its commands in the same snippet. `ComputerRow`, `RunnerComputerRow`, `AddComputerDialog`, `ComputerChecks`, `SetupStep`, `SetupProviderItem` and `CommandSnippet` are the reference.
+Paired computers. One row per computer straight on the Run order card, under the Your computers tab: its mono rank (`#1`) and grip, a chevron and the name, then at most one outline button for what needs doing and the `…` menu, which asks before Remove. Under the name one line of `SettingsStatus`. A computer added with its app (a personal runner) reads each lane on its own: Online or Offline (with when it was last seen) for the computer, then T3 Code answering, Open T3 Code for a closed desktop app, Re-pairing (`info`) while Re-pair now runs, or why T3 Code is not answering; its one action is Add this computer again once its app is gone, Re-pair now when a pairing failed or ran out, else Set up or Update skills, and its menu holds Set up or Re-run setup, Re-pair now, Rename, then Remove. Until the app reports a hostname the row reads "New computer" in muted text. A computer paired through a tunnel or by URL keeps its old row until it moves: the connection, an expiry warning and the setup state, with Pair, Re-pair (the pairing-link form), Set up and Update skills. The name folds the rest open in a `surface-2` well: address, harness version, paired-until date, one line per provider, and the MCP token with its Replace and Revoke. A computer reached through its runner never shows its relay address: the well leads with T3 Code's state as a status line (port, version and install in mono after it), and its facts follow as more label rows (provider CLIs with their sign-in status, T3 projects, the computer, git identity, GitHub sign-in with a warning when there is none, free disk, versions, when they changed); `ComputerFactRows` is the reference. A computer of yours trails its name with a mono "0 of 5 running", names its set-up providers by their marks after its setup state, and its well opens with **Runs at once** as a 1–5 segmented control and **Chat folder** as a select over one muted line; each label sits on its value's baseline. Add a computer is one dialog in two steps. The first puts the command beside the live state, the command in the site's install snippet (a macOS / Linux | Windows segmented control, one raised row (`canvas-card`) whose line scrolls under a faded edge with the `brand` copy button inside, then a one-line muted note and the guide link; no terminal chrome) under one muted paragraph on what it needs (sudo on Linux and macOS, no administrator on Windows, and the account it installs for), and the state as the two-tile connection panel over a Checks card of three check rows (an icon tile, the name over a mono line of what it found, the state as a dot and a word): Computer connected, T3 Code found, Paired. A check that cannot pass says what to do in its mono line. Below 42rem the checks drop under the command. The footer's Set up stays disabled until Paired passes, then opens the setup step. The setup step is one column: the run's state over a 2px `brand` bar filling as providers confirm, with its one action, Set up all (brand until the computer is confirmed, then outline, while Done takes the brand); then one row per provider T3 Code lists, each a switch, the provider mark, the name over a muted line with the state glyph (Not set up yet, the running status, Confirmed, the failure, or "Off · plays leave it out"), its model picker, and one thing at the end: Set up or Retry (outline) while it waits on the person, a ghost Play icon to run it again once confirmed, nothing while it runs or is off. The first row waiting on the person is lifted (`accent` at 40%). The name opens the row's transcript in a well under it, the running or failed row opening by itself. Under the list, one muted line picks the folder the turns run in and one says what they install. The switch saves at once; Done keeps the models and folder. A tunnel computer still pairing keeps its Tunnel and Pair T3 Code step tabs, its commands in the same snippet. `ComputerRow`, `RunnerComputerRow`, `AddComputerDialog`, `ComputerChecks`, `SetupStep`, `SetupProviderItem` and `CommandSnippet` are the reference.
 
 Run settings. The Computers page's Projects tab is one bordered list: Defaults first (a muted sliders tile), then every project of every workspace with no group headings (its `ProjectMark` at 28px), each row the name over one muted line of what its runs use ("Uses defaults" until it changes something) and a chevron. A row folds its editor open in a `surface-2` well capped at 42rem: muted labels in an 8rem column beside full-width controls, Computers as a Your order | Custom segmented control over the ranked list, and Save at the end, outline until something changes. With no computer online the model shows what is saved, never a text field. `RunSettingsRow` and `RunSettingField` in `web/src/components/settings/` are the reference.
 

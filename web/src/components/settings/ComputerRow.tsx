@@ -35,7 +35,7 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
   const actions: RowAction[] = [...moveActions, { label: "Remove", destructive: true, onSelect: () => void removeComputer() }];
 
   return (
-    <div className="px-3 py-3">
+    <div className="py-3">
       <div className="flex items-center gap-2">
         {grip}
         <button
@@ -57,10 +57,10 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
         </button>
         <RowActionsMenu subject={computer.name} actions={actions} />
       </div>
-      <MoveNotice computer={computer} onMove={onMove} />
+      <MoveNotice computer={computer} onMove={onMove} className={grip ? "pl-18" : "pl-6"} />
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>
-          <div className={cn("pt-3", grip ? "pl-12" : "pl-6")}>
+          <div className={cn("pt-3", grip ? "pl-18" : "pl-6")}>
             <ComputerDetails computer={computer} setup={setup} />
           </div>
         </div>

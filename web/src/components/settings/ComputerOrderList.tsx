@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 
 import { EnterList } from "@/components/EnterList";
 import { ComputerOrderItem } from "@/components/settings/ComputerOrderItem";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { useRowSortSensors } from "@/hooks/useRowSortSensors";
 import { useFetchPresence, useReorderComputers } from "@/hooks/PairingHooks";
 import type { Computer } from "@/models/Pairing";
@@ -31,21 +32,24 @@ export const ComputerOrderList = ({ computers }: ComputerOrderListProps) => {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <EnterList aria-label="Your computers, first runs first" className="ml-10 divide-y divide-border rounded-md border">
-          {computers.map((computer, index) => (
-            <ComputerOrderItem
-              key={computer.id}
-              computer={computer}
-              index={index}
-              count={computers.length}
-              presence={presence.data?.[computer.id]}
-              onMove={move}
-            />
-          ))}
-        </EnterList>
-      </SortableContext>
-    </DndContext>
+    // dnd-kit mounts its screen-reader regions beside the list; the wrapper keeps them out of the card's spacing.
+    <div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <EnterList aria-label="Your computers, first runs first" className={settingsListClass}>
+            {computers.map((computer, index) => (
+              <ComputerOrderItem
+                key={computer.id}
+                computer={computer}
+                index={index}
+                count={computers.length}
+                presence={presence.data?.[computer.id]}
+                onMove={move}
+              />
+            ))}
+          </EnterList>
+        </SortableContext>
+      </DndContext>
+    </div>
   );
 };

@@ -18,7 +18,7 @@ export const ProfileCard = ({ user }: { user: User }) => {
   return (
     <SettingsCard
       id="profile"
-      title="Profile"
+      title="Name and picture"
       description="How everyone in your workspaces sees you."
       footer={
         <SettingsSaveBar

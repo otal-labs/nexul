@@ -66,7 +66,8 @@ describe("YourSettingsPage", () => {
 
   it("opens on Profile with the saved display name in the form", async () => {
     renderPage();
-    expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
     expect(await screen.findByLabelText("Display name")).toHaveValue("Onik N");
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
@@ -92,30 +93,27 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/pairing");
 
     expect(await screen.findByRole("link", { name: "Computers, skills out of date" })).toHaveAttribute("href", "/settings/pairing");
-    expect(screen.getByRole("tab", { name: "Computers, skills out of date" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Your computers, skills out of date" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Projects" })).toBeInTheDocument();
   });
 
-  it("opens Security on the Devices tab with the desktop card and the device list", async () => {
+  it("opens Security as one page: the devices, then the tokens, then connecting a device", async () => {
     renderPage("/settings/security");
-    expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
+
     expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/token name/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    const cards = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(cards).toEqual(["Signed-in devices", "Personal access tokens", "Connect a device"]);
+    expect(screen.getByLabelText(/token name/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
   });
 
-  it("lands a computer setup link on the Computers tab with its setup param intact", async () => {
+  it("lands a computer setup link on the Your computers tab with its setup param intact", async () => {
     renderPage("/settings/pairing?setup=c1");
 
-    expect(await screen.findByRole("tab", { name: "Computers", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Your computers", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Computers card")).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent("setup=c1");
   });
 
-  it("opens the personal access tokens from their path", async () => {
-    renderPage("/settings/security/tokens");
-
-    expect(await screen.findByLabelText(/token name/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^create token$/i })).toBeInTheDocument();
-  });
 });

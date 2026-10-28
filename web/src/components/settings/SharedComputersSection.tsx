@@ -1,5 +1,6 @@
 import { EnterList } from "@/components/EnterList";
 import { Microheader } from "@/components/Microheader";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { SharedComputerRow } from "@/components/settings/SharedComputerRow";
 import { useListSharedComputers } from "@/hooks/ComputerHooks";
 
@@ -10,7 +11,7 @@ export const SharedComputersSection = () => {
   return (
     <section aria-labelledby="shared-computers" className="space-y-2">
       <Microheader id="shared-computers">Shared with you</Microheader>
-      <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+      <EnterList className={settingsListClass}>
         {shared.map((computer) => (
           <SharedComputerRow key={computer.id} computer={computer} />
         ))}

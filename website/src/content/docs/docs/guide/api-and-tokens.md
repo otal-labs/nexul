@@ -9,7 +9,7 @@ The web app runs on the same HTTP/JSON API under `/api` that you can call yourse
 
 ## Calling the API
 
-1. Open **Settings → Security → Tokens**, name a token and click **Create token**.
+1. Open **Settings → Security**, and under **Personal access tokens** name a token and click **Create token**.
 2. Copy it. It starts with `dep_` and is shown once.
 3. Send it as a bearer token:
 
@@ -60,11 +60,11 @@ Every event has a versioned JSON Schema in `GET /api/events/catalog`. A list in 
 
 ## Signing in a phone
 
-1. In **Settings → Security → Devices**, click **Generate code** on **Connect a phone**.
+1. In **Settings → Security**, click **Generate code** on the **Phone app** row of **Connect a device**.
 2. Open the Nexul app on your phone and scan the QR code.
 
 The code works once, for two minutes. Only a signed-in device can make one, never a token, so no agent can sign a phone in. **Signed-in devices** lists every browser, desktop app and phone on your account. **Sign out** one, or **Sign out everywhere else**.
 
 ## Connection tokens
 
-A connection token points a client at your instance without you typing its address. It holds the instance URL and a few settings, nothing about you, so it isn't secret. Copy one with **Copy connection token** under **Settings → Security → Devices**, and paste it into the [desktop app](/docs/guide/desktop-app/).
+A connection token points a client at your instance without you typing its address. It holds the instance URL and a few settings, nothing about you, so it isn't secret. Copy one with **Copy connection token** on the **Desktop app** row of **Settings → Security**, and paste it into the [desktop app](/docs/guide/desktop-app/).

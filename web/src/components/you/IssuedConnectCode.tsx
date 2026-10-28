@@ -18,10 +18,12 @@ interface IssuedConnectCodeProps {
   code: ConnectCode;
   onNewCode: () => void;
   generating: boolean;
+  // Off where the row above already says how long the code lasts.
+  hint?: boolean;
 }
 
 // Mounts when a code arrives, so the countdown clock starts at that moment and not when the page opened.
-export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnectCodeProps) => {
+export const IssuedConnectCode = ({ code, onNewCode, generating, hint = true }: IssuedConnectCodeProps) => {
   const now = useNow(true);
   const remaining = new Date(code.expires_at).getTime() - now;
   const expired = remaining <= 0;
@@ -44,7 +46,7 @@ export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnect
         )
       }
     >
-      <SettingsHint>Works once, for two minutes.</SettingsHint>
+      {hint && <SettingsHint>Works once, for two minutes.</SettingsHint>}
       <p className="font-mono text-xs tabular-nums">
         <span className="text-muted-foreground">Code </span>
         {code.code}
