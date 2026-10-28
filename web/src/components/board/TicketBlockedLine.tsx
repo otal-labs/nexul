@@ -1,4 +1,5 @@
 import { Ban } from "lucide-react";
+import { Fragment } from "react";
 
 import { useBoardCardData } from "@/hooks/useBoardCardData";
 import { linkedTicketKey } from "@/models/TicketLink";
@@ -13,13 +14,21 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
   const waitingOn = blockers?.[ticketId] ?? [];
   if (waitingOn.length === 0) return null;
 
-  const keys = waitingOn.map(linkedTicketKey).join(", ");
+  const keys = waitingOn.map(linkedTicketKey);
 
-  // The blocking key, never truncated, on the card's meta line; the sentence is its tooltip and its accessible name.
+  // Every key shows whole, wrapping between keys when they run long: a cut key names no ticket.
   return (
-    <span role="img" aria-label={`Blocked by ${keys}`} title={`Blocked by ${keys}`} className="flex shrink-0 items-baseline gap-1">
-      <Ban className="size-3 shrink-0 self-center text-warning" aria-hidden />
-      {keys}
+    <span title={`Blocked by ${keys.join(", ")}`} className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+      <Ban className="mt-0.5 size-3 shrink-0 text-warning" aria-hidden />
+      <span className="min-w-0">
+        Blocked by{" "}
+        {keys.map((key, index) => (
+          <Fragment key={key}>
+            {index > 0 && ", "}
+            <span className="whitespace-nowrap font-mono">{key}</span>
+          </Fragment>
+        ))}
+      </span>
     </span>
   );
 };

@@ -103,12 +103,11 @@ describe("TicketCard", () => {
     expect(chip).not.toHaveClass(labelDotColor("urgent"));
   });
 
-  it("shows no type icon for a type other than bug, and does not render its name", async () => {
+  it("mutes every type icon but a bug's, so the type never adds a second accent to the card", async () => {
     mockTicketType("Feature");
-    const { container } = renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(await screen.findByText("REF-142")).toBeInTheDocument();
-    expect(screen.queryByText("Feature")).not.toBeInTheDocument();
-    expect(container.querySelector('[data-slot="no-fill-badge"]')).not.toBeInTheDocument();
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    const badge = (await screen.findByText("Feature")).closest('[data-slot="no-fill-badge"]');
+    expect(badge?.querySelector("svg")).toHaveClass("text-muted-foreground");
   });
 
   it("keeps a bug icon's configured colour over the hashed one", async () => {
@@ -142,13 +141,13 @@ describe("TicketCard", () => {
       return base(url, config);
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(await screen.findByRole("img", { name: "Blocked by REF-7" })).toHaveTextContent("REF-7");
+    expect(await screen.findByTitle("Blocked by REF-7")).toHaveTextContent("Blocked by REF-7");
   });
 
   it("shows no blocked line for a ticket with no uncleared blockers", async () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByText("REF-142")).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: /Blocked by/ })).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Blocked by/)).not.toBeInTheDocument();
   });
 
   it("switches to the tester's avatar in a testing-stage column", async () => {

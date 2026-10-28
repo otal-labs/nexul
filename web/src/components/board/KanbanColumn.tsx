@@ -24,7 +24,7 @@ interface KanbanColumnProps {
 // A column mounts this many cards and grows by as many on "Show more": every card is a sortable, so a long column mounted all at once stalls the board.
 const CARD_WINDOW = 10;
 
-// One stage's cell in one lane: its own cards on the stage's well, ending at the last of them; the stage header is drawn once above every lane.
+// One stage's cell in one lane: its own cards on the stage's well, as tall as the lane so a drop below its last card lands in it; the stage header is drawn once above every lane.
 // Folded Done has no well: its cell is bare until a card is held, when it shows where the card would land.
 const KanbanColumnImpl = ({ droppableId, laneLabel, categoryId, column, collapsed, folded, tickets }: KanbanColumnProps) => {
   const empty = tickets.length === 0;
@@ -43,7 +43,7 @@ const KanbanColumnImpl = ({ droppableId, laneLabel, categoryId, column, collapse
     <section
       ref={setNodeRef}
       aria-label={`${column.name} column in ${laneLabel}`}
-      className={cn("flex min-w-0 flex-col gap-1.5 self-start rounded-lg p-1.5", folded ? "group-data-[card-drag]/board:bg-well-shade" : "bg-well-shade")}
+      className={cn("flex min-w-0 flex-col gap-1.5 rounded-lg p-1.5", folded ? "group-data-[card-drag]/board:bg-well-shade" : "bg-well-shade")}
     >
       {/* The 1px top padding is room for a card's hover lift. */}
       <EnterList as="div" className="-mt-px flex flex-col gap-1.5 pt-px">
