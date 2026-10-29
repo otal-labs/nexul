@@ -78,6 +78,7 @@ type fakeRepo struct {
 	updateErr error
 	deleteErr error
 	countErr  error
+	usageErr  error
 	repoErr   error
 	// repoLookupErr fails only GetRepoByFullName, so an add can conflict and its lookup fail.
 	repoLookupErr error
@@ -237,6 +238,15 @@ func (f *fakeRepo) CountServices(_ context.Context, projectID string) (int, erro
 		return 0, f.countErr
 	}
 	return len(f.services[projectID]), nil
+}
+
+func (f *fakeRepo) CountTicketUsage(context.Context, string) (TicketUsage, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.usageErr != nil {
+		return TicketUsage{}, f.usageErr
+	}
+	return TicketUsage{ByStatus: map[string]int{}, ByCategory: map[string]int{}, ByType: map[string]int{}, ByLabel: map[string]int{}}, nil
 }
 
 func (f *fakeRepo) AddRepo(_ context.Context, projectID string, r RepoRef) error {
@@ -929,6 +939,28 @@ func TestDeleteImpact(t *testing.T) {
 		impact, err := s.DeleteImpact(context.Background(), "p-1")
 		require.NoError(t, err)
 		assert.Equal(t, DeleteImpact{Tickets: 2, Repos: 1, Services: 1, RestrictedMembers: []RestrictedMember{}}, impact)
+	})
+}
+
+func TestTicketCounts(t *testing.T) {
+	t.Run("a failed count fails the read", func(t *testing.T) {
+		s, repo, _ := newOwnerRepo(t, true)
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
+		repo.usageErr = errors.New("db down")
+		_, err := s.TicketCounts(context.Background(), "p-1")
+		require.ErrorIs(t, err, repo.usageErr)
+	})
+	t.Run("an unknown project is not found", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, true)
+		_, err := s.TicketCounts(context.Background(), "p-missing")
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("returns the repo's counts", func(t *testing.T) {
+		s, repo, _ := newOwnerRepo(t, true)
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
+		counts, err := s.TicketCounts(context.Background(), "p-1")
+		require.NoError(t, err)
+		assert.NotNil(t, counts.ByStatus)
 	})
 }
 

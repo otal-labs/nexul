@@ -117,6 +117,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/projects/{id}/setup", h.changeSetup)
 	mux.HandleFunc("DELETE /api/projects/{id}", h.delete)
 	mux.HandleFunc("GET /api/projects/{id}/impact", h.impact)
+	mux.HandleFunc("GET /api/projects/{id}/ticket-counts", h.ticketCounts)
 	mux.HandleFunc("GET /api/projects/{id}/access", h.access)
 	mux.HandleFunc("GET /api/projects/{id}/repos", h.listRepos)
 	mux.HandleFunc("POST /api/projects/{id}/repos", h.addRepo)
@@ -256,6 +257,15 @@ func (h *Handler) impact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, impact)
+}
+
+func (h *Handler) ticketCounts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.svc.TicketCounts(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, counts)
 }
 
 // access lists the Restricted members holding access to the project, for project settings' People with access.

@@ -458,3 +458,37 @@ func TestCategoriesRepo_UpdateListCount(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 }
+
+func TestProjectsRepo_CountTicketUsage_GroupsOnlyTheProjectsTickets(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-1", "Backend", 0)))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-2", "Web", 1)))
+	require.NoError(t, s.Categories.Create(ctx, newTestCategory("c-1", "p-1", "Sprint 1", 0)))
+	add := func(id, project, category, typeID, status string, labels ...string) {
+		require.NoError(t, s.Tickets.Create(ctx, &tickets.Ticket{
+			ID: id, ProjectID: project, CategoryID: category, TypeID: typeID, Title: id, Status: tickets.Status(status),
+			CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		}))
+		for _, label := range labels {
+			require.NoError(t, s.Tickets.AddLabel(ctx, id, label, nil))
+		}
+	}
+	add("t-1", "p-1", "c-1", "ticket-type-bug", "open", "ui", "backend")
+	add("t-2", "p-1", "c-1", "ticket-type-bug", "done", "ui")
+	add("t-3", "p-1", "", "", "open")
+	add("t-4", "p-2", "", "ticket-type-bug", "open", "ui")
+
+	got, err := s.Projects.CountTicketUsage(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{"open": 2, "done": 1}, got.ByStatus)
+	assert.Equal(t, map[string]int{"c-1": 2}, got.ByCategory)
+	assert.Equal(t, map[string]int{"ticket-type-bug": 2}, got.ByType)
+	assert.Equal(t, map[string]int{"ui": 2, "backend": 1}, got.ByLabel)
+
+	empty, err := s.Projects.CountTicketUsage(ctx, "p-missing")
+	require.NoError(t, err)
+	assert.Empty(t, empty.ByStatus)
+	assert.NotNil(t, empty.ByLabel)
+}

@@ -177,3 +177,15 @@ WHERE tickets.due_on != '' AND tickets.due_on >= sqlc.arg(from_on) AND tickets.d
   AND tickets.project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id))
   AND (sqlc.arg(all_projects) OR tickets.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
 ORDER BY tickets.due_on, tickets.id;
+
+-- name: CountProjectTicketsByStatus :many
+SELECT status AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? GROUP BY status;
+
+-- name: CountProjectTicketsByCategory :many
+SELECT CAST(category_id AS TEXT) AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? AND category_id IS NOT NULL AND category_id != '' GROUP BY category_id;
+
+-- name: CountProjectTicketsByType :many
+SELECT CAST(type_id AS TEXT) AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? AND type_id IS NOT NULL AND type_id != '' GROUP BY type_id;
+
+-- name: CountProjectTicketsByLabel :many
+SELECT ticket_labels.label AS name, COUNT(*) AS n FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id WHERE tickets.project_id = ? GROUP BY ticket_labels.label;
