@@ -580,6 +580,8 @@ open all day. Every lane's row and the stage row share one grid template
 (`boardGridTemplate`): 180px minimum and an equal share for each open stage,
 7.5rem for folded Done, so a stage is one column down the whole board; past
 the panel's width the board scrolls sideways and never squeezes a title, and
+the board takes the page's wide measure rather than the whole panel, so a
+very wide screen leaves panel either side instead of stretching every card, and
 below 1024 its right edge fades over 0.75rem, short enough that a cut
 column's titles stay readable, and the bottom fades into the panel's edge.
 The scrollbar sits in the page's right padding, beside the columns, with its

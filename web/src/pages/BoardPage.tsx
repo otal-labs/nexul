@@ -63,8 +63,8 @@ export const BoardPage = () => {
   const onAddTicket = useLatestCallback((categoryId: string | null, statusId: string) => void addTicketToColumn(categoryId, statusId));
 
   return (
-    // Full-bleed: the board is the one page where width is columns, so it gets the whole panel.
-    <Container className="flex h-full max-w-none flex-col gap-3 pt-5">
+    // The app's wide measure: past it the board stops growing rather than stretching every card.
+    <Container className="flex h-full flex-col gap-3 pt-5">
       {!routeParam && (
         <BoardUnscopedStates
           isLoading={isPending}
