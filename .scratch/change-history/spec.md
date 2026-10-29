@@ -99,9 +99,11 @@ Additive migrations, one per slice, each asked for in its ticket's PR:
 
 A version or change is written in the same transaction as the save that
 causes it, followed by one prune statement that deletes the oldest unnamed
-rows past the cap. `via` is the play label or automation name taken from the
-request's actor (`identity.ActorFromCtx`, the trail on a play run), the same
-source the ticket status moves already use.
+rows past the cap. `via` is the automation name when an automation made the
+save, `mcp` when an agent made it over MCP (the memory precedent, ADR 0049),
+and empty for the browser. A play run's own name can't be recorded yet: its
+agent calls MCP with the person's computer token, which names no run
+(ticket 20).
 
 ## The sitting
 

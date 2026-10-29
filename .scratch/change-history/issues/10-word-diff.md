@@ -1,6 +1,6 @@
 # 10 — Word diff that stays fast on long text
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, The diff.
