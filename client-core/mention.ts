@@ -33,7 +33,24 @@ const renderTicketTemplate = (template: string, chip: MentionChipData | undefine
     Developer: chip?.developer_label ?? "",
     Due: chip?.due_label ?? "",
   };
-  return template.replace(/\{ticket\.(\w+)\}/g, (match, key: string) => values[key] ?? match);
+  // Split keeps the tokens at the odd indexes; whitespace alone between two fields reads as a dot, and an empty field takes no dot.
+  const parts = template.split(/(\{ticket\.\w+\})/);
+  let text = "";
+  let between = "";
+  let afterField = false;
+  for (const [index, part] of parts.entries()) {
+    if (index % 2 === 0) {
+      between += part;
+      continue;
+    }
+    const value = values[part.slice("{ticket.".length, -1)] ?? part;
+    if (!value) continue;
+    text += afterField && between.trim() === "" ? " · " : between;
+    text += value;
+    between = "";
+    afterField = true;
+  }
+  return (text + between).trim();
 };
 
 // A ticket follows the workspace's {ticket.Field} template and a doc shows its title; unresolved, the stored label stands in.

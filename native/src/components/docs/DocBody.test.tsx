@@ -72,7 +72,7 @@ test("a doc and a ticket the viewer can't open show their text, locked, and don'
   ]);
 
   await screen.findByText(/Secret vault/);
-  expect(screen.getByText(/Rotate keys In progress/)).toBeTruthy();
+  expect(screen.getByText(/Rotate keys · In progress/)).toBeTruthy();
   expect(screen.getAllByRole("img", { name: "You don't have access" })).toHaveLength(2);
   expect(screen.queryByRole("link")).toBeNull();
   await userEvent.press(screen.getByText(/Secret vault/));
@@ -87,7 +87,7 @@ test("a doc and a ticket the viewer can open stay links into the app", async () 
   ]);
 
   await userEvent.press(await screen.findByRole("link", { name: "Architecture" }));
-  await userEvent.press(screen.getByRole("link", { name: "Rotate keys In progress" }));
+  await userEvent.press(screen.getByRole("link", { name: "Rotate keys · In progress" }));
 
   expect(mockPush).toHaveBeenNthCalledWith(1, "/more/docs/d-2");
   expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t-9");
