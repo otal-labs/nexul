@@ -1,5 +1,5 @@
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBodyView } from "@/components/doc/DocBodyView";
@@ -10,6 +10,7 @@ import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { TicketHeaderStrip } from "@/components/ticket/TicketHeaderStrip";
+import { TicketHistoryDialog } from "@/components/ticket/TicketHistoryDialog";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
 import { useActionState } from "@/hooks/useActionState";
@@ -53,7 +54,8 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
 
   const ticketLabel = project ? `${project.prefix}-${ticket.number}` : ticket.id;
-  const menu = useTicketActions(ticket, ticketLabel, project);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const menu = useTicketActions(ticket, ticketLabel, project, () => setHistoryOpen(true));
 
   const workspaceCrumb = useWorkspaceCrumb();
   const projectCrumb = useProjectCrumb(ticket.project_id);
@@ -118,6 +120,7 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
       />
       {frameBody && frameBody(article)}
       {!frameBody && article}
+      {historyOpen && <TicketHistoryDialog ticket={ticket} onClose={() => setHistoryOpen(false)} />}
     </div>
   );
 };

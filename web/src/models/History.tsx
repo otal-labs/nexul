@@ -18,6 +18,14 @@ export interface HistoryVersionSummary {
   restored_from?: number | null;
 }
 
+// Who made a change and through what: "user:mcp" is a person's agent, "play" a play run, "automation" an automation.
+export interface HistoryActor {
+  kind?: string;
+  user_id?: string;
+  automation_name?: string;
+  play_label?: string;
+}
+
 // One field a save changed, as a ticket's or play's history lists it: from and to are display-ready, empty for nothing.
 export interface HistoryFieldChange {
   id: string;
@@ -25,7 +33,7 @@ export interface HistoryFieldChange {
   from: string;
   to: string;
   created_at: string;
-  actor: { user_id?: string; automation_name?: string; play_label?: string };
+  actor: HistoryActor;
 }
 
 export interface History {
@@ -35,7 +43,8 @@ export interface History {
 
 export interface HistoryVersion {
   version: number;
-  title: string;
+  /** Absent on an item with no title of its own, such as a ticket's description. */
+  title?: string;
   /** The body as the entity stores it: a Tiptap JSON string, or markdown on an old record. */
   body: string;
 }

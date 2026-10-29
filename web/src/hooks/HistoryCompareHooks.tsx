@@ -28,8 +28,9 @@ export const useHistoryCompare = (
   const compare = showChanges && previous !== undefined;
 
   const title = useMemo<DiffSegment[]>(() => {
-    if (compare && before.data && after.data) return diffWords(before.data.title, after.data.title);
-    return [{ type: "context", text: after.data?.title ?? "" }];
+    if (after.data?.title === undefined) return [];
+    if (compare && before.data?.title !== undefined) return diffWords(before.data.title, after.data.title);
+    return [{ type: "context", text: after.data.title }];
   }, [compare, before.data, after.data]);
   const titleChanged = title.some((part) => part.type !== "context");
 
