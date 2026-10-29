@@ -16,7 +16,9 @@ Open **Memories** under the project in the sidebar. Every memory belongs to one 
 3. Switch on **Always included** if every agent turn in the project should read it.
 4. Write the body and save.
 
-To edit one, open it, change the title, hint, or body, and press **Save** in the page header, beside **Clone to…**. A memory isn't edited live like a doc: every save adds a version under **Versions**, and **Revert** on an older version saves it again as the newest, so nothing in the history is lost.
+To edit one, open it, change the title, **When to use** line, or body, and press **Save** at the top right. A memory isn't edited live like a doc: every save adds a version under **Versions**, beside the body on a wide window and under it on a narrow one, and **Revert** on an older version saves it again as the newest, so nothing in the history is lost.
+
+The line under an open memory's title holds its two settings, which save as soon as you change them: its folder (**Main** or **Footer**, see below) and **Always included**. The same switch sits on each row of the list.
 
 ## How agents find memories
 
@@ -33,17 +35,17 @@ Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory 
 
 ## Main and Footer
 
-The list has two folders. **Main** holds everyday memories. **Footer** holds memories that conclude a play run: the agent reads them once the work is done, for example to decide which column the ticket belongs in now. Move a memory between them with **Move to** in its right-click menu. A play's run dialog lists footer memories in their own section.
+The list has two folders. **Main** holds everyday memories. **Footer** holds memories that conclude a play run: the agent reads them once the work is done, for example to decide which column the ticket belongs in now. Move a memory between them with the folder under its title, or **Move to** in its right-click menu. A play's run dialog lists footer memories in their own section.
 
 ## Clone or delete
 
-**Clone** in the right-click menu, or **Clone to…** on an open memory, copies it into another project in any workspace you belong to. The copy is independent from then on. **Delete** removes it.
+**Clone** in the right-click menu, or **Clone to…** in an open memory's `…` menu, copies it into another project in any workspace you belong to. The copy is independent from then on. **Delete**, in the same menus, removes it.
 
 ## The decisions log
 
 A project can have a decisions log: a memory listing only the tickets that changed how the project works, such as a new pattern, a dropped library, or a reversed decision. Each entry is at most three lines: the date and the decision, `Why:` in one line, and a link to the ticket. When a later decision reverses an entry, the old one is marked `(superseded by <ticket>)`.
 
-The [decisions check](/docs/guide/plays/#the-decisions-check) writes it as tickets reach Done. You can edit it like any memory. It is never always included; agents look it up when they need the why.
+The [decisions check](/docs/guide/plays/#the-decisions-check) writes it as tickets reach Done. You can edit it like any memory. It is never always included, so its row and its page show a lock instead of the switch; agents look it up when they need the why. The interview memory shows the same lock, because it is always included.
 
 ## Templates
 

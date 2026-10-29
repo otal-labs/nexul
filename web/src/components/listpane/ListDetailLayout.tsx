@@ -10,10 +10,12 @@ interface ListDetailLayoutProps {
   hasSelection: boolean;
   /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. */
   placeholder: ReactNode;
+  /** Reserves the record's scrollbar so it never shifts the record; the record then gives that width back from its right padding. */
+  stableGutter?: boolean;
 }
 
 // The app sidebar, a list, and the open record, for an editor: below lg one pane shows at a time, since the editor needs the width.
-export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: ListDetailLayoutProps) => {
+export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stableGutter = false }: ListDetailLayoutProps) => {
   const width = useListPaneStore((s) => s.width);
 
   return (
@@ -31,7 +33,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
       </div>
       {/* The inner box scrolls so its bottom fade spares the panel's edge; relative keeps sr-only file inputs inside the clip. */}
       <div className={cn("panel min-w-0 flex-1 overflow-hidden lg:block", hasSelection ? "block" : "hidden")}>
-        <div className="scroll-edge relative h-full overflow-y-auto">
+        <div className={cn("scroll-edge relative h-full overflow-y-auto", stableGutter && "[scrollbar-gutter:stable]")}>
           {hasSelection && detail}
           {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}
         </div>

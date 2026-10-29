@@ -19,8 +19,8 @@ export const MemoryGroupSection = ({ group, projectToken, selectedId, forceOpen 
   const open = forceOpen || !collapsed;
   return (
     <section aria-label={group.label}>
-      <div className="flex h-9 items-center pr-2 pl-3">
-        <FolderToggle name={group.label} open={open} onToggle={() => setCollapsed((c) => !c)} meta={group.memories.length} />
+      <div className="flex h-9 items-center pr-3 pl-3">
+        <FolderToggle name={group.label} hint={group.hint} open={open} onToggle={() => setCollapsed((c) => !c)} meta={group.memories.length} />
       </div>
       {open && group.memories.length > 0 && (
         <EnterList>

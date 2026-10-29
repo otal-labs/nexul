@@ -50,9 +50,10 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
         title={memory.title}
         snippet={snippet}
         selected={selected}
+        metaOnTitleLine
         meta={<span className="font-mono text-xs text-muted-foreground tabular-nums">{formatUpdatedAgo(memory.updated_at)}</span>}
         menu={{ moveTo, onClone, onDelete, gates, deleteGate }}
-        trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} size="sm" />}
+        trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} />}
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
     </>

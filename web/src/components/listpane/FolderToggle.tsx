@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 interface FolderToggleProps {
   name: string;
+  /** What the folder means, muted after its name. */
+  hint?: string;
   open: boolean;
   onToggle: () => void;
   /** Trailing muted meta, a count or a summary of what the folder holds. */
@@ -14,7 +16,7 @@ interface FolderToggleProps {
 }
 
 // A folder row's label: chevron, folder icon, the folder's own name in sentence case, and its meta trailing right in mono.
-export const FolderToggle = ({ name, open, onToggle, meta, metaClassName, className }: FolderToggleProps) => (
+export const FolderToggle = ({ name, hint, open, onToggle, meta, metaClassName, className }: FolderToggleProps) => (
   <button
     type="button"
     onClick={onToggle}
@@ -28,6 +30,7 @@ export const FolderToggle = ({ name, open, onToggle, meta, metaClassName, classN
     {open && <FolderOpenIcon className="size-3.5 shrink-0" aria-hidden />}
     {!open && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
     <span className="truncate">{name}</span>
+    {hint && <span className="truncate pl-1 font-normal">{hint}</span>}
     <span className={cn("ml-auto shrink-0 font-mono text-[11px] font-normal tabular-nums", metaClassName)}>{meta}</span>
   </button>
 );

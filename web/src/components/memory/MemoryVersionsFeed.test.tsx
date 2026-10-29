@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
@@ -59,5 +60,18 @@ describe("MemoryVersionsFeed", () => {
     const buttons = await screen.findAllByRole("button", { name: /Revert/ });
     expect(buttons).toHaveLength(1); // only v1, not the current v2
     expect(mocks.get).toHaveBeenCalledWith("/api/memories/mem-1/versions");
+  });
+
+  it("shows the newest five, then opens the rest in place", async () => {
+    const seven = Array.from({ length: 7 }, (_, i) => ({ ...versions[1], id: `ver-${7 - i}`, version: 7 - i }));
+    mocks.get.mockImplementation(asOwner((url) => (url === "/api/memories/mem-1" ? { id: "mem-1", project_id: "p-1" } : seven)));
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    const user = userEvent.setup();
+    renderFeed();
+
+    await waitFor(() => expect(screen.getAllByText(/^v\d$/)).toHaveLength(5));
+    await user.click(screen.getByRole("button", { name: "All 7 versions" }));
+    expect(screen.getAllByText(/^v\d$/)).toHaveLength(7);
+    expect(screen.queryByRole("button", { name: /All \d+ versions/ })).not.toBeInTheDocument();
   });
 });

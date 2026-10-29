@@ -8,11 +8,10 @@ import type { MemoryVersion } from "@/models/MemoryVersion";
 interface MemoryVersionRevertButtonProps {
   memoryId: string;
   version: MemoryVersion;
-  /** An icon-only button that a row reveals on hover or focus, for a narrow column. */
-  compact?: boolean;
 }
 
-export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }: MemoryVersionRevertButtonProps) => {
+// Icon only, revealed by its row on hover or focus.
+export const MemoryVersionRevertButton = ({ memoryId, version }: MemoryVersionRevertButtonProps) => {
   const revert = useRevertMemory();
   const projectId = useFetchMemory(memoryId).data?.project_id;
   const { open: confirm } = useConfirmationDialog();
@@ -27,28 +26,19 @@ export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }
   };
 
   return (
-    <>
-      {compact && (
-        <ActionButton
-          permission="memories:write"
-          projectId={projectId}
-          verb="revert memories"
-          icon={RotateCcw}
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="-my-0.5 size-6 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-          aria-label={`Revert to v${version.version}`}
-          title={`Revert to v${version.version}`}
-          onClick={onRevert}
-          loading={revert.isPending}
-        />
-      )}
-      {!compact && (
-        <ActionButton permission="memories:write" projectId={projectId} verb="revert memories" icon={RotateCcw} type="button" variant="outline" size="sm" onClick={onRevert} loading={revert.isPending}>
-          Revert
-        </ActionButton>
-      )}
-    </>
+    <ActionButton
+      permission="memories:write"
+      projectId={projectId}
+      verb="revert memories"
+      icon={RotateCcw}
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="-my-0.5 size-5 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+      aria-label={`Revert to v${version.version}`}
+      title={`Revert to v${version.version}`}
+      onClick={onRevert}
+      loading={revert.isPending}
+    />
   );
 };
