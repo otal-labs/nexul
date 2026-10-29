@@ -64,8 +64,8 @@ describe("AutomationVersionRow", () => {
     expect(screen.queryByText(/u1/)).not.toBeInTheDocument();
   });
 
-  it("hides rollback for the active version", () => {
-    renderRow(version({ status: AutomationVersionStatus.Active }));
+  it.each([AutomationVersionStatus.Active, AutomationVersionStatus.Pending])("hides rollback for a %s version", (status) => {
+    renderRow(version({ status }));
     expect(screen.queryByRole("button", { name: /Rollback/ })).not.toBeInTheDocument();
   });
 

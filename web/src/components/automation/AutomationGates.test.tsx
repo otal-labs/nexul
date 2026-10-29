@@ -75,7 +75,7 @@ const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]
     ui: (
       <>
         <AutomationVersionDiff automationId="a1" diff={{ active: null, pending: version }} />
-        <AutomationVersionRow automationId="a1" version={version} />
+        <AutomationVersionRow automationId="a1" version={{ ...version, status: AutomationVersionStatus.Inactive }} />
       </>
     ),
     controls: [
