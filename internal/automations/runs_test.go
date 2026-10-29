@@ -51,13 +51,13 @@ func TestAppendCappedLog_AlreadyAtCap_DiscardsChunk(t *testing.T) {
 
 func TestRunsService_ListByAutomation_NoPermission_ReturnsForbidden(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil))
-	_, err := svc.ListByAutomation(context.Background(), "u1", "a1", 10)
+	_, err := svc.ListByAutomation(context.Background(), "u1", "a1", false, 10)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
 func TestRunsService_ListByAutomation_EmptyActor_ReturnsUnauthorized(t *testing.T) {
 	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
-	_, err := svc.ListByAutomation(context.Background(), "", "a1", 10)
+	_, err := svc.ListByAutomation(context.Background(), "", "a1", false, 10)
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
@@ -67,7 +67,7 @@ func TestRunsService_ListByAutomation_ReturnsOnlyMatchingAutomation(t *testing.T
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r2", AutomationID: "a2", CreatedAt: time.Now()}))
 
 	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
-	runs, err := svc.ListByAutomation(context.Background(), "u1", "a1", 10)
+	runs, err := svc.ListByAutomation(context.Background(), "u1", "a1", false, 10)
 	require.NoError(t, err)
 	require.Len(t, runs, 1)
 	assert.Equal(t, "r1", runs[0].ID)
@@ -194,6 +194,39 @@ func TestRunsHandler_List_ReturnsRuns(t *testing.T) {
 	assert.Equal(t, "a1", runs[0]["automation_id"])
 	assert.Equal(t, string(RunOutcomeSuccess), runs[0]["outcome"])
 	assert.InDelta(t, 42, runs[0]["duration_ms"], 0)
+}
+
+func TestRunsHandler_List_OutcomeFailed_ReturnsFailuresAndCrashes(t *testing.T) {
+	repo := newFakeRunsRepo()
+	for id, outcome := range map[string]RunOutcome{"ok": RunOutcomeSuccess, "failed": RunOutcomeFailure, "crashed": RunOutcomeCrash} {
+		require.NoError(t, repo.Create(context.Background(), &Run{ID: id, AutomationID: "a1", Outcome: outcome, CreatedAt: time.Now()}))
+	}
+	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
+
+	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs?outcome=failed", nil), "u1")
+	req.SetPathValue("id", "a1")
+	rec := httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var runs []Run
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &runs))
+	var ids []string
+	for _, r := range runs {
+		ids = append(ids, r.ID)
+	}
+	assert.ElementsMatch(t, []string{"failed", "crashed"}, ids)
+}
+
+func TestRunsHandler_List_UnknownOutcome_ReturnsBadRequest(t *testing.T) {
+	h := NewRunsHandler(NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1")))
+
+	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs?outcome=success", nil), "u1")
+	req.SetPathValue("id", "a1")
+	rec := httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestRunsHandler_List_Forbidden_ReturnsError(t *testing.T) {

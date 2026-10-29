@@ -123,3 +123,47 @@ func (q *Queries) ListAutomationRunsByAutomation(ctx context.Context, arg ListAu
 	}
 	return items, nil
 }
+
+const listFailedAutomationRunsByAutomation = `-- name: ListFailedAutomationRunsByAutomation :many
+SELECT id, automation_id, event_topic, event_id, outcome, error, started_at, finished_at, duration_ms, logs, created_at FROM automation_runs WHERE automation_id = ? AND outcome <> 'success' ORDER BY started_at DESC, id DESC LIMIT ?
+`
+
+type ListFailedAutomationRunsByAutomationParams struct {
+	AutomationID string
+	Limit        int64
+}
+
+func (q *Queries) ListFailedAutomationRunsByAutomation(ctx context.Context, arg ListFailedAutomationRunsByAutomationParams) ([]AutomationRun, error) {
+	rows, err := q.db.QueryContext(ctx, listFailedAutomationRunsByAutomation, arg.AutomationID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutomationRun
+	for rows.Next() {
+		var i AutomationRun
+		if err := rows.Scan(
+			&i.ID,
+			&i.AutomationID,
+			&i.EventTopic,
+			&i.EventID,
+			&i.Outcome,
+			&i.Error,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.DurationMs,
+			&i.Logs,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

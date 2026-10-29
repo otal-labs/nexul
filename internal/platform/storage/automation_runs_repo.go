@@ -57,6 +57,20 @@ func (r *AutomationRunsRepo) ListByAutomation(ctx context.Context, automationID 
 	return out, nil
 }
 
+func (r *AutomationRunsRepo) ListFailedByAutomation(ctx context.Context, automationID string, limit int) ([]automations.Run, error) {
+	rows, err := r.q.ListFailedAutomationRunsByAutomation(ctx, sqlcgen.ListFailedAutomationRunsByAutomationParams{
+		AutomationID: automationID, Limit: int64(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list failed automation runs for %s: %w", automationID, err)
+	}
+	var out []automations.Run
+	for _, row := range rows {
+		out = append(out, toAutomationRun(row))
+	}
+	return out, nil
+}
+
 func (r *AutomationRunsRepo) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
 	var n int64
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
