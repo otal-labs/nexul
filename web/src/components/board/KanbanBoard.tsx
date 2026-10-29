@@ -174,17 +174,20 @@ export const KanbanBoard = ({
         }}
       >
         {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
-        {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
-        <div
-          data-card-drag={activeTicket ? "" : undefined}
-          className="group/board @container min-h-0 flex-1 overflow-auto pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)] max-lg:[mask-composite:intersect] max-lg:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-0.75rem),transparent)]"
-        >
-          <div className="relative min-h-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
-            <div className="relative space-y-3">
-              <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
-              {shownSwimlanes.map((lane) => (
-                <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
-              ))}
+        {/* The frame reaches into the page's right padding (Container's px-6) and the scrollbar lives there, so opening a lane never narrows the columns. */}
+        <div className="@container -mr-6 flex min-h-0 flex-1 flex-col">
+          {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
+          <div
+            data-card-drag={activeTicket ? "" : undefined}
+            className="group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)] max-lg:[mask-composite:intersect] max-lg:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-2.25rem),transparent_calc(100%-1.5rem))]"
+          >
+            <div className="relative min-h-full w-[calc(100cqw-1.5rem)]" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
+              <div className="relative space-y-3">
+                <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
+                {shownSwimlanes.map((lane) => (
+                  <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
