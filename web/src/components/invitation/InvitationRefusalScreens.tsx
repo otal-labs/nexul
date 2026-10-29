@@ -1,44 +1,39 @@
-import { ArrowLeftRight } from "lucide-react";
 import { Link } from "react-router";
 
-import { Button } from "@/components/ui/button";
+import { SignedOutHeader } from "@/components/auth/SignedOutHeader";
 import { InvitationIdentityRow } from "@/components/invitation/InvitationIdentityRow";
-import { InvitationPanel } from "@/components/invitation/InvitationPanel";
-import { Logo } from "@/components/Logo";
-import { microheaderClass } from "@/components/Microheader";
-import { displayTitleClass } from "@/components/PageHeader";
-import { PersonAvatar } from "@/components/PersonAvatar";
+import { InvitationNotYou } from "@/components/invitation/InvitationNotYou";
+import { Button } from "@/components/ui/button";
 import type { RefusedPerson } from "@/models/Invitation";
-import { cn } from "@/lib/utils";
 
-// The server never names the instance on a refusal, and the page is served from it.
-const instanceHost = () => window.location.host;
-
-// Says only that the link is gone: no inviter, no next step, nothing that tells expired from deleted.
+// Says only that the link is gone: no inviter, nothing that tells expired from deleted, and the way to sign in.
 export const InvitationGoneScreen = () => (
-  <InvitationPanel className="text-center">
-    <Logo className="mx-auto size-10 rounded-lg opacity-70 [&_svg]:size-6" />
-    <p className={cn(microheaderClass, "mt-4")}>Invitation</p>
-    <h1 className={cn(displayTitleClass, "mt-1.5 text-[1.5rem]")}>This invitation has been deleted or has expired</h1>
-    <p className="mt-2 font-mono text-xs break-all text-muted-foreground">{instanceHost()}</p>
-  </InvitationPanel>
+  <>
+    <SignedOutHeader title="This invitation has been deleted or has expired" subtitle="Ask whoever sent it for a new link." />
+    <Button asChild size="lg" variant="outline" className="mt-6 w-full">
+      <Link to="/login" replace>Go to sign in</Link>
+    </Button>
+  </>
 );
 
+interface InvitationExistingAccountScreenProps {
+  person?: RefusedPerson | undefined;
+  // Set while this browser holds a session: signing out returns the card to the providers with the same link.
+  onSignOut?: (() => void) | undefined;
+  onRestart: () => void;
+}
+
 // Turned away before anything is written, so the link stays unused for the person it was made for.
-export const InvitationExistingAccountScreen = ({ person }: { person?: RefusedPerson | undefined }) => (
-  <InvitationPanel className="text-center">
-    <div className="flex items-center justify-center gap-3">
-      <Logo className="size-10 rounded-lg [&_svg]:size-6" />
-      <ArrowLeftRight aria-hidden className="size-4 text-muted-foreground" />
-      {person && <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />}
+export const InvitationExistingAccountScreen = ({ person, onSignOut, onRestart }: InvitationExistingAccountScreenProps) => (
+  <>
+    <SignedOutHeader title="You already have an account here" subtitle="This invitation is for someone new." />
+    {person && <InvitationIdentityRow person={person} className="mt-6" action={!onSignOut && <InvitationNotYou onRestart={onRestart} />} />}
+    <div className="mt-4 grid gap-1.5">
+      <Button asChild size="lg" className="w-full">
+        <Link to="/" replace>Go to {window.location.host}</Link>
+      </Button>
+      {onSignOut && <Button type="button" size="lg" variant="ghost" className="w-full text-muted-foreground" onClick={onSignOut}>Sign out and use another account</Button>}
     </div>
-    <p className={cn(microheaderClass, "mt-4")}>Invitation</p>
-    <h1 className={cn(displayTitleClass, "mt-1.5 text-[1.5rem]")}>You already have an account here</h1>
-    <p className="mt-2 text-sm text-muted-foreground">This invitation is for someone new.</p>
-    {person && <InvitationIdentityRow person={person} className="mt-6 justify-center" />}
-    <Button asChild className="mt-4 w-full">
-      <Link to="/" replace>Go to {instanceHost()}</Link>
-    </Button>
-    <p className="mt-4 text-xs text-muted-foreground">The link stays unused, so it still works for the person it was meant for.</p>
-  </InvitationPanel>
+    <p className="mt-4 text-xs text-pretty text-muted-foreground">The link stays unused for the person it was meant for.</p>
+  </>
 );

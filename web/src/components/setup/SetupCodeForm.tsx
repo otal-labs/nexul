@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { errorMessage, type ApiErrorBody } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+import { CommandRow } from "@/components/pairing/CommandRow";
 import { Button } from "@/components/ui/button";
 import { useUnlockSetup } from "@/hooks/SetupHooks";
 import { SetupCodeFormSchema, codeFromFragment, type SetupCodeFormData } from "@/models/Setup";
@@ -35,7 +36,7 @@ export const SetupCodeForm = () => {
     try {
       await unlock.mutateAsync(code);
     } catch (err) {
-      form.setError("root", { message: unlockError(err) });
+      form.setError("code", { message: unlockError(err) });
     }
   };
 
@@ -50,17 +51,11 @@ export const SetupCodeForm = () => {
         spellCheck={false}
         className="font-mono"
       />
-      <p className="text-sm text-muted-foreground">
-        The installer printed it in its summary. Lost it? Run{" "}
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">sudo nexul status</code> on
-        the server.
-      </p>
-      {form.formState.errors.root && (
-        <p role="alert" className="text-sm text-destructive">
-          {form.formState.errors.root.message}
-        </p>
-      )}
-      <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+      <div className="space-y-2">
+        <p className="text-[13px] text-muted-foreground">The installer printed it. Lost it? Run this on the server:</p>
+        <CommandRow lines={["sudo nexul status"]} ariaLabel="The command to run on the server" copyLabel="command" quiet />
+      </div>
+      <Button type="submit" size="lg" className="w-full" loading={form.formState.isSubmitting}>
         Continue
       </Button>
     </form>

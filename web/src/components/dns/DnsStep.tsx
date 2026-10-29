@@ -53,7 +53,7 @@ export const DnsStep = ({ title, description, state, summary, onChange, last = f
           )}
         </div>
         {state === "done" && onChange && (
-          <Button variant="ghost" size="sm" className="-mr-2 -mt-1 text-muted-foreground" onClick={onChange}>
+          <Button variant="ghost" size="sm" className="-mt-1 -mr-3 text-muted-foreground" onClick={onChange}>
             Change
           </Button>
         )}

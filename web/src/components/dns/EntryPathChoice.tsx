@@ -20,7 +20,7 @@ const EntryPathRow = ({ option }: EntryPathRowProps) => {
     <label
       htmlFor={`entry-path-${option.value}`}
       className={cn(
-        !inWizard && "-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
+        !inWizard && "flex cursor-pointer items-start gap-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
         inWizard && wizardOptionClass,
       )}
     >
@@ -55,7 +55,7 @@ export const EntryPathChoice = ({ options = entryPathOptions, onContinue }: Entr
           ))}
         </RadioGroup>
         <InWizardBar>
-          <Button className="w-full sm:w-auto" disabled={path === null} onClick={() => path && onContinue(path)}>
+          <Button size={inWizard ? "default" : "lg"} className={inWizard ? "w-full sm:w-auto" : "w-full"} disabled={path === null} onClick={() => path && onContinue(path)}>
             Continue
           </Button>
         </InWizardBar>

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { CreateInvitationFormSchema, hasDuplicateInvitationWorkspaces, parseInvitationFragment } from "@/models/Invitation";
+import { CreateInvitationFormSchema, hasDuplicateInvitationWorkspaces, invitationTitle, parseInvitationFragment } from "@/models/Invitation";
 
 describe("CreateInvitationFormSchema", () => {
   it("accepts one or more grants with the fixed expiry choices", () => {
@@ -20,5 +20,17 @@ describe("CreateInvitationFormSchema", () => {
   it("reports malformed fragments without throwing", () => {
     expect(parseInvitationFragment("#%E0%A4%A")).toEqual({ token: "", acceptance: false, malformed: true });
     expect(parseInvitationFragment("#acceptance-token=abc")).toEqual({ token: "abc", acceptance: true, malformed: false });
+  });
+});
+
+describe("invitationTitle", () => {
+  const grant = (name: string) => ({ workspace_id: name, workspace_name: name, role_id: "r", role_name: "Member", roles: [] });
+  it.each([
+    ["one workspace", { grants: [grant("Northwind")], expires_at: "later" }, "Join Northwind"],
+    ["several", { grants: [grant("Northwind"), grant("Globex")], expires_at: "later" }, "Join 2 workspaces"],
+    ["no grants, the instance named", { instance_name: "Acme", grants: [], expires_at: "later" }, "Join Acme"],
+    ["not read yet, never the host the corner already shows", undefined, "Your invitation"],
+  ])("names %s", (_, details, title) => {
+    expect(invitationTitle(details)).toBe(title);
   });
 });

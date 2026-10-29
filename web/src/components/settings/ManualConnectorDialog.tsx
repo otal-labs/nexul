@@ -26,13 +26,15 @@ import type { CheckResult, Connector, CredentialCheck } from "@/models/Connector
 
 interface ManualConnectorDialogProps {
   connector: Connector;
+  // First-run setup's 40px full-width Connect, beside the other setup actions.
+  wide?: boolean;
 }
 
 // A connector without named checks verifies as one row, shown only once Verify runs.
 const wholeCheck: CredentialCheck = { key: "", label: "accepted these credentials" };
 
 // Two beats: Verify fans one request per named check out in parallel and ticks each row as it lands; Confirm stores and closes.
-export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps) => {
+export const ManualConnectorDialog = ({ connector, wide = false }: ManualConnectorDialogProps) => {
   const fields = connector.manual ?? [];
   const named = !!connector.checks?.length;
   const checks = named ? connector.checks! : [wholeCheck];
@@ -85,7 +87,7 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
       }}
     >
       <DialogTrigger asChild>
-        <ActionButton permission="connectors:write" verb="connect connectors" size="sm">
+        <ActionButton permission="connectors:write" verb="connect connectors" size={wide ? "lg" : "sm"} className={wide ? "w-full" : undefined}>
           Connect
         </ActionButton>
       </DialogTrigger>

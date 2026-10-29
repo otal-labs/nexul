@@ -39,7 +39,7 @@ export const ProxyDomainForm = ({ address, onSubmit }: ProxyDomainFormProps) => 
           type="email"
         />
       </AdvancedFields>
-      <Button type="submit" className="w-full sm:w-auto">
+      <Button type="submit" size="lg" className="w-full">
         I've added the record
       </Button>
     </form>

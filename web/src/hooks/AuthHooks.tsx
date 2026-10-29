@@ -211,7 +211,8 @@ export const useUnlinkIdentity = () => {
 };
 
 // Deletes the session server-side first; local state clears either way, since a failed delete still means leaving.
-export const useLogout = () => {
+// `to` is where the signed-out router opens, such as the invitation the person is switching accounts for.
+export const useLogout = (to = "/") => {
   const navigate = useNavigate();
   const client = useQueryClient();
   const logout = useSessionStore((s) => s.logout);
@@ -227,7 +228,7 @@ export const useLogout = () => {
     onSettled: () => {
       logout();
       // Replace, not push: the current URL would 404 once the router rebuilds logged-out.
-      navigate("/", { replace: true });
+      navigate(to, { replace: true });
     },
   });
 };

@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -105,12 +106,16 @@ describe("SetupFlow", () => {
     expect(screen.getByText(/enter the setup code once more/i)).toBeInTheDocument();
   });
 
-  it("shows the GitHub step with the instance URL fixed once on the domain", () => {
+  it("shows the GitHub step creating the App on GitHub first, and an existing App with the instance URL fixed once on the domain", async () => {
+    const user = userEvent.setup();
     withPass();
     renderFlow({ configured: false, setup_open: true, instance_url: window.location.origin });
 
     expect(screen.getByRole("heading", { name: /connect a github app/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/instance url/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Step 3 of 3" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create app on github/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /use an existing app/i }));
+    expect(screen.queryByRole("textbox", { name: /instance url/i })).not.toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/auth/callback`)).toBeInTheDocument();
   });
 });

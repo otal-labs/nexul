@@ -31,7 +31,7 @@ export const SetupOwnHttpsForm = ({ onFinish }: SetupOwnHttpsFormProps) => {
           http://{window.location.host}
         </code>
       </p>
-      <Button type="submit" className="w-full sm:w-auto">
+      <Button type="submit" size="lg" className="w-full">
         Check address
       </Button>
     </form>

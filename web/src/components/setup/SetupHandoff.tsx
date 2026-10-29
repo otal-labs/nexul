@@ -23,7 +23,7 @@ export const SetupHandoff = ({ instanceUrl }: SetupHandoffProps) => {
       {!code && (
         <p className="text-sm text-muted-foreground">You&apos;ll enter the setup code once more there.</p>
       )}
-      <Button asChild className="w-full">
+      <Button asChild size="lg" className="w-full">
         <a href={handoffLink(instanceUrl, code)}>Continue there</a>
       </Button>
     </div>

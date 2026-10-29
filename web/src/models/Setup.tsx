@@ -40,8 +40,9 @@ export const setupStage = (status: BootstrapStatus, hasPass: boolean, origin: st
   return SetupStages.GitHub;
 };
 
+// step 0 is a state, not a step of the three, so it shows no progress.
 export const setupStageCopy: Record<SetupStage, { step: number; title: string; subtitle: string }> = {
-  done: { step: 3, title: "Already set up", subtitle: "Someone has signed in to this instance, so setup is closed." },
+  done: { step: 0, title: "Already set up", subtitle: "Someone has signed in to this instance, so setup is closed." },
   code: {
     step: 1,
     title: "Enter the setup code",
@@ -53,7 +54,7 @@ export const setupStageCopy: Record<SetupStage, { step: number; title: string; s
     title: "Give Nexul a domain",
     subtitle: "GitHub sign-in needs a final https address, so the domain comes first.",
   },
-  handoff: { step: 2, title: "Continue on your domain", subtitle: "The rest of setup happens on the https address." },
+  handoff: { step: 0, title: "Continue on your domain", subtitle: "The rest of setup happens on the https address." },
   github: {
     step: 3,
     title: "Connect a GitHub App",

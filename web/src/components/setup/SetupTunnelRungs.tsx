@@ -35,7 +35,7 @@ export const SetupTunnelRungs = ({ onFinish }: SetupTunnelRungsProps) => {
       >
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {cloudflare && <ManualConnectorDialog connector={cloudflare.connector} />}
+        {cloudflare && <ManualConnectorDialog connector={cloudflare.connector} wide />}
       </DnsStep>
       <DnsStep
         title="Deploy the tunnel"
