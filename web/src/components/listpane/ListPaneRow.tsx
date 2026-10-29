@@ -22,10 +22,12 @@ interface ListPaneRowProps {
   menu?: RowMenu | undefined;
   /** Always visible at the right edge, e.g. a switch. */
   trailing?: ReactNode;
+  /** One truncated line at a 32px pitch instead of up to two wrapped lines. */
+  dense?: boolean;
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, menu, trailing }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, menu, trailing, dense = false }: ListPaneRowProps) => {
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
 
@@ -40,7 +42,8 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
         ref={ref}
         className={cn(
           "group relative flex items-center gap-2 px-3 transition-colors duration-150 ease-standard",
-          snippet === "" ? "min-h-10" : "min-h-14",
+          snippet === "" && (dense ? "min-h-8" : "min-h-10"),
+          snippet !== "" && "min-h-14",
           selected ? currentRowFillClass : "hover:bg-accent/40",
         )}
       >
@@ -48,11 +51,11 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}
-          className="min-w-0 flex-1 py-2 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+          className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-sm focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
         >
           <span className="flex min-w-0 items-start gap-1.5 text-[13px]">
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
-            <span dir="auto" title={title} className={cn("line-clamp-2 min-w-0 break-words text-foreground", selected && "font-medium")}>
+            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", dense ? "truncate" : "line-clamp-2 break-words", selected && "font-medium")}>
               {title}
             </span>
             {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}

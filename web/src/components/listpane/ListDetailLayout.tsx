@@ -8,7 +8,7 @@ interface ListDetailLayoutProps {
   list: ReactNode;
   detail: ReactNode;
   hasSelection: boolean;
-  /** Shown in the detail pane while nothing is selected. */
+  /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. */
   placeholder: ReactNode;
 }
 
@@ -33,11 +33,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
       <div className={cn("panel min-w-0 flex-1 overflow-hidden lg:block", hasSelection ? "block" : "hidden")}>
         <div className="scroll-edge relative h-full overflow-y-auto">
           {hasSelection && detail}
-          {!hasSelection && (
-            <div className="flex h-full items-center justify-center">
-              {placeholder}
-            </div>
-          )}
+          {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}
         </div>
       </div>
     </div>

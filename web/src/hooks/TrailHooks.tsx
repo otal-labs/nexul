@@ -274,6 +274,12 @@ export const useTicketsWithActiveRun = (projectId: string | undefined, ticketIds
   return usePlayRunStore(useShallow((s) => ticketIds.filter((id) => runStateOf(s, "ticket", id, known) !== undefined)));
 };
 
+// The docs overview's question: each listed doc's run, in the order given.
+export const useDocRunStates = (projectId: string, docIds: string[]): (TrailState | undefined)[] => {
+  const known = useFetchActiveDocTrails(projectId).data;
+  return usePlayRunStore(useShallow((s) => docIds.map((id) => runStateOf(s, "doc", id, known))));
+};
+
 // The doc list row's question.
 export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);

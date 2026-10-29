@@ -19,7 +19,7 @@ export const ListDetailPlaceholder = ({ icon, title, summary, searchable = false
     icon={icon}
     title={title}
     size="compact"
-    className="border-0"
+    className="m-auto border-0"
     {...(summary ? { message: summary } : {})}
     action={
       searchable && (

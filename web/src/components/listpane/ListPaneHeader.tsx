@@ -28,7 +28,7 @@ interface ListPaneHeaderProps {
 
 export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, newPermission, newVerb, projectId, onNew, search, onSearch, controls }: ListPaneHeaderProps) => (
   <div className="shrink-0">
-    <div className="flex h-14 items-center justify-between border-b border-border pr-2 pl-4">
+    <div className="flex h-14 items-center justify-between border-b border-border pr-2 pl-3">
       <h1 className="flex items-baseline gap-2 text-sm font-semibold">
         {title}
         {(count > 0 || !hideZeroCount) && <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{count}</span>}

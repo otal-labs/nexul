@@ -38,7 +38,7 @@ const renderPane = (showLocked: boolean) => {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
-        <DocsListPane docs={[doc]} project={{ id: "p-1", name: "Web", prefix: "WEB" } as Project} selectedId={undefined} />
+        <DocsListPane docs={[doc]} project={{ id: "p-1", name: "Web", prefix: "WEB" } as Project} selectedId={undefined} search="" onSearch={() => undefined} />
       </MemoryRouter>
     </QueryClientProvider>,
   );

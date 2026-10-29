@@ -1,11 +1,15 @@
-import { CircleCheckIcon, CircleHelpIcon, FileTextIcon, LoaderCircleIcon, LockIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
 
+import { DocStateIcon } from "@/components/doc/DocStateIcon";
+import { formatShortAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { useDocRunState } from "@/hooks/TrailHooks";
 import { useDocRowActions } from "@/hooks/useDocRowActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
 import { docPath } from "@/models/Project";
+import { formatFullTime } from "@/utils/TimeUtility";
 
 interface DocListRowProps {
   doc: DocListItem;
@@ -13,29 +17,26 @@ interface DocListRowProps {
   selected: boolean;
 }
 
+// One line: the state slot, the title, then the lock and the time the list is sorted by.
 export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => {
   const menu = useDocRowActions(doc, selected);
   const wsPath = useWorkspacePath();
   const runState = useDocRunState(doc.project_id, doc.id);
+  const sortBy = useDocSortStore((s) => s.sortBy);
   return (
     <ListPaneRow
       to={wsPath(docPath(projectToken, doc.id))}
       title={doc.title}
-      leading={
+      dense
+      leading={<DocStateIcon runState={runState} questionsClosed={!!doc.clarification_closed} className="ml-5" />}
+      meta={
         <>
-          {runState === "waiting" && (
-            <CircleHelpIcon className="ml-4.5 size-3.5 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
-          )}
-          {runState !== undefined && runState !== "waiting" && (
-            <LoaderCircleIcon className="ml-4.5 size-3.5 shrink-0 animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Play running" />
-          )}
-          {runState === undefined && doc.clarification_closed && (
-            <CircleCheckIcon className="ml-4.5 size-3.5 shrink-0 text-success" role="img" aria-label="Questions closed" />
-          )}
-          {runState === undefined && !doc.clarification_closed && <FileTextIcon className="ml-4.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+          {doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
+          <span title={`${sortBy === "created_at" ? "Created" : "Edited"} ${formatFullTime(doc[sortBy])}`} className="font-mono text-[11px] text-muted-foreground tabular-nums">
+            {formatShortAgo(doc[sortBy])}
+          </span>
         </>
       }
-      titleIcon={doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
       selected={selected}
       menu={menu}
     />

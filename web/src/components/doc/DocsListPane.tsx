@@ -1,62 +1,59 @@
-import { useEffect, useState } from "react";
-import { ArchiveIcon, FileTextIcon } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useEffect } from "react";
+import { ArchiveIcon, FileTextIcon, PlusIcon } from "lucide-react";
 
-import { DocArchivedToggle } from "@/components/doc/DocArchivedToggle";
+import { ActionButton } from "@/components/action/ActionButton";
 import { DocFolderSection } from "@/components/doc/DocFolderSection";
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
-import { DocSortToggle } from "@/components/doc/DocSortToggle";
 import { groupDocs } from "@/components/doc/docGroups";
+import { DocListMenu } from "@/components/doc/DocListMenu";
+import { docMatches, overviewLists } from "@/components/doc/docsOverviewLists";
 import { NewDocFolderButton } from "@/components/doc/NewDocFolderButton";
+import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneEmpty, ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
-import { useOpenCreateDoc } from "@/hooks/useCreateDocDialog";
+import { useDocRunStates } from "@/hooks/TrailHooks";
 import { useDocPins } from "@/hooks/useDocPins";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useNewDoc } from "@/hooks/useNewDoc";
 import { useDocArchiveStore } from "@/stores/docArchiveStore";
 import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
-import { docPath, projectToken, type Project } from "@/models/Project";
+import { projectToken, type Project } from "@/models/Project";
 
 interface DocsListPaneProps {
   docs: DocListItem[];
   project: Project;
   selectedId: string | undefined;
+  /** The page's search, shared with the overview beside the list. */
+  search: string;
+  onSearch: (value: string) => void;
 }
-
-const matches = (query: string) => (doc: DocListItem) =>
-  doc.title.toLowerCase().includes(query) || (doc.snippet ?? "").toLowerCase().includes(query);
 
 // A search lists the folders with a match; the archived view lists the folders holding something, so empty ones don't pile up.
 const folderFilter = (query: string, showArchived: boolean) => {
-  if (query !== "") return matches(query);
+  if (query !== "") return docMatches(query);
   if (showArchived) return () => true;
   return undefined;
 };
 
 // Lists only the docs the viewer can open, by folder; the server still names the others, with can_open false.
-export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) => {
-  const [search, setSearch] = useState("");
+export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: DocsListPaneProps) => {
   const sortBy = useDocSortStore((s) => s.sortBy);
   const showArchived = useDocArchiveStore((s) => s.showArchived);
   const { pinnedIds } = useDocPins();
-  const createDoc = useOpenCreateDoc(project.id);
-  const navigate = useNavigate();
-  const wsPath = useWorkspacePath();
+  const newDoc = useNewDoc(project);
   const { data: folders, error, isPending } = useFetchDocFolders(project.id);
   const openable = docs.filter((doc) => doc.can_open && doc.archived === showArchived);
   const query = search.trim().toLowerCase();
   const searching = query !== "";
   const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: folderFilter(query, showArchived) });
   const token = projectToken(project);
-  const openCreateDoc = async () => {
-    const id = await createDoc();
-    if (id) void navigate(wsPath(docPath(token, id)));
-  };
+  // Below 1024 the list is the whole page, so the docs a play holds lead it, wherever their folder is.
+  const states = useDocRunStates(project.id, openable.map((doc) => doc.id));
+  const attention = overviewLists(openable, states).attention.map((item) => item.doc);
   const expandFolder = useDocFolderStore((s) => s.expand);
   const selectedFolderId = docs.find((doc) => doc.id === selectedId)?.folder_id;
 
@@ -74,13 +71,12 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
         newPermission="docs:write"
         newVerb="create docs"
         projectId={project.id}
-        onNew={() => void openCreateDoc()}
+        onNew={() => void newDoc()}
         search={search}
-        onSearch={setSearch}
+        {...(docs.some((doc) => doc.can_open) && { onSearch })}
         controls={
           <>
-            <DocSortToggle />
-            <DocArchivedToggle />
+            <DocListMenu />
             <NewDocFolderButton projectId={project.id} />
           </>
         }
@@ -88,13 +84,35 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
-        {groups && groups.folders.length === 0 && !searching && !showArchived && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
-        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && !searching && showArchived && <ListPaneEmpty icon={ArchiveIcon} message="No archived docs" />}
-        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => setSearch("")} />}
-        {groups && groups.pinned.length > 0 && (
-          <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
+        {groups && openable.length === 0 && !searching && !showArchived && (
+          // From 1024 the overview beside the list says this, with its action.
+          <div className="flex h-full items-center justify-center lg:hidden">
+            <EmptyState
+              icon={FileTextIcon}
+              title="No docs yet"
+              className="border-0"
+              message="Specs, runbooks and meeting notes live here."
+              action={
+                <ActionButton permission="docs:write" verb="create docs" projectId={project.id} size="sm" icon={PlusIcon} onClick={() => void newDoc()}>
+                  New doc
+                </ActionButton>
+              }
+            />
+          </div>
         )}
-        {groups?.folders.map((group) => (
+        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && !searching && showArchived && <ListPaneEmpty icon={ArchiveIcon} message="No archived docs" />}
+        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => onSearch("")} />}
+        {groups && attention.length > 0 && !searching && (
+          <div className="lg:hidden">
+            <DocGroupSection group={{ label: "Needs attention", docs: attention }} projectToken={token} selectedId={selectedId} />
+          </div>
+        )}
+        {groups && groups.pinned.length > 0 && (
+          <div className="pb-2">
+            <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
+          </div>
+        )}
+        {groups && (openable.length > 0 || searching || showArchived) && groups.folders.map((group) => (
           <DocFolderSection key={group.folder.id} group={group} projectToken={token} selectedId={selectedId} forceOpen={searching} />
         ))}
       </div>

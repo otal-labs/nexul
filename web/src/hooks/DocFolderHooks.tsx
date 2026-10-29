@@ -21,6 +21,13 @@ export const docFoldersQuery = (projectId: string) =>
 
 export const useFetchDocFolders = (projectId: string) => useQuery(docFoldersQuery(projectId));
 
+// A folder's name by id; a doc whose folder is not listed yet reads as the default folder's, as the list groups it.
+export const useDocFolderNames = (projectId: string) => {
+  const { data: folders } = useFetchDocFolders(projectId);
+  const fallback = folders?.find((f) => f.is_default)?.name ?? "";
+  return (folderId: string) => folders?.find((f) => f.id === folderId)?.name ?? fallback;
+};
+
 export const useCreateDocFolder = () => {
   const client = useQueryClient();
   return useMutation({

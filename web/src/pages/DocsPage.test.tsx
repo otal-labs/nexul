@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { DocsPage } from "@/pages/DocsPage";
+import { useDocArchiveStore } from "@/stores/docArchiveStore";
 import { usePinnedDocStore } from "@/stores/pinnedDocStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -48,6 +49,14 @@ const docs = [
   doc("doc-3", "Salaries", "2020-01-02T12:00:00Z", false),
 ];
 
+// The overview beside the list names the same docs and folders; a row's menu lives on the list's copy.
+const inList = (text: string) =>
+  vi.waitFor(() => {
+    const own = screen.getAllByText(text).find((el) => !el.closest("[aria-label='Docs overview']"));
+    if (!own) throw new Error(`${text} is not in the list yet`);
+    return own;
+  });
+
 const LocationSpy = () => <p data-testid="location">{useLocation().pathname}</p>;
 
 const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
@@ -85,6 +94,7 @@ const manageable = { "/api/permissions/explain": { effective: [{ action: "permis
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   usePinnedDocStore.setState({ pinned: {} });
+  useDocArchiveStore.setState({ showArchived: false });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
@@ -104,11 +114,39 @@ describe("DocsPage", () => {
   it.each([
     ["the project has no docs", { "/api/docs": [] }],
     ["the viewer can open no doc, so the server shows them no folder", { "/api/docs": [], "/api/docs/folders": [] }],
-  ])("says there is nothing to open, instead of asking to pick a doc, when %s", async (_, overrides) => {
+  ])("says the project has no docs yet, instead of asking to pick a doc, when %s", async (_, overrides) => {
     renderPage("/acme/docs", ["docs:read"], overrides);
 
-    expect(await screen.findByText("Nothing to open yet")).toBeInTheDocument();
+    expect(await within(await screen.findByRole("region", { name: "Docs overview" })).findByText("No docs yet")).toBeInTheDocument();
     expect(screen.queryByText("Select a doc")).not.toBeInTheDocument();
+  });
+
+  it("narrows the overview to what the list's search matches", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read"]);
+    const overview = await screen.findByRole("region", { name: "Docs overview" });
+    await within(overview).findByText("Rollback plan");
+
+    await user.type(screen.getByRole("textbox", { name: "Search docs" }), "storage");
+
+    const matching = within(overview).getByRole("region", { name: "Matching" });
+    expect(within(matching).getByText("Storage Spine")).toBeInTheDocument();
+    expect(within(overview).queryByText("Rollback plan")).not.toBeInTheDocument();
+  });
+
+  it("shows the archived docs in the overview while the list shows them", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read"], { "/api/docs": [...docs, { ...doc("doc-4", "Old migration", "2020-03-01T12:00:00Z"), archived: true }] });
+    const overview = await screen.findByRole("region", { name: "Docs overview" });
+    await within(overview).findByText("Rollback plan");
+
+    await user.click(screen.getByRole("button", { name: /^Sort and view/ }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Show archived" }));
+
+    const archived = within(overview).getByRole("region", { name: "Archived" });
+    expect(within(archived).getByText("Old migration")).toBeInTheDocument();
+    expect(within(overview).queryByText("Rollback plan")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Sort and view: Archived/ })).toBeInTheDocument();
   });
 
   it("moves a bare doc link to its project's URL", async () => {
@@ -118,20 +156,22 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
-  it("shows each row as its title alone, marking a locked one", async () => {
+  it("shows each row as its title and edited time, marking a locked one", async () => {
     renderPage("/acme/docs", ["docs:read"]);
 
-    const row = await screen.findByRole("link", { name: /Storage Spine/ });
-    expect(row).toHaveTextContent(/^Storage Spine$/);
-    expect(within(row).getByLabelText("Locked")).toBeInTheDocument();
-    expect(within(screen.getByRole("link", { name: /Rollback plan/ })).queryByLabelText("Locked")).not.toBeInTheDocument();
+    const row = (await within(await screen.findByRole("region", { name: "Main" })).findByRole("link", { name: /Storage Spine/ })).closest("li");
+    expect(row).toHaveTextContent("Storage Spinenow");
+    expect(within(row!).getByLabelText("Locked")).toBeInTheDocument();
+    const other = within(screen.getByRole("region", { name: "GetSource" })).getByRole("link", { name: /Rollback plan/ }).closest("li");
+    expect(other).toHaveTextContent(/^Rollback plan\S+ \S+$/);
+    expect(within(other!).queryByLabelText("Locked")).not.toBeInTheDocument();
   });
 
   it("offers New doc and each row action only to a role that holds them", async () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:delete"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Storage Spine") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Storage Spine") });
     expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Unlock" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Clone" })).not.toBeInTheDocument();
@@ -142,7 +182,7 @@ describe("DocsPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:write"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Rollback plan") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Rollback plan") });
     expect(await screen.findByRole("menuitem", { name: "Move to folder" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Lock" })).not.toBeInTheDocument();
   });
@@ -152,13 +192,13 @@ describe("DocsPage", () => {
     vi.mocked(api.post).mockResolvedValue({ data: {} });
     renderPage("/acme/docs", ["docs:read", "docs:write", "docs:clone", "docs:delete", "docs:lock"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Rollback plan") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Rollback plan") });
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Archive", "Move to folder", "Clone", "Delete"]);
     await user.click(screen.getByRole("menuitem", { name: "Lock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-2/lock"));
 
-    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Storage Spine") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Storage Spine") });
     await user.click(await screen.findByRole("menuitem", { name: "Unlock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
   });
@@ -167,7 +207,7 @@ describe("DocsPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:delete"], manageable);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByRole("link", { name: /Rollback plan/ }) });
+    await user.pointer({ keys: "[MouseRight]", target: await within(await screen.findByRole("region", { name: "GetSource" })).findByRole("link", { name: /Rollback plan/ }) });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Pin", "Permissions…", "Delete"]);
   });
@@ -181,7 +221,7 @@ describe("DocsPage", () => {
 
     // A reader's folder has no menu until the access read lands.
     if (needsAccessRead) await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", expect.anything()));
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("GetSource") });
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(items);
     expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } });
@@ -194,7 +234,7 @@ describe("DocsPage", () => {
     await vi.waitFor(() =>
       expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } }),
     );
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("GetSource") });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
@@ -202,7 +242,7 @@ describe("DocsPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:delete"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Rollback plan") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Rollback plan") });
     await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", expect.anything()));
     expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Permissions…" })).not.toBeInTheDocument();
@@ -212,13 +252,13 @@ describe("DocsPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Rollback plan") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Rollback plan") });
     await user.click(await screen.findByRole("menuitem", { name: "Pin" }));
     const pinned = await screen.findByRole("region", { name: "Pinned" });
     expect(within(pinned).getByRole("link", { name: /Rollback plan/ })).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "GetSource" })).queryByRole("link")).not.toBeInTheDocument();
 
-    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Rollback plan") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Rollback plan") });
     await user.click(await screen.findByRole("menuitem", { name: "Unpin" }));
     expect(await within(screen.getByRole("region", { name: "GetSource" })).findByRole("link", { name: /Rollback plan/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Pinned" })).not.toBeInTheDocument();
@@ -229,7 +269,7 @@ describe("DocsPage", () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: "doc-9", project_id: "p-1" } });
     renderPage("/acme/docs", ["docs:read", "docs:clone"], { "/api/projects": [project] });
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Storage Spine") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Storage Spine") });
     await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
     const dialog = await screen.findByRole("dialog", { name: "Clone to…" });
     await user.click(await within(dialog).findByRole("button", { name: "Clone doc" }));
@@ -238,11 +278,12 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-9")).toBeInTheDocument();
   });
 
-  it("shows a writer the empty folders, with New doc, when the project has no docs", async () => {
+  it("offers a writer New doc in the overview and the list header when the project has no docs", async () => {
     renderPage("/acme/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
 
-    expect(await within(await screen.findByRole("region", { name: "Main" })).findByText("No docs")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
+    const overview = await screen.findByRole("region", { name: "Docs overview" });
+    expect(await within(overview).findByRole("button", { name: "New doc" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Main" })).not.toBeInTheDocument();
   });
 
   it("moves a doc to another folder from its row menu", async () => {
@@ -250,7 +291,7 @@ describe("DocsPage", () => {
     vi.mocked(api.post).mockResolvedValue({ data: {} });
     renderPage("/acme/docs", ["docs:read", "docs:write"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Storage Spine") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Storage Spine") });
     const moveTo = await screen.findByRole("menuitem", { name: "Move to folder" });
     await user.click(moveTo);
     const target = screen.getByRole("menuitemradio", { name: "GetSource" });
@@ -273,7 +314,7 @@ describe("DocsPage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create folder" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/folders", { project_id: "p-1", name: "Episodes" }));
 
-    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("GetSource") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("GetSource") });
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const confirm = await screen.findByRole("dialog", { name: "Delete GetSource?" });
     expect(within(confirm).getByText("1 doc moves to Main. None are deleted.")).toBeInTheDocument();
@@ -285,7 +326,7 @@ describe("DocsPage", () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:write"]);
 
-    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Main") });
+    await user.pointer({ keys: "[MouseRight]", target: await inList("Main") });
     expect(await screen.findByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
   });

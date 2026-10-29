@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRightIcon, FolderIcon, FolderOpenIcon } from "lucide-react";
 
-import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 
 interface FolderToggleProps {
@@ -14,15 +13,14 @@ interface FolderToggleProps {
   className?: string;
 }
 
-// A folder row's label: chevron, folder icon, name in the group-label style, and its meta trailing right.
+// A folder row's label: chevron, folder icon, the folder's own name in sentence case, and its meta trailing right in mono.
 export const FolderToggle = ({ name, open, onToggle, meta, metaClassName, className }: FolderToggleProps) => (
   <button
     type="button"
     onClick={onToggle}
     aria-expanded={open}
     className={cn(
-      microheaderClass,
-      "flex min-w-0 flex-1 items-center gap-1.5 self-stretch outline-none hover:text-foreground focus-visible:text-foreground",
+      "flex min-w-0 flex-1 items-center gap-1.5 self-stretch text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground",
       className,
     )}
   >
@@ -30,6 +28,6 @@ export const FolderToggle = ({ name, open, onToggle, meta, metaClassName, classN
     {open && <FolderOpenIcon className="size-3.5 shrink-0" aria-hidden />}
     {!open && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
     <span className="truncate">{name}</span>
-    <span className={cn("ml-auto shrink-0 tabular-nums", metaClassName)}>{meta}</span>
+    <span className={cn("ml-auto shrink-0 font-mono text-[11px] font-normal tabular-nums", metaClassName)}>{meta}</span>
   </button>
 );
