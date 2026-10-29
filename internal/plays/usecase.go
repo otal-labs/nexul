@@ -134,7 +134,8 @@ type UpdateInput struct {
 	ExcludedProjectIDs []string
 }
 
-// List returns the plays of workspaceID the caller can see, sorted by label, each saying whether they can run it.
+// List returns the plays of workspaceID the caller can see, sorted by label, each saying whether they can run it and
+// what its runs say about it.
 func (s *Service) List(ctx context.Context, workspaceID string) ([]Listed, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -144,7 +145,8 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]Listed, error
 	if err != nil {
 		return nil, fmt.Errorf("list plays for workspace %s: %w", workspaceID, err)
 	}
-	return s.listed(ctx, actorID(ctx), workspaceID, list), nil
+	out := s.listed(ctx, actorID(ctx), workspaceID, list)
+	return out, s.withHealth(ctx, out)
 }
 
 // ListApplicable returns workspaceID's enabled plays of playType that apply to a run on projectID for userID:

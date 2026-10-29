@@ -75,6 +75,10 @@ func (playGate) CallerProjects(context.Context, permissions.Action) ([]string, b
 	return nil, true, nil
 }
 
+func (playGate) DocsWith(context.Context, string, string, permissions.Action) (permissions.DocReach, error) {
+	return permissions.DocReach{}, nil
+}
+
 func TestPlayRestore_RecordsTheVersionItCameFromAndAPlainSaveLeavesItNull(t *testing.T) {
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	svc := plays.NewService(s.Plays, playGate{})

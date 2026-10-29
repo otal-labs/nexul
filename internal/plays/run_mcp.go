@@ -32,6 +32,15 @@ type trailSummary struct {
 	FailureReason  string     `json:"failure_reason,omitempty"`
 }
 
+// playRunSummary is a run on a play's list of runs, with the ticket's key and title or the doc's, stack's or
+// project's name it ran on.
+type playRunSummary struct {
+	trailSummary
+	TargetKey   string `json:"target_key,omitempty"`
+	TargetTitle string `json:"target_title"`
+	AutoPlayID  string `json:"auto_play_id,omitempty"`
+}
+
 // trailDetail is one trail with its run choices, its question, and the newest steps; a step's raw detail stays out.
 type trailDetail struct {
 	trailSummary
@@ -98,7 +107,7 @@ type trailListIn struct {
 	ID         string     `json:"id,omitempty" jsonschema:"A trail's id. Returns that one trail with its run choices, open question, and newest steps instead of a list."`
 	TargetType TargetType `json:"target_type,omitempty" jsonschema:"Without id: the target kind, ticket, doc, interview, or stack."`
 	TargetID   string     `json:"target_id,omitempty" jsonschema:"Without id: the ticket's or doc's id, or for an interview the project's id."`
-	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the target's trails of this play."`
+	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the trails of this play."`
 	Steps      int        `json:"steps,omitzero" jsonschema:"With id: newest transcript steps to return, 1 to 300. Defaults to 50."`
 	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first: queued, started, skipped, didn't run, or cancelled, each with why, plus whether the daily cap paused auto plays there."`
 	mcptool.PageArgs
@@ -153,36 +162,14 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				return toTrailSummary(t), nil
 			}),
 		mcptool.New("trail_list", "List trails",
-			"Lists the trails of play runs on one target, newest first, optionally of one play. With id it returns that one trail instead, with its run "+
+			"Lists the trails of play runs on one target, newest first, optionally of one play, or with play_id alone "+
+				"the runs of that play on every target. With id it returns that one trail instead, with its run "+
 				"choices, the question a waiting run stopped on, and its newest transcript steps. "+
-				"Pass either id, or target_type and target_id. With queue true it lists the target's auto "+
-				"runs instead. A trail is visible to its starter and to whoever can see its play (a doc trail also needs "+
-				"the doc's thread permission); others are left out or not found.",
+				"With queue true it lists the auto runs of the target instead. A trail is visible to its starter and to "+
+				"whoever can see its play (a doc trail also needs the doc thread permission); others are left out or not found.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in trailListIn) (any, error) {
-				if in.Queue && in.ID == "" {
-					return listQueue(ctx, r, in)
-				}
-				if in.ID != "" {
-					t, err := r.GetTrail(ctx, in.ID)
-					if err != nil {
-						return nil, trailNotFoundHint(err)
-					}
-					return toTrailDetail(t, in.Steps), nil
-				}
-				if in.TargetType == "" || in.TargetID == "" {
-					return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, interview, or stack) and target_id "+
-						"for a target's trails, which play_id only narrows; ticket_list, doc_list, and project_list give target ids", apperrs.ErrInvalid)
-				}
-				list, err := r.ListTrails(ctx, in.TargetType, in.TargetID, in.PlayID)
-				if err != nil {
-					return nil, err
-				}
-				out := make([]trailSummary, 0, len(list))
-				for _, t := range list {
-					out = append(out, toTrailSummary(t))
-				}
-				return mcptool.Paginate(out, in.PageArgs), nil
+				return listTrails(ctx, r, in)
 			}),
 		mcptool.New("trail_update", "Answer, stop, or continue play run",
 			"Steers a play run: answer gives a waiting trail its question's answers so the run continues "+
@@ -312,4 +299,48 @@ func trailNotFoundHint(err error) error {
 		return fmt.Errorf("%w; trail_list with target_type and target_id shows a target's trails", err)
 	}
 	return err
+}
+
+// listPlayRuns is trail_list's page of one play's runs across every target.
+func listPlayRuns(ctx context.Context, r *Runner, in trailListIn) (any, error) {
+	w := in.Window()
+	runs, total, err := r.ListPlayRuns(ctx, in.PlayID, false, w)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]playRunSummary, 0, len(runs))
+	for i := range runs {
+		out = append(out, playRunSummary{trailSummary: toTrailSummary(&runs[i].Trail), TargetKey: runs[i].TargetKey, TargetTitle: runs[i].TargetTitle, AutoPlayID: runs[i].AutoPlayID})
+	}
+	return mcptool.PageOf(out, total, w), nil
+}
+
+// listTrails is trail_list: one trail by id, a target's auto runs or trails, or one play's runs on every target.
+func listTrails(ctx context.Context, r *Runner, in trailListIn) (any, error) {
+	if in.Queue && in.ID == "" {
+		return listQueue(ctx, r, in)
+	}
+	if in.ID != "" {
+		t, err := r.GetTrail(ctx, in.ID)
+		if err != nil {
+			return nil, trailNotFoundHint(err)
+		}
+		return toTrailDetail(t, in.Steps), nil
+	}
+	if in.TargetType == "" && in.TargetID == "" && in.PlayID != "" {
+		return listPlayRuns(ctx, r, in)
+	}
+	if in.TargetType == "" || in.TargetID == "" {
+		return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, interview, or stack) and target_id "+
+			"for a target's trails, which play_id only narrows, or play_id alone for that play's runs; ticket_list, doc_list, and project_list give target ids", apperrs.ErrInvalid)
+	}
+	list, err := r.ListTrails(ctx, in.TargetType, in.TargetID, in.PlayID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]trailSummary, 0, len(list))
+	for _, t := range list {
+		out = append(out, toTrailSummary(t))
+	}
+	return mcptool.Paginate(out, in.PageArgs), nil
 }

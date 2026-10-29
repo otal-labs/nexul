@@ -405,6 +405,10 @@ func (ownerBypassPerm) CallerProjects(context.Context, permissions.Action) ([]st
 	return nil, true, nil
 }
 
+func (ownerBypassPerm) DocsWith(context.Context, string, string, permissions.Action) (permissions.DocReach, error) {
+	return permissions.DocReach{}, nil
+}
+
 func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil))

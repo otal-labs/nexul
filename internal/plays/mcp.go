@@ -23,6 +23,8 @@ type playResult struct {
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
 	// CanRun is set on a listed play only: whether the caller may run it, from its own rules and their roles.
 	CanRun *bool `json:"can_run,omitempty"`
+	// Runs is set on a list without type only: what the runs the caller can see say about the play.
+	Runs *RunHealth `json:"runs,omitempty"`
 	// AutoPlays is left out for a caller without autoplays:read, and on a list filtered by type.
 	AutoPlays []autoPlayResult `json:"auto_plays,omitzero"`
 	// Warnings carries what an update applied but may have broken, such as automations calling an old label.
@@ -96,7 +98,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		mcptool.New("play_list", "List plays",
 			"Lists the plays of a workspace the caller can see, each with its type, "+
 				"instructions, enabled switch, stage, excluded projects, and whether the caller may run it. Without type it "+
-				"lists every definition, and a caller with autoplays:read also gets each play's auto_plays: moment, "+
+				"lists every definition with its run health, and a caller with autoplays:read also gets each play's auto_plays: moment, "+
 				"conditions, priority, once_within_minutes, run_on, and enabled switch. With type (and "+
 				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
 				"which is what to check before play_run. With id it returns that one play; version reads an older one.",
@@ -113,6 +115,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				for _, p := range list {
 					res := toPlayResult(&p.Play)
 					res.CanRun = &p.CanRun
+					if in.Type == "" {
+						res.Runs = &p.RunHealth
+					}
 					out = append(out, res)
 				}
 				page := mcptool.Paginate(out, in.PageArgs)

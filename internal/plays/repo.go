@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -22,6 +23,8 @@ type Repo interface {
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// AutomationNamesByLabel names workspaceID's automations whose active or pending code holds label in quotes, ignoring ASCII case.
 	AutomationNamesByLabel(ctx context.Context, workspaceID, label string) ([]string, error)
+	// RunHealth reads each of playIDs' runs inside scope, counting Runs7d and Failed7d from since.
+	RunHealth(ctx context.Context, playIDs []string, scope RunScope, since time.Time) (map[string]RunHealth, error)
 	AutoPlayRepo
 	HistoryRepo
 }
@@ -96,6 +99,9 @@ type TrailRepo interface {
 	LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*Trail, error)
 	// LatestTrailInConversation returns the newest trail that ran in a conversation, ErrNotFound when none.
 	LatestTrailInConversation(ctx context.Context, conversationID string) (*Trail, error)
+	// ListPlayRuns pages a play's runs inside scope, newest first, or with waiting its waiting runs, oldest first, and
+	// counts every match.
+	ListPlayRuns(ctx context.Context, playID string, scope RunScope, waiting bool, w paging.Window) ([]PlayRun, int, error)
 }
 
 // PermissionGate is the consumer-side slice of access's HasPermission check (ADR 0017); resourceType and
@@ -106,10 +112,19 @@ type PermissionGate interface {
 	PlaysWith(ctx context.Context, userID, workspaceID string, action permissions.Action, playIDs []string) map[string]bool
 	// CallerProjects lists the projects the caller on ctx may act in with action, so a list filters in SQL (ADR 0140).
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
+	// DocsWith is what a list filters docs by in SQL for action: a doc passes exactly when a per-doc check would.
+	DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (permissions.DocReach, error)
 }
 
 // ProjectScope is the projects a list may return rows from: all of them, or those named.
 type ProjectScope struct {
 	All        bool
 	ProjectIDs []string
+}
+
+// RunScope is the runs a list may show: those in its projects, and of those on a doc only the ones Docs reaches; a
+// nil Docs leaves doc runs to the projects alone.
+type RunScope struct {
+	ProjectScope
+	Docs *permissions.DocReach
 }

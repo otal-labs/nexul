@@ -16,6 +16,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // fakeTrailRepo is the in-memory TrailRepo; terminal receives every trail saved in a terminal state.
@@ -93,6 +94,32 @@ func (f *fakeTrailRepo) ListTrailsByTarget(_ context.Context, targetType TargetT
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
 	return out, nil
+}
+
+func (f *fakeTrailRepo) ListPlayRuns(_ context.Context, playID string, scope RunScope, waiting bool, w paging.Window) ([]PlayRun, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, 0, f.listErr
+	}
+	var runs []PlayRun
+	for _, t := range f.byID {
+		if t.PlayID != playID || (waiting && t.State != TrailWaiting) || (!scope.All && !slices.Contains(scope.ProjectIDs, t.ProjectID)) {
+			continue
+		}
+		runs = append(runs, PlayRun{Trail: *t})
+	}
+	sort.Slice(runs, func(i, j int) bool {
+		if waiting {
+			return runs[i].StartedAt.Before(runs[j].StartedAt)
+		}
+		return runs[i].StartedAt.After(runs[j].StartedAt)
+	})
+	end := min(w.Offset+w.Limit, len(runs))
+	if w.Offset >= len(runs) {
+		return []PlayRun{}, len(runs), nil
+	}
+	return runs[w.Offset:end], len(runs), nil
 }
 
 func (f *fakeTrailRepo) ListActiveTrailsByTargets(_ context.Context, targetType TargetType, targetIDs []string) ([]*Trail, error) {
