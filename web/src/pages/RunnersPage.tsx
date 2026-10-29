@@ -1,6 +1,7 @@
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
+import { RunnersHealth } from "@/components/runner/RunnersHealth";
 import { RunnersPanel } from "@/components/runner/RunnersPanel";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 
@@ -11,7 +12,7 @@ export const RunnersPage = () => {
       <PageHeader
         crumbs={[workspaceCrumb]}
         title="Runners"
-        meta="Services on your machines that take builds and deploys off the queue."
+        meta={<RunnersHealth />}
         actions={<AddRunnerDialog />}
       />
       <RunnersPanel />

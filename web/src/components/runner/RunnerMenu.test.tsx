@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
+import { RunnerMenu } from "@/components/runner/RunnerMenu";
 import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ delete: vi.fn(), confirm: vi.fn() }));
@@ -26,11 +26,16 @@ const manageable = { actions: ["machines:see", "machines:write"] };
 const renderButton = (connected: boolean, machine: { actions: string[] } = manageable) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RemoveRunnerButton runner={{ ...runner, connected }} machine={machine} />
+      <RunnerMenu runner={{ ...runner, connected }} machine={machine} />
     </QueryClientProvider>,
   );
 
-describe("RemoveRunnerButton", () => {
+const remove = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole("button", { name: "More actions for alpha" }));
+  return screen.findByRole("menuitem", { name: /Remove runner/ });
+};
+
+describe("RunnerMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetViewer();
@@ -43,7 +48,7 @@ describe("RemoveRunnerButton", () => {
     const user = userEvent.setup();
     renderButton(true);
 
-    await user.click(screen.getByRole("button", { name: "Remove alpha" }));
+    await user.click(await remove(user));
 
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: "Remove alpha?", confirmLabel: "Remove runner" }));
     expect(mocks.delete).not.toHaveBeenCalled();
@@ -54,7 +59,7 @@ describe("RemoveRunnerButton", () => {
     const user = userEvent.setup();
     renderButton(false);
 
-    await user.click(screen.getByRole("button", { name: "Remove alpha" }));
+    await user.click(await remove(user));
 
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("next time it comes online") }));
   });
@@ -64,7 +69,7 @@ describe("RemoveRunnerButton", () => {
     const user = userEvent.setup();
     renderButton(true);
 
-    await user.click(screen.getByRole("button", { name: "Remove alpha" }));
+    await user.click(await remove(user));
 
     await waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/runners/r-1"));
   });
@@ -73,19 +78,19 @@ describe("RemoveRunnerButton", () => {
     const user = userEvent.setup();
     renderButton(true, { actions: ["machines:see"] });
 
-    const button = screen.getByRole("button", { name: "Remove alpha" });
-    await user.click(button);
+    const item = await remove(user);
+    await user.click(item);
 
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveAccessibleDescription("Your role can't remove runners");
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveTextContent("Your role can't remove runners");
     expect(mocks.confirm).not.toHaveBeenCalled();
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
-  it("is gone for a viewer whose roles don't show locked actions", () => {
+  it("draws no ⋯ for a viewer whose roles don't show locked actions", () => {
     viewer.showLocked = false;
     renderButton(true, { actions: ["machines:see"] });
 
-    expect(screen.queryByRole("button", { name: "Remove alpha" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for alpha" })).not.toBeInTheDocument();
   });
 });
