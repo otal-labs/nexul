@@ -100,7 +100,7 @@ export const setupEntryPathOptions: EntryPathOption[] = [
   {
     value: EntryPaths.Proxy,
     label: "Reverse proxy",
-    description: "Nexul runs Traefik on ports 80 and 443 and gets a Let's Encrypt certificate.",
+    description: "Nexul runs Traefik on ports 80 and 443 and gets a Let's Encrypt certificate.",
     stepDescription: "Point the domain at this server, then Nexul deploys Traefik and waits for the certificate.",
   },
   {

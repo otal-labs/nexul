@@ -891,6 +891,25 @@ frames in a hidden tab and offscreen. The sign-in and invitation cards are a
 over motion, for a single small card. Headlines on these surfaces
 are Fraunces. Never on an everyday screen, never behind a panel.
 
+Signed-out frame. Sign-in, the invitation and first-run setup share one frame
+(`SignedOutFrame`): the 20px mark and the instance's host in 12px mono in the
+top-left corner, 24px in (32px across from 1024px), and the screen under it in
+one 448px column: the card centred for
+sign-in and the invitation, and setup's forms straight on the quiet field at
+one height on every step, so a step or tab that grows never moves the header. Each opens with the same header
+(`SignedOutHeader`): the 32px Fraunces title and one muted line, setup's
+`Step N of 3` with three 24px segments (brand for done and current) above the
+title. A refusal is one `InlineNotice` (a `destructive` hairline at 40%, the
+icon on the title's cap height, a 13px semibold title over a muted line) above
+what it concerns, never a centred error well; a field's own error stays under
+the field. Every button is 40px and full width, and a stack of provider
+buttons pins each mark 16px from the edge so the marks share one x
+(`ProviderButton`). An invitation lists each workspace, its project count once
+signed in, and a card of its roles, each led by a role mark, with what each
+allows, and fits a 900px screen at its worst case without scrolling. A command or an address to paste
+elsewhere is a `CommandRow` with its copy button, never inline code in a
+sentence.
+
 Stat and summary row. Three or four values in a single row above a list, in
 the same `surface-2` well as a stack's live status, split by hairlines,
 microheader label above a 20px mono value, color-coded only when the metric is

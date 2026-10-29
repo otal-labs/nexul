@@ -21,13 +21,15 @@ Below them, **Accepted in the last 30 days** lists who each link let in, newest 
 
 ### What the person sees
 
-Before they sign in, the page names the instance and lists each workspace with the roles the link gives there and what each role means, then a **Continue with** button for each sign-in provider the instance has turned on. It names no project, so a link that reaches the wrong person shows only what the roles are. At the bottom it says the link works once and when it expires.
+Before they sign in, the page is titled with the workspace the link opens ("Join Northwind", or "Join 2 workspaces") and lists each workspace with the roles the link gives there and what each role means, then a **Continue with** button for each sign-in provider the instance has turned on. It names no project, so a link that reaches the wrong person shows only what the roles are. At the bottom it says the link works once and when it expires.
 
-Once they sign in, each workspace's card adds the projects its roles reach right now, such as "2 projects: Website relaunch, Mobile app", or "No projects yet", and under the cards "You may be added to more projects later." Past eight names the rest fold into **and N more**. **Accept invitation** puts them in each workspace with its roles and opens the instance. **Decline** leaves the link unused, the same as closing the page.
+Once they sign in, each workspace shows how many projects its roles reach right now ("2 projects", or "No projects"), and its card names them, such as "2 projects: Website relaunch, Mobile app". Past eight names the rest fold into **and N more**. The page names the account they signed in with. **Accept invitation** puts them in each workspace with its roles and opens the instance. **Decline** leaves the link unused and goes to sign-in.
+
+Signed in with the wrong account? **Not you?** beside the name goes back to the sign-in buttons in the same browser tab, before anything is written. In another tab, it says to open the link again.
 
 ### When a link doesn't work
 
-A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them on Team ([Manage people](#manage-people)). A link that has run out or been revoked says only "This invitation has been deleted or has expired": it doesn't say which, names nobody, and tells no one.
+A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. Signed in already, **Sign out and use another account** signs them out and shows the sign-in buttons for the same link. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them on Team ([Manage people](#manage-people)). A link that has run out or been revoked says only "This invitation has been deleted or has expired": it doesn't say which, names nobody, and tells no one.
 
 ## Manage people
 

@@ -1,0 +1,119 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { AxiosError } from "axios";
+import { useForm, useWatch } from "react-hook-form";
+
+import { requires } from "@nexul/client-core/requires";
+
+import { api, errorMessage, joinAPIURL } from "@/api/client";
+import { GitHubAppPermissions } from "@/components/setup/GitHubAppPermissions";
+import { SetupAddressRow } from "@/components/setup/SetupAddressRow";
+import { FormInput } from "@/components/FormInput";
+import { InlineNotice } from "@/components/InlineNotice";
+import { TickerRow } from "@/components/TickerRow";
+import { Button } from "@/components/ui/button";
+import { useBootstrap } from "@/hooks/AuthHooks";
+import { useTicker } from "@/hooks/useTicker";
+import type { CredentialCheck } from "@/models/Connectors";
+import { InstanceBootstrapFormSchema, type InstanceBootstrapFormData } from "@/models/User";
+
+// One request per row so a wrong URL, slug, or secret lights up separately: the first row is the server fetching itself
+// through the pasted URL, the other two mirror githubapp.VerifyCheck's halves.
+const APP_CHECKS: CredentialCheck[] = [
+  {
+    key: "instance_url",
+    label: "Instance URL reaches this server",
+    why: "The server can call itself through this URL, so DNS, the proxy, and HTTPS work before anything is derived from it.",
+  },
+  {
+    key: "slug",
+    label: "App slug resolves",
+    why: "GitHub knows an app at github.com/apps/<slug> and it belongs to this client ID.",
+  },
+  {
+    key: "secret",
+    label: "Client secret accepted",
+    why: "GitHub accepts the secret for this client ID, so sign-in can complete.",
+  },
+];
+
+interface GitHubExistingAppFormProps {
+  // Fixed by the domain step; this form runs on that origin so sign-in starts where the callback lands.
+  instanceUrl: string;
+}
+
+// An App registered by hand: the two addresses GitHub needs, its permissions, then its credentials through the ticker.
+export const GitHubExistingAppForm = ({ instanceUrl }: GitHubExistingAppFormProps) => {
+  const bootstrap = useBootstrap();
+  const form = useForm<InstanceBootstrapFormData>({
+    defaultValues: { instance_url: instanceUrl, client_id: "", client_secret: "", app_slug: "" },
+    resolver: zodResolver(InstanceBootstrapFormSchema),
+  });
+
+  // Ticker (the Frontend Commandments): Verify lights the rows, then the button turns into Set up instance.
+  const { verified, verifying, verify, outcomeFor } = useTicker(APP_CHECKS, useWatch({ control: form.control }), requires("none", (key, data) =>
+    api.post("/api/auth/bootstrap/verify", data, { params: { check: key } })),
+  );
+
+  const onVerify = ({ instance_url, client_id, client_secret, app_slug }: InstanceBootstrapFormData) =>
+    verify({ instance_url, client_id, client_secret, app_slug });
+
+  const onSubmit = async (data: InstanceBootstrapFormData) => {
+    try {
+      await bootstrap.mutateAsync(data);
+      // Full page navigation on purpose: hands off to the backend's OAuth redirect, not a client-side route.
+      window.location.assign(joinAPIURL("/auth/github"));
+    } catch (err) {
+      if ((err as AxiosError)?.response?.status === 409) {
+        form.setError("root", {
+          message: "This instance is already configured. Refresh the page and sign in.",
+        });
+        return;
+      }
+      // GitHub's verdict (unknown slug, wrong secret) belongs next to the fields, not only in a toast.
+      form.setError("root", { message: errorMessage(err) });
+    }
+  };
+
+  const callbackUrl = `${instanceUrl.replace(/\/$/, "")}/auth/callback`;
+
+  return (
+    <form onSubmit={form.handleSubmit(verified ? onSubmit : onVerify)} className="space-y-5">
+      <SetupAddressRow label="Homepage URL" value={instanceUrl} />
+      <SetupAddressRow label="Callback URL" value={callbackUrl} />
+      <GitHubAppPermissions />
+      <FormInput
+        control={form.control}
+        name="client_id"
+        label="GitHub OAuth client ID"
+        className="font-mono"
+        placeholder="Iv1.abc123"
+      />
+      <FormInput
+        control={form.control}
+        name="client_secret"
+        label="GitHub OAuth client secret"
+        type="password"
+        placeholder="••••••••••••••••"
+      />
+      <FormInput
+        control={form.control}
+        name="app_slug"
+        label="GitHub App slug"
+        leading="github.com/apps/"
+        className="font-mono"
+        placeholder="my-nexul-app"
+      />
+      <ul className="space-y-2" aria-label="GitHub App checks">
+        {APP_CHECKS.map((c) => (
+          <TickerRow key={c.key} label={c.label} why={c.why} outcome={outcomeFor(c.key)} />
+        ))}
+      </ul>
+      {form.formState.errors.root && <InlineNotice title="Couldn't set up the App">{form.formState.errors.root.message}</InlineNotice>}
+      <Button type="submit" size="lg" loading={form.formState.isSubmitting || verifying} className="w-full">
+        {form.formState.isSubmitting && verified && "Setting up…"}
+        {verifying && "Verifying…"}
+        {!form.formState.isSubmitting && !verifying && (verified ? "Set up instance" : "Verify")}
+      </Button>
+    </form>
+  );
+};

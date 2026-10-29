@@ -6,16 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { InvitePreviewPage } from "@/pages/InvitePreviewPage";
+import { useInvitationTokenStore } from "@/stores/invitationTokenStore";
 import { useSessionStore } from "@/stores/sessionStore";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), delete: vi.fn() }));
 const originalLocation = window.location;
-vi.mock("@/api/client", () => ({ api: { post: mocks.post, get: mocks.get, patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() }));
+vi.mock("@/api/client", () => ({ api: { post: mocks.post, get: mocks.get, patch: vi.fn(), delete: mocks.delete }, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const GONE = "This invitation has been deleted or has expired";
 
-const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[`/invite${window.location.hash}`]}><Routes><Route path="/invite" element={<InvitePreviewPage />} /><Route path="/" element={<div>home</div>} /></Routes></MemoryRouter></QueryClientProvider>);
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[`/invite${window.location.hash}`]}><Routes><Route path="/invite" element={<InvitePreviewPage />} /><Route path="/" element={<div>home</div>} /><Route path="/login" element={<div>sign-in page</div>} /></Routes></MemoryRouter></QueryClientProvider>);
 
 describe("InvitePreviewPage", () => {
   afterEach(() => {
@@ -25,7 +26,10 @@ describe("InvitePreviewPage", () => {
     mocks.post.mockReset();
     mocks.get.mockReset();
     mocks.get.mockResolvedValue({ data: { configured: true, google_configured: false, discord_configured: false } });
+    mocks.delete.mockReset();
+    mocks.delete.mockResolvedValue({});
     useSessionStore.setState({ token: null, isLoggedIn: false });
+    useInvitationTokenStore.setState({ token: null });
     window.history.replaceState(null, "", "/invite#raw-token");
   });
 
@@ -33,7 +37,7 @@ describe("InvitePreviewPage", () => {
     mocks.post.mockResolvedValue({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor", description: "Edits tickets and docs." }, { id: "r-2", name: "Frontend" }], projects: [] }], expires_at: "2026-09-21T00:00:00Z", providers: ["github"] } });
     renderPage();
     expect(window.location.hash).toBe("");
-    expect(await screen.findByRole("heading", { name: /join private nexul/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Join Engineering" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Engineering" })).toBeInTheDocument();
     expect(screen.getAllByRole("listitem").map((role) => role.textContent)).toEqual(["EditorEdits tickets and docs.", "Frontend"]);
     expect(screen.getByText("Sign in to accept")).toBeInTheDocument();
@@ -82,6 +86,7 @@ describe("InvitePreviewPage", () => {
     Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/invite", search: "", hash: "", assign: vi.fn() } });
     await user.click(await screen.findByRole("button", { name: /continue with github/i }));
     expect(api.post).toHaveBeenCalledWith("/api/invitations/oauth", { provider: "github", token: "raw-token" });
+    expect(useInvitationTokenStore.getState().token).toBe("raw-token");
   });
 
   it("names after sign-in the projects each workspace's roles reach, and who is accepting", async () => {
@@ -92,9 +97,10 @@ describe("InvitePreviewPage", () => {
     ], expires_at: "later", authenticated_user: { id: "", provider: "github", login: "lena", name: "Lena Fischer" }, acceptance_token: "acceptance-token" } });
     renderPage();
     expect(await screen.findByText("Website relaunch, Mobile app")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Join 2 workspaces" })).toBeInTheDocument();
+    expect(screen.getByText("2 projects")).toBeInTheDocument();
     expect(screen.getByText("2 projects:")).toBeInTheDocument();
     expect(screen.getByText("No projects yet")).toBeInTheDocument();
-    expect(screen.getByText("You may be added to more projects later.")).toBeInTheDocument();
     expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
     expect(screen.getByText(/@lena · GitHub/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
@@ -111,6 +117,7 @@ describe("InvitePreviewPage", () => {
     await user.click(screen.getByRole("button", { name: "Accept invitation" }));
     expect(mocks.post).toHaveBeenNthCalledWith(2, "/api/invitations/redeem", { acceptance_token: "acceptance-token" });
     expect(useSessionStore.getState().token).toBe("new-session");
+    expect(useInvitationTokenStore.getState().token).toBeNull();
   });
 
   it("lands a signed-out invitee back from the provider on the acceptance, never on the invitation preview", async () => {
@@ -145,13 +152,53 @@ describe("InvitePreviewPage", () => {
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("declines without redeeming and returns to the home route", async () => {
+  it("declines without redeeming and returns to sign-in, since nobody is signed in yet", async () => {
     window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
     mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [], expires_at: "later", providers: [], acceptance_token: "acceptance-token" } });
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: "Decline" }));
-    expect(await screen.findByText("home")).toBeInTheDocument();
+    expect(await screen.findByText("sign-in page")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  describe("the way out of the wrong account", () => {
+    const acceptance = { data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }] }], expires_at: "later", authenticated_user: { id: "", provider: "github", login: "lena", name: "Lena Fischer" }, acceptance_token: "acceptance-token" } };
+
+    it("goes back to the providers with the link this tab kept, after a provider round trip", async () => {
+      window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
+      useInvitationTokenStore.setState({ token: "kept-token" });
+      mocks.post.mockResolvedValueOnce(acceptance).mockResolvedValueOnce({ data: { grants: acceptance.data.grants, expires_at: "later" } });
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("button", { name: "Not you?" }));
+      expect(await screen.findByText("Sign in to accept")).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "kept-token" });
+      expect(screen.queryByRole("button", { name: "Accept invitation" })).not.toBeInTheDocument();
+    });
+
+    it("says to open the link again when this tab kept no link", async () => {
+      window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
+      mocks.post.mockResolvedValueOnce(acceptance);
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("button", { name: "Not you?" }));
+      expect(screen.getByText("Open the invitation link again and pick another account.")).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenCalledTimes(1);
+    });
+
+    it("signs a signed-in person out, instead of a Not you that has no session to leave", async () => {
+      useSessionStore.setState({ token: "session", isLoggedIn: true });
+      mocks.post.mockRejectedValueOnce(Object.assign(new Error("conflict"), { response: { status: 409, data: { code: "existing_account", message: "conflict", details: { provider: "github", login: "lena", name: "Lena Fischer", avatar_url: "" } } } })).mockResolvedValueOnce({ data: { grants: acceptance.data.grants, expires_at: "later" } });
+      const user = userEvent.setup();
+      renderPage();
+      const signOut = await screen.findByRole("button", { name: "Sign out and use another account" });
+      expect(screen.queryByRole("button", { name: "Not you?" })).not.toBeInTheDocument();
+      await user.click(signOut);
+      expect(mocks.delete).toHaveBeenCalledWith("/api/auth/sessions/current");
+      expect(useSessionStore.getState().isLoggedIn).toBe(false);
+      expect(await screen.findByText("Sign in to accept")).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "raw-token" });
+    });
   });
 });

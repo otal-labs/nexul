@@ -9,7 +9,7 @@ Setup runs in a fixed order: the domain first, then the GitHub App on that domai
 
 ## 1. Enter the setup code
 
-Open the setup page the installer printed, `http://<server>:5123/`, and enter the **Setup code** from the same summary (`nxs_…`). Lost it? Run `sudo nexul status` on the server.
+Open the setup page the installer printed, `http://<server>:5123/`, and enter the **Setup code** from the same summary (`nxs_…`). Lost it? Run `sudo nexul status` on the server; the page has it with a copy button. Each step shows where you are, such as "Step 2 of 3".
 
 The code proves you installed the server, so a stranger who finds the port cannot take over the instance. A correct code unlocks setup in this browser for an hour. The server writes a new code each time it starts, each one good for a day, and setup closes for good once someone has signed in.
 
@@ -31,10 +31,13 @@ The page links to your new address. The link carries the setup code, so you land
 
 ## 4. Connect a GitHub App
 
-Create the [GitHub App](/docs/guide/github-app/) if you haven't yet. The page shows the callback URL to register on it, `<instance-url>/auth/callback`, then asks for:
+Two ways, switched at the top of the step:
+
+- **Create on GitHub** (the default): **Create App on GitHub** registers the [GitHub App](/docs/guide/github-app/) with the addresses and permissions filled in, and GitHub hands its credentials straight back.
+- **Use an existing App**: for an App you registered yourself. The page shows the **Homepage URL** and **Callback URL** to register on it, each with a copy button, and the repository permissions to give it (Contents read; Pull requests and Webhooks read and write), then asks for:
 
 - **GitHub OAuth client ID** and **GitHub OAuth client secret**, from the App's page.
-- **GitHub App slug**, the name in the App's URL, `github.com/apps/<slug>`.
+- **GitHub App slug**, the name after `github.com/apps/` in the App's URL.
 
 Click **Verify**. Three checks run: **Instance URL reaches this server**, **App slug resolves**, and **Client secret accepted**. When all three pass, **Set up instance** sends you to GitHub to sign in as the first user.
 

@@ -149,3 +149,12 @@ export const parseInvitationFragment = (hash: string): InvitationFragment => {
     return { token: "", acceptance: false, malformed: true };
   }
 };
+
+// The headline names what the link opens: its one workspace, or how many; the corner row already names the instance.
+export const invitationTitle = (details: InvitationPreview | undefined): string => {
+  const grants = details?.grants ?? [];
+  if (grants.length === 1) return `Join ${grants[0]?.workspace_name ?? "this workspace"}`;
+  if (grants.length > 1) return `Join ${grants.length} workspaces`;
+  if (details?.instance_name) return `Join ${details.instance_name}`;
+  return "Your invitation";
+};

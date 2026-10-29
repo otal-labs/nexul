@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GitHubAppForm } from "@/components/setup/GitHubAppForm";
+import { GitHubExistingAppForm } from "@/components/setup/GitHubExistingAppForm";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -35,12 +35,12 @@ const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <GitHubAppForm instanceUrl="https://deploy.example.com" />
+      <GitHubExistingAppForm instanceUrl="https://deploy.example.com" />
     </QueryClientProvider>,
   );
 };
 
-describe("GitHubAppForm", () => {
+describe("GitHubExistingAppForm", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.errorMessage.mockClear();

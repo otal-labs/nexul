@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { errorMessage } from "@/api/client";
+import { InlineNotice } from "@/components/InlineNotice";
+import { GithubMark } from "@/components/ProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useCompleteGitHubManifest, useStartGitHubManifest } from "@/hooks/SetupHooks";
+import { cn } from "@/lib/utils";
 
 export const GitHubManifestSetup = () => {
   const [callback] = useState(() => {
@@ -32,17 +35,18 @@ export const GitHubManifestSetup = () => {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        {callback ? "GitHub has created the App. Finish setup to store its credentials and sign in." : "Create an App with the permissions and callback addresses filled in. GitHub returns its private key directly to Nexul."}
+      <p className="text-[13px] text-pretty text-muted-foreground">
+        {callback ? "GitHub has created the App. Finish setup to store its credentials and sign in." : "GitHub creates an App with the permissions and addresses filled in, and returns its private key straight to Nexul."}
       </p>
       {callback && (
-        <Button type="button" className="w-full" loading={complete.isPending} onClick={() => complete.mutate(callback)}>
+        <Button type="button" size="lg" className="w-full" loading={complete.isPending} onClick={() => complete.mutate(callback)}>
           Finish setup
         </Button>
       )}
-      {complete.error && <ErrorDisplay error={complete.error} />}
-      {start.error && <ErrorDisplay error={start.error} />}
-      <Button type="button" variant="outline" className="w-full" loading={start.isPending} onClick={createApp}>
+      {complete.error && <InlineNotice title="Couldn't finish setup">{errorMessage(complete.error)}</InlineNotice>}
+      {start.error && <InlineNotice title="Couldn't start on GitHub">{errorMessage(start.error)}</InlineNotice>}
+      <Button type="button" size="lg" variant={callback ? "outline" : "default"} className={cn("relative w-full [&>svg]:absolute [&>svg]:left-4", !callback && "border border-transparent")} loading={start.isPending} onClick={createApp}>
+        <GithubMark />
         Create App on GitHub
       </Button>
       <form ref={form} method="post" hidden>

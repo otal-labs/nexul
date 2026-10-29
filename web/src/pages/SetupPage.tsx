@@ -9,7 +9,7 @@ export const SetupPage = () => {
   const { data: status, isPending, error } = useBootstrapStatus();
 
   return (
-    // No frame of its own: WizardLayout brings the surface and the page gutter.
+    // No frame of its own: SetupFlow brings the signed-out frame.
     <div className="h-full">
       {isPending && <LoadingDisplay />}
       {error && (
