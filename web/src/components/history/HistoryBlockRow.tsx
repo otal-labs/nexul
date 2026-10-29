@@ -1,15 +1,6 @@
-import { HistoryText } from "@/components/history/HistoryText";
+import { HistoryText, strikeClass } from "@/components/history/HistoryText";
 import { cn } from "@/lib/utils";
-import type { HistoryBlockKind, HistoryRow, RowMark } from "@/utils/HistoryBlocksUtility";
-
-// A short bar in the left margin of a changed block: grey for edited, green for added, red for removed.
-const BAR: Record<RowMark, string> = {
-  same: "",
-  edited: "before:bg-muted-foreground",
-  added: "before:bg-success",
-  removed: "before:bg-destructive",
-};
-const BAR_SHAPE = "before:absolute before:inset-y-1 before:-left-5 before:w-[3px] before:rounded-sm";
+import type { HistoryBlockKind, HistoryRow } from "@/utils/HistoryBlocksUtility";
 
 const MARKERS: Partial<Record<HistoryBlockKind, string>> = { bullet: "•", todo: "☐", done: "☑" };
 const HEADINGS = { 1: "h1", 2: "h2", 3: "h3" } as const;
@@ -19,15 +10,22 @@ interface HistoryBlockRowProps {
   row: HistoryRow;
 }
 
-// One block of a version, drawn with the read-only doc's own styles (the parent carries prose-rich).
+// One block of a version, drawn with the read-only doc's own styles (the parent carries prose-rich). A whole added or removed block
+// is marked by its run's band, so its words carry no marks of their own; a removed one is struck.
 export const HistoryBlockRow = ({ row }: HistoryBlockRowProps) => {
   const { block, mark, parts } = row;
-  const text = <HistoryText parts={parts} />;
+  const whole = mark === "added" || mark === "removed";
+  const text = (
+    <>
+      {!whole && <HistoryText parts={parts} />}
+      {whole && <span className={cn(mark === "removed" && `${strikeClass} text-muted-foreground`)}>{block.text}</span>}
+    </>
+  );
   const Heading = HEADINGS[Math.min(Math.max(block.level, 1), 3) as 1 | 2 | 3];
   const marker = block.kind === "ordered" ? `${block.ordinal}.` : MARKERS[block.kind];
 
   return (
-    <div className={cn("relative", mark !== "same" && BAR_SHAPE, BAR[mark])}>
+    <div>
       {block.kind === "heading" && <Heading>{text}</Heading>}
       {(block.kind === "paragraph" || block.kind === "other") && <p style={{ marginInlineStart: `${block.depth * 1.5}em` }}>{text}</p>}
       {block.kind === "quote" && <blockquote>{text}</blockquote>}

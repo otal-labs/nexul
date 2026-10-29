@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { bodyToBlocks, diffBlocks } from "@/utils/HistoryBlocksUtility";
+import { bodyToBlocks, diffBlocks, groupRuns } from "@/utils/HistoryBlocksUtility";
 
 const text = (t: string) => ({ type: "text", text: t });
 const p = (t: string) => ({ type: "paragraph", content: [text(t)] });
@@ -46,6 +46,23 @@ describe("diffBlocks", () => {
       ["added", "Post the notice"],
       ["same", "Merge the tickets"],
       ["same", "Tag the branch"],
+    ]);
+  });
+});
+
+describe("groupRuns", () => {
+  it("makes one change of adjacent blocks with the same mark, so the stepper counts the bars on screen", () => {
+    const before = body(p("Keep this."), p("Alpha beta gamma delta."), p("Epsilon zeta eta theta."), p("Reword the old plan today."), p("Closing line."));
+    const after = body(p("Keep this."), p("Reword the new plan today."), p("Closing line."), p("Fresh paragraph about nothing related."), p("Another fresh paragraph on cats."));
+
+    const runs = groupRuns(diffBlocks(bodyToBlocks(before), bodyToBlocks(after)));
+
+    expect(runs.map((r) => [r.mark, r.rows.length, r.change])).toEqual([
+      ["same", 1, 0],
+      ["removed", 2, 1],
+      ["edited", 1, 2],
+      ["same", 1, 0],
+      ["added", 2, 3],
     ]);
   });
 });

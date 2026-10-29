@@ -80,8 +80,8 @@ describe("formatVersionTime", () => {
   });
 
   it.each([
-    ["today", new Date(2026, 9, 6, 0, 1), "Today at 00:01"],
-    ["yesterday", new Date(2026, 9, 5, 21, 11), "Yesterday at 21:11"],
+    ["today", new Date(2026, 9, 6, 0, 1), "Today 00:01"],
+    ["yesterday", new Date(2026, 9, 5, 21, 11), "Yesterday 21:11"],
   ])("reads %s as the calendar word", (_, when, want) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 6, 0, 5));

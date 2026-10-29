@@ -1,7 +1,7 @@
 # 16 — The History dialog on tickets
 
 **Status:** ready-for-agent
-**Blocked by:** 14, 15, and the redesign-mode pass on 14
+**Blocked by:** 14, 15
 
 Spec: `../spec.md`, decision 9. Look: ticket 05's answer, mock D.
 

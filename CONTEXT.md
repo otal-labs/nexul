@@ -511,7 +511,8 @@ _Avoid_: Revision, snapshot, commit
 The dialog on a doc's menu that shows its versions: the text as it read, the
 list of versions newest first on the right, each compared word by word with
 the one before it (added words green, removed words struck through, a bar in
-the margin of each changed paragraph), and Restore this version. Anyone who
+the margin of each changed run of paragraphs, stepped through with `[` and
+`]`), and Restore, which names the version's time. Anyone who
 can read the doc sees it; restoring needs edit permission, and a locked doc
 refuses it. The list is read when the dialog opens and does not update live.
 _Avoid_: Changelog, activity, audit log (that records who called which route)
