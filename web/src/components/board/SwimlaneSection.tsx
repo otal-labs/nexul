@@ -53,7 +53,8 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
           onClick={() => toggleLane(projectId, lane.key)}
           className="group/lane flex h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
-          <span className="sticky left-2 flex min-w-0 items-baseline gap-2">
+          {/* At most the scroller's visible width, so a long name truncates on screen and its counts stay in view. */}
+          <span className="sticky left-2 flex min-w-0 max-w-[calc(100cqw-1.75rem)] items-baseline gap-2">
             <ChevronDownIcon
               className={cn("size-3.5 shrink-0 self-center text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
@@ -61,7 +62,7 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
             <span title={lane.label} className="min-w-0 truncate text-[13px] font-semibold">{lane.label}</span>{" "}
             {allDone && <CircleCheckBig className="size-3 shrink-0 self-center text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
-              <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-xs text-muted-foreground">
+              <span className="flex shrink-0 items-baseline gap-2.5 text-xs tabular-nums text-muted-foreground">
                 {runs.running > 0 && (
                   <span className="flex items-baseline gap-1">
                     <LoaderCircle className="size-3 self-center animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running" />{" "}

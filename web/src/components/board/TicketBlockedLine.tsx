@@ -19,7 +19,7 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
   // Every key shows whole, wrapping between keys when they run long: a cut key names no ticket.
   return (
     <span title={`Blocked by ${keys.join(", ")}`} className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
-      <Ban className="mt-0.5 size-3 shrink-0 text-warning" aria-hidden />
+      <Ban className="mt-[1.5px] size-3 shrink-0 text-warning" aria-hidden />
       <span className="min-w-0">
         Blocked by{" "}
         {keys.map((key, index) => (

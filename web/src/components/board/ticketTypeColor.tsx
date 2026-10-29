@@ -75,3 +75,25 @@ export const labelDotColor = (label: string, color?: string): string => {
   if (color && HUE_DOT_CLASS[color]) return HUE_DOT_CLASS[color];
   return LABEL_DOT_PALETTE[hashIndex(label.trim().toLowerCase(), LABEL_DOT_PALETTE.length)]!;
 };
+
+// The board card's label pill: its hue as a 15% tint under the hue's own dark ink (4.5:1 on the card), in the same order as LABEL_DOT_PALETTE so a label keeps its colour.
+const LABEL_PILL: Record<string, string> = {
+  cyan: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300",
+  emerald: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  orange: "bg-orange-500/15 text-orange-800 dark:text-orange-300",
+  fuchsia: "bg-fuchsia-500/15 text-fuchsia-800 dark:text-fuchsia-300",
+  lime: "bg-lime-500/15 text-lime-900 dark:text-lime-300",
+  red: "bg-red-500/15 text-red-800 dark:text-red-300",
+  violet: "bg-violet-500/15 text-violet-800 dark:text-violet-300",
+  amber: "bg-amber-500/15 text-amber-900 dark:text-amber-300",
+  blue: "bg-blue-500/15 text-blue-800 dark:text-blue-300",
+  indigo: "bg-indigo-500/15 text-indigo-800 dark:text-indigo-300",
+  teal: "bg-teal-500/15 text-teal-800 dark:text-teal-300",
+  pink: "bg-pink-500/15 text-pink-800 dark:text-pink-300",
+};
+const LABEL_PILL_ORDER = ["cyan", "emerald", "orange", "fuchsia", "lime", "red", "violet", "amber", "blue", "indigo", "teal", "pink"];
+
+export const labelPillColor = (label: string, color?: string): string => {
+  if (color && LABEL_PILL[color]) return LABEL_PILL[color];
+  return LABEL_PILL[LABEL_PILL_ORDER[hashIndex(label.trim().toLowerCase(), LABEL_PILL_ORDER.length)]!]!;
+};
