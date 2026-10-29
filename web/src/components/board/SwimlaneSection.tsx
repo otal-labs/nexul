@@ -53,8 +53,8 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
           onClick={() => toggleLane(projectId, lane.key)}
           className="group/lane flex h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
-          {/* At most the scroller's visible width, so a long name truncates on screen and its counts stay in view. */}
-          <span className="sticky left-2 flex min-w-0 max-w-[calc(100cqw-1.75rem)] items-baseline gap-2">
+          {/* At most the board's visible width (the frame less its 1.5rem scrollbar margin), so a long name truncates on screen and its counts stay in view. */}
+          <span className="sticky left-2 flex min-w-0 max-w-[calc(100cqw-3.25rem)] items-baseline gap-2">
             <ChevronDownIcon
               className={cn("size-3.5 shrink-0 self-center text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden

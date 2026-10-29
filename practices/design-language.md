@@ -582,6 +582,8 @@ open all day. Every lane's row and the stage row share one grid template
 the panel's width the board scrolls sideways and never squeezes a title, and
 below 1024 its right edge fades over 0.75rem, short enough that a cut
 column's titles stay readable, and the bottom fades into the panel's edge.
+The scrollbar sits in the page's right padding, beside the columns, with its
+space always kept, so opening or collapsing a lane never moves a column.
 A card dropped on the stage row lands in that stage in its own lane.
 
 A swimlane is a 28px band across the stage columns, pinned under the stage
