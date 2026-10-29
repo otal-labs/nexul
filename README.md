@@ -101,6 +101,8 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Desktop app | ✅ | An Electron shell that imports connection tokens, keeps a list of instances, and loads the one you pick. |
 | Instance upgrade | ✅ | Settings shows the running and newest versions. One click (or the `instance_upgrade` tool) upgrades every Nexul service on the server. |
 | Call notes | ⬜ | A speech-to-text model takes notes on a voice call and writes the summary into the doc. |
+| SSO | ⬜ | OIDC and SAML sign-in (Google, Microsoft Entra, Okta) with just-in-time user provisioning. |
+| External secrets | ⬜ | Read secrets from Vault, 1Password, or a cloud secrets manager instead of storing them in Nexul. |
 
 ## Contributing
 
@@ -134,6 +136,4 @@ What the subscription will include.
 | Feature | Done | Summary |
 |---|:---:|---|
 | Cloud hosting | ⬜ | A managed control plane we run. Your runners and servers stay yours. |
-| SSO | ⬜ | OIDC and SAML sign-in (Google, Microsoft Entra, Okta) with just-in-time user provisioning. |
-| External secrets | ⬜ | Read secrets from Vault, 1Password, or a cloud secrets manager instead of storing them in Nexul. |
 | Priority support | ⬜ | A response-time SLA and a direct channel. |
