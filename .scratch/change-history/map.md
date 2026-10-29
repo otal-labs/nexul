@@ -34,11 +34,11 @@ does. When the spec is done, the building starts.
 - [How many versions a history keeps](issues/07-how-many-versions-a-history-keeps.md): the last 10 unnamed versions per body history, named versions and live automation versions never pruned; ticket field changes kept separately, up to 100.
 - [What a ticket's history is](issues/02-what-a-ticket-history-is.md): a list of changes (who, when, via which play or automation) over every field except position, with a text diff only for the description; starts on ship day; absorbs the old activity-timeline spec.
 - [When editing a doc writes a version](issues/06-when-editing-a-doc-writes-a-version.md): one version per sitting, about 5 minutes after the last edit or when the last editor leaves, credited to everyone who edited; saves that change nothing write no version.
+- [What a play version captures](issues/03-what-a-play-version-captures.md): instructions as body versions (last 10), other settings as field changes (100); existing plays start with their current instructions; each trail records the version it ran.
+- [Restore from history](issues/04-restore-from-history.md): restore text (docs, ticket descriptions, play instructions, memories) as a new version on top; field changes never undone from history; a restore replaces live text after saving the open sitting; edit permission and the lock apply.
 
 ## Not yet specified
 
-- One shared versions store for every entity, or a table per entity like
-  today. Depends on what tickets and plays end up storing.
 - How agents reach history over MCP within the tool budget: a `version`
   field on each `get`, a diff in the result, or nothing.
 - Live push: whether an open history list updates when someone else saves.
