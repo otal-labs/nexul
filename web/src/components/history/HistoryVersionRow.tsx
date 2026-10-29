@@ -18,7 +18,7 @@ export const HistoryVersionRow = ({ summary, selected, onSelect }: HistoryVersio
       aria-current={selected}
       onClick={() => onSelect(summary.version)}
       className={cn(
-        "relative block w-full px-4 py-2.5 text-left transition-colors duration-150 ease-standard",
+        "inset-focus relative block w-full px-4 py-2.5 text-left transition-colors duration-150 ease-standard",
         !selected && "hover:bg-accent",
         selected && currentRowFillClass,
       )}
