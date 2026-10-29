@@ -67,6 +67,8 @@ export interface Trail {
   reply_message_id: string;
   activity: ActivityEntry[];
   question?: TrailQuestion | null;
+  // The play instructions version the run started with; absent on runs from before history.
+  instructions_version?: number;
 }
 
 // Mirrors internal/plays.RunFrame, the live-hub payload on topic play.run.

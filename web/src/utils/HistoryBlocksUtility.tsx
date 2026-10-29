@@ -1,9 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
 
+import type { HistoryBodyKind } from "@/models/History";
 import { diffLines, diffWords, type DiffSegment } from "@/utils/DiffUtility";
 import { parseBodyToJSON } from "@/utils/RichtextUtility";
 
-export type HistoryBlockKind = "heading" | "paragraph" | "bullet" | "ordered" | "todo" | "done" | "quote" | "code" | "other";
+export type HistoryBlockKind = "heading" | "paragraph" | "bullet" | "ordered" | "todo" | "done" | "quote" | "code" | "line" | "other";
 
 export interface HistoryBlock {
   kind: HistoryBlockKind;
@@ -87,10 +88,85 @@ const pushBlocks = (nodes: JSONContent[], depth: number, out: HistoryBlock[]) =>
   }
 };
 
-export const bodyToBlocks = (body: string): HistoryBlock[] => {
+const FENCE = /^\s*(```|~~~)/;
+const HEADING = /^(#{1,6})\s+(.*)$/;
+const ITEM = /^(\s*)(?:[-*+]|(\d+)[.)])\s+(.*)$/;
+const TASK = /^\[([ xX])\]\s+(.*)$/;
+
+// A list line's block: a "- [x]" item is done, a number marks an ordered one, two spaces of indent are a level of depth.
+const markdownItem = (match: RegExpExecArray): HistoryBlock => {
+  const [, indent = "", number, rest = ""] = match;
+  const depth = Math.floor(indent.replaceAll("\t", "  ").length / 2);
+  if (number) return make("ordered", rest, depth, { ordinal: Number(number) });
+  const task = TASK.exec(rest);
+  if (task) return make(task[1] === " " ? "todo" : "done", task[2] ?? "", depth);
+  return make("bullet", rest, depth);
+};
+
+// Markdown text as blocks: a blank line ends a paragraph, a "#" line is a heading, a "-" or "1." line an item that takes the
+// lines directly under it, and a fence holds its lines, blank ones too, as one code block.
+const markdownToBlocks = (text: string): HistoryBlock[] => {
+  const out: HistoryBlock[] = [];
+  const lines = text.split(/\r?\n/);
+  let paragraph: string[] = [];
+  let afterItem = false;
+  const flush = () => {
+    if (paragraph.length > 0) out.push(make("paragraph", paragraph.join(" "), 0));
+    paragraph = [];
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trimEnd();
+    if (FENCE.test(line)) {
+      flush();
+      afterItem = false;
+      const code: string[] = [];
+      for (i++; i < lines.length && !FENCE.test(lines[i]!); i++) code.push(lines[i]!);
+      out.push(make("code", code.join("\n"), 0));
+      continue;
+    }
+    if (line.trim() === "") {
+      flush();
+      afterItem = false;
+      continue;
+    }
+    const heading = HEADING.exec(line);
+    if (heading) {
+      flush();
+      afterItem = false;
+      out.push(make("heading", heading[2] ?? "", 0, { level: heading[1]!.length }));
+      continue;
+    }
+    const item = ITEM.exec(line);
+    if (item) {
+      flush();
+      afterItem = true;
+      out.push(markdownItem(item));
+      continue;
+    }
+    if (afterItem) {
+      out[out.length - 1]!.text += ` ${line.trim()}`;
+      continue;
+    }
+    paragraph.push(line.trim());
+  }
+  flush();
+  return out;
+};
+
+// Code as one block per line, so a changed line is marked alone.
+const codeToBlocks = (text: string): HistoryBlock[] => (text === "" ? [] : text.replace(/\r?\n$/, "").split(/\r?\n/).map((line) => make("line", line, 0)));
+
+const tiptapToBlocks = (body: string): HistoryBlock[] => {
   const out: HistoryBlock[] = [];
   pushBlocks(parseBodyToJSON(body).content ?? [], 0, out);
   return out;
+};
+
+export const bodyToBlocks = (body: string, kind: HistoryBodyKind = "tiptap"): HistoryBlock[] => {
+  if (kind === "markdown") return markdownToBlocks(body);
+  if (kind === "code") return codeToBlocks(body);
+  return tiptapToBlocks(body);
 };
 
 const keyOf = (b: HistoryBlock) => `${b.kind}\u0001${b.level}\u0001${b.depth}\u0001${b.text}`.replaceAll("\n", "↵");

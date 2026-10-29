@@ -126,6 +126,14 @@ Its auto play starts off. To switch it on for a workspace, open **Plays**, open 
 
 If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 
+## History
+
+A play keeps the last ten versions of its instructions, and **History** in the play page's ⋯ menu shows them. Each version is compared word by word with the one before it, with a list of versions on the right. An unedited built-in play reads **Built-in default**. Changes to its label, description, enabled switch, stage and excluded projects sit in the same list as single lines ("Enabled On → Off"); they show what happened and can't be picked.
+
+**Restore** on an older version saves its text again as the newest, so nothing in the history is lost. It takes `plays:write`; anyone who can read the play can open its history.
+
+A run's details say **Ran with version 7** and open the history on that version, so you can see the instructions the agent was given. Once ten newer versions have pushed it out, the line reads **Version 7 is no longer kept**. Runs from before history was kept show no version.
+
 ## Who can do what
 
 | Permission | Lets you |

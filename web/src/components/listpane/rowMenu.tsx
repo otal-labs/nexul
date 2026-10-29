@@ -44,7 +44,7 @@ export const contextParts: MenuParts = {
   RadioItem: Context.ContextMenuRadioItem,
 };
 
-export type GatedRowAction = "onNewDoc" | "lock" | "archive" | "moveTo" | "onEdit" | "onRename" | "onClone";
+export type GatedRowAction = "onNewDoc" | "lock" | "archive" | "moveTo" | "onEdit" | "onRename" | "onClone" | "onHistory";
 
 /** Each action is hidden when it is omitted (the viewer lacks the permission). */
 export interface RowMenu {
@@ -69,6 +69,8 @@ export interface RowMenu {
   onEdit?: (() => void) | undefined;
   onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
+  /** Opens the item's history; only the row that can mount the dialog brings it. */
+  onHistory?: (() => void) | undefined;
   /** Shown only once the viewer may set the entity's rules; the row brings the opener so the panel stays out of the shell. */
   permissions?: { entity: PanelEntity; onOpen: () => void } | undefined;
   onDelete?: (() => void) | undefined;
@@ -78,7 +80,7 @@ export interface RowMenu {
 
 // The row's own actions, before Permissions… and Delete.
 export const hasOwnActions = (m: RowMenu) =>
-  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.archive || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone;
+  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.archive || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone || !!m.onHistory;
 
 // Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
 export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>

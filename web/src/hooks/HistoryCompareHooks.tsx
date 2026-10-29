@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useFetchHistoryVersion } from "@/hooks/HistoryHooks";
+import type { HistoryBodyKind } from "@/models/History";
 import { diffWords, type DiffSegment } from "@/utils/DiffUtility";
 import { bodyToBlocks, diffBlocks, groupRuns, plainRow, type HistoryRun } from "@/utils/HistoryBlocksUtility";
 
@@ -22,6 +23,7 @@ export const useHistoryCompare = (
   /** The version just before it in the list; none on the oldest kept, which shows without marks. */
   previous: number | undefined,
   showChanges: boolean,
+  bodyKind: HistoryBodyKind,
 ): HistoryCompare => {
   const after = useFetchHistoryVersion(version === undefined ? undefined : versionUrl(version));
   const before = useFetchHistoryVersion(previous === undefined ? undefined : versionUrl(previous));
@@ -34,8 +36,8 @@ export const useHistoryCompare = (
   }, [compare, before.data, after.data]);
   const titleChanged = title.some((part) => part.type !== "context");
 
-  const afterBlocks = useMemo(() => after.data && bodyToBlocks(after.data.body), [after.data]);
-  const beforeBlocks = useMemo(() => before.data && bodyToBlocks(before.data.body), [before.data]);
+  const afterBlocks = useMemo(() => after.data && bodyToBlocks(after.data.body, bodyKind), [after.data, bodyKind]);
+  const beforeBlocks = useMemo(() => before.data && bodyToBlocks(before.data.body, bodyKind), [before.data, bodyKind]);
   const runs = useMemo(() => {
     if (!afterBlocks) return undefined;
     if (!compare) return groupRuns(afterBlocks.map(plainRow));

@@ -1,6 +1,6 @@
 # 18 — The History dialog on plays, and "ran with version N" on trails
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 14, 17
 
 Spec: `../spec.md`, Surfaces (web).

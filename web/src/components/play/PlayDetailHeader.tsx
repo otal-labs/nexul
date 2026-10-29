@@ -1,7 +1,10 @@
+import { useState } from "react";
+
 import { PageHeader } from "@/components/PageHeader";
 import { ActionButton } from "@/components/action/ActionButton";
 import { RowActions } from "@/components/listpane/RowActions";
 import { offersMenu } from "@/components/listpane/rowMenu";
+import { PlayHistoryDialog } from "@/components/play/PlayHistoryDialog";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
@@ -18,7 +21,8 @@ export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
   const crumbs = useEmbeddedCrumbs([{ label: "Plays", to: wsPath("/plays") }, { label: `${PLAY_TYPE_LABELS[play.type]} play` }]);
   const answer = useEntityActions("play", play.id);
   const { edit } = usePlayDialogs();
-  const menu = { ...usePlayMenu(play), onEdit: undefined };
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const menu = { ...usePlayMenu(play, () => setHistoryOpen(true)), onEdit: undefined };
 
   return (
     <PageHeader
@@ -31,6 +35,7 @@ export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
             Edit
           </ActionButton>
           {offersMenu(menu, !!menu.permissions) && <RowActions itemLabel={play.label} {...menu} />}
+          {historyOpen && <PlayHistoryDialog playId={play.id} name={play.label} onClose={() => setHistoryOpen(false)} />}
         </>
       }
     />

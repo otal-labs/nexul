@@ -11,10 +11,11 @@ import { useRowGates } from "@/hooks/useRowGates";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Play } from "@/models/Play";
 
-// A play's row menu, shared by its list row and its detail header. Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
-export const usePlayMenu = (play: Play): RowMenu => {
+// A play's row menu, shared by its list row and its detail header; only the header can mount the History dialog, so it alone passes onHistory. Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
+export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
   const { offered, gates, deleteGate } = useRowGates({
     onEdit: { permission: "plays:write", verb: "edit plays" },
+    onHistory: { permission: "plays:read", verb: "read play history" },
     onDelete: { permission: "plays:delete" },
     // A built-in clones its text onto a template; a play a person made clones into a new play.
     ...(play.builtin_key ? {} : { onClone: { permission: "plays:write", verb: "create plays" } }),
@@ -54,6 +55,7 @@ export const usePlayMenu = (play: Play): RowMenu => {
     deleteGate,
     onEdit: offered("onEdit") ? () => void edit(play) : undefined,
     onClone: play.builtin_key || offered("onClone") ? clone : undefined,
+    onHistory: onHistory && offered("onHistory") ? onHistory : undefined,
     permissions: canWrite ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
     onDelete: offered("onDelete") ? () => void remove() : undefined,
   };

@@ -66,3 +66,61 @@ describe("groupRuns", () => {
     ]);
   });
 });
+
+describe("bodyToBlocks on plain text", () => {
+  it("cuts markdown at blank lines and reads headings, list items and fences from their markers", () => {
+    const text = [
+      "# Fix the ticket",
+      "",
+      "Read the ticket first,",
+      "then the code it names.",
+      "",
+      "- Run the tests",
+      "  before pushing",
+      "  - [x] Lint",
+      "2. Open the pull request",
+      "",
+      "```sh",
+      "make test",
+      "",
+      "make lint",
+      "```",
+    ].join("\n");
+
+    expect(bodyToBlocks(text, "markdown").map((b) => [b.kind, b.text, b.level, b.depth])).toEqual([
+      ["heading", "Fix the ticket", 1, 0],
+      ["paragraph", "Read the ticket first, then the code it names.", 0, 0],
+      ["bullet", "Run the tests before pushing", 0, 0],
+      ["done", "Lint", 0, 1],
+      ["ordered", "Open the pull request", 0, 0],
+      ["code", "make test\n\nmake lint", 0, 0],
+    ]);
+  });
+
+  it("keeps a one-word edit inside a long paragraph as one edited run with just that word marked", () => {
+    const long = "Read the ticket and the files it names, then write the smallest change that makes the failing test pass, and run the whole suite before you push anything";
+    const before = `${long}.\n\nClose the ticket.`;
+    const after = `${long.replace("smallest", "tightest")}.\n\nClose the ticket.`;
+
+    const runs = groupRuns(diffBlocks(bodyToBlocks(before, "markdown"), bodyToBlocks(after, "markdown")));
+
+    expect(runs.map((r) => [r.mark, r.rows.length])).toEqual([
+      ["edited", 1],
+      ["same", 1],
+    ]);
+    expect(runs[0]!.rows[0]!.parts.filter((part) => part.type !== "context")).toEqual([
+      { type: "remove", text: "smallest" },
+      { type: "add", text: "tightest" },
+    ]);
+  });
+
+  it("makes every line of code its own block, so a changed line is marked alone", () => {
+    const rows = diffBlocks(bodyToBlocks("a := 1\nb := 2\nreturn a\n", "code"), bodyToBlocks("a := 1\nb := 3\nreturn a\n", "code"));
+
+    expect(rows.map((r) => [r.mark, r.block.kind, r.block.text])).toEqual([
+      ["same", "line", "a := 1"],
+      ["edited", "line", "b := 3"],
+      ["same", "line", "return a"],
+    ]);
+  });
+});
