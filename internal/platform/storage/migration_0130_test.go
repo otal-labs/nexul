@@ -13,13 +13,12 @@ func TestMigration0130_AutoPlaysDropMemoriesDeletedBeforeIt(t *testing.T) {
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	seedPlays(t, s, "play-1")
 	ctx := t.Context()
-	seedProject(t, s, "p-1", "ws-1", "ACM")
-	for _, id := range []string{"mem-1", "mem-2"} {
-		m := newTestMemory(id, "p-1")
-		m.WorkspaceID = "ws-1"
-		require.NoError(t, s.Memories.Create(ctx, m, ""))
-	}
-	_, err := db.Exec(`INSERT INTO auto_plays (id, play_id, workspace_id, moment, run_on, memory_ids, created_at, updated_at) VALUES
+	// Raw SQL at this migration's schema: the repos write the newest one.
+	_, err := db.Exec(`INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, updated_at) VALUES ('p-1', 'Project ACM', 'ACM', 1, 'ws-1', 1, 1);
+INSERT INTO memories (id, workspace_id, project_id, title, body, version, created_at, updated_at) VALUES
+    ('mem-1', 'ws-1', 'p-1', 'A', '', 1, 1, 1), ('mem-2', 'ws-1', 'p-1', 'B', '', 1, 1, 1)`)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO auto_plays (id, play_id, workspace_id, moment, run_on, memory_ids, created_at, updated_at) VALUES
     ('ap-kept', 'play-1', 'ws-1', 'doc.changed', 'causer', '["mem-2","mem-1"]', 1, 1),
     ('ap-stale', 'play-1', 'ws-1', 'doc.changed', 'causer', '["mem-gone","mem-2","mem-also-gone"]', 1, 1)`)
 	require.NoError(t, err)

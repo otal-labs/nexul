@@ -4,11 +4,11 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { getHistoryKey } from "@/hooks/HistoryHooks";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import type { InterviewAnswer, SaveInterviewAnswerInput } from "@/models/InterviewAnswer";
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
-import type { MemoryVersion } from "@/models/MemoryVersion";
 import type { Project } from "@/models/Project";
 import { isTrailActive, type RunFrame, type RunPlace } from "@/models/Trail";
 import type { Workspace } from "@/models/Workspace";
@@ -16,7 +16,6 @@ import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getMemoriesKey = "getMemories";
 export const getMemoryKey = "getMemory";
-export const getMemoryVersionsKey = "getMemoryVersions";
 export const getInterviewTemplateKey = "getInterviewTemplate";
 export const getInterviewAnswersKey = "getInterviewAnswers";
 const getProjectsKeyForClone = "getProjectsForClone";
@@ -128,27 +127,8 @@ export const useDeleteMemory = () => {
   });
 };
 
-export const useFetchMemoryVersions = (id: string | undefined) =>
-  useQuery({
-    queryKey: [getMemoryVersionsKey, id],
-    queryFn: async () => (await api.get<MemoryVersion[]>(`/api/memories/${id}/versions`)).data,
-    enabled: !!id,
-  });
-
-export const useRevertMemory = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("memories:write", async ({ id, version }: { id: string; version: number }) =>
-      (await api.post<Memory>(`/api/memories/${id}/revert`, { version })).data),
-    onSuccess: async (_, { id }) => {
-      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
-      await client.invalidateQueries({ queryKey: [getMemoryKey, id] });
-      await client.invalidateQueries({ queryKey: [getMemoryVersionsKey, id] });
-      toast.success("Memory reverted");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+export const memoryHistoryUrl = (memoryId: string) => `/api/memories/${memoryId}/history`;
+export const memoryVersionUrl = (memoryId: string, version: number) => `/api/memories/${memoryId}/versions/${version}`;
 
 export const useCloneMemory = () => {
   const client = useQueryClient();
@@ -263,7 +243,7 @@ const refetchLists = (client: QueryClient, m: MemoryPlace) =>
   Promise.all([refetch(client, [getMemoriesKey, "byWorkspace", m.workspace_id]), refetch(client, [getMemoriesKey, "byProject", m.project_id])]);
 
 const refetchMemory = (client: QueryClient, m: MemoryPlace) =>
-  Promise.all([refetchLists(client, m), refetch(client, [getMemoryKey, m.id]), refetch(client, [getMemoryVersionsKey, m.id])]);
+  Promise.all([refetchLists(client, m), refetch(client, [getMemoryKey, m.id]), refetch(client, [getHistoryKey, memoryHistoryUrl(m.id)])]);
 
 export const memoryFollower: LiveFollower = {
   "memory.created": ({ memory }: { memory: MemoryPlace }, { client }) => refetchLists(client, memory),

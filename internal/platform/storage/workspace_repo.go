@@ -121,7 +121,7 @@ func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, p
 	if err := q.InsertMemoryVersion(ctx, sqlcgen.InsertMemoryVersionParams{
 		ID: uuid.NewString(), MemoryID: memoryID, Version: 1,
 		Title: "Working in this project", WhenToUse: "Always included in this project's turns.",
-		Body: seedMemoryBody, AlwaysIncluded: 1, CreatedAt: at,
+		Body: seedMemoryBody, AlwaysIncluded: 1, EditorIds: "[]", CreatedAt: at,
 	}); err != nil {
 		return fmt.Errorf("seed memory version for project %s: %w", projectID, err)
 	}

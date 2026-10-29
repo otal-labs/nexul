@@ -190,7 +190,7 @@
   "POST /api/memories/interview-answers/skip": ["memories:write"],
   "POST /api/memories/interview-sources": ["memories:write"],
   "POST /api/memories/{id}/clone": ["memories:clone"],
-  "POST /api/memories/{id}/revert": ["memories:write"],
+  "POST /api/memories/{id}/versions/{version}/restore": ["memories:write"],
   "POST /api/mentions/resolve": ["none"],
   "POST /api/notifications/read-all": ["none"],
   "POST /api/notifications/{id}/read": ["none"],

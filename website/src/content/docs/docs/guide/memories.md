@@ -16,9 +16,13 @@ Open **Memories** under the project in the sidebar. Every memory belongs to one 
 3. Switch on **Always included** if every agent turn in the project should read it.
 4. Write the body and save.
 
-To edit one, open it, change the title, **When to use** line, or body, and press **Save** at the top right. A memory isn't edited live like a doc: every save adds a version under **Versions**, beside the body on a wide window and under it on a narrow one, and **Revert** on an older version saves it again as the newest, so nothing in the history is lost.
+To edit one, open it, change the title, **When to use** line, or body, and press **Save** at the top right. A memory isn't edited live like a doc: every save that changes the title, **When to use** line, body or **Always included** adds a version under **Versions**, beside the body on a wide window and under it on a narrow one.
 
 The line under an open memory's title holds its two settings, which save as soon as you change them: its folder (**Main** or **Footer**, see below) and **Always included**. The same switch sits on each row of the list.
+
+### History
+
+A memory keeps its last 10 versions, and a save that changes nothing adds none. Pick a version under **Versions** to open the same **History** dialog a doc has: the text as it read next to the list of versions, each compared word by word with the one before it, with **Restore** naming the picked version's time. Restoring saves that version again as the newest, so nothing in the list is rewritten. It needs `memories:write`, and anyone who can read the memory can open the dialog.
 
 ## How agents find memories
 

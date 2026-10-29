@@ -72,12 +72,12 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
             </div>
           )}
           <div className="max-w-sm space-y-8 @min-[50rem]:hidden">
-            <MemorySections memoryId={memory.id} currentVersion={memory.version} />
+            <MemorySections memoryId={memory.id} />
           </div>
         </article>
         <div className="hidden w-52 shrink-0 @min-[50rem]:block">
           <div className="sticky top-6 -mr-2.5 -ml-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto pl-2 [scrollbar-gutter:stable]">
-            <MemorySections memoryId={memory.id} currentVersion={memory.version} />
+            <MemorySections memoryId={memory.id} />
           </div>
         </div>
       </div>

@@ -25,12 +25,14 @@ type Memory struct {
 	AlwaysIncluded bool `json:"always_included"`
 	// Footer marks a memory a play run names last, to read once the work is done (ADR 0112).
 	Footer bool `json:"footer"`
-	// Version is the current pointer into memory_versions; every save appends a row and bumps this (ticket 17).
+	// Version counts saves; every save that changes something also appends a row to memory_versions (ticket 17).
 	Version   int       `json:"version"`
 	CreatedBy string    `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedBy string    `json:"updated_by"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// RestoredFrom is the version number a restore copied this save from; zero for any other save.
+	RestoredFrom int `json:"-"`
 }
 
 // MemoryItem is one memory as an agent turn names it for the agent to read itself, never its body (ADR 0111).
@@ -41,8 +43,11 @@ type MemoryItem struct {
 	Kind           string
 }
 
-// MemoryVersion is one historical snapshot; every save appends a row, revert included, mirroring doc_versions
-// but with an author on every row rather than only on named milestones (ticket 17).
+// KeptVersions is how many versions a memory keeps; a save past it prunes the oldest.
+const KeptVersions = 10
+
+// MemoryVersion is one historical snapshot; every save that changes something appends a row, restore included,
+// mirroring doc_versions but with an author on every row rather than only on named milestones (ticket 17).
 type MemoryVersion struct {
 	ID             string `json:"id"`
 	MemoryID       string `json:"memory_id"`
@@ -54,7 +59,34 @@ type MemoryVersion struct {
 	AuthorID       string `json:"author_id"`
 	// AuthorVia is "mcp" when the save came from an MCP tool call, empty for the browser (ADR 0049).
 	AuthorVia string    `json:"author_via,omitempty"`
+	EditorIDs []string  `json:"editor_ids"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// VersionSummary is a version in a memory's history, without its body.
+type VersionSummary struct {
+	Version   int       `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+	// Name is always empty: a memory has no named versions; the field keeps the shape every history shares.
+	Name      string   `json:"name"`
+	EditorIDs []string `json:"editor_ids"`
+	// Via is "mcp" when the save came from an MCP tool call, empty for the browser (ADR 0049).
+	Via string `json:"via"`
+	// Title is the title the memory had at this version, which the rail of versions shows on hover.
+	Title string `json:"title"`
+	// WordsAdded and WordsRemoved size the version against the kept one before it; nil on the oldest kept.
+	WordsAdded   *int `json:"words_added"`
+	WordsRemoved *int `json:"words_removed"`
+	// RestoredFrom is the version number a restore copied this version from; nil for any other version.
+	RestoredFrom *int `json:"restored_from"`
+	// Current marks the newest version.
+	Current bool `json:"current"`
+}
+
+// History is what a memory's history route answers; memories keep no field changes, so Changes is always empty.
+type History struct {
+	Versions []VersionSummary `json:"versions"`
+	Changes  []struct{}       `json:"changes"`
 }
 
 // InterviewTemplate is the markdown list of questions a project's interview asks.

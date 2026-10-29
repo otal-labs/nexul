@@ -66,6 +66,29 @@ describe("HistoryVersionList", () => {
     expect(screen.queryByText(/^\+\d/)).not.toBeInTheDocument();
   });
 
+  it("says 'plus named ones' only where a version can be named: docs always, others only once one is kept", () => {
+    const render_ = (props: { namesVersions?: boolean; named?: boolean }) =>
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <HistoryVersionList
+            versions={[version(2, 3, true), { ...version(1, 1), name: props.named ? "Q3 freeze" : "" }]}
+            selected={2}
+            {...(props.namesVersions !== undefined && { namesVersions: props.namesVersions })}
+            onSelect={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+
+    const first = render_({});
+    expect(screen.getByText("Only the last 10 versions are kept, plus named ones.")).toBeInTheDocument();
+    first.unmount();
+    const second = render_({ namesVersions: false });
+    expect(screen.getByText("Only the last 10 versions are kept.")).toBeInTheDocument();
+    second.unmount();
+    render_({ namesVersions: false, named: true });
+    expect(screen.getByText("Only the last 10 versions are kept, plus named ones.")).toBeInTheDocument();
+  });
+
   describe("below 1024px", () => {
     afterEach(() => {
       // @ts-expect-error jsdom has no matchMedia; the hook reads absence as a wide window.

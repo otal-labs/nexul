@@ -47,11 +47,15 @@ export interface KeptCounts {
   long: string;
 }
 
-export const keptCounts = (versions: HistoryVersionSummary[]): KeptCounts => {
+// The rule says "plus named ones" only where a named version can exist: the item can name versions, or one is already kept.
+export const keepsNamed = (versions: HistoryVersionSummary[], namesVersions: boolean): boolean => namesVersions || versions.some((v) => v.name);
+
+export const keptCounts = (versions: HistoryVersionSummary[], namesVersions = true): KeptCounts => {
   const named = versions.filter((v) => v.name).length;
+  const keeps = keepsNamed(versions, namesVersions);
   return {
     short: `${versions.length} ${versions.length === 1 ? "version" : "versions"}${named > 0 ? ` · ${named} named` : ""}`,
-    long: `Only the last ${KEPT_UNNAMED_VERSIONS} unnamed versions are kept, plus named ones.`,
+    long: keeps ? `Only the last ${KEPT_UNNAMED_VERSIONS} unnamed versions are kept, plus named ones.` : `Only the last ${KEPT_UNNAMED_VERSIONS} versions are kept.`,
   };
 };
 

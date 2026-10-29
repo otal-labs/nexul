@@ -736,6 +736,10 @@ type MemoryVersion struct {
 	AuthorID       string
 	AuthorVia      string
 	CreatedAt      int64
+	EditorIds      string
+	WordsAdded     sql.NullInt64
+	WordsRemoved   sql.NullInt64
+	RestoredFrom   sql.NullInt64
 }
 
 type Message struct {

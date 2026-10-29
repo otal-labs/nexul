@@ -131,14 +131,14 @@ func (f *fakeRepo) Update(_ context.Context, m *Memory, authorVia string, evts .
 	return nil
 }
 
-func (f *fakeRepo) ListVersions(_ context.Context, memoryID string) ([]*MemoryVersion, error) {
+func (f *fakeRepo) ListVersionSummaries(_ context.Context, memoryID string) ([]VersionSummary, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	vs := f.versions[memoryID]
-	out := make([]*MemoryVersion, len(vs))
+	out := make([]VersionSummary, len(vs))
 	for i := range vs {
-		cp := *vs[len(vs)-1-i]
-		out[i] = &cp
+		v := vs[len(vs)-1-i]
+		out[i] = VersionSummary{Version: v.Version, Title: v.Title, EditorIDs: v.EditorIDs, Via: v.AuthorVia, CreatedAt: v.CreatedAt}
 	}
 	return out, nil
 }
@@ -159,7 +159,7 @@ func versionFrom(m *Memory, authorVia string) *MemoryVersion {
 	return &MemoryVersion{
 		ID: fmt.Sprintf("version-%s-%d", m.ID, m.Version), MemoryID: m.ID, Version: m.Version,
 		Title: m.Title, WhenToUse: m.WhenToUse, Body: m.Body, AlwaysIncluded: m.AlwaysIncluded,
-		AuthorID: m.UpdatedBy, AuthorVia: authorVia, CreatedAt: m.UpdatedAt,
+		AuthorID: m.UpdatedBy, AuthorVia: authorVia, EditorIDs: []string{m.UpdatedBy}, CreatedAt: m.UpdatedAt,
 	}
 }
 
@@ -329,7 +329,7 @@ func TestService_Refusals_ChangeNothing(t *testing.T) {
 		{"delete with no id", func() error { return ok.Delete(ctx, " ") }, apperrs.ErrInvalid},
 		{"delete a missing memory", func() error { return ok.Delete(ctx, "missing") }, apperrs.ErrNotFound},
 		{"delete without memories:delete", func() error { return deny.Delete(ctx, m.ID) }, apperrs.ErrForbidden},
-		{"list versions without memories:read", func() error { _, err := deny.ListVersions(ctx, m.ID); return err }, apperrs.ErrForbidden},
+		{"history without memories:read", func() error { _, err := deny.History(ctx, m.ID); return err }, apperrs.ErrForbidden},
 		{"get version zero", func() error { _, err := ok.GetVersion(ctx, m.ID, 0); return err }, apperrs.ErrInvalid},
 		{"revert with only memories:read", func() error { _, err := deny.Revert(ctx, m.ID, 1, ""); return err }, apperrs.ErrForbidden},
 	}
@@ -475,10 +475,12 @@ func TestUpdate_TwiceThenRevertToFirst_AppendsThirdVersionMatchingIt(t *testing.
 	_, err = s.Update(testCtx(), m.ID, "Title v3", "when", "v3 body", false, "")
 	require.NoError(t, err)
 
-	versions, err := s.ListVersions(testCtx(), m.ID)
+	history, err := s.History(testCtx(), m.ID)
 	require.NoError(t, err)
-	require.Len(t, versions, 3)
-	assert.Equal(t, 3, versions[0].Version) // newest first
+	require.Len(t, history.Versions, 3)
+	assert.Equal(t, 3, history.Versions[0].Version) // newest first
+	assert.True(t, history.Versions[0].Current)
+	assert.False(t, history.Versions[1].Current)
 
 	reverted, err := s.Revert(testCtx(), m.ID, 1, "")
 	require.NoError(t, err)
@@ -486,9 +488,9 @@ func TestUpdate_TwiceThenRevertToFirst_AppendsThirdVersionMatchingIt(t *testing.
 	assert.Contains(t, reverted.Body, "v1 body")
 	assert.Equal(t, "Title", reverted.Title)
 
-	versions, err = s.ListVersions(testCtx(), m.ID)
+	history, err = s.History(testCtx(), m.ID)
 	require.NoError(t, err)
-	require.Len(t, versions, 4)
+	require.Len(t, history.Versions, 4)
 }
 
 func TestCreate_ViaMCP_TagsFirstVersion(t *testing.T) {
@@ -578,9 +580,9 @@ func TestClone_CopiesFieldsAndStartsFreshVersionHistory(t *testing.T) {
 	assert.True(t, clone.AlwaysIncluded)
 	assert.Equal(t, 1, clone.Version)
 
-	versions, err := s.ListVersions(testCtx(), clone.ID)
+	history, err := s.History(testCtx(), clone.ID)
 	require.NoError(t, err)
-	require.Len(t, versions, 1)
+	require.Len(t, history.Versions, 1)
 
 	// The source is untouched by cloning.
 	source, err := s.Get(testCtx(), m.ID)

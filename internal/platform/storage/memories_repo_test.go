@@ -51,14 +51,19 @@ func TestMemoriesRepo_Create_WritesVersion1(t *testing.T) {
 	m := newTestMemory("mem-1", "project-general")
 	require.NoError(t, s.Memories.Create(context.Background(), m, "mcp"))
 
-	versions, err := s.Memories.ListVersions(context.Background(), "mem-1")
+	versions, err := s.Memories.ListVersionSummaries(context.Background(), "mem-1")
 	require.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, 1, versions[0].Version)
 	assert.Equal(t, m.Title, versions[0].Title)
-	assert.Equal(t, m.Body, versions[0].Body)
-	assert.Equal(t, "user-1", versions[0].AuthorID)
-	assert.Equal(t, "mcp", versions[0].AuthorVia)
+	assert.Equal(t, []string{"user-1"}, versions[0].EditorIDs)
+	assert.Equal(t, "mcp", versions[0].Via)
+	assert.Nil(t, versions[0].WordsAdded, "the first version has nothing to be sized against")
+
+	v, err := s.Memories.GetVersion(context.Background(), "mem-1", 1)
+	require.NoError(t, err)
+	assert.Equal(t, m.Body, v.Body)
+	assert.Equal(t, "user-1", v.AuthorID)
 }
 
 func TestMemoriesRepo_ListByProject_IncludesTheSeededDefault(t *testing.T) {
@@ -116,11 +121,11 @@ func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
 	assert.Equal(t, 2, got.Version)
 	assert.Equal(t, "user-2", got.UpdatedBy)
 
-	versions, err := s.Memories.ListVersions(context.Background(), "mem-1")
+	versions, err := s.Memories.ListVersionSummaries(context.Background(), "mem-1")
 	require.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, 2, versions[0].Version) // newest first
-	assert.Equal(t, "user-2", versions[0].AuthorID)
+	assert.Equal(t, []string{"user-2"}, versions[0].EditorIDs)
 	assert.Equal(t, 1, versions[1].Version)
 }
 
@@ -172,7 +177,7 @@ func TestMemoriesRepo_Delete_CascadesVersions(t *testing.T) {
 	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "project-general"), ""))
 	require.NoError(t, s.Memories.Delete(context.Background(), "mem-1"))
 
-	versions, err := s.Memories.ListVersions(context.Background(), "mem-1")
+	versions, err := s.Memories.ListVersionSummaries(context.Background(), "mem-1")
 	require.NoError(t, err)
 	assert.Empty(t, versions)
 }
@@ -191,7 +196,7 @@ func TestProjectsRepo_Create_SeedsAnAlwaysIncludedMemory(t *testing.T) {
 	assert.Equal(t, 1, got[0].Version)
 	assert.NotEmpty(t, got[0].Body)
 
-	versions, err := s.Memories.ListVersions(context.Background(), got[0].ID)
+	versions, err := s.Memories.ListVersionSummaries(context.Background(), got[0].ID)
 	require.NoError(t, err)
 	require.Len(t, versions, 1)
 }
