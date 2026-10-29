@@ -7,9 +7,9 @@ import { boardGridMaxWidth, countByStatus } from "@/components/board/boardGrid";
 import { useState } from "react";
 import type { DragMoveAction } from "@/components/board/dragMove";
 import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
+import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { Button } from "@/components/ui/button";
@@ -132,32 +132,32 @@ export const ProjectBoardSection = ({
       </div>
       {isLoading && (columns.length > 0 ? <BoardSkeleton columns={columns} /> : <LoadingDisplay label="Loading board…" />)}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
-      {tickets && shownCount === 0 && (
-        <div className="flex flex-col items-center gap-1 py-8">
-          <NoDataDisplay
-            message={
-              totalCount === 0
-                ? "No tickets yet. Create one to start the board."
-                : "No tickets match these filters."
-            }
-          />
-          {totalCount > 0 && (
-            <Button variant="outline" size="sm" onClick={onClear}>
-              Clear filters
-            </Button>
-          )}
-        </div>
-      )}
-      {tickets && shownCount > 0 && (
+      {tickets && (
         <KanbanBoard
           projectId={projectId}
           maxWidth={chromeWidth}
           onGutter={setGutter}
           columns={columns}
-          swimlanes={swimlanes}
+          swimlanes={shownCount === 0 ? [] : swimlanes}
           onDrop={onDrop}
           onReorderColumns={onReorderColumns}
           onAddTicket={onAddTicket}
+          empty={
+            shownCount === 0 && (
+              <EmptyState
+                role="status"
+                className="sticky left-0 w-[100cqw] py-8"
+                title={totalCount === 0 ? "No tickets yet. Create one to start the board." : "No tickets match these filters."}
+                action={
+                  totalCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={onClear}>
+                      Clear filters
+                    </Button>
+                  )
+                }
+              />
+            )
+          }
         />
       )}
     </>
