@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -43,7 +44,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 		if err != nil {
 			return fmt.Errorf("insert doc %s: %w", d.ID, classifyWriteErr(err))
 		}
-		if err := insertDocVersion(ctx, q, d); err != nil {
+		if err := insertDocVersion(ctx, q, d, d.CreatedBy, d.Via); err != nil {
 			return err
 		}
 		if err := addAutoWatcher(ctx, q, d.ID, d.CreatedBy, d.CreatedAt); err != nil {
@@ -106,7 +107,7 @@ func (r *DocsRepo) ListByProject(ctx context.Context, projectID string) ([]*docs
 	return toDocs(rows), nil
 }
 
-func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID string, evts ...eventbus.OutboxEvent) error {
+func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID, via string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		// Two saves that read the same version would both claim the next one; numbering inside the write keeps both.
@@ -125,7 +126,7 @@ func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID string, evt
 		if n == 0 {
 			return fmt.Errorf("update doc %s: %w", d.ID, apperrs.ErrNotFound)
 		}
-		if err := insertDocVersion(ctx, q, d); err != nil {
+		if err := writeSaveVersion(ctx, q, d, editorID, via); err != nil {
 			return err
 		}
 		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
@@ -198,7 +199,7 @@ func (r *DocsRepo) CreateNamedVersion(ctx context.Context, v *docs.DocVersion) e
 		q := r.q.WithTx(tx)
 		err := q.InsertNamedDocVersion(ctx, sqlcgen.InsertNamedDocVersionParams{
 			DocID: v.DocID, Version: int64(v.Version), Title: v.Title, Body: v.Body,
-			Name: v.Name, AuthorID: v.AuthorID, CreatedAt: v.CreatedAt.Unix(),
+			Name: v.Name, AuthorID: v.AuthorID, EditorIds: idsJSON(v.EditorIDs), Via: v.Via, CreatedAt: v.CreatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert named version %s v%d: %w", v.DocID, v.Version, classifyWriteErr(err))
@@ -236,7 +237,23 @@ func (r *DocsRepo) ListVersions(ctx context.Context, docID string) ([]*docs.DocV
 	for _, row := range rows {
 		out = append(out, &docs.DocVersion{
 			DocID: row.DocID, Version: int(row.Version), Title: row.Title, Body: row.Body,
-			Name: row.Name, AuthorID: row.AuthorID, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+			Name: row.Name, AuthorID: row.AuthorID, EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.Via,
+			CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		})
+	}
+	return out, nil
+}
+
+func (r *DocsRepo) ListVersionSummaries(ctx context.Context, docID string) ([]docs.VersionSummary, error) {
+	rows, err := r.q.ListDocVersionSummaries(ctx, docID)
+	if err != nil {
+		return nil, fmt.Errorf("list doc version summaries %s: %w", docID, err)
+	}
+	out := make([]docs.VersionSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, docs.VersionSummary{
+			Version: int(row.Version), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), Name: row.Name,
+			EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.Via,
 		})
 	}
 	return out, nil
@@ -249,7 +266,8 @@ func (r *DocsRepo) GetVersion(ctx context.Context, docID string, version int) (*
 	}
 	return &docs.DocVersion{
 		DocID: row.DocID, Version: int(row.Version), Title: row.Title, Body: row.Body,
-		Name: row.Name, AuthorID: row.AuthorID, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		Name: row.Name, AuthorID: row.AuthorID, EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.Via,
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 	}, nil
 }
 
@@ -330,14 +348,45 @@ func toDocs(rows []sqlcgen.Doc) []*docs.Doc {
 	return out
 }
 
-func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc) error {
+func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editorID, via string) error {
+	editors := []string{}
+	if editorID != "" {
+		editors = append(editors, editorID)
+	}
 	err := q.InsertDocVersion(ctx, sqlcgen.InsertDocVersionParams{
-		DocID: d.ID, Version: int64(d.Version), Title: d.Title, Body: d.Body, CreatedAt: d.UpdatedAt.Unix(),
+		DocID: d.ID, Version: int64(d.Version), Title: d.Title, Body: d.Body,
+		AuthorID: editorID, EditorIds: idsJSON(editors), Via: via, CreatedAt: d.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert doc version %s v%d: %w", d.ID, d.Version, classifyWriteErr(err))
 	}
 	return nil
+}
+
+// writeSaveVersion appends the version a save makes, unless the doc already reads as its newest version, then prunes.
+func writeSaveVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editorID, via string) error {
+	same, err := q.DocMatchesLatestVersion(ctx, sqlcgen.DocMatchesLatestVersionParams{ForDoc: d.ID, WantTitle: d.Title, WantBody: d.Body})
+	if err != nil {
+		return fmt.Errorf("compare doc %s with its newest version: %w", d.ID, err)
+	}
+	if same {
+		return nil
+	}
+	if err := insertDocVersion(ctx, q, d, editorID, via); err != nil {
+		return err
+	}
+	if err := q.PruneDocVersions(ctx, sqlcgen.PruneDocVersionsParams{ForDoc: d.ID, Keep: docs.KeptUnnamedVersions}); err != nil {
+		return fmt.Errorf("prune doc %s versions: %w", d.ID, err)
+	}
+	return nil
+}
+
+func decodeEditorIDs(raw string) []string {
+	var out []string
+	if err := json.Unmarshal([]byte(raw), &out); err != nil || out == nil {
+		return []string{}
+	}
+	return out
 }
 
 func enqueueDocsOutbox(ctx context.Context, tx *sql.Tx, evts []eventbus.OutboxEvent) error {

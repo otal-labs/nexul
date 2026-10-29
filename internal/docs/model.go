@@ -22,17 +22,42 @@ type Doc struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	// Settler is the person a create or save opens the doc's settle window for; empty leaves the window as it is.
 	Settler string `json:"-"`
+	// Via is how a create came, recorded on its first version; see viaOf.
+	Via string `json:"-"`
 }
 
 // DocVersion is one historical snapshot; each update appends a row while the docs table holds the current pointer.
 type DocVersion struct {
-	DocID     string    `json:"doc_id"`
-	Version   int       `json:"version"`
-	Title     string    `json:"title"`
-	Body      string    `json:"body"`
-	Name      string    `json:"name,omitempty"`
-	AuthorID  string    `json:"author_id,omitempty"`
+	DocID    string `json:"doc_id"`
+	Version  int    `json:"version"`
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	Name     string `json:"name,omitempty"`
+	AuthorID string `json:"author_id,omitempty"`
+	// EditorIDs is who the version credits, AuthorID first; Via is the automation it came through, "mcp" for an agent's save, empty for the browser.
+	EditorIDs []string  `json:"editor_ids"`
+	Via       string    `json:"via"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// KeptUnnamedVersions is how many unnamed versions a doc keeps; a save past it prunes the oldest, named ones never count.
+const KeptUnnamedVersions = 10
+
+// VersionSummary is a version in a doc's history, without its body.
+type VersionSummary struct {
+	Version   int       `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name"`
+	EditorIDs []string  `json:"editor_ids"`
+	Via       string    `json:"via"`
+	// Current marks the newest version.
+	Current bool `json:"current"`
+}
+
+// History is what a doc's history route answers; docs keep no field changes, so Changes is always empty.
+type History struct {
+	Versions []VersionSummary `json:"versions"`
+	Changes  []struct{}       `json:"changes"`
 }
 
 // DocFilter narrows a doc list; empty fields narrow nothing, and the filters combine.

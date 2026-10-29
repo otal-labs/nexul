@@ -152,7 +152,7 @@ func (f *fakeRepo) ListByIDs(_ context.Context, ids []string) ([]*Doc, error) {
 	return out, nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, d *Doc, _ string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Update(_ context.Context, d *Doc, _, _ string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -228,6 +228,17 @@ func (f *fakeRepo) ListVersions(_ context.Context, docID string) ([]*DocVersion,
 	defer f.mu.Unlock()
 	out := append([]*DocVersion(nil), f.versions[docID]...)
 	slices.SortFunc(out, func(a, b *DocVersion) int { return b.Version - a.Version })
+	return out, nil
+}
+
+func (f *fakeRepo) ListVersionSummaries(_ context.Context, docID string) ([]VersionSummary, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := []VersionSummary{}
+	for _, v := range f.versions[docID] {
+		out = append(out, VersionSummary{Version: v.Version, CreatedAt: v.CreatedAt, Name: v.Name, EditorIDs: v.EditorIDs, Via: v.Via})
+	}
+	slices.SortFunc(out, func(a, b VersionSummary) int { return b.Version - a.Version })
 	return out, nil
 }
 

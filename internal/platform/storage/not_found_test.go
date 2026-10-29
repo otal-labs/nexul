@@ -43,7 +43,7 @@ func TestRepos_AnIdNobodyStoredIsNotFound(t *testing.T) {
 		{"DeploysRepo.GetByID", func(ctx context.Context) error { return ign(s.Deploys.GetByID(ctx, "missing")) }},
 		{"DeploysRepo.SetAddress", func(ctx context.Context) error { return s.Deploys.SetAddress(ctx, "missing", "172.18.0.4") }},
 		{"DocsRepo.GetByID", func(ctx context.Context) error { return ign(s.Docs.GetByID(ctx, "missing")) }},
-		{"DocsRepo.Update", func(ctx context.Context) error { return s.Docs.Update(ctx, newTestDoc("missing"), "") }},
+		{"DocsRepo.Update", func(ctx context.Context) error { return s.Docs.Update(ctx, newTestDoc("missing"), "", "") }},
 		{"DocsRepo.Delete", func(ctx context.Context) error { return s.Docs.Delete(ctx, "missing") }},
 		{"DocsRepo.DefaultFolder", func(ctx context.Context) error { return ign(s.Docs.DefaultFolder(ctx, "no-such-project")) }},
 		{"DocsRepo.CommitBody", func(ctx context.Context) error { return s.Docs.CommitBody(ctx, newTestDoc("nope"), "") }},

@@ -429,6 +429,8 @@ type DocVersion struct {
 	CreatedAt int64
 	Name      string
 	AuthorID  string
+	EditorIds string
+	Via       string
 }
 
 type DocWatcher struct {

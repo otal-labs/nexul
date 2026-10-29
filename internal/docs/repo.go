@@ -63,7 +63,9 @@ type Repo interface {
 	List(ctx context.Context) ([]*Doc, error)
 	// ListByProject returns the docs belonging to one project (ticket 10), mirroring tickets.Repo.ListByProject.
 	ListByProject(ctx context.Context, projectID string) ([]*Doc, error)
-	Update(ctx context.Context, d *Doc, editorID string, evts ...eventbus.OutboxEvent) error
+	// Update writes the new title and body and, unless they equal the newest version's, a version crediting editorID and
+	// via, then prunes the unnamed versions past KeptUnnamedVersions.
+	Update(ctx context.Context, d *Doc, editorID, via string, evts ...eventbus.OutboxEvent) error
 	SetArchived(ctx context.Context, id string, archived bool, evts ...eventbus.OutboxEvent) error
 	SetLocked(ctx context.Context, id string, locked bool, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
@@ -73,6 +75,8 @@ type Repo interface {
 	Page(ctx context.Context, f DocFilter, scope DocScope, w paging.Window) ([]*Doc, int, error)
 	ListVersions(ctx context.Context, docID string) ([]*DocVersion, error)
 	GetVersion(ctx context.Context, docID string, version int) (*DocVersion, error)
+	// ListVersionSummaries returns the doc's versions newest first, without their bodies.
+	ListVersionSummaries(ctx context.Context, docID string) ([]VersionSummary, error)
 	// CommitBody writes a converged collaboration state to the canonical doc without appending a version row.
 	CommitBody(ctx context.Context, d *Doc, editorID string, evts ...eventbus.OutboxEvent) error
 	// CreateNamedVersion appends a milestone version, capturing the doc's current state under a name and author.

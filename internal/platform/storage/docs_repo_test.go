@@ -80,7 +80,7 @@ func TestDocsRepo_Update_PersistsChanges(t *testing.T) {
 	d.Title = "Renamed"
 	d.Body = "changed body"
 	d.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), d, ""))
+	require.NoError(t, s.Docs.Update(context.Background(), d, "", ""))
 
 	got, err := s.Docs.GetByID(context.Background(), "doc-1")
 	require.NoError(t, err)
@@ -97,8 +97,8 @@ func TestDocsRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
 	first, second := newTestDoc("doc-1"), newTestDoc("doc-1")
 	first.Version, second.Version = 2, 2
 	second.Title = "Renamed last"
-	require.NoError(t, s.Docs.Update(t.Context(), first, ""))
-	require.NoError(t, s.Docs.Update(t.Context(), second, ""))
+	require.NoError(t, s.Docs.Update(t.Context(), first, "", ""))
+	require.NoError(t, s.Docs.Update(t.Context(), second, "", ""))
 
 	got, err := s.Docs.GetByID(t.Context(), "doc-1")
 	require.NoError(t, err)
@@ -126,7 +126,7 @@ func TestDocsRepo_UpdateRewritesSearchText(t *testing.T) {
 	updated := newTestDoc("doc-1")
 	updated.Body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"new searchable content"}]}]}`
 	updated.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), updated, ""))
+	require.NoError(t, s.Docs.Update(context.Background(), updated, "", ""))
 
 	got, err := s.Docs.Search(context.Background(), "new", 10)
 	require.NoError(t, err)
