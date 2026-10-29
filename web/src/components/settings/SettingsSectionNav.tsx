@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 // The sidebar's row grammar at settings scale: muted at rest, a hover lift, the sliding block marks the current one.
 const itemClass = (isActive: boolean) =>
   cn(
-    "nav-row block rounded-md px-3 py-1.5 text-sm whitespace-nowrap",
+    "nav-row inset-focus block rounded-md px-3 py-1.5 text-sm whitespace-nowrap",
     isActive ? "font-medium text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
@@ -63,14 +63,20 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           {item.group !== undefined && item.group !== items[index - 1]?.group && (
             <li className={cn(microheaderClass, "hidden shrink-0 px-3 lg:block lg:pb-1", index > 0 && "lg:pt-4")}>{item.group}</li>
           )}
-          <li className={cn("shrink-0", item.danger && index > 0 && "ml-2 lg:ml-0 lg:mt-3 lg:border-t lg:border-border lg:pt-3")}>
+          {/* Danger zone is set apart by the same hairline as a group: in the side column above it, in the top row before it. */}
+          {item.danger && index > 0 && <li aria-hidden className="mx-2 h-4 w-px shrink-0 bg-border lg:hidden" />}
+          <li className={cn("shrink-0", item.danger && index > 0 && "lg:mt-2.5 lg:border-t lg:border-border lg:pt-3")}>
             <Link
               to={`${basePath}/${item.section}`}
               ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section)}
             >
-              <span className="relative">
+              {/* Holds the label's medium-weight width, so the current item turning medium never moves its neighbours. */}
+              <span
+                data-label={item.label}
+                className="relative inline-grid after:invisible after:h-0 after:overflow-hidden after:font-medium after:content-[attr(data-label)]"
+              >
                 {item.label}
                 {item.dot && <UpdateDot label={item.dot} className="-top-0.5 -right-2 ring-0" />}
               </span>
