@@ -1,6 +1,7 @@
 import { ticketDeveloper, ticketTester, type TicketPersonRef } from "@nexul/client-core/ticketPeople";
 
 import { BoardFilterBar, type BoardFilters } from "@/components/board/BoardFilterBar";
+import { BoardSkeleton } from "@/components/board/BoardSkeleton";
 import { BoardStageProgress } from "@/components/board/BoardStageProgress";
 import { boardGridMaxWidth, countByStatus } from "@/components/board/boardGrid";
 import { useState } from "react";
@@ -129,7 +130,7 @@ export const ProjectBoardSection = ({
           </div>
         )}
       </div>
-      {isLoading && <LoadingDisplay label="Loading board…" />}
+      {isLoading && (columns.length > 0 ? <BoardSkeleton columns={columns} /> : <LoadingDisplay label="Loading board…" />)}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
       {tickets && shownCount === 0 && (
         <div className="flex flex-col items-center gap-1 py-8">

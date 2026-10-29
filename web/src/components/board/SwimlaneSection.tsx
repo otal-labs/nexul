@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
 import { useParams } from "react-router";
 
-import { boardGridTemplate, foldedTrailWidth, isFolded } from "@/components/board/boardGrid";
+import { boardGridTemplate, isFolded } from "@/components/board/boardGrid";
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { DropTargetData } from "@/components/board/dragMove";
@@ -48,10 +48,7 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
       )}
     >
       {/* Pinned under the stage header while its lane scrolls; label and count also stay put against the horizontal scroll. */}
-      <h3
-        className="sticky top-9 z-10 rounded-md border-b border-border bg-[var(--panel)]"
-        style={{ marginRight: foldedTrailWidth(columns, doneOpen) }}
-      >
+      <h3 className="sticky top-9 z-10 rounded-md border-b border-border bg-[var(--panel)]">
         <button
           type="button"
           aria-expanded={!collapsed}

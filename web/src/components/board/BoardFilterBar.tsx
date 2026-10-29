@@ -103,7 +103,7 @@ export const BoardFilterBar = ({
     <div className="@container">
       {/* The text filter leads the filters it works with; Create alone holds the right edge. */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2 *:shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 *:shrink-0">
           <div className="relative min-w-[12.5rem] max-w-[22.5rem] grow basis-60">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input
