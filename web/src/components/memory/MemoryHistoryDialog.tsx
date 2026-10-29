@@ -19,7 +19,7 @@ export const MemoryHistoryDialog = ({ memoryId, version, onClose }: MemoryHistor
       versionUrl={(n) => memoryVersionUrl(memoryId, n)}
       name={memory?.title ?? ""}
       initialVersion={version}
-      namesVersions={false}
+      retention="ten"
       restore={{
         permission: "memories:write",
         projectId: memory?.project_id,

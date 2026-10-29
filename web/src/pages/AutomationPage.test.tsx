@@ -71,9 +71,6 @@ describe("AutomationPage", () => {
     active: { id: "v1", automation_id: "a1", sequence: 1, code: "a", pusher_id: "u1", status: AutomationVersionStatus.Active, created_at: "2026-08-01T00:00:00Z" },
     pending: { id: "v2", automation_id: "a1", sequence: 2, code: "b", pusher_id: "u1", status: AutomationVersionStatus.Pending, created_at: "2026-08-02T00:00:00Z" },
   };
-  const versions = [
-    { id: "v1", automation_id: "a1", sequence: 1, code: "a", pusher_id: "u1", status: AutomationVersionStatus.Active, created_at: "2026-08-01T00:00:00Z" },
-  ];
 
   it("shows the run history error on the Runs tab", async () => {
     renderPage(Object.fromEntries(Object.entries(baseEndpoints).filter(([path]) => path !== "/api/automations/a1/runs")));
@@ -110,30 +107,37 @@ describe("AutomationPage", () => {
 
   it("links the pending-version banner on Configuration to the Versions tab", async () => {
     const user = userEvent.setup();
-    renderPage(
-      { ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff, "/api/automations/a1/versions": versions },
-      "/automations/a1/configuration",
-    );
+    renderPage({ ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/configuration");
 
     await user.click(await screen.findByText(/waiting to be merged/));
 
     expect(await screen.findByRole("tab", { name: "Versions", selected: true })).toBeInTheDocument();
-    expect(await screen.findByText("#1")).toBeInTheDocument();
+    expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
   });
 
-  it("opens /versions directly on version history", async () => {
-    renderPage({ ...baseEndpoints, "/api/automations/a1/versions": versions }, "/automations/a1/versions");
+  it("opens /versions directly on the pending version's diff", async () => {
+    renderPage({ ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/versions");
 
-    expect(await screen.findByText("#1")).toBeInTheDocument();
+    expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
   });
 
-  it("switches to the Versions tab and loads version history", async () => {
+  it("opens the version history from the header", async () => {
     const user = userEvent.setup();
-    renderPage({ ...baseEndpoints, "/api/automations/a1/versions": versions });
+    const only = { id: "v1", version: 1, created_at: "2026-08-01T00:00:00Z", name: "", editor_ids: [], via: "Nexul", current: true, status: "active" };
+    renderPage({ ...baseEndpoints, "/api/automations/a1/history": { versions: [only], changes: [] } });
+
+    await user.click(await screen.findByRole("button", { name: "History" }));
+
+    expect(await screen.findByText(/One version, saved/)).toBeInTheDocument();
+  });
+
+  it("says so on the Versions tab when nothing is pending", async () => {
+    const user = userEvent.setup();
+    renderPage(baseEndpoints);
 
     await screen.findByText("Ticket finished");
     await user.click(screen.getByRole("tab", { name: "Versions" }));
 
-    expect(await screen.findByText("#1")).toBeInTheDocument();
+    expect(await screen.findByText("No pending version")).toBeInTheDocument();
   });
 });

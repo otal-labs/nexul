@@ -113,6 +113,34 @@ func (r *AutomationVersionsRepo) ListByAutomation(ctx context.Context, automatio
 	return out, nil
 }
 
+func (r *AutomationVersionsRepo) ListSummaries(ctx context.Context, automationID string) ([]automations.Version, error) {
+	rows, err := r.q.ListAutomationVersionSummaries(ctx, automationID)
+	if err != nil {
+		return nil, fmt.Errorf("list version summaries for automation %s: %w", automationID, err)
+	}
+	out := make([]automations.Version, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, automations.Version{
+			ID:           row.ID,
+			AutomationID: row.AutomationID,
+			Sequence:     int(row.Sequence),
+			PusherID:     row.PusherID,
+			Message:      row.Message,
+			Status:       automations.VersionStatus(row.Status),
+			CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
+		})
+	}
+	return out, nil
+}
+
+func (r *AutomationVersionsRepo) GetBySequence(ctx context.Context, automationID string, sequence int) (*automations.Version, error) {
+	row, err := r.q.GetAutomationVersionBySequence(ctx, sqlcgen.GetAutomationVersionBySequenceParams{AutomationID: automationID, Sequence: int64(sequence)})
+	if err != nil {
+		return nil, fmt.Errorf("get version %d: %w", sequence, notFoundIfNoRows(err))
+	}
+	return toAutomationVersion(row), nil
+}
+
 func (r *AutomationVersionsRepo) Pending(ctx context.Context, automationID string) (*automations.Version, error) {
 	return r.byStatus(ctx, automationID, automations.VersionPending)
 }

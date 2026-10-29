@@ -5,18 +5,13 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getAutomationsKey } from "@/hooks/AutomationHooks";
+import { getHistoryKey } from "@/hooks/HistoryHooks";
 import type { AutomationVersion, AutomationVersionDiff } from "@/models/AutomationVersion";
 
-export const getAutomationVersionsKey = "getAutomationVersions";
 export const getAutomationVersionDiffKey = "getAutomationVersionDiff";
 
-export const useFetchAutomationVersions = (automationId: string | undefined) =>
-  useQuery({
-    queryKey: [getAutomationVersionsKey, automationId],
-    queryFn: async () =>
-      (await api.get<AutomationVersion[]>(`/api/automations/${automationId}/versions`)).data,
-    enabled: !!automationId,
-  });
+export const automationHistoryUrl = (automationId: string) => `/api/automations/${automationId}/history`;
+export const automationVersionUrl = (automationId: string, sequence: number) => `/api/automations/${automationId}/versions/${sequence}`;
 
 export const useFetchAutomationVersionDiff = (automationId: string | undefined) =>
   useQuery({
@@ -27,8 +22,8 @@ export const useFetchAutomationVersionDiff = (automationId: string | undefined) 
   });
 
 const invalidateVersions = async (client: ReturnType<typeof useQueryClient>, automationId: string) => {
-  await client.invalidateQueries({ queryKey: [getAutomationVersionsKey, automationId] });
   await client.invalidateQueries({ queryKey: [getAutomationVersionDiffKey, automationId] });
+  await client.invalidateQueries({ queryKey: [getHistoryKey, automationHistoryUrl(automationId)] });
   await client.invalidateQueries({ queryKey: ["getAutomation", automationId] });
   await client.invalidateQueries({ queryKey: [getAutomationsKey] });
 };

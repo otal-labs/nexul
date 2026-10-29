@@ -60,5 +60,6 @@ describe("keptCounts", () => {
 
     expect(keptCounts(versions)).toEqual({ short: "3 versions · 1 named", long: "Only the last 10 unnamed versions are kept, plus named ones." });
     expect(keptCounts(versions.slice(0, 2)).short).toBe("2 versions");
+    expect(keptCounts(versions, "all")).toEqual({ short: "3 versions", long: "Every version is kept." });
   });
 });

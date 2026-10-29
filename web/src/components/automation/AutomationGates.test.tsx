@@ -9,9 +9,10 @@ import { AutomationRow } from "@/components/automation/AutomationRow";
 import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
 import { AutomationTokenSection } from "@/components/automation/AutomationTokenSection";
 import { AutomationVersionDiff } from "@/components/automation/AutomationVersionDiff";
-import { AutomationVersionRow } from "@/components/automation/AutomationVersionRow";
+import { AutomationHistoryFooter } from "@/components/automation/AutomationHistoryFooter";
 import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
 import { AutomationHostsSection } from "@/components/automationHost/AutomationHostsSection";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AutomationKind, AutomationVersionStatus } from "@/enums/Automation";
 import type { Automation } from "@/models/Automation";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -39,6 +40,8 @@ const automation: Automation = {
 };
 
 const version = { id: "v2", automation_id: "a1", sequence: 2, code: "b", pusher_id: "u1", message: "", status: AutomationVersionStatus.Pending, created_at: "" };
+
+const history = { version: 1, created_at: "", name: "", editor_ids: [], via: "", current: false };
 
 const rest = (url: string) => {
   if (url === "/api/automation-secrets") return [{ name: "API_KEY", created_at: "", updated_at: "" }];
@@ -71,17 +74,21 @@ const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]
     ],
   },
   {
-    name: "the versions",
+    name: "the pending version",
+    ui: <AutomationVersionDiff automationId="a1" diff={{ active: null, pending: version }} />,
+    controls: [{ role: "button", name: "Merge", reason: reason("merge automation versions") }],
+  },
+  {
+    name: "the history",
     ui: (
-      <>
-        <AutomationVersionDiff automationId="a1" diff={{ active: null, pending: version }} />
-        <AutomationVersionRow automationId="a1" version={{ ...version, status: AutomationVersionStatus.Inactive }} />
-      </>
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>History</DialogTitle>
+          <AutomationHistoryFooter automationId="a1" version={{ ...history, id: "v1", status: AutomationVersionStatus.Inactive }} onDone={() => {}} />
+        </DialogContent>
+      </Dialog>
     ),
-    controls: [
-      { role: "button", name: "Merge", reason: reason("merge automation versions") },
-      { role: "button", name: /Rollback/, reason: reason("roll back automations") },
-    ],
+    controls: [{ role: "button", name: /Rollback/, reason: reason("roll back automations") }],
   },
   {
     name: "the hosts",

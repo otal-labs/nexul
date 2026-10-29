@@ -404,6 +404,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/automations/{id}/token", "Rotate an automation's token", "automations")
 	spec.Register("DELETE", "/api/automations/{id}/token", "Revoke an automation's token", "automations")
 	spec.Register("PATCH", "/api/automations/{id}/host", "Place an automation on an automations host, which takes Deploy to on its machine (null: the instance host)", "automations")
+	spec.Register("GET", "/api/automations/{id}/history", "The automation's code versions newest first, without code: version (the sequence), created_at, name (the push message), editor_ids (the pusher), status, and whether it is the active one; changes is always empty (automations:read)", "automations")
 	spec.Register("GET", "/api/automation-hosts", "List the automations hosts on the machines the caller sees", "automation-hosts")
 	spec.Register("POST", "/api/automation-hosts/enrollments", "Mint a one-time automations host enrollment code and its install commands; Manage on the machine it names, and the instance Owner for a new machine or none", "automation-hosts")
 	spec.Register("POST", "/api/automation-hosts/enroll", "Trade an enrollment code for the automations host's own credential (public)", "automation-hosts")

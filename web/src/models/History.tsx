@@ -20,6 +20,9 @@ export interface HistoryVersionSummary {
   words_removed?: number | null;
   /** The version number a restore copied this version from; null on any other version. */
   restored_from?: number | null;
+  /** An automation's version id and place in its code history, which merge and rollback act on; other items send neither. */
+  id?: string;
+  status?: "active" | "pending" | "inactive";
 }
 
 // Who made a change and through what: "user:mcp" is a person's agent, "play" a play run, "automation" an automation.
@@ -55,6 +58,9 @@ export interface HistoryVersion {
 
 // How a version's body is stored, so the dialog knows how to cut it into blocks: Tiptap JSON (docs, tickets), markdown text (play instructions), or code, one block per line.
 export type HistoryBodyKind = "tiptap" | "markdown" | "code";
+
+// What an item keeps: the last ten unnamed versions plus named ones (docs), the last ten (items that can't name versions), or all of them.
+export type HistoryRetention = "ten-plus-named" | "ten" | "all";
 
 export type HistoryView = "changes" | "as-it-was";
 

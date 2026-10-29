@@ -222,6 +222,34 @@ func (f *fakeVersionsRepo) ListByAutomation(_ context.Context, automationID stri
 	return out, nil
 }
 
+func (f *fakeVersionsRepo) ListSummaries(_ context.Context, automationID string) ([]Version, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []Version
+	for _, v := range f.rows {
+		if v.AutomationID != automationID {
+			continue
+		}
+		cp := *v
+		cp.Code, cp.Source = "", ""
+		out = append(out, cp)
+	}
+	slices.SortFunc(out, func(a, b Version) int { return b.Sequence - a.Sequence })
+	return out, nil
+}
+
+func (f *fakeVersionsRepo) GetBySequence(_ context.Context, automationID string, sequence int) (*Version, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, v := range f.rows {
+		if v.AutomationID == automationID && v.Sequence == sequence {
+			cp := *v
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
 func (f *fakeVersionsRepo) Pending(ctx context.Context, automationID string) (*Version, error) {
 	return f.byStatus(automationID, VersionPending)
 }

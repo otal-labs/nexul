@@ -27,3 +27,9 @@ SELECT * FROM automation_versions WHERE automation_id = ? AND status = ?;
 
 -- name: MaxAutomationVersionSequence :one
 SELECT MAX(sequence) FROM automation_versions WHERE automation_id = ?;
+
+-- name: ListAutomationVersionSummaries :many
+SELECT id, automation_id, sequence, pusher_id, message, status, created_at FROM automation_versions WHERE automation_id = ? ORDER BY sequence DESC;
+
+-- name: GetAutomationVersionBySequence :one
+SELECT * FROM automation_versions WHERE automation_id = ? AND sequence = ?;
