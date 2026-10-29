@@ -56,6 +56,7 @@ type Hit struct {
 	Title       string    `json:"title"`
 	Hint        string    `json:"hint,omitempty"`
 	StatusLabel string    `json:"status_label,omitempty"`
+	StatusKind  string    `json:"status_kind,omitempty"`
 	ProjectID   string    `json:"project_id,omitempty"`
 	TicketID    string    `json:"ticket_id,omitempty"`
 	InBody      bool      `json:"in_body"`
@@ -179,7 +180,8 @@ func (s *Service) findTickets(ctx context.Context, workspaceID, query string, wo
 		if err != nil || !s.canOpenTicket(ctx, t.ProjectID) {
 			return
 		}
-		hit := Hit{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), ProjectID: t.ProjectID, UpdatedAt: t.UpdatedAt}
+		label, kind := s.status(ctx, t.Status)
+		hit := Hit{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: label, StatusKind: kind, ProjectID: t.ProjectID, UpdatedAt: t.UpdatedAt}
 		if prefix := s.projectPrefix(ctx, t.ProjectID); prefix != "" {
 			hit.Hint = fmt.Sprintf("%s-%d", prefix, t.Number)
 		}

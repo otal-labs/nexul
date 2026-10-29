@@ -8,6 +8,8 @@ export interface SearchHit {
   title: string;
   hint?: string;
   status_label?: string;
+  // The board stage of a ticket hit's status: backlog, progress, review, testing or done.
+  status_kind?: string;
   project_id?: string;
   // The ticket a pull request opens.
   ticket_id?: string;

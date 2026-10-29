@@ -128,7 +128,7 @@ describe("CommandPalette", () => {
   it("groups each kind's title hits, puts text-only hits under In text, and opens a pull request's ticket", async () => {
     found = {
       hits: [
-        hit("ticket", "t-1", "Checkout flow", { hint: "BE-4" }),
+        hit("ticket", "t-1", "Checkout flow", { hint: "BE-4", status_label: "In review", status_kind: "review" }),
         hit("ticket", "t-2", "Payments", { hint: "BE-5", in_body: true }),
         hit("pull_request", "acme/app#9", "Speed up checkout", { hint: "app#9", ticket_id: "t-1" }),
         hit("channel", "c-1", "checkout"),
@@ -143,9 +143,42 @@ describe("CommandPalette", () => {
     const inText = await screen.findByRole("group", { name: "In text" });
     expect(inText).toHaveTextContent("Payments");
     expect(screen.getByRole("group", { name: "Tickets" })).not.toHaveTextContent("Payments");
-    expect(screen.getByText("More matches than shown. Add a word to narrow.")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Checkout flow/ })).toHaveTextContent("In review");
+    expect(screen.getByText("More than shown · add a word")).toBeInTheDocument();
 
     await user.click(screen.getByRole("option", { name: /Speed up checkout/ }));
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/tickets/t-1");
   });
+
+  it("offers a ticket of the typed title once a search finds nothing, and nothing before the search can answer", async () => {
+    found = { hits: [], more: [] };
+    const user = userEvent.setup();
+    renderPalette(["tickets:write"]);
+
+    await user.keyboard("{Control>}k{/Control}");
+    const input = await screen.findByRole("combobox");
+    await user.type(input, "%");
+    expect(screen.queryByRole("option", { name: /New ticket “/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nothing titled/)).not.toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, "qzj");
+    const create = await screen.findByRole("option", { name: "New ticket “qzj”" });
+    expect(create).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Nothing titled or mentioning “qzj”")).toBeInTheDocument();
+  });
+
+  it("keeps the last rows on screen while a search is on its way", async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    await user.keyboard("{Control>}k{/Control}");
+    const input = await screen.findByRole("combobox");
+    await user.type(input, "c");
+    await screen.findByRole("option", { name: /Chat/ });
+
+    vi.mocked(api.get).mockImplementation(async (url: string) => (url === "/api/search" ? new Promise(() => {}) : { data: [] }));
+    await user.type(input, "qz");
+    expect(screen.getByRole("option", { name: /Chat/ })).toBeInTheDocument();
+  });
 });
+

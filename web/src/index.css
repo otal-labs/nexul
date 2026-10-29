@@ -220,6 +220,18 @@ body {
   initial-value: 0px;
 }
 
+/* The command palette's edge fades, driven by its own scroll so each shows only while more rows lie past that edge. */
+@property --results-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --results-fade-top {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 /* Tight tracking on headings; balanced display text. Layered, so a heading's own tracking utility still applies. */
 @layer base {
   h1,
@@ -1430,6 +1442,49 @@ button.mention-chip:hover {
 .unread-dot[data-unread] {
   opacity: 1;
   scale: 1;
+}
+
+/* An edge with more rows past it fades (24px at the top, 40px, most of a two-line row, at the bottom) instead of slicing a
+   row; a list that fits has no timeline, so no fade. The kept gutter stops a scrollbar arriving from moving the rows. Not
+   motion: reduced motion keeps it. */
+.command-results {
+  scrollbar-gutter: stable;
+  scroll-padding-block: 24px 40px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--results-fade-top),
+    black calc(100% - var(--results-fade)),
+    transparent
+  );
+  animation:
+    results-fade-top linear both,
+    results-fade linear both;
+  animation-timeline: scroll(self), scroll(self);
+  animation-range:
+    0 24px,
+    calc(100% - 40px) 100%;
+}
+@keyframes results-fade-top {
+  from {
+    --results-fade-top: 0px;
+  }
+  to {
+    --results-fade-top: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .command-results.command-results {
+    animation-duration: auto !important;
+  }
+}
+@keyframes results-fade {
+  from {
+    --results-fade: 40px;
+  }
+  to {
+    --results-fade: 0px;
+  }
 }
 
 /* Command palette rows that join the list after it opened fade in; opacity only, since the list is being read. */

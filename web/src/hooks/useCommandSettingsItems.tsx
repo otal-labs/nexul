@@ -110,7 +110,7 @@ export const useCommandSettingsItems = (browsing: boolean): CommandGroup[] => {
       id: `setting:${hint}:${label}`,
       label,
       icon,
-      hint,
+      context: hint,
       ...(keywords && { keywords }),
       run: () => void navigate(inWorkspace ? wsPath(path) : path),
     }));

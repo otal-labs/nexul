@@ -329,14 +329,20 @@ func (s *Service) resolveDoc(ctx context.Context, actorID, id string) (Chip, err
 
 // statusLabel resolves a status id's column name; a since-deleted status falls back to its id.
 func (s *Service) statusLabel(ctx context.Context, id string) string {
+	label, _ := s.status(ctx, id)
+	return label
+}
+
+// status resolves a status to its column name and board stage; one that cannot be read keeps its id and no stage.
+func (s *Service) status(ctx context.Context, id string) (string, string) {
 	if id == "" {
-		return ""
+		return "", ""
 	}
 	st, err := s.cfg.Statuses.Get(ctx, id)
 	if err != nil || st == nil || st.Name == "" {
-		return id
+		return id, ""
 	}
-	return st.Name
+	return st.Name, st.Kind
 }
 
 // projectPrefix resolves a project to its Prefix (ADR 0004); a deleted or unset project degrades to "".

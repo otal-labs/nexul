@@ -108,6 +108,8 @@ type Doc struct {
 type Status struct {
 	ID   string
 	Name string
+	// Kind is the board stage (backlog, progress, review, testing, done) the status column belongs to.
+	Kind string
 }
 
 // SearchHit is one full-text hit from either the tickets or docs search.

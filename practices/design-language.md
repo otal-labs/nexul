@@ -1376,21 +1376,38 @@ closes it in 150ms; opened or closed with a key, or closed by a pick, it shows a
 the same frame, since it is driven a dozen times an hour and a fading scrim
 would swallow the next click. A row or group that joins the list after it
 opened (a search landing, a letter that matches more) fades in over 120ms,
-opacity only. A combobox input heads it, grouped results below, a footer of
-key hints at its foot. Empty, it leads with what changed lately in the
-current project, then every page the sidebar reaches under the same
-permissions, every project's board, the create dialogs that already exist,
-the other workspaces and the light or dark switch; typed, pages and boards
-filter by every word alongside the workspace search (`GET /api/search`): a
-group per kind of title hits (tickets, docs, pull requests, stacks,
-automations, channels, memories) in the server's order, then the tickets and
-docs found only in their text under In text, a quiet line when a kind had more
-than it shows, each group ordered by its best match (a label that starts with
-the query first), and the palettes join the theme group. Group heads are
-microheaders; a row is 36px with a muted icon, the label, a mono hint
-(ticket key, prefix, status) and an enter mark on the active row, which is the cursor and not the current
-page: the hover lift (`bg-accent`), a 2px `brand` edge and a `brand` icon. The highlight jumps, never slides: the palette is driven a dozen times
-an hour. Arrows wrap, Enter opens, Escape closes and hands focus back to
+opacity only. A combobox input heads it, the results below, a footer at its foot. Empty, it
+leads with what changed lately in the current project (each row with its
+status or age), then every page the sidebar reaches under the same
+permissions, every project's board and the create dialogs that already exist,
+under microheaders. Typed, it is one list: up to three local rows (pages, boards,
+settings, actions, the other workspaces, the light or dark switch, the
+palettes) whose label starts with a typed word, then the workspace search's
+(`GET /api/search`) title hits by kind (tickets, docs, pull requests, stacks,
+automations, channels, memories) in the server's order, then every other local
+row that matches, then the tickets and docs found only in their text under the
+one visible microheader, In text. The typed runs carry no visible heading and no
+gap, one even pitch, only an `sr-only` name for the group. A row is the muted icon, the
+title, and under it one 12px muted meta line: a ticket's mono key and its
+stage's dot beside the column's name, a pull request's `repo#number`, the
+kind in words for everything without a key (Doc, Stack, Theme), then for a doc
+or memory the project's name when it is another one and its age in mono, a
+settings row's place, and a check (named "current" for screen readers) on the theme
+in use; on the active row the meta line takes the row's ink, since a 70%
+step fell under 4.5:1 on the palettes whose accent ink is a hue. A row with no
+meta (a page, an action) is one 36px line; a row with meta is 48px. The enter mark is reserved on every row and shown on the active
+one, which is the cursor and not the current page: the hover lift
+(`bg-accent`), a 2px `brand` edge and a `brand` icon. The highlight jumps,
+never slides: the palette is driven a dozen times an hour. When a search of two
+characters or more finds nothing, one active row offers New ticket with the
+typed words as its title over a muted line that says nothing matched. The
+footer counts the rows the typed list shows ("7 found", or "More than shown ·
+add a word" when a kind had more), then the Enter and Escape keys. The list fades
+an edge with more rows past it, 24px at the top and 40px at the bottom (a
+scroll-driven mask, so a list that fits has none), keeps the cursor clear of
+either fade, keeps its scrollbar gutter out of the right padding so a scrollbar
+arriving never moves the rows, and keeps its last rows on screen while a search
+is on its way. Arrows wrap, Enter opens, Escape closes and hands focus back to
 where it was; the count is announced once a search settles. `CommandPalette` in `web/src/components/command/` is the
 reference.
 
@@ -1429,6 +1446,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
 | Bot embeds as status-edged reports, facts as sentences and a state tally (2026-10-28) | As cards (fill, ring, shadow, a label grid and a footer strip) two deploy posts took about 400 of the 750px a channel shows at 1440, a summary spent a 3×3 grid saying "healthy" to report one stopped cache, and the people sat in the bottom third. Without the box and with the facts on a line a deploy is about 90px and a summary names its one problem. Against folding every healthy post to one line behind a chevron (the facts are what people read in a deploy channel, so it traded height for a click on every post) and against dropping the edge (with the box gone it is what marks where a report starts); the leading edge is the topology node's status signal reused, picked earlier over a 2px bar across the top, which read as the accent's decoration rather than state |
+| The command palette is one list of two-line rows, its meta under the title, its typed runs at one pitch (2026-10-29) | Against a microheader per result kind ("deploy" spent five headers on six hits, and the row showed only a title and a key while the search also returned the status and the kind), a one-line row with the meta right-aligned at 36px or in fixed 32px columns (the status and kind squeezed long titles, and a fixed rail cut a settings row's place), and the old row with only its baseline fixed. Two lines show every title whole on the first and the key, status and kind on the second, at the cost of about two rows in the 26rem list |
 | List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
 | The Inbox row: an unread gutter, the title, then the kind icon, summary and time on one meta line (2026-10-29) | Against the 28px tile with a dot on its corner, row dividers and the time beside the title (about 175px of title at the 300px default, so most ticket titles clamped mid-sentence, and unread sat in two columns with the folder dot); the icon on the meta line gives the title about 260px and a crashed service reads in its hue at a glance. Rejected: the icon beside the title (35px less title), a 16px icon centred on both lines (floated off both), a single-line title (cut most titles in half) and a full-width list until a row is picked (the list jumped to 300px on every first open) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |

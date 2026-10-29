@@ -30,10 +30,11 @@ const legacyStatuses: Record<string, Pick<BoardStatus, "name" | "kind" | "icon">
   [TicketStatus.Closed]: { name: "Closed", kind: StatusKind.Backlog, icon: "CircleX" },
 };
 
+export const resolveStatus = (statuses: BoardStatus[] | undefined, id: string) => statuses?.find((s) => s.id === id) ?? legacyStatuses[id];
+
 export const useTicketStatus = (ticket: Pick<Ticket, "project_id" | "status">) => {
   const { data: statuses, isPending } = useFetchProjectStatuses(ticket.project_id);
-  const status = statuses?.find((s) => s.id === ticket.status) ?? legacyStatuses[ticket.status];
-  return { status, isPending };
+  return { status: resolveStatus(statuses, ticket.status), isPending };
 };
 
 export const useCreateStatus = () => {

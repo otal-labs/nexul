@@ -15,14 +15,28 @@ import type { CommandGroup, CommandItem } from "@/models/Command";
 import { docPath, projectToken } from "@/models/Project";
 import { THEME_DEFINITIONS } from "@/lib/themePalettes";
 
-// The create dialogs that already exist, the other workspaces, and the theme. Palettes only show once something is typed.
+// Opens New ticket in the sidebar's project, its title started, and goes to the ticket it made; undefined for someone who
+// cannot write tickets there.
+export const useNewTicketRun = (): ((title?: string) => void) | undefined => {
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
+  const { current: project } = useSidebarProject();
+  const createTicket = useCreateTicketDialog(project?.id ?? "");
+  if (!project || !createTicket) return undefined;
+  return (title = "") =>
+    void createTicket({ title }).then((id) => {
+      if (id) void navigate(wsPath(`/tickets/${id}`));
+    });
+};
+
+// The create dialogs that already exist, the other workspaces, and the theme. Browsing shows only the create dialogs.
 export const useCommandActionItems = (browsing: boolean): CommandGroup[] => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { current: project } = useSidebarProject();
   const { workspaces, current: workspace, switchTo } = useSwitchWorkspace();
   const can = useAreaAccess();
-  const createTicket = useCreateTicketDialog(project?.id ?? "");
+  const newTicket = useNewTicketRun();
   const createDoc = useCreateDocDialog(project?.id ?? "");
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspace?.id ?? "", (conversation) => {
     if (conversation.kind === "voice_channel") return;
@@ -33,19 +47,13 @@ export const useCommandActionItems = (browsing: boolean): CommandGroup[] => {
   );
 
   const create: CommandItem[] = [];
-  if (project && createTicket) {
-    const run = async () => {
-      const id = await createTicket();
-      if (id) void navigate(wsPath(`/tickets/${id}`));
-    };
-    create.push({ id: "create:ticket", label: "New ticket", icon: SquarePlusIcon, hint: project.prefix, keywords: "create", run: () => void run() });
-  }
+  if (project && newTicket) create.push({ id: "create:ticket", label: "New ticket", icon: SquarePlusIcon, keywords: "create", run: () => newTicket() });
   if (project && createDoc) {
     const run = async () => {
       const id = await createDoc();
       if (id) void navigate(wsPath(docPath(projectToken(project), id)));
     };
-    create.push({ id: "create:doc", label: "New doc", icon: FilePlusIcon, hint: project.prefix, keywords: "create document", run: () => void run() });
+    create.push({ id: "create:doc", label: "New doc", icon: FilePlusIcon, keywords: "create document", run: () => void run() });
   }
   if (can?.("editChannels")) create.push({ id: "create:channel", label: "New channel", icon: HashIcon, keywords: "create chat", run: () => void openNewChannel(false) });
   if (can?.("newConversation")) {
@@ -72,16 +80,18 @@ export const useCommandActionItems = (browsing: boolean): CommandGroup[] => {
   };
   const palettes: CommandItem[] = THEME_DEFINITIONS.map((definition) => ({
     id: `theme:${definition.id}`,
-    label: `${definition.label} theme`,
+    label: definition.label,
     icon: PaletteIcon,
-    ...(definition.id === themeId && { hint: "current" }),
+    context: "Theme",
+    checked: definition.id === themeId,
     keywords: "palette colour color appearance",
     run: () => setThemeId(definition.id),
   }));
 
+  if (browsing) return [{ heading: "Create", items: create }];
   return [
     { heading: "Create", items: create },
     { heading: "Workspaces", items: others },
-    { heading: "Theme", items: browsing ? [mode] : [mode, ...palettes] },
+    { heading: "Theme", items: [mode, ...palettes] },
   ];
 };
