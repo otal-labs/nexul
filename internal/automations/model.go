@@ -44,7 +44,34 @@ type Automation struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	// WorkspaceArchived is read with the automation: an archived workspace's automations run nothing until it is restored.
 	WorkspaceArchived bool `json:"-"`
+	Health
 }
+
+// Health is what an automation's runs and versions say about it, read for the list and the record, never stored.
+type Health struct {
+	// LastRun is nil until it has run once.
+	LastRun *LastRun `json:"last_run"`
+	// Runs7d counts the runs that started in the last seven days; failed counts failures and crashes.
+	Runs7d RunCounts `json:"runs_7d"`
+	// PendingVersion is the sequence of the pushed version waiting to be merged, nil when none waits.
+	PendingVersion *int `json:"pending_version"`
+}
+
+// LastRun is the newest run's outcome, start and error.
+type LastRun struct {
+	Outcome   RunOutcome `json:"outcome"`
+	StartedAt time.Time  `json:"started_at"`
+	Error     string     `json:"error,omitempty"`
+}
+
+// RunCounts is a number of runs and how many of them did not succeed.
+type RunCounts struct {
+	Total  int `json:"total"`
+	Failed int `json:"failed"`
+}
+
+// healthWindow is how far back Runs7d counts.
+const healthWindow = 7 * 24 * time.Hour
 
 // Runs reports whether the automation is delivered events, given a worker and secrets: switched on in a live workspace.
 func (a *Automation) Runs() bool {

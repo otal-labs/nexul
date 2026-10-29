@@ -169,12 +169,39 @@ func (s *Service) List(ctx context.Context, actorID, workspaceID string) ([]Auto
 		}
 		list = append(list, a)
 	}
-	return list, nil
+	return list, s.withHealth(ctx, list)
 }
 
 // Get returns a single automation by id.
 func (s *Service) Get(ctx context.Context, actorID, id string) (*Automation, error) {
-	return s.getChecked(ctx, actorID, id, permissions.AutomationsRead)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsRead)
+	if err != nil {
+		return nil, err
+	}
+	one := []Automation{*a}
+	if err := s.withHealth(ctx, one); err != nil {
+		return nil, err
+	}
+	return &one[0], nil
+}
+
+// withHealth fills each automation's Health in one read for the whole list.
+func (s *Service) withHealth(ctx context.Context, list []Automation) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ids := make([]string, len(list))
+	for i := range list {
+		ids[i] = list[i].ID
+	}
+	health, err := s.repo.ListHealth(ctx, ids, s.now().Add(-healthWindow))
+	if err != nil {
+		return fmt.Errorf("read automation health: %w", err)
+	}
+	for i := range list {
+		list[i].Health = health[list[i].ID]
+	}
+	return nil
 }
 
 // SetEnabled toggles an automation; disabled means no event delivery, no worker, and a refused token.

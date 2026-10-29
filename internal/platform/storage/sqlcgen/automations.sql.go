@@ -142,6 +142,66 @@ func (q *Queries) GetAutomationByTokenHash(ctx context.Context, tokenHash string
 	return i, err
 }
 
+const listAutomationHealth = `-- name: ListAutomationHealth :many
+SELECT a.id,
+       lr.outcome AS last_outcome, lr.started_at AS last_started_at, lr.error AS last_error,
+       (SELECT COUNT(*) FROM automation_runs r WHERE r.automation_id = a.id AND r.started_at >= ?1) AS runs_total,
+       (SELECT COUNT(*) FROM automation_runs r WHERE r.automation_id = a.id AND r.started_at >= ?1 AND r.outcome <> 'success') AS runs_failed,
+       pv.sequence AS pending_sequence
+FROM automations a
+LEFT JOIN automation_runs lr ON lr.id = (
+  SELECT r.id FROM automation_runs r WHERE r.automation_id = a.id ORDER BY r.started_at DESC, r.id DESC LIMIT 1
+)
+LEFT JOIN automation_versions pv ON pv.automation_id = a.id AND pv.status = 'pending'
+WHERE a.id IN (SELECT value FROM json_each(?2))
+`
+
+type ListAutomationHealthParams struct {
+	Since int64
+	Ids   interface{}
+}
+
+type ListAutomationHealthRow struct {
+	ID              string
+	LastOutcome     sql.NullString
+	LastStartedAt   sql.NullInt64
+	LastError       sql.NullString
+	RunsTotal       int64
+	RunsFailed      int64
+	PendingSequence sql.NullInt64
+}
+
+func (q *Queries) ListAutomationHealth(ctx context.Context, arg ListAutomationHealthParams) ([]ListAutomationHealthRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationHealth, arg.Since, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAutomationHealthRow
+	for rows.Next() {
+		var i ListAutomationHealthRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LastOutcome,
+			&i.LastStartedAt,
+			&i.LastError,
+			&i.RunsTotal,
+			&i.RunsFailed,
+			&i.PendingSequence,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAutomations = `-- name: ListAutomations :many
 SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
 FROM automations a ORDER BY a.created_at

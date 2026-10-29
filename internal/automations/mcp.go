@@ -26,6 +26,7 @@ type automationResult struct {
 	TokenRevoked  bool            `json:"token_revoked"`
 	// HostID is the automations host it runs on; empty means the bundled instance host.
 	HostID string `json:"host_id,omitempty"`
+	Health
 }
 
 // mintedTokenResult is the only result that carries a token, returned once by the tools that mint one.
@@ -38,7 +39,7 @@ func toAutomationResult(a *Automation) automationResult {
 	return automationResult{
 		ID: a.ID, WorkspaceID: a.WorkspaceID, Name: a.Name, Description: a.Description, Kind: a.Kind, Enabled: a.Enabled,
 		Subscriptions: a.Subscriptions, ConfigSchema: a.ConfigSchema, ConfigValues: a.ConfigValues, Scopes: a.Scopes,
-		TokenRevoked: a.TokenRevokedAt != nil, HostID: deref(a.HostID),
+		TokenRevoked: a.TokenRevokedAt != nil, HostID: deref(a.HostID), Health: a.Health,
 	}
 }
 
@@ -78,8 +79,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("automation_list", "List a workspace's automations",
 			"Lists the automations of a workspace, or every workspace's you can read without workspace_id; "+
-				"each workspace has its own copy of each default. Each result carries its workspace_id and "+
-				"whether its token is revoked. With id it returns that one automation. The decisions check is a play, not an automation: play_list shows it with "+
+				"each workspace has its own copy of each default. Each result carries its workspace_id, "+
+				"whether its token is revoked, its last run, runs_7d (failed counts crashes) and the pending_version sequence. With id it returns that one automation. The decisions check is a play, not an automation: play_list shows it with "+
 				"its auto play. Tokens never appear here; automation_token_create mints a new one. "+
 				"Needs automations:read in the automation's workspace.",
 			mcptool.Hints{ReadOnly: true, Local: true},

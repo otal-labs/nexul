@@ -156,3 +156,49 @@ func TestAutomationsRepo_List_EmptyListColumns_ListsWithEmptyLists(t *testing.T)
 	assert.Empty(t, got[0].Subscriptions)
 	assert.Empty(t, got[0].Scopes)
 }
+
+func TestAutomationsRepo_ListHealth_ReadsLastRunWeekCountsAndPendingVersion(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	seedTestAutomation(t, s, "busy")
+	seedTestAutomation(t, s, "idle")
+	now := time.Now().UTC().Truncate(time.Second)
+
+	old := newTestRun("old", "busy", now.Add(-8*24*time.Hour))
+	old.Outcome = automations.RunOutcomeFailure
+	ok := newTestRun("ok", "busy", now.Add(-2*time.Hour))
+	crash := newTestRun("crash", "busy", now.Add(-time.Hour))
+	crash.Outcome = automations.RunOutcomeCrash
+	crash.Error = "handler exceeded the 30 second limit"
+	for _, r := range []*automations.Run{old, ok, crash} {
+		require.NoError(t, s.AutomationRuns.Create(ctx, r))
+	}
+	pending := &automations.Version{ID: "p", AutomationID: "busy", Code: "c", PusherID: "owner", Status: automations.VersionPending, CreatedAt: now}
+	require.NoError(t, s.AutomationVersions.ReplacePending(ctx, pending))
+
+	health, err := s.Automations.ListHealth(ctx, []string{"busy", "idle"}, now.Add(-7*24*time.Hour))
+	require.NoError(t, err)
+
+	busy := health["busy"]
+	require.NotNil(t, busy.LastRun)
+	assert.Equal(t, automations.RunOutcomeCrash, busy.LastRun.Outcome)
+	assert.Equal(t, now.Add(-time.Hour), busy.LastRun.StartedAt)
+	assert.Equal(t, "handler exceeded the 30 second limit", busy.LastRun.Error)
+	assert.Equal(t, automations.RunCounts{Total: 2, Failed: 1}, busy.Runs7d, "the 8-day-old failure is outside the window")
+	require.NotNil(t, busy.PendingVersion)
+	assert.Equal(t, pending.Sequence, *busy.PendingVersion)
+
+	idle := health["idle"]
+	assert.Nil(t, idle.LastRun)
+	assert.Nil(t, idle.PendingVersion)
+	assert.Equal(t, automations.RunCounts{}, idle.Runs7d)
+}
+
+func TestAutomationsRepo_ListHealth_NoIDs_ReturnsEmpty(t *testing.T) {
+	s := newTestStore(t)
+	seedTestAutomation(t, s, "a1")
+
+	health, err := s.Automations.ListHealth(context.Background(), nil, time.Now())
+	require.NoError(t, err)
+	assert.Empty(t, health)
+}

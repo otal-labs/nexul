@@ -106,6 +106,30 @@ func TestService_ListAndGet(t *testing.T) {
 	})
 }
 
+func TestService_ListAndGet_CarryHealth(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, allowAll("owner"))
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	seq := 3
+	want := Health{LastRun: &LastRun{Outcome: RunOutcomeFailure, Error: "boom"}, Runs7d: RunCounts{Total: 4, Failed: 1}, PendingVersion: &seq}
+	repo.health = map[string]Health{created.ID: want}
+
+	list, err := s.List(context.Background(), "owner", "ws-1")
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, want, list[0].Health)
+	got, err := s.Get(context.Background(), "owner", created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, want, got.Health)
+
+	repo.healthErr = errors.New("disk gone")
+	_, err = s.List(context.Background(), "owner", "ws-1")
+	require.ErrorContains(t, err, "disk gone")
+	_, err = s.Get(context.Background(), "owner", created.ID)
+	require.ErrorContains(t, err, "disk gone")
+}
+
 func TestService_SetEnabled(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))

@@ -88,6 +88,30 @@ func (r *AutomationsRepo) List(ctx context.Context) ([]automations.Automation, e
 	return out, nil
 }
 
+func (r *AutomationsRepo) ListHealth(ctx context.Context, ids []string, since time.Time) (map[string]automations.Health, error) {
+	rows, err := r.q.ListAutomationHealth(ctx, sqlcgen.ListAutomationHealthParams{Since: since.Unix(), Ids: idsJSON(ids)})
+	if err != nil {
+		return nil, fmt.Errorf("list automation health: %w", err)
+	}
+	out := make(map[string]automations.Health, len(rows))
+	for _, row := range rows {
+		h := automations.Health{Runs7d: automations.RunCounts{Total: int(row.RunsTotal), Failed: int(row.RunsFailed)}}
+		if row.LastOutcome.Valid {
+			h.LastRun = &automations.LastRun{
+				Outcome:   automations.RunOutcome(row.LastOutcome.String),
+				StartedAt: time.Unix(row.LastStartedAt.Int64, 0).UTC(),
+				Error:     row.LastError.String,
+			}
+		}
+		if row.PendingSequence.Valid {
+			seq := int(row.PendingSequence.Int64)
+			h.PendingVersion = &seq
+		}
+		out[row.ID] = h
+	}
+	return out, nil
+}
+
 func (r *AutomationsRepo) Update(ctx context.Context, a *automations.Automation) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		subs, err := json.Marshal(a.Subscriptions)

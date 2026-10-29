@@ -2,6 +2,7 @@ package automations
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -15,6 +16,8 @@ type Repo interface {
 	List(ctx context.Context) ([]Automation, error)
 	Update(ctx context.Context, a *Automation) error
 	Delete(ctx context.Context, id string) error
+	// ListHealth reads each automation's last run, its runs since since, and its pending version, keyed by id.
+	ListHealth(ctx context.Context, ids []string, since time.Time) (map[string]Health, error)
 }
 
 // ConnectionRegistry lets token revocation force-drop a live connection without importing the WS transport.
