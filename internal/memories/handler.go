@@ -43,9 +43,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memories/{id}", h.get)
 	mux.HandleFunc("PUT /api/memories/{id}", h.update)
 	mux.HandleFunc("DELETE /api/memories/{id}", h.delete)
-	mux.HandleFunc("GET /api/memories/{id}/versions", h.listVersions)
+	mux.HandleFunc("GET /api/memories/{id}/history", h.history)
 	mux.HandleFunc("GET /api/memories/{id}/versions/{version}", h.getVersion)
-	mux.HandleFunc("POST /api/memories/{id}/revert", h.revert)
+	mux.HandleFunc("POST /api/memories/{id}/versions/{version}/restore", h.restoreVersion)
 	mux.HandleFunc("POST /api/memories/{id}/clone", h.clone)
 	mux.HandleFunc("POST /api/memories/interview", h.createInterview)
 	mux.HandleFunc("GET /api/memories/interview-template", h.getInterviewTemplate)
@@ -127,13 +127,13 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) listVersions(w http.ResponseWriter, r *http.Request) {
-	vs, err := h.svc.ListVersions(r.Context(), r.PathValue("id"))
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	hist, err := h.svc.History(r.Context(), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, vs)
+	httpx.WriteJSON(w, http.StatusOK, hist)
 }
 
 func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
@@ -150,17 +150,14 @@ func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, v)
 }
 
-type revertMemoryRequest struct {
-	Version int `json:"version"`
-}
-
-func (h *Handler) revert(w http.ResponseWriter, r *http.Request) {
-	var req revertMemoryRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
+// restoreVersion saves the version as a new one on top and answers with the memory as it now stands.
+func (h *Handler) restoreVersion(w http.ResponseWriter, r *http.Request) {
+	version, err := strconv.Atoi(r.PathValue("version"))
+	if err != nil {
+		httpx.WriteError(w, apperrs.ErrInvalid)
 		return
 	}
-	m, err := h.svc.Revert(r.Context(), r.PathValue("id"), req.Version, "")
+	m, err := h.svc.Revert(r.Context(), r.PathValue("id"), version, "")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

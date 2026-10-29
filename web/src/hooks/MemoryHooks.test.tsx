@@ -6,8 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
-  getMemoryKey,
-  getMemoryVersionsKey,
   useCloneMemory,
   useCreateMemory,
   useDeleteMemory,
@@ -15,8 +13,6 @@ import {
   useFetchMemories,
   useFetchMemoriesByProject,
   useFetchMemory,
-  useFetchMemoryVersions,
-  useRevertMemory,
   useUpdateMemory,
   memoryFollower,
 } from "@/hooks/MemoryHooks";
@@ -167,29 +163,6 @@ describe("useDeleteMemory", () => {
   });
 });
 
-describe("useFetchMemoryVersions", () => {
-  it("is disabled without an id", () => {
-    const { result } = renderHook(() => useFetchMemoryVersions(undefined), { wrapper });
-    expect(result.current.isPending).toBe(true);
-    expect(api.get).not.toHaveBeenCalled();
-  });
-});
-
-describe("useRevertMemory", () => {
-  it("posts the target version and invalidates the memory and its versions", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: memory });
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const { result } = renderHook(() => useRevertMemory(), {
-      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-    });
-    await result.current.mutateAsync({ id: "mem-1", version: 1 });
-    expect(api.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 1 });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: [getMemoryKey, "mem-1"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: [getMemoryVersionsKey, "mem-1"] });
-  });
-});
-
 describe("useCloneMemory", () => {
   it("posts the destination project and invalidates the list", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ...memory, id: "mem-2", project_id: "project-2" } });
@@ -228,14 +201,14 @@ describe("the memory follower", () => {
       [["getMemories", "byProject", "p-2"], []],
       [["getMemory", "m-1"], {}],
       [["getMemory", "m-2"], {}],
-      [["getMemoryVersions", "m-1"], []],
+      [["getHistory", "/api/memories/m-1/history"], []],
       [["getInterviewAnswers", "p-1"], []],
     ]);
 
-  it("refetches the edited memory, its versions and the two lists holding it, and nothing else", async () => {
+  it("refetches the edited memory, its history and the two lists holding it, and nothing else", async () => {
     const client = views();
     await followFrame(memoryFollower, "memory.updated", { memory: place, author_id: "u-2" }, client);
-    const stale = [["getMemories", "byWorkspace", "ws-1"], ["getMemories", "byProject", "p-1"], ["getMemory", "m-1"], ["getMemoryVersions", "m-1"]];
+    const stale = [["getMemories", "byWorkspace", "ws-1"], ["getMemories", "byProject", "p-1"], ["getMemory", "m-1"], ["getHistory", "/api/memories/m-1/history"]];
     const kept = [["getMemories", "byWorkspace", "ws-2"], ["getMemories", "byProject", "p-2"], ["getMemory", "m-2"], ["getInterviewAnswers", "p-1"]];
     expect(stale.map((key) => isStale(client, key))).toEqual([true, true, true, true]);
     expect(kept.map((key) => isStale(client, key))).toEqual([false, false, false, false]);

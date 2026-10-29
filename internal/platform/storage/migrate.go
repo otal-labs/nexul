@@ -19,6 +19,7 @@ var migrationFS embed.FS
 // own SQL, frozen to its migration's schema: the generated queries match the newest schema, which an upgrade has not reached.
 var goSteps = map[string]func(ctx context.Context, tx *sql.Tx) error{
 	"0142_version_change_size": backfillVersionSizes,
+	"0144_memory_history":      backfillMemoryHistory,
 }
 
 // Migrate applies every pending migration. Test helpers use this no-backup path directly; production boots

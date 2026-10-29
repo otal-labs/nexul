@@ -118,18 +118,24 @@ func TestMemoriesHandler_Delete(t *testing.T) {
 	})
 }
 
-func TestMemoriesHandler_VersionsAndRevert(t *testing.T) {
+func TestMemoriesHandler_HistoryAndRestore(t *testing.T) {
 	h, _ := newMemoriesHandler()
 	created := decodeMemory(t, serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"A","body":"v1"}`))
 	serve(t, h, http.MethodPut, "/api/memories/"+created.ID, `{"title":"A","body":"v2"}`)
 
-	t.Run("lists versions newest first", func(t *testing.T) {
-		rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID+"/versions", "")
+	t.Run("answers the shared history shape, newest first", func(t *testing.T) {
+		rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID+"/history", "")
 		require.Equal(t, http.StatusOK, rec.Code)
-		var versions []*MemoryVersion
-		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &versions))
-		require.Len(t, versions, 2)
-		assert.Equal(t, 2, versions[0].Version)
+		var hist struct {
+			Versions []map[string]any `json:"versions"`
+			Changes  []any            `json:"changes"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &hist))
+		require.Len(t, hist.Versions, 2)
+		assert.EqualValues(t, 2, hist.Versions[0]["version"])
+		assert.Equal(t, true, hist.Versions[0]["current"])
+		assert.NotContains(t, hist.Versions[0], "body", "a history lists versions without their text")
+		assert.Equal(t, []any{}, hist.Changes, "memories keep no field changes")
 	})
 	t.Run("gets one version", func(t *testing.T) {
 		rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID+"/versions/1", "")
@@ -138,8 +144,8 @@ func TestMemoriesHandler_VersionsAndRevert(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &v))
 		assert.Contains(t, v.Body, "v1")
 	})
-	t.Run("reverts to a prior version", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/revert", `{"version":1}`)
+	t.Run("restores a prior version", func(t *testing.T) {
+		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/versions/1/restore", "")
 		require.Equal(t, http.StatusOK, rec.Code)
 		m := decodeMemory(t, rec)
 		assert.Equal(t, 3, m.Version)
@@ -190,10 +196,12 @@ func TestMemoriesHandler_Refusals(t *testing.T) {
 		{"update without a title", false, http.MethodPut, "/api/memories/{id}", `{"title":" "}`, http.StatusBadRequest},
 		{"delete a missing memory", false, http.MethodDelete, "/api/memories/again", "", http.StatusNotFound},
 		{"get a version by a non-number", false, http.MethodGet, "/api/memories/{id}/versions/nope", "", http.StatusBadRequest},
-		{"list the versions of a missing memory", false, http.MethodGet, "/api/memories/nope/versions", "", http.StatusNotFound},
+		{"read the history of a missing memory", false, http.MethodGet, "/api/memories/nope/history", "", http.StatusNotFound},
+		{"read the history without memories:read", true, http.MethodGet, "/api/memories/{id}/history", "", http.StatusForbidden},
 		{"get a version of a missing memory", false, http.MethodGet, "/api/memories/nope/versions/1", "", http.StatusNotFound},
-		{"revert from a malformed body", false, http.MethodPost, "/api/memories/{id}/revert", `{"version":`, http.StatusBadRequest},
-		{"revert to an unknown version", false, http.MethodPost, "/api/memories/{id}/revert", `{"version":99}`, http.StatusNotFound},
+		{"restore a version by a non-number", false, http.MethodPost, "/api/memories/{id}/versions/nope/restore", "", http.StatusBadRequest},
+		{"restore an unknown version", false, http.MethodPost, "/api/memories/{id}/versions/99/restore", "", http.StatusNotFound},
+		{"restore without memories:write", true, http.MethodPost, "/api/memories/{id}/versions/1/restore", "", http.StatusForbidden},
 		{"clone without memories:clone", true, http.MethodPost, "/api/memories/{id}/clone", `{"project_id":"project-2"}`, http.StatusForbidden},
 		{"clone into a workspace with no project", false, http.MethodPost, "/api/memories/{id}/clone", `{"workspace_id":"workspace-1"}`, http.StatusBadRequest},
 		{"clone from a malformed body", false, http.MethodPost, "/api/memories/{id}/clone", `{"project_id":`, http.StatusBadRequest},

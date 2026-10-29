@@ -149,7 +149,7 @@ func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia
 		if n == 0 {
 			return fmt.Errorf("update memory %s: %w", m.ID, apperrs.ErrNotFound)
 		}
-		if err := insertMemoryVersion(ctx, q, m, authorVia); err != nil {
+		if err := writeSaveMemoryVersion(ctx, q, m, authorVia); err != nil {
 			return err
 		}
 		return enqueueMemoriesOutbox(ctx, tx, evts)
@@ -169,14 +169,18 @@ func (r *MemoriesRepo) Delete(ctx context.Context, id string, evts ...eventbus.O
 	})
 }
 
-func (r *MemoriesRepo) ListVersions(ctx context.Context, memoryID string) ([]*memories.MemoryVersion, error) {
-	rows, err := r.q.ListMemoryVersions(ctx, memoryID)
+func (r *MemoriesRepo) ListVersionSummaries(ctx context.Context, memoryID string) ([]memories.VersionSummary, error) {
+	rows, err := r.q.ListMemoryVersionSummaries(ctx, memoryID)
 	if err != nil {
-		return nil, fmt.Errorf("list memory versions %s: %w", memoryID, err)
+		return nil, fmt.Errorf("list memory version summaries %s: %w", memoryID, err)
 	}
-	out := make([]*memories.MemoryVersion, len(rows))
-	for i, row := range rows {
-		out[i] = toMemoryVersion(row)
+	out := make([]memories.VersionSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, memories.VersionSummary{
+			Version: int(row.Version), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), Title: row.Title,
+			EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.AuthorVia,
+			WordsAdded: nullableInt(row.WordsAdded), WordsRemoved: nullableInt(row.WordsRemoved), RestoredFrom: nullableInt(row.RestoredFrom),
+		})
 	}
 	return out, nil
 }
@@ -190,7 +194,11 @@ func (r *MemoriesRepo) GetVersion(ctx context.Context, memoryID string, version 
 }
 
 func insertMemoryVersion(ctx context.Context, q *sqlcgen.Queries, m *memories.Memory, authorVia string) error {
-	err := q.InsertMemoryVersion(ctx, sqlcgen.InsertMemoryVersionParams{
+	size, err := memorySizer(q, m.ID).againstNewest(ctx, docVersionText(m.Title, m.Body))
+	if err != nil {
+		return fmt.Errorf("size memory version %s v%d: %w", m.ID, m.Version, err)
+	}
+	err = q.InsertMemoryVersion(ctx, sqlcgen.InsertMemoryVersionParams{
 		ID:             ids.New(),
 		MemoryID:       m.ID,
 		Version:        int64(m.Version),
@@ -200,6 +208,10 @@ func insertMemoryVersion(ctx context.Context, q *sqlcgen.Queries, m *memories.Me
 		AlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),
 		AuthorID:       m.UpdatedBy,
 		AuthorVia:      authorVia,
+		EditorIds:      idsJSON(soleEditor(m.UpdatedBy)),
+		WordsAdded:     size.added,
+		WordsRemoved:   size.removed,
+		RestoredFrom:   restoredFromOf(m.RestoredFrom),
 		CreatedAt:      m.UpdatedAt.Unix(),
 	})
 	if err != nil {
@@ -208,7 +220,30 @@ func insertMemoryVersion(ctx context.Context, q *sqlcgen.Queries, m *memories.Me
 	return nil
 }
 
-func toMemoryVersion(row sqlcgen.MemoryVersion) *memories.MemoryVersion {
+// writeSaveMemoryVersion appends the version a save makes, unless the memory already reads as its newest version, then prunes.
+func writeSaveMemoryVersion(ctx context.Context, q *sqlcgen.Queries, m *memories.Memory, authorVia string) error {
+	same, err := q.MemoryMatchesLatestVersion(ctx, sqlcgen.MemoryMatchesLatestVersionParams{
+		ForMemory: m.ID, WantTitle: m.Title, WantWhenToUse: m.WhenToUse, WantBody: m.Body, WantAlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),
+	})
+	if err != nil {
+		return fmt.Errorf("compare memory %s with its newest version: %w", m.ID, err)
+	}
+	if same {
+		return nil
+	}
+	if err := insertMemoryVersion(ctx, q, m, authorVia); err != nil {
+		return err
+	}
+	err = memorySizer(q, m.ID).pruned(ctx, func() error {
+		return q.PruneMemoryVersions(ctx, sqlcgen.PruneMemoryVersionsParams{ForMemory: m.ID, Keep: memories.KeptVersions})
+	})
+	if err != nil {
+		return fmt.Errorf("prune memory %s versions: %w", m.ID, err)
+	}
+	return nil
+}
+
+func toMemoryVersion(row sqlcgen.GetMemoryVersionRow) *memories.MemoryVersion {
 	return &memories.MemoryVersion{
 		ID:             row.ID,
 		MemoryID:       row.MemoryID,
@@ -219,6 +254,7 @@ func toMemoryVersion(row sqlcgen.MemoryVersion) *memories.MemoryVersion {
 		AlwaysIncluded: row.AlwaysIncluded != 0,
 		AuthorID:       row.AuthorID,
 		AuthorVia:      row.AuthorVia,
+		EditorIDs:      decodeEditorIDs(row.EditorIds),
 		CreatedAt:      time.Unix(row.CreatedAt, 0).UTC(),
 	}
 }

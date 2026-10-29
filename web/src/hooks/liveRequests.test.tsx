@@ -8,8 +8,9 @@ import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useFetchDoc, useFetchDocClarification, useFetchDocs, useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
+import { useFetchHistory } from "@/hooks/HistoryHooks";
 import { useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
-import { useFetchMemories, useFetchMemoriesByProject, useFetchMemory, useFetchMemoryVersions } from "@/hooks/MemoryHooks";
+import { useFetchMemories, useFetchMemoriesByProject, useFetchMemory, memoryHistoryUrl } from "@/hooks/MemoryHooks";
 import { useFetchInbox, useFetchUnreadByWorkspace, useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useFetchProjectPeople, useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
@@ -226,7 +227,7 @@ describe("requests a live frame sends", () => {
         useFetchMemories("ws-1");
         useFetchMemoriesByProject("p-1");
         useFetchMemory("m-1");
-        useFetchMemoryVersions("m-1");
+        useFetchHistory(memoryHistoryUrl("m-1"));
         useFetchInterviewSources("p-1");
       }),
       respond,

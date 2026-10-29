@@ -4,6 +4,8 @@ import type { ActionGate } from "@nexul/client-core/actionState";
 export interface HistoryVersionSummary {
   version: number;
   created_at: string;
+  /** The title a memory had at this version; only memories send it. */
+  title?: string;
   /** A named version's name; empty for the rest. */
   name: string;
   editor_ids: string[];

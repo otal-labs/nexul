@@ -24,6 +24,7 @@ export const PlayHistoryDialog = ({ playId, name, version, onClose }: PlayHistor
       versionUrl={(n) => playVersionUrl(playId, n)}
       name={name}
       bodyKind="markdown"
+      namesVersions={false}
       {...(version !== undefined && { initialVersion: version })}
       readChange={readPlayChange((id) => projects?.find((project) => project.id === id)?.name ?? "A removed project")}
       restore={{

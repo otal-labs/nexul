@@ -290,9 +290,9 @@ with no ticket or doc names none. Memories sit in two folders, Main and
 Footer; a play run names its footer memories last, for the agent to read
 once the work is done and conclude the run, such as deciding which column
 the ticket now belongs in.
-Agents may write memories too. Every save appends a version with its
-author, and any version can be reverted to. Cloned, never shared, to
-another project. Plural in the UI: "memories".
+Agents may write memories too. Every save that changes something appends a
+version with its author, the last 10 are kept, and any kept version can be
+restored. Cloned, never shared, to another project. Plural in the UI: "memories".
 _Avoid_: Doc (docs are for clients and requirements), skill, note
 
 **Interview**:

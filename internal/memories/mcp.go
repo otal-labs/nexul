@@ -13,9 +13,6 @@ import (
 // viaMCP is the author_via of every version saved through an MCP tool call (ADR 0049).
 const viaMCP = "mcp"
 
-// memoryGetVersions bounds the version history memory_get returns; older versions stay readable by number.
-const memoryGetVersions = 50
-
 type memoryListIn struct {
 	ProjectID string `json:"project_id" jsonschema:"The project, from project_list."`
 	mcptool.PageArgs
@@ -201,7 +198,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 
 func memoryGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_get", "Get memory",
-		"Returns one memory with its body as markdown and its newest 50 versions; with version it returns that version's content instead, and current_version says which is live. "+
+		"Returns one memory with its body as markdown and its 10 kept versions; with version it returns that version's content instead, and current_version says which is live. "+
 			"The interview memory also carries the Interview template's questions, answers (round 0 for the template's questions, 1 and up for follow-up rounds), sources with their stance, and the drafts a drafting run wrote. "+
 			"Restore an old version with memory_update revert_to_version.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -210,7 +207,7 @@ func memoryGetTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			vs, err := s.ListVersions(ctx, in.ID)
+			h, err := s.History(ctx, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -218,7 +215,7 @@ func memoryGetTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			out.Versions = versionInfos(vs)
+			out.Versions = versionInfos(h.Versions)
 			if in.Version == 0 {
 				return out, nil
 			}
@@ -272,7 +269,7 @@ func (in memoryCreateIn) hasText() bool {
 
 func memoryUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_update", "Update memory",
-		"Changes a memory's title, when-to-use line, body, or flags; each save adds a version. "+
+		"Changes a memory's title, when-to-use line, body, or flags; each save that changes something adds a version. "+
 			"revert_to_version restores an earlier version as a new one; memory_get lists the versions. "+
 			"The interview memory stays always included and its body is capped at 8,000 characters of markdown; the decisions log is never always included. "+
 			"answers, add_sources, update_sources, remove_sources, drafts, and dismiss_drafts apply to the interview memory only: answers saves or skips its answers without adding a version, "+
@@ -470,11 +467,15 @@ func withVersion(out memoryResult, v *MemoryVersion) (memoryResult, error) {
 	return out, nil
 }
 
-// versionInfos keeps the newest versions; the repo returns them newest first.
-func versionInfos(vs []*MemoryVersion) []memoryVersionInfo {
-	out := make([]memoryVersionInfo, 0, min(len(vs), memoryGetVersions))
-	for _, v := range vs[:min(len(vs), memoryGetVersions)] {
-		out = append(out, memoryVersionInfo{Version: v.Version, Title: v.Title, AuthorID: v.AuthorID, AuthorVia: v.AuthorVia, CreatedAt: v.CreatedAt})
+// versionInfos names each kept version, newest first as the history lists them; a version's author is its first editor.
+func versionInfos(vs []VersionSummary) []memoryVersionInfo {
+	out := make([]memoryVersionInfo, 0, len(vs))
+	for _, v := range vs {
+		info := memoryVersionInfo{Version: v.Version, Title: v.Title, AuthorVia: v.Via, CreatedAt: v.CreatedAt}
+		if len(v.EditorIDs) > 0 {
+			info.AuthorID = v.EditorIDs[0]
+		}
+		out = append(out, info)
 	}
 	return out
 }

@@ -158,7 +158,7 @@ func (q *Queries) GetMemoryByProjectKind(ctx context.Context, arg GetMemoryByPro
 }
 
 const getMemoryVersion = `-- name: GetMemoryVersion :one
-SELECT id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, created_at
+SELECT id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, editor_ids, created_at
 FROM memory_versions WHERE memory_id = ? AND version = ?
 `
 
@@ -167,9 +167,23 @@ type GetMemoryVersionParams struct {
 	Version  int64
 }
 
-func (q *Queries) GetMemoryVersion(ctx context.Context, arg GetMemoryVersionParams) (MemoryVersion, error) {
+type GetMemoryVersionRow struct {
+	ID             string
+	MemoryID       string
+	Version        int64
+	Title          string
+	WhenToUse      string
+	Body           string
+	AlwaysIncluded int64
+	AuthorID       string
+	AuthorVia      string
+	EditorIds      string
+	CreatedAt      int64
+}
+
+func (q *Queries) GetMemoryVersion(ctx context.Context, arg GetMemoryVersionParams) (GetMemoryVersionRow, error) {
 	row := q.db.QueryRowContext(ctx, getMemoryVersion, arg.MemoryID, arg.Version)
-	var i MemoryVersion
+	var i GetMemoryVersionRow
 	err := row.Scan(
 		&i.ID,
 		&i.MemoryID,
@@ -180,14 +194,15 @@ func (q *Queries) GetMemoryVersion(ctx context.Context, arg GetMemoryVersionPara
 		&i.AlwaysIncluded,
 		&i.AuthorID,
 		&i.AuthorVia,
+		&i.EditorIds,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const insertMemoryVersion = `-- name: InsertMemoryVersion :exec
-INSERT INTO memory_versions (id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO memory_versions (id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, editor_ids, words_added, words_removed, restored_from, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertMemoryVersionParams struct {
@@ -200,6 +215,10 @@ type InsertMemoryVersionParams struct {
 	AlwaysIncluded int64
 	AuthorID       string
 	AuthorVia      string
+	EditorIds      string
+	WordsAdded     sql.NullInt64
+	WordsRemoved   sql.NullInt64
+	RestoredFrom   sql.NullInt64
 	CreatedAt      int64
 }
 
@@ -214,6 +233,10 @@ func (q *Queries) InsertMemoryVersion(ctx context.Context, arg InsertMemoryVersi
 		arg.AlwaysIncluded,
 		arg.AuthorID,
 		arg.AuthorVia,
+		arg.EditorIds,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.RestoredFrom,
 		arg.CreatedAt,
 	)
 	return err
@@ -351,30 +374,65 @@ func (q *Queries) ListMemoriesPage(ctx context.Context, arg ListMemoriesPagePara
 	return items, nil
 }
 
-const listMemoryVersions = `-- name: ListMemoryVersions :many
-SELECT id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, created_at
-FROM memory_versions WHERE memory_id = ? ORDER BY version DESC
+const listMemoryVersionNumbers = `-- name: ListMemoryVersionNumbers :many
+SELECT version FROM memory_versions WHERE memory_id = ? ORDER BY version
 `
 
-func (q *Queries) ListMemoryVersions(ctx context.Context, memoryID string) ([]MemoryVersion, error) {
-	rows, err := q.db.QueryContext(ctx, listMemoryVersions, memoryID)
+func (q *Queries) ListMemoryVersionNumbers(ctx context.Context, memoryID string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listMemoryVersionNumbers, memoryID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []MemoryVersion
+	var items []int64
 	for rows.Next() {
-		var i MemoryVersion
+		var version int64
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMemoryVersionSummaries = `-- name: ListMemoryVersionSummaries :many
+SELECT version, title, author_via, editor_ids, words_added, words_removed, restored_from, created_at FROM memory_versions WHERE memory_id = ? ORDER BY version DESC
+`
+
+type ListMemoryVersionSummariesRow struct {
+	Version      int64
+	Title        string
+	AuthorVia    string
+	EditorIds    string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
+	CreatedAt    int64
+}
+
+func (q *Queries) ListMemoryVersionSummaries(ctx context.Context, memoryID string) ([]ListMemoryVersionSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMemoryVersionSummaries, memoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMemoryVersionSummariesRow
+	for rows.Next() {
+		var i ListMemoryVersionSummariesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.MemoryID,
 			&i.Version,
 			&i.Title,
-			&i.WhenToUse,
-			&i.Body,
-			&i.AlwaysIncluded,
-			&i.AuthorID,
 			&i.AuthorVia,
+			&i.EditorIds,
+			&i.WordsAdded,
+			&i.WordsRemoved,
+			&i.RestoredFrom,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -388,6 +446,75 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, memoryID string) ([]Me
 		return nil, err
 	}
 	return items, nil
+}
+
+const memoryMatchesLatestVersion = `-- name: MemoryMatchesLatestVersion :one
+SELECT EXISTS(
+    SELECT 1 FROM memory_versions v
+    WHERE v.memory_id = ?1 AND v.title = ?2 AND v.when_to_use = ?3
+      AND v.body = ?4 AND v.always_included = ?5
+      AND v.version = (SELECT MAX(l.version) FROM memory_versions l WHERE l.memory_id = ?1)
+)
+`
+
+type MemoryMatchesLatestVersionParams struct {
+	ForMemory          string
+	WantTitle          string
+	WantWhenToUse      string
+	WantBody           string
+	WantAlwaysIncluded int64
+}
+
+func (q *Queries) MemoryMatchesLatestVersion(ctx context.Context, arg MemoryMatchesLatestVersionParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, memoryMatchesLatestVersion,
+		arg.ForMemory,
+		arg.WantTitle,
+		arg.WantWhenToUse,
+		arg.WantBody,
+		arg.WantAlwaysIncluded,
+	)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const pruneMemoryVersions = `-- name: PruneMemoryVersions :exec
+DELETE FROM memory_versions
+WHERE memory_versions.memory_id = ?1
+  AND memory_versions.version NOT IN (
+    SELECT k.version FROM memory_versions k WHERE k.memory_id = ?1 ORDER BY k.version DESC LIMIT ?2
+  )
+`
+
+type PruneMemoryVersionsParams struct {
+	ForMemory string
+	Keep      int64
+}
+
+func (q *Queries) PruneMemoryVersions(ctx context.Context, arg PruneMemoryVersionsParams) error {
+	_, err := q.db.ExecContext(ctx, pruneMemoryVersions, arg.ForMemory, arg.Keep)
+	return err
+}
+
+const setMemoryVersionSize = `-- name: SetMemoryVersionSize :exec
+UPDATE memory_versions SET words_added = ?, words_removed = ? WHERE memory_id = ? AND version = ?
+`
+
+type SetMemoryVersionSizeParams struct {
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	MemoryID     string
+	Version      int64
+}
+
+func (q *Queries) SetMemoryVersionSize(ctx context.Context, arg SetMemoryVersionSizeParams) error {
+	_, err := q.db.ExecContext(ctx, setMemoryVersionSize,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.MemoryID,
+		arg.Version,
+	)
+	return err
 }
 
 const updateMemory = `-- name: UpdateMemory :execrows

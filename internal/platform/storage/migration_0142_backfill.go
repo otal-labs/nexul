@@ -26,7 +26,11 @@ var versionSizeTables = []versionSizeTable{
 // backfillVersionSizes fills the words added and removed of every kept version against its kept predecessor, by
 // version number per item; the oldest kept version of an item stays null.
 func backfillVersionSizes(ctx context.Context, tx *sql.Tx) error {
-	for _, t := range versionSizeTables {
+	return backfillSizes(ctx, tx, versionSizeTables)
+}
+
+func backfillSizes(ctx context.Context, tx *sql.Tx, tables []versionSizeTable) error {
+	for _, t := range tables {
 		keys, err := backfillKeys(ctx, tx, t)
 		if err != nil {
 			return err

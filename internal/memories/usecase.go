@@ -218,8 +218,9 @@ func (s *Service) ListMemoryItems(ctx context.Context, projectID string) ([]Memo
 	return out, nil
 }
 
-// Update replaces title/when-to-use/body/always-included and appends a version, keeping the footer flag; requires
-// memories:write on the memory's project. via is "mcp" for an MCP tool call (ADR 0049), empty for the browser.
+// Update replaces title/when-to-use/body/always-included and appends a version unless nothing changed, keeping the
+// footer flag; requires memories:write on the memory's project. via is "mcp" for an MCP tool call (ADR 0049),
+// empty for the browser.
 func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string, alwaysIncluded bool, via string) (*Memory, error) {
 	return s.UpdateWithFooter(ctx, id, title, whenToUse, body, alwaysIncluded, nil, via)
 }
@@ -227,6 +228,11 @@ func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string,
 // UpdateWithFooter is Update that also sets whether a play run names the memory last, to conclude it (ADR 0112); a
 // nil footer keeps the current setting, and only an ordinary memory can be one.
 func (s *Service) UpdateWithFooter(ctx context.Context, id, title, whenToUse, body string, alwaysIncluded bool, footer *bool, via string) (*Memory, error) {
+	return s.update(ctx, id, title, whenToUse, body, alwaysIncluded, footer, via, 0)
+}
+
+// update is UpdateWithFooter that also records the version a restore copied the content from, zero for an ordinary save.
+func (s *Service) update(ctx context.Context, id, title, whenToUse, body string, alwaysIncluded bool, footer *bool, via string, restoredFrom int) (*Memory, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -265,6 +271,7 @@ func (s *Service) UpdateWithFooter(ctx context.Context, id, title, whenToUse, bo
 	current.Body = normalized
 	current.AlwaysIncluded = alwaysIncluded
 	current.Version++
+	current.RestoredFrom = restoredFrom
 	current.UpdatedBy = actor.ID
 	current.UpdatedAt = s.now().UTC()
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Memory: toRef(current), AuthorID: actor.ID, AuthorVia: via}}
@@ -274,19 +281,22 @@ func (s *Service) UpdateWithFooter(ctx context.Context, id, title, whenToUse, bo
 	return current, nil
 }
 
-// ListVersions returns a memory's version history, newest first; requires memories:read on its project.
-func (s *Service) ListVersions(ctx context.Context, id string) ([]*MemoryVersion, error) {
+// History returns a memory's kept versions newest first, without bodies; requires memories:read on its project.
+func (s *Service) History(ctx context.Context, id string) (*History, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
 	if _, err := s.getChecked(ctx, id, permissions.MemoriesRead); err != nil {
 		return nil, err
 	}
-	vs, err := s.repo.ListVersions(ctx, id)
+	vs, err := s.repo.ListVersionSummaries(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("list memory versions %s: %w", id, err)
+		return nil, fmt.Errorf("memory %s history: %w", id, err)
 	}
-	return vs, nil
+	if len(vs) > 0 {
+		vs[0].Current = true
+	}
+	return &History{Versions: vs, Changes: []struct{}{}}, nil
 }
 
 // GetVersion returns one historical version of a memory; requires memories:read on its project.
@@ -321,14 +331,14 @@ func (s *Service) getVersion(ctx context.Context, id string, version int) (*Memo
 	return m, v, nil
 }
 
-// Revert copies a historical version's content back onto the memory as a new version; it never deletes
-// history. Requires memories:write on the memory's project. via is "mcp" for an MCP tool call.
+// Revert copies a historical version's content back onto the memory as a new version that names the version it came
+// from; it never deletes history. Requires memories:write on the memory's project. via is "mcp" for an MCP tool call.
 func (s *Service) Revert(ctx context.Context, id string, version int, via string) (*Memory, error) {
 	_, target, err := s.getVersion(ctx, id, version)
 	if err != nil {
 		return nil, err
 	}
-	return s.Update(ctx, id, target.Title, target.WhenToUse, target.Body, target.AlwaysIncluded, via)
+	return s.update(ctx, id, target.Title, target.WhenToUse, target.Body, target.AlwaysIncluded, nil, via, version)
 }
 
 // Delete removes a memory; requires memories:delete on its project.

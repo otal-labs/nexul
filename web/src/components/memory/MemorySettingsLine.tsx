@@ -14,7 +14,7 @@ export const MemorySettingsLine = ({ memory }: MemorySettingsLineProps) => (
       <MemoryFolderMenu memory={memory} />
       <MemoryIncludedControl memory={memory} />
       <span className="font-mono text-xs text-muted-foreground tabular-nums">
-        updated {formatUpdatedAgo(memory.updated_at)} · {memory.version} {memory.version === 1 ? "version" : "versions"}
+        updated {formatUpdatedAgo(memory.updated_at)}
       </span>
     </div>
     {isInterviewMemory(memory) && <p className="text-[13px] text-muted-foreground">Sent in every Agent turn in this project; it can&apos;t be switched off.</p>}

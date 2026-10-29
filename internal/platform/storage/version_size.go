@@ -63,6 +63,21 @@ func docSizer(q *sqlcgen.Queries, docID string) versionSizer {
 	}
 }
 
+func memorySizer(q *sqlcgen.Queries, memoryID string) versionSizer {
+	return versionSizer{
+		numbers: func(ctx context.Context) ([]int64, error) { return q.ListMemoryVersionNumbers(ctx, memoryID) },
+		text: func(ctx context.Context, version int64) (string, error) {
+			row, err := q.GetMemoryVersion(ctx, sqlcgen.GetMemoryVersionParams{MemoryID: memoryID, Version: version})
+			return docVersionText(row.Title, row.Body), err
+		},
+		set: func(ctx context.Context, version int64, size versionSize) error {
+			return q.SetMemoryVersionSize(ctx, sqlcgen.SetMemoryVersionSizeParams{
+				WordsAdded: size.added, WordsRemoved: size.removed, MemoryID: memoryID, Version: version,
+			})
+		},
+	}
+}
+
 func ticketSizer(q *sqlcgen.Queries, ticketID string) versionSizer {
 	return versionSizer{
 		numbers: func(ctx context.Context) ([]int64, error) {

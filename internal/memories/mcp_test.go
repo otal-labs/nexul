@@ -189,16 +189,6 @@ func TestMemoryGet(t *testing.T) {
 	assert.Equal(t, 2, old.CurrentVersion)
 }
 
-func TestVersionInfos_KeepsTheNewest(t *testing.T) {
-	vs := make([]*MemoryVersion, memoryGetVersions+5)
-	for i := range vs {
-		vs[i] = &MemoryVersion{Version: len(vs) - i}
-	}
-	got := versionInfos(vs)
-	require.Len(t, got, memoryGetVersions)
-	assert.Equal(t, len(vs), got[0].Version)
-}
-
 func TestMemoryList(t *testing.T) {
 	s := newTestService(newFakeRepo())
 	mustMemory(t, s, "project-1", "Project note", "when", "secret body", false)

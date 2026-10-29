@@ -8,7 +8,8 @@ import (
 )
 
 // Repo is the consumer-side persistence contract for memories; mutations carry events for the outbox write.
-// Create and Update each append a memory_versions row in the same transaction, tagged with authorVia (ticket 17).
+// Create and Update each append a memory_versions row in the same transaction, tagged with authorVia, unless the
+// save leaves the newest version's content as it was; they then prune the memory to its KeptVersions (ticket 17).
 type Repo interface {
 	TemplateRepo
 	AnswerRepo
@@ -24,8 +25,8 @@ type Repo interface {
 	PageByProject(ctx context.Context, projectID string, w paging.Window) ([]*Memory, int, error)
 	Update(ctx context.Context, m *Memory, authorVia string, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
-	// ListVersions returns a memory's version history, newest first.
-	ListVersions(ctx context.Context, memoryID string) ([]*MemoryVersion, error)
+	// ListVersionSummaries returns a memory's kept versions without their bodies, newest first.
+	ListVersionSummaries(ctx context.Context, memoryID string) ([]VersionSummary, error)
 	// GetVersion returns one historical version of a memory.
 	GetVersion(ctx context.Context, memoryID string, version int) (*MemoryVersion, error)
 }
