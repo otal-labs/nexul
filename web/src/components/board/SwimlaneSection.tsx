@@ -81,7 +81,7 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
             )}
           </span>{" "}
           {/* The lane's own progress, held at the right edge of what the board shows, so it never scrolls away with the last stage. */}
-          <span className="sticky right-2 ml-auto flex w-[200px] shrink-0 items-center justify-end gap-2">
+          <span className="sticky right-5 ml-auto flex w-[200px] shrink-0 items-center justify-end gap-2">
             <span className="h-1 w-24 shrink-0 overflow-hidden rounded-full bg-muted max-md:hidden" aria-hidden>
               <span className="block h-full rounded-full bg-success" style={{ width: `${lane.tickets.length === 0 ? 0 : Math.round((doneCount / lane.tickets.length) * 100)}%` }} />
             </span>

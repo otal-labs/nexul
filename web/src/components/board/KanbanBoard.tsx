@@ -231,7 +231,8 @@ export const KanbanBoard = ({
           {moreRight && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-[var(--board-gutter,0px)] w-3 bg-gradient-to-l from-[var(--panel)] to-transparent"
+              // Above the pinned stage row and lane bands, so a cut stage fades like a cut card; the band counts sit outside it.
+              className="pointer-events-none absolute inset-y-0 right-[var(--board-gutter,0px)] z-30 w-3 bg-gradient-to-l from-[var(--panel)] to-transparent"
             />
           )}
         </div>
