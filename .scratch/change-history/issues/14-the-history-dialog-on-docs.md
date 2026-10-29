@@ -13,3 +13,10 @@ History page to the user guide.
 Done when: the dialog works on the demo data and the worst-case seed at 768,
 1024 and 1440; a component test covers picking a version, the switch, the
 disabled restore on the current one and a restore; screenshots in the PR.
+
+## Comments
+
+Once this lands, the dialog gets a redesign-mode council pass on real docs
+before 16, 18 and 19 reuse it, so its fixes land once in the shared component.
+The owner approved the effort's additive schema changes up front; each
+ticket's migration ships in its PR without a separate sign-off.

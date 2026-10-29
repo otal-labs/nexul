@@ -1,7 +1,7 @@
 # 19 — Memories and automations in the same dialog
 
 **Status:** ready-for-agent
-**Blocked by:** 14
+**Blocked by:** 14, and the redesign-mode pass on 14
 
 Spec: `../spec.md`, decisions 1, 4, 5, The route shape.
 
