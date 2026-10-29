@@ -47,8 +47,8 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
       onBack={prevKey !== null ? () => onMove(prevKey) : undefined}
       onSubmit={submit}
       busy={save.isPending || pending}
-      drafted={row.draft?.value}
-      note={row.draft && <InterviewDraftFrom draft={row.draft} />}
+      drafted={proposed}
+      note={row.draft && <InterviewDraftFrom draft={row.draft} label="Drafted from" />}
       multiline
     />
   );

@@ -16,6 +16,8 @@ export type ChecklistDraftState = "open" | "confirmed" | "suggested";
 export interface ChecklistDraft {
   state: ChecklistDraftState;
   from: string;
+  // How many sources it names, when the host counts them.
+  sources?: number;
 }
 
 // One question of a checklist (the Interview page, a doc's Questions), whatever stores its answer.
@@ -41,6 +43,30 @@ export const countLine = (rows: ChecklistRow[]): string => {
   const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
   const head = skipped === 0 ? `${answered} of ${rows.length} answered` : `${answered} answered · ${skipped} skipped`;
   return [head, drafted > 0 && `${drafted} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
+};
+
+// Where a question stands for the person: settled, skipped, or waiting on them with a draft or suggested change to check, or with nothing.
+export type RowProgress = "answered" | "skipped" | "drafted" | "waiting";
+
+export const rowProgress = (row: ChecklistRow): RowProgress => {
+  if (row.draft?.state === "suggested" || row.draft?.state === "open") return "drafted";
+  const status = rowStatus(row);
+  return status === "pending" ? "waiting" : status;
+};
+
+export interface ProgressCounts {
+  answered: number;
+  skipped: number;
+  needsYou: number;
+  total: number;
+}
+
+// One partition of the rows: every row counts once, so the three always sum to the total.
+export const progressCounts = (rows: ChecklistRow[]): ProgressCounts => {
+  const progress = rows.map(rowProgress);
+  const answered = progress.filter((p) => p === "answered").length;
+  const skipped = progress.filter((p) => p === "skipped").length;
+  return { answered, skipped, needsYou: rows.length - answered - skipped, total: rows.length };
 };
 
 // A row waits on the person while it is unanswered or carries a suggested change to accept or dismiss.

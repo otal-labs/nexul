@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { answerLine, followOpenKey, openRow, type ChecklistRow } from "@nexul/client-core/questionChecklist";
+import { answerLine, followOpenKey, openRow, progressCounts, type ChecklistRow } from "@nexul/client-core/questionChecklist";
 
 describe("answerLine", () => {
   it("reads a picked suggested option without its (Suggested) mark, keeping the rest of the answer", () => {
@@ -17,6 +17,21 @@ describe("answerLine", () => {
 
 const checklistRow = (key: string, answer: { selected?: string[]; text?: string; skipped?: boolean } = {}): ChecklistRow => ({
   key, item: { id: key, text: key, options: [] }, why: "", answer: { selected: [], text: "", skipped: false, ...answer },
+});
+
+describe("progressCounts", () => {
+  it("counts a drafted row, skipped or not, a suggested and an unanswered row as needing you, so the parts sum to the total", () => {
+    const rows: ChecklistRow[] = [
+      checklistRow("answered", { text: "Go" }),
+      checklistRow("skipped", { skipped: true }),
+      { ...checklistRow("drafted"), draft: { state: "open", from: "" } },
+      { ...checklistRow("suggested", { text: "Go" }), draft: { state: "suggested", from: "" } },
+      { ...checklistRow("confirmed", { text: "Go" }), draft: { state: "confirmed", from: "" } },
+      { ...checklistRow("skipped-drafted", { skipped: true }), draft: { state: "open", from: "" } },
+      checklistRow("waiting"),
+    ];
+    expect(progressCounts(rows)).toEqual({ answered: 2, skipped: 1, needsYou: 4, total: 7 });
+  });
 });
 
 describe("followOpenKey", () => {

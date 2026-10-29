@@ -37,7 +37,7 @@ describe("InterviewSourceAddForm", () => {
     expect(stanceOn("Follow")).toBe(true);
     await user.click(screen.getByRole("radio", { name: "Project" }));
     expect(stanceOn("Question")).toBe(true);
-    await user.click(screen.getByRole("radio", { name: "Paste text" }));
+    await user.click(screen.getByRole("radio", { name: "Text" }));
     expect(stanceOn("Follow")).toBe(true);
   });
 
@@ -64,7 +64,7 @@ describe("InterviewSourceAddForm", () => {
   it("refuses a file that isn't text or markdown", async () => {
     const user = userEvent.setup({ applyAccept: false });
     renderForm();
-    await user.click(screen.getByRole("radio", { name: "Paste text" }));
+    await user.click(screen.getByRole("radio", { name: "Text" }));
     await user.upload(screen.getByLabelText("or drop a text or markdown file"), new File(["%PDF"], "spec.pdf", { type: "application/pdf" }));
     expect(await screen.findByText("spec.pdf isn't text or markdown. Paste its text instead.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -74,7 +74,7 @@ describe("InterviewSourceAddForm", () => {
   it("reads a markdown file as pasted text labelled with its name", async () => {
     const user = userEvent.setup();
     renderForm();
-    await user.click(screen.getByRole("radio", { name: "Paste text" }));
+    await user.click(screen.getByRole("radio", { name: "Text" }));
     await user.upload(screen.getByLabelText("or drop a text or markdown file"), new File(["# Rules\nNo else."], "rules.md", { type: "text/markdown" }));
     expect(await screen.findByDisplayValue("rules.md")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add" }));

@@ -2,8 +2,9 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { useDismissInterviewDraft } from "@/hooks/InterviewSourceHooks";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
-import type { InterviewRow, RowDraft } from "@/models/InterviewAnswer";
-import { answerLine, valueLine } from "@nexul/client-core/questionChecklist";
+import { suggestionDiff, type InterviewRow, type RowDraft } from "@/models/InterviewAnswer";
+import { answerLine } from "@nexul/client-core/questionChecklist";
+import { cn } from "@/lib/utils";
 
 interface InterviewSuggestionCardProps {
   row: InterviewRow;
@@ -26,21 +27,34 @@ export const InterviewSuggestionCard = ({ row, draft, projectId, progress, onMov
     );
 
   return (
-    <div className="animate-in fade-in-0 slide-in-from-top-1 pr-1.5 pb-5 pl-9.5 duration-200 ease-out">
+    <div className="animate-in fade-in-0 slide-in-from-top-1 pt-2 pr-2.5 pb-5 pl-10.5 duration-200 ease-out">
       <p className="font-mono text-xs text-muted-foreground">{progress}</p>
-      <div className="mt-2 divide-y divide-border rounded-md border border-border">
-        <div className="px-3 py-2">
-          <p className="text-xs text-muted-foreground">Your answer</p>
-          <p className="mt-0.5 text-sm">{answerLine(row.answer)}</p>
+      <div className="mt-2 space-y-2.5 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+        <div>
+          <p className="text-xs text-muted-foreground">Now</p>
+          <p className="mt-0.5 flex gap-2 text-sm text-muted-foreground">
+            <span aria-hidden className="w-2.5 shrink-0" />
+            <span className="min-w-0">{answerLine(row.answer)}</span>
+          </p>
         </div>
-        <div className="px-3 py-2">
+        <div>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span aria-hidden className="size-1.5 rounded-full bg-warning" />
-            Suggested change
+            Suggested
           </p>
-          <p className="mt-0.5 text-sm">{valueLine(draft.value)}</p>
-          <InterviewDraftFrom draft={draft} />
+          <ul className="mt-0.5 space-y-0.5 text-sm">
+            {suggestionDiff(row.answer, draft.value).map((line) => (
+              <li key={`${line.sign}${line.text}`} className="flex gap-2">
+                <span aria-hidden className={cn("w-2.5 shrink-0 font-mono", line.sign === "+" ? "text-success" : "text-destructive")}>
+                  {line.sign === "+" ? "+" : "−"}
+                </span>
+                <span className="sr-only">{line.sign === "+" ? "Add" : "Remove"}: </span>
+                <span className={cn("min-w-0", line.sign === "-" && "text-muted-foreground line-through")}>{line.text}</span>
+              </li>
+            ))}
+          </ul>
         </div>
+        <InterviewDraftFrom draft={draft} label="Suggested from" />
       </div>
       <div className="mt-4 flex items-center justify-end gap-2">
         <ActionButton

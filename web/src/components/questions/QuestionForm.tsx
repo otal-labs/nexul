@@ -20,11 +20,15 @@ interface QuestionFormProps {
   // Given, an answered or skipped row offers to make it pending again.
   onClear?: (() => void) | undefined;
   busy: boolean;
-  // Passed to the step: what a drafting run proposed, a line under the hint, and a growing text box.
+  // What a drafting run proposed: while the draft still holds it, Next reads Keep draft.
   drafted?: AnswerValue | undefined;
+  // Passed to the step: a line under the hint, and a growing text box.
   note?: ReactNode;
   multiline?: boolean;
 }
+
+const sameAnswer = (a: AnswerValue | undefined, b: AnswerValue | undefined): boolean =>
+  !!a && !!b && (a.text ?? "").trim() === (b.text ?? "").trim() && [...(a.selected ?? [])].sort().join("\n") === [...(b.selected ?? [])].sort().join("\n");
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next.
 export const QuestionForm = ({
@@ -47,15 +51,15 @@ export const QuestionForm = ({
   };
 
   return (
-    <div onKeyDown={onKeyDown} className="animate-in fade-in-0 slide-in-from-top-1 pr-1.5 pb-5 pl-9.5 duration-200 ease-out">
+    <div onKeyDown={onKeyDown} className="animate-in fade-in-0 slide-in-from-top-1 pt-2 pr-2.5 pb-5 pl-10.5 duration-200 ease-out">
       <p className="font-mono text-[11px] text-muted-foreground">{progress}</p>
       {row.why !== "" && (
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-pretty text-muted-foreground">
           <span className="text-foreground">{whyLabel} </span>
           {row.why}
         </p>
       )}
-      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={edit} drafted={drafted} note={note} multiline={multiline} />
+      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={edit} note={note} multiline={multiline} />
       <div className="mt-4 flex items-center justify-end gap-2">
         {onClear && answered && (
           <Button variant="ghost" size="sm" className="mr-auto" disabled={busy} onClick={onClear}>
@@ -71,7 +75,7 @@ export const QuestionForm = ({
           Skip
         </Button>
         <Button size="sm" loading={busy} disabled={!canNext} onClick={() => onSubmit(draft ?? {})}>
-          Next
+          {sameAnswer(draft, drafted) ? "Keep draft" : "Next"}
         </Button>
       </div>
     </div>

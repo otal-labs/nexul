@@ -1,12 +1,8 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
-
-import { ActionButton } from "@/components/action/ActionButton";
 import { EmptyRow } from "@/components/EmptyRow";
-import { InterviewSourceAddForm } from "@/components/memory/InterviewSourceAddForm";
+import { Microheader } from "@/components/Microheader";
 import { InterviewSourceRow } from "@/components/memory/InterviewSourceRow";
-import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
-import { lastDraftedAt, sourceChange, type InterviewSource } from "@/models/InterviewSource";
+import { useFetchInterviewDrafts, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
+import { SOURCE_STANCE_LABEL, citationCounts, lastDraftedAt, sourceChange, type InterviewSource, type SourceStance } from "@/models/InterviewSource";
 
 interface InterviewSourceListProps {
   projectId: string;
@@ -14,43 +10,42 @@ interface InterviewSourceListProps {
   readOnly: boolean;
 }
 
-const emptyClass = "border-0 px-1.5 py-1 text-left";
+interface StanceGroupProps extends InterviewSourceListProps {
+  stance: SourceStance;
+}
 
-// The sources as hairline rows, then the inline add form or the button that opens it.
-export const InterviewSourceList = ({ projectId, sources, readOnly }: InterviewSourceListProps) => {
-  const [adding, setAdding] = useState(false);
+const StanceGroup = ({ projectId, sources, readOnly, stance }: StanceGroupProps) => {
   const drafting = useInterviewTrails(projectId).drafting;
+  const { data: drafts } = useFetchInterviewDrafts(projectId);
   const since = drafting && lastDraftedAt(drafting);
+  const cites = citationCounts(drafts ?? []);
+  const rows = sources.filter((s) => s.stance === stance);
+  if (rows.length === 0) return null;
   return (
-    <div className="space-y-3">
-      {sources.length === 0 && readOnly && <EmptyRow className={emptyClass}>No sources.</EmptyRow>}
-      {sources.length === 0 && !readOnly && !adding && (
-        <EmptyRow className={emptyClass}>
-          No sources yet. Add a practices folder, a standards doc, or the project this one replaces.
-        </EmptyRow>
-      )}
-      {sources.length > 0 && (
-        <ul>
-          {sources.map((source) => (
-            <InterviewSourceRow key={source.id} source={source} change={sourceChange(source, since)} readOnly={readOnly} />
-          ))}
-        </ul>
-      )}
-      {adding && <InterviewSourceAddForm projectId={projectId} onClose={() => setAdding(false)} />}
-      {!adding && (
-        <ActionButton
-          permission="memories:write"
-          projectId={projectId}
-          verb="add sources"
-          icon={Plus}
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdding(true)}
-          className="text-muted-foreground"
-        >
-          Add source
-        </ActionButton>
-      )}
-    </div>
+    <section aria-label={SOURCE_STANCE_LABEL[stance]} className="space-y-1">
+      <Microheader className="flex items-baseline gap-2 px-1.5">
+        {SOURCE_STANCE_LABEL[stance]}
+        <span className="tabular-nums">{rows.length}</span>
+      </Microheader>
+      <ul>
+        {rows.map((source) => (
+          <InterviewSourceRow key={source.id} source={source} change={sourceChange(source, since)} cites={cites.get(source.id) ?? 0} readOnly={readOnly} />
+        ))}
+      </ul>
+    </section>
   );
 };
+
+const emptyClass = "border-0 px-1.5 py-1 text-left";
+
+// The sources in two groups by stance: what the agent drafts from, then what the follow-ups ask about.
+export const InterviewSourceList = ({ projectId, sources, readOnly }: InterviewSourceListProps) => (
+  <div className="space-y-4">
+    {sources.length === 0 && readOnly && <EmptyRow className={emptyClass}>No sources.</EmptyRow>}
+    {sources.length === 0 && !readOnly && (
+      <EmptyRow className={emptyClass}>No sources yet. Add a practices folder, a standards doc, or the project this one replaces.</EmptyRow>
+    )}
+    <StanceGroup projectId={projectId} sources={sources} readOnly={readOnly} stance="follow" />
+    <StanceGroup projectId={projectId} sources={sources} readOnly={readOnly} stance="question" />
+  </div>
+);
