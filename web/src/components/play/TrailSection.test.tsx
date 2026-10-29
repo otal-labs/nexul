@@ -205,7 +205,7 @@ describe("TrailSection", () => {
     );
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(1);
-    expect(steps[0]).toHaveTextContent(/^Ran a command\$go test/);
+    expect(steps[0]).toHaveTextContent(/^Ran\s*go test/);
     expect(within(steps[0]!).queryByRole("img", { name: "running" })).not.toBeInTheDocument();
   });
 });

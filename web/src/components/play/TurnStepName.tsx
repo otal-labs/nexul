@@ -1,7 +1,7 @@
 import { StepStatusMark } from "@/components/play/StepStatusMark";
 import { cn } from "@/lib/utils";
 
-interface TurnFileChipProps {
+interface TurnStepNameProps {
   label: string;
   live: boolean;
   failed: boolean;
@@ -10,17 +10,18 @@ interface TurnFileChipProps {
   onToggle: (() => void) | undefined;
 }
 
-// One file or search of a files group, a button when its step has detail to open.
-export const TurnFileChip = ({ label, live, failed, open, onToggle }: TurnFileChipProps) => (
-  <li className="inline-flex max-w-full items-center gap-1.5">
+// One file, search or command of a listed group, a button when its step has detail to open.
+export const TurnStepName = ({ label, live, failed, open, onToggle }: TurnStepNameProps) => (
+  <li className="inline-flex max-w-full min-w-0 items-center gap-1.5">
     {!onToggle && <span className={cn("truncate", failed && "text-destructive")}>{label}</span>}
     {onToggle && (
       <button
         type="button"
         aria-expanded={open}
         onClick={onToggle}
+        title={label}
         className={cn(
-          "truncate rounded-sm transition-colors duration-150 ease-standard hover:text-foreground",
+          "truncate rounded-sm text-left transition-colors duration-150 ease-standard hover:text-foreground",
           open && "text-foreground",
           failed && "text-destructive",
         )}
@@ -28,6 +29,6 @@ export const TurnFileChip = ({ label, live, failed, open, onToggle }: TurnFileCh
         {label}
       </button>
     )}
-    <StepStatusMark live={live} failed={false} />
+    <StepStatusMark live={live} failed={failed} />
   </li>
 );

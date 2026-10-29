@@ -2,7 +2,6 @@ import { segmentSteps } from "@nexul/client-core/agentSteps";
 
 import {
   MessageScroller,
-  MessageScrollerButton,
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerProvider,
@@ -12,6 +11,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SetupStateGlyph } from "@/components/pairing/SetupStateGlyph";
 import { TurnSegment } from "@/components/play/TurnSegment";
+import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { SETUP_STATE_LABEL, type SetupRunRow } from "@/models/Pairing";
 import type { ActivityEntry } from "@/models/Trail";
@@ -64,7 +64,7 @@ export const SetupTranscript = ({ row }: SetupTranscriptProps) => {
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton className="size-8" />
+          <TranscriptScrollButton />
         </MessageScroller>
       </MessageScrollerProvider>
     </section>

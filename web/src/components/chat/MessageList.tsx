@@ -5,7 +5,6 @@ import { isContinuation, isNote, type Conversation } from "@nexul/client-core/ch
 
 import {
   MessageScroller,
-  MessageScrollerButton,
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerProvider,
@@ -19,6 +18,7 @@ import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageListItem, type Entrance } from "@/components/chat/MessageListItem";
 import { QueueEventLine } from "@/components/chat/QueueEventLine";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
 import { useThreadQueueEvents } from "@/hooks/PlayQueueHooks";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
@@ -149,7 +149,7 @@ export const MessageList = ({
                 )}
               </MessageScrollerContent>
             </MessageScrollerViewport>
-            <MessageScrollerButton />
+            <TranscriptScrollButton />
             {messages.length > 0 && (
               <OwnMessageScroller
                 newestId={messages[messages.length - 1]!.id}
