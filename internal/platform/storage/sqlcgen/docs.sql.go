@@ -103,6 +103,27 @@ func (q *Queries) DeleteDoc(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const docMatchesLatestVersion = `-- name: DocMatchesLatestVersion :one
+SELECT EXISTS(
+    SELECT 1 FROM doc_versions v
+    WHERE v.doc_id = ?1 AND v.title = ?2 AND v.body = ?3
+      AND v.version = (SELECT MAX(l.version) FROM doc_versions l WHERE l.doc_id = ?1)
+)
+`
+
+type DocMatchesLatestVersionParams struct {
+	ForDoc    string
+	WantTitle string
+	WantBody  string
+}
+
+func (q *Queries) DocMatchesLatestVersion(ctx context.Context, arg DocMatchesLatestVersionParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, docMatchesLatestVersion, arg.ForDoc, arg.WantTitle, arg.WantBody)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getDoc = `-- name: GetDoc :one
 SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE id = ?
 `
@@ -128,7 +149,7 @@ func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
 }
 
 const getDocVersion = `-- name: GetDocVersion :one
-SELECT doc_id, version, title, body, name, author_id, created_at FROM doc_versions WHERE doc_id = ? AND version = ?
+SELECT doc_id, version, title, body, name, author_id, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? AND version = ?
 `
 
 type GetDocVersionParams struct {
@@ -143,6 +164,8 @@ type GetDocVersionRow struct {
 	Body      string
 	Name      string
 	AuthorID  string
+	EditorIds string
+	Via       string
 	CreatedAt int64
 }
 
@@ -156,13 +179,15 @@ func (q *Queries) GetDocVersion(ctx context.Context, arg GetDocVersionParams) (G
 		&i.Body,
 		&i.Name,
 		&i.AuthorID,
+		&i.EditorIds,
+		&i.Via,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const insertDocVersion = `-- name: InsertDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, created_at) VALUES (?, ?, ?, ?, ?)
+INSERT INTO doc_versions (doc_id, version, title, body, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertDocVersionParams struct {
@@ -170,6 +195,9 @@ type InsertDocVersionParams struct {
 	Version   int64
 	Title     string
 	Body      string
+	AuthorID  string
+	EditorIds string
+	Via       string
 	CreatedAt int64
 }
 
@@ -179,13 +207,16 @@ func (q *Queries) InsertDocVersion(ctx context.Context, arg InsertDocVersionPara
 		arg.Version,
 		arg.Title,
 		arg.Body,
+		arg.AuthorID,
+		arg.EditorIds,
+		arg.Via,
 		arg.CreatedAt,
 	)
 	return err
 }
 
 const insertNamedDocVersion = `-- name: InsertNamedDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertNamedDocVersionParams struct {
@@ -195,6 +226,8 @@ type InsertNamedDocVersionParams struct {
 	Body      string
 	Name      string
 	AuthorID  string
+	EditorIds string
+	Via       string
 	CreatedAt int64
 }
 
@@ -206,6 +239,8 @@ func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocV
 		arg.Body,
 		arg.Name,
 		arg.AuthorID,
+		arg.EditorIds,
+		arg.Via,
 		arg.CreatedAt,
 	)
 	return err
@@ -252,8 +287,49 @@ func (q *Queries) ListDocScopes(ctx context.Context, ids interface{}) ([]ListDoc
 	return items, nil
 }
 
+const listDocVersionSummaries = `-- name: ListDocVersionSummaries :many
+SELECT version, name, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC
+`
+
+type ListDocVersionSummariesRow struct {
+	Version   int64
+	Name      string
+	EditorIds string
+	Via       string
+	CreatedAt int64
+}
+
+func (q *Queries) ListDocVersionSummaries(ctx context.Context, docID string) ([]ListDocVersionSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDocVersionSummaries, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDocVersionSummariesRow
+	for rows.Next() {
+		var i ListDocVersionSummariesRow
+		if err := rows.Scan(
+			&i.Version,
+			&i.Name,
+			&i.EditorIds,
+			&i.Via,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocVersions = `-- name: ListDocVersions :many
-SELECT doc_id, version, title, body, name, author_id, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC
+SELECT doc_id, version, title, body, name, author_id, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC
 `
 
 type ListDocVersionsRow struct {
@@ -263,6 +339,8 @@ type ListDocVersionsRow struct {
 	Body      string
 	Name      string
 	AuthorID  string
+	EditorIds string
+	Via       string
 	CreatedAt int64
 }
 
@@ -282,6 +360,8 @@ func (q *Queries) ListDocVersions(ctx context.Context, docID string) ([]ListDocV
 			&i.Body,
 			&i.Name,
 			&i.AuthorID,
+			&i.EditorIds,
+			&i.Via,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -425,6 +505,25 @@ func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullStrin
 		return nil, err
 	}
 	return items, nil
+}
+
+const pruneDocVersions = `-- name: PruneDocVersions :exec
+DELETE FROM doc_versions
+WHERE doc_versions.doc_id = ?1 AND doc_versions.name = ''
+  AND doc_versions.version != (SELECT d.version FROM docs d WHERE d.id = ?1)
+  AND doc_versions.version NOT IN (
+    SELECT k.version FROM doc_versions k WHERE k.doc_id = ?1 AND k.name = '' ORDER BY k.version DESC LIMIT ?2
+  )
+`
+
+type PruneDocVersionsParams struct {
+	ForDoc string
+	Keep   int64
+}
+
+func (q *Queries) PruneDocVersions(ctx context.Context, arg PruneDocVersionsParams) error {
+	_, err := q.db.ExecContext(ctx, pruneDocVersions, arg.ForDoc, arg.Keep)
+	return err
 }
 
 const setDocArchived = `-- name: SetDocArchived :execrows

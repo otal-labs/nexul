@@ -54,6 +54,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/docs/{id}/unlock", h.unlock)
 	mux.HandleFunc("POST /api/docs/{id}/clone", h.clone)
 	mux.HandleFunc("GET /api/docs/{id}/export", h.exportDoc)
+	mux.HandleFunc("GET /api/docs/{id}/history", h.history)
 	mux.HandleFunc("GET /api/docs/{id}/versions/{version}", h.getVersion)
 	mux.HandleFunc("GET /api/docs/{id}/versions", h.listVersions)
 	mux.HandleFunc("POST /api/docs/{id}/versions", h.createNamedVersion)
@@ -218,6 +219,15 @@ func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, d)
+}
+
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	hist, err := h.svc.History(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, hist)
 }
 
 func (h *Handler) listVersions(w http.ResponseWriter, r *http.Request) {

@@ -124,6 +124,7 @@ func (s *Service) CreateInFolder(ctx context.Context, projectID, folderID, title
 // persistNew writes a new doc with its doc.created event and grants its author full permissions on it.
 func (s *Service) persistNew(ctx context.Context, d *Doc, mentioned []string) error {
 	d.Settler = settler(ctx, true)
+	d.Via = viaOf(ctx)
 	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: d.CreatedBy, MentionedUserIDs: mentioned}}); err != nil {
 		return fmt.Errorf("create doc: %w", err)
 	}
@@ -201,6 +202,9 @@ func (s *Service) attachmentIDMap(ctx context.Context, docID string) (map[string
 
 type viaMCPKey struct{}
 
+// viaMCP is the via of a version saved through an MCP tool call, as for memories (ADR 0049).
+const viaMCP = "mcp"
+
 // withViaMCP marks a call as an agent's over MCP, whose saves never settle a doc.
 func withViaMCP(ctx context.Context) context.Context {
 	return context.WithValue(ctx, viaMCPKey{}, true)
@@ -213,6 +217,18 @@ func settler(ctx context.Context, edited bool) string {
 		return ""
 	}
 	return a.ID
+}
+
+// viaOf is what a version records as the way a save came: the automation's name, "mcp" for an agent's call, else "".
+func viaOf(ctx context.Context) string {
+	a, _ := identity.ActorFromCtx(ctx)
+	if a.Automation != nil {
+		return a.Automation.Name
+	}
+	if ctx.Value(viaMCPKey{}) != nil {
+		return viaMCP
+	}
+	return ""
 }
 
 // actorID is the authenticated user behind ctx, or "" for a caller without one.
@@ -355,7 +371,8 @@ func (s *Service) requireProject(ctx context.Context, projectID string, action p
 	return s.access.RequireProject(ctx, projectID, action)
 }
 
-// Update replaces the title/body, bumps the version, appends a row, and enqueues doc.updated; requires the edit bit.
+// Update replaces the title/body, bumps the version, appends a version row unless nothing changed since the newest one,
+// and enqueues doc.updated; requires the edit bit.
 func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
@@ -394,7 +411,7 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 // persistUpdate saves an edit; a new body goes through the live session reset, so an open editor cannot overwrite it.
 func (s *Service) persistUpdate(ctx context.Context, d *Doc, bodyChanged bool, mentioned []string) error {
 	write := func(ctx context.Context) error {
-		return s.repo.Update(ctx, d, actorID(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx), MentionedUserIDs: mentioned}})
+		return s.repo.Update(ctx, d, actorID(ctx), viaOf(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx), MentionedUserIDs: mentioned}})
 	}
 	if !bodyChanged || s.live == nil {
 		return write(ctx)
@@ -576,6 +593,24 @@ func (s *Service) ListVersions(ctx context.Context, docID string) ([]*DocVersion
 	return vs, nil
 }
 
+// History returns the doc's versions newest first, without bodies; requires the read bit, as GetVersion does.
+func (s *Service) History(ctx context.Context, docID string) (*History, error) {
+	if strings.TrimSpace(docID) == "" {
+		return nil, fmt.Errorf("%w: doc id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, docID, permissions.DocsRead); err != nil {
+		return nil, err
+	}
+	vs, err := s.repo.ListVersionSummaries(ctx, docID)
+	if err != nil {
+		return nil, fmt.Errorf("doc %s history: %w", docID, err)
+	}
+	if len(vs) > 0 {
+		vs[0].Current = true
+	}
+	return &History{Versions: vs, Changes: []struct{}{}}, nil
+}
+
 // GetVersion returns a specific historical version of a doc; requires the read bit.
 func (s *Service) GetVersion(ctx context.Context, docID string, version int) (*DocVersion, error) {
 	if strings.TrimSpace(docID) == "" {
@@ -654,6 +689,8 @@ func (s *Service) CreateNamedVersion(ctx context.Context, docID, name string) (*
 		Body:      current.Body,
 		Name:      name,
 		AuthorID:  actor.ID,
+		EditorIDs: []string{actor.ID},
+		Via:       viaOf(ctx),
 		CreatedAt: s.now().UTC(),
 	}
 	if err := s.repo.CreateNamedVersion(ctx, v); err != nil {

@@ -1,6 +1,6 @@
 # 11 — Doc versions: no empty saves, a cap of 10, and a history route
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, decisions 4, 5 and 7, The route shape, Storage.

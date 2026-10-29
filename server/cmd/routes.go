@@ -324,6 +324,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/docs/{id}", "Get a doc", "docs")
 	spec.Register("PUT", "/api/docs/{id}", "Update a doc", "docs")
 	spec.Register("DELETE", "/api/docs/{id}", "Delete a doc", "docs")
+	spec.Register("GET", "/api/docs/{id}/history", "The doc's versions newest first, without bodies: version, created_at, name, editor_ids, via and whether it is the current one; changes is always empty (docs:read)", "docs")
 	spec.Register("POST", "/api/docs/{id}/versions", "Snapshot the doc as a named milestone version", "docs")
 	spec.Register("GET", "/api/docs/{id}/watchers", "List the people who get the doc's change notifications, and whether you are one", "docs")
 	spec.Register("PUT", "/api/docs/{id}/watchers/me", "Watch the doc: get its change notifications (docs:read)", "docs")
