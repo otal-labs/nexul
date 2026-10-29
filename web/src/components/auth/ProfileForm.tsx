@@ -1,24 +1,27 @@
+import { useId } from "react";
+
 import { ProfileAvatarPreview } from "@/components/auth/ProfileAvatarPreview";
-import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
+import { FormInput } from "@/components/FormInput";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { useProfileForm } from "@/hooks/useProfileForm";
-import { cn } from "@/lib/utils";
 import type { User } from "@/models/User";
 
 interface ProfileFormProps {
   user: User;
   submitLabel: string;
-  submitClassName?: string;
   onSaved?: () => void;
+  onBack?: (() => void) | undefined;
 }
 
 // The wizards' stacked form; Settings → Profile lays the same fields out as rows (ProfileSettingsForm).
-export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: ProfileFormProps) => {
+export const ProfileForm = ({ user, submitLabel, onSaved, onBack }: ProfileFormProps) => {
+  const formId = useId();
   const { form, fileInputRef, name, avatarOverrideUrl, previewSrc, avatarError, onFileChange, removeAvatar, submit } =
     useProfileForm(user, onSaved);
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="space-y-6">
+    <form id={formId} onSubmit={(e) => void submit(e)} className="space-y-6">
       <div className="flex items-center gap-4">
         <ProfileAvatarPreview src={previewSrc} login={user.login} name={name} />
         <div className="flex gap-2">
@@ -43,10 +46,12 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
           {avatarError}
         </p>
       )}
-      <FormInput control={form.control} name="name" label="Display name" placeholder={user.login} />
-      <Button type="submit" className={cn(submitClassName)} loading={form.formState.isSubmitting}>
-        {submitLabel}
-      </Button>
+      <FormInput control={form.control} name="name" label="Display name" placeholder={user.login} className="max-w-80" />
+      <WizardFooter onBack={onBack}>
+        <Button type="submit" form={formId} loading={form.formState.isSubmitting}>
+          {submitLabel}
+        </Button>
+      </WizardFooter>
     </form>
   );
 };

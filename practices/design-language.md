@@ -900,7 +900,40 @@ summarise does not invent one.
 Runners. The header's meta line is the fleet's health, each clause led by its status dot and its figure in mono: `● 6 of 11 online`, `● 4 busy` (the one `status-pulse`), `○ 5 offline`, `4 waiting`; a clause whose count is zero is left out. While a job waits, a Waiting for a runner list sits under the header: one 40px row per job with its queue place in mono, the job, and why it waits in plain words (`no runner online`, `all runners busy`, `next in line`), the machine folded into that reason below 44rem and in its own mono column from there, with the kind last; five rows, then Show N more. Then every machine is one list: a column head row (Runner, Version, Doing as microheaders), and per machine a band on `surface-2` (its status dot on the runner dots' x, `success` when every runner is connected, `warning` when some are, a hollow ring when none; the name in 14px semibold, never cut; the state in muted words, "online", "4 of 6 online", "offline · seen 3d ago"; a mono facts line with the hostname and the editable stack root; trailing, from 44rem, who the machine's rules reach in words as a ghost button for whoever manages it, then a ghost `+` for Add runner and the `⋯` with Import, Permissions… and Delete). Under each band its runners as one-line 40px rows on tracks the whole list shares: the dot and the mono name, whose last dash segments (10 characters at most) stay when the head truncates; the version in mono, with a muted `↑` and the release it moves to in the tooltip when it is behind; what it is doing (a pulsing `info` dot and the job in the UI sans, `idle`, or `offline · 6h ago`, the only place last seen shows); a `⋯` with Remove runner. A code made for the machine and not used yet is a row there too, a dashed hollow dot and `unused code · until 11:47`, Revoke in its `⋯`; runners and codes no machine holds come last, under a No machine band. Every row sets its texts on one baseline and its dots on the text's cap height. `FleetFeed`, `MachineBand` and `FleetRunnerRow` in `web/src/components/runner/` are the
 reference.
 
-Setup stepper. A multi-step setup inside the wizard shell is a vertical rail
+Wizard frame. Every wizard (Welcome, the project wizard and its import door,
+the owner onboarding, DNS setup) is one frame on the quiet showcase surface,
+`WizardShell`: a rail column on `surface-2` (13rem, 15rem from a 56rem
+container) holding the logo and the way out ("Finish later" where progress
+resumes, "Exit" where it does not, "Skip for now" on DNS, none on the owner
+onboarding) above the rail, and beside it the step in a `max-w-[40rem]`
+column that scrolls on its own, with the action bar pinned under it: a 64px
+band with a top hairline whose content sits on the step column's tracks, Back
+on its left edge, then a ghost "Skip for now" and the primary ending on its
+right edge. A step's footer (`WizardFooter`) portals into that bar, so a long
+step never pushes its primary out of view; a submit button there carries
+`form={id}`, since the portal takes it out of its form, and a primary that
+another flow renders too wraps in `InWizardBar`, which moves it into the bar
+only inside a wizard. The rail (`WizardRail`) is the flow's only progress
+widget: a microheader naming the flow, the object's name in mono (two lines
+at most), and "N of M done" over its top-level steps, where the open step
+counts by what its run recorded and Done counts on its own screen. Then one
+`WizardRailRow` per step: a 20px node (current: the brand ring with its dot;
+done: a `success` check; skipped and later: a dashed ring with a dash; to do:
+a hollow ring; locked: a fainter ring) over a connector that runs node edge to
+node edge, the label, and under it an 11px mono caps line on every row, `Step
+4 of 6` on the current one, its ordinal (`05`, `5.2` for a sub-step) on one
+to do, otherwise the mark's word (Done, Skipped, Later, Locked). A row is a
+button only where its flow can open that step: every Welcome and project step,
+every unlocked DNS rung, no owner or import step (a later owner step needs the
+owner made, a later import stage needs the discovery). A step opens with
+`WizardStepHeader`, a Fraunces title at 2rem that asks the step's question
+over one muted line. Lists and choices inside a step are a card per row
+(`WizardCardList`, `wizardCardClass`, `wizardOptionClass`): `bg-card` at 60%
+with a hairline border, the whole card the control, `bg-accent/40` on hover,
+a picked choice ringed in the brand; a list that navigates ends each card in
+a chevron, and a level reads as a mono chip. `WizardShell` is the reference.
+
+Setup stepper. A multi-step setup inside the instance setup flow is a vertical rail
 of `DnsStep` rungs (hollow dot upcoming, filled dot active, check done), with
 content straight on the canvas, never a card inside a card. One rung is open
 at a time; a finished rung collapses to a one-line summary with a `Change`
@@ -910,54 +943,54 @@ the rest under an `AdvancedFields` disclosure with defaults; a mono preview
 line reads the form back (`app.example.com → http://web:80`). Motion is rail
 led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
-when it follows a drawn rail). `DnsSetupStepper` is the reference.
+when it follows a drawn rail). `SetupDomainStep` is the reference. The DNS
+setup after first run (`/wizard/onboarding/dns`) is a wizard instead: its
+rungs (Path, Tunnel once that path is picked, Hostname, Go live) are rail
+rows, one rung on screen at a time; a finished rung opens to its summary in a
+card, and only the path's Change starts over (`DnsSetupWizard`).
 
-Project wizard. The `/wizard/project/<step>` flow sits on the quiet showcase surface inside `max-w-6xl`, under the
-welcome wizard's top bar (the logo and a ghost "Finish later", "Exit" before setup has a project and in the other doors,
-which lands on the project's board), a rail beside the step like the welcome wizard's (13rem, 15rem from 56rem, a hairline `border-r`, from a 42rem container).
-The rail is a microheader naming the door ("New project", "Project setup", "New service", "Attach repository") over
-the project's name in mono once there is one, then one project-wizard node per step (Name, People, Repository, Deploy,
-Service, Environment when the scan found keys, Domain, Branches, Done), each a button, so any step opens at any time.
-A node shows what the project records for its step (ADR 0143): done is a check in the `success` token, skipped a dashed
-muted ring with a dash, never visited a hollow muted ring, and the current node a filled ring with `aria-current="step"`
-in `brand`; an 11px mono word under a label other than the current one says `skipped` or `later` (`done` is left to
-the check and spoken only). In the setup door the steps after Deploy are its sub-steps, indented one step, shown only
-while Deploy or one of them is open or a service exists; Deploy reads `later` when setup skipped the service. The rail
+Project wizard. The `/wizard/project/<step>` flow sits in the wizard frame.
+The rail's microheader names the door ("New project", "Project setup", "New service", "Attach repository") over
+the project's name once there is one, then one row per step (Name, People, Repository, Deploy,
+Service, Environment when the scan found keys, Domain, Branches, Done).
+A row shows what the project records for its step (ADR 0143), Deploy reading
+Later when setup skipped the service. In the setup door the steps after Deploy are its sub-steps, indented one step, shown only
+while Deploy or one of them is open or a service exists, the main connector running past them; the rail
 is an `EnterList` with the rise arrival: it cascades in once, and sub-steps that appear when Deploy opens rise 8px over
 200ms; rejected were no motion (the rows jumped in under Deploy with nothing saying where they came from) and the pop
 arrival (a 0.97 scale is invisible on 14px text and read as a plain fade). The add-a-service and attach doors have no Name,
-People or Deploy, and show only what that run passed, never the project's recorded marks. Narrower than 42rem the rail
-is its header over one mono line, the current step's label and `n / total`. A step is a Fraunces title at 2rem that asks
-its own question, an optional muted lead, and its body in a `max-w-xl` column that slides 8px in the direction of travel
-over 180ms; there is no door title, step heading or step description. Every step ends with one footer: Back on the
-left (the first step of a door leaves the wizard, every other returns to the row above it), a ghost "Skip for now" where
-the step allows it, then the primary, which says what happens ("Continue", "Create & deploy", "Save & deploy", "Expose",
-"Finish"). A step opened before its groundwork says so in one muted line with a "Go to <step>" primary; a step that
-already made something shows it with Continue. Repository asks two things in order, each a small heading over its
+People or Deploy, and show only what that run passed, never the project's recorded marks. A step is the step header
+and its body, which slides 8px in the direction of travel over 180ms; there is no door title, step heading or step
+description. Every step ends in the frame's bar: Back (the first step of a door leaves the wizard, every other returns
+to the row above it), a ghost "Skip for now" where the step allows it, then the primary, which says what happens
+("Continue", "Create & deploy", "Save & deploy", "Expose", "Finish"). A step opened before its groundwork says so in
+one muted line with a "Go to <step>" primary; a step that already made something shows it with Continue. People is a
+card per role with its checkbox. Repository asks two things in order, each a small heading over its
 control: "Deploys from", then "Tests live in" with a segmented "The same repository | A separate one". A repository
 either answer already holds is a card (`bg-card`, hairline border, the provider mark in a `surface-2` tile, the name over
 one muted line) with an outline Change that opens the search under it and turns into Cancel. In the setup door picking
 only names the repository; Continue attaches it and goes to Deploy, and a project with none takes the ghost "No
-repository yet". Deploy reads the attached repository itself, on any device, and offers two hairline radio rows
-(`EntryPathChoice`'s pattern): "Deploy now" over a mono line of the repository, branch and what the scan found, and
+repository yet". Deploy reads the attached repository itself, on any device, and offers two choice cards:
+"Deploy now" over a mono line of the repository, branch and what the scan found, and
 "Later". Skipping Service, or a step after it with no service, is Later: the deploy steps are marked skipped and the
 wizard goes to Done, which folds Repository and the deploy steps into one Deploy row while the project has no service
-and lists Docs, Board and Invite people under "Where to next" as hairline rows that finish setup on the way out. No new
-stepper chrome beyond the rail exists. The URL step is the whole navigation state.
+and lists Docs, Board and Invite people under "Where to next" as hairline rows that finish setup on the way out. The URL
+step is the whole navigation state. The import door (`/wizard/project/import`) is three stages on the same frame:
+Source (the machine and the project the adopted stacks join, Discover off until both are chosen), Adopt (each compose
+project, lone container and gateway as a card, ticked by default, "Import N"), Done.
 
-Welcome wizard. `/wizard/welcome?step=<key>` sits on the quiet showcase surface
-inside `max-w-6xl`, a top bar of the logo and a ghost "Finish later", then a
-rail beside the step from a 42rem container (13rem, 15rem from 56rem, a
-hairline `border-r`), stacked above it narrower. The rail is a `WELCOME`
-microheader over a mono "N of M done" and one project-wizard node per step,
-each a button, done and skipped ones with an 11px mono word under the name.
-The step is a Fraunces title at 2rem over a muted lead, in `max-w-3xl`, sliding
-8px over 180ms like the project wizard's, and ends in the same footer. A step
-done before it opened shows what it found in a `bg-card` row with Continue
-alone; one done while open settles its live check and unlocks Continue. The
+Welcome wizard. `/wizard/welcome?step=<key>` sits in the wizard frame, the
+rail a `WELCOME` microheader over "N of M done" and one row per step, each a
+button. The step slides 8px over 180ms like the project wizard's and ends in
+the frame's bar. A step done before it opened shows what it found in a
+`bg-card` row with Continue alone; one done while open settles its live check
+and unlocks Continue. Your projects is a card per project that opens its
+board, the person's level as a chip and the areas only when they differ. The
 finish view rises over 200ms: "N things left for later" (or "You're set up"),
 one hairline row per step not done with an Open, then "Go to <workspace>".
-`WelcomeFrame` is the reference.
+The owner onboarding (`/wizard/onboarding/owner`) is the same frame with a
+"Get started" rail of Profile, Workspace and Tools that moves only through
+its bar.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
 workspace and project, title, actions top right) and its meta line says what

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
@@ -127,6 +128,7 @@ const ReachForm = ({
   onSkip,
   gatewayName,
 }: ReachFormProps) => {
+  const formId = useId();
   const form = useForm<ReachFormData>({
     defaultValues: { subdomain: "", zone_id: "", zone: "", service_id: defaultServiceId, port: defaultPort },
     resolver: zodResolver(ReachFormSchema),
@@ -151,7 +153,7 @@ const ReachForm = ({
       .catch(() => undefined); // the ticker shows the server's message; exposure creation is retry-safe
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <DeployStatusLine stackId={stackId} />
       <div className="grid gap-4 sm:grid-cols-2">
         <FormInput control={form.control} name="subdomain" label="Subdomain" placeholder="app" />
@@ -182,7 +184,7 @@ const ReachForm = ({
           </Button>
         )}
         {!exposed && (
-          <ActionButton permission="dns:write" verb="expose services" type="submit" loading={createExposure.isPending}>
+          <ActionButton permission="dns:write" verb="expose services" type="submit" form={formId} loading={createExposure.isPending}>
             Expose
           </ActionButton>
         )}

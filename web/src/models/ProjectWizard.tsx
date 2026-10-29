@@ -56,6 +56,7 @@ export const wizardStepTitle = (id: WizardStepId, door: WizardDoor, projectName:
 };
 
 const leads: Partial<Record<WizardStepId, string>> = {
+  project: "Its prefix starts every ticket key, like BE-12.",
   people: "Owners and you are always in.",
   env: "Found in .env.example. Blank ones stay unset.",
   branches: "Each gets its own copy and URL.",

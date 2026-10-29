@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DnsSetupStepper } from "@/components/dns/DnsSetupStepper";
+import { DnsSetupWizard } from "@/components/dns/DnsSetupWizard";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
 
@@ -34,25 +34,25 @@ const mockLists = () =>
     return { data: [] };
   });
 
-const renderStepper = () => {
+const renderWizard = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <DnsSetupStepper />
+        <DnsSetupWizard />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
-const step = (title: RegExp) => screen.getByRole("heading", { name: title }).closest("li")!;
+const rung = (label: string) => within(screen.getByRole("navigation", { name: "DNS setup steps" })).getByText(label).closest("li")!;
 
 const choosePath = async (user: ReturnType<typeof userEvent.setup>, label: RegExp) => {
   await user.click(await screen.findByRole("radio", { name: label }));
   await user.click(screen.getByRole("button", { name: /^continue$/i }));
 };
 
-describe("DnsSetupStepper", () => {
+describe("DnsSetupWizard", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -68,30 +68,31 @@ describe("DnsSetupStepper", () => {
 
   it("starts with the entry-path choice open and the later rungs locked", async () => {
     mockLists();
-    renderStepper();
+    renderWizard();
     expect(await screen.findByRole("radio", { name: /bare public address/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /cloudflare tunnel/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /reverse proxy/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "upcoming");
-    expect(step(/go live/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "locked");
+    expect(rung("Go live")).toHaveAttribute("data-state", "locked");
   });
 
-  it("collapses the choice to a summary with Change once a path is picked", async () => {
+  it("moves on to the hostname, and reopens the path from the rail as a summary whose Change starts over", async () => {
     mockLists();
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup();
     await choosePath(user, /bare public address/i);
 
-    const first = step(/how should traffic reach/i);
-    expect(first).toHaveAttribute("data-state", "done");
-    expect(within(first).getByText("Bare public address")).toBeInTheDocument();
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "active");
+    expect(rung("Path")).toHaveAttribute("data-state", "done");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "current");
     expect(await screen.findByRole("button", { name: /create instance record/i })).toBeInTheDocument();
 
-    await user.click(within(first).getByRole("button", { name: /change/i }));
+    await user.click(within(rung("Path")).getByRole("button"));
+    expect(screen.getByText("Bare public address")).toBeInTheDocument();
+    expect(rung("Hostname")).toHaveAttribute("data-state", "unvisited");
+    await user.click(screen.getByRole("button", { name: /change/i }));
     expect(await screen.findByRole("radio", { name: /bare public address/i })).toBeInTheDocument();
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "locked");
   });
 
   it("deploys the tunnel first, waits for cloudflared to connect, then routes the hostname and unlocks Go live", async () => {
@@ -111,12 +112,12 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/dns/tunnels/t1/verify") return { data: { detail: "checked" } };
       return { data: {} };
     });
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await choosePath(user, /cloudflare tunnel/i);
 
-    expect(step(/deploy the tunnel/i)).toHaveAttribute("data-state", "active");
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung("Tunnel")).toHaveAttribute("data-state", "current");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "locked");
     expect(await screen.findByLabelText(/tunnel name/i)).toHaveValue("instance");
     await user.click(screen.getByRole("button", { name: /deploy tunnel/i }));
 
@@ -132,8 +133,8 @@ describe("DnsSetupStepper", () => {
     tunnelStatus = "healthy";
     await act(() => vi.advanceTimersByTimeAsync(3000));
     expect(await screen.findByLabelText(/subdomain/i)).toBeInTheDocument();
-    expect(step(/deploy the tunnel/i)).toHaveAttribute("data-state", "done");
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "active");
+    expect(rung("Tunnel")).toHaveAttribute("data-state", "done");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "current");
 
     await user.type(screen.getByLabelText(/subdomain/i), "app");
     expect(screen.getByText("app.example.com → this instance")).toBeInTheDocument();
@@ -150,7 +151,7 @@ describe("DnsSetupStepper", () => {
       "/api/dns/tunnels/t1/route",
       expect.objectContaining({ hostname: "app.example.com", zone_id: "z1", service: "" }),
     );
-    expect(step(/go live/i)).toHaveAttribute("data-state", "active");
+    expect(rung("Go live")).toHaveAttribute("data-state", "current");
   });
 
   it("shows the failed deploy with a retry instead of unlocking the hostname rung", async () => {
@@ -167,21 +168,21 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/dns/tunnels/t1/agent") return { data: { service_id: "svc-1" } };
       return { data: {} };
     });
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup();
     await choosePath(user, /cloudflare tunnel/i);
     await user.click(await screen.findByRole("button", { name: /deploy tunnel/i }));
 
     expect(await screen.findByRole("status")).toHaveTextContent(/deploy on prod-1 failed/i);
     expect(screen.getByText("pull access denied")).toBeInTheDocument();
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "locked");
     await user.click(screen.getByRole("button", { name: /try again/i }));
     expect(await screen.findByRole("button", { name: /deploy tunnel/i })).toBeInTheDocument();
   });
 
   it("reveals the advanced fields on demand with the machine preselected", async () => {
     mockLists();
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup();
     await choosePath(user, /cloudflare tunnel/i);
 
@@ -197,7 +198,7 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/dns/instance-record") return { data: { id: "r1" } };
       return { data: {} };
     });
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup();
     await choosePath(user, /reverse proxy/i);
 
@@ -220,7 +221,7 @@ describe("DnsSetupStepper", () => {
     mockLists();
     mocks.post.mockRejectedValue(new Error("boom"));
     mocks.errorMessage.mockReturnValue("hostname is not under zone");
-    renderStepper();
+    renderWizard();
     const user = userEvent.setup();
     await choosePath(user, /bare public address/i);
 
@@ -228,7 +229,7 @@ describe("DnsSetupStepper", () => {
     await user.click(screen.getByRole("button", { name: /create instance record/i }));
 
     await vi.waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("hostname is not under zone"));
-    expect(step(/point your hostname/i)).toHaveAttribute("data-state", "active");
-    expect(step(/go live/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung("Hostname")).toHaveAttribute("data-state", "current");
+    expect(rung("Go live")).toHaveAttribute("data-state", "locked");
   });
 });

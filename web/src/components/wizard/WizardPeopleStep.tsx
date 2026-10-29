@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { WizardCardList } from "@/components/wizard/WizardCardList";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardRoleRow } from "@/components/wizard/WizardRoleRow";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
@@ -64,11 +65,11 @@ export const WizardPeopleStep = ({ project, onDone, onBack, onSkip }: WizardPeop
         </p>
       )}
       {grants && ready && roles.length > 0 && (
-        <ul className="divide-y divide-border border-y border-border" aria-label="Roles in this project">
+        <WizardCardList aria-label="Roles in this project">
           {roles.map((role) => (
             <WizardRoleRow key={role.key} role={role} checked={isTicked(role.id)} line={holders(role.id)} locked={manage.state !== "live"} onToggle={(on) => setTicked((t) => ({ ...t, [role.id]: on }))} />
           ))}
-        </ul>
+        </WizardCardList>
       )}
       <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />}>
         <Button type="button" disabled={!grants} loading={save.isPending} onClick={() => void onContinue()}>

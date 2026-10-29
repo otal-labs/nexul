@@ -1,15 +1,17 @@
 import { FolderKanban } from "lucide-react";
 
 import { EmptyState } from "@/components/EmptyState";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ContinueButton, WelcomeFooter } from "@/components/welcome/WelcomeFooter";
 import { WorkspaceProjectsSection } from "@/components/welcome/WorkspaceProjectsSection";
 import { useWelcomeFlow } from "@/hooks/useWelcomeFlow";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 
 const Projects = () => {
-  const { data: workspaces } = useFetchWorkspaces();
+  const { data: workspaces, isPending } = useFetchWorkspaces();
   return (
-    <div className="divide-y divide-border border-y border-border">
+    <div className="space-y-6">
+      {isPending && <LoadingDisplay />}
       {workspaces?.map((workspace) => (
         <WorkspaceProjectsSection key={workspace.id} workspace={workspace} named={workspaces.length > 1} />
       ))}

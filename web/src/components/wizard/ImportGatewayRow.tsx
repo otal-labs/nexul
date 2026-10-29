@@ -17,11 +17,11 @@ export const ImportGatewayRow = ({ container, checked, onToggle }: ImportGateway
   const idle = tunnel && tunnel.routes.length === 0 && tunnel.records.length === 0;
 
   return (
-    <div className="space-y-1.5">
+    <div className="pb-1">
       <ImportContainerRow container={container} checked={checked} onToggle={onToggle} />
-      {tunnelError && <p className="pl-7 text-xs text-destructive">Couldn&apos;t read the tunnel: {tunnelError}</p>}
+      {tunnelError && <p className="px-4 pb-2 pl-11 text-xs text-destructive">Couldn&apos;t read the tunnel: {tunnelError}</p>}
       {tunnel && (
-        <div className="space-y-1 pl-7 text-xs">
+        <div className="space-y-1 px-4 pb-2 pl-11 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span>
               Tunnel <span className="font-medium">{tunnel.name}</span>

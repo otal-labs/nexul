@@ -47,6 +47,8 @@ The instance gets its domain in the [setup wizard](/docs/guide/setup-wizard/). T
 3. **Point your hostname**: pick the zone and subdomain (or, for a bare address, the record type and target). For a tunnel, leave the local service empty to send the hostname to this instance. Three checks then confirm the route, the proxied DNS record, and that the hostname answers over HTTPS. A new record can take a minute.
 4. **Go live** confirms the instance answers at its new address. If the record is wrong, **Delete this record** removes the A, AAAA or CNAME record that step created, after a confirm that names it and what it pointed at. Deleting can't be undone, and the step goes back to **Point your hostname** so you can create it again. It needs the Delete DNS permission, and the button is hidden without it. A tunnel's hostname record is removed with the tunnel instead (see [Tunnels](#tunnels)).
 
+The steps sit in a list on the left (**Path**, **Tunnel**, **Hostname**, **Go live**), one on screen at a time. A step opens once the one before it is done; opening a finished one shows what it set up, and only the path's **Change** starts over, since the tunnel and the hostname hang off it.
+
 Nexul deploys the tunnel or proxy itself, like any other stack. There is nothing to install by hand.
 
 ### Cloudflare API token permissions

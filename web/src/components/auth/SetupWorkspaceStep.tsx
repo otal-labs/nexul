@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -5,6 +6,8 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { useOwnerWizardBack } from "@/hooks/useOwnerWizardBack";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import type { Workspace } from "@/models/Workspace";
 import { INSTANCE_WORKSPACE_ID, SaveWorkspaceFormSchema, type SaveWorkspaceFormData } from "@/models/Workspace";
@@ -43,6 +46,8 @@ interface SetupWorkspaceFormProps {
 
 // Split out so useForm's defaultValues (set once on mount) read the already-fetched name.
 const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormProps) => {
+  const formId = useId();
+  const back = useOwnerWizardBack();
   const form = useForm<SaveWorkspaceFormData>({
     defaultValues: { name: workspaceName },
     resolver: zodResolver(SaveWorkspaceFormSchema),
@@ -53,11 +58,13 @@ const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormPro
     onContinue({ workspaceId: INSTANCE_WORKSPACE_ID, workspaceName: data.name });
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <FormInput control={form.control} name="name" label="Workspace name" placeholder="Acme" autoFocus />
-      <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
-        Continue
-      </Button>
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <FormInput control={form.control} name="name" label="Workspace name" placeholder="Acme" autoFocus className="max-w-80" />
+      <WizardFooter onBack={back}>
+        <Button type="submit" form={formId} loading={form.formState.isSubmitting}>
+          Continue
+        </Button>
+      </WizardFooter>
     </form>
   );
 };

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useShallow } from "zustand/react/shallow";
 
@@ -52,6 +52,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
   const deployTo = useDeployToAnswer(stack.machine);
   // Every key needs a default (even "") — an RHF field left out of defaultValues renders uncontrolled, then
   // flips to controlled the moment it's typed into, which React (rightly) warns about.
+  const formId = useId();
   const form = useForm<Record<string, string>>({
     defaultValues: Object.fromEntries(envKeys.map((key) => [key, initialValues[key] ?? ""])),
   });
@@ -90,7 +91,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <div className="flex">
         <EnvModeToggle mode={mode} onMode={changeMode} fieldsDisabled={pasteBlocked} />
       </div>
@@ -107,7 +108,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
           </Button>
         )}
         {!unchanged && deployTo && (
-          <ActionButton permission={["machines:deploy", "stacks:write", "deploys:write"]} answer={deployTo} projectId={stack.project_id} verb="save the environment and deploy" type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
+          <ActionButton permission={["machines:deploy", "stacks:write", "deploys:write"]} answer={deployTo} projectId={stack.project_id} verb="save the environment and deploy" type="submit" form={formId} disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
             Save & deploy
           </ActionButton>
         )}

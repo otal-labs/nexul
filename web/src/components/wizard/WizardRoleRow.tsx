@@ -1,5 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { TargetMark } from "@/components/access/TargetMark";
+import { wizardCardClass } from "@/components/wizard/WizardCardList";
 import type { PanelTarget } from "@/hooks/usePanelTargets";
 
 interface WizardRoleRowProps {
@@ -12,16 +13,16 @@ interface WizardRoleRowProps {
 }
 
 export const WizardRoleRow = ({ role, checked, line, locked, onToggle }: WizardRoleRowProps) => (
-  <li>
-    <label className="flex cursor-pointer items-center gap-3 py-2.5 has-[[aria-disabled=true]]:cursor-default">
+  <li className={wizardCardClass}>
+    <label className="flex cursor-pointer items-start gap-3 px-4 py-3 has-[[aria-disabled=true]]:cursor-default">
       <Checkbox
         checked={checked}
         aria-disabled={locked}
         onCheckedChange={(v) => !locked && onToggle(v === true)}
         aria-label={role.name}
-        className="aria-disabled:opacity-60"
+        className="mt-0.5 aria-disabled:opacity-60"
       />
-      <TargetMark target={role} />
+      <TargetMark target={role} className="-mt-0.5" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{role.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{line}</span>

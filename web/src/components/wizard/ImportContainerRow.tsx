@@ -6,12 +6,12 @@ interface ImportContainerRowProps {
   container: DiscoveredContainer;
   checked: boolean;
   onToggle: () => void;
-  // Nested under a compose-project heading vs. a top-level standalone/gateway row.
+  // Under a compose project's heading, its checkbox in from the project's own.
   indent?: boolean;
 }
 
 export const ImportContainerRow = ({ container, checked, onToggle, indent = false }: ImportContainerRowProps) => (
-  <label className={cn("flex items-center gap-3 py-1.5 text-sm", indent && "pl-6")}>
+  <label className={cn("flex cursor-pointer items-center gap-3 px-4 py-3 text-sm", indent && "py-2 pl-11")}>
     <Checkbox checked={checked} onCheckedChange={onToggle} />
     <span className="min-w-0 truncate" title={container.name}>
       {container.name}

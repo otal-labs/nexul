@@ -2,33 +2,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { OwnerWizardRail } from "@/components/auth/OwnerWizardRail";
 import { OwnerWizardStepPanel } from "@/components/auth/OwnerWizardStepPanel";
 import type { WorkspaceSetupData } from "@/components/auth/SetupWorkspaceStep";
-import { WizardLayout } from "@/components/auth/WizardLayout";
 import { WorkspaceReady } from "@/components/auth/WorkspaceReady";
+import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
+import { WizardShell } from "@/components/wizard/WizardShell";
+import { WizardStepHeader } from "@/components/wizard/WizardStepHeader";
 import { useCompleteOwnerWizard, useFetchSettings } from "@/hooks/AuthHooks";
 import { getWelcomeKey } from "@/hooks/WelcomeHooks";
 import { useRenameWorkspace } from "@/hooks/WorkspaceHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
+import { OWNER_STEPS } from "@/models/OwnerWizard";
 import { slugify } from "@/models/Workspace";
 
 const CONFIRM_DELAY_MS = 1600;
-const TOTAL_STEPS = 3;
-
-const STEP_COPY = [
-  {
-    title: "Introduce yourself",
-    subtitle: "You are the first person here, so you become the workspace owner. Tell us who you are.",
-  },
-  {
-    title: "Set up your workspace",
-    subtitle: "Name the workspace your team works in. Your first project comes right after.",
-  },
-  {
-    title: "Connect your tools",
-    subtitle: "Hook up the services Nexul manages for you. Cloudflare is optional: it is only for your domain, exposures and DNS.",
-  },
-] as const;
 
 // Progress lives in the store, not local state, because step 3's Connect leaves the SPA and remounts this page.
 export const OwnerWizardPage = () => {
@@ -41,14 +29,6 @@ export const OwnerWizardPage = () => {
   const { data: settings, isPending: settingsPending, error: settingsError } = useFetchSettings();
   const complete = useCompleteOwnerWizard();
   const renameWorkspace = useRenameWorkspace();
-
-  const onBack = () => {
-    if (step === 1) {
-      navigate("/login");
-      return;
-    }
-    setStep(step - 1);
-  };
 
   // Step 3 connects tools, which needs the owner's permissions, so the owner is made here.
   const onStep2Continue = async ({ workspaceId, workspaceName }: WorkspaceSetupData) => {
@@ -75,22 +55,27 @@ export const OwnerWizardPage = () => {
     navigate("/wizard/welcome", { replace: true });
   };
 
-  const { title, subtitle } = STEP_COPY[step - 1] ?? STEP_COPY[0];
+  const { title, lead } = OWNER_STEPS[step - 1] ?? OWNER_STEPS[0];
 
   return (
     <>
       {confirmed && <WorkspaceReady />}
       {!confirmed && (
-        <WizardLayout step={{ current: step, total: TOTAL_STEPS }} title={title} subtitle={subtitle} onBack={onBack}>
-          <OwnerWizardStepPanel
-            step={step}
-            settingsLoading={settingsPending}
-            settingsError={settingsError}
-            onStep1Continue={() => setStep(2)}
-            onStep2Continue={onStep2Continue}
-            onFinish={() => void onFinish()}
-          />
-        </WizardLayout>
+        <ShowcaseSurface quiet>
+          <WizardShell rail={<OwnerWizardRail step={step} />}>
+            <WizardStepHeader title={title} lead={lead} />
+            <div className="mt-8">
+              <OwnerWizardStepPanel
+                step={step}
+                settingsLoading={settingsPending}
+                settingsError={settingsError}
+                onStep1Continue={() => setStep(2)}
+                onStep2Continue={onStep2Continue}
+                onFinish={() => void onFinish()}
+              />
+            </div>
+          </WizardShell>
+        </ShowcaseSurface>
       )}
     </>
   );

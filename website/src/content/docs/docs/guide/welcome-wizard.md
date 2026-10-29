@@ -15,7 +15,7 @@ Say alice accepts an invitation to Acme as a Junior Developer. When she signs in
 
 - **Connect GitHub**: links her own GitHub account, so the project wizard lists the repositories she can open and tickets show her pull requests. Nexul reads with it and never pushes as her. Signing in with GitHub already did this; someone who signs in with Google or Discord presses **Connect GitHub** here.
 - **Your computer**: the same flow as **Add a computer** in her settings. She runs one command on the computer where her agents should run, watches **Computer connected**, **T3 Code found** and **Paired** turn green, then sets it up. **Continue** waits until the setup is confirmed. See [Paired computers](/docs/guide/paired-computers/).
-- **Your projects**: each project she's in, grouped by workspace, with her access level, a line saying what it lets her do, and **Open**. If nobody has added her to one yet, the step says so and asks her to tell whoever invited her; it ticks itself the moment they add her.
+- **Your projects**: each project she's in, grouped by workspace, with her access level; clicking one opens its board. A project where her access differs by area lists the areas too. If nobody has added her to one yet, the step says so and asks her to tell whoever invited her; it ticks itself the moment they add her.
 - **Add a deploy server**: name a [runner](/docs/guide/runners/), run its install command on the server, and wait for **Server connected**. Only a server she added herself counts.
 - **Get the phone app**: a link to the app and a QR code to scan with it. **Phone connected** turns green once the phone signs in. This step stays done even if she later signs the phone out. See [Phone app](/docs/guide/phone-app/).
 
@@ -25,7 +25,7 @@ A step counts as done when the thing it sets up exists, not when someone clicked
 
 Every step but Profile has **Skip for now**. A skipped step shows as **Skipped** and can still be done any time: open it from the wizard or the account menu and do it.
 
-**Finish later**, at the top right, leaves the wizard from any step. Leaving it once, this way or from the end screen, counts as the first run, so it never opens by itself again.
+**Finish later**, beside the logo above the step list, leaves the wizard from any step. Leaving it once, this way or from the end screen, counts as the first run, so it never opens by itself again.
 
 The end screen reads "You're set up" when everything is done. Otherwise it reads "2 things left for later" and lists each step that isn't done, with **Open** beside it. Its button goes to the workspace, or reads **Create your first project** for someone who can create one in a workspace that has none.
 

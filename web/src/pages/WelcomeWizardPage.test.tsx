@@ -80,7 +80,7 @@ describe("WelcomeWizardPage", () => {
     progress = { first_run_done: false, steps: [step("github", "done"), step("phone", "left")], dot: true, in_a_project: true };
     renderWizard();
     expect(await screen.findByRole("heading", { name: "Introduce yourself" })).toBeInTheDocument();
-    expect(await railSteps()).toEqual(["Profile", "Connect GitHubDone", "Get the phone app"]);
+    expect(await railSteps()).toEqual(["Profile, Step 1 of 3", "Connect GitHub, Done", "Get the phone app, 03"]);
   });
 
   it("opens a later visit on the first step not done", async () => {
@@ -114,6 +114,25 @@ describe("WelcomeWizardPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Finish later" }));
     expect(mocks.post).toHaveBeenCalledWith("/api/me/welcome/first-run");
     expect(await screen.findByText("home-page")).toBeInTheDocument();
+  });
+
+  it("holds the projects list on a loader until the person's role is in, so a level never reads None first", async () => {
+    progress = { first_run_done: true, steps: [step("projects", "done")], dot: false, in_a_project: true };
+    let answerRole: (value: unknown) => void = () => {};
+    const base = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/workspaces/w1/me") return new Promise((resolve) => (answerRole = resolve));
+      return base(url);
+    });
+    renderWizard("/wizard/welcome?step=projects");
+    expect(await screen.findByRole("heading", { name: "Your projects" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(mocks.get.mock.calls.map(([url]) => url)).toEqual(expect.arrayContaining(["/api/projects", "/api/permissions/catalog", "/api/workspaces/w1/me"])));
+    await vi.waitFor(() => expect(mocks.get.mock.results.filter((r) => r.type === "return").length).toBe(mocks.get.mock.calls.length));
+    expect(screen.queryByText("None")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading")).toBeInTheDocument();
+
+    answerRole({ data: { role_name: "Member", permissions: [], projects: [{ project_id: "p1", actions: [] }] } });
+    expect(await screen.findByText("Northwind storefront")).toBeInTheDocument();
   });
 
   it.each([

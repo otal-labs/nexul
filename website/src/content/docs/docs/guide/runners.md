@@ -101,6 +101,6 @@ Runners update themselves. When a runner connects to an instance on a different 
 
 ## Importing what's already running
 
-A machine may already run containers Nexul didn't deploy, such as a manual `docker run` or a Compose project. Open the **⋯** on the machine's band on the **Runners** page and pick **Import from this machine**. Nexul lists the containers, compose groups and gateways it finds, and you pick which to adopt as unmanaged stacks.
+A machine may already run containers Nexul didn't deploy, such as a manual `docker run` or a Compose project. Open the **⋯** on the machine's band on the **Runners** page and pick **Import from this machine**. Choose the machine and the project the stacks will join, press **Discover**, and Nexul lists the containers, compose groups and gateways it finds, all ticked; untick what to leave alone and press **Import**. They are adopted as unmanaged stacks.
 
 An unmanaged stack shows on the [topology canvas](/docs/guide/topology-and-dns/) and can be exposed, but cannot be deployed until you attach a repository to it. Deleting an unmanaged stack leaves its containers running, because Nexul didn't start them; attaching a repository makes it managed, and deleting it then removes its containers.

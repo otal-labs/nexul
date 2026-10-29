@@ -1,21 +1,25 @@
-import { microheaderClass } from "@/components/Microheader";
-import { WelcomeRailItem } from "@/components/welcome/WelcomeRailItem";
+import { WizardRail } from "@/components/wizard/WizardRail";
+import { WizardRailRow } from "@/components/wizard/WizardRailRow";
 import { useWelcomeFlow } from "@/hooks/useWelcomeFlow";
+import { STEP_NAMES } from "@/models/WelcomeWizard";
 
+// Every step is a button, whatever happened there, so any step opens at any time.
 export const WelcomeRail = () => {
-  const { steps, marks } = useWelcomeFlow();
+  const { steps, marks, view, open } = useWelcomeFlow();
   const done = steps.filter((step) => marks[step] === "done").length;
   return (
-    <nav aria-label="Welcome steps" className="@2xl:border-r @2xl:border-border @2xl:pr-8">
-      <p className={microheaderClass}>Welcome</p>
-      <p className="mt-1 font-mono text-xs text-muted-foreground tabular-nums">
-        {done} of {steps.length} done
-      </p>
-      <ol className="mt-6">
-        {steps.map((step, i) => (
-          <WelcomeRailItem key={step} step={step} last={i === steps.length - 1} />
-        ))}
-      </ol>
-    </nav>
+    <WizardRail ariaLabel="Welcome steps" label="Welcome" done={done} total={steps.length}>
+      {steps.map((step, i) => (
+        <WizardRailRow
+          key={step}
+          label={STEP_NAMES[step]}
+          mark={step === view ? "current" : marks[step]}
+          ordinal={String(i + 1).padStart(2, "0")}
+          total={steps.length}
+          onOpen={() => open(step)}
+          last={i === steps.length - 1}
+        />
+      ))}
+    </WizardRail>
   );
 };

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -10,6 +10,7 @@ import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
+import { InWizardBar } from "@/components/wizard/InWizardBar";
 import { useFetchDnsZones, useRouteTunnelHostname, verifyTunnelCheck } from "@/hooks/DnsHooks";
 import { useTicker } from "@/hooks/useTicker";
 import {
@@ -52,6 +53,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
       : verifyTunnelCheck(deployment.tunnelId, key),
   );
   const soleZone = soleItem(zones);
+  const formId = useId();
   const form = useForm<TunnelHostnameFormData>({
     defaultValues: { subdomain: "", zone_id: soleZone?.id ?? "", zone: soleZone?.name ?? "", service: "" },
     resolver: zodResolver(TunnelHostnameSchema),
@@ -97,7 +99,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
         />
       )}
       {!routed && (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <FormInput control={form.control} name="subdomain" label="Subdomain" placeholder="app" />
         <FormSelect
@@ -122,9 +124,11 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
           placeholder="http://my-app:3000"
         />
       </AdvancedFields>
-      <Button type="submit" className="w-full sm:w-auto" loading={routeTunnel.isPending}>
-        {routeTunnel.isPending ? "Routing hostname…" : "Point hostname at the tunnel"}
-      </Button>
+      <InWizardBar>
+        <Button type="submit" form={formId} className="w-full sm:w-auto" loading={routeTunnel.isPending}>
+          {routeTunnel.isPending ? "Routing hostname…" : "Point hostname at the tunnel"}
+        </Button>
+      </InWizardBar>
     </form>
       )}
     </>

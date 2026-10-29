@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -37,6 +38,8 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
 
   const gatewayNetworks = new Set(networks.filter((n) => n.hasGateway).map((n) => n.name));
 
+  const formId = useId();
+
   const form = useForm<BranchRowsFormData>({
     defaultValues: {
       // On for a fresh stack; a saved rule set without the default branch's rule means the owner switched it off.
@@ -71,7 +74,7 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <ul className="divide-y divide-border border-y border-border">
         <DefaultBranchRow
           control={form.control}
@@ -95,7 +98,7 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         Add branch
       </Button>
       <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission="stacks:write" projectId={stack.project_id} verb="save branch deploy rules" type="submit" loading={updateStack.isPending}>
+        <ActionButton permission="stacks:write" projectId={stack.project_id} verb="save branch deploy rules" type="submit" form={formId} loading={updateStack.isPending}>
           Save branches
         </ActionButton>
       </WizardFooter>
