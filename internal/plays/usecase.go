@@ -235,6 +235,11 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 
 // Update replaces a play's owner-edited fields (plays:write on it); the play's type never changes after create.
 func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateInput) (*Play, error) {
+	return s.update(ctx, workspaceID, id, in, 0)
+}
+
+// update is Update that records the version a restore copied the instructions from, zero for an ordinary save.
+func (s *Service) update(ctx context.Context, workspaceID, id string, in UpdateInput, restoredFrom int) (*Play, error) {
 	p, err := s.seen(ctx, workspaceID, id)
 	if err != nil {
 		return nil, err
@@ -253,7 +258,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.repo.Update(ctx, p, revision(ctx, &before, p), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
+	if err := s.repo.Update(ctx, p, revision(ctx, &before, p, restoredFrom), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
 		return nil, labelTaken(p, fmt.Errorf("update play %s: %w", id, err))
 	}
 	return p, nil
@@ -451,7 +456,7 @@ func (s *Service) SetBuiltinInstructions(ctx context.Context, workspaceID, key, 
 	before := *p
 	p.Instructions = instructions
 	p.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, p, revision(ctx, &before, p), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
+	if err := s.repo.Update(ctx, p, revision(ctx, &before, p, 0), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
 		return nil, fmt.Errorf("update play %s: %w", p.ID, err)
 	}
 	return p, nil

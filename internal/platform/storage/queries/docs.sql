@@ -37,16 +37,22 @@ DELETE FROM docs WHERE id = ?;
 SELECT doc_id, version, title, body, name, author_id, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC;
 
 -- name: ListDocVersionSummaries :many
-SELECT version, name, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC;
+SELECT version, name, editor_ids, via, words_added, words_removed, restored_from, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC;
 
 -- name: GetDocVersion :one
 SELECT doc_id, version, title, body, name, author_id, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? AND version = ?;
 
 -- name: InsertDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO doc_versions (doc_id, version, title, body, author_id, editor_ids, via, words_added, words_removed, restored_from, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: InsertNamedDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, editor_ids, via, words_added, words_removed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListDocVersionNumbers :many
+SELECT version FROM doc_versions WHERE doc_id = ? ORDER BY version;
+
+-- name: SetDocVersionSize :exec
+UPDATE doc_versions SET words_added = ?, words_removed = ? WHERE doc_id = ? AND version = ?;
 
 -- name: DocMatchesLatestVersion :one
 SELECT EXISTS(

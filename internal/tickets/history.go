@@ -57,6 +57,11 @@ type VersionSummary struct {
 	Name      string    `json:"name"`
 	EditorIDs []string  `json:"editor_ids"`
 	Via       string    `json:"via"`
+	// WordsAdded and WordsRemoved size the version against the kept one before it; nil on the oldest kept.
+	WordsAdded   *int `json:"words_added"`
+	WordsRemoved *int `json:"words_removed"`
+	// RestoredFrom is the version number a restore copied this version from; nil for any other version.
+	RestoredFrom *int `json:"restored_from"`
 	// Current marks the newest version.
 	Current bool `json:"current"`
 }
@@ -83,6 +88,8 @@ type History struct {
 type Credit struct {
 	EditorIDs []string
 	Via       string
+	// RestoredFrom is the version number a restore copied the body from; zero for an ordinary save.
+	RestoredFrom int
 }
 
 // HistoryRepo reads a ticket's description versions and field changes; the writes ride with the ticket's own, in the
@@ -200,7 +207,7 @@ func (s *Service) RestoreVersion(ctx context.Context, id string, version int) (*
 	if err != nil {
 		return nil, fmt.Errorf("restore version %d of ticket %s: %w", version, id, err)
 	}
-	return s.UpdateTicket(ctx, id, current.Title, v.Body)
+	return s.updateTicket(ctx, id, current.Title, v.Body, version)
 }
 
 // CommitSitting writes the version a live editing sitting ends with, crediting everyone who edited; a body the

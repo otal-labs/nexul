@@ -374,6 +374,11 @@ func (s *Service) requireProject(ctx context.Context, projectID string, action p
 // Update replaces the title/body, bumps the version, appends a version row unless nothing changed since the newest one,
 // and enqueues doc.updated; requires the edit bit.
 func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, error) {
+	return s.update(ctx, id, title, body, 0)
+}
+
+// update is Update that records the version a restore copied the text from, zero for an ordinary save.
+func (s *Service) update(ctx context.Context, id, title, body string, restoredFrom int) (*Doc, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -401,6 +406,7 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	current.Title = title
 	current.Body = body
 	current.Version++
+	current.RestoredFrom = restoredFrom
 	current.UpdatedAt = s.now().UTC()
 	if err := s.persistUpdate(ctx, current, bodyChanged, mentioned); err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
@@ -642,7 +648,7 @@ func (s *Service) RestoreVersion(ctx context.Context, docID string, version int)
 	if err != nil {
 		return nil, err
 	}
-	return s.Update(ctx, docID, v.Title, v.Body)
+	return s.update(ctx, docID, v.Title, v.Body, version)
 }
 
 // CommitCollab persists a converged collaboration state to the canonical doc without a heavyweight version row.

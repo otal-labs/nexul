@@ -7,10 +7,11 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getPlayInstructionVersion = `-- name: GetPlayInstructionVersion :one
-SELECT play_id, version, body, editor_ids, via, builtin_default, created_at FROM play_instruction_versions WHERE play_id = ? AND version = ?
+SELECT play_id, version, body, editor_ids, via, builtin_default, created_at, words_added, words_removed, restored_from FROM play_instruction_versions WHERE play_id = ? AND version = ?
 `
 
 type GetPlayInstructionVersionParams struct {
@@ -29,6 +30,9 @@ func (q *Queries) GetPlayInstructionVersion(ctx context.Context, arg GetPlayInst
 		&i.Via,
 		&i.BuiltinDefault,
 		&i.CreatedAt,
+		&i.WordsAdded,
+		&i.WordsRemoved,
+		&i.RestoredFrom,
 	)
 	return i, err
 }
@@ -62,11 +66,11 @@ func (q *Queries) InsertPlayChange(ctx context.Context, arg InsertPlayChangePara
 }
 
 const insertPlayInstructionVersion = `-- name: InsertPlayInstructionVersion :exec
-INSERT INTO play_instruction_versions (play_id, version, body, editor_ids, via, builtin_default, created_at)
+INSERT INTO play_instruction_versions (play_id, version, body, editor_ids, via, builtin_default, words_added, words_removed, restored_from, created_at)
 VALUES (
     ?1,
     (SELECT COALESCE(MAX(v.version), 0) + 1 FROM play_instruction_versions v WHERE v.play_id = ?1),
-    ?2, ?3, ?4, ?5, ?6
+    ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9
 )
 `
 
@@ -76,6 +80,9 @@ type InsertPlayInstructionVersionParams struct {
 	EditorIds      string
 	Via            string
 	BuiltinDefault int64
+	WordsAdded     sql.NullInt64
+	WordsRemoved   sql.NullInt64
+	RestoredFrom   sql.NullInt64
 	CreatedAt      int64
 }
 
@@ -86,6 +93,9 @@ func (q *Queries) InsertPlayInstructionVersion(ctx context.Context, arg InsertPl
 		arg.EditorIds,
 		arg.Via,
 		arg.BuiltinDefault,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.RestoredFrom,
 		arg.CreatedAt,
 	)
 	return err
@@ -126,8 +136,35 @@ func (q *Queries) ListPlayChanges(ctx context.Context, playID string) ([]PlayCha
 	return items, nil
 }
 
+const listPlayInstructionVersionNumbers = `-- name: ListPlayInstructionVersionNumbers :many
+SELECT version FROM play_instruction_versions WHERE play_id = ? ORDER BY version
+`
+
+func (q *Queries) ListPlayInstructionVersionNumbers(ctx context.Context, playID string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listPlayInstructionVersionNumbers, playID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var version int64
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlayInstructionVersions = `-- name: ListPlayInstructionVersions :many
-SELECT play_id, version, editor_ids, via, builtin_default, created_at FROM play_instruction_versions
+SELECT play_id, version, editor_ids, via, builtin_default, words_added, words_removed, restored_from, created_at FROM play_instruction_versions
 WHERE play_id = ? ORDER BY version DESC
 `
 
@@ -137,6 +174,9 @@ type ListPlayInstructionVersionsRow struct {
 	EditorIds      string
 	Via            string
 	BuiltinDefault int64
+	WordsAdded     sql.NullInt64
+	WordsRemoved   sql.NullInt64
+	RestoredFrom   sql.NullInt64
 	CreatedAt      int64
 }
 
@@ -155,6 +195,9 @@ func (q *Queries) ListPlayInstructionVersions(ctx context.Context, playID string
 			&i.EditorIds,
 			&i.Via,
 			&i.BuiltinDefault,
+			&i.WordsAdded,
+			&i.WordsRemoved,
+			&i.RestoredFrom,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -199,5 +242,26 @@ type PrunePlayInstructionVersionsParams struct {
 
 func (q *Queries) PrunePlayInstructionVersions(ctx context.Context, arg PrunePlayInstructionVersionsParams) error {
 	_, err := q.db.ExecContext(ctx, prunePlayInstructionVersions, arg.PlayID, arg.Keep)
+	return err
+}
+
+const setPlayInstructionVersionSize = `-- name: SetPlayInstructionVersionSize :exec
+UPDATE play_instruction_versions SET words_added = ?, words_removed = ? WHERE play_id = ? AND version = ?
+`
+
+type SetPlayInstructionVersionSizeParams struct {
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	PlayID       string
+	Version      int64
+}
+
+func (q *Queries) SetPlayInstructionVersionSize(ctx context.Context, arg SetPlayInstructionVersionSizeParams) error {
+	_, err := q.db.ExecContext(ctx, setPlayInstructionVersionSize,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.PlayID,
+		arg.Version,
+	)
 	return err
 }

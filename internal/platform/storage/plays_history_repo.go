@@ -18,13 +18,22 @@ func writeRevision(ctx context.Context, q *sqlcgen.Queries, p *plays.Play, rev p
 		if err != nil {
 			return fmt.Errorf("encode editors of play %s: %w", p.ID, err)
 		}
+		sizer := playSizer(q, p.ID)
+		size, err := sizer.againstNewest(ctx, v.Body)
+		if err != nil {
+			return fmt.Errorf("size instructions version of play %s: %w", p.ID, err)
+		}
 		err = q.InsertPlayInstructionVersion(ctx, sqlcgen.InsertPlayInstructionVersionParams{
-			PlayID: p.ID, Body: v.Body, EditorIds: editors, Via: v.Via, BuiltinDefault: boolToInt(v.BuiltinDefault), CreatedAt: p.UpdatedAt.Unix(),
+			PlayID: p.ID, Body: v.Body, EditorIds: editors, Via: v.Via, BuiltinDefault: boolToInt(v.BuiltinDefault),
+			WordsAdded: size.added, WordsRemoved: size.removed, RestoredFrom: restoredFromOf(v.RestoredFrom), CreatedAt: p.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert instructions version of play %s: %w", p.ID, classifyWriteErr(err))
 		}
-		if err := q.PrunePlayInstructionVersions(ctx, sqlcgen.PrunePlayInstructionVersionsParams{PlayID: p.ID, Keep: plays.KeptInstructionVersions}); err != nil {
+		err = sizer.pruned(ctx, func() error {
+			return q.PrunePlayInstructionVersions(ctx, sqlcgen.PrunePlayInstructionVersionsParams{PlayID: p.ID, Keep: plays.KeptInstructionVersions})
+		})
+		if err != nil {
 			return fmt.Errorf("prune instructions versions of play %s: %w", p.ID, err)
 		}
 	}
@@ -64,6 +73,7 @@ func (r *PlaysRepo) ListHistory(ctx context.Context, playID string) (plays.Histo
 		if err != nil {
 			return plays.History{}, err
 		}
+		info.WordsAdded, info.WordsRemoved, info.RestoredFrom = nullableInt(row.WordsAdded), nullableInt(row.WordsRemoved), nullableInt(row.RestoredFrom)
 		out.Versions = append(out.Versions, info)
 	}
 	for _, row := range changes {
@@ -87,6 +97,7 @@ func (r *PlaysRepo) GetVersion(ctx context.Context, playID string, version int) 
 	if err != nil {
 		return nil, err
 	}
+	info.WordsAdded, info.WordsRemoved, info.RestoredFrom = nullableInt(row.WordsAdded), nullableInt(row.WordsRemoved), nullableInt(row.RestoredFrom)
 	return &plays.VersionBody{VersionInfo: info, Body: row.Body}, nil
 }
 

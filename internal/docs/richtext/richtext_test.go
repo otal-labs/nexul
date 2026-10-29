@@ -171,6 +171,12 @@ func TestSearchText(t *testing.T) {
 	assert.Equal(t, "legacy markdown ## content", legacy)
 }
 
+func TestPlainText_JoinsBlocksAndKeepsMentionLabels(t *testing.T) {
+	body := `{"type":"doc","content":[{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Plan"}]},{"type":"paragraph","content":[{"type":"text","text":"ask "},{"type":"mention","attrs":{"type":"person","id":"u-1","label":"lena"}},{"type":"text","text":" soon","marks":[{"type":"bold"}]}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"first"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"second"}]}]}]}]}`
+	assert.Equal(t, "Plan ask lena soon first second", PlainText(body))
+	assert.Equal(t, "# legacy **markdown**", PlainText("# legacy **markdown**"))
+}
+
 func TestUnmarshalErrors(t *testing.T) {
 	_, err := UnmarshalJSON("")
 	require.Error(t, err)

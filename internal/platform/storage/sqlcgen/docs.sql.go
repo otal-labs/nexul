@@ -187,18 +187,21 @@ func (q *Queries) GetDocVersion(ctx context.Context, arg GetDocVersionParams) (G
 }
 
 const insertDocVersion = `-- name: InsertDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO doc_versions (doc_id, version, title, body, author_id, editor_ids, via, words_added, words_removed, restored_from, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertDocVersionParams struct {
-	DocID     string
-	Version   int64
-	Title     string
-	Body      string
-	AuthorID  string
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	DocID        string
+	Version      int64
+	Title        string
+	Body         string
+	AuthorID     string
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
+	CreatedAt    int64
 }
 
 func (q *Queries) InsertDocVersion(ctx context.Context, arg InsertDocVersionParams) error {
@@ -210,25 +213,30 @@ func (q *Queries) InsertDocVersion(ctx context.Context, arg InsertDocVersionPara
 		arg.AuthorID,
 		arg.EditorIds,
 		arg.Via,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.RestoredFrom,
 		arg.CreatedAt,
 	)
 	return err
 }
 
 const insertNamedDocVersion = `-- name: InsertNamedDocVersion :exec
-INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, editor_ids, via, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, editor_ids, via, words_added, words_removed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertNamedDocVersionParams struct {
-	DocID     string
-	Version   int64
-	Title     string
-	Body      string
-	Name      string
-	AuthorID  string
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	DocID        string
+	Version      int64
+	Title        string
+	Body         string
+	Name         string
+	AuthorID     string
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	CreatedAt    int64
 }
 
 func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocVersionParams) error {
@@ -241,6 +249,8 @@ func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocV
 		arg.AuthorID,
 		arg.EditorIds,
 		arg.Via,
+		arg.WordsAdded,
+		arg.WordsRemoved,
 		arg.CreatedAt,
 	)
 	return err
@@ -287,16 +297,46 @@ func (q *Queries) ListDocScopes(ctx context.Context, ids interface{}) ([]ListDoc
 	return items, nil
 }
 
+const listDocVersionNumbers = `-- name: ListDocVersionNumbers :many
+SELECT version FROM doc_versions WHERE doc_id = ? ORDER BY version
+`
+
+func (q *Queries) ListDocVersionNumbers(ctx context.Context, docID string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listDocVersionNumbers, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var version int64
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocVersionSummaries = `-- name: ListDocVersionSummaries :many
-SELECT version, name, editor_ids, via, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC
+SELECT version, name, editor_ids, via, words_added, words_removed, restored_from, created_at FROM doc_versions WHERE doc_id = ? ORDER BY version DESC
 `
 
 type ListDocVersionSummariesRow struct {
-	Version   int64
-	Name      string
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	Version      int64
+	Name         string
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
+	CreatedAt    int64
 }
 
 func (q *Queries) ListDocVersionSummaries(ctx context.Context, docID string) ([]ListDocVersionSummariesRow, error) {
@@ -313,6 +353,9 @@ func (q *Queries) ListDocVersionSummaries(ctx context.Context, docID string) ([]
 			&i.Name,
 			&i.EditorIds,
 			&i.Via,
+			&i.WordsAdded,
+			&i.WordsRemoved,
+			&i.RestoredFrom,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -559,6 +602,27 @@ func (q *Queries) SetDocLocked(ctx context.Context, arg SetDocLockedParams) (int
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const setDocVersionSize = `-- name: SetDocVersionSize :exec
+UPDATE doc_versions SET words_added = ?, words_removed = ? WHERE doc_id = ? AND version = ?
+`
+
+type SetDocVersionSizeParams struct {
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	DocID        string
+	Version      int64
+}
+
+func (q *Queries) SetDocVersionSize(ctx context.Context, arg SetDocVersionSizeParams) error {
+	_, err := q.db.ExecContext(ctx, setDocVersionSize,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.DocID,
+		arg.Version,
+	)
+	return err
 }
 
 const updateDoc = `-- name: UpdateDoc :execrows
