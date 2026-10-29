@@ -17,7 +17,8 @@ interface ContainerStatusBadgeProps {
 }
 
 export const ContainerStatusBadge = ({ status }: ContainerStatusBadgeProps) => {
-  const { icon, color, iconClassName, textClassName } = config[status];
+  // The server stores whatever word a runner reports, so one the app doesn't know yet still renders.
+  const { icon, color, iconClassName, textClassName } = config[status] ?? config[ContainerStatus.Stopped];
   return (
     <NoFillBadge icon={icon} color={color} iconClassName={iconClassName} className={textClassName}>
       {status}
