@@ -16,10 +16,10 @@ interface Marker {
 const LIVE_DOT = "bg-success animate-[status-pulse_2.4s_ease-standard_infinite]";
 const IDLE_DOT = "bg-muted-foreground/50";
 
-// Connection trouble outranks the reader's own state: Paused is the button, Scrolled up is following let go by scrolling.
+// One word, so the row never cuts it; the reason is the title. Connection trouble outranks the reader's own state: Paused is the button, Scrolled up is following let go by scrolling.
 const describeMarker = (status: LogStatus, paused: boolean, scrolledUp: boolean): Marker => {
-  if (status === "offline") return { label: "Runner offline, reconnecting…", dot: "bg-warning" };
-  if (status === "ended") return { label: "Stream ended", dot: IDLE_DOT };
+  if (status === "offline") return { label: "Offline", dot: "bg-warning" };
+  if (status === "ended") return { label: "Ended", dot: IDLE_DOT };
   if (status === "connecting") return { label: "Connecting…", dot: IDLE_DOT };
   if (status === "forbidden") return { label: "Not allowed", dot: IDLE_DOT };
   if (paused) return { label: "Paused", dot: IDLE_DOT };
@@ -32,7 +32,7 @@ export const LogStatusMarker = ({ status, reason, paused }: LogStatusMarkerProps
   const { end: scrolledUp } = useMessageScrollerScrollable();
   const { label, dot } = describeMarker(status, paused, scrolledUp);
   return (
-    <span role="status" title={reason ?? label} className="flex min-w-0 grow basis-0 items-center justify-end gap-2 font-mono text-xs text-muted-foreground">
+    <span role="status" title={reason ?? (status === "offline" ? "The runner is offline; reconnecting" : label)} className="flex min-w-0 grow basis-0 items-center justify-end gap-2 font-mono text-xs text-muted-foreground">
       <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full motion-reduce:animate-none", dot)} />
       <span className="truncate">{label}</span>
     </span>

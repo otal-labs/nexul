@@ -30,13 +30,13 @@ describe("DeployRow", () => {
     render(
       <MemoryRouter>
         <ul>
-          <DeployRow deploy={deploy} />
+          <DeployRow deploy={deploy} current={false} />
         </ul>
       </MemoryRouter>,
     );
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/acme/stacks/stack-1/deploys/d-1");
-    expect(link).toHaveTextContent("repo build");
+    expect(link).toHaveTextContent("repository");
     expect(link).not.toHaveTextContent("d-1");
   });
 
@@ -45,11 +45,11 @@ describe("DeployRow", () => {
     render(
       <MemoryRouter>
         <ul>
-          <DeployRow deploy={deploy} />
+          <DeployRow deploy={deploy} current={false} />
         </ul>
       </MemoryRouter>,
     );
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    expect(screen.getByText("repo build")).toBeInTheDocument();
+    expect(screen.getAllByText("build").length).toBeGreaterThan(0);
   });
 });

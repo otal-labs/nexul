@@ -195,7 +195,7 @@ describe("StackLogsSection", () => {
     await emit([line(1), line(2), line(3)]);
     await dropSocket(1006, "the runner disconnected");
 
-    expect(screen.getByRole("status")).toHaveTextContent("Runner offline, reconnecting…");
+    expect(screen.getByRole("status")).toHaveTextContent("Offline");
     await advance(1_000);
     expect(FakeSocket.all).toHaveLength(2);
     expect(last().url).toContain("tail=20");
@@ -211,7 +211,7 @@ describe("StackLogsSection", () => {
     await emit([line(1)]);
     await dropSocket(1000, "the stream ended");
 
-    expect(screen.getByRole("status")).toHaveTextContent("Stream ended");
+    expect(screen.getByRole("status")).toHaveTextContent("Ended");
     await advance(60_000);
     expect(FakeSocket.all).toHaveLength(1);
   });

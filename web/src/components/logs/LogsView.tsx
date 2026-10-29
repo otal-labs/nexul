@@ -39,7 +39,7 @@ export const LogsView = ({ source }: LogsViewProps) => {
           onDownload={() => saveTextFile(`${source.name}.log`, containerLogToText(shown))}
           empty={shown.length === 0}
         />
-        <LogBlock lines={shown} empty={emptyLogMessage(logs, filter, source.forbidden)} onCopy={() => void copy()} />
+        <LogBlock lines={shown} empty={emptyLogMessage(logs, filter, source.forbidden)} />
       </div>
     </MessageScrollerProvider>
   );

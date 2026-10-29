@@ -27,7 +27,7 @@ A tunnel can't be deleted while anything uses it. The delete is refused, and the
 
 An exposure routes one hostname to one container.
 
-1. Open the stack and go to **Exposures**.
+1. Open the stack and go to **Settings → Exposures**.
 2. Click **Expose**, pick the **Container**, type the **Hostname** and **Container port**, and pick the **Zone**.
 3. Click **Expose**.
 

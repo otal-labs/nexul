@@ -1012,58 +1012,98 @@ The owner onboarding (`/wizard/onboarding/owner`) is the same frame with a
 "Get started" rail of Profile, Workspace and Tools that moves only through
 its bar.
 
-Stack detail page. The header keeps the detail-page shape (breadcrumb of the
-workspace and project, title, actions top right) and its meta line says what
-the stack is, in mono with dot separators: the slug, the runner, the strategy
-with its compose path, the repository with its branch (or the network when no
-repository is attached), and a run stack's image. Under it is one live status
-strip (`StackLiveHero`), a `surface-2` well with a microheader over each
-value and no second facts row: Health first, then Last deploy (its
-`HealthDot` and the deploy's outcome in deploy words, Succeeded, Failed, Running or Pending, over the mono age;
-never "Healthy", which is how a service is doing and would contradict Health beside it), Services (the mono count over "N
-up"), and Hostnames (the first as a link with an arrow, then "+N more"). It is
-four columns from a 42rem page and two by two below. Health is "No issues"
-behind a `success` dot, or one line per problem behind a dot in its status hue: an
-open outage is `destructive` ("api down"), an error rate over its rule is
-`warning` ("5xx 7.2%" in the line's own weight, then the time it began in muted mono), and a recovery within the hour reads
-`success` ("5xx recovered").
-The strip names a problem; the card below it explains it, so no incident list
-or banner sits between them. The per-person Watching toggle is an outline
-button with an eye in the header's actions, left of the row menu. Overview is
-Services, then Requests (a stack with a hostname: the mono totals for the last
-hour with the 5xx share behind its hue, per-minute bars in a `surface-2` well
-with the 5xx part in the status hue, and the error-rate rule in the footer),
-then Deploy. A service's open outage is one line under its name in the
-Services row: a `destructive` icon and "Down since 10:42" in plain text,
-then the exit code, "out of memory" and the restart count in muted mono.
-Alerts sits after Logs in the section nav, with a Crash tickets card (one
+Stack detail page. An ops view first: the daily jobs (is it healthy, what
+runs, what was deployed when, what it prints) get the page's full width, and
+configuration sits behind one Settings tab. The header keeps the detail-page
+shape (breadcrumb of the workspace and project, title, actions top right) and
+its meta line says what the stack is, in mono: the slug, the runner, the
+strategy with its compose file's name (the whole path in the tooltip), the
+repository with its branch (or the network when no repository is attached), and
+a run stack's image. Each fact carries the dot before it and shortens on its
+own, so a wrap never leaves a dot at a line's end. The actions are the page's
+one primary, **Deploy** (`brand`, a rocket), then the per-person Watching
+toggle (an outline button with an eye), then the row menu. Deploy opens a
+popover with the stack's one way to deploy (a build stack: the ref field and
+Build & deploy; a run stack with no repository: the image and Redeploy) and,
+under a hairline, the last healthy image with Rollback; a stack with no way to
+deploy and nothing to roll back to shows Deploy in its disabled look with the
+reason in its tooltip, still reachable by keyboard.
+
+Under the header is one live status strip (`StackLiveHero`), a `surface-2`
+well with a microheader over each value: Health, Last deploy, Requests and
+Hostnames, four columns from a 48rem strip and two by two below. Health is "No
+issues" behind a `success` dot over the mono "N up", or one line per problem
+behind a dot in its status hue: an open outage is `destructive` ("api down",
+or "3 of 8 down" with the names in its tooltip), an error rate over its rule is
+`warning` ("5xx 7.2% · last 5 min" in the line's own weight, then the time it
+began in muted mono), and a recovery within the hour reads `success` ("5xx
+recovered"). When the runner's newest observation of the stack is over an hour
+old, Health closes with a muted "last observed 17d ago". Last deploy is the
+newest attempt's `HealthDot` and outcome in deploy words (Succeeded, Failed,
+Running or Pending; never "Healthy", which is how a service is doing), a
+running one with its elapsed time ("Running · 27m"), over that attempt's own
+facts in muted mono (its age and who started it; a running one only who), then
+the image that runs now, always marked "live" so it never reads as the
+attempt's: the tag by its last path segment, cut in the middle so the tag stays
+whole, the full reference in its tooltip. Requests is the hour's mono total
+("70,448 / h") over the 5xx share naming its window ("5xx 1.6% · hour"), "Not
+counted" while the error-rate rule is off. Hostnames is the first as a link
+with an arrow, cut in the middle so its domain stays whole, then a "+2 more"
+that opens every hostname in a popover. The strip names a problem; the card
+below it explains it, so no incident list or banner sits between them.
+
+Under the strip, line tabs on a hairline: Overview, Deploys (with its mono
+count), Logs (for whoever holds `stacks:logs`) and Settings, each its own path
+(`/stacks/:id`, `/deploys`, `/logs/:service?`, `/settings/:section?`).
+Overview is Services, then Requests (a stack with a hostname: the mono totals
+for the last hour with the 5xx share behind its hue, per-minute bars in a
+`surface-2` well with the 5xx part in the status hue, and the error-rate rule
+in the footer). The Services card has no column headers and one line per
+service, rows sorted down first, then on their way, healthy, then stopped: the
+name, the image by its last segment cut in the middle, how it is reached (the
+first public hostname as a link, else `service:port`, then "+N" with every
+address in its tooltip; dropped below a 48rem card, where the strip carries the
+hostnames), the status (an icon in its hue and the word) in a fixed column, and
+a ghost Logs icon at the end. The name's tooltip holds the container name and
+every address. The 14px name sits 1px higher than its box centre so the row's
+texts share one baseline. A service's open outage replaces its status and is
+one line under the row: a `destructive` icon and "Down since 10:42" in plain
+text, then the exit code, "out of memory" and the restart count. One muted line
+under the rows names the count and the networks; it is information, so it is
+not a footer strip. Deploys is one card titled Deploys with All / Failed in its
+`aside`, then one hairline row per deploy straight on the card: the outcome (a
+running one with its elapsed time) in a fixed column, what was deployed (the
+image by its last segment, or a branch icon with the ref and the short commit
+for a build) with a muted "current" on the deploy whose image runs now, who
+and why in muted mono (actor, pull request, rule), and the time ("Today at
+14:02", "27 Oct 07:43") right, with the relative age in its tooltip. Below a
+42rem card the who-and-why drops under what was deployed. The newest 25 show,
+the rest behind "Show 11 older". Logs is the Logs view below.
+
+Settings is the settings shell: `SettingsSectionNav` driving a `/:section`
+path segment (Environment, Alerts, Exposures, Branch deploys, Danger zone), one
+or two `SettingsCard`s per section. Alerts holds a Crash tickets card (one
 switch row), a Crash notices card (a Channel select row, Off first, then a Post as select row of the channel's bots
 after System message while a channel is named, both applying on pick) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname
 or the instance can't read analytics), and under the switch row the rule's three numbers as small number fields saved from the
 footer, whose hint states how it recovers. A stack whose rule is off still shows the Requests card, with one line saying nothing
-is counted and a link to Alerts, and no footer. Below it the page is the settings shell:
-`SettingsSectionNav` driving a `/:section` path segment (Overview, Environment, Logs, Alerts, Exposures, Branch deploys,
-Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
+is counted and a link to Alerts, and no footer. The settings nav
 is a scrolling top row below 1024px and a side column from it, on every
-settings-style page (Your settings, Configuration, Project settings, Stack);
+settings-style page (Your settings, Configuration, Project settings, a stack's Settings);
 a nav with two jobs (Your settings' You and Instance settings)
 labels each group with a mono microheader in the side column and a hairline
 between the groups in the top row, which fades over its last 24px, and a group
-with nothing the viewer may open shows no label. Environment is one card of mono name and
+with nothing the viewer may open shows no label. A sideways row (this nav's top
+row, a tab row) never draws a scrollbar under its labels (`scrollbar-none`);
+its fade says there is more. Environment is one card of mono name and
 value rows, values dots until the card's Reveal toggle, with Deploy now in the footer beside Save; someone who can't change
-the stack sees the names over dots and nothing to edit. A card's action lives in its footer strip (`footer` prop: Rollback,
+the stack sees the names over dots and nothing to edit. A card's action lives in its footer strip (`footer` prop: Save,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows straight on the card, under the rule that opens its body (`settingsListClass`), never a bordered box
 inside the card; permission and access rows (Permission rows, below) and a list whose rows each fold open an editor (Run settings) keep their bordered list.
-Nothing nests a card inside a card. The Services card has no column headers: each row is the service name and
-status (a status icon, its word in `muted-foreground`, or `foreground` when it is exited) over its image and a muted `container <name>` line, with how it is
-reached trailing right in mono (public hostnames as links, then
-`service:port` on the stack's network, then `host :port` when published on the
-machine). The rows sit straight on the card with hairline dividers, no box of
-their own, and one muted line under them names the networks and when the runner
-last looked; it is information, so it is not a footer strip.
+Nothing nests a card inside a card.
 A project's Services card lists each attached repository no service builds
 from as a row in one bordered box, after the services or in place of the
 empty line: the mono name over a hollow muted dot and "Attached, not deployed
@@ -1390,15 +1430,20 @@ mono duration trailing. The log names each phase above its first line
 rail-led (Motion baseline). `DeployProgressSection` is the reference; the instance upgrade uses the
 same step list.
 
-Logs view. The stack page's Logs section is a line tab row of the stack's
-services over one terminal-style block per service: a mono timestamp column
-and the raw line, wrapped lines indented under the text, dense rows, and a
-copy button in the block's corner. Above it sit All / Errors, Pause, and Copy
-and Download as icon buttons with tooltips, on one row with one mono status marker at the end: Live while following, Paused
-after the button, Scrolled up once scrolling released following, and the
-connection's own state (reconnecting, ended) ahead of those. Errors means a
+Logs view. The stack page's Logs tab is a line tab row of the stack's
+services, each label led by its 6px status dot so a service that is down is
+found without opening every tab, over one terminal-style block per service: a
+mono timestamp column and the raw line, wrapped lines indented under the text,
+dense rows. The block reaches down to the panel's bottom, never shorter than
+30rem, and while it has no lines its one sentence (and a Details disclosure
+with the server's words) sits centred in it. Above it sit All / Errors, then
+Pause, Copy and Download as 32px icon buttons with tooltips (Pause is off
+while the stream is not live), on one row with one mono status marker at the
+end, always one word with the reason in its tooltip: Live while following,
+Paused after the button, Scrolled up once scrolling released following, and
+the connection's own state (Offline, Ended) ahead of those. Errors means a
 line that looks like one by its text, from either stream. A thin `destructive`
-gutter marks every stderr line and is the only color in the view. A solid
+gutter marks every stderr line and is the only color in the block. A solid
 Jump to live control, never a translucent one, resumes following.
 `LogsView` in `web/src/components/logs/` is the reference.
 
@@ -1418,7 +1463,7 @@ look, and the job picks the control, never the page:
 
 - Section nav (`SettingsSectionNav`): a page of five or more sections, each
   its own job and its own path segment (Your settings, Configuration, Project
-  settings, Stack). The sidebar's row grammar at settings scale: muted rows,
+  settings, a stack's Settings tab). The sidebar's row grammar at settings scale: muted rows,
   the `bg-accent/60` hover lift, and the sidebar's sliding block (the current
   row's tint with the 2px `brand` edge on its left) on the current one. A side column
   from 1024px, a scrolling top row below it, where the block drops its edge.
@@ -1439,7 +1484,8 @@ look, and the job picks the control, never the page:
   the level (Permission rows).
 
 Never two of one kind stacked: a section holds tabs, tabs hold a segmented
-control, and nothing nests deeper.
+control, and nothing nests deeper. The one exception is a stack page, whose
+Settings tab holds the section nav (Web decisions).
 
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
@@ -1635,6 +1681,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 | Roles as a checklist with a Can't give group, chips on the rows | Against held roles as chips with an × beside an "Add role" menu of checkable roles (the menu hid the full set and every reason until it opened) and the roles as plain muted text on Team rows (read like any other meta line); every role and why one is out of reach shows at once |
 | Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
+| A stack page is ops tabs (Overview, Deploys, Logs) with its configuration behind a Settings tab, Deploy in the header | Against the settings shell for the whole page: the three daily views shared a 12rem section nav with five configuration sections, so logs and the deploy list got about half the width, the deploy action was the last card under every service, and the history repeated a day header on each deploy. A Settings tab holding the section nav is the one place a tab holds a section nav, because a stack is a record you watch first and configure second |
 | Body headings at 20, 18 and 16px, not 26, 21 and 17px | Against the old scale (an `h1` at 26px sat next to the 28px page title and the two read as one level) and 20, 17 and 15px (a 15px `h3` is smaller than the 16px text it opens, so only weight told it from a paragraph); the 1.9em lead-in does the separating the size no longer has to |
 
 ### Motion baseline

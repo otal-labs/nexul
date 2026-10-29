@@ -31,7 +31,7 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
     ...(stack && canOpenStack
       ? [
           { label: stack.name, to: stackPath },
-          { label: "Deploys", to: `${stackPath}/history` },
+          { label: "Deploys", to: `${stackPath}/deploys` },
         ]
       : []),
   ];

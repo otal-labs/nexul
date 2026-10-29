@@ -51,7 +51,8 @@ export const SettingsCard = ({
         </h2>
         {description && <SettingsHint className="mt-1 max-w-prose">{description}</SettingsHint>}
       </div>
-      {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
+      {/* Beside a lone title the aside centres on it; beside a title and description it keeps the top line. */}
+      {aside && <div className={cn("flex shrink-0 items-center gap-2", !description && "self-center")}>{aside}</div>}
     </div>
   );
 

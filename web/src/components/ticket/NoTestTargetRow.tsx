@@ -20,7 +20,7 @@ export const NoTestTargetRow = ({ projectId }: NoTestTargetRowProps) => {
       {stack && canOpenStack && (
         <>
           {" in "}
-          <Link to={wsPath(`/stacks/${stack.id}/branches`)} className="text-foreground underline underline-offset-4">
+          <Link to={wsPath(`/stacks/${stack.id}/settings/branches`)} className="text-foreground underline underline-offset-4">
             {stack.name}
           </Link>
         </>

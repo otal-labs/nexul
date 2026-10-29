@@ -3,6 +3,7 @@ import { GitBranchIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import type { Crumb } from "@/components/PageBreadcrumb";
 import { RowActions } from "@/components/listpane/RowActions";
+import { StackDeployButton } from "@/components/stack/StackDeployButton";
 import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { StackMetaLine } from "@/components/stack/StackMetaLine";
 import { StackWatchButton } from "@/components/stack/StackWatchButton";
@@ -17,6 +18,7 @@ import type { Deploy, Stack, StackWithBranches } from "@/models/Stack";
 interface StackHeaderSectionProps {
   stack: StackWithBranches;
   latest: Deploy | undefined;
+  lastHealthy: Deploy | undefined;
   image: string | undefined;
   hostnames: string[];
 }
@@ -32,7 +34,7 @@ const useStackCrumbs = (stack: Stack): Crumb[] => {
   return [workspaceCrumb];
 };
 
-export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHeaderSectionProps) => {
+export const StackHeaderSection = ({ stack, latest, lastHealthy, image, hostnames }: StackHeaderSectionProps) => {
   const wsPath = useWorkspacePath();
   const answer = useStackActions(stack);
   const crumbs = useStackCrumbs(stack);
@@ -61,13 +63,14 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
                 Attach repository
               </ActionButton>
             )}
+            <StackDeployButton stack={stack} lastHealthy={lastHealthy} image={image} />
             <StackWatchButton stackId={stack.id} />
             {manages && <RowActions itemLabel={stack.name} {...menu} />}
           </div>
         }
       />
 
-      <StackLiveHero stack={stack} latest={latest} hostnames={hostnames} />
+      <StackLiveHero stack={stack} latest={latest} lastHealthy={lastHealthy} hostnames={hostnames} />
     </div>
   );
 };

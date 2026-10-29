@@ -70,6 +70,16 @@ export const formatShortDate = (ts: string): string => {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// A right-aligned time column: "29 Oct 15:20", a one-digit day padded with a figure space and every month three letters,
+// so the column keeps one width.
+export const formatColumnTime = (ts: string): string => {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  return `${String(date.getDate()).padStart(2, "\u2007")} ${MONTHS[date.getMonth()]} ${formatClockTime(ts)}`;
+};
+
 // A version's time: "Today 14:23", "Yesterday 14:23", else the short date and the clock, "25 Oct 14:23".
 export const formatVersionTime = (ts: string): string => {
   const calendar = formatCalendarTime(ts);

@@ -1,7 +1,5 @@
-import { ArrowDownIcon, CopyIcon } from "lucide-react";
+import { ArrowDownIcon } from "lucide-react";
 
-import { EmptyRow } from "@/components/EmptyRow";
-import { Button } from "@/components/ui/button";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -16,25 +14,49 @@ import { chunkLogLines, type EmptyLogMessage } from "@/utils/ContainerLogUtility
 interface LogBlockProps {
   lines: ContainerLogLine[];
   empty: EmptyLogMessage;
-  onCopy: () => void;
 }
 
+const MIN_HEIGHT = 320;
+// The page's 32px bottom padding inside the panel.
+const BOTTOM_PAD = 32;
+
+// Down to the panel's bottom, however tall the header above it, never shorter than 20rem; outside the page panel (a
+// sheet) the window's bottom stands in for it. Measured again whenever the page above it settles or the window resizes.
+const fillToBottom = (el: HTMLDivElement | null) => {
+  if (!el) return;
+  const frame = el.closest(".app-frame");
+  const fit = () => {
+    const bottom = frame ? frame.getBoundingClientRect().top + frame.clientTop + frame.clientHeight : window.innerHeight;
+    const top = el.getBoundingClientRect().top + (frame?.scrollTop ?? 0);
+    const height = `${Math.max(MIN_HEIGHT, Math.floor(bottom - top - BOTTOM_PAD))}px`;
+    if (el.style.height !== height) el.style.height = height;
+  };
+  fit();
+  const observer = new ResizeObserver(fit);
+  if (frame?.firstElementChild) observer.observe(frame.firstElementChild);
+  window.addEventListener("resize", fit);
+  return () => {
+    observer.disconnect();
+    window.removeEventListener("resize", fit);
+  };
+};
+
 // One terminal-style block: the scroller follows the newest line and lets go the moment the reader scrolls up.
-export const LogBlock = ({ lines, empty, onCopy }: LogBlockProps) => (
-  <div className="relative overflow-hidden rounded-lg border border-border bg-surface-2">
+export const LogBlock = ({ lines, empty }: LogBlockProps) => (
+  <div ref={fillToBottom} className="relative overflow-hidden rounded-lg border border-border bg-surface-2">
     {lines.length === 0 && (
-      <div className="h-96 px-4 py-32">
-        <EmptyRow className="p-0">{empty.text}</EmptyRow>
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <p role="status" className="max-w-md text-sm text-balance text-muted-foreground">{empty.text}</p>
         {empty.detail && (
-          <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="w-fit cursor-pointer hover:text-foreground">Details</summary>
+          <details className="mt-2 max-w-md text-xs text-muted-foreground">
+            <summary className="mx-auto w-fit cursor-pointer hover:text-foreground">Details</summary>
             <p className="mt-1 font-mono break-words">{empty.detail}</p>
           </details>
         )}
       </div>
     )}
     {lines.length > 0 && (
-      <MessageScroller className="h-[34rem] max-h-[70vh]">
+      <MessageScroller className="h-full">
         <MessageScrollerViewport aria-label="Container log" className="py-2">
           <MessageScrollerContent className="gap-0">
             {chunkLogLines(lines).map(([bucket, chunk]) => (
@@ -49,16 +71,5 @@ export const LogBlock = ({ lines, empty, onCopy }: LogBlockProps) => (
         </MessageScrollerButton>
       </MessageScroller>
     )}
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      onClick={onCopy}
-      disabled={lines.length === 0}
-      aria-label="Copy log"
-      className="absolute top-2 right-4 size-8 bg-background/80"
-    >
-      <CopyIcon aria-hidden />
-    </Button>
   </div>
 );
