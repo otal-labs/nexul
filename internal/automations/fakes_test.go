@@ -25,8 +25,10 @@ func testLogger() *slog.Logger {
 // fakeRepo is an in-memory Repo (the testing standard: prefer fakes over
 // mocks for repos).
 type fakeRepo struct {
-	mu   sync.Mutex
-	rows map[string]*Automation
+	mu        sync.Mutex
+	rows      map[string]*Automation
+	health    map[string]Health
+	healthErr error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -83,6 +85,21 @@ func (f *fakeRepo) Update(_ context.Context, a *Automation) error {
 	cp := *a
 	f.rows[a.ID] = &cp
 	return nil
+}
+
+func (f *fakeRepo) ListHealth(_ context.Context, ids []string, _ time.Time) (map[string]Health, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.healthErr != nil {
+		return nil, f.healthErr
+	}
+	out := map[string]Health{}
+	for _, id := range ids {
+		if h, ok := f.health[id]; ok {
+			out[id] = h
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) Delete(_ context.Context, id string) error {

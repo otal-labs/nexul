@@ -19,3 +19,16 @@ UPDATE automations SET name = ?, description = ?, kind = ?, enabled = ?, subscri
 
 -- name: DeleteAutomation :execrows
 DELETE FROM automations WHERE id = ?;
+
+-- name: ListAutomationHealth :many
+SELECT a.id,
+       lr.outcome AS last_outcome, lr.started_at AS last_started_at, lr.error AS last_error,
+       (SELECT COUNT(*) FROM automation_runs r WHERE r.automation_id = a.id AND r.started_at >= sqlc.arg(since)) AS runs_total,
+       (SELECT COUNT(*) FROM automation_runs r WHERE r.automation_id = a.id AND r.started_at >= sqlc.arg(since) AND r.outcome <> 'success') AS runs_failed,
+       pv.sequence AS pending_sequence
+FROM automations a
+LEFT JOIN automation_runs lr ON lr.id = (
+  SELECT r.id FROM automation_runs r WHERE r.automation_id = a.id ORDER BY r.started_at DESC, r.id DESC LIMIT 1
+)
+LEFT JOIN automation_versions pv ON pv.automation_id = a.id AND pv.status = 'pending'
+WHERE a.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
