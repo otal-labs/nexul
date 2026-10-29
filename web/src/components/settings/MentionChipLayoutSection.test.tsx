@@ -42,7 +42,7 @@ describe("MentionChipLayoutSection", () => {
   it("seeds the input from the current template and previews it substituted", () => {
     renderSection();
     expect(screen.getByLabelText("Format")).toHaveValue("{ticket.Ticket} {ticket.Status}");
-    expect(screen.getByText("Fix login redirect loop In progress")).toBeInTheDocument();
+    expect(screen.getAllByText("Fix login redirect loop · In progress")).toHaveLength(2);
   });
 
   it("round-trips edits through the input into the live preview", async () => {
@@ -53,7 +53,7 @@ describe("MentionChipLayoutSection", () => {
     await user.clear(input);
     await user.type(input, "{{ticket.Project} {{ticket.Ticket}");
 
-    expect(screen.getByText("ERF-1 Fix login redirect loop")).toBeInTheDocument();
+    expect(screen.getAllByText("ERF-1 · Fix login redirect loop")).toHaveLength(2);
   });
 
   it("inserts a token at the end of the input via the token button", async () => {

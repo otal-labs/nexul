@@ -6,11 +6,13 @@ import { SettingsHint } from "@/components/settings/SettingsHint";
 
 interface DangerZoneProps {
   children: ReactNode;
+  // A page already titled "Danger zone" names the card for what it acts on instead.
+  title?: string;
 }
 
 // The one danger zone: a destructive-edged card of action rows, each naming what it does and what is lost.
-export const DangerZone = ({ children }: DangerZoneProps) => (
-  <SettingsCard id="danger-zone" title="Danger zone" danger icon={TriangleAlert}>
+export const DangerZone = ({ children, title = "Danger zone" }: DangerZoneProps) => (
+  <SettingsCard id="danger-zone" title={title} danger icon={TriangleAlert}>
     <ul className="-my-2 divide-y divide-border">{children}</ul>
   </SettingsCard>
 );
@@ -31,7 +33,8 @@ export const DangerAction = ({ title, consequence, details, action }: DangerActi
         <SettingsHint>{consequence}</SettingsHint>
         {details}
       </div>
-      <div className="shrink-0">{action}</div>
+      {/* Centred on the title's line, not the block: a 32px button against a 20px line. */}
+      <div className="shrink-0 @sm:-mt-1.5">{action}</div>
     </div>
   </li>
 );

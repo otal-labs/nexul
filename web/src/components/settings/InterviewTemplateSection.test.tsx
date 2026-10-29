@@ -70,7 +70,7 @@ describe("InterviewTemplateSection", () => {
     vi.mocked(api.get).mockResolvedValue({ data: { ...template, body: "## Instance", default_body: "## Instance", edited: false } });
     renderSection();
 
-    expect(await screen.findByText("Following the instance template")).toBeInTheDocument();
+    expect(await screen.findByText("Instance template")).toBeInTheDocument();
     expect(screen.getByLabelText("Template (markdown)")).toHaveValue("## Instance");
     expect(screen.queryByRole("button", { name: "Reset to instance template" })).not.toBeInTheDocument();
   });
@@ -80,7 +80,7 @@ describe("InterviewTemplateSection", () => {
     vi.mocked(api.post).mockResolvedValue({ data: {} });
     renderSection();
 
-    expect(await screen.findByText("Edited for this workspace")).toBeInTheDocument();
+    expect(await screen.findByText("Edited here")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reset to instance template" }));
     await user.click(await screen.findByRole("button", { name: "Reset" }));
     expect(api.post).toHaveBeenCalledWith("/api/templates/reset", {

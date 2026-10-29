@@ -1023,6 +1023,12 @@ body {
   transition: border-color 150ms var(--ease-standard), background-color 150ms var(--ease-standard);
 }
 
+/* A leading icon rides the label's baseline, lowered to the cap height's centre, so wherever the pill rounds to it stays level with the text. */
+.mention-chip > svg {
+  align-self: baseline;
+  translate: 0 0.19em;
+}
+
 .mention-chip__label {
   min-width: 0;
   align-self: baseline;

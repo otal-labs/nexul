@@ -3,9 +3,7 @@ import { useState, type FormEvent } from "react";
 import { MentionChipField } from "@/components/settings/MentionChipField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
-import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
-import { ActionButton } from "@/components/action/ActionButton";
-import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
+import { useWorkspaceTemplateHead } from "@/components/settings/WorkspaceTemplateHead";
 import { useFlash } from "@/hooks/useFlash";
 import { useUpdateMentionChipTemplate } from "@/hooks/WorkspaceHooks";
 import type { Workspace } from "@/models/Workspace";
@@ -20,9 +18,15 @@ const FORM_ID = "mention-chip-form";
 export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSectionProps) => {
   const [template, setTemplate] = useState(workspace.mention_chip_template);
   const updateTemplate = useUpdateMentionChipTemplate();
-  const openClone = useCloneTemplateDialog();
   const [saved, flash] = useFlash();
-  const at = { scope: "workspace" as const, workspace_id: workspace.id };
+  const head = useWorkspaceTemplateHead({
+    kind: "mention_chip",
+    name: "Mention chip",
+    workspaceId: workspace.id,
+    edited: workspace.mention_chip_template_edited,
+    description: "What a ticket mention shows in chat and docs.",
+    clonePermission: "workspaces:write",
+  });
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -33,16 +37,9 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
   return (
     <SettingsCard
       id="mention-layout"
-      title="Mention chip layout"
-      description="What a ticket mention shows in this workspace. The icon is fixed; the rest comes from this format."
-      aside={
-        <TemplateOriginLine
-          kind="mention_chip"
-          templateKey=""
-          at={at}
-          state={workspace.mention_chip_template_edited ? "edited" : "following"}
-        />
-      }
+      title="Ticket mentions"
+      description={head.description}
+      aside={head.aside}
       footer={
         <SettingsSaveBar
           form={FORM_ID}
@@ -55,17 +52,6 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
     >
       <form id={FORM_ID} onSubmit={(event) => void onSubmit(event).catch(() => undefined)} className="space-y-3">
         <MentionChipField id="mention-chip-template" value={template} onChange={setTemplate} />
-        <ActionButton
-          permission="workspaces:write"
-          verb="clone this template"
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="-ml-2.5"
-          onClick={() => void openClone({ kind: "mention_chip", key: "", name: "Mention chip", from: at })}
-        >
-          Clone to…
-        </ActionButton>
       </form>
     </SettingsCard>
   );

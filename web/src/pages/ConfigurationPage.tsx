@@ -3,12 +3,13 @@ import { Navigate, useLocation, useParams } from "react-router";
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfigurationHeaderMeta } from "@/components/settings/ConfigurationHeaderMeta";
-import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
+import { isSettingsSection, SettingsNav, sectionLabels } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import { useConfigurationSections, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
@@ -16,6 +17,7 @@ export const ConfigurationPage = () => {
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
   const workspaceCrumb = useWorkspaceCrumb();
+  const wsPath = useWorkspacePath();
 
   const { section: rawSection } = useParams();
   const { search, hash } = useLocation();
@@ -30,8 +32,8 @@ export const ConfigurationPage = () => {
       {teamMoved && <Navigate to={teamMoved} replace />}
       <PageHeader
         className="mb-8"
-        crumbs={[workspaceCrumb]}
-        title="Configuration"
+        crumbs={[workspaceCrumb, { label: "Configuration", to: wsPath("/configuration") }]}
+        title={sectionLabels[section]}
         meta={<ConfigurationHeaderMeta section={section} />}
       />
       <SettingsShell section={section} nav={<SettingsNav active={section} sections={sections} />}>

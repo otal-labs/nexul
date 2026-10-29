@@ -1130,10 +1130,15 @@ Saved with a check for 1.4s. Settings that apply the moment they are picked
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
-instance sections Instance-wide. On Your settings the open section is the page
-title ("Security", under a `Settings` crumb), so no card or tab restates it: a
+instance sections Instance-wide. On Your settings and Configuration the open section is the page
+title ("Security" under a `Settings` crumb, "Mention chips" under the workspace and
+`Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
 card that only named the section names its job instead (Name and picture,
-People). Security is one page in the order of the job: Signed-in devices (this
+People, Starting questions, Ticket mentions). A template a workspace can follow or edit says which, once,
+above its card's description: a status dot and word (Instance template, muted; Edited here, `info`) with
+an underlined Reset to instance template beside it, and Clone to… as an outline button on the card's right.
+A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
+that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
 device first, a ghost Sign out on each other row), Personal access tokens, then
 Connect a device as two rows, Phone app and Desktop app, the QR opening under
 its row only once a code is generated.
@@ -1168,7 +1173,11 @@ muted sentence, what goes with it or blocks it under that (released
 hostnames, "Still holds 55 tickets · 3 repos · 6 services"), and an outline
 button in the destructive hue on the right from a 24rem card. The solid red
 button is the confirm dialog's, whose confirm names the object ("Delete
-stack"). A danger zone with nothing in it says so in one `EmptyRow`.
+stack"). A danger zone with nothing in it says so in one `EmptyRow`. A
+page already titled Danger zone names its card for what it acts on (This
+workspace). An action that can't be taken here keeps its row, the button off
+and the reason as its sentence; a section whose only action the viewer's role
+hides is left out of the nav.
 
 Appearance. Mode and Theme are radio groups of tiles, each a miniature of the
 app (`ThemeMiniature`: canvas, sidebar with its brand marker, a panel with a
@@ -1326,6 +1335,13 @@ so the lines start level.
 Past two embeds the same toggle opens the rest. Only a bot's
 text renders Discord's markdown subset. `BotMessageRow`, `EmbedCard` and
 `EmbedFactLines` in `web/src/components/chat/` are the reference.
+
+Reference chip. A ticket, doc or person mention is one pill (`mention-chip`):
+its leading icon rides the label's baseline, lowered to the cap height's
+centre, so it stays level with the text wherever the pill lands on a half
+pixel. A ticket's text follows the workspace's mention format; fields side by
+side read with a `·` between them and an empty one is left out
+(`mentionChipText` in `client-core/`).
 
 Time code. A `<t:…>` code in a message, a thread or a body is a live
 reference chip (`mention-chip`): a clock and the time in the reader's zone,
