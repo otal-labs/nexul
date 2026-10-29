@@ -10,18 +10,20 @@ import (
 
 // Repo is the consumer-side persistence contract for plays; implemented in internal/platform/storage.
 type Repo interface {
-	Create(ctx context.Context, p *Play, evts ...eventbus.OutboxEvent) error
+	// Create and Update write rev (the play's history) in the save's own transaction.
+	Create(ctx context.Context, p *Play, rev Revision, evts ...eventbus.OutboxEvent) error
 	// Get returns a play by id regardless of workspace; the use-case checks WorkspaceID so a lookup
 	// across workspaces reports not found instead of leaking another workspace's play.
 	Get(ctx context.Context, id string) (*Play, error)
 	List(ctx context.Context, workspaceID string) ([]*Play, error)
 	// GetByLabel finds a workspace's play by its label, which is unique there ignoring case.
 	GetByLabel(ctx context.Context, workspaceID, label string) (*Play, error)
-	Update(ctx context.Context, p *Play, evts ...eventbus.OutboxEvent) error
+	Update(ctx context.Context, p *Play, rev Revision, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// AutomationNamesByLabel names workspaceID's automations whose active or pending code holds label in quotes, ignoring ASCII case.
 	AutomationNamesByLabel(ctx context.Context, workspaceID, label string) ([]string, error)
 	AutoPlayRepo
+	HistoryRepo
 }
 
 // AutoPlayRepo persists a play's auto plays, which go with their play, and the workspace's daily cap on them.

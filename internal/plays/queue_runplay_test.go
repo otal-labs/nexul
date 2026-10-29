@@ -32,7 +32,7 @@ func (r *rig) docPlay(t *testing.T, label string) {
 		ID: ids.New(), WorkspaceID: ws, Label: label, Type: plays.TypeDoc, Enabled: true, ExcludedProjectIDs: []string{},
 		CreatedAt: r.clock, UpdatedAt: r.clock,
 	}
-	require.NoError(t, r.store.Plays.Create(t.Context(), p))
+	require.NoError(t, r.store.Plays.Create(t.Context(), p, plays.Revision{}))
 }
 
 func TestQueuePlay_QueuesByLabelOnTheDeveloperThroughTheQueue(t *testing.T) {
@@ -160,7 +160,7 @@ func TestQueuePlay_RecheckAtTheFront(t *testing.T) {
 		}, plays.QueueSkipped, "the play was removed"},
 		{"play disabled", func(r *rig, t *testing.T, p *plays.Play) {
 			p.Enabled = false
-			require.NoError(t, r.store.Plays.Update(t.Context(), p))
+			require.NoError(t, r.store.Plays.Update(t.Context(), p, plays.Revision{}))
 		}, plays.QueueSkipped, "is disabled"},
 		{"developer changed", func(r *rig, _ *testing.T, _ *plays.Play) {
 			r.ticket("t-1", func(f *plays.Facts) { f.Developer = tester })

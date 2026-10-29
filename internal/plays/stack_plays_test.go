@@ -23,7 +23,7 @@ func (r *rig) stackPlay(t *testing.T, label string) *plays.Play {
 		ID: ids.New(), WorkspaceID: ws, Label: label, Type: plays.TypeStack, Instructions: "Look.", Enabled: true,
 		ExcludedProjectIDs: []string{}, CreatedAt: r.clock, UpdatedAt: r.clock,
 	}
-	require.NoError(t, r.store.Plays.Create(t.Context(), p))
+	require.NoError(t, r.store.Plays.Create(t.Context(), p, plays.Revision{}))
 	return p
 }
 

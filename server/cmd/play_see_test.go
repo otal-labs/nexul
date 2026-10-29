@@ -38,7 +38,7 @@ func playSeeFixture(t *testing.T) (permFixture, *plays.Runner) {
 	}
 	now := time.Now().UTC()
 	require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: hiddenPlay, WorkspaceID: wsDefault, Label: "Release notes", Type: plays.TypeDoc,
-		Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+		Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}, plays.Revision{}))
 	_, err := f.svc.playsSvc.CreateAutoPlay(as(uOwner), wsDefault, hiddenPlay, plays.AutoPlayInput{Moment: plays.MomentDocCreated, RunOn: plays.RunOnCauser,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}}, Priority: plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal}})
 	require.NoError(t, err)

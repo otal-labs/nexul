@@ -303,7 +303,7 @@ func queueRuns(t *testing.T, f permFixture, ticketIDs []string) {
 	now := time.Now().UTC()
 	stage := plays.StageProgress
 	require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: guardPlay, WorkspaceID: wsDefault, Label: "Fix it", Type: plays.TypeTicket,
-		Instructions: "Do it.", Enabled: true, ShowWhenStage: &stage, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+		Instructions: "Do it.", Enabled: true, ShowWhenStage: &stage, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}, plays.Revision{}))
 	for _, ticketID := range ticketIDs {
 		_, err := f.store.PlayQueue.EnqueueRun(ctx, &plays.QueueItem{ID: ids.New(), WorkspaceID: wsDefault, ProjectID: pGeneral,
 			TargetType: plays.TargetTicket, TargetID: ticketID, PlayID: guardPlay, PlayLabel: "Fix it", AutoPlayID: "ap-guard",
@@ -326,7 +326,7 @@ func addPlays(t *testing.T, f permFixture, n int) {
 	for i := range n {
 		id := fmt.Sprintf("play-%d-%d", n, i)
 		require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: id, WorkspaceID: wsDefault, Label: "Notes " + id, Type: plays.TypeDoc,
-			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}, plays.Revision{}))
 		require.NoError(t, f.store.PlayTrails.CreateTrail(ctx, &plays.Trail{ID: "tr-" + id, WorkspaceID: wsDefault, PlayID: id, PlayLabel: "Notes",
 			TargetType: plays.TargetTicket, TargetID: f.ticket.ID, ProjectID: pGeneral, StarterID: uWriter, Via: plays.ViaWeb, State: plays.TrailDone,
 			StartedAt: now, Activity: []plays.ActivityEntry{}}))
@@ -1058,7 +1058,7 @@ func TestStatements_ExplainCostsTheSameForAnyNumberOfActions(t *testing.T) {
 	cost := func(rules func(kind, id, action string) string) map[string]int64 {
 		f, st, db := newCountedFixtureDB(t)
 		require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: play, WorkspaceID: wsDefault, Label: "Notes", Type: plays.TypeDoc,
-			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}, plays.Revision{}))
 		reader, err := f.store.Roles.Get(ctx, "role-reader")
 		require.NoError(t, err)
 		reader.Permissions = reader.Permissions.With(permissions.PlaysRead)

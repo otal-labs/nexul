@@ -123,7 +123,7 @@ func TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt(t *testing
 	ctx := context.Background()
 	now := time.Now().UTC()
 	play := &plays.Play{ID: ids.New(), WorkspaceID: "workspace-default", Label: "Look into crashes", Type: plays.TypeStack, Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}
-	require.NoError(t, store.Plays.Create(ctx, play))
+	require.NoError(t, store.Plays.Create(ctx, play, plays.Revision{}))
 	require.NoError(t, store.Plays.CreateAutoPlay(ctx, &plays.AutoPlay{
 		ID: ids.New(), PlayID: play.ID, WorkspaceID: play.WorkspaceID, Enabled: true, Moment: plays.MomentStackServiceCrashed,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}},

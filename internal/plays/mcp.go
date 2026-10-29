@@ -27,7 +27,16 @@ type playResult struct {
 	AutoPlays []autoPlayResult `json:"auto_plays,omitzero"`
 	// Warnings carries what an update applied but may have broken, such as automations calling an old label.
 	Warnings []string `json:"warnings,omitzero"`
+	// Version and CurrentVersion are set when play_list read an older version: Instructions then holds its text.
+	Version        int `json:"version,omitempty"`
+	CurrentVersion int `json:"current_version,omitempty"`
+	// Versions and Changes are the history play_list returns for one play, newest first, without version text.
+	Versions []VersionInfo `json:"versions,omitzero"`
+	Changes  []Change      `json:"changes,omitzero"`
 }
+
+// playListChanges bounds the changes play_list returns for one play; the history keeps more.
+const playListChanges = 20
 
 func toPlayResult(p *Play) playResult {
 	return playResult{
@@ -38,6 +47,8 @@ func toPlayResult(p *Play) playResult {
 
 type playListIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	ID          string `json:"id,omitempty" jsonschema:"A play's id. Returns that one play with its auto plays, recent versions of its instructions, and recent changes instead of a list."`
+	Version     int    `json:"version,omitzero" jsonschema:"With id: a version number from 1 up, to read instead of the current one."`
 	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, interview, or stack. Lists only plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id."`
 	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done)."`
@@ -67,6 +78,7 @@ type playUpdateIn struct {
 	AddAutoPlays       []autoPlayIn       `json:"add_auto_plays,omitempty" jsonschema:"Auto plays to add, each starting the play by itself when its moment matches. A new one starts switched off; turn it on with update_auto_plays."`
 	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes by auto play id, from play_list; only the fields passed change."`
 	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete, from play_list."`
+	RevertToVersion    *int               `json:"revert_to_version,omitempty" jsonschema:"Restore this version of the instructions as a new version. Send it alone."`
 }
 
 func (in playUpdateIn) changesPlay() bool {
@@ -87,9 +99,12 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"lists every definition, and a caller with autoplays:read also gets each play's auto_plays: moment, "+
 				"conditions, priority, once_within_minutes, run_on, and enabled switch. With type (and "+
 				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
-				"which is what to check before play_run.",
+				"which is what to check before play_run. With id it returns that one play, and with version its older instructions.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in playListIn) (any, error) {
+				if in.ID != "" {
+					return getPlay(ctx, s, in)
+				}
 				list, err := listPlays(ctx, s, in)
 				if err != nil {
 					return nil, err
@@ -115,7 +130,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"with play_run. Needs plays:write.",
 			mcptool.Hints{Additive: true, Local: true},
 			func(ctx context.Context, in playCreateIn) (any, error) {
-				p, err := s.Create(ctx, in.WorkspaceID, CreateInput{
+				p, err := s.Create(WithViaMCP(ctx), in.WorkspaceID, CreateInput{
 					Label: in.Label, Type: in.Type, Description: in.Description, Instructions: in.Instructions,
 					Enabled: in.Enabled, ShowWhenStage: optionalStage(in.ShowWhenStage), ExcludedProjectIDs: in.ExcludedProjectIDs,
 				})
@@ -133,7 +148,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"call the play by its old one with runPlay; warnings then names them, since they fail until their code "+
 				"changes. Needs plays:write for its fields, autoplays:write to add or change auto plays, and "+
 				"autoplays:delete to remove them. The decisions check is switched on or off through its play's auto "+
-				"play, with update_auto_plays and enabled.",
+				"play, with update_auto_plays and enabled. revert_to_version restores earlier instructions as a new version.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playUpdateIn) (any, error) {
 				return updatePlay(ctx, s, in)
@@ -152,6 +167,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 func listPlays(ctx context.Context, s *Service, in playListIn) ([]Listed, error) {
+	if in.Version != 0 {
+		return nil, fmt.Errorf("%w: version reads one play's older instructions, so send it with id", apperrs.ErrInvalid)
+	}
 	if in.Type == "" && (in.ProjectID != "" || in.Stage != "") {
 		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, interview, or stack)", apperrs.ErrInvalid)
 	}
@@ -161,10 +179,46 @@ func listPlays(ctx context.Context, s *Service, in playListIn) ([]Listed, error)
 	return s.ListApplicable(ctx, in.WorkspaceID, actorID(ctx), in.ProjectID, in.Type, optionalStage(in.Stage))
 }
 
-func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
+// getPlay is play_list with an id: the play, its auto plays, and its recent history; version swaps in older instructions.
+func getPlay(ctx context.Context, s *Service, in playListIn) (any, error) {
+	if in.Type != "" || in.ProjectID != "" || in.Stage != "" {
+		return nil, fmt.Errorf("%w: id returns that one play; type, project_id, and stage narrow a list, so send them without it", apperrs.ErrInvalid)
+	}
 	p, err := s.Get(ctx, in.WorkspaceID, in.ID)
 	if err != nil {
 		return nil, playNotFoundHint(err)
+	}
+	h, err := s.History(ctx, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	res := toPlayResult(p)
+	res.Versions, res.Changes = h.Versions, h.Changes[:min(len(h.Changes), playListChanges)]
+	if in.Version != 0 {
+		v, err := s.Version(ctx, p.ID, in.Version)
+		if err != nil {
+			return nil, err
+		}
+		res.Instructions, res.Version = v.Body, v.Version
+		if len(h.Versions) > 0 {
+			res.CurrentVersion = h.Versions[0].Version
+		}
+	}
+	out := []playResult{res}
+	if err := attachAutoPlays(ctx, s, in.WorkspaceID, out); err != nil {
+		return nil, err
+	}
+	return out[0], nil
+}
+
+func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
+	ctx = WithViaMCP(ctx)
+	p, err := s.Get(ctx, in.WorkspaceID, in.ID)
+	if err != nil {
+		return nil, playNotFoundHint(err)
+	}
+	if in.RevertToVersion != nil {
+		return revertPlay(ctx, s, p, in)
 	}
 	var applied, warnings []string
 	if in.changesPlay() {
@@ -189,6 +243,18 @@ func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
 		return nil, err
 	}
 	return out[0], nil
+}
+
+// revertPlay restores one version's instructions; it takes no other field, since the restore is its own save.
+func revertPlay(ctx context.Context, s *Service, p *Play, in playUpdateIn) (any, error) {
+	if in.changesPlay() || in.changesAutoPlays() {
+		return nil, fmt.Errorf("%w: revert_to_version restores that version's instructions; send it alone, then update again", apperrs.ErrInvalid)
+	}
+	restored, err := s.Restore(ctx, p.ID, *in.RevertToVersion)
+	if err != nil {
+		return nil, err
+	}
+	return toPlayResult(restored), nil
 }
 
 // renameWarnings warns, without refusing, when a new label leaves automations calling the play by its old one.

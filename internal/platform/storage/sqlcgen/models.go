@@ -917,6 +917,26 @@ type Play struct {
 	BuiltinKey         string
 }
 
+type PlayChange struct {
+	ID        string
+	PlayID    string
+	Field     string
+	FromValue string
+	ToValue   string
+	Actor     string
+	CreatedAt int64
+}
+
+type PlayInstructionVersion struct {
+	PlayID         string
+	Version        int64
+	Body           string
+	EditorIds      string
+	Via            string
+	BuiltinDefault int64
+	CreatedAt      int64
+}
+
 type PlayQueue struct {
 	ID               string
 	WorkspaceID      string
@@ -954,34 +974,35 @@ type PlayQueueResume struct {
 }
 
 type PlayTrail struct {
-	ID                 string
-	WorkspaceID        string
-	PlayID             string
-	PlayLabel          string
-	TargetType         string
-	TargetID           string
-	ProjectID          string
-	ConversationID     string
-	StarterID          string
-	Via                string
-	SelectedMemoryIds  string
-	CustomInstructions string
-	HarnessSessionID   string
-	State              string
-	StartedAt          int64
-	EndedAt            sql.NullInt64
-	LastError          string
-	ReplyMessageID     string
-	Activity           string
-	ComputerID         string
-	Provider           string
-	Model              string
-	Question           sql.NullString
-	FailureReason      string
-	ModelOptions       string
-	HarnessProjectID   string
-	Worktree           int64
-	PassedOver         string
+	ID                  string
+	WorkspaceID         string
+	PlayID              string
+	PlayLabel           string
+	TargetType          string
+	TargetID            string
+	ProjectID           string
+	ConversationID      string
+	StarterID           string
+	Via                 string
+	SelectedMemoryIds   string
+	CustomInstructions  string
+	HarnessSessionID    string
+	State               string
+	StartedAt           int64
+	EndedAt             sql.NullInt64
+	LastError           string
+	ReplyMessageID      string
+	Activity            string
+	ComputerID          string
+	Provider            string
+	Model               string
+	Question            sql.NullString
+	FailureReason       string
+	ModelOptions        string
+	HarnessProjectID    string
+	Worktree            int64
+	PassedOver          string
+	InstructionsVersion sql.NullInt64
 }
 
 type ProcessedEvent struct {

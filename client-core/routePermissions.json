@@ -213,6 +213,7 @@
   "POST /api/plays/runs/{trailID}/continue": ["plays:write"],
   "POST /api/plays/runs/{trailID}/stop": ["plays:write"],
   "POST /api/plays/{id}/run": ["plays:run"],
+  "POST /api/plays/{id}/versions/{n}/restore": ["plays:write"],
   "POST /api/projects": ["projects:create"],
   "POST /api/projects/reorder": ["projects:create"],
   "POST /api/projects/{id}/prefix": ["projects:write"],

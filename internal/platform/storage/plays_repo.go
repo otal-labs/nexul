@@ -23,7 +23,7 @@ type PlaysRepo struct {
 	q  *sqlcgen.Queries
 }
 
-func (r *PlaysRepo) Create(ctx context.Context, p *plays.Play, evts ...eventbus.OutboxEvent) error {
+func (r *PlaysRepo) Create(ctx context.Context, p *plays.Play, rev plays.Revision, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		excluded, err := marshalStringList(p.ExcludedProjectIDs)
@@ -38,6 +38,9 @@ func (r *PlaysRepo) Create(ctx context.Context, p *plays.Play, evts ...eventbus.
 		})
 		if err != nil {
 			return fmt.Errorf("insert play %s: %w", p.ID, classifyWriteErr(err))
+		}
+		if err := writeRevision(ctx, q, p, rev); err != nil {
+			return err
 		}
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})
@@ -85,7 +88,7 @@ func (r *PlaysRepo) List(ctx context.Context, workspaceID string) ([]*plays.Play
 	return out, nil
 }
 
-func (r *PlaysRepo) Update(ctx context.Context, p *plays.Play, evts ...eventbus.OutboxEvent) error {
+func (r *PlaysRepo) Update(ctx context.Context, p *plays.Play, rev plays.Revision, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		excluded, err := marshalStringList(p.ExcludedProjectIDs)
@@ -102,6 +105,9 @@ func (r *PlaysRepo) Update(ctx context.Context, p *plays.Play, evts ...eventbus.
 		}
 		if n == 0 {
 			return fmt.Errorf("update play %s: %w", p.ID, apperrs.ErrNotFound)
+		}
+		if err := writeRevision(ctx, q, p, rev); err != nil {
+			return err
 		}
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})

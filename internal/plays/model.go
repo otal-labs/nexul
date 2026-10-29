@@ -190,6 +190,8 @@ type Trail struct {
 	Activity       []ActivityEntry `json:"activity"`
 	// Question is the latest question the run stopped on, nil for a run that never asked one.
 	Question *TrailQuestion `json:"question"`
+	// InstructionsVersion is the play's instructions version the run started with, nil on runs from before history.
+	InstructionsVersion *int `json:"instructions_version,omitempty"`
 }
 
 // AppendActivity replaces the step sharing e's call id, else appends, keeping the newest MaxTrailActivityLines.

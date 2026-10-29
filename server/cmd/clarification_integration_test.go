@@ -123,7 +123,7 @@ func TestIntegration_Clarification(t *testing.T) {
 		require.NoError(t, err)
 
 		clarify := &plays.Play{ID: "play-clarify", WorkspaceID: wsDefault, Label: "Clarify via AI", Type: plays.TypeDoc, Enabled: true, BuiltinKey: plays.ClarifyKey, CreatedAt: now, UpdatedAt: now}
-		require.NoError(t, f.store.Plays.Create(ctx, clarify))
+		require.NoError(t, f.store.Plays.Create(ctx, clarify, plays.Revision{}))
 		require.NoError(t, f.store.Access.Set(ctx, "play", clarify.ID, uDev, nil, grant("plays:run")))
 		_, err = s.CloseClarification(as(uDev), f.doc)
 		assert.Equal(t, forbidden, outcome(err), "excluded from the Clarify play")

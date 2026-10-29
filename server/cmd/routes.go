@@ -111,6 +111,11 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/access", access.NewHandler(svc.accessSvc).GridRoutes())
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/plays", plays.NewHandler(svc.playsSvc).Routes())
 	mountGateway(apiMux, "/api/plays", plays.NewRunHandler(svc.playsRunner, projectTargets{tickets: svc.ticketsSvc, docs: svc.docsSvc}).Routes())
+	// Registered as exact patterns, more specific than the "/api/plays/" subtree mountGateway claimed above.
+	playHistoryRoutes := plays.NewHistoryHandler(svc.playsSvc).Routes()
+	apiMux.Handle("GET /api/plays/{id}/history", playHistoryRoutes)
+	apiMux.Handle("GET /api/plays/{id}/versions/{n}", playHistoryRoutes)
+	apiMux.Handle("POST /api/plays/{id}/versions/{n}/restore", playHistoryRoutes)
 	mountGateway(apiMux, "/api/automations", automations.NewHandler(svc.automationsSvc).WithVersions(svc.automationVersionsSvc).Routes())
 	mountGateway(apiMux, "/api/automation-secrets", automations.NewSecretsHandler(svc.automationSecretsSvc).Routes())
 	automationHostsHTTP := automations.NewHostsHandler(svc.automationHostsSvc)

@@ -227,14 +227,15 @@ var routePermissions = map[string][]string{
 
 	"PUT /api/permissions": {"permissions:write", "plays:write", "projects:access", "stacks:write", "channels:write", "machines:write", "none"},
 
-	"POST /api/plays/decisions-check":         {"plays:run"},
-	"POST /api/plays/queue":                   {"plays:run"},
-	"POST /api/plays/queue/resume":            {"autoplays:write"},
-	"POST /api/plays/queue/{itemID}/cancel":   {"autoplays:write"},
-	"POST /api/plays/runs/{trailID}/answer":   {"plays:write"},
-	"POST /api/plays/runs/{trailID}/continue": {"plays:write"},
-	"POST /api/plays/runs/{trailID}/stop":     {"plays:write"},
-	"POST /api/plays/{id}/run":                {"plays:run"},
+	"POST /api/plays/decisions-check":           {"plays:run"},
+	"POST /api/plays/queue":                     {"plays:run"},
+	"POST /api/plays/queue/resume":              {"autoplays:write"},
+	"POST /api/plays/queue/{itemID}/cancel":     {"autoplays:write"},
+	"POST /api/plays/runs/{trailID}/answer":     {"plays:write"},
+	"POST /api/plays/runs/{trailID}/continue":   {"plays:write"},
+	"POST /api/plays/runs/{trailID}/stop":       {"plays:write"},
+	"POST /api/plays/{id}/run":                  {"plays:run"},
+	"POST /api/plays/{id}/versions/{n}/restore": {"plays:write"},
 
 	"POST /api/projects":                         {"projects:create"},
 	"POST /api/projects/reorder":                 {"projects:create"},
