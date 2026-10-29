@@ -1,5 +1,7 @@
 import { Ellipsis } from "lucide-react";
+import { useState } from "react";
 
+import { DocHistoryDialog } from "@/components/doc/DocHistoryDialog";
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ interface DocActionsMenuProps {
 export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, onRestore }: DocActionsMenuProps) => {
   const answer = useEntityActions("doc", doc.id);
   const setLocked = useSetDocLocked();
+  const [historyOpen, setHistoryOpen] = useState(false);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -29,6 +32,9 @@ export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, 
       <PopoverContent align="end" className="w-56 p-1">
         <ActionMenuItem permission="tickets:write" projectId={doc.project_id} verb="create tickets" onSelect={onCreateTicket}>
           Create ticket from this doc
+        </ActionMenuItem>
+        <ActionMenuItem permission="docs:read" answer={answer("docs:read")} verb="read this doc's history" onSelect={() => setHistoryOpen(true)}>
+          History
         </ActionMenuItem>
         <ActionMenuItem permission="permissions:write" answer={answer("permissions:write")} verb="manage this doc's permissions" onSelect={onPermissions}>
           Permissions…
@@ -57,6 +63,7 @@ export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, 
           <DocTicketsSection docId={doc.id} />
         </div>
       </PopoverContent>
+      {historyOpen && <DocHistoryDialog doc={doc} onClose={() => setHistoryOpen(false)} />}
     </Popover>
   );
 };

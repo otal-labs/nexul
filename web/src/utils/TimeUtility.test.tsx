@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatCalendarTime, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -71,5 +71,29 @@ describe("formatCalendarTime", () => {
 
   it("returns the raw string when the timestamp is unparseable", () => {
     expect(formatCalendarTime("soon")).toBe("soon");
+  });
+});
+
+describe("formatVersionTime", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ["today", new Date(2026, 9, 6, 0, 1), "Today at 00:01"],
+    ["yesterday", new Date(2026, 9, 5, 21, 11), "Yesterday at 21:11"],
+  ])("reads %s as the calendar word", (_, when, want) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 6, 0, 5));
+    expect(formatVersionTime(when.toISOString())).toBe(want);
+  });
+
+  it("gives an older day as the short date and the clock, with the year only when it is not this one", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 6, 0, 5));
+    const thisYear = formatVersionTime(new Date(2026, 8, 25, 14, 23).toISOString());
+    expect(thisYear).toMatch(/25 .*14:23$|.* 25 14:23$/);
+    expect(thisYear).not.toContain("2026");
+    expect(formatVersionTime(new Date(2025, 9, 25, 14, 23).toISOString())).toContain("2025");
   });
 });
