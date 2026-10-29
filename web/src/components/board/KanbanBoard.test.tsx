@@ -127,6 +127,7 @@ describe("KanbanBoard", () => {
         <QueryClientProvider client={client}>
           <KanbanBoard
             projectId="p-1"
+            maxWidth="100%"
             columns={columns}
             swimlanes={[lane("Sprint 1", "Sprint 1", "c-1", tickets)]}
             onDrop={() => {}}
@@ -142,6 +143,25 @@ describe("KanbanBoard", () => {
     expect(observersWith(20)).toBe(observersWith(1));
   });
 
+  it("draws the stage row and every lane on one grid template, so a header never drifts off its column", () => {
+    renderBoard(
+      <KanbanBoard
+        projectId="p-1"
+        maxWidth="100%"
+        columns={columns}
+        swimlanes={swimlanes}
+        onDrop={() => {}}
+        onReorderColumns={() => {}}
+        onAddTicket={() => {}}
+      />,
+    );
+    const header = document.querySelector('[data-board-grid="stage-row"]') as HTMLElement;
+    const lanes = [...document.querySelectorAll('[data-board-grid="lane"]')] as HTMLElement[];
+    expect(header.style.gridTemplateColumns).not.toBe("");
+    expect(lanes.length).toBeGreaterThan(0);
+    for (const laneGrid of lanes) expect(laneGrid.style.gridTemplateColumns).toBe(header.style.gridTemplateColumns);
+  });
+
   it("renders a swimlane per category and an uncategorized one for tickets with none", () => {
     const withUncategorized = [
       ...swimlanes,
@@ -150,6 +170,7 @@ describe("KanbanBoard", () => {
     renderBoard(
       <KanbanBoard
         projectId="p-1"
+        maxWidth="100%"
         columns={columns}
         swimlanes={withUncategorized}
         onDrop={() => {}}
@@ -172,6 +193,7 @@ describe("KanbanBoard", () => {
     renderBoard(
       <KanbanBoard
         projectId="p-1"
+        maxWidth="100%"
         columns={columns}
         swimlanes={twoLanes}
         onDrop={() => {}}
@@ -204,7 +226,7 @@ describe("KanbanBoard", () => {
 
   it("renders the dragged card's overlay outside the page, so a blurred page frame cannot offset it from the pointer", async () => {
     const { container } = renderBoard(
-      <KanbanBoard projectId="p-1" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
+      <KanbanBoard projectId="p-1" maxWidth="100%" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
     );
     const card = within(container).getByText("Fix login").closest<HTMLElement>('[role="button"]')!;
     fireEvent.mouseDown(card, { button: 0, clientX: 0, clientY: 0 });
@@ -217,7 +239,7 @@ describe("KanbanBoard", () => {
 
   it("picks a card up with Space, so a keyboard user can move it", async () => {
     const { container } = renderBoard(
-      <KanbanBoard projectId="p-1" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
+      <KanbanBoard projectId="p-1" maxWidth="100%" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />,
     );
     const card = within(container).getByText("Fix login").closest<HTMLElement>('[role="button"]')!;
     card.focus();
@@ -232,7 +254,7 @@ describe("KanbanBoard", () => {
       lane("Sprint 2", "Sprint 2", "c-2", [ticket("t-3", "Ship search", "open", "c-2")]),
       lane("Sprint 1", "Sprint 1", "c-1", [ticket("t-1", "Fix login", "open", "c-1")]),
     ];
-    renderBoard(<KanbanBoard projectId="p-1" columns={columns} swimlanes={twoLanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
+    renderBoard(<KanbanBoard projectId="p-1" maxWidth="100%" columns={columns} swimlanes={twoLanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
     await userEvent.click(within(screen.getByRole("region", { name: "Sprint 2 swimlane" })).getByRole("button", { expanded: true }));
 
     const targets = dropTargets();
@@ -242,7 +264,7 @@ describe("KanbanBoard", () => {
 
   it("still takes a card in a column the viewer may not reorder", () => {
     viewer.holds = new Set(["tickets:write"]);
-    renderBoard(<KanbanBoard projectId="p-1" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
+    renderBoard(<KanbanBoard projectId="p-1" maxWidth="100%" columns={columns} swimlanes={swimlanes} onDrop={() => {}} onReorderColumns={() => {}} onAddTicket={() => {}} />);
 
     expect(screen.queryByRole("button", { name: "Reorder Done" })).not.toBeInTheDocument();
     expect(dropTargets()).toEqual(expect.arrayContaining(["column-Sprint 1-open", "column-Sprint 1-in_progress", "column-Sprint 1-done"]));

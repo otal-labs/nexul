@@ -72,10 +72,12 @@ interface PageHeaderProps {
   actionsOn?: "title" | "crumbs";
   // A mark before the title and its meta line, centred on the pair: the board's project mark.
   leading?: ReactNode;
+  // Adjusts the actions block itself, such as aligning it with the title block.
+  actionsClassName?: string;
   className?: string;
 }
 
-export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", leading, className }: PageHeaderProps) => (
+export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", leading, actionsClassName, className }: PageHeaderProps) => (
   <header className={cn("border-b border-border pb-5", className)}>
     {actionsOn === "crumbs" && (
       <div className="mb-2 flex min-h-7 flex-wrap items-center gap-x-4 gap-y-2">
@@ -103,7 +105,7 @@ export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", 
           )}
         </div>
       </div>
-      {actionsOn === "title" && actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actionsOn === "title" && actions && <div className={cn("flex shrink-0 flex-wrap items-center gap-2", actionsClassName)}>{actions}</div>}
     </div>
   </header>
 );

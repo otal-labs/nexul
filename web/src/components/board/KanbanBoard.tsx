@@ -12,12 +12,13 @@ import {
   type Translate,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { BoardStageHeader } from "@/components/board/BoardStageHeader";
-import { boardGridMinWidth } from "@/components/board/boardGrid";
+import { boardGridMinWidth, countByStatus } from "@/components/board/boardGrid";
+import { cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/boardStore";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
@@ -31,6 +32,10 @@ import type { Ticket } from "@/models/Ticket";
 
 interface KanbanBoardProps {
   projectId: string | undefined;
+  /** The chrome's width: the board shares that box and centres inside it, so Create and the last track end together. */
+  maxWidth: string;
+  /** The scrollbar's width, so the chrome above can end on the same edge as the last track. */
+  onGutter?: (width: number) => void;
   columns: BoardStatus[];
   swimlanes: Swimlane[];
   onDrop: (actions: DragMoveAction[]) => Promise<void> | void;
@@ -53,11 +58,13 @@ const KEYBOARD_SENSOR = { coordinateGetter: boardKeyboardCoordinates };
 
 export const KanbanBoard = ({
   projectId,
+  maxWidth,
   columns,
   swimlanes,
   onDrop,
   onReorderColumns,
   onAddTicket,
+  onGutter,
 }: KanbanBoardProps) => {
   // Mouse + Touch (not Pointer) because PointerSensor's pointerdown always wins the race
   // against TouchSensor's touchstart, killing the touch delay and blocking native scroll on small swipes.
@@ -74,6 +81,26 @@ export const KanbanBoard = ({
   const [settledColumns, setSettledColumns] = useState<BoardStatus[] | null>(null);
   // An over change with the pointer still is the ghost's own layout shift; following it flips between two cells until React gives up.
   const lastOverDelta = useRef<Translate | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // A page scrollbar inside the board narrows its tracks; the chrome above is told the same width, so both end on one edge.
+  const gutterRef = useRef<number | undefined>(undefined);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const report = () => {
+      const gutter = el.offsetWidth - el.clientWidth;
+      setOverflowing(el.scrollWidth > el.clientWidth + 1);
+      if (gutter === gutterRef.current) return;
+      gutterRef.current = gutter;
+      onGutter?.(gutter);
+    };
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onGutter]);
   const dropAnimation = useMemo(() => dropAnimationFor(), []);
 
   const allTickets = swimlanes.flatMap((lane) => lane.tickets);
@@ -157,8 +184,7 @@ export const KanbanBoard = ({
   const shownSwimlanes = settled ?? displaySwimlanes;
   const shownColumns = settledColumns ?? columns;
   const doneOpen = useBoardStore((s) => s.doneOpen);
-  const counts: Record<string, number> = {};
-  for (const ticket of shownSwimlanes.flatMap((lane) => lane.tickets)) counts[ticket.status] = (counts[ticket.status] ?? 0) + 1;
+  const counts = countByStatus(shownSwimlanes);
 
   return (
     <BoardCardProvider projectId={projectId}>
@@ -175,13 +201,20 @@ export const KanbanBoard = ({
       >
         {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
         {/* The frame reaches into the page's right padding (Container's px-6) and the scrollbar lives there, so opening a lane never narrows the columns. */}
-        <div className="@container -mr-6 flex min-h-0 flex-1 flex-col">
+        <div className="@container mx-auto flex min-h-0 w-full flex-1 flex-col" style={{ maxWidth }}>
           {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
           <div
+            ref={scrollRef}
             data-card-drag={activeTicket ? "" : undefined}
-            className="group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)] max-lg:[mask-composite:intersect] max-lg:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-2.25rem),transparent_calc(100%-1.5rem))]"
+            className={cn(
+              "group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable]",
+              // The vertical edge always fades into the panel; the sideways one only says "more board" when there is more board.
+              overflowing
+                ? "[mask-composite:intersect] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-1rem),transparent)]"
+                : "[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]",
+            )}
           >
-            <div className="relative min-h-full w-[calc(100cqw-1.5rem)]" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
+            <div className="relative mx-auto min-h-full w-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
               <div className="relative space-y-3">
                 <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
                 {shownSwimlanes.map((lane) => (

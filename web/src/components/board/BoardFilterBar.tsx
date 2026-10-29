@@ -4,6 +4,7 @@ import type { TicketPersonRef } from "@nexul/client-core/ticketPeople";
 
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
+import { FilterChipRow } from "@/components/board/FilterChipRow";
 import {
   buildCategoryChips,
   buildFilterRows,
@@ -96,6 +97,7 @@ export const BoardFilterBar = ({
     typeChips,
     statusChips,
   });
+  const activeChips = filterRows.flatMap((row) => row.chips.filter((option) => option.active));
 
   return (
     <div className="@container">
@@ -154,10 +156,15 @@ export const BoardFilterBar = ({
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
         </div>
-        <div className="flex shrink-0 items-center">
+        <div className="ml-auto flex shrink-0 items-center">
           <BoardCreateMenu projectId={projectId} onNewTicket={onNewTicket} onNewCategory={onNewCategory} />
         </div>
       </div>
+      {activeChips.length > 0 && (
+        <div className="mt-2">
+          <FilterChipRow chips={activeChips} onClearAll={onClear} />
+        </div>
+      )}
     </div>
   );
 };

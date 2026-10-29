@@ -74,7 +74,7 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
         )}
       >
         <StatusMark status={column} className="size-3.5" />
-        <span className="truncate text-[13px] font-semibold">{column.name}</span>
+        <span title={column.name} className="truncate text-[13px] font-semibold">{column.name}</span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${count} tickets`}>
           {count}
         </span>
@@ -113,7 +113,7 @@ export const BoardStageHeader = ({ columns, counts, onAddTicket }: BoardStageHea
   return (
     <div className="sticky top-0 z-20 rounded-md bg-[var(--panel)] pb-1">
       <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-        <div className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
+        <div data-board-grid="stage-row" className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
           {columns.map((column) => (
             <StageHeaderCell
               key={column.id}
