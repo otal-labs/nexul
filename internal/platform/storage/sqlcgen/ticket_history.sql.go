@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getTicketDescriptionVersion = `-- name: GetTicketDescriptionVersion :one
@@ -18,9 +19,18 @@ type GetTicketDescriptionVersionParams struct {
 	Version  int64
 }
 
-func (q *Queries) GetTicketDescriptionVersion(ctx context.Context, arg GetTicketDescriptionVersionParams) (TicketDescriptionVersion, error) {
+type GetTicketDescriptionVersionRow struct {
+	TicketID  string
+	Version   int64
+	Body      string
+	EditorIds string
+	Via       string
+	CreatedAt int64
+}
+
+func (q *Queries) GetTicketDescriptionVersion(ctx context.Context, arg GetTicketDescriptionVersionParams) (GetTicketDescriptionVersionRow, error) {
 	row := q.db.QueryRowContext(ctx, getTicketDescriptionVersion, arg.TicketID, arg.Version)
-	var i TicketDescriptionVersion
+	var i GetTicketDescriptionVersionRow
 	err := row.Scan(
 		&i.TicketID,
 		&i.Version,
@@ -60,20 +70,23 @@ func (q *Queries) InsertTicketChange(ctx context.Context, arg InsertTicketChange
 }
 
 const insertTicketDescriptionVersion = `-- name: InsertTicketDescriptionVersion :exec
-INSERT INTO ticket_description_versions (ticket_id, version, body, editor_ids, via, created_at)
+INSERT INTO ticket_description_versions (ticket_id, version, body, editor_ids, via, words_added, words_removed, restored_from, created_at)
 VALUES (
     ?1,
     (SELECT COALESCE(MAX(m.version), 0) + 1 FROM ticket_description_versions m WHERE m.ticket_id = ?1),
-    ?2, ?3, ?4, ?5
+    ?2, ?3, ?4, ?5, ?6, ?7, ?8
 )
 `
 
 type InsertTicketDescriptionVersionParams struct {
-	ForTicket string
-	Body      string
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	ForTicket    string
+	Body         string
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
+	CreatedAt    int64
 }
 
 func (q *Queries) InsertTicketDescriptionVersion(ctx context.Context, arg InsertTicketDescriptionVersionParams) error {
@@ -82,6 +95,9 @@ func (q *Queries) InsertTicketDescriptionVersion(ctx context.Context, arg Insert
 		arg.Body,
 		arg.EditorIds,
 		arg.Via,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.RestoredFrom,
 		arg.CreatedAt,
 	)
 	return err
@@ -130,15 +146,45 @@ func (q *Queries) ListTicketChanges(ctx context.Context, ticketID string) ([]Lis
 	return items, nil
 }
 
+const listTicketDescriptionVersionNumbers = `-- name: ListTicketDescriptionVersionNumbers :many
+SELECT version FROM ticket_description_versions WHERE ticket_id = ? ORDER BY version
+`
+
+func (q *Queries) ListTicketDescriptionVersionNumbers(ctx context.Context, ticketID string) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketDescriptionVersionNumbers, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var version int64
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTicketDescriptionVersionSummaries = `-- name: ListTicketDescriptionVersionSummaries :many
-SELECT version, editor_ids, via, created_at FROM ticket_description_versions WHERE ticket_id = ? ORDER BY version DESC
+SELECT version, editor_ids, via, words_added, words_removed, restored_from, created_at FROM ticket_description_versions WHERE ticket_id = ? ORDER BY version DESC
 `
 
 type ListTicketDescriptionVersionSummariesRow struct {
-	Version   int64
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	Version      int64
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
+	CreatedAt    int64
 }
 
 func (q *Queries) ListTicketDescriptionVersionSummaries(ctx context.Context, ticketID string) ([]ListTicketDescriptionVersionSummariesRow, error) {
@@ -154,6 +200,9 @@ func (q *Queries) ListTicketDescriptionVersionSummaries(ctx context.Context, tic
 			&i.Version,
 			&i.EditorIds,
 			&i.Via,
+			&i.WordsAdded,
+			&i.WordsRemoved,
+			&i.RestoredFrom,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -202,6 +251,27 @@ type PruneTicketDescriptionVersionsParams struct {
 
 func (q *Queries) PruneTicketDescriptionVersions(ctx context.Context, arg PruneTicketDescriptionVersionsParams) error {
 	_, err := q.db.ExecContext(ctx, pruneTicketDescriptionVersions, arg.ForTicket, arg.Keep)
+	return err
+}
+
+const setTicketDescriptionVersionSize = `-- name: SetTicketDescriptionVersionSize :exec
+UPDATE ticket_description_versions SET words_added = ?, words_removed = ? WHERE ticket_id = ? AND version = ?
+`
+
+type SetTicketDescriptionVersionSizeParams struct {
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	TicketID     string
+	Version      int64
+}
+
+func (q *Queries) SetTicketDescriptionVersionSize(ctx context.Context, arg SetTicketDescriptionVersionSizeParams) error {
+	_, err := q.db.ExecContext(ctx, setTicketDescriptionVersionSize,
+		arg.WordsAdded,
+		arg.WordsRemoved,
+		arg.TicketID,
+		arg.Version,
+	)
 	return err
 }
 

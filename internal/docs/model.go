@@ -24,6 +24,8 @@ type Doc struct {
 	Settler string `json:"-"`
 	// Via is how a create came, recorded on its first version; see viaOf.
 	Via string `json:"-"`
+	// RestoredFrom is the version number a restore copied this save from; zero for any other save.
+	RestoredFrom int `json:"-"`
 }
 
 // DocVersion is one historical snapshot; each update appends a row while the docs table holds the current pointer.
@@ -50,6 +52,11 @@ type VersionSummary struct {
 	Name      string    `json:"name"`
 	EditorIDs []string  `json:"editor_ids"`
 	Via       string    `json:"via"`
+	// WordsAdded and WordsRemoved size the version against the kept one before it; nil on the oldest kept.
+	WordsAdded   *int `json:"words_added"`
+	WordsRemoved *int `json:"words_removed"`
+	// RestoredFrom is the version number a restore copied this version from; nil for any other version.
+	RestoredFrom *int `json:"restored_from"`
 	// Current marks the newest version.
 	Current bool `json:"current"`
 }

@@ -15,6 +15,12 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
+// goSteps run in a migration's own transaction right after its script, for work SQL can't express. A step uses its
+// own SQL, frozen to its migration's schema: the generated queries match the newest schema, which an upgrade has not reached.
+var goSteps = map[string]func(ctx context.Context, tx *sql.Tx) error{
+	"0142_version_change_size": backfillVersionSizes,
+}
+
 // Migrate applies every pending migration. Test helpers use this no-backup path directly; production boots
 // through MigrateWithBackup instead.
 func Migrate(db *sql.DB) error {
@@ -192,6 +198,11 @@ func applyMigration(db *sql.DB, version, script string) (err error) {
 
 	if _, err := tx.Exec(script); err != nil {
 		return fmt.Errorf("exec migration %s: %w", version, err)
+	}
+	if step, ok := goSteps[version]; ok {
+		if err := step(ctx, tx); err != nil {
+			return fmt.Errorf("step of migration %s: %w", version, err)
+		}
 	}
 	if err := checkForeignKeys(tx); err != nil {
 		return fmt.Errorf("migration %s: %w", version, err)

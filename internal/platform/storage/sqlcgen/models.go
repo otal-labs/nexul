@@ -422,15 +422,18 @@ type DocSettle struct {
 }
 
 type DocVersion struct {
-	DocID     string
-	Version   int64
-	Title     string
-	Body      string
-	CreatedAt int64
-	Name      string
-	AuthorID  string
-	EditorIds string
-	Via       string
+	DocID        string
+	Version      int64
+	Title        string
+	Body         string
+	CreatedAt    int64
+	Name         string
+	AuthorID     string
+	EditorIds    string
+	Via          string
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
 }
 
 type DocWatcher struct {
@@ -935,6 +938,9 @@ type PlayInstructionVersion struct {
 	Via            string
 	BuiltinDefault int64
 	CreatedAt      int64
+	WordsAdded     sql.NullInt64
+	WordsRemoved   sql.NullInt64
+	RestoredFrom   sql.NullInt64
 }
 
 type PlayQueue struct {
@@ -1233,12 +1239,15 @@ type TicketChange struct {
 }
 
 type TicketDescriptionVersion struct {
-	TicketID  string
-	Version   int64
-	Body      string
-	EditorIds string
-	Via       string
-	CreatedAt int64
+	TicketID     string
+	Version      int64
+	Body         string
+	EditorIds    string
+	Via          string
+	CreatedAt    int64
+	WordsAdded   sql.NullInt64
+	WordsRemoved sql.NullInt64
+	RestoredFrom sql.NullInt64
 }
 
 type TicketDueReminder struct {

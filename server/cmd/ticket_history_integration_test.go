@@ -51,7 +51,7 @@ func TestTicketHistoryRoutes_ReadersGetTheSharedShape_AndOnlyWritersRestore(t *t
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &hist))
 	require.Len(t, hist.Versions, 2)
 	for _, v := range hist.Versions {
-		assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current"}, jsonKeys(t, v), "no body")
+		assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current", "words_added", "words_removed", "restored_from"}, jsonKeys(t, v), "no body")
 		assert.Empty(t, v["name"], "tickets keep no named versions")
 	}
 	assert.EqualValues(t, 2, hist.Versions[0]["version"], "newest first")

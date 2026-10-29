@@ -178,8 +178,13 @@ func TestDocHistoryRoute_AReader_GetsSummariesNewestFirstWithoutBodies(t *testin
 	assert.Equal(t, []any{}, raw.Changes, "changes is an empty array, not null")
 	require.Len(t, raw.Versions, 3)
 	for _, v := range raw.Versions {
-		assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current"}, keysOf(v), "no body or title")
+		assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current", "words_added", "words_removed", "restored_from"}, keysOf(v), "no body or title")
 	}
+	assert.Nil(t, raw.Versions[2]["words_added"], "the oldest kept version has no size")
+	assert.Nil(t, raw.Versions[2]["words_removed"])
+	assert.EqualValues(t, 1, raw.Versions[1]["words_added"], "the save swapped one word for another")
+	assert.EqualValues(t, 1, raw.Versions[1]["words_removed"])
+	assert.EqualValues(t, 0, raw.Versions[0]["words_added"], "the named snapshot repeats the text before it, so a zero is a size, not a gap")
 	assert.Equal(t, []float64{3, 2, 1}, []float64{raw.Versions[0]["version"].(float64), raw.Versions[1]["version"].(float64), raw.Versions[2]["version"].(float64)})
 	assert.Equal(t, "Milestone", raw.Versions[0]["name"])
 	assert.Equal(t, []bool{true, false, false}, []bool{raw.Versions[0]["current"].(bool), raw.Versions[1]["current"].(bool), raw.Versions[2]["current"].(bool)})

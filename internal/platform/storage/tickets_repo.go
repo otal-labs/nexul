@@ -603,7 +603,7 @@ func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, 
 			return err
 		}
 		if credit != nil {
-			if err := writeDescriptionVersion(ctx, q, id, body, credit.EditorIDs, credit.Via, now); err != nil {
+			if err := writeDescriptionVersion(ctx, q, id, body, credit.EditorIDs, credit.Via, credit.RestoredFrom, now); err != nil {
 				return err
 			}
 		}

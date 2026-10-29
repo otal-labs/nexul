@@ -212,9 +212,14 @@ func (r *DocsRepo) AppendSittingVersion(ctx context.Context, id string, editorID
 func (r *DocsRepo) CreateNamedVersion(ctx context.Context, v *docs.DocVersion) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		err := q.InsertNamedDocVersion(ctx, sqlcgen.InsertNamedDocVersionParams{
+		size, err := docSizer(q, v.DocID).againstNewest(ctx, docVersionText(v.Title, v.Body))
+		if err != nil {
+			return fmt.Errorf("size named version %s v%d: %w", v.DocID, v.Version, err)
+		}
+		err = q.InsertNamedDocVersion(ctx, sqlcgen.InsertNamedDocVersionParams{
 			DocID: v.DocID, Version: int64(v.Version), Title: v.Title, Body: v.Body,
-			Name: v.Name, AuthorID: v.AuthorID, EditorIds: idsJSON(v.EditorIDs), Via: v.Via, CreatedAt: v.CreatedAt.Unix(),
+			Name: v.Name, AuthorID: v.AuthorID, EditorIds: idsJSON(v.EditorIDs), Via: v.Via,
+			WordsAdded: size.added, WordsRemoved: size.removed, CreatedAt: v.CreatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert named version %s v%d: %w", v.DocID, v.Version, classifyWriteErr(err))
@@ -269,6 +274,7 @@ func (r *DocsRepo) ListVersionSummaries(ctx context.Context, docID string) ([]do
 		out = append(out, docs.VersionSummary{
 			Version: int(row.Version), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), Name: row.Name,
 			EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.Via,
+			WordsAdded: nullableInt(row.WordsAdded), WordsRemoved: nullableInt(row.WordsRemoved), RestoredFrom: nullableInt(row.RestoredFrom),
 		})
 	}
 	return out, nil
@@ -376,9 +382,13 @@ func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, edit
 	if len(editors) > 0 {
 		author = editors[0]
 	}
-	err := q.InsertDocVersion(ctx, sqlcgen.InsertDocVersionParams{
+	size, err := docSizer(q, d.ID).againstNewest(ctx, docVersionText(d.Title, d.Body))
+	if err != nil {
+		return fmt.Errorf("size doc version %s v%d: %w", d.ID, d.Version, err)
+	}
+	err = q.InsertDocVersion(ctx, sqlcgen.InsertDocVersionParams{
 		DocID: d.ID, Version: int64(d.Version), Title: d.Title, Body: d.Body,
-		AuthorID: author, EditorIds: idsJSON(editors), Via: via, CreatedAt: d.UpdatedAt.Unix(),
+		AuthorID: author, EditorIds: idsJSON(editors), Via: via, WordsAdded: size.added, WordsRemoved: size.removed, RestoredFrom: restoredFromOf(d.RestoredFrom), CreatedAt: d.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert doc version %s v%d: %w", d.ID, d.Version, classifyWriteErr(err))
@@ -398,7 +408,10 @@ func writeSaveVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, edit
 	if err := insertDocVersion(ctx, q, d, editors, via); err != nil {
 		return err
 	}
-	if err := q.PruneDocVersions(ctx, sqlcgen.PruneDocVersionsParams{ForDoc: d.ID, Keep: docs.KeptUnnamedVersions}); err != nil {
+	err = docSizer(q, d.ID).pruned(ctx, func() error {
+		return q.PruneDocVersions(ctx, sqlcgen.PruneDocVersionsParams{ForDoc: d.ID, Keep: docs.KeptUnnamedVersions})
+	})
+	if err != nil {
 		return fmt.Errorf("prune doc %s versions: %w", d.ID, err)
 	}
 	return nil

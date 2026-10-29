@@ -214,7 +214,7 @@ func TestHistoryHandler_ReadsAnswerTheSharedShapeAndRestoreNeedsWrite(t *testing
 	var raw map[string][]map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &raw))
 	require.Len(t, raw["versions"], 1)
-	assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current", "builtin_default"}, keysOf(raw["versions"][0]))
+	assert.ElementsMatch(t, []string{"version", "created_at", "name", "editor_ids", "via", "current", "builtin_default", "words_added", "words_removed", "restored_from"}, keysOf(raw["versions"][0]))
 	assert.Empty(t, raw["changes"])
 
 	rec = do(t, h, http.MethodGet, "/api/plays/"+p.ID+"/versions/1", "", "reader")

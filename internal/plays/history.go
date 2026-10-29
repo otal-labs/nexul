@@ -56,6 +56,11 @@ type VersionInfo struct {
 	Via            string   `json:"via"`
 	Current        bool     `json:"current"`
 	BuiltinDefault bool     `json:"builtin_default"`
+	// WordsAdded and WordsRemoved size the version against the kept one before it; nil on the oldest kept.
+	WordsAdded   *int `json:"words_added"`
+	WordsRemoved *int `json:"words_removed"`
+	// RestoredFrom is the version number a restore copied this version from; nil for any other version.
+	RestoredFrom *int `json:"restored_from"`
 }
 
 // VersionBody is a kept version with its text.
@@ -86,6 +91,8 @@ type NewVersion struct {
 	EditorIDs      []string
 	Via            string
 	BuiltinDefault bool
+	// RestoredFrom is the version number a restore copied the text from; zero for an ordinary save.
+	RestoredFrom int
 }
 
 // Revision is what a save adds to a play's history, written in the save's own transaction.
@@ -137,11 +144,11 @@ func creation(ctx context.Context, p *Play) Revision {
 
 // revision is what a save from before to after adds to the history: a version when the instructions changed, a
 // change per other changed field, and nothing when the save changed nothing.
-func revision(ctx context.Context, before, after *Play) Revision {
+func revision(ctx context.Context, before, after *Play, restoredFrom int) Revision {
 	actor, editors, via := historyActor(ctx)
 	var rev Revision
 	if before.Instructions != after.Instructions {
-		rev.Instructions = &NewVersion{Body: after.Instructions, EditorIDs: editors, Via: via}
+		rev.Instructions = &NewVersion{Body: after.Instructions, EditorIDs: editors, Via: via, RestoredFrom: restoredFrom}
 	}
 	add := func(field, from, to string) {
 		if from != to {
@@ -227,10 +234,10 @@ func (s *Service) Restore(ctx context.Context, id string, version int) (*Play, e
 	if err != nil {
 		return nil, err
 	}
-	return s.Update(ctx, p.WorkspaceID, p.ID, UpdateInput{
+	return s.update(ctx, p.WorkspaceID, p.ID, UpdateInput{
 		Label: p.Label, Description: p.Description, Instructions: v.Body, Enabled: p.Enabled,
 		ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: slices.Clone(p.ExcludedProjectIDs),
-	})
+	}, version)
 }
 
 // seenByID is the play id's row for a caller who can see it, found without naming its workspace.

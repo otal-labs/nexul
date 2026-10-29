@@ -579,6 +579,11 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 
 // UpdateTicket keeps title non-empty like Create; body may be cleared.
 func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ticket, error) {
+	return s.updateTicket(ctx, id, title, body, 0)
+}
+
+// updateTicket is UpdateTicket that records the version a restore copied the body from, zero for an ordinary save.
+func (s *Service) updateTicket(ctx context.Context, id, title, body string, restoredFrom int) (*Ticket, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -600,6 +605,7 @@ func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ti
 	var credit *Credit
 	if body != current.Body {
 		credit = creditOf(ctx)
+		credit.RestoredFrom = restoredFrom
 	}
 	changes := s.changed(ActorOf(ctx), FieldTitle, current.Title, title)
 	write := func(ctx context.Context) error {

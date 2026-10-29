@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -36,7 +37,7 @@ func writeTicketChanges(ctx context.Context, q *sqlcgen.Queries, ticketID string
 }
 
 // writeDescriptionVersion appends the body as the ticket's next version unless the newest version already holds it, then prunes.
-func writeDescriptionVersion(ctx context.Context, q *sqlcgen.Queries, ticketID, body string, editors []string, via string, at time.Time) error {
+func writeDescriptionVersion(ctx context.Context, q *sqlcgen.Queries, ticketID, body string, editors []string, via string, restoredFrom int, at time.Time) error {
 	same, err := q.TicketDescriptionMatchesLatest(ctx, sqlcgen.TicketDescriptionMatchesLatestParams{ForTicket: ticketID, WantBody: body})
 	if err != nil {
 		return fmt.Errorf("compare ticket %s with its newest description version: %w", ticketID, err)
@@ -44,13 +45,21 @@ func writeDescriptionVersion(ctx context.Context, q *sqlcgen.Queries, ticketID, 
 	if same {
 		return nil
 	}
+	sizer := ticketSizer(q, ticketID)
+	size, err := sizer.againstNewest(ctx, richtext.PlainText(body))
+	if err != nil {
+		return fmt.Errorf("size description version of ticket %s: %w", ticketID, err)
+	}
 	err = q.InsertTicketDescriptionVersion(ctx, sqlcgen.InsertTicketDescriptionVersionParams{
-		ForTicket: ticketID, Body: body, EditorIds: idsJSON(editors), Via: via, CreatedAt: at.Unix(),
+		ForTicket: ticketID, Body: body, EditorIds: idsJSON(editors), Via: via, WordsAdded: size.added, WordsRemoved: size.removed, RestoredFrom: restoredFromOf(restoredFrom), CreatedAt: at.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert description version of ticket %s: %w", ticketID, classifyWriteErr(err))
 	}
-	if err := q.PruneTicketDescriptionVersions(ctx, sqlcgen.PruneTicketDescriptionVersionsParams{ForTicket: ticketID, Keep: tickets.KeptDescriptionVersions}); err != nil {
+	err = sizer.pruned(ctx, func() error {
+		return q.PruneTicketDescriptionVersions(ctx, sqlcgen.PruneTicketDescriptionVersionsParams{ForTicket: ticketID, Keep: tickets.KeptDescriptionVersions})
+	})
+	if err != nil {
 		return fmt.Errorf("prune description versions of ticket %s: %w", ticketID, err)
 	}
 	return nil
@@ -63,7 +72,7 @@ func recordCreated(ctx context.Context, q *sqlcgen.Queries, t *tickets.Ticket) e
 	if err := writeTicketChanges(ctx, q, t.ID, []tickets.Change{change}); err != nil {
 		return err
 	}
-	return writeDescriptionVersion(ctx, q, t.ID, t.Body, soleEditor(actor.UserID), tickets.ViaOf(ctx), t.CreatedAt)
+	return writeDescriptionVersion(ctx, q, t.ID, t.Body, soleEditor(actor.UserID), tickets.ViaOf(ctx), 0, t.CreatedAt)
 }
 
 func (r *TicketsRepo) ListDescriptionVersions(ctx context.Context, id string) ([]tickets.VersionSummary, error) {
@@ -75,6 +84,7 @@ func (r *TicketsRepo) ListDescriptionVersions(ctx context.Context, id string) ([
 	for _, row := range rows {
 		out = append(out, tickets.VersionSummary{
 			Version: int(row.Version), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), EditorIDs: decodeEditorIDs(row.EditorIds), Via: row.Via,
+			WordsAdded: nullableInt(row.WordsAdded), WordsRemoved: nullableInt(row.WordsRemoved), RestoredFrom: nullableInt(row.RestoredFrom),
 		})
 	}
 	return out, nil
@@ -118,6 +128,6 @@ func (r *TicketsRepo) AppendSittingVersion(ctx context.Context, id string, edito
 		if err != nil {
 			return fmt.Errorf("sitting version of ticket %s: %w", id, notFoundIfNoRows(err))
 		}
-		return writeDescriptionVersion(ctx, q, id, row.Ticket.Body, editorIDs, "", at)
+		return writeDescriptionVersion(ctx, q, id, row.Ticket.Body, editorIDs, "", 0, at)
 	})
 }

@@ -158,6 +158,10 @@ func plainText(n Node) string {
 	if n.Type == "hardBreak" {
 		return " "
 	}
+	if n.Type == "mention" {
+		label, _ := n.Attrs["label"].(string)
+		return label
+	}
 	sep := " "
 	if n.Type == "paragraph" || n.Type == "heading" || n.Type == "codeBlock" {
 		sep = ""
@@ -186,4 +190,13 @@ func cutRunes(s string, limit int) string {
 		return s
 	}
 	return string(r[:limit])
+}
+
+// PlainText is a body's text with no markup, its blocks apart by a space, for counting words; legacy markdown passes through.
+func PlainText(body string) string {
+	doc, err := UnmarshalJSON(body)
+	if err != nil {
+		return body
+	}
+	return plainText(Node{Content: doc.Content})
 }
