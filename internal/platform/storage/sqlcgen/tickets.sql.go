@@ -57,6 +57,134 @@ func (q *Queries) ClaimTicketTesterLogin(ctx context.Context, arg ClaimTicketTes
 	return err
 }
 
+const countProjectTicketsByCategory = `-- name: CountProjectTicketsByCategory :many
+SELECT CAST(category_id AS TEXT) AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? AND category_id IS NOT NULL AND category_id != '' GROUP BY category_id
+`
+
+type CountProjectTicketsByCategoryRow struct {
+	Name string
+	N    int64
+}
+
+func (q *Queries) CountProjectTicketsByCategory(ctx context.Context, projectID sql.NullString) ([]CountProjectTicketsByCategoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, countProjectTicketsByCategory, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountProjectTicketsByCategoryRow
+	for rows.Next() {
+		var i CountProjectTicketsByCategoryRow
+		if err := rows.Scan(&i.Name, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countProjectTicketsByLabel = `-- name: CountProjectTicketsByLabel :many
+SELECT ticket_labels.label AS name, COUNT(*) AS n FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id WHERE tickets.project_id = ? GROUP BY ticket_labels.label
+`
+
+type CountProjectTicketsByLabelRow struct {
+	Name string
+	N    int64
+}
+
+func (q *Queries) CountProjectTicketsByLabel(ctx context.Context, projectID sql.NullString) ([]CountProjectTicketsByLabelRow, error) {
+	rows, err := q.db.QueryContext(ctx, countProjectTicketsByLabel, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountProjectTicketsByLabelRow
+	for rows.Next() {
+		var i CountProjectTicketsByLabelRow
+		if err := rows.Scan(&i.Name, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countProjectTicketsByStatus = `-- name: CountProjectTicketsByStatus :many
+SELECT status AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? GROUP BY status
+`
+
+type CountProjectTicketsByStatusRow struct {
+	Name string
+	N    int64
+}
+
+func (q *Queries) CountProjectTicketsByStatus(ctx context.Context, projectID sql.NullString) ([]CountProjectTicketsByStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, countProjectTicketsByStatus, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountProjectTicketsByStatusRow
+	for rows.Next() {
+		var i CountProjectTicketsByStatusRow
+		if err := rows.Scan(&i.Name, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countProjectTicketsByType = `-- name: CountProjectTicketsByType :many
+SELECT CAST(type_id AS TEXT) AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? AND type_id IS NOT NULL AND type_id != '' GROUP BY type_id
+`
+
+type CountProjectTicketsByTypeRow struct {
+	Name string
+	N    int64
+}
+
+func (q *Queries) CountProjectTicketsByType(ctx context.Context, projectID sql.NullString) ([]CountProjectTicketsByTypeRow, error) {
+	rows, err := q.db.QueryContext(ctx, countProjectTicketsByType, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountProjectTicketsByTypeRow
+	for rows.Next() {
+		var i CountProjectTicketsByTypeRow
+		if err := rows.Scan(&i.Name, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createTicket = `-- name: CreateTicket :exec
 INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, created_at, updated_at, finished_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

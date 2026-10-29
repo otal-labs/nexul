@@ -363,6 +363,21 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: []RestrictedMember{}}, nil
 }
 
+// TicketCounts counts the project's tickets by status, category, type and label, for the settings lists beside each row.
+func (s *Service) TicketCounts(ctx context.Context, id string) (TicketUsage, error) {
+	if err := s.requireOn(ctx, id, permissions.ProjectsRead); err != nil {
+		return TicketUsage{}, fmt.Errorf("ticket counts of project %s: %w", id, err)
+	}
+	if _, err := s.repo.Get(ctx, id); err != nil {
+		return TicketUsage{}, fmt.Errorf("ticket counts of project %s: %w", id, err)
+	}
+	usage, err := s.repo.CountTicketUsage(ctx, id)
+	if err != nil {
+		return TicketUsage{}, fmt.Errorf("ticket counts of project %s: %w", id, err)
+	}
+	return usage, nil
+}
+
 // Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.requireOn(ctx, id, permissions.ProjectsDelete); err != nil {

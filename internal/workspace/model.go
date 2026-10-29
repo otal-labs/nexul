@@ -244,6 +244,14 @@ type DeleteImpact struct {
 	RestrictedMembers []RestrictedMember `json:"restricted_members"`
 }
 
+// TicketUsage counts a project's tickets per status, category and ticket type id, and per label; a key with no tickets is absent.
+type TicketUsage struct {
+	ByStatus   map[string]int `json:"tickets_by_status"`
+	ByCategory map[string]int `json:"tickets_by_category"`
+	ByType     map[string]int `json:"tickets_by_type"`
+	ByLabel    map[string]int `json:"tickets_by_label"`
+}
+
 // RestrictedMember is a Restricted member holding access to a project, by id and the name People shows.
 type RestrictedMember struct {
 	UserID string `json:"user_id"`

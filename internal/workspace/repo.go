@@ -41,6 +41,7 @@ type Repo interface {
 	CountTickets(ctx context.Context, projectID string) (int, error)
 	CountRepos(ctx context.Context, projectID string) (int, error)
 	CountServices(ctx context.Context, projectID string) (int, error)
+	CountTicketUsage(ctx context.Context, projectID string) (TicketUsage, error)
 	ProjectForStack(ctx context.Context, stackID string) (string, error)
 	AddRepo(ctx context.Context, projectID string, r RepoRef) error
 	RemoveRepo(ctx context.Context, owner, name string) error

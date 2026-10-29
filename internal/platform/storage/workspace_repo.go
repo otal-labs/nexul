@@ -252,6 +252,41 @@ func (r *ProjectsRepo) CountServices(ctx context.Context, projectID string) (int
 	return r.count(ctx, projectID, "stacks")
 }
 
+// CountTicketUsage groups the project's tickets by status, category, type and label in four indexed reads.
+func (r *ProjectsRepo) CountTicketUsage(ctx context.Context, projectID string) (workspace.TicketUsage, error) {
+	byStatus, err := r.q.CountProjectTicketsByStatus(ctx, nullString(projectID))
+	if err != nil {
+		return workspace.TicketUsage{}, fmt.Errorf("count tickets by status for project %s: %w", projectID, err)
+	}
+	byCategory, err := r.q.CountProjectTicketsByCategory(ctx, nullString(projectID))
+	if err != nil {
+		return workspace.TicketUsage{}, fmt.Errorf("count tickets by category for project %s: %w", projectID, err)
+	}
+	byType, err := r.q.CountProjectTicketsByType(ctx, nullString(projectID))
+	if err != nil {
+		return workspace.TicketUsage{}, fmt.Errorf("count tickets by type for project %s: %w", projectID, err)
+	}
+	byLabel, err := r.q.CountProjectTicketsByLabel(ctx, nullString(projectID))
+	if err != nil {
+		return workspace.TicketUsage{}, fmt.Errorf("count tickets by label for project %s: %w", projectID, err)
+	}
+	return workspace.TicketUsage{
+		ByStatus:   usageMap(byStatus, func(r sqlcgen.CountProjectTicketsByStatusRow) (string, int64) { return r.Name, r.N }),
+		ByCategory: usageMap(byCategory, func(r sqlcgen.CountProjectTicketsByCategoryRow) (string, int64) { return r.Name, r.N }),
+		ByType:     usageMap(byType, func(r sqlcgen.CountProjectTicketsByTypeRow) (string, int64) { return r.Name, r.N }),
+		ByLabel:    usageMap(byLabel, func(r sqlcgen.CountProjectTicketsByLabelRow) (string, int64) { return r.Name, r.N }),
+	}, nil
+}
+
+func usageMap[R any](rows []R, pair func(R) (string, int64)) map[string]int {
+	out := make(map[string]int, len(rows))
+	for _, row := range rows {
+		k, n := pair(row)
+		out[k] = int(n)
+	}
+	return out
+}
+
 func (r *ProjectsRepo) ProjectForStack(ctx context.Context, stackID string) (string, error) {
 	row, err := r.q.GetStack(ctx, stackID)
 	if err != nil {

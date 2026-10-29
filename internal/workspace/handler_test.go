@@ -147,6 +147,16 @@ func TestHandler_Impact(t *testing.T) {
 	})
 }
 
+func TestHandler_TicketCounts(t *testing.T) {
+	t.Run("writes every map as an object", func(t *testing.T) {
+		h, repo := newTestHandler(t, true)
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
+		rec := do(t, h.Routes(), http.MethodGet, "/api/projects/p-1/ticket-counts", "", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"tickets_by_status":{},"tickets_by_category":{},"tickets_by_type":{},"tickets_by_label":{}}`, rec.Body.String())
+	})
+}
+
 func TestHandler_Reorder(t *testing.T) {
 	t.Run("owner reorders", func(t *testing.T) {
 		h, repo := newTestHandler(t, true)

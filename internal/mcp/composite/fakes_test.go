@@ -664,6 +664,10 @@ func (r projectRepo) ProjectForStack(_ context.Context, stackID string) (string,
 
 func (r projectRepo) CountServices(context.Context, string) (int, error) { return 0, nil }
 
+func (r projectRepo) CountTicketUsage(context.Context, string) (workspace.TicketUsage, error) {
+	return workspace.TicketUsage{}, nil
+}
+
 func (r projectRepo) AddRepo(_ context.Context, projectID string, ref workspace.RepoRef) error {
 	r.w.repos[projectID] = append(r.w.repos[projectID], ref)
 	return nil
