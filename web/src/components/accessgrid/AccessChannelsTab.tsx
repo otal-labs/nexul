@@ -3,7 +3,7 @@ import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { useSaveAccessGrid } from "@/hooks/AccessGridHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useFlash } from "@/hooks/useFlash";
-import type { AccessGrid } from "@/models/AccessGrid";
+import { countLabel, type AccessGrid } from "@/models/AccessGrid";
 
 interface AccessChannelsTabProps {
   grid: AccessGrid;
@@ -24,6 +24,7 @@ export const AccessChannelsTab = ({ grid }: AccessChannelsTabProps) => {
   return (
     <form
       id={FORM}
+      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         void submit().catch(() => undefined);
@@ -31,6 +32,7 @@ export const AccessChannelsTab = ({ grid }: AccessChannelsTabProps) => {
     >
       <ChannelsCard
         grid={grid}
+        fill
         footer={
           <SettingsSaveBar
             form={FORM}
@@ -39,6 +41,7 @@ export const AccessChannelsTab = ({ grid }: AccessChannelsTabProps) => {
             saved={saved}
             onDiscard={draft.clearChannels}
             hint="Changes apply to everyone once saved."
+            dirtyLabel={countLabel(draft.channelCells, "change", "changes")}
           />
         }
       />

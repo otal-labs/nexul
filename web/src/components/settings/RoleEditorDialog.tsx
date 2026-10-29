@@ -9,12 +9,13 @@ import { RoleNameFields } from "@/components/settings/RoleNameFields";
 import { RoleSectionTabs } from "@/components/settings/RoleSectionTabs";
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from "@/hooks/RoleHooks";
 import { useSaveInstanceTemplate } from "@/hooks/TemplateHooks";
+import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { RoleDraftContext } from "@/hooks/useRoleDraft";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { PermissionArea } from "@/models/Permission";
 import type { Role } from "@/models/Role";
-import { NO_ACTIONS, NO_STEPS, sameActions, type RoleTab } from "@/models/RoleSection";
+import { NO_ACTIONS, NO_STEPS, roleChangeCount, sameActions, type RoleTab } from "@/models/RoleSection";
 import type { TeamPerson } from "@/models/Team";
 import { ROLE_TEMPLATE } from "@/models/Template";
 import { templateRoleBody } from "@/models/TemplateRole";
@@ -72,6 +73,12 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
     !sameActions(actions, loaded) ||
     !sameActions(steps, loadedSteps) ||
     showLocked !== loadedShowLocked;
+  const { data: catalog = [] } = useFetchPermissionCatalog();
+  const changes = roleChangeCount(catalog, actions, loaded, steps, loadedSteps, [
+    name !== loadedName,
+    description !== loadedDescription,
+    showLocked !== loadedShowLocked,
+  ]);
   const title = creating ? `New ${template ? "template " : ""}role` : `Edit ${role.name}`;
 
   const finish = () => {
@@ -167,6 +174,7 @@ export const RoleEditorDialog = ({ open, role, holders, template, onClose }: Rol
         <RoleDialogFooter
           creating={creating}
           dirty={dirty}
+          changes={changes}
           named={named}
           saving={createRole.isPending || updateRole.isPending || saveTemplate.isPending}
           onCancel={() => void leave()}

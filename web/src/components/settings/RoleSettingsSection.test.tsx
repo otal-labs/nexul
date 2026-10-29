@@ -50,6 +50,13 @@ const tab = (name: string) => screen.getByRole("tab", { name: new RegExp(`^${nam
 
 const ability = (name: string) => within(screen.getByRole("dialog")).getByRole("switch", { name: new RegExp(`^${name}`) });
 
+// A matrix row's cells, one per role in column order, as text (a yes-or-no cell reads Yes or No).
+const matrixRow = (area: string) =>
+  within(screen.getByRole("rowheader", { name: area }).closest("tr")!)
+    .getAllByRole("cell")
+    .filter((cell) => !cell.hasAttribute("aria-hidden"))
+    .map((cell) => cell.textContent || within(cell).queryByLabelText("Yes")?.getAttribute("aria-label") || "");
+
 const rowNames = () =>
   within(screen.getByRole("tabpanel"))
     .getAllByRole("listitem")
@@ -135,16 +142,18 @@ describe("RoleSettingsSection", () => {
     expect(screen.queryByRole("button", { name: "Actions for Owner" })).not.toBeInTheDocument();
   });
 
-  it("counts a role's areas per level and names the ones it can't open", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write", "roles:read"] })]);
+  it("shows each role's level per area side by side, the Owner first at every top rung", async () => {
+    mockRoles([role({ permissions: ["members:read", "members:write", "roles:read", "projects:create", "plays:read", "plays:run"] }), ownerRole]);
     renderSection();
 
-    const row = (await screen.findByText("Editor")).closest("li")!;
-    const levels = within(row).getByRole("list", { name: "Areas per level" });
-    expect(levels).toHaveTextContent("Write1");
-    expect(levels).toHaveTextContent("Read1");
-    expect(levels).toHaveTextContent("None4");
-    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Plays, Memories, Projects +1");
+    await screen.findByRole("columnheader", { name: /Editor/ });
+    expect(screen.getAllByRole("columnheader").slice(0, 3).map((head) => head.textContent)).toEqual(["Area", "Ownernobody", "Editornobody"]);
+    expect(matrixRow("Members")).toEqual(["Write", "Write"]);
+    expect(matrixRow("Roles")).toEqual(["Delete+1", "Read"]);
+    expect(matrixRow("Runners")).toEqual(["Read", "None"]);
+    expect(matrixRow("Plays")).toEqual(["See+1", "See+1"]);
+    expect(matrixRow("Create projects")).toEqual(["Yes", "Yes"]);
+    expect(matrixRow("Edit the workspace Interview template")).toEqual(["Yes", "No"]);
   });
 
   it("creates a role in the dialog, its levels set across the area tabs", async () => {
@@ -287,7 +296,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findByText("1 person");
+    await screen.findByLabelText("1 person");
     await openMenu(user, "Editor", "Edit");
     expect(screen.getByText("Held by Bob. Saving changes what they can do.")).toBeInTheDocument();
     expect(screen.getByText("No changes yet")).toBeInTheDocument();
@@ -299,7 +308,7 @@ describe("RoleSettingsSection", () => {
     await user.click(level("Roles", "Write"));
     expect(tab("Workspace")).toHaveAccessibleName(/unsaved changes/);
     expect(tab("Instance")).not.toHaveAccessibleName(/unsaved changes/);
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByText("2 changes")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
@@ -329,7 +338,7 @@ describe("RoleSettingsSection", () => {
     expect(screen.getByText("140 / 140")).toBeInTheDocument();
     await user.clear(description);
     await user.type(description, " Reviews the docs. ");
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByText("1 change")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
@@ -388,7 +397,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByText("nobody");
+    await screen.findAllByLabelText("0 people");
     await openMenu(user, "Editor", "Delete");
     await user.click(await screen.findByRole("button", { name: "Delete role" }));
 
@@ -401,7 +410,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findByText("2 people");
+    await screen.findByLabelText("2 people");
     await openMenu(user, "Editor", "Delete");
     expect(
       await screen.findByText("2 people lose this role. Anyone left with no role stays a member and sees no project. Deleting it can't be undone."),
@@ -416,7 +425,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByText("nobody");
+    await screen.findAllByLabelText("0 people");
     await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
     const item = await screen.findByRole("button", { name: "Clone to workspace…" });
     expect(item).toHaveAttribute("aria-disabled", "true");
@@ -508,7 +517,7 @@ describe("RoleSettingsSection", () => {
     await openMenu(user, "Editor", "Edit");
     await user.click(tab("Welcome"));
     await user.click(ability("Your computer"));
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByText("1 change")).toBeInTheDocument();
     await user.click(ability("Your computer"));
     expect(screen.getByText("No changes yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();

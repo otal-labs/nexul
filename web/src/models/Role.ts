@@ -27,3 +27,27 @@ export const copyName = (name: string, taken: readonly string[]): string => {
   while (taken.includes(`${name} (copy ${n})`)) n++;
   return `${name} (copy ${n})`;
 };
+
+const DANGLING = new Set(["and", "or", "&", "of", "the", "for", "-", "–", "·"]);
+
+// Greedy word wrap by character count, close enough for a short sans label; a word wider than a line breaks across lines.
+const wrap = (words: string[], width: number): string[] =>
+  words.flatMap((word) => word.match(new RegExp(`.{1,${width}}`, "g")) ?? [word]).reduce<string[]>((lines, word) => {
+    const last = lines.at(-1);
+    if (last !== undefined && last.length + 1 + word.length <= width) return [...lines.slice(0, -1), `${last} ${word}`];
+    return [...lines, word];
+  }, []);
+
+// A role's name for a column head of `lines` lines of `width` characters: cut at a whole word, never a joining one, with its ellipsis.
+export const headName = (name: string, width = 11, lines = 3): string => {
+  const words = name.split(/\s+/);
+  if (wrap(words, width).length <= lines) return name;
+  if (words.length === 1) return `${name.slice(0, width * lines - 1)}…`;
+  const fits = () => wrap(words, width).length <= lines && wrap(words, width).at(-1)!.length + 1 <= width;
+  for (;;) {
+    words.pop();
+    while (words.length > 1 && DANGLING.has(words.at(-1)!.toLowerCase())) words.pop();
+    words[words.length - 1] = words.at(-1)!.replace(/[,;:(]+$/, "");
+    if (words.length === 1 || fits()) return `${words.join(" ")}…`;
+  }
+};

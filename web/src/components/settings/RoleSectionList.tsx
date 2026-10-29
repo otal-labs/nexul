@@ -12,16 +12,12 @@ interface RoleSectionListProps {
   domains: SectionDomains;
 }
 
-// One tab's body: where it applies, then one bordered list led by its bulk row.
+// One tab's body: where it applies, then its rows straight on the dialog, led by the bulk row.
 export const RoleSectionList = ({ section, line, domains }: RoleSectionListProps) => (
-  <div className="space-y-3">
+  <div className="space-y-3 pb-6">
     <SettingsHint>{line}</SettingsHint>
-    {section.area === PermissionArea.Workspace && (
-      <ul className="overflow-hidden rounded-md border border-input">
-        <RoleLockedActionsRow />
-      </ul>
-    )}
-    <ul className="@container divide-y divide-border overflow-hidden rounded-md border border-input">
+    <ul className="@container -mx-6 divide-y divide-border border-y border-border">
+      {section.area === PermissionArea.Workspace && <RoleLockedActionsRow />}
       {domains.areas.length > 0 && <RoleBulkRow label={section.bulk} areas={domains.areas} />}
       {domains.abilities.map((ability) => (
         <RoleAbilityRow key={ability.value} ability={ability} />

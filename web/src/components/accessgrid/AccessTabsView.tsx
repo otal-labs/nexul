@@ -33,22 +33,23 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
 
   return (
     <>
-      <PageHeader className="mb-6" crumbs={[crumb]} title="Access" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
+      <PageHeader className="mb-6 shrink-0" crumbs={[crumb]} title="Access" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
       <PageTabs
         label="Access"
+        className="min-h-0 flex-1"
         tabs={[
           { value: "projects", label: "Projects" },
           { value: "roles", label: "Roles", hidden: !canWriteRoles },
           { value: "channels", label: "Public channels", hidden: !owner },
         ]}
       >
-        <PageTabsContent value="projects">
+        <PageTabsContent value="projects" className="flex min-h-0 flex-col">
           <AccessProjectsTab grid={grid} />
         </PageTabsContent>
-        <PageTabsContent value="roles">
+        <PageTabsContent value="roles" className="flex min-h-0 flex-col">
           <RoleSettingsSection />
         </PageTabsContent>
-        <PageTabsContent value="channels">
+        <PageTabsContent value="channels" className="flex min-h-0 flex-col">
           <AccessChannelsTab grid={grid} />
         </PageTabsContent>
       </PageTabs>

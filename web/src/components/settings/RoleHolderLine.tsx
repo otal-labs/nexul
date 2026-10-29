@@ -11,15 +11,15 @@ const holderText = (holders: TeamPerson[]): string => {
   if (holders.length === 0) return "Nobody holds this role yet.";
   const names = holders.map(personName);
   if (names.length > 2) return `Held by ${names.slice(0, 2).join(", ")} and ${names.length - 2} more. Saving changes what they can do.`;
-  if (names.length === 2) return `Held by ${names.join(" and ")}. Saving changes what they both can do.`;
+  if (names.length === 2) return `Held by ${names.join(" and ")}. Saving changes what they can do.`;
   return `Held by ${names[0]}. Saving changes what they can do.`;
 };
 
 // Who a save reaches, under the title of an edit.
 export const RoleHolderLine = ({ holders }: RoleHolderLineProps) => (
-  <DialogDescription className="flex items-center gap-2">
+  <DialogDescription className="flex items-start gap-2">
     {holders.length > 0 && (
-      <span className="flex shrink-0 -space-x-1.5">
+      <span className="flex h-5 shrink-0 items-center -space-x-1.5">
         {holders.slice(0, 4).map((person) => (
           <PersonAvatar
             key={person.id}
@@ -31,6 +31,6 @@ export const RoleHolderLine = ({ holders }: RoleHolderLineProps) => (
         ))}
       </span>
     )}
-    <span className="min-w-0">{holderText(holders)}</span>
+    <span className="min-w-0 leading-5 text-pretty">{holderText(holders)}</span>
   </DialogDescription>
 );

@@ -128,6 +128,8 @@
   --shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
   --shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
+  /* The shade a sticky grid column casts on what scrolls under it, at its edge. */
+  --edge-shade: oklch(0.2 0.02 265 / 0.1);
 
   /* The frosted panel every page floats in; derived from card so a palette's panels follow it. */
   --panel: var(--card);
@@ -183,6 +185,7 @@
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
   --shadow-elevated: 0 4px 8px oklch(0 0 0 / 0.4), 0 16px 36px oklch(0 0 0 / 0.45);
   --shadow-overlay: 0 24px 64px oklch(0 0 0 / 0.6);
+  --edge-shade: oklch(0 0 0 / 0.35);
 
   --panel: color-mix(in oklab, var(--card) 60%, var(--background));
   --panel-ring: oklch(1 0 0 / 0.07);
@@ -1749,4 +1752,82 @@ button.mention-chip:hover {
   --lk-control-active-bg: var(--muted);
   --lk-font-family: var(--font-sans);
   --lk-border-radius: var(--radius-md);
+}
+
+/* The grid's sticky name column shades its edge once scrolled sideways; a gradient even along each cell joins up across rows. */
+@utility grid-edge {
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 100%;
+    width: 10px;
+    pointer-events: none;
+    background: linear-gradient(to right, var(--edge-shade), transparent);
+    opacity: 0;
+    animation: grid-edge linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 16px;
+  }
+}
+@keyframes grid-edge {
+  to {
+    opacity: 1;
+  }
+}
+
+/* The pinned column on the right casts its edge while columns lie under it, until the grid is scrolled to its end. */
+@utility grid-edge-end {
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    right: 100%;
+    width: 10px;
+    pointer-events: none;
+    background: linear-gradient(to left, var(--edge-shade), transparent);
+    opacity: 0;
+    animation: scroll-end-fade linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: calc(100% - 16px) 100%;
+  }
+}
+
+/* The grid's last column fades what passes under it while columns lie past the right edge, and goes at the end. */
+@utility grid-fade-end {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to left, var(--card), transparent);
+    opacity: 0;
+    animation: scroll-end-fade linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: calc(100% - 16px) 100%;
+  }
+}
+
+/* A scroller's bottom fades while rows lie past it; a scroller that fits has no timeline, so the fade stays hidden. */
+@utility scroll-end-fade {
+  opacity: 0;
+  animation: scroll-end-fade linear both;
+  animation-timeline: scroll(nearest block);
+  animation-range: calc(100% - 24px) 100%;
+}
+@keyframes scroll-end-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grid-edge.grid-edge::after,
+  .grid-edge-end.grid-edge-end::after,
+  .grid-fade-end.grid-fade-end::after,
+  .scroll-end-fade.scroll-end-fade {
+    animation-duration: auto !important;
+  }
 }

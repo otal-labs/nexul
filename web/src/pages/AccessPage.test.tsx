@@ -81,13 +81,14 @@ describe("AccessPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Who's in each project" })).toBeInTheDocument();
     expect(screen.getByText("2 projects · 2 roles")).toBeInTheDocument();
-    expect(screen.getByText("Owners only")).toBeInTheDocument();
     expect(screen.getByText("1 project lists nobody yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Client in Marketing site" }));
     await user.click(screen.getByRole("checkbox", { name: "Client in backend" }));
     expect(screen.getByText("Every project lists someone")).toBeInTheDocument();
-    expect(screen.getByText("Hidden from 1 role")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Client in Marketing site" })).toHaveAttribute("data-changed");
+    expect(screen.getByRole("checkbox", { name: "Client in backend" })).toHaveAttribute("data-changed");
+    expect(screen.getByRole("checkbox", { name: "Developer in backend" })).not.toHaveAttribute("data-changed");
 
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
 
@@ -173,6 +174,10 @@ describe("AccessPage", () => {
     expect(screen.getByText("Set up")).toBeInTheDocument();
     expect(screen.getByText(/by alice, just now/)).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Client in Storefront" }));
+    await user.click(screen.getByRole("checkbox", { name: "Client in Marketing site" }));
+    expect(screen.getByText("2 changes")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Client in Marketing site" }));
+    expect(screen.getByText("1 change")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/workspaces/ws-1/access", { projects: [{ project_id: "p-sto", role_ids: ["r-dev", "r-client"], user_ids: [] }] });

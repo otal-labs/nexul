@@ -87,6 +87,7 @@ in the three token files; this table holds the roles.
 | `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
 | `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 7% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
+| `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
@@ -132,9 +133,9 @@ class is drift.
 |---|---|---|---|
 | Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
-| Selection | the current row's tint (`brand` at 12%, 16% in dark), selected rows, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
+| Selection | the current row's tint (`brand` at 12%, 16% in dark), selected rows, the chosen access level, an unsaved Access grid cell, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
 | Your own messages | the chat bubble | | the chat bubble |
-| Checked controls | checkbox, switch | | the "Only mine" switch |
+| Checked controls | checkbox, switch (not the Access grids' cells, which are ink; see Access grid) | | the "Only mine" switch |
 | Progress | progress fills, the loader's dot | | pull to refresh |
 | Prose links | `brand` text | ink text with a `brand` underline (see [Docs pages](#docs-pages)) | |
 
@@ -1051,19 +1052,51 @@ yet", and an outline "Deploy this repository" with a rocket. No banner, no
 dismiss; the row goes once a service builds from it.
 
 Permission rows. Wherever access is set (a role, an automation's scopes) the
-domains sit in one bordered list (`rounded-md border border-input`, hairline dividers), led by an
-"Every domain" or "Every area" row on a `bg-muted/40` strip that sets them
-all and selects no rung once the rows differ. Each domain row is the name on
-the left, its extra verbs (Run, Clone, Thread) as small outline toggles, then
-the level as a segmented strip of None, Read, Write, Delete where every rung
-up to the chosen one fills, so it reads as "this much access". The role
-editor (Role dialog, below) puts its lists on one tab per catalog area, each
-led by its own bulk row, and sets the extra verbs as checkboxes on a second
-line under the area's name, disabled until it holds Read (See on plays, whose
-first rung is named so), and leads each tab with its yes-or-no permissions as
-switch rows (the name over a muted line), which the bulk row never sets. A
-viewer who can't change a list sees it disabled. `PermissionLevels` and
-`PermissionLevelControl` in `web/src/components/access/` are the reference.
+domains sit in one list led by an "Every domain" or "Every area" row on a
+`bg-muted/40` strip that sets them all and selects no rung once the rows
+differ. Each domain row is the name on the left, its extra verbs (Run, Clone,
+Thread) as small outline toggles, then the level as a segmented strip of None,
+Read, Write, Delete in four fixed 56px slots, None first, so each level holds
+one x on every row and a shorter ladder leaves its last slots empty. Every rung
+below the chosen one takes `brand` at 10% with `foreground` text, so it reads
+as "this much access", and the chosen rung is the one selection state in both
+modes: a 1px `brand` hairline, the 10% wash and a `brand` label. The role
+editor (Role dialog, below) puts its lists on one tab per catalog area, its
+rows straight on the dialog with hairlines (no box), each tab led by its own
+bulk row, and sets the extra verbs as checkboxes on a second line under the
+area's name, hung on a hairline rail and disabled until it holds Read (See on
+plays, whose first rung is named so), and leads each tab with its yes-or-no
+permissions as switch rows (the name over a muted line), which the bulk row
+never sets. A viewer who can't change a list sees it disabled.
+`PermissionLevels` and `PermissionLevelControl` in `web/src/components/access/`
+are the reference.
+
+Access grid. The Projects and Public channels tabs of the Access page are one
+grid each, rows by roles, and the card fills the panel's height: the grid is
+the one scroller, both ways, with a stable scrollbar gutter so nothing moves
+when rows start to overflow, and it snaps sideways a whole role column at a
+time. Its head row is sticky on top and its name column (240px, 200px below
+1024px, the name truncating inside it) sticky on the left, casting its edge
+(`edge-shade`) once scrolled sideways; the save strip sits under it, always in
+view. A role column is 72px: the name at 12px medium in up to three lines, cut
+at a whole word with its ellipsis when longer (`headName`), over its holder
+count in mono ("nobody" at none). Spare width goes to a filler between the role
+columns and the right edge, so the ticks start beside the names and People
+stays flush right. Rows are one 44px line, the project's 24px mark and name.
+The whole 72x44 cell is the box: on Projects a tick is a `foreground` check on
+a `foreground` 6% tint inset 2px, and an empty cell is unticked; on Public
+channels, where every member sees a channel, the exception is marked instead,
+a muted eye-off on a role the channel is hidden from. The ticks are ink, not
+the accent: a grid of them would put the ember on most of the page, so the
+ember rings an unsaved cell's tint (2px, inset) and the footer counts them
+("3 changes"); keyboard focus rings the cell's own edge, outside the tint. The
+lead row on the muted strip sets a role on every row shown and says how many
+have it, in every state ("9/15", "15/15", "0/15"). People sits in a column pinned right, casting its edge while
+columns lie under it, its add button showing on the row's hover or focus; a
+grid with nothing pinned ends in a 16px column that fades what passes under
+it. The bottom of every scroller fades over 24px while rows lie past it.
+`AccessGridTable` and `AccessGridCell` in `web/src/components/accessgrid/` are
+the reference.
 
 Settings card. A card scans in three levels of type, set once in the shared
 components and never per page. The title (`SettingsCard`, the same 16px
@@ -1105,18 +1138,16 @@ device first, a ghost Sign out on each other row), Personal access tokens, then
 Connect a device as two rows, Phone app and Desktop app, the QR opening under
 its row only once a code is generated.
 
-Role rows. The Roles tab of the Access page lists one row per role: a chevron and
-the name, the people who hold it as overlapping 24px avatars with a mono
-count, and one `…` menu (Edit, Duplicate, Clone to workspace, Delete). Under
-the name, the levels as a tally, highest first, each a `LevelGlyph` (the
-level strip in miniature, a shorter ladder keeping the three-rung width so a
-column of them lines up), the level and a mono count, then a muted "No access
-· Events, Audit log, Accounts +2". The chevron opens every area read-only
-below it (`RoleAccessDetail`, its Workspace and In projects groups, two
-columns from a 36rem card) as a disclosure. The Owner row has no
-menu and says what it is in one line. Deleting a role someone holds asks
-first, naming how many people lose it. `RoleRow` and `RoleAccessSummary`
-in `web/src/components/settings/` are the reference.
+Role matrix. The Roles tab of the Access page compares every role at once,
+read-only, in the access grid's frame: one column per role, the Owner first
+with a crown, each head the name (cut like the grids' heads, three 13-character
+lines) over the holder count in mono, beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
+has none); one row per area, under a muted band for each of the editor's
+sections, Instance, Workspace and In projects. A cell is the level as a
+`LevelGlyph` and its word, muted at None, with a mono "+1" on the word's
+baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted No. Deleting a role
+someone holds asks first, naming how many people lose it. `RoleMatrix` and
+`RoleMatrixHead` in `web/src/components/settings/` are the reference.
 
 People in this project. A project's Settings → General card for whoever
 manages its access: a Roles microheader over the roles it lets in, People over
@@ -1171,7 +1202,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium and the
-role's tally trailing (two levels at most, as in Role rows). Under a "Can't
+role's tally trailing (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in
@@ -1184,14 +1215,15 @@ a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
 
 Role dialog. New role and a role's Edit open one dialog, 40rem wide and
 `min(52rem, 100dvh - 4rem)` tall at every width: a header with the title and,
-on an edit, the holders as overlapping 20px avatars over a muted line of who a
-save reaches; the Name (and on a new role a 12rem Start from beside it from a
+on an edit, the holders as overlapping 20px avatars beside the first line of a
+muted note of who a save reaches; the Name (and on a new role a 12rem Start from beside it from a
 32rem band, under it below that); then one browser-style tab per catalog area,
 Instance, Workspace and In projects, each with a mono "3/12" of the areas and
 switches it allows and the person dialog's `foreground` dot while it holds changes; then
 the open tab's list, the only part that scrolls; and a footer whose muted note
-reads "No changes yet", "Name it to create it" or a dot and "Unsaved changes",
-with Cancel and Save or Create role. It opens on Instance, the first tab, and
+reads "No changes yet", "Name it to create it" or how many changes it holds ("3 changes": each area whose level moved, each extra or switch
+flipped, each welcome step, the name, the description), with Cancel and Save
+or Create role. It opens on Instance, the first tab, and
 focuses no field. Leaving with changes asks "Discard changes?".
 `RoleEditorDialog` and `RoleSectionTabs` in `web/src/components/settings/`
 are the reference.
@@ -1552,7 +1584,9 @@ The web app's pattern decisions, each with what it was picked over.
 | Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
-| A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
+| The Roles tab is a matrix of every area by every role (2026-10-29) | Replaces one row per role with a tally of levels ("Delete 16 · Write 6 · Read 3 · None 10") and a chevron for the areas: the counts changed which levels they listed from row to row and never named an area, and one role opened at a time, so two roles could not be compared. The owner picked the matrix over the tally kept in four fixed columns, as two lines or one, from screenshots on the worst-case workspace |
+| Access grid ticks are ink and the ember marks an unsaved cell (2026-10-29) | An ember box per tick put 150 ember marks on a worst-case Public channels tab and buried its few exceptions, and an ember ring on an ember box could not show a change. Picked from screenshots over a hairline box and a bare check: an ink check on a 6% cell tint. Public channels marks the hidden role (eye-off) and leaves a seen cell empty |
+| The Access grids fill the panel and scroll in one box (2026-10-29) | The card used to scroll inside the page, two scrollbars, the save strip below the fold and the names scrolling away with the boxes. A sticky head inside a box that scrolls sideways sticks to that box, so the box became the only scroller rather than syncing a separate head; it is paint-contained, because its sticky cells otherwise widened the page by 210px at 768 |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |
 | Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a title flowing into its rows keeps the unit whole and saves the rule |

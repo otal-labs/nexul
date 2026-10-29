@@ -16,7 +16,7 @@ export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
   const firstRung = readName(domain.domain);
 
   return (
-    <li className="px-3 py-2">
+    <li className="px-6 py-2">
       <div className="flex min-h-7 items-center gap-3">
         <span className={cn("min-w-0 flex-1 truncate text-sm", level === 0 && "text-muted-foreground")} title={domain.name}>
           {domain.name}
@@ -30,7 +30,7 @@ export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
         />
       </div>
       {domain.extras.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 pb-0.5">
+        <div className="mt-1.5 ml-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l border-border pb-0.5 pl-4">
           {domain.extras.map((extra) => (
             <label
               key={extra.value}
