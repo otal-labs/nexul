@@ -12,7 +12,7 @@ import {
   type Translate,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
@@ -85,14 +85,18 @@ export const KanbanBoard = ({
   // A page scrollbar inside the board narrows its tracks; the chrome above is told the same width, so both end on one edge.
   const gutterRef = useRef<number | undefined>(undefined);
   const [overflowing, setOverflowing] = useState(false);
+  const [moreRight, setMoreRight] = useState(false);
+  const [gutter, setGutter] = useState(0);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const report = () => {
       const gutter = el.offsetWidth - el.clientWidth;
       setOverflowing(el.scrollWidth > el.clientWidth + 1);
+      setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
       if (gutter === gutterRef.current) return;
       gutterRef.current = gutter;
+      setGutter(gutter);
       onGutter?.(gutter);
     };
     report();
@@ -200,10 +204,17 @@ export const KanbanBoard = ({
       >
         {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
         {/* The frame reaches into the page's right padding (Container's px-6) and the scrollbar lives there, so opening a lane never narrows the columns. */}
-        <div className="@container mx-auto mt-3 flex min-h-0 w-full flex-1 flex-col" style={{ maxWidth }}>
+        <div
+          className="relative mx-auto mt-3 flex min-h-0 w-full flex-1 flex-col"
+          style={{ maxWidth, "--board-gutter": `${gutter}px` } as CSSProperties}
+        >
           {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
           <div
             ref={scrollRef}
+            onScroll={() => {
+              const el = scrollRef.current;
+              if (el) setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+            }}
             data-card-drag={activeTicket ? "" : undefined}
             className="group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]"
           >
@@ -216,6 +227,13 @@ export const KanbanBoard = ({
               </div>
             </div>
           </div>
+          {/* Pinned to the scroll box's right edge, so a cut card fades where it is cut rather than at the grid's far end. */}
+          {moreRight && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-[var(--board-gutter,0px)] w-3 bg-gradient-to-l from-[var(--panel)] to-transparent"
+            />
+          )}
         </div>
         {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
         {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}
