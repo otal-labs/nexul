@@ -10,4 +10,9 @@ describe("ContainerStatusBadge", () => {
     const icon = screen.getByText(ContainerStatus.Running).querySelector("svg");
     expect(icon).toHaveClass("animate-spin", "motion-reduce:animate-none");
   });
+
+  it("shows a status the app does not know as its word instead of failing the page", () => {
+    render(<ContainerStatusBadge status={"failed" as ContainerStatus} />);
+    expect(screen.getByText("failed")).toBeInTheDocument();
+  });
 });
