@@ -12,7 +12,7 @@ export const ProfileStep = () => {
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {me && <ProfileForm user={me.user} submitLabel="Continue" submitClassName="mt-8 ml-auto flex" onSaved={next} />}
+      {me && <ProfileForm user={me.user} submitLabel="Continue" onSaved={next} />}
     </>
   );
 };

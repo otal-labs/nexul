@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
+import { InWizardBar } from "@/components/wizard/InWizardBar";
 import { useDeleteDnsRecord } from "@/hooks/DnsHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { DnsRecord, DnsSetupResult } from "@/models/DNS";
@@ -36,9 +37,11 @@ export const DnsSetupDone = ({ result, onRecordDeleted }: DnsSetupDoneProps) => 
         <p className="mt-1 font-mono text-xs text-muted-foreground">{result.detail}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button className="w-full sm:w-auto" onClick={() => navigate("/")}>
-          Continue to Nexul
-        </Button>
+        <InWizardBar>
+          <Button className="w-full sm:w-auto" onClick={() => navigate("/")}>
+            Continue to Nexul
+          </Button>
+        </InWizardBar>
         {record && (
           <ActionButton
             permission="dns:delete"

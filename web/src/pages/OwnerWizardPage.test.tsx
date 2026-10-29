@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,19 +35,37 @@ vi.mock("@/hooks/ConnectorsHooks", () => ({
 }));
 
 // Step components are exercised in full by their own test files; this file only cares about the stepper mechanics OwnerWizardPage itself owns: sequencing, back navigation, and the finish handoff to the app home.
-vi.mock("@/components/auth/IntroduceYourselfStep", () => ({
-  IntroduceYourselfStep: ({ onContinue }: { onContinue: () => void }) => (
-    <button onClick={onContinue}>Step1 continue</button>
-  ),
-}));
+vi.mock("@/components/auth/IntroduceYourselfStep", async () => {
+  const { useOwnerWizardBack } = await import("@/hooks/useOwnerWizardBack");
+  return {
+    IntroduceYourselfStep: ({ onContinue }: { onContinue: () => void }) => {
+      const back = useOwnerWizardBack();
+      return (
+        <>
+          <button onClick={back}>Back</button>
+          <button onClick={onContinue}>Step1 continue</button>
+        </>
+      );
+    },
+  };
+});
 
 const workspaceSetupFixture = { workspaceId: "workspace-default", workspaceName: "Acme" };
 
-vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
-  SetupWorkspaceStep: ({ onContinue }: { onContinue: (data: typeof workspaceSetupFixture) => Promise<void> }) => (
-    <button onClick={() => void onContinue(workspaceSetupFixture)}>Step2 continue</button>
-  ),
-}));
+vi.mock("@/components/auth/SetupWorkspaceStep", async () => {
+  const { useOwnerWizardBack } = await import("@/hooks/useOwnerWizardBack");
+  return {
+    SetupWorkspaceStep: ({ onContinue }: { onContinue: (data: typeof workspaceSetupFixture) => Promise<void> }) => {
+      const back = useOwnerWizardBack();
+      return (
+        <>
+          <button onClick={back}>Back</button>
+          <button onClick={() => void onContinue(workspaceSetupFixture)}>Step2 continue</button>
+        </>
+      );
+    },
+  };
+});
 
 vi.mock("@/hooks/AuthHooks", () => ({
   useFetchSettings: mocks.useFetchSettings,
@@ -113,7 +131,7 @@ describe("OwnerWizardPage", () => {
 
     expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     expect(screen.getByText(/cloudflare is optional/i)).toBeInTheDocument();
-    expect(screen.getByRole("status", { name: "Step 3 of 3" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Owner setup steps" })).getByText("Step 3 of 3")).toBeInTheDocument();
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
     // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });

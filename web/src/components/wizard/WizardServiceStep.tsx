@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -75,6 +76,8 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
     error: attachError,
   } = useFetchStack(attachStackId ?? undefined);
   const deployTo = useDeployToAnswer(attachStack?.machine);
+
+  const formId = useId();
 
   const form = useForm<ServiceFormData>({
     defaultValues: { name: name || candidate?.name || "", machine: "" },
@@ -180,12 +183,12 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       {candidatePicker}
       <FormInput control={form.control} name="name" label="Name" placeholder="e.g. web" />
       <MachinePicker control={form.control} name="machine" />
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission={writes} projectId={projectId} verb={envStepFollows ? "create stacks" : "create stacks and deploy"} type="submit" loading={createStack.isPending}>
+        <ActionButton permission={writes} projectId={projectId} verb={envStepFollows ? "create stacks" : "create stacks and deploy"} type="submit" form={formId} loading={createStack.isPending}>
           {envStepFollows ? "Create" : "Create & deploy"}
         </ActionButton>
       </WizardFooter>

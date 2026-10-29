@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -12,6 +12,7 @@ import { MachinePicker } from "@/components/MachinePicker";
 import { SettingsHint } from "@/components/settings/SettingsHint";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
+import { InWizardBar } from "@/components/wizard/InWizardBar";
 import { useCreateTunnel, useFetchDnsZones, useProvisionTunnelAgent } from "@/hooks/DnsHooks";
 import { useFetchDeployTargets } from "@/hooks/MachineHooks";
 import { soleItem, zoneAccounts, type CloudflareAccount, type TunnelDeployment } from "@/models/DNS";
@@ -40,6 +41,7 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
   const createTunnel = useCreateTunnel();
   const provisionAgent = useProvisionTunnelAgent();
   const [pending, setPending] = useState<TunnelDeployment | null>(null);
+  const formId = useId();
   const form = useForm<TunnelDeployFormData>({
     defaultValues: {
       tunnel_name: "instance",
@@ -76,7 +78,7 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
     <>
       {pending && <TunnelDeployWatch deployment={pending} onConnected={onConnected} onRetry={() => setPending(null)} />}
       {!pending && (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <FormInput control={form.control} name="tunnel_name" label="Tunnel name" placeholder="instance" />
           {accounts.length > 1 && (
             <div className="space-y-1.5">
@@ -99,9 +101,11 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
             <MachinePicker control={form.control} name="target" />
             <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
           </AdvancedFields>
-          <Button type="submit" className="w-full sm:w-auto" loading={busy}>
-            {busy ? "Deploying tunnel…" : "Deploy tunnel"}
-          </Button>
+          <InWizardBar>
+            <Button type="submit" form={formId} className="w-full sm:w-auto" loading={busy}>
+              {busy ? "Deploying tunnel…" : "Deploy tunnel"}
+            </Button>
+          </InWizardBar>
         </form>
       )}
     </>

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
@@ -37,6 +37,8 @@ const report = {
   networks: [],
 };
 
+const LocationProbe = () => <p data-testid="location">{useLocation().pathname}</p>;
+
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -70,6 +72,7 @@ describe("ProjectWizardImportPage", () => {
     const user = userEvent.setup();
 
     await pickOption(user, "Machine", "prod");
+    await pickOption(user, "Project", "Backend");
     await user.click(screen.getByRole("button", { name: /discover/i }));
 
     expect(await screen.findByText("myapp")).toBeInTheDocument();
@@ -77,8 +80,7 @@ describe("ProjectWizardImportPage", () => {
     expect(screen.getByText("redis")).toBeInTheDocument();
     expect(screen.getAllByRole("checkbox").every((box) => box.getAttribute("data-state") === "checked")).toBe(true);
 
-    await pickOption(user, "Project", "Backend");
-    await user.click(screen.getByRole("button", { name: /^import$/i }));
+    await user.click(screen.getByRole("button", { name: /^import \d+$/i }));
 
     await screen.findByText(/imported 1 stack/i);
     expect(mocks.post).toHaveBeenCalledWith("/api/machines/m-1/import", {
@@ -128,6 +130,7 @@ describe("ProjectWizardImportPage", () => {
     const user = userEvent.setup();
 
     await pickOption(user, "Machine", "prod");
+    await pickOption(user, "Project", "Backend");
     await user.click(screen.getByRole("button", { name: /discover/i }));
 
     expect(await screen.findByText("cloudflared-local")).toBeInTheDocument();
@@ -171,10 +174,10 @@ describe("ProjectWizardImportPage", () => {
     const user = userEvent.setup();
 
     await pickOption(user, "Machine", "prod");
+    await pickOption(user, "Project", "Backend");
     await user.click(screen.getByRole("button", { name: /discover/i }));
     await screen.findByText("cloudflared-local");
-    await pickOption(user, "Project", "Backend");
-    await user.click(screen.getByRole("button", { name: /^import$/i }));
+    await user.click(screen.getByRole("button", { name: /^import \d+$/i }));
 
     await screen.findByText(/imported 1 stack/i);
     expect(mocks.post).toHaveBeenCalledWith(
@@ -187,14 +190,34 @@ describe("ProjectWizardImportPage", () => {
   });
 
   it.each([
-    { who: "someone who can add machines", addMachines: true },
-    { who: "someone who can't", addMachines: false },
-  ])("offers the Runners crumb only to $who", async ({ addMachines }) => {
+    { who: "someone who can add machines", addMachines: true, lands: "/acme/runners" },
+    { who: "someone who can't", addMachines: false, lands: "/acme" },
+  ])("leaves through Exit to Runners only for $who", async ({ addMachines, lands }) => {
     access.addMachines = addMachines;
-    renderPage();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/acme/wizard/project/import"]}>
+          <Routes>
+            <Route path="/acme/wizard/project/import" element={<ProjectWizardImportPage />} />
+            <Route path="*" element={<LocationProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
 
-    await screen.findByRole("combobox", { name: "Machine" });
-    expect(screen.queryByRole("link", { name: "Runners" }) !== null).toBe(addMachines);
+    await user.click(await screen.findByRole("button", { name: "Exit" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(new RegExp(`^${lands}/?$`));
+  });
+
+  it("keeps Discover off until both a machine and a project are chosen", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await pickOption(user, "Machine", "prod");
+    expect(screen.getByRole("button", { name: /discover/i })).toBeDisabled();
+    await pickOption(user, "Project", "Backend");
+    expect(screen.getByRole("button", { name: /discover/i })).toBeEnabled();
   });
 
   it("preselects the machine from ?machine=", async () => {
@@ -218,10 +241,10 @@ describe("ProjectWizardImportPage", () => {
     const user = userEvent.setup();
 
     await pickOption(user, "Machine", "prod");
+    await pickOption(user, "Project", "Backend");
     await user.click(screen.getByRole("button", { name: /discover/i }));
     await screen.findByText("myapp");
-    await pickOption(user, "Project", "Backend");
-    await user.click(screen.getByRole("button", { name: /^import$/i }));
+    await user.click(screen.getByRole("button", { name: /^import \d+$/i }));
 
     await screen.findByText(/imported 1 stack/i);
     expect(screen.queryByRole("link", { name: /view on the canvas/i })).not.toBeInTheDocument();

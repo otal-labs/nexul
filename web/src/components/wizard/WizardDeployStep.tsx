@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { wizardOptionClass } from "@/components/wizard/WizardCardList";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { scanSummary } from "@/models/Repository";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -17,10 +18,7 @@ interface DeployChoiceRowProps {
 }
 
 const DeployChoiceRow = ({ value, label, detail, mono = false }: DeployChoiceRowProps) => (
-  <label
-    htmlFor={`deploy-${value}`}
-    className="-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40"
-  >
+  <label htmlFor={`deploy-${value}`} className={wizardOptionClass}>
     <RadioGroupItem id={`deploy-${value}`} value={value} className="mt-0.5" />
     <span className="min-w-0">
       <span className="block text-sm font-medium">{label}</span>
@@ -50,7 +48,7 @@ export const WizardDeployStep = ({ onNow, onLater, onBack }: WizardDeployStepPro
         aria-label="Deploy it now?"
         value={choice}
         onValueChange={(value) => setChoice(value as DeployChoice)}
-        className="gap-0 divide-y divide-border border-y border-border"
+        className="gap-2"
       >
         <DeployChoiceRow value="now" label="Deploy now" detail={found} mono />
         <DeployChoiceRow value="later" label="Later" detail="Finish setup now and deploy from Settings → Services." />

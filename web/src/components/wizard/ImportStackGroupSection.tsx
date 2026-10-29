@@ -10,8 +10,8 @@ interface ImportStackGroupSectionProps {
 // One compose project's containers (spec §8: "grouped by compose project label"); adopted as one unmanaged
 // stack, slug = the project name.
 export const ImportStackGroupSection = ({ group, selected, onToggleContainer }: ImportStackGroupSectionProps) => (
-  <div className="space-y-1">
-    <p className="font-mono text-sm font-medium">{group.project}</p>
+  <div className="pb-2">
+    <p className="px-4 pt-3 pb-1 font-mono text-sm font-medium">{group.project}</p>
     {group.containers.map((container) => (
       <ImportContainerRow
         key={container.name}

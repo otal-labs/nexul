@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -16,6 +17,7 @@ interface WizardProjectStepProps {
 export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) => {
   const createProject = useCreateProject();
   const setProjectId = useProjectWizardStore((s) => s.setProjectId);
+  const formId = useId();
   const form = useForm<SaveProjectFormData>({
     defaultValues: { name: "", prefix: "", icon: "" },
     resolver: zodResolver(SaveProjectFormSchema),
@@ -32,12 +34,13 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <FormInput
         control={form.control}
         name="name"
         label="Project name"
         placeholder="e.g. Backend platform"
+        className="max-w-80"
         autoFocus
       />
       <FormInput
@@ -45,11 +48,12 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
         name="prefix"
         label="Prefix"
         placeholder="e.g. BE"
+        className="max-w-80"
         maxLength={5}
         transform={(value) => value.toUpperCase()}
       />
       <WizardFooter onBack={onBack}>
-        <ActionButton permission="projects:create" type="submit" loading={form.formState.isSubmitting}>
+        <ActionButton permission="projects:create" type="submit" form={formId} loading={form.formState.isSubmitting}>
           Continue
         </ActionButton>
       </WizardFooter>

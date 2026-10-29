@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 
@@ -7,6 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InstanceHostNotice } from "@/components/dns/InstanceHostNotice";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
+import { InWizardBar } from "@/components/wizard/InWizardBar";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useCreateInstanceRecord, useFetchDnsZones } from "@/hooks/DnsHooks";
 import {
@@ -29,6 +31,7 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
   const createRecord = useCreateInstanceRecord();
   const { data: settings } = useFetchSettings();
   const soleZone = soleItem(zones);
+  const formId = useId();
   const form = useForm<InstanceRecordFormData>({
     defaultValues: { zone_id: soleZone?.id ?? "", zone: soleZone?.name ?? "", type: "A", target: "" },
     resolver: zodResolver(InstanceRecordFormSchema),
@@ -54,7 +57,7 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <FormSelect
           control={form.control}
@@ -78,9 +81,11 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
         placeholder="203.0.113.10"
       />
       <InstanceHostNotice zone={zone} target={target} />
-      <Button type="submit" className="w-full sm:w-auto" loading={createRecord.isPending} disabled={blocked}>
-        Create instance record
-      </Button>
+      <InWizardBar>
+        <Button type="submit" form={formId} className="w-full sm:w-auto" loading={createRecord.isPending} disabled={blocked}>
+          Create instance record
+        </Button>
+      </InWizardBar>
     </form>
   );
 };

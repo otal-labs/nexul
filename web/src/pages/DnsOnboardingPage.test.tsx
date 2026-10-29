@@ -76,7 +76,7 @@ describe("DnsOnboardingPage", () => {
   it("renders the wizard with a quiet skip link", async () => {
     mockConnected();
     renderPage();
-    expect(await screen.findByRole("heading", { name: /set up dns/i })).toBeInTheDocument();
+    expect(await screen.findByRole("navigation", { name: "DNS setup steps" })).toBeInTheDocument();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /skip for now/i }));
     expect(await screen.findByText("home-page")).toBeInTheDocument();

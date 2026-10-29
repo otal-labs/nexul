@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import { MachinePicker } from "@/components/MachinePicker";
 import { InstanceHostNotice } from "@/components/dns/InstanceHostNotice";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
+import { InWizardBar } from "@/components/wizard/InWizardBar";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useCreateInstanceRecord, useFetchDnsZones, useProvisionReverseProxy } from "@/hooks/DnsHooks";
 import { useFetchDeployTargets } from "@/hooks/MachineHooks";
@@ -40,6 +42,7 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
   const createInstanceRecord = useCreateInstanceRecord();
   const { data: settings } = useFetchSettings();
   const soleZone = soleItem(zones);
+  const formId = useId();
   const form = useForm<ProxyEntryPathFormData>({
     defaultValues: {
       zone_id: soleZone?.id ?? "",
@@ -82,7 +85,7 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <FormSelect
           control={form.control}
@@ -113,9 +116,11 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
         <MachinePicker control={form.control} name="target" />
         <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
       </AdvancedFields>
-      <Button type="submit" className="w-full sm:w-auto" loading={busy} disabled={blocked}>
-        {busy ? "Setting up proxy…" : "Set up reverse proxy"}
-      </Button>
+      <InWizardBar>
+        <Button type="submit" form={formId} className="w-full sm:w-auto" loading={busy} disabled={blocked}>
+          {busy ? "Setting up proxy…" : "Set up reverse proxy"}
+        </Button>
+      </InWizardBar>
     </form>
   );
 };
