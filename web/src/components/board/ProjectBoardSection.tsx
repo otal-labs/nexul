@@ -132,7 +132,7 @@ export const ProjectBoardSection = ({
       {isLoading && <LoadingDisplay label="Loading board…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
       {tickets && shownCount === 0 && (
-        <div className="flex flex-col items-center gap-3 py-10">
+        <div className="flex flex-col items-center gap-1 py-8">
           <NoDataDisplay
             message={
               totalCount === 0

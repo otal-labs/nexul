@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
 import { useParams } from "react-router";
 
-import { boardGridTemplate, isFolded } from "@/components/board/boardGrid";
+import { boardGridTemplate, foldedTrailWidth, isFolded } from "@/components/board/boardGrid";
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { DropTargetData } from "@/components/board/dragMove";
@@ -48,7 +48,10 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
       )}
     >
       {/* Pinned under the stage header while its lane scrolls; label and count also stay put against the horizontal scroll. */}
-      <h3 className="sticky top-9 z-10 rounded-md border-b border-border bg-[var(--panel)]">
+      <h3
+        className="sticky top-9 z-10 rounded-md border-b border-border bg-[var(--panel)]"
+        style={{ marginRight: foldedTrailWidth(columns, doneOpen) }}
+      >
         <button
           type="button"
           aria-expanded={!collapsed}
@@ -56,7 +59,7 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
           className="group/lane flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
         >
           {/* Inside the visible strip, so a long name truncates before the progress cluster instead of running under it. */}
-          <span className="sticky left-2 flex min-w-0 max-w-[calc(100cqw-15rem)] flex-1 items-center gap-2">
+          <span className="sticky left-2 flex min-w-0 max-w-[calc(100cqw-15rem)] flex-1 items-baseline gap-2">
             <ChevronDownIcon
               className={cn("size-3.5 shrink-0 self-center text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
@@ -81,7 +84,7 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
             )}
           </span>{" "}
           {/* The lane's own progress, held at the right edge of what the board shows, so it never scrolls away with the last stage. */}
-          <span className="sticky right-5 ml-auto flex w-[200px] shrink-0 items-center justify-end gap-2">
+          <span className="sticky right-5 ml-auto flex w-[200px] shrink-0 items-baseline justify-end gap-2">
             <span className="h-1 w-24 shrink-0 overflow-hidden rounded-full bg-muted max-md:hidden" aria-hidden>
               <span className="block h-full rounded-full bg-success" style={{ width: `${lane.tickets.length === 0 ? 0 : Math.round((doneCount / lane.tickets.length) * 100)}%` }} />
             </span>
