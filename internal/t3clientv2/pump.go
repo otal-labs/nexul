@@ -21,7 +21,7 @@ type source interface {
 const (
 	// noteEvery repeats the standing note, which keeps the callers' silence windows open while the turn waits on T3.
 	noteEvery = 5 * time.Minute
-	// handoffCap is how long a turn whose run is done, or cut by a T3 restart, waits for the work it handed off.
+	// handoffCap is how long a turn whose run is done, or cut by a T3 restart, waits on handed-off work that sends no news.
 	handoffCap = 60 * time.Minute
 	// updatedNote ends a turn whose resubscribe finds T3 Code on another protocol.
 	updatedNote = "T3 Code was updated during this turn; ask again"
@@ -54,8 +54,9 @@ type pump struct {
 	// note is the standing note last shown, due when it is shown again.
 	note string
 	due  time.Time
-	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done or cut.
+	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done or cut; seen is newest then.
 	capAt time.Time
+	seen  int64
 	pills pills
 	// feeds are the hand-offs' own threads by subagent id, each read into inbox by its own goroutine; nil once ended.
 	feeds   map[string]source
@@ -202,19 +203,29 @@ func (p *pump) remind(ctx context.Context, out chan<- harness.Update) bool {
 	return send(ctx, out, harness.Update{Activity: note})
 }
 
-// capped ends the turn done handoffCap after its own run was done or cut, while work it handed off still runs; true once it did.
+// capped ends the turn done once handoffCap passes with no news from the work it handed off after its own run was
+// done or cut; true once it did.
 func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
 	if !p.w.waiting() {
 		return false
 	}
-	if p.capAt.IsZero() {
-		p.capAt = time.Now().Add(handoffCap)
+	if seen := p.newest(); p.capAt.IsZero() || seen != p.seen {
+		p.capAt, p.seen = time.Now().Add(handoffCap), seen
 	}
 	if time.Now().Before(p.capAt) {
 		return false
 	}
 	p.finish(ctx, out, p.w.leave())
 	return true
+}
+
+// newest moves whenever the turn's thread or a hand-off's thread sends news; a resent snapshot leaves it.
+func (p *pump) newest() int64 {
+	sum := p.w.cursor
+	for _, c := range p.pills.order {
+		sum += c.cursor
+	}
+	return sum
 }
 
 // stopped ends the turn interrupted once Stop halted it.

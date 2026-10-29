@@ -301,6 +301,42 @@ func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t 
 	}
 }
 
+func TestPump_HandedOffWorkStillSendingNews_TheCapCountsFromItsLastNews(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		src := newFakeSource(items(
+			event(2, "subagent.updated", handedOff("task-1", "app_owned", "running", nil)),
+			event(3, "run.created", runOf("msg-1", runWaiting)),
+		))
+		child := newFakeSource()
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"),
+			openChild: func(context.Context, string, int64) (source, error) { return child, nil }}
+		out := make(chan harness.Update, 64)
+		go p.run(t.Context(), src, out)
+
+		time.Sleep(50 * time.Minute)
+		child.ch <- items(event(9, "turn-item.updated", map[string]any{"id": "it-1", "type": "command_execution", "status": "running"}))
+		time.Sleep(handoffCap - time.Second)
+		synctest.Wait()
+		for _, u := range collect(out) {
+			require.Nil(t, u.Terminal, "the child's news at 50 minutes keeps the turn open past an hour")
+		}
+
+		src.ch <- items(event(4, "subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"title": "Audit again"})))
+		time.Sleep(handoffCap - time.Second)
+		synctest.Wait()
+		for _, u := range collect(out) {
+			require.Nil(t, u.Terminal, "so does news of the hand-off on the turn's own thread")
+		}
+
+		time.Sleep(time.Second)
+		synctest.Wait()
+		last := collect(out)
+		require.NotEmpty(t, last)
+		assert.Equal(t, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}}, last[len(last)-1],
+			"an hour with no news ends it")
+	})
+}
+
 func TestPump_HandedOffAgentsThread_StreamsIntoItsPillUntilTheTurnEnds(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		running := childRow(nil)
