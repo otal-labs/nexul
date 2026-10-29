@@ -9,11 +9,11 @@ interface CalendarWeekProps {
   byDay: Map<string, DayEntries>;
 }
 
-// The seven days of a week, one row each, with every item the day holds.
+// The seven days of a week, each its heading over every item the day holds.
 export const CalendarWeek = ({ days, byDay }: CalendarWeekProps) => {
   const today = new Date();
   return (
-    <div className="divide-y divide-border border-y border-border">
+    <div className="@container divide-y divide-border border-y border-border">
       {days.map((day) => (
         <WeekDaySection key={dayKey(day)} day={day} entries={entriesOn(byDay, day)} today={sameDay(day, today)} />
       ))}

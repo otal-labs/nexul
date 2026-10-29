@@ -24,7 +24,9 @@ Creating meetings takes **Create meetings** (`calendar:write`). Every role start
 
 ## Reply, change, cancel
 
-Select a meeting to open it beside the calendar. A month cell with more than three entries ends in **N more**, which opens that week. It shows where it takes place, the notes, and who is coming, who declined and who hasn't replied yet.
+In the month, tickets due sit in small boxes above the day's meetings. When a day has more than fits, the count beside its date (such as **+1 due · +3**) says what is hidden and opens that week. In the week, a dot marks a meeting that overlaps another, and **+1** one that runs past midnight.
+
+Select a meeting to open it beside the calendar. It shows where it takes place, who is coming, who declined and who hasn't replied yet, then the notes.
 
 - **Accept** or **Decline** if you're invited. Your reply covers every occurrence of a repeating meeting.
 - **Edit** changes a meeting. Its organiser can change it, and so can anyone holding **Change or cancel anyone's meetings** (`calendar:delete`).

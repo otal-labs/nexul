@@ -14,8 +14,8 @@ export const CalendarPage = () => {
   const workspaceCrumb = useWorkspaceCrumb();
   const { view, days, byDay, error } = useCalendarEntries();
   return (
-    <Container className="space-y-5 py-8">
-      <PageHeader crumbs={[workspaceCrumb]} title="Calendar" actions={<NewMeetingButton />} />
+    <Container className="flex min-h-full flex-col gap-4 py-8">
+      <PageHeader crumbs={[workspaceCrumb]} title="Calendar" actions={<NewMeetingButton />} className="border-b-0 pb-0" />
       <CalendarToolbar />
       {error && <ErrorDisplay error={error} title="Couldn't load the calendar." />}
       {view === "month" && <CalendarMonth days={days} byDay={byDay} />}

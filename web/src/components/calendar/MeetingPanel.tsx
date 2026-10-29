@@ -2,8 +2,8 @@ import { isCancelled, occurrenceTimes } from "@nexul/client-core/calendar";
 
 import { MeetingActions } from "@/components/calendar/MeetingActions";
 import { MeetingFacts } from "@/components/calendar/MeetingFacts";
+import { MeetingNotes } from "@/components/calendar/MeetingNotes";
 import { MeetingPeople } from "@/components/calendar/MeetingPeople";
-import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -15,7 +15,7 @@ interface MeetingPanelProps {
   slot: string;
 }
 
-// The open meeting: its title and time, then where, the notes and the people, with what the viewer can do at the foot.
+// The open meeting: its title and time, then where, the people and the notes, with what the viewer can do at the foot.
 export const MeetingPanel = ({ meetingId, slot }: MeetingPanelProps) => {
   const { data: meeting, error, isPending } = useFetchMeeting(meetingId);
   const times = meeting && occurrenceTimes(meeting, slot);
@@ -34,12 +34,12 @@ export const MeetingPanel = ({ meetingId, slot }: MeetingPanelProps) => {
           </p>
         )}
       </SheetHeader>
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4">
+      <div className="scroll-edge min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-8">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load the meeting." />}
         {meeting && <MeetingFacts meeting={meeting} />}
-        {meeting && meeting.notes !== "" && <DiscordMarkdown text={meeting.notes} className="space-y-0.5 text-sm" />}
         {meeting && <MeetingPeople meeting={meeting} />}
+        {meeting && meeting.notes !== "" && <MeetingNotes notes={meeting.notes} />}
       </div>
       {meeting && (
         <div className="border-t border-border p-4">
