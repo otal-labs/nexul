@@ -39,7 +39,7 @@ func seedDueTickets(t *testing.T, s *Store) {
 		ticket.Labels = []string{"urgent"}
 		require.NoError(t, s.Tickets.Create(t.Context(), ticket))
 		if tk.due != "" {
-			require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), tk.id, tk.due), "Create leaves the due date to UpdateDueOn")
+			require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), tk.id, tk.due, nil), "Create leaves the due date to UpdateDueOn")
 		}
 	}
 }
@@ -62,7 +62,7 @@ func TestTicketsRepo_UpdateDueOn(t *testing.T) {
 	assert.Empty(t, got.DueOn, "a new ticket has no due date")
 
 	evt := eventbus.OutboxEvent{ID: "e-1", Topic: tickets.TopicDueDateChanged, Payload: tickets.DueDateChangedEvent{Ticket: *got, PreviousDueOn: ""}}
-	require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), "t-1", "2026-10-30", evt))
+	require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), "t-1", "2026-10-30", nil, evt))
 	got, err = s.Tickets.GetByID(t.Context(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, "2026-10-30", got.DueOn)
@@ -71,12 +71,12 @@ func TestTicketsRepo_UpdateDueOn(t *testing.T) {
 	require.Len(t, payloads, 1)
 	assert.Equal(t, "", payloads[0]["previous_due_on"])
 
-	require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), "t-1", ""))
+	require.NoError(t, s.Tickets.UpdateDueOn(t.Context(), "t-1", "", nil))
 	got, err = s.Tickets.GetByID(t.Context(), "t-1")
 	require.NoError(t, err)
 	assert.Empty(t, got.DueOn)
 
-	require.ErrorIs(t, s.Tickets.UpdateDueOn(t.Context(), "missing", "2026-10-30"), apperrs.ErrNotFound)
+	require.ErrorIs(t, s.Tickets.UpdateDueOn(t.Context(), "missing", "2026-10-30", nil), apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_ListDue(t *testing.T) {

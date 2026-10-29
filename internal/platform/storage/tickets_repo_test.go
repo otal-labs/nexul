@@ -86,14 +86,14 @@ func TestTicketsRepo_UpdateDoc(t *testing.T) {
 	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-2")))
 	require.NoError(t, s.Tickets.Create(t.Context(), newTestTicket("t-1", "doc-1")))
 
-	require.ErrorIs(t, s.Tickets.UpdateDoc(t.Context(), "missing", "doc-1"), apperrs.ErrNotFound)
+	require.ErrorIs(t, s.Tickets.UpdateDoc(t.Context(), "missing", "doc-1", nil), apperrs.ErrNotFound)
 
-	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", "doc-2"))
+	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", "doc-2", nil))
 	got, err := s.Tickets.GetByID(t.Context(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, "doc-2", got.DocID)
 
-	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", ""))
+	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", "", nil))
 	got, err = s.Tickets.GetByID(t.Context(), "t-1")
 	require.NoError(t, err)
 	assert.Empty(t, got.DocID)
@@ -113,8 +113,8 @@ func TestTicketsRepo_UpdatePerson(t *testing.T) {
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-alice", "41", "alice"))
 	require.NoError(t, err)
 
-	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleDeveloper, tickets.Person{ID: "u-alice", Login: "alice"}))
-	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{Login: "sam"}))
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleDeveloper, tickets.Person{ID: "u-alice", Login: "alice"}, nil))
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{Login: "sam"}, nil))
 	got, err := s.Tickets.GetByID(ctx, "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, tickets.Person{ID: "u-alice", Login: "alice"}, tickets.Person{ID: got.DeveloperID, Login: got.Developer})
@@ -130,11 +130,11 @@ func TestTicketsRepo_UpdatePerson(t *testing.T) {
 	assert.Equal(t, tickets.Person{ID: "u-alice", Login: "alice-renamed"}, tickets.Person{ID: got.DeveloperID, Login: got.Developer}, "a renamed login stays the same person")
 	assert.Equal(t, tickets.Person{ID: "u-sam", Login: "Sam"}, tickets.Person{ID: got.TesterID, Login: got.Tester}, "signing in claims the tickets that named the login")
 
-	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{}))
+	require.NoError(t, s.Tickets.UpdatePerson(ctx, "t-1", tickets.RoleTester, tickets.Person{}, nil))
 	got, err = s.Tickets.GetByID(ctx, "t-1")
 	require.NoError(t, err)
 	assert.Empty(t, got.Tester+got.TesterID)
-	require.ErrorIs(t, s.Tickets.UpdatePerson(ctx, "missing", tickets.RoleTester, tickets.Person{Login: "x"}), apperrs.ErrNotFound)
+	require.ErrorIs(t, s.Tickets.UpdatePerson(ctx, "missing", tickets.RoleTester, tickets.Person{Login: "x"}, nil), apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_List_ReturnsAll(t *testing.T) {
@@ -171,7 +171,7 @@ func TestTicketsRepo_UpdateTicket_Persists(t *testing.T) {
 	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
 	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "doc-1")))
 
-	require.NoError(t, s.Tickets.UpdateTicket(context.Background(), "t-1", "New title", "New body"))
+	require.NoError(t, s.Tickets.UpdateTicket(context.Background(), "t-1", "New title", "New body", nil, nil))
 	got, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, "New title", got.Title)
@@ -184,7 +184,7 @@ func TestTicketsRepo_UpdateStatus_Persists(t *testing.T) {
 	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
 	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "doc-1")))
 
-	require.NoError(t, s.Tickets.UpdateStatus(context.Background(), "t-1", tickets.StatusDone, nil))
+	require.NoError(t, s.Tickets.UpdateStatus(context.Background(), "t-1", tickets.StatusDone, nil, nil))
 	got, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, tickets.StatusDone, got.Status)

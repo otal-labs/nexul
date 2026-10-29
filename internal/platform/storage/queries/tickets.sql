@@ -135,11 +135,11 @@ UPDATE tickets SET doc_id = ?, updated_at = ? WHERE id = ?;
 -- name: MoveTicketCategory :execrows
 UPDATE tickets SET category_id = ?, position = ?, updated_at = ? WHERE id = ?;
 
--- name: AddTicketLabel :exec
+-- name: AddTicketLabel :execrows
 INSERT INTO ticket_labels (ticket_id, label) VALUES (?, ?)
 ON CONFLICT(ticket_id, label) DO NOTHING;
 
--- name: RemoveTicketLabel :exec
+-- name: RemoveTicketLabel :execrows
 DELETE FROM ticket_labels WHERE ticket_id = ? AND label = ?;
 
 -- name: ListTicketLabels :many

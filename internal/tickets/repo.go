@@ -22,6 +22,8 @@ type StatusStore interface {
 	Exists(ctx context.Context, id string) (bool, error)
 	// FirstStatus is the project's first column in board order, backlog first; "" when it has none.
 	FirstStatus(ctx context.Context, projectID string) (string, error)
+	// Name is the status column's name, which a status change shows instead of its id.
+	Name(ctx context.Context, id string) (string, error)
 }
 
 // UserLogins resolves a user id to the member login tickets store for people, without importing auth (ADR 0017).
@@ -57,18 +59,21 @@ type LinkRepo interface {
 	// CreateWithLink inserts a ticket and a link it holds in one transaction, so a bug is never stored without its found-in.
 	CreateWithLink(ctx context.Context, t *Ticket, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// PutLink inserts a link; a found_in link replaces any found-in the ticket already holds.
-	PutLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error
+	PutLink(ctx context.Context, link TicketLink, changes []Change, evts ...eventbus.OutboxEvent) error
 	// DeleteLink returns false when no such link existed; a found_in link is matched by ticket alone.
-	DeleteLink(ctx context.Context, link TicketLink, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error)
+	DeleteLink(ctx context.Context, link TicketLink, unblocked UnblockedEvents, changes []Change, evts ...eventbus.OutboxEvent) (bool, error)
 	// UnclearedBlockers maps each blocked ticket id to its blockers neither finished nor in a done-stage status.
 	UnclearedBlockers(ctx context.Context) (map[string][]LinkedTicket, error)
 	// UnclearedBlockersOf is UnclearedBlockers for the tickets ids names only.
 	UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]LinkedTicket, error)
 }
 
-// Repo is the consumer-side persistence contract for tickets; mutations carry outbox events.
+// Repo is the consumer-side persistence contract for tickets; mutations carry outbox events and the field changes they
+// make, written in the same transaction and pruned past KeptChanges; a change goes in only when the write itself did.
 type Repo interface {
 	LinkRepo
+	HistoryRepo
+	// Create also writes the ticket's created change, by ActorOf(ctx), and its description as version 1.
 	Create(ctx context.Context, t *Ticket, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Ticket, error)
 	// ListByKey finds every ticket whose key is PREFIX-NUMBER, in any workspace (ADR 0089).
@@ -80,25 +85,26 @@ type Repo interface {
 	// they keep in all.
 	Page(ctx context.Context, f TicketFilter, scope TicketScope, w paging.Window) ([]*Ticket, int, error)
 	// UpdateStatus appends the ticket to the end of the new status's manual order, not its old position.
-	UpdateStatus(ctx context.Context, id string, status Status, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
+	UpdateStatus(ctx context.Context, id string, status Status, unblocked UnblockedEvents, changes []Change, evts ...eventbus.OutboxEvent) error
 	// UpdateType changes a ticket's type id in place; the ticket keeps its identity.
-	UpdateType(ctx context.Context, id, typeID string) error
+	UpdateType(ctx context.Context, id, typeID string, changes []Change) error
 	// UpdatePerson sets the ticket's developer or tester, enqueueing evts in the same transaction; nobody clears it.
-	UpdatePerson(ctx context.Context, id string, role Role, p Person, evts ...eventbus.OutboxEvent) error
+	UpdatePerson(ctx context.Context, id string, role Role, p Person, changes []Change, evts ...eventbus.OutboxEvent) error
 	// UpdateDueOn sets the ticket's due date, enqueueing evts in the same transaction; empty clears it.
-	UpdateDueOn(ctx context.Context, id, dueOn string, evts ...eventbus.OutboxEvent) error
+	UpdateDueOn(ctx context.Context, id, dueOn string, changes []Change, evts ...eventbus.OutboxEvent) error
 	// ListDue reads the tickets of workspaceID that scope keeps and that are due from..to inclusive, by due date then id.
 	ListDue(ctx context.Context, workspaceID, from, to string, scope TicketScope) ([]*Ticket, error)
-	// UpdateTicket edits a ticket's title and body in place, keeping its identity; the ticket must exist.
-	UpdateTicket(ctx context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error
+	// UpdateTicket edits a ticket's title and body in place, keeping its identity; the ticket must exist. A non-nil credit
+	// also writes a description version, unless the newest holds the body, and prunes past KeptDescriptionVersions.
+	UpdateTicket(ctx context.Context, id, title, body string, changes []Change, credit *Credit, evts ...eventbus.OutboxEvent) error
 	// UpdateDoc sets the ticket's source doc; empty clears it. The ticket must exist.
-	UpdateDoc(ctx context.Context, id, docID string, evts ...eventbus.OutboxEvent) error
+	UpdateDoc(ctx context.Context, id, docID string, changes []Change, evts ...eventbus.OutboxEvent) error
 	// SetPosition orders a ticket within its current (status, category) pair (ADR 0002).
 	SetPosition(ctx context.Context, id string, position int) error
 	// AddLabel attaches a cross-cutting tag; a duplicate is a no-op.
-	AddLabel(ctx context.Context, id, label string) error
+	AddLabel(ctx context.Context, id, label string, changes []Change) error
 	// RemoveLabel detaches a tag; a missing label is a no-op.
-	RemoveLabel(ctx context.Context, id, label string) error
+	RemoveLabel(ctx context.Context, id, label string, changes []Change) error
 	// ListLabels returns a ticket's labels.
 	ListLabels(ctx context.Context, id string) ([]string, error)
 	// SetLabelColor works even for a label no ticket has used yet, with no separate registration step.
@@ -118,7 +124,7 @@ type Repo interface {
 	// ListIDsByPR returns the ids of the tickets linked to one PR.
 	ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error)
 	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once; unblocked's events go with it.
-	SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error)
+	SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked UnblockedEvents, changes []Change, evts ...eventbus.OutboxEvent) (bool, error)
 	LinkBranch(ctx context.Context, id string, link BranchLink) error
 	// UnlinkBranch removes a branch's link; a link that is not there is a no-op.
 	UnlinkBranch(ctx context.Context, id string, link BranchLink) error

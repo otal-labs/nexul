@@ -76,6 +76,20 @@ edit the ticket. It shows on the Calendar to whoever sees the ticket, and the
 ticket's developer is reminded at 09:00 the day before in their own timezone.
 _Avoid_: Deadline, due time
 
+**Change**:
+One field of a ticket or a play that a save changed, kept in its history with
+what it was, what it became, who made it and when, and through which play or
+automation when one did ("status Todo to In review, by Alice via Implement with
+AI"). A ticket records its title, status, category, type, developer, tester,
+due date, labels, links, source doc and finished date, and the one change that
+says it was created, and a play its label, description, enabled switch, the
+stage it shows at and its excluded projects; never the card's position or
+internal fields. A save that
+changes nothing writes none, and the newest hundred are kept. A change is shown,
+never undone from the history: each is one edit on the ticket itself. The
+description is not a change; it keeps versions.
+_Avoid_: Activity, event (an event is what the bus publishes), audit entry
+
 **Meeting**:
 A planned time on a workspace's Calendar, organised by one member, who invites
 other members of the workspace. It takes place in a voice channel or at a link,

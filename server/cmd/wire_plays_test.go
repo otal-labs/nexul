@@ -140,9 +140,9 @@ func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
 	require.NoError(t, s.Docs.Create(ctx, &docs.Doc{ID: "d-1", Title: "Spec", ProjectID: "project-general", FolderID: storagetest.GeneralMainFolderID, Version: 1, CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, s.Tickets.Create(ctx, blocker))
 	require.NoError(t, s.Tickets.Create(ctx, bug))
-	require.NoError(t, s.Tickets.AddLabel(ctx, "t-bug", "urgent"))
+	require.NoError(t, s.Tickets.AddLabel(ctx, "t-bug", "urgent", nil))
 	require.NoError(t, s.Tickets.LinkPR(ctx, "t-bug", tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}, tickets.PRStateOpen))
-	require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: "t-bug", Kind: tickets.LinkBlockedBy, TargetID: "t-blocker", CreatedAt: now}))
+	require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: "t-bug", Kind: tickets.LinkBlockedBy, TargetID: "t-blocker", CreatedAt: now}, nil))
 
 	got, err := playsFacts{store: s}.Facts(ctx, plays.TargetTicket, "t-bug")
 	require.NoError(t, err)

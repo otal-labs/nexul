@@ -48,7 +48,7 @@ type docListIn struct {
 
 type docGetIn struct {
 	ID      string `json:"id" jsonschema:"The doc's id, from doc_list."`
-	Version int    `json:"version,omitzero" jsonschema:"A version number from 1 up, to read instead of the current one."`
+	Version int    `json:"version,omitzero" jsonschema:"Read this version, not the current one."`
 }
 
 type docCreateIn struct {
@@ -68,7 +68,7 @@ type docUpdateIn struct {
 	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; a locked doc moves too."`
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher, so its edits reach your notifications; false stops that, and your own later edits do not start it again."`
 
-	RevertToVersion *int `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new version. Send it alone."`
+	RevertToVersion *int `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
 
 	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Works on a locked doc."`
 	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once, only by that round's own run. Post them, then end the turn."`
@@ -126,11 +126,11 @@ func docListTool(s *Service) mcptool.Tool {
 
 func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
-		"Returns one doc with its full body as markdown, its folder_id, version, and archived and locked state. "+
-			"It also returns its watchers, the people its edits notify (its creator, everyone who edited it, and anyone who chose to watch), with watching true when you are one, "+
+		"Returns one doc with its body as markdown, its folder_id, version, and archived and locked state. "+
+			"It returns its watchers, the people its edits notify (its creator, editors, and anyone who chose to watch), with watching true when you are one, "+
 			"and its clarification: every round of questions with their answers, each round's Anything else? text and reply, whether a round is running, and whether it is closed. "+
-			"It lists its newest 10 versions; with version it returns that version's title and body instead, and current_version says which is live. "+
-			"Use it after doc_list has given you the id, and before doc_update so you edit the current text.",
+			"It lists its versions; version reads one, and current_version names the live one. "+
+			"Use it after doc_list, and before doc_update so you edit the current text.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docGetIn) (any, error) {
 			d, err := s.Get(ctx, in.ID)
@@ -199,7 +199,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
 		"Changes a doc's title, body, folder, archived or locked state, or whether you watch it. "+
 			"A new title or body saves a new version; read the doc with doc_get first, because body replaces the whole body. "+
-			"revert_to_version restores an earlier version as a new one; doc_get lists the versions. "+
+			"revert_to_version restores a version, listed by doc_get. "+
 			"Archived true hides the doc from search until archived false restores it, and doc_delete removes it for good. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
 			"a doc play locks its doc when its run starts and leaves it locked, "+

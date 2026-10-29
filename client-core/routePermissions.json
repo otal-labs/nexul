@@ -246,6 +246,7 @@
   "POST /api/tickets/{id}/prs": ["tickets:write"],
   "POST /api/tickets/{id}/test/fail": ["tickets:write"],
   "POST /api/tickets/{id}/test/pass": ["tickets:write"],
+  "POST /api/tickets/{id}/versions/{version}/restore": ["tickets:write"],
   "POST /api/topology/edges": ["topology:write"],
   "POST /api/topology/nodes": ["topology:write"],
   "POST /api/voice/{conversationID}/leave": ["none"],

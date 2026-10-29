@@ -74,7 +74,7 @@ func (f *fakeRepo) CreateWithLink(ctx context.Context, t *Ticket, link TicketLin
 	return nil
 }
 
-func (f *fakeRepo) PutLink(_ context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) PutLink(_ context.Context, link TicketLink, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.ticketLinkErr != nil {
@@ -88,7 +88,7 @@ func (f *fakeRepo) PutLink(_ context.Context, link TicketLink, evts ...eventbus.
 	return nil
 }
 
-func (f *fakeRepo) DeleteLink(_ context.Context, link TicketLink, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
+func (f *fakeRepo) DeleteLink(_ context.Context, link TicketLink, unblocked UnblockedEvents, _ []Change, evts ...eventbus.OutboxEvent) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.unblocked = unblocked

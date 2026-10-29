@@ -68,8 +68,8 @@ func (s *Service) SetDueOn(ctx context.Context, id, dueOn string) (*Ticket, erro
 	updated := *current
 	updated.DueOn = dueOn
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDueDateChanged, Payload: DueDateChangedEvent{Ticket: updated, PreviousDueOn: current.DueOn, Actor: statusActor(ctx)}}
-	if err := s.repo.UpdateDueOn(ctx, id, dueOn, evt); err != nil {
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDueDateChanged, Payload: DueDateChangedEvent{Ticket: updated, PreviousDueOn: current.DueOn, Actor: ActorOf(ctx)}}
+	if err := s.repo.UpdateDueOn(ctx, id, dueOn, s.changed(ActorOf(ctx), FieldDueOn, current.DueOn, dueOn), evt); err != nil {
 		return nil, fmt.Errorf("set due date on ticket %s: %w", id, err)
 	}
 	return &updated, nil

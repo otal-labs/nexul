@@ -93,6 +93,8 @@ type world struct {
 	fail       string
 	gets       int // ticket reads by id, so a test can pin how often a tool loads each ticket
 	moves      []eventbus.OutboxEvent
+	versions   map[string][]tickets.DescriptionVersion // newest last, as the store keeps a ticket's description versions
+	changes    map[string][]tickets.Change
 }
 
 var errBoom = errors.New("storage is down")
@@ -124,7 +126,8 @@ func newFixture(t *testing.T) fixture {
 		categories: rows[*workspace.Category]{id: func(c *workspace.Category) string { return c.ID }},
 		types:      rows[*workspace.TicketType]{id: func(tt *workspace.TicketType) string { return tt.ID }},
 		owner:      true,
-		stacks:     map[string]string{},
+		versions:   map[string][]tickets.DescriptionVersion{}, changes: map[string][]tickets.Change{},
+		stacks: map[string]string{},
 	}
 	must(t, w.projects.put(&workspace.Project{ID: "p-1", Name: "Backend", Prefix: "REF", WorkspaceID: "ws-1", Icon: workspace.ProjectIconServer, TestsLocation: workspace.TestsLocationSame}))
 	must(t, w.projects.put(&workspace.Project{ID: "p-2", Name: "Frontend", Prefix: "WEB", WorkspaceID: "ws-1"}))
@@ -174,6 +177,7 @@ func (w *world) addTicket(t *tickets.Ticket) {
 	t.Number = n
 	w.tickets[t.ID] = t
 	w.order = append(w.order, t.ID)
+	w.versions[t.ID] = []tickets.DescriptionVersion{{TicketID: t.ID, Version: 1, Body: t.Body}}
 }
 
 func (w *world) linked(id string) *tickets.LinkedTicket {
@@ -313,14 +317,44 @@ func (r ticketRepo) edit(id string, change func(*tickets.Ticket)) error {
 	return nil
 }
 
-func (r ticketRepo) UpdateTicket(_ context.Context, id, title, body string, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdateTicket(_ context.Context, id, title, body string, changes []tickets.Change, credit *tickets.Credit, _ ...eventbus.OutboxEvent) error {
 	if err := r.w.check("UpdateTicket"); err != nil {
 		return err
 	}
-	return r.edit(id, func(t *tickets.Ticket) { t.Title, t.Body = title, body })
+	if err := r.edit(id, func(t *tickets.Ticket) { t.Title, t.Body = title, body }); err != nil {
+		return err
+	}
+	r.w.changes[id] = append(slices.Clone(changes), r.w.changes[id]...)
+	versions := r.w.versions[id]
+	if credit == nil || (len(versions) > 0 && versions[len(versions)-1].Body == body) {
+		return nil
+	}
+	r.w.versions[id] = append(versions, tickets.DescriptionVersion{TicketID: id, Version: len(versions) + 1, Body: body, EditorIDs: credit.EditorIDs, Via: credit.Via})
+	return nil
 }
 
-func (r ticketRepo) UpdateStatus(_ context.Context, id string, status tickets.Status, _ tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) error {
+func (r ticketRepo) ListDescriptionVersions(_ context.Context, id string) ([]tickets.VersionSummary, error) {
+	out := []tickets.VersionSummary{}
+	for _, v := range slices.Backward(r.w.versions[id]) {
+		out = append(out, tickets.VersionSummary{Version: v.Version, EditorIDs: v.EditorIDs, Via: v.Via})
+	}
+	return out, nil
+}
+
+func (r ticketRepo) GetDescriptionVersion(_ context.Context, id string, version int) (*tickets.DescriptionVersion, error) {
+	for _, v := range r.w.versions[id] {
+		if v.Version == version {
+			return &v, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (r ticketRepo) ListChanges(_ context.Context, id string) ([]tickets.Change, error) {
+	return slices.Clone(r.w.changes[id]), nil
+}
+
+func (r ticketRepo) UpdateStatus(_ context.Context, id string, status tickets.Status, _ tickets.UnblockedEvents, _ []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	r.w.moves = append(r.w.moves, evts...)
 	return r.edit(id, func(t *tickets.Ticket) { t.Status = status })
 }
@@ -329,15 +363,15 @@ func (r ticketRepo) SetPosition(_ context.Context, id string, position int) erro
 	return r.edit(id, func(t *tickets.Ticket) { t.Position = position })
 }
 
-func (r ticketRepo) UpdateType(_ context.Context, id, typeID string) error {
+func (r ticketRepo) UpdateType(_ context.Context, id, typeID string, _ []tickets.Change) error {
 	return r.edit(id, func(t *tickets.Ticket) { t.TypeID = typeID })
 }
 
-func (r ticketRepo) UpdateDoc(_ context.Context, id, docID string, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdateDoc(_ context.Context, id, docID string, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) { t.DocID = docID })
 }
 
-func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role, p tickets.Person, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role, p tickets.Person, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		if role == tickets.RoleTester {
 			t.Tester, t.TesterID = p.Login, p.ID
@@ -347,7 +381,7 @@ func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role
 	})
 }
 
-func (r ticketRepo) AddLabel(_ context.Context, id, label string) error {
+func (r ticketRepo) AddLabel(_ context.Context, id, label string, _ []tickets.Change) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		if !slices.Contains(t.Labels, label) {
 			t.Labels = append(t.Labels, label)
@@ -355,7 +389,7 @@ func (r ticketRepo) AddLabel(_ context.Context, id, label string) error {
 	})
 }
 
-func (r ticketRepo) RemoveLabel(_ context.Context, id, label string) error {
+func (r ticketRepo) RemoveLabel(_ context.Context, id, label string, _ []tickets.Change) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		t.Labels = slices.DeleteFunc(t.Labels, func(l string) bool { return l == label })
 	})
@@ -443,13 +477,13 @@ func sameLink(a, b tickets.TicketLink) bool {
 	return a.TicketID == b.TicketID && a.Kind == b.Kind && (a.Kind == tickets.LinkFoundIn || a.TargetID == b.TargetID)
 }
 
-func (r ticketRepo) PutLink(_ context.Context, link tickets.TicketLink, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) PutLink(_ context.Context, link tickets.TicketLink, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	r.w.links = slices.DeleteFunc(r.w.links, func(l tickets.TicketLink) bool { return sameLink(l, link) })
 	r.w.links = append(r.w.links, link)
 	return nil
 }
 
-func (r ticketRepo) DeleteLink(_ context.Context, link tickets.TicketLink, _ tickets.UnblockedEvents, _ ...eventbus.OutboxEvent) (bool, error) {
+func (r ticketRepo) DeleteLink(_ context.Context, link tickets.TicketLink, _ tickets.UnblockedEvents, _ []tickets.Change, _ ...eventbus.OutboxEvent) (bool, error) {
 	n := len(r.w.links)
 	r.w.links = slices.DeleteFunc(r.w.links, func(l tickets.TicketLink) bool { return sameLink(l, link) })
 	return len(r.w.links) < n, nil
@@ -507,6 +541,14 @@ type statusStore struct{ w *world }
 func (s statusStore) Exists(_ context.Context, id string) (bool, error) {
 	_, err := s.w.statuses.get(id)
 	return err == nil, nil
+}
+
+func (s statusStore) Name(_ context.Context, id string) (string, error) {
+	st, err := s.w.statuses.get(id)
+	if err != nil {
+		return "", err
+	}
+	return st.Name, nil
 }
 
 func (s statusStore) FirstStatus(_ context.Context, projectID string) (string, error) {
@@ -849,7 +891,7 @@ func (allowGate) CallerProjectsIn(context.Context, string, permissions.Action) (
 	return nil, true, nil
 }
 
-func (r ticketRepo) UpdateDueOn(_ context.Context, id, dueOn string, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdateDueOn(_ context.Context, id, dueOn string, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) { t.DueOn = dueOn })
 }
 

@@ -262,7 +262,7 @@ func TestTicketsRepo_TypeAndCategoryColumns(t *testing.T) {
 	assert.Equal(t, "c-1", got.CategoryID)
 	assert.Equal(t, "ticket-type-bug", got.TypeID)
 
-	require.NoError(t, s.Tickets.UpdateType(ctx, "t-1", "ticket-type-task"))
+	require.NoError(t, s.Tickets.UpdateType(ctx, "t-1", "ticket-type-task", nil))
 	got, err = s.Tickets.GetByID(ctx, "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, "ticket-type-task", got.TypeID)
@@ -286,12 +286,12 @@ func TestTicketsRepo_Labels(t *testing.T) {
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"bug", "urgent"}, got.Labels)
 
-	require.NoError(t, s.Tickets.AddLabel(ctx, "t-2", "urgent"))
+	require.NoError(t, s.Tickets.AddLabel(ctx, "t-2", "urgent", nil))
 	got, err = s.Tickets.GetByID(ctx, "t-2")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"bug", "urgent"}, got.Labels)
 
-	require.NoError(t, s.Tickets.RemoveLabel(ctx, "t-2", "bug"))
+	require.NoError(t, s.Tickets.RemoveLabel(ctx, "t-2", "bug", nil))
 	got, err = s.Tickets.GetByID(ctx, "t-2")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"urgent"}, got.Labels)

@@ -227,6 +227,9 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+	if opt.ViaMCP {
+		ctx = WithViaMCP(ctx)
+	}
 	if err := s.persist(ctx, t, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
@@ -518,7 +521,8 @@ func (s *Service) SetType(ctx context.Context, id, typeID string) (*Ticket, erro
 	if err != nil {
 		return nil, fmt.Errorf("set type on ticket %s: %w", id, err)
 	}
-	if err := s.repo.UpdateType(ctx, id, typeID); err != nil {
+	changes := s.changed(ActorOf(ctx), FieldType, s.typeName(ctx, current.TypeID), s.typeName(ctx, typeID))
+	if err := s.repo.UpdateType(ctx, id, typeID, changes); err != nil {
 		return nil, fmt.Errorf("set type on ticket %s: %w", id, err)
 	}
 	updated := *current
@@ -559,14 +563,15 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 	*heldLogin, *heldID = next.Login, next.ID
 	updated.UpdatedAt = s.now().UTC()
 	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{
-		Ticket: updated, From: previous.Login, FromID: previous.ID, To: next.Login, ToID: next.ID, Actor: statusActor(ctx),
+		Ticket: updated, From: previous.Login, FromID: previous.ID, To: next.Login, ToID: next.ID, Actor: ActorOf(ctx),
 	}}}
 	if role == RoleDeveloper {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{
 			Ticket: updated, From: previous.Login, FromID: previous.ID, To: next.Login, ToID: next.ID,
 		}})
 	}
-	if err := s.repo.UpdatePerson(ctx, id, role, next, evts...); err != nil {
+	changes := s.changed(ActorOf(ctx), string(role), cmp.Or(previous.Login, previous.ID), cmp.Or(next.Login, next.ID))
+	if err := s.repo.UpdatePerson(ctx, id, role, next, changes, evts...); err != nil {
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	return &updated, nil
@@ -590,9 +595,16 @@ func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ti
 	updated.Body = body
 	updated.UpdatedAt = s.now().UTC()
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{
-		Ticket: updated, ActorID: statusActor(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
+		Ticket: updated, ActorID: ActorOf(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
 	}}
-	write := func(ctx context.Context) error { return s.repo.UpdateTicket(ctx, id, title, body, evt) }
+	var credit *Credit
+	if body != current.Body {
+		credit = creditOf(ctx)
+	}
+	changes := s.changed(ActorOf(ctx), FieldTitle, current.Title, title)
+	write := func(ctx context.Context) error {
+		return s.repo.UpdateTicket(ctx, id, title, body, changes, credit, evt)
+	}
 	if err := s.fence(ctx, id, body != current.Body, write); err != nil {
 		return nil, fmt.Errorf("update ticket %s: %w", id, err)
 	}
@@ -621,16 +633,14 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	updated.Body = body
 	updated.UpdatedAt = s.now().UTC()
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{
-		Ticket: updated, ActorID: statusActor(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
+		Ticket: updated, ActorID: ActorOf(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
 	}}
-	if err := s.repo.UpdateTicket(ctx, id, updated.Title, body, evt); err != nil {
+	changes := s.changed(ActorOf(ctx), FieldTitle, current.Title, updated.Title)
+	if err := s.repo.UpdateTicket(ctx, id, updated.Title, body, changes, nil, evt); err != nil {
 		return fmt.Errorf("commit ticket %s: %w", id, err)
 	}
 	return nil
 }
-
-// CommitSitting writes nothing yet; ticket 15 of the change-history effort records description versions here.
-func (*Service) CommitSitting(context.Context, string, []string) error { return nil }
 
 // CanJoin reports whether the caller may join a ticket's live room under action; the hub's context carries them.
 func (s *Service) CanJoin(ctx context.Context, id string, action permissions.Action) (bool, error) {
@@ -659,7 +669,7 @@ func (s *Service) AddLabel(ctx context.Context, id, label string) (*Ticket, erro
 	if err != nil {
 		return nil, fmt.Errorf("add label to ticket %s: %w", id, err)
 	}
-	if err := s.repo.AddLabel(ctx, id, label); err != nil {
+	if err := s.repo.AddLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, "", label)); err != nil {
 		return nil, fmt.Errorf("add label to ticket %s: %w", id, err)
 	}
 	updated := *current
@@ -681,7 +691,7 @@ func (s *Service) RemoveLabel(ctx context.Context, id, label string) (*Ticket, e
 	if err != nil {
 		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
 	}
-	if err := s.repo.RemoveLabel(ctx, id, label); err != nil {
+	if err := s.repo.RemoveLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, label, "")); err != nil {
 		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
 	}
 	labels := make([]string, 0, len(current.Labels))
@@ -778,7 +788,7 @@ func (s *Service) UpdateStatus(ctx context.Context, id string, to Status) (*Tick
 	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return nil, fmt.Errorf("update ticket %s status: %w", id, err)
 	}
-	return s.transition(ctx, id, to, statusActor(ctx), "")
+	return s.transition(ctx, id, to, ActorOf(ctx), "")
 }
 
 type viaMCPKey struct{}
@@ -786,17 +796,6 @@ type viaMCPKey struct{}
 // WithViaMCP marks a call as a person's over MCP, so the moves it makes are published as user:mcp (ADR 0049).
 func WithViaMCP(ctx context.Context) context.Context {
 	return context.WithValue(ctx, viaMCPKey{}, true)
-}
-
-func statusActor(ctx context.Context) Actor {
-	actor, _ := identity.ActorFromCtx(ctx)
-	if actor.Automation != nil {
-		return Actor{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
-	}
-	if ctx.Value(viaMCPKey{}) != nil {
-		return Actor{Kind: ActorKindUserMCP, UserID: actor.ID}
-	}
-	return Actor{Kind: ActorKindUser, UserID: actor.ID}
 }
 
 // SetStatusAs records the given actor (an automation with its run id, or a play with its trail id on the actor).
@@ -831,7 +830,8 @@ func (s *Service) transition(ctx context.Context, id string, to Status, actor Ac
 		evts = append(evts, build(updated))
 	}
 	// Position is assigned atomically in its own transaction (ADR 0002); re-fetch to return the persisted value.
-	if err := s.repo.UpdateStatus(ctx, id, to, unblockedEvents(id, UnblockedByBlockerDone, actor), evts...); err != nil {
+	changes := s.changed(actor, FieldStatus, s.statusName(ctx, current.Status), s.statusName(ctx, to))
+	if err := s.repo.UpdateStatus(ctx, id, to, unblockedEvents(id, UnblockedByBlockerDone, actor), changes, evts...); err != nil {
 		return nil, fmt.Errorf("update ticket %s status: %w", id, err)
 	}
 	fresh, err := s.repo.GetByID(ctx, id)
@@ -872,7 +872,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: t.ID, Title: t.Title, ProjectID: t.ProjectID}}
-	if err := s.repo.Delete(ctx, id, unblockedEvents(id, UnblockedByBlockerDeleted, statusActor(ctx)), evt); err != nil {
+	if err := s.repo.Delete(ctx, id, unblockedEvents(id, UnblockedByBlockerDeleted, ActorOf(ctx)), evt); err != nil {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
 	return nil
@@ -1092,7 +1092,9 @@ func (s *Service) finishTicket(ctx context.Context, id string) error {
 		return fmt.Errorf("finish ticket %s: %w", id, err)
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFinished, Payload: FinishedEvent{Ticket: *t}}
-	if _, err := s.repo.SetFinishedAt(ctx, id, s.now().UTC(), unblockedEvents(id, UnblockedByBlockerFinished, statusActor(ctx)), evt); err != nil {
+	at := s.now().UTC()
+	changes := s.changed(ActorOf(ctx), FieldFinishedAt, "", at.Format(dayLayout))
+	if _, err := s.repo.SetFinishedAt(ctx, id, at, unblockedEvents(id, UnblockedByBlockerFinished, ActorOf(ctx)), changes, evt); err != nil {
 		return fmt.Errorf("finish ticket %s: %w", id, err)
 	}
 	return nil

@@ -296,10 +296,10 @@ func TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees(t *testing.T
 		}
 		require.NoError(t, s.Tickets.Create(ctx, ticket))
 	}
-	_, err := s.Tickets.SetFinishedAt(ctx, "merged", time.Now(), nil)
+	_, err := s.Tickets.SetFinishedAt(ctx, "merged", time.Now(), nil, nil)
 	require.NoError(t, err)
 	for blocked, blocker := range map[string]string{"waits-on-open": "open", "waits-on-hidden": "hidden", "waits-on-done": "done", "waits-on-merged": "merged"} {
-		require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: blocked, Kind: tickets.LinkBlockedBy, TargetID: blocker, CreatedAt: time.Now()}))
+		require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: blocked, Kind: tickets.LinkBlockedBy, TargetID: blocker, CreatedAt: time.Now()}, nil))
 	}
 	blocked := tickets.TicketFilter{BlockedOnly: true}
 

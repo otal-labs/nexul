@@ -1222,6 +1222,25 @@ type TicketBranchLink struct {
 	LinkedAt    int64
 }
 
+type TicketChange struct {
+	ID        string
+	TicketID  string
+	Field     string
+	FromValue string
+	ToValue   string
+	Actor     string
+	CreatedAt int64
+}
+
+type TicketDescriptionVersion struct {
+	TicketID  string
+	Version   int64
+	Body      string
+	EditorIds string
+	Via       string
+	CreatedAt int64
+}
+
 type TicketDueReminder struct {
 	TicketID string
 	DueOn    string

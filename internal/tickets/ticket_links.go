@@ -102,7 +102,8 @@ func (s *Service) SetFoundIn(ctx context.Context, id, originID string, originUnk
 		evts = append(evts, linkEvent(TopicLinkDeleted, TicketLink{TicketID: id, Kind: LinkFoundIn, TargetID: current, CreatedAt: link.CreatedAt}))
 	}
 	evts = append(evts, linkEvent(TopicLinkCreated, link))
-	if err := s.repo.PutLink(ctx, link, evts...); err != nil {
+	changes := s.changed(ActorOf(ctx), FieldFoundIn, foundInShown(current, held), foundInShown(originID, true))
+	if err := s.repo.PutLink(ctx, link, changes, evts...); err != nil {
 		return nil, fmt.Errorf("set found-in on ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)
@@ -141,7 +142,8 @@ func (s *Service) RemoveFoundIn(ctx context.Context, id string) (*LinkSet, error
 		return s.Links(ctx, id)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkFoundIn, TargetID: current, CreatedAt: s.now().UTC()}
-	if _, err := s.repo.DeleteLink(ctx, link, nil, linkEvent(TopicLinkDeleted, link)); err != nil {
+	changes := s.changed(ActorOf(ctx), FieldFoundIn, foundInShown(current, held), "")
+	if _, err := s.repo.DeleteLink(ctx, link, nil, changes, linkEvent(TopicLinkDeleted, link)); err != nil {
 		return nil, fmt.Errorf("remove found-in from ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)
@@ -208,7 +210,7 @@ func (s *Service) AddBlocker(ctx context.Context, id, blockerID string) (*LinkSe
 		return nil, fmt.Errorf("%w: that would form a cycle, %q already waits on %q directly or through other tickets", apperrs.ErrConflict, blocker.Title, t.Title)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkBlockedBy, TargetID: blockerID, CreatedAt: s.now().UTC()}
-	if err := s.repo.PutLink(ctx, link, linkEvent(TopicLinkCreated, link)); err != nil {
+	if err := s.repo.PutLink(ctx, link, s.changed(ActorOf(ctx), FieldBlockedBy, "", blockerID), linkEvent(TopicLinkCreated, link)); err != nil {
 		return nil, fmt.Errorf("add blocker to ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)
@@ -248,8 +250,9 @@ func (s *Service) RemoveBlocker(ctx context.Context, id, blockerID string) (*Lin
 		return nil, fmt.Errorf("remove blocker from ticket %s: %w", id, err)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkBlockedBy, TargetID: blockerID, CreatedAt: s.now().UTC()}
-	unblocked := unblockedEvents(blockerID, UnblockedByLinkDeleted, statusActor(ctx))
-	if _, err := s.repo.DeleteLink(ctx, link, unblocked, linkEvent(TopicLinkDeleted, link)); err != nil {
+	unblocked := unblockedEvents(blockerID, UnblockedByLinkDeleted, ActorOf(ctx))
+	changes := s.changed(ActorOf(ctx), FieldBlockedBy, blockerID, "")
+	if _, err := s.repo.DeleteLink(ctx, link, unblocked, changes, linkEvent(TopicLinkDeleted, link)); err != nil {
 		return nil, fmt.Errorf("remove blocker from ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)
@@ -323,4 +326,12 @@ func (s *Service) mustRead(ctx context.Context, id string) error {
 
 func linkEvent(topic string, link TicketLink) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: LinkEvent{Link: link}}
+}
+
+// foundInShown is a found-in link as a change shows it: nothing when there is none, "unknown" for an unknown origin.
+func foundInShown(originID string, held bool) string {
+	if held && originID == "" {
+		return OriginUnknown
+	}
+	return originID
 }
