@@ -150,15 +150,22 @@ func firstText(blocks []Node, skipHeadings bool) string {
 	return ""
 }
 
+// plainText joins a text block's runs as written and a container's blocks with a space, so list items stay apart.
 func plainText(n Node) string {
 	if n.Text != "" {
 		return n.Text
 	}
-	var b strings.Builder
-	for _, child := range n.Content {
-		b.WriteString(plainText(child))
+	sep := " "
+	if n.Type == "paragraph" || n.Type == "heading" || n.Type == "codeBlock" {
+		sep = ""
 	}
-	return b.String()
+	parts := make([]string, 0, len(n.Content))
+	for _, child := range n.Content {
+		if text := plainText(child); text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return strings.Join(parts, sep)
 }
 
 func firstLine(s string) string {

@@ -372,6 +372,7 @@ func TestSnippet(t *testing.T) {
 		{"legacy markdown takes its first line without the heading marks", "\n## Rollback plan\nsecond line", 100, "Rollback plan"},
 		{"cuts to the limit in runes", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ééééé"}]}]}`, 3, "ééé"},
 		{"an empty doc has none", `{"type":"doc","content":[]}`, 100, ""},
+		{"a list keeps its items apart", `{"type":"doc","content":[{"type":"orderedList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Roll back."}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Post it."}]}]}]}]}`, 100, "Roll back. Post it."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

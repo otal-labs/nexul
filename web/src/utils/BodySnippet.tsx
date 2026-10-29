@@ -4,7 +4,15 @@ interface RichNode {
   content?: RichNode[];
 }
 
-const plainText = (node: RichNode): string => node.text ?? (node.content ?? []).map(plainText).join("");
+const textBlocks = new Set(["paragraph", "heading", "codeBlock"]);
+
+// A text block's runs join as written, a container's blocks with a space, so list items stay apart.
+const plainText = (node: RichNode): string =>
+  node.text ??
+  (node.content ?? [])
+    .map(plainText)
+    .filter((text) => text !== "")
+    .join(textBlocks.has(node.type ?? "") ? "" : " ");
 
 const firstLine = (body: string): string =>
   (body.split("\n").find((line) => line.trim() !== "") ?? "").trim().replace(/^[#>*\- ]+/, "");
