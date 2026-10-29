@@ -170,6 +170,7 @@
   "POST /api/docs/{id}/restore": ["docs:write"],
   "POST /api/docs/{id}/unlock": ["docs:lock"],
   "POST /api/docs/{id}/versions": ["docs:write"],
+  "POST /api/docs/{id}/versions/{version}/restore": ["docs:write"],
   "POST /api/instance/upgrade": ["instance:write"],
   "POST /api/integrations": ["integrations:write"],
   "POST /api/integrations/{id}/subscriptions": ["integrations:write"],

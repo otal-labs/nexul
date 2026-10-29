@@ -155,6 +155,7 @@ var routePermissions = map[string][]string{
 	"POST /api/docs/{id}/restore":                                   {"docs:write"},
 	"POST /api/docs/{id}/unlock":                                    {"docs:lock"},
 	"POST /api/docs/{id}/versions":                                  {"docs:write"},
+	"POST /api/docs/{id}/versions/{version}/restore":                {"docs:write"},
 	"DELETE /api/docs/{id}/watchers/me":                             {"docs:read"},
 	"PUT /api/docs/{id}/watchers/me":                                {"docs:read"},
 

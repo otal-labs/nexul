@@ -152,7 +152,7 @@ func (f *fakeRepo) ListByIDs(_ context.Context, ids []string) ([]*Doc, error) {
 	return out, nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, d *Doc, _, _ string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Update(_ context.Context, d *Doc, _, via string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -163,6 +163,7 @@ func (f *fakeRepo) Update(_ context.Context, d *Doc, _, _ string, evts ...eventb
 	}
 	f.docs[d.ID] = d
 	f.appendVersion(d)
+	f.versions[d.ID][len(f.versions[d.ID])-1].Via = via
 	f.events = append(f.events, evts...)
 	return nil
 }
@@ -1017,4 +1018,64 @@ func TestClone_InItsOwnProject_CopiesBodyAndAttachmentsUnderACopyTitle(t *testin
 	require.NotEmpty(t, copied, "the source's attachment is copied under the clone")
 	assert.Contains(t, clone.Body, "/api/attachments/"+copied)
 	assert.NotContains(t, clone.Body, "att-1", "the clone never points at the source's attachment")
+}
+
+func TestRestoreVersion_SavesTheOldTextAsANewVersionOnTop(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	live := &fakeLive{}
+	s.SetLiveSessions(live)
+	d := mustDoc(t, s, "project-1", "First title", "first body")
+	_, err := s.Update(testCtx(), d.ID, "Second title", "second body")
+	require.NoError(t, err)
+	live.resets = nil
+
+	restored, err := s.RestoreVersion(testCtx(), d.ID, 1)
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, restored.Version, "a restore adds a version, it never rewinds")
+	assert.Equal(t, "First title", restored.Title)
+	assert.Contains(t, restored.Body, "first body")
+	vs, err := s.ListVersions(testCtx(), d.ID)
+	require.NoError(t, err)
+	require.Len(t, vs, 3)
+	assert.Contains(t, vs[1].Body, "second body", "the version it replaced stays in the history")
+	assert.Equal(t, []string{d.ID}, live.resets, "open editors follow through the session reset")
+	assert.Len(t, repo.eventsFor(TopicUpdated), 2, "a restore publishes what a save publishes")
+}
+
+func TestRestoreVersion_Refusals_ChangeNothing(t *testing.T) {
+	tests := []struct {
+		name    string
+		svc     func(*fakeRepo) *Service
+		lock    bool
+		version int
+		wantErr error
+	}{
+		{"a reader without write", newReadOnlyService, false, 1, apperrs.ErrForbidden},
+		{"a locked doc", newTestService, true, 1, apperrs.ErrConflict},
+		{"a missing version", newTestService, false, 9, apperrs.ErrNotFound},
+		{"a version below one", newTestService, false, 0, apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			writer := newTestService(repo)
+			d := mustDoc(t, writer, "project-1", "First", "one")
+			_, err := writer.Update(testCtx(), d.ID, "Second", "two")
+			require.NoError(t, err)
+			if tt.lock {
+				_, err = writer.Lock(testCtx(), d.ID)
+				require.NoError(t, err)
+			}
+
+			_, err = tt.svc(repo).RestoreVersion(testCtx(), d.ID, tt.version)
+
+			require.ErrorIs(t, err, tt.wantErr)
+			got, err := writer.Get(testCtx(), d.ID)
+			require.NoError(t, err)
+			assert.Equal(t, 2, got.Version)
+			assert.Equal(t, "Second", got.Title)
+		})
+	}
 }

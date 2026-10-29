@@ -56,6 +56,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/{id}/export", h.exportDoc)
 	mux.HandleFunc("GET /api/docs/{id}/history", h.history)
 	mux.HandleFunc("GET /api/docs/{id}/versions/{version}", h.getVersion)
+	mux.HandleFunc("POST /api/docs/{id}/versions/{version}/restore", h.restoreVersion)
 	mux.HandleFunc("GET /api/docs/{id}/versions", h.listVersions)
 	mux.HandleFunc("POST /api/docs/{id}/versions", h.createNamedVersion)
 	mux.HandleFunc("GET /api/docs/{id}/watchers", h.listWatchers)
@@ -255,9 +256,8 @@ func (h *Handler) createNamedVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
-	version, err := strconv.Atoi(r.PathValue("version"))
-	if err != nil || version < 1 {
-		httpx.WriteError(w, fmt.Errorf("%w: version must be a positive integer", apperrs.ErrInvalid))
+	version, ok := versionParam(w, r)
+	if !ok {
 		return
 	}
 	v, err := h.svc.GetVersion(r.Context(), r.PathValue("id"), version)
@@ -266,6 +266,29 @@ func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+// restoreVersion saves the version as a new one on top and answers with the doc as it now stands.
+func (h *Handler) restoreVersion(w http.ResponseWriter, r *http.Request) {
+	version, ok := versionParam(w, r)
+	if !ok {
+		return
+	}
+	d, err := h.svc.RestoreVersion(r.Context(), r.PathValue("id"), version)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func versionParam(w http.ResponseWriter, r *http.Request) (int, bool) {
+	version, err := strconv.Atoi(r.PathValue("version"))
+	if err != nil || version < 1 {
+		httpx.WriteError(w, fmt.Errorf("%w: version must be a positive integer", apperrs.ErrInvalid))
+		return 0, false
+	}
+	return version, true
 }
 
 func (h *Handler) listWatchers(w http.ResponseWriter, r *http.Request) {

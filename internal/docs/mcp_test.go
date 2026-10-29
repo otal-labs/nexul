@@ -3,6 +3,7 @@ package docs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -243,4 +244,74 @@ func TestDocTools_Folders(t *testing.T) {
 
 	_, err = callTool(testCtx(), t, s, "doc_create", `{"project_id":"project-1","clone_from_id":"`+ep01.ID+`","folder_id":"`+getSource.ID+`"}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a copy's folder is not chosen at copy time")
+}
+
+func TestDocGet_VersionReadsAnOlderVersionAndListsTheRecentOnes(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	d := mustDoc(t, s, "project-1", "First", "# One")
+	for i := range 11 {
+		_, err := s.Update(testCtx(), d.ID, "Latest", fmt.Sprintf("edit %d", i))
+		require.NoError(t, err)
+	}
+
+	out, err := callTool(testCtx(), t, s, "doc_get", `{"id":"`+d.ID+`"}`)
+	require.NoError(t, err)
+	current := out.(docResult)
+	assert.Equal(t, 12, current.Version)
+	assert.Len(t, current.Versions, KeptUnnamedVersions, "the list stops at the versions kept")
+	assert.Equal(t, 12, current.Versions[0].Version, "newest first")
+	assert.Zero(t, current.CurrentVersion)
+
+	out, err = callTool(testCtx(), t, s, "doc_get", `{"id":"`+d.ID+`","version":1}`)
+	require.NoError(t, err)
+	old := out.(docResult)
+	assert.Equal(t, 1, old.Version)
+	assert.Equal(t, 12, old.CurrentVersion, "says which version is live")
+	assert.Equal(t, "First", old.Title)
+	assert.Equal(t, "# One", old.Body)
+
+	_, err = callTool(testCtx(), t, s, "doc_get", `{"id":"`+d.ID+`","version":99}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestDocUpdate_RevertToVersionRestoresItAsAMCPVersionOnTop(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	d := mustDoc(t, s, "project-1", "First", "# One")
+	_, err := s.Update(testCtx(), d.ID, "Second", "two")
+	require.NoError(t, err)
+
+	out, err := callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","revert_to_version":1}`)
+	require.NoError(t, err)
+
+	got := out.(docResult)
+	assert.Equal(t, 3, got.Version)
+	assert.Equal(t, "First", got.Title)
+	assert.Equal(t, "# One", got.Body)
+	h, err := s.History(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.Equal(t, viaMCP, h.Versions[0].Via, "an agent's restore is recorded as one")
+}
+
+func TestDocUpdate_RevertToVersionWithAnotherField_IsRejected(t *testing.T) {
+	tests := []struct{ name, extra string }{
+		{"a title", `,"title":"Renamed"`},
+		{"a body", `,"body":"new"`},
+		{"a watch flag", `,"watch":true`},
+		{"the no-gaps flag", `,"no_gaps":true`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newTestService(newFakeRepo())
+			d := mustDoc(t, s, "project-1", "First", "one")
+			_, err := s.Update(testCtx(), d.ID, "Second", "two")
+			require.NoError(t, err)
+
+			_, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","revert_to_version":1`+tt.extra+`}`)
+
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			got, err := s.Get(testCtx(), d.ID)
+			require.NoError(t, err)
+			assert.Equal(t, 2, got.Version, "a rejected revert saves nothing")
+		})
+	}
 }

@@ -629,6 +629,22 @@ func (s *Service) GetVersion(ctx context.Context, docID string, version int) (*D
 	return v, nil
 }
 
+// RestoreVersion saves an old version's title and body as a new version on top, through Update, so the open sitting is
+// saved first, open editors follow, and a locked doc refuses it; requires the edit bit.
+func (s *Service) RestoreVersion(ctx context.Context, docID string, version int) (*Doc, error) {
+	if strings.TrimSpace(docID) == "" {
+		return nil, fmt.Errorf("%w: doc id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, docID, permissions.DocsWrite); err != nil {
+		return nil, err
+	}
+	v, err := s.GetVersion(ctx, docID, version)
+	if err != nil {
+		return nil, err
+	}
+	return s.Update(ctx, docID, v.Title, v.Body)
+}
+
 // CommitCollab persists a converged collaboration state to the canonical doc without a heavyweight version row.
 func (s *Service) CommitCollab(ctx context.Context, id, title, body string) error {
 	if strings.TrimSpace(id) == "" {
