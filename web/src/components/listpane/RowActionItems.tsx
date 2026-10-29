@@ -7,6 +7,7 @@ import {
   EyeOffIcon,
   FilePlusIcon,
   FolderInputIcon,
+  HistoryIcon,
   LockIcon,
   LockOpenIcon,
   MailIcon,
@@ -113,6 +114,11 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
       {m.onClone && (
         <Entry ui={ui} gate={m.gates?.onClone} icon={CopyIcon} onSelect={m.onClone}>
           Clone
+        </Entry>
+      )}
+      {m.onHistory && (
+        <Entry ui={ui} gate={m.gates?.onHistory} icon={HistoryIcon} onSelect={m.onHistory}>
+          History
         </Entry>
       )}
       {m.permissions && <PermissionsItem ui={ui} permissions={m.permissions} afterOwn={own} beforeDelete={!!m.onDelete} />}

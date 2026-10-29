@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { personLabel } from "@nexul/client-core/person";
 
 import { microheaderClass } from "@/components/Microheader";
+import { TrailVersion } from "@/components/play/TrailVersion";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { passOverLines } from "@/models/Pairing";
@@ -36,6 +37,11 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
       <Fact label="Play">{trail.play_label}</Fact>
+      {trail.instructions_version !== undefined && (
+        <Fact label="Version">
+          <TrailVersion trail={trail} version={trail.instructions_version} />
+        </Fact>
+      )}
       <Fact label="Started by">
         <span className="text-xs">{personLabel(lookup(trail.starter_id))}</span>
       </Fact>

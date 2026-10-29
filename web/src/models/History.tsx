@@ -11,6 +11,8 @@ export interface HistoryVersionSummary {
   via: string;
   /** True on the newest version. */
   current: boolean;
+  /** The seeded text of a built-in play nobody has edited; it stands where a named version's headline does. */
+  builtin_default?: boolean;
   /** Words added and removed against the kept version before it; null on the oldest kept. */
   words_added?: number | null;
   words_removed?: number | null;
@@ -48,6 +50,9 @@ export interface HistoryVersion {
   /** The body as the entity stores it: a Tiptap JSON string, or markdown on an old record. */
   body: string;
 }
+
+// How a version's body is stored, so the dialog knows how to cut it into blocks: Tiptap JSON (docs, tickets), markdown text (play instructions), or code, one block per line.
+export type HistoryBodyKind = "tiptap" | "markdown" | "code";
 
 export type HistoryView = "changes" | "as-it-was";
 

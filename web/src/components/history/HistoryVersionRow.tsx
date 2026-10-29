@@ -26,12 +26,13 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
   const person = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const people = summary.editor_ids.map(person);
   const size = versionSize(summary);
+  const headline = summary.name || (summary.builtin_default ? "Built-in default" : "");
   const date = formatVersionTime(summary.created_at);
   const label = [
     date,
     people.map(personLabel).join(", "),
     summary.via && viaLabel(summary.via),
-    summary.name,
+    headline,
     size?.exact,
     summary.current && "current version",
     restoredWhen && `Restored from ${restoredWhen}`,
@@ -53,11 +54,11 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
       )}
     >
       {selected && <CurrentRowEdge />}
-      <HistorySpine node={summary.name ? "named" : "save"} selected={selected} first={first} last={last} />
+      <HistorySpine node={headline ? "named" : "save"} selected={selected} first={first} last={last} />
       <span className="min-w-0 flex-1">
-        {summary.name && (
-          <span className="mb-0.5 line-clamp-2 text-[13px] leading-[1.3] font-semibold text-balance" title={summary.name}>
-            {summary.name}
+        {headline && (
+          <span className="mb-0.5 line-clamp-2 text-[13px] leading-[1.3] font-semibold text-balance" title={headline}>
+            {headline}
           </span>
         )}
         <span className="flex items-baseline justify-between gap-1 font-mono text-xs tabular-nums">

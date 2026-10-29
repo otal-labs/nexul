@@ -14,7 +14,7 @@ import { useFetchHistory } from "@/hooks/HistoryHooks";
 import { useChangeStepper } from "@/hooks/HistoryStepperHooks";
 import { cn } from "@/lib/utils";
 import { restoredLabel } from "@/utils/HistoryVersionUtility";
-import type { HistoryRestore, HistoryView } from "@/models/History";
+import type { HistoryBodyKind, HistoryFieldChange, HistoryRestore, HistoryView } from "@/models/History";
 
 interface HistoryDialogProps {
   /** The entity's history route, and the route of one version. */
@@ -23,23 +23,30 @@ interface HistoryDialogProps {
   /** The item's name, in the header. */
   name: string;
   restore: HistoryRestore;
+  /** How the item stores its versions' bodies; Tiptap JSON unless said otherwise. */
+  bodyKind?: HistoryBodyKind;
+  /** The version the dialog opens on, instead of the newest. */
+  initialVersion?: number;
+  /** Turns a field change into the words the rail shows; the rows draw the change as it comes when it is left out. */
+  readChange?: (change: HistoryFieldChange) => HistoryFieldChange;
   onClose: () => void;
 }
 
 // One dialog for every item that keeps versions; mounted while open, so each open reads the list again.
-export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, onClose }: HistoryDialogProps) => {
+export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, bodyKind = "tiptap", initialVersion, readChange, onClose }: HistoryDialogProps) => {
   const { data: history, error, isPending } = useFetchHistory(historyUrl);
-  const [picked, setPicked] = useState<number>();
+  const [picked, setPicked] = useState(initialVersion);
   const [view, setView] = useState<HistoryView>("changes");
   const scroller = useRef<HTMLDivElement>(null);
 
   const versions = history?.versions;
+  const changes = readChange ? history?.changes?.map(readChange) : history?.changes;
   const selected = picked ?? versions?.[0]?.version;
   const index = versions?.findIndex((v) => v.version === selected) ?? -1;
   const current = versions?.[index];
   const previous = versions?.[index + 1];
 
-  const compare = useHistoryCompare(versionUrl, current?.version, previous?.version, view === "changes");
+  const compare = useHistoryCompare(versionUrl, current?.version, previous?.version, view === "changes", bodyKind);
   const stepper = useChangeStepper(scroller, compare);
   const single = versions?.length === 1;
 
@@ -66,7 +73,7 @@ export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, onClose }
         {versions && current && !single && (
           <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] border-t border-border">
             <HistoryCompare ref={scroller} picked={current} restored={restoredLabel(current, versions)} previous={previous} compare={compare} view={view} onView={changeView} step={stepper.step} onHop={stepper.hop} />
-            <HistoryVersionList versions={versions} changes={history.changes} selected={current.version} onSelect={pick} />
+            <HistoryVersionList versions={versions} changes={changes} selected={current.version} onSelect={pick} />
           </div>
         )}
         {versions && current && !single && <HistoryFooter version={current.version} savedAt={current.created_at} isCurrent={current.current} restore={restore} />}
