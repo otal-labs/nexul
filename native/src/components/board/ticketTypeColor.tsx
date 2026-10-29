@@ -2,7 +2,7 @@
 // stay muted; status and labels never fill a chip either, a label keeps its hue on a dot.
 const HUE_ICON_CLASS: Record<string, string> = {
   slate: "text-slate-700 dark:text-slate-400",
-  red: "text-red-700 dark:text-red-400",
+  rose: "text-rose-700 dark:text-rose-400",
   violet: "text-violet-700 dark:text-violet-400",
   amber: "text-amber-700 dark:text-amber-400",
   blue: "text-blue-700 dark:text-blue-400",
@@ -18,7 +18,7 @@ const HUE_ICON_CLASS: Record<string, string> = {
 
 const TYPE_HUES: Record<string, string> = {
   task: "slate",
-  bug: "red",
+  bug: "rose",
   feature: "violet",
   chore: "amber",
   docs: "blue",
