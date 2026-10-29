@@ -2,7 +2,7 @@ import type { ClientRect, DroppableContainer } from "@dnd-kit/core";
 import { describe, expect, it } from "vitest";
 
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
-import type { DropTargetData } from "@/components/board/dragMove";
+import { STAGE_HEADER, type DropTargetData } from "@/components/board/dragMove";
 
 const rect = (left: number, top: number, width: number, height: number): ClientRect => ({
   left,
@@ -122,5 +122,19 @@ describe("boardCollisionDetection", () => {
     });
     expect(result.map((c) => c.id)).toEqual(["t-9"]);
     expect(read).not.toContain("t-8");
+  });
+
+  it("finds the sticky stage row where it is drawn after the board scrolls mid-drag", () => {
+    // dnd-kit shifts a measured rect by the scroll since it was measured; the pinned row never moved, so its measure is stale.
+    const node = { getBoundingClientRect: () => rect(500, 0, 120, 32) } as HTMLElement;
+    const done = { ...container("column-header-done", { type: "column", statusId: "done", categoryId: STAGE_HEADER }), node: { current: node } };
+    const result = boardCollisionDetection({
+      active: { id: "t-1" } as never,
+      collisionRect: rect(500, 0, 50, 50),
+      droppableRects: new Map([["column-header-done", rect(500, 400, 120, 32)]]),
+      droppableContainers: [done],
+      pointerCoordinates: { x: 540, y: 16 },
+    });
+    expect(result.map((c) => c.id)).toEqual(["column-header-done"]);
   });
 });
