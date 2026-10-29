@@ -1,8 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { Position, ReactFlowProvider, type EdgeProps } from "@xyflow/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { RelationEdge } from "@/components/topology/RelationEdge";
+
+// The label renders through React Flow's label layer, which only exists inside a mounted canvas.
+vi.mock("@xyflow/react", async (original) => ({
+  ...(await original<typeof import("@xyflow/react")>()),
+  EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => <foreignObject>{children}</foreignObject>,
+}));
 
 const makeProps = (overrides: Partial<EdgeProps> = {}): EdgeProps => ({
   id: "edge-1",
@@ -31,18 +37,22 @@ describe("RelationEdge", () => {
   it.each([
     ["depends_on", "depends on"],
     ["mounts", "mounts"],
-  ])("labels %s edges with a pill", (kind, label) => {
-    const { container } = renderEdge({ data: { kind } });
+  ])("labels %s edges", (kind, label) => {
+    renderEdge({ data: { kind } });
     expect(screen.getByText(label)).toBeInTheDocument();
-    expect(container.querySelector("rect")).toBeInTheDocument();
   });
 
-  it("turns the pill ember when the edge is selected", () => {
-    const { container } = renderEdge({ data: { kind: "connects_to" }, selected: true });
-    const pill = container.querySelector("rect");
-    const label = container.querySelector("text");
-    expect(pill).toHaveClass("stroke-ring");
-    expect(label).toHaveClass("fill-primary");
+  it("rings the label in the selection colour when the edge is selected", () => {
+    renderEdge({ data: { kind: "connects_to" }, selected: true });
+    expect(screen.getByText("connects to")).toHaveClass("outline-ring", "text-primary");
+  });
+
+  it.each([
+    ["depends_on", "4 4"],
+    ["connects_to", "1 4"],
+  ])("strokes %s edges in their own dash", (kind, dash) => {
+    const { container } = renderEdge({ data: { kind } });
+    expect(container.querySelector("path.react-flow__edge-path")).toHaveStyle({ strokeDasharray: dash });
   });
 
   it("prefers an explicit label over the kind's", () => {
@@ -54,6 +64,5 @@ describe("RelationEdge", () => {
   it("renders no label when kind is missing", () => {
     renderEdge();
     expect(screen.queryByText(/depends on|connects to|mounts/)).not.toBeInTheDocument();
-    expect(document.querySelector("rect")).not.toBeInTheDocument();
   });
 });

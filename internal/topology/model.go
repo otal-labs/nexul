@@ -88,6 +88,8 @@ type Viewport struct {
 	X    float64 `json:"x"`
 	Y    float64 `json:"y"`
 	Zoom float64 `json:"zoom"`
+	// The canvas pane's width when the camera was saved; opened at another width the web fits again instead.
+	Width float64 `json:"width,omitempty"`
 }
 
 // Canvas is the workspace infrastructure map (ADR 0033): a descriptive model, not a controller.
@@ -96,4 +98,7 @@ type Canvas struct {
 	Nodes         []Node    `json:"nodes"`
 	Edges         []Edge    `json:"edges"`
 	Viewport      *Viewport `json:"viewport,omitempty"`
+	// The automatic layout the positions were last arranged by; a canvas below the web's current one is laid out
+	// again once. It only grows: a write that omits it keeps the stored one.
+	Layout int `json:"layout,omitempty"`
 }

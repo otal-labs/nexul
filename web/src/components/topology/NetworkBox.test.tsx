@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { NetworkBox } from "@/components/topology/NetworkBox";
@@ -19,7 +19,7 @@ describe("buildNetworkRects", () => {
       [makeService("api", { x: 100, y: 100 }), makeService("db", { x: 400, y: 100 })],
     );
     const { w, h } = footprintOf(makeService("db", { x: 0, y: 0 }));
-    expect(rects).toEqual([{ name: "app-net", x: 76, y: 52, width: 400 + w - 100 + 48, height: h + 48 + 24 }]);
+    expect(rects).toEqual([{ name: "app-net", x: 76, y: 52, width: 400 + w - 100 + 48, height: h + 48 + 24, count: 2 }]);
   });
 
   it("skips a network none of whose members are on the canvas", () => {
@@ -28,10 +28,10 @@ describe("buildNetworkRects", () => {
 });
 
 describe("NetworkBox", () => {
-  it("renders a labelled box pinned behind the nodes", () => {
-    const { container } = render(<NetworkBox rect={{ name: "app-net", x: 10, y: 20, width: 200, height: 100 }} />);
+  it("renders a labelled box pinned behind the nodes, with how many services it holds", () => {
+    const { container } = render(<NetworkBox rect={{ name: "app-net", x: 10, y: 20, width: 200, height: 100, count: 3 }} />);
     const box = container.firstElementChild;
     expect(box).toHaveStyle({ zIndex: -1, pointerEvents: "none", left: "10px", top: "20px", width: "200px", height: "100px" });
-    expect(screen.getByText("network · app-net")).toBeInTheDocument();
+    expect(box).toHaveTextContent("network · app-net3");
   });
 });

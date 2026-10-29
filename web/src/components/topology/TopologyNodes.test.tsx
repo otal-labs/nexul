@@ -60,7 +60,8 @@ describe("ServiceNode", () => {
     expect(screen.getByText(ServiceStatus.Failed)).toBeInTheDocument();
     expect(screen.getByText("3 replicas")).toBeInTheDocument();
     expect(screen.getByText("/data/pg")).toBeInTheDocument();
-    expect(screen.getByText("instance · run")).toBeInTheDocument();
+    expect(screen.getByText("instance")).toBeInTheDocument();
+    expect(screen.getByText("run")).toBeInTheDocument();
   });
 
   it("omits the url link and the replicas footer when the service has neither", () => {
@@ -75,7 +76,7 @@ describe("ExternalNode", () => {
     const { unmount } = renderNode(<ExternalNode {...nodeProps<ExternalNodeType>("external", externalData)} />);
     expect(screen.getByText("Cloudflare")).toBeInTheDocument();
     expect(screen.getByText(ExternalLabel.Tunnel)).toBeInTheDocument();
-    expect(screen.getByText("https://example.com")).toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveTextContent("https://example.com");
     unmount();
 
     renderNode(<ExternalNode {...nodeProps<ExternalNodeType>("external", { name: "Cloudflare", label: ExternalLabel.Tunnel })} />);
@@ -134,11 +135,9 @@ describe("GatewayNode", () => {
   });
 
   it("renders one row per route reading service:port with the address when known", () => {
-    gateway();
-    expect(screen.getByText("hello-api:3000")).toBeInTheDocument();
-    expect(screen.getByText("(172.18.0.4:3000)")).toBeInTheDocument();
-    expect(screen.getByText("web:80")).toBeInTheDocument();
-    expect(screen.queryByText(/\(:80\)/)).not.toBeInTheDocument();
+    const { container } = gateway();
+    expect(container.querySelector('[data-route="e1"]')).toHaveTextContent("→ hello-api:3000(172.18.0.4:3000)");
+    expect(container.querySelector('[data-route="e2"]')).toHaveTextContent(/^→ web:80$/);
   });
 
   it("gives every row its own wire in and wire out", () => {
@@ -157,6 +156,6 @@ describe("a selected node", () => {
     ["network", <NetworkNode key="n" {...nodeProps<NetworkNodeType>("network", { name: "app-net" }, { selected: true })} />],
   ])("carries the selection on a %s node", (_type, node) => {
     const { container } = renderNode(node);
-    expect(container.firstElementChild).toHaveAttribute("data-selected", "true");
+    expect(container.querySelector("[data-selected]")).toHaveAttribute("data-selected", "true");
   });
 });

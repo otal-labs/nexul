@@ -439,33 +439,63 @@ Motion, beyond the shared core:
 
 ### Canvas (topology)
 
-React Flow reads the same tokens: a `surface-2` well with a hairline ring for
-the field, a faint `muted-foreground` dot pattern, hairline edges, and `ring`
-for selection and connection lines. Every card on it is a `canvas-card`: the
-card colour with the panel's hairline ring and lit top edge, no blur (nodes
-move on every pan), lifting 2px on hover and outlined in `ring` when
-selected. A service card is a 28px `surface-2` tile holding its runtime icon,
-the name, and the status (icon and word) trailing on the same line, over a
-rule and one mono line per fact (machine and strategy, replicas, volume); a
-gateway card has the same header with its kind and name. Status colours only
-the status; the cards carry no coloured edge.
+The canvas is the page: it fills the panel edge to edge as a `surface-2`
+field with a faint `muted-foreground` dot pattern, and one bar across its top
+is the page's header: the title in Fraunces at 20px, then the counts in
+tabular figures (services, the failed and stopped ones each after their
+status dot, hostnames), then the zoom (−, the percentage, +), Fit, Show more
+lanes (only while lanes continue past the right edge), Lock, Arrange in lanes
+and "+ External" as the outline button. Below 1024px the bar keeps only the
+failed and stopped counts, and Show more lanes, Lock and Arrange fold into a
+"…" menu. There is no floating control strip, no minimap (at the canvas's
+size it covered a fifth of the map and showed grey blocks) and no library
+attribution.
 
-Traffic reads left to right as a sentence: hostname pill, gateway row,
-service, inside one box per docker network: `foreground` at 2.5% over the
-field with a hairline ring and the large radius, a mono microheader
-(`network · <name>`) inside its top edge. The gateway card is titled in plain
-words ("Cloudflare tunnel", "Reverse proxy") and lists one mono row per route,
-`→ service:port (address:port)`, each row with its own handle on both sides.
-A hostname whose gateway is not on the canvas sits left of its service's
-network box, level with the service, and its wire carries the port.
-Route wires are bare 1.5px bezier curves in `muted-foreground`; only
-hand-drawn relation edges keep the dashed smoothstep and the label pill. The
-hostname pill is the one `rounded-full` chip on the canvas. Nothing truncates:
-pills and cards are `w-max` and grow to their text. Nothing overlaps: a stored
-arrangement whose cards or boxes come within 12px of each other is laid out
-again. The controls sit bottom left as one `canvas-card` strip; there is no
-minimap (at the canvas's size it covered a fifth of the map and showed grey
-blocks) and no library attribution.
+Every card is a `canvas-card`: the card colour with the panel's hairline ring
+and lit top edge, no blur (nodes move on every pan), lifting 2px on hover and
+outlined in `ring` when selected. Connection handles show only on hover. A
+service card is 288px wide: the name on its own line (wrapping after a
+hyphen, never truncated), under it the status as a dot and word with the
+strategy in mono at the right, then the machine in mono under a rule. Status
+colours only the status, and stopped is `warning`.
+
+Traffic reads left to right in lanes, each kind in its own column under a mono
+microheader over its leftmost card: Hostnames, Gateways, Services, then the
+nodes Nexul does not run. A gateway card is 360px: a 28px `surface-2` tile
+with a shield, its kind in plain words ("Cloudflare tunnel", "Reverse proxy")
+over the container's name, the status trailing; one mono row per route,
+`→ service:port` with the bracketed `(address:port)` right-aligned in tabular
+figures, each row with its own hidden handle on both sides; and a mono footer
+of its machine and networks. Hostname pills are derived, never stored or
+dragged: each is a `rounded-full` pill (the one on the canvas) right-aligned
+one lane gap left of its gateway, level with the row it enters, so the wire in
+is a straight line and the pills read as a column of row labels; a pill grows
+to its hostname up to 320px, then wraps after a dot, and its row grows to stay
+level. A hostname whose gateway is not on the canvas joins the same column,
+level with its service, and its wire carries the port. Services stack in their
+network boxes (`foreground` at 3.5% with a hairline ring and the large radius,
+the mono `network · <name>` microheader with the member count at its right) in
+the order the gateway rows reach them, so the wires out fan without crossing;
+a service on no network takes its place in that order without a box. A drawn
+node is a 240px card under an "outside Nexul" microheader, so it never reads
+as a deployed service.
+
+Route wires are bare 1.5px bezier curves in `muted-foreground`; a failed or
+stopped service colours its whole path back to the hostname (`destructive` or
+`warning`): a dot leads the pill, and both wires and the row's arrow take the
+hue. Hand-drawn relations are smoothstep lines, one stroke per kind (depends
+on dashed with an arrow, connects to dotted, mounts solid), labelled in mono
+on a knockout of the field. Hovering a card lights every route it is on, end to
+end, and the relations that touch it, and dims everything else to 35% over
+150ms.
+
+The canvas opens at a zoom that reads: it fits the widest run of whole lanes
+from the left at 0.8 to 1, top-aligned, never cutting a lane mid-card, and a
+fade over the right edge says more lanes continue. A saved camera is restored
+only at the pane width it was saved at. Nothing truncates and nothing
+overlaps: an arrangement whose cards, pills or boxes come within 12px of each
+other (pills stacked at their rows' pitch excepted) is laid out in lanes
+again, and so, once, is a canvas arranged by an older layout.
 
 ### Pattern spec
 
@@ -1660,7 +1690,8 @@ The web app's pattern decisions, each with what it was picked over.
 | The Inbox row: an unread gutter, the title, then the kind icon, summary and time on one meta line (2026-10-29) | Against the 28px tile with a dot on its corner, row dividers and the time beside the title (about 175px of title at the 300px default, so most ticket titles clamped mid-sentence, and unread sat in two columns with the folder dot); the icon on the meta line gives the title about 260px and a crashed service reads in its hue at a glance. Rejected: the icon beside the title (35px less title), a 16px icon centred on both lines (floated off both), a single-line title (cut most titles in half) and a full-width list until a row is picked (the list jumped to 300px on every first open) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Runners: one list, a `surface-2` band per machine over one-line runner rows on shared tracks, a column head row, the fleet's health in the header and the queue above the list (2026-10-29) | Against one card per machine (a server tile, three header actions and a People row on every machine put a one-runner machine at about 200px, columns were laid out per card, and the queue sat in a side rail that fell to the bottom of the page at 768) and against bands separated by space alone or a heading over a box per machine (both read as separate pages); the stat well's four figures moved into the header's health line, the trash column and Import into `⋯` menus, and "just now" was dropped, since a connected runner's last seen always reads that |
-| Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
+| Topology in lanes, read at a legible zoom (2026-10-29) | The fitted canvas sat near 0.5, where the mono route rows rendered at 6 to 8px, and its automatic layout scattered the hostnames, gateways and services so the left-to-right sentence only held inside each gateway card; at its worst the fit still cut hostnames and drawn nodes off both sides. Fixed lanes, pills level with their rows and a 0.8 floor keep the sentence whole. Against a docked route index listing every hostname (hostnames shown twice, which the hub rows were chosen to avoid) and against anchoring the camera on one lane (the whole sentence fits at 1440). The gateway, service, pill, drawn-node and frame shapes were picked from screenshot variants |
+| Topology service cards: the name on its own line, status and strategy under it, the machine under a rule (2026-10-29) | Replaced the icon tile with the status trailing the name, which squeezed long names at a fixed lane width; the tile stays on the gateway card, the one card whose icon says something |
 | The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |
 | Sidebar rows at 13px, about 28px tall, in a 224px sidebar, with sentence-case labels (2026-10-28) | Against 14px rows near 34px tall in 240px under mono uppercase labels: the labels were the most tracked-out, most technical-looking text in the chrome for the least important words, and the tall rows pushed Voice channels to the fold at 900px; the compact rows sit level with the board's 13px card titles and give the panel 16px |
 | Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |

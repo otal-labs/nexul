@@ -638,14 +638,28 @@ func TestService_Update_KeepsViewport(t *testing.T) {
 	repo := newFakeRepo()
 	svc := NewService(repo)
 	ctx := context.Background()
-	c := &Canvas{SchemaVersion: 2, Nodes: []Node{validNetworkNode()}, Viewport: &Viewport{X: 12, Y: -40, Zoom: 0.8}}
+	c := &Canvas{SchemaVersion: 2, Nodes: []Node{validNetworkNode()}, Viewport: &Viewport{X: 12, Y: -40, Zoom: 0.8, Width: 1143}}
 	saved, err := svc.Update(ctx, "prod", c)
 	require.NoError(t, err)
-	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8}, saved.Viewport)
+	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8, Width: 1143}, saved.Viewport)
 
 	got, err := svc.Get(ctx, "prod")
 	require.NoError(t, err)
-	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8}, got.Viewport)
+	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8, Width: 1143}, got.Viewport)
+}
+
+func TestService_Update_KeepsTheLayoutVersionAWriteOmits(t *testing.T) {
+	svc := NewService(newFakeRepo())
+	ctx := context.Background()
+	_, err := svc.Update(ctx, "prod", &Canvas{SchemaVersion: 2, Nodes: []Node{validNetworkNode()}, Layout: 1, Viewport: &Viewport{Zoom: 1, Width: 1143}})
+	require.NoError(t, err)
+
+	_, err = svc.Update(ctx, "prod", &Canvas{SchemaVersion: 2, Nodes: []Node{validNetworkNode()}})
+	require.NoError(t, err)
+
+	got, err := svc.Get(ctx, "prod")
+	require.NoError(t, err)
+	assert.Equal(t, 1, got.Layout)
 }
 
 func TestView_ShowsOnlyTheWorkspacesServices(t *testing.T) {

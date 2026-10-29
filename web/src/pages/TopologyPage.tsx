@@ -1,21 +1,14 @@
 import { Container } from "@/components/Container";
-import { PageHeader } from "@/components/PageHeader";
 import { TopologyCanvas } from "@/components/topology/TopologyCanvas";
-import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-// Keyed by workspace, so switching starts a fresh canvas: its own layout pass and camera.
+// The canvas is the page: its bar carries the title, so there is no page header above it. Keyed by workspace, so
+// switching starts a fresh canvas: its own layout pass and camera.
 export const TopologyPage = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const workspaceCrumb = useWorkspaceCrumb();
   return (
-    <Container className="flex h-full flex-col py-8">
-      <PageHeader
-        crumbs={[workspaceCrumb]}
-        title="Topology"
-        meta="Every service, the network it runs on, and how traffic reaches it."
-      />
-      <div className="mt-6 min-h-96 flex-1 overflow-hidden rounded-lg bg-surface-2 ring-1 ring-border">
+    <Container className="flex h-full flex-col py-3" data-canvas-page>
+      <div className="-mx-2 min-h-96 flex-1 overflow-hidden rounded-lg bg-surface-2">
         <TopologyCanvas key={workspaceId} />
       </div>
     </Container>

@@ -53,7 +53,6 @@ style on top of current APIs.
 | Headless primitives | `@shadcn/react` | Separate install path from the shadcn CLI, used for `message-scroller` |
 | Styling | Tailwind CSS | `@theme inline` + CSS variables |
 | Topology canvas | `@xyflow/react` (React Flow) | Canvas JSON holds nodes, edges, and positions |
-| Canvas layout | `elkjs` | Dependency-aware auto-layout on first paint |
 | Rich text | tiptap, with `yjs` and `y-protocols` | Collaborative document editor, ADR 0026 and ADR 0050 |
 | Voice | LiveKit | ADR 0030 |
 | Drag and drop | dnd-kit | Board drag and drop, ADR 0001 |
@@ -1050,8 +1049,11 @@ index health, owning ticket, live deploy status).
   Validate it against the shared schema on load and save; never keep a
   second hand-written topology type. The dashed network boxes, gateway rows,
   and hostname pills on the canvas are derived at render time from that
-  stored data, never serialized. First paint uses `elkjs` for
-  dependency-aware auto-layout; manual drags persist as positions.
+  stored data, never serialized. The automatic layout is our own lane
+  layout (`utils/TopologyLayout.ts`), sized from `components/topology/geometry.ts`
+  so a pill is level with its gateway row before anything is measured; manual
+  drags persist as positions, and the canvas's `layout` version lays an older
+  arrangement out again once.
 - **Theming.** React Flow's CSS is overridden with the same variables as
   shadcn, so nodes, edges, and the controls follow light and dark for free;
   a selected node takes the shadcn `ring`. The canvas has no minimap and

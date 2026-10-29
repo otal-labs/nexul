@@ -9843,6 +9843,9 @@
               },
               "zoom": {
                 "type": "number"
+              },
+              "width": {
+                "type": "number"
               }
             },
             "required": [
@@ -9850,6 +9853,9 @@
               "y",
               "zoom"
             ]
+          },
+          "layout": {
+            "type": "integer"
           }
         },
         "required": [

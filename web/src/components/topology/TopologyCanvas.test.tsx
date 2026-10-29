@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorMessage: () => "" }));
 
+// A service's name shows on its card and in the gateway row that reaches it; the card is the one to click.
+const serviceCard = async (name: string) => (await screen.findAllByText(name)).find((el) => el.closest(".react-flow__node-service"))!;
+
 const wrap = (ui: React.ReactNode) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <MemoryRouter initialEntries={["/acme/topology"]}>
@@ -78,18 +81,33 @@ describe("TopologyCanvas", () => {
 
   it("renders the service nodes from the fetched canvas", async () => {
     render(wrap(<TopologyCanvas />));
-    expect(await screen.findByText("api-gateway")).toBeInTheDocument();
+    expect(await serviceCard("api-gateway")).toBeInTheDocument();
     expect(screen.getByText("cloudflared-local")).toBeInTheDocument();
   });
 
-  it("lays out never-placed nodes with elkjs on first paint and saves the result", async () => {
+  it("lays out never-placed nodes in lanes on first paint and saves the result with the layout's version", async () => {
     render(wrap(<TopologyCanvas />));
     await waitFor(() => {
       const nodes = useFlowStore.getState().nodes;
       expect(nodes).toHaveLength(2);
       expect(nodes.some((n) => n.position.x !== 0 || n.position.y !== 0)).toBe(true);
     });
-    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/topology", expect.objectContaining({ schema_version: 2 }), expect.anything()));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/topology", expect.objectContaining({ schema_version: 2, layout: 1 }), expect.anything()));
+  });
+
+  it("lays a canvas arranged by an older layout out again once, even when every node was placed", async () => {
+    const old: Canvas = { ...canvas, nodes: canvas.nodes.map((n, i) => ({ ...n, position: { x: 100 + i * 400, y: 250 } })) };
+    mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/topology" ? old : (responses[url] ?? []) }));
+    render(wrap(<TopologyCanvas />));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/topology", expect.objectContaining({ layout: 1 }), expect.anything()));
+    expect(useFlowStore.getState().nodes.map((n) => n.position)).not.toEqual(old.nodes.map((n) => n.position));
+  });
+
+  it("counts the services and hostnames in the bar, and offers Arrange only to someone who can write", async () => {
+    render(wrap(<TopologyCanvas />));
+    await serviceCard("api-gateway");
+    expect(screen.getByRole("heading", { name: "Topology" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Arrange in lanes" }).length).toBeGreaterThan(0);
   });
 
   it("lays out for a viewer who can't write topology without saving it, and offers no External node", async () => {
@@ -99,6 +117,7 @@ describe("TopologyCanvas", () => {
 
     expect(mocks.put).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Add external node" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Arrange in lanes" })).not.toBeInTheDocument();
   });
 
   it("locks the External node button for a viewer whose role shows locked actions", async () => {
@@ -112,15 +131,16 @@ describe("TopologyCanvas", () => {
   it("keeps the owner's saved positions and viewport instead of laying out again", async () => {
     const placed: Canvas = {
       ...canvas,
-      nodes: canvas.nodes.map((n, i) => ({ ...n, position: { x: 100 + i * 300, y: 250 } })),
+      nodes: canvas.nodes.map((n, i) => ({ ...n, position: { x: 100 + i * 700, y: 250 } })),
       viewport: { x: 40, y: 60, zoom: 0.5 },
+      layout: 1,
     };
     mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/topology" ? placed : (responses[url] ?? []) }));
     render(wrap(<TopologyCanvas />));
     await waitFor(() => expect(document.querySelector('a[href="https://api.example.com"]')).toBeInTheDocument());
     expect(useFlowStore.getState().nodes.map((n) => n.position)).toEqual([
       { x: 100, y: 250 },
-      { x: 400, y: 250 },
+      { x: 800, y: 250 },
     ]);
     expect(useFlowStore.getState().viewport).toEqual({ x: 40, y: 60, zoom: 0.5 });
     expect(mocks.put).not.toHaveBeenCalled();
@@ -130,30 +150,30 @@ describe("TopologyCanvas", () => {
     render(wrap(<TopologyCanvas />));
     // React Flow keeps nodes visibility:hidden until measured, which jsdom never does, so role queries can't name it.
     await waitFor(() => expect(document.querySelector('a[href="https://api.example.com"]')).toBeInTheDocument());
-    expect(screen.getByText("network · app-net")).toBeInTheDocument();
+    expect(document.querySelector("[data-network=\"app-net\"]")).toHaveTextContent("network · app-net");
     expect(screen.getByText("Cloudflare tunnel")).toBeInTheDocument();
-    expect(screen.getByText("api-gateway:3000")).toBeInTheDocument();
+    expect(document.querySelector('[data-route="exp-1"]')).toHaveTextContent("→ api-gateway:3000");
     // Edges only draw once nodes are measured; their wiring is covered by wiring.test.ts.
-    expect(screen.getByText("instance · run")).toBeInTheDocument();
+    expect(screen.getAllByText("instance").length).toBeGreaterThan(0);
   });
 
   it("opens the stack page when a service node is clicked", async () => {
     render(wrap(<TopologyCanvas />));
-    fireEvent.click(await screen.findByText("api-gateway"));
+    fireEvent.click(await serviceCard("api-gateway"));
     expect(await screen.findByText("stack page")).toBeInTheDocument();
   });
 
   it("opens the service's logs when the viewer can read them", async () => {
     access.areas = ["stacks", "stackLogs"];
     render(wrap(<TopologyCanvas />));
-    fireEvent.click(await screen.findByText("api-gateway"));
+    fireEvent.click(await serviceCard("api-gateway"));
     expect(await screen.findByText("logs page")).toBeInTheDocument();
   });
 
   it("does not open the stack page for a viewer who can't read stacks", async () => {
     access.areas = [];
     render(wrap(<TopologyCanvas />));
-    fireEvent.click(await screen.findByText("api-gateway"));
+    fireEvent.click(await serviceCard("api-gateway"));
     expect(screen.queryByText("stack page")).not.toBeInTheDocument();
   });
 });

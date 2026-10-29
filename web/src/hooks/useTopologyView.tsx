@@ -1,110 +1,159 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { applyNodeChanges, useReactFlow, type OnNodesChange } from "@xyflow/react";
+import { applyNodeChanges, MarkerType, useReactFlow, useStoreApi, type OnNodesChange } from "@xyflow/react";
 
 import { onNodesChange } from "@/components/topology/flowActions";
-import { deriveWiring } from "@/components/topology/wiring";
+import { deriveWiring, summarize, tracePath } from "@/components/topology/wiring";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchAllContainers, useFetchStacks } from "@/hooks/StackHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
 import { useActionState } from "@/hooks/useActionState";
-import type { HostnameNode, TopologyNode } from "@/models/Topology";
+import { cn } from "@/lib/utils";
+import { RelationKind, type HostnameNode, type RelationEdge, type TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
-import { alignPillsToRows, buildNetworkRects, layoutGraph, overlaps, type Positions } from "@/utils/TopologyLayout";
+import {
+  alignPillsToRows,
+  buildNetworkRects,
+  LANE_LAYOUT,
+  laneCamera,
+  laneLayout,
+  lanesOf,
+  overlaps,
+  type Positions,
+} from "@/utils/TopologyLayout";
 
-// Two nodes should not fill the screen; cap at 1:1 so cards keep their designed size.
-const FIT = { padding: 0.2, maxZoom: 1 };
+// What React Flow measures on a pill; where it sits is derived from its gateway row every render.
+type Measured = HostnameNode["measured"];
 
-// What React Flow tells us about a derived node that the wiring can't know: where it sits and how big it measured.
-type HostState = Pick<HostnameNode, "position" | "measured">;
+const fade = "transition-opacity duration-150 ease-standard";
 
-const hostStateOf = (n: HostnameNode): HostState => ({
-  position: n.position,
-  ...(n.measured ? { measured: n.measured } : {}),
-});
+const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "var(--muted-foreground)" };
 
-// The canvas as rendered: stored nodes plus the derived hostname pills, gateway rows, and network boxes, laid out
-// once and kept in step with React Flow's measurements. Needs the ReactFlowProvider mounted by TopologyCanvas.
+// The canvas as rendered, stored and derived nodes in lanes. Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const useTopologyView = () => {
-  const { fitView, setViewport } = useReactFlow();
+  const { setViewport } = useReactFlow();
+  const flow = useStoreApi();
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
   const save = useSaveTopology();
   const canWrite = useActionState({ permission: "topology:write" }).state === "live";
   const { isPending } = useFetchTopology();
-  const { data: containers = [] } = useFetchAllContainers();
+  const { data: containers = [], isPending: containersPending } = useFetchAllContainers();
   const { data: stacks = [] } = useFetchStacks();
-  const { data: gateways = [] } = useFetchGateways();
-  const { data: exposures = [] } = useFetchExposures();
+  const { data: gateways = [], isPending: gatewaysPending } = useFetchGateways();
+  const { data: exposures = [], isPending: exposuresPending } = useFetchExposures();
+  // The lanes need every card and wire, so nothing is laid out until the containers, gateways and exposures are in.
+  const loading = isPending || containersPending || gatewaysPending || exposuresPending;
 
-  const [hostState, setHostState] = useState<Map<string, HostState>>(() => new Map());
+  const [measured, setMeasured] = useState<Map<string, Measured>>(() => new Map());
 
   const wiring = useMemo(
     () => deriveWiring(nodes, containers ?? [], stacks, gateways, exposures),
     [nodes, containers, stacks, gateways, exposures],
   );
-  const hosts = useMemo(
-    () => wiring.hosts.map((h): HostnameNode => ({ ...h, ...hostState.get(h.id) })),
-    [wiring.hosts, hostState],
-  );
+  // Pills are never dragged or stored: each follows its gateway row (or its service) wherever that card sits.
+  const hosts = useMemo(() => {
+    const at = alignPillsToRows([...wiring.hosts, ...wiring.nodes], new Map(wiring.nodes.map((n) => [n.id, n.position])), wiring.edges, wiring.networks);
+    return wiring.hosts.map((h): HostnameNode => {
+      const size = measured.get(h.id);
+      return { ...h, draggable: false, position: at.get(h.id) ?? h.position, ...(size ? { measured: size } : {}) };
+    });
+  }, [wiring, measured]);
   const viewNodes = useMemo(() => [...hosts, ...wiring.nodes], [hosts, wiring.nodes]);
-  const viewEdges = useMemo(() => [...edges, ...wiring.edges], [edges, wiring.edges]);
-  const networkRects = useMemo(() => buildNetworkRects(wiring.networks, viewNodes), [wiring.networks, viewNodes]);
+  const viewEdges = useMemo(
+    () => [...edges.map((e): RelationEdge => (e.data?.kind === RelationKind.DependsOn ? { ...e, markerEnd: arrow } : e)), ...wiring.edges],
+    [edges, wiring.edges],
+  );
 
-  // Stored positions are the owner's: the automatic layout only runs while some stored node has never been placed
-  // (the server adds a service node at 0,0) or the stored arrangement draws cards or network boxes over each other
-  // (positions saved before a card grew), and its result is saved so it does not run again. Otherwise only the pills
-  // (never stored) are placed, beside their gateway rows or their service. Runs again when the
-  // set of nodes or the network boxes change, since containers load after the stored nodes do; a run that a newer
-  // set superseded is dropped, not applied. The camera is set once: the saved viewport when there is one, else fit.
+  // Hovering a card traces every route it is on, end to end, and dims the rest of the map.
+  const [hovered, setHovered] = useState<string | null>(null);
+  const lit = useMemo(() => (hovered ? tracePath(hovered, viewEdges) : null), [hovered, viewEdges]);
+  const shownNodes = useMemo(
+    () =>
+      viewNodes.map((n): TopologyNode => {
+        const node = { ...n, className: cn(fade, lit && !lit.nodes.has(n.id) && "opacity-35") } as TopologyNode;
+        if (!lit || node.type !== "gateway") return node;
+        const litRoutes = node.data.routes.filter((r) => lit.edges.has(`route-${r.id}-in`)).map((r) => r.id);
+        return { ...node, data: { ...node.data, litRoutes } };
+      }),
+    [viewNodes, lit],
+  );
+  const shownEdges = useMemo(
+    () =>
+      viewEdges.map((e): RelationEdge => {
+        const dim = !!lit && !lit.edges.has(e.id);
+        return { ...e, className: cn(fade, dim && "opacity-35"), ...(e.data ? { data: { ...e.data, dim } } : {}) };
+      }),
+    [viewEdges, lit],
+  );
+  const networkRects = useMemo(() => buildNetworkRects(wiring.networks, viewNodes), [wiring.networks, viewNodes]);
+  const shownRects = useMemo(
+    () =>
+      networkRects.map((r) => {
+        const members = wiring.networks.find((g) => g.name === r.name)?.memberIds ?? [];
+        return { ...r, dim: !!lit && !members.some((id) => lit.nodes.has(id)) };
+      }),
+    [networkRects, wiring.networks, lit],
+  );
+  const lanes = useMemo(() => lanesOf(viewNodes, networkRects), [viewNodes, networkRects]);
+  const summary = useMemo(() => summarize(wiring), [wiring]);
+
+  const place = (positions: Positions) => {
+    const { nodes: current, setNodes } = useFlowStore.getState();
+    setNodes(current.map((n) => ({ ...n, position: positions.get(n.id) ?? n.position })));
+  };
+
+  const cameraFor = (positions: Positions, width: number) => {
+    const placed = viewNodes.map((n) => ({ ...n, position: positions.get(n.id) ?? n.position }));
+    return laneCamera(lanesOf(placed, buildNetworkRects(wiring.networks, placed)), width);
+  };
+
+  // The pane is measured a frame or two after the canvas mounts; a camera set before that fits a 0px pane at 1:1.
+  const whenSized = (then: (width: number) => void, frames = 30) =>
+    requestAnimationFrame(() => {
+      const width = flow.getState().width;
+      if (width > 0 || frames === 0) return then(width);
+      whenSized(then, frames - 1);
+    });
+
+  // Lays every card out in lanes again, saves it with the layout's version, and frames the result.
+  const arrange = (positions = laneLayout(viewNodes, viewEdges, wiring.networks)) => {
+    place(positions);
+    useFlowStore.getState().setLayout(LANE_LAYOUT);
+    if (canWrite) void save.mutateAsync();
+    whenSized((width) => void setViewport(cameraFor(positions, width)));
+  };
+
+  // Stored positions win: the lanes run once for an older layout, else only for an unplaced node or an overlap.
   const laidOut = useRef("");
   const cameraSet = useRef(false);
   useEffect(() => {
-    if (isPending) return;
+    if (loading) return;
     const boxes = wiring.networks.map((g) => `${g.name}=${[...g.memberIds].sort().join(",")}`).join(";");
     const key = `${viewNodes.map((n) => n.id).sort().join("|")}#${boxes}`;
     if (!key || laidOut.current === key) return;
     laidOut.current = key;
-    const settle = (positions: Positions, persist: boolean) => {
-      if (laidOut.current !== key) return;
-      const { nodes: current, setNodes } = useFlowStore.getState();
-      setNodes(
-        current.map((n) => {
-          const placed = positions.get(n.id);
-          return placed ? { ...n, position: placed } : n;
-        }),
-      );
-      setHostState((prev) => {
-        const next = new Map(prev);
-        for (const [id, position] of positions) {
-          if (id.startsWith("host-")) next.set(id, { ...prev.get(id), position });
-        }
-        return next;
-      });
-      if (persist && canWrite) void save.mutateAsync();
-      if (cameraSet.current) return;
-      cameraSet.current = true;
-      // Next frame, once the new positions have rendered.
-      requestAnimationFrame(() => {
-        const saved = useFlowStore.getState().viewport;
-        if (saved && !persist) {
-          void setViewport(saved);
-          return;
-        }
-        void fitView(FIT);
-      });
-    };
     const stored = new Map(viewNodes.map((n) => [n.id, n.position]));
     const unplaced = wiring.nodes.some((n) => n.position.x === 0 && n.position.y === 0);
-    if (unplaced || overlaps(wiring.nodes, stored, wiring.networks)) {
-      // A layout ELK refuses still places the pills, over the stored positions.
-      void layoutGraph(viewNodes, viewEdges, wiring.networks).then(
-        (positions) => settle(positions, true),
-        () => settle(alignPillsToRows(viewNodes, stored, viewEdges, wiring.networks), false),
-      );
+    const stale = useFlowStore.getState().layout < LANE_LAYOUT;
+    const relayout = stale || unplaced || overlaps(viewNodes, stored, wiring.networks, viewEdges);
+    if (relayout && wiring.nodes.length > 0) {
+      cameraSet.current = true;
+      arrange();
       return;
     }
-    settle(alignPillsToRows(viewNodes, stored, viewEdges, wiring.networks), false);
-  }, [isPending, viewNodes, viewEdges, wiring.nodes, wiring.networks, fitView, setViewport, save, canWrite]);
+    if (cameraSet.current) return;
+    cameraSet.current = true;
+    whenSized((width) => {
+      const saved = useFlowStore.getState().viewport;
+      if (saved && Math.round(saved.width ?? 0) === Math.round(width)) {
+        void setViewport(saved);
+        return;
+      }
+      void setViewport(cameraFor(stored, width));
+    });
+    // arrange, place and cameraFor read the latest render's values; the key above decides when this runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, viewNodes, viewEdges, wiring.nodes, wiring.networks]);
 
   // Store nodes take their changes in the store; derived nodes keep theirs (measurements, mostly) here.
   const handleNodesChange: OnNodesChange<TopologyNode> = (changes) => {
@@ -114,8 +163,20 @@ export const useTopologyView = () => {
     const mine = changes.filter(isHost);
     if (mine.length === 0) return;
     const next = applyNodeChanges(mine, hosts).filter((n): n is HostnameNode => n.type === "hostname");
-    setHostState(new Map(next.map((h) => [h.id, hostStateOf(h)])));
+    setMeasured(new Map(next.map((h) => [h.id, h.measured])));
   };
 
-  return { viewNodes, viewEdges, networkRects, handleNodesChange };
+  const fit = () => void setViewport(cameraFor(new Map(viewNodes.map((n) => [n.id, n.position])), flow.getState().width));
+
+  return {
+    viewNodes: shownNodes,
+    viewEdges: shownEdges,
+    networkRects: shownRects,
+    lanes,
+    handleNodesChange,
+    summary,
+    arrange: () => arrange(),
+    fit,
+    trace: { set: setHovered },
+  };
 };
