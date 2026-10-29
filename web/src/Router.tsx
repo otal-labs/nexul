@@ -82,7 +82,7 @@ const workspaceRoutes: RouteObject[] = [
   // Mention chips carry only the doc id; the page moves them to the project's URL.
   { path: "docs/:docId", handle: projectGate(), element: <DocsPage /> },
   { path: "memories", handle: projectGate("memories"), element: <MemoriesPage /> },
-  { path: "memories/:projectToken/:memoryId/:tab?", handle: projectGate("memories"), element: <MemoriesPage /> },
+  { path: "memories/:projectToken/:memoryId", handle: projectGate("memories"), element: <MemoriesPage /> },
   { path: "board", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "tickets/:ticketId/:tab?", handle: projectGate("tickets"), element: <TicketPage /> },

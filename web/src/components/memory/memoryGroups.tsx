@@ -5,12 +5,14 @@ export type MemoryFolderId = "main" | "footer";
 export interface MemoryFolder {
   id: MemoryFolderId;
   label: string;
+  /** When a run reads the folder. */
+  hint: string;
   memories: Memory[];
 }
 
-export const memoryFolderOptions: { id: MemoryFolderId; name: string }[] = [
-  { id: "main", name: "Main" },
-  { id: "footer", name: "Footer" },
+export const memoryFolderOptions: { id: MemoryFolderId; name: string; hint: string }[] = [
+  { id: "main", name: "Main", hint: "Read when a run starts" },
+  { id: "footer", name: "Footer", hint: "Read when a run ends" },
 ];
 
 const requiredFirst = (a: Memory, b: Memory) =>
@@ -19,9 +21,10 @@ const requiredFirst = (a: Memory, b: Memory) =>
 // Main holds what a run reads first, Footer what it concludes with; required memories lead each, then newest first.
 export const groupMemoriesByFolder = (memories: Memory[]): MemoryFolder[] => {
   const sorted = [...memories].sort(requiredFirst);
-  return memoryFolderOptions.map(({ id, name }) => ({
+  return memoryFolderOptions.map(({ id, name, hint }) => ({
     id,
     label: name,
+    hint,
     memories: sorted.filter((m) => m.footer === (id === "footer")),
   }));
 };

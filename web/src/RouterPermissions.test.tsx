@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -151,48 +150,13 @@ describe("workspace URLs", () => {
 });
 
 describe("tab URLs", () => {
-  const readers = ["automations:read", "memories:read", "connectors:read"];
-  const project = { id: "p-1", name: "Web", prefix: "WEB", position: 0, icon: "", tests_location: "", setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
-  const projectMemory = {
-    id: "m-1", workspace_id: "ws-1", project_id: "p-1", kind: "", title: "House rules", when_to_use: "", body: "",
-    always_included: false, version: 1, created_by: "", created_at: "", updated_at: "", updated_by: "",
-  };
-
-  const mockMemoryApi = (permissions: string[]) => {
-    mockApi([], permissions);
-    const fallback = vi.mocked(api.get).getMockImplementation()!;
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/projects") return { data: [project] };
-      if (url === "/api/memories/m-1") return { data: projectMemory };
-      return fallback(url);
-    });
-  };
-
+  const readers = ["automations:read", "connectors:read"];
   it("/automations/hosts opens the list's Hosts tab, not an automation called hosts", async () => {
     mockApi([], readers);
     renderAt("/acme/automations/hosts");
 
     expect(await screen.findByRole("tab", { name: "Hosts", selected: true })).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/automations/hosts");
-  });
-
-  it("opens a memory's Versions tab from its project's path", async () => {
-    mockMemoryApi(readers);
-    renderAt("/acme/memories/WEB/m-1/versions");
-
-    expect(await screen.findByRole("tab", { name: "Versions", selected: true })).toBeInTheDocument();
-  });
-
-  it("keeps unsaved edits when a memory's tab changes", async () => {
-    mockMemoryApi([...readers, "memories:write"]);
-    renderAt("/acme/memories/WEB/m-1");
-    const title = await screen.findByLabelText("Title");
-    await userEvent.setup().type(title, " edited");
-
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Versions" }));
-
-    expect(window.location.pathname).toBe("/acme/memories/WEB/m-1/versions");
-    expect(screen.getByLabelText("Title")).toHaveValue("House rules edited");
   });
 
   it("/settings/connectors/github-app opens the GitHub App tab", async () => {

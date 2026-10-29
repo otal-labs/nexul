@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,9 +9,9 @@ import type { Memory } from "@/models/Memory";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { asOwner, asReader, settle } from "@/test/viewer";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "error" }));
+vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorMessage: () => "error" }));
 
 vi.mock("@/components/attachment/AttachmentsSection", () => ({
   AttachmentsSection: () => <div data-testid="attachments-section" />,
@@ -43,7 +43,6 @@ const memory: Memory = {
   updated_at: "2026-09-16T12:00:00Z",
 };
 
-// The detail waits for the viewer's permissions: the Owner's controls are drawn once Clone to… is.
 const renderDetail = async (overrides: Partial<React.ComponentProps<typeof MemoryDetail>> = {}, viewer = asOwner()) => {
   mocks.get.mockImplementation(viewer);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -71,38 +70,18 @@ const renderDetail = async (overrides: Partial<React.ComponentProps<typeof Memor
 
 beforeEach(() => {
   mocks.get.mockReset();
+  mocks.put.mockReset();
+  mocks.put.mockResolvedValue({ data: memory });
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("MemoryDetail", () => {
-  it("opens the tabs on Attachments and switches to version history for every reader", async () => {
+  it("opens the clone dialog from the actions menu for a role with memories:clone", async () => {
     const user = userEvent.setup();
     await renderDetail();
-    const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByTestId("attachments-section")).toBeInTheDocument();
-    expect(within(panel).queryByTestId("versions-feed")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Versions" }));
-    expect(within(screen.getByRole("tabpanel")).getByTestId("versions-feed")).toBeInTheDocument();
-    expect(within(screen.getByRole("tabpanel")).queryByTestId("attachments-section")).not.toBeInTheDocument();
-  });
-
-  it("keeps both sections in the rail whichever tab is open", async () => {
-    const user = userEvent.setup();
-    await renderDetail();
-    expect(screen.getAllByTestId("attachments-section")).toHaveLength(2);
-    expect(screen.getAllByTestId("versions-feed")).toHaveLength(1);
-
-    await user.click(screen.getByRole("tab", { name: "Versions" }));
-    expect(screen.getAllByTestId("attachments-section")).toHaveLength(1);
-    expect(screen.getAllByTestId("versions-feed")).toHaveLength(2);
-  });
-
-  it("opens the clone dialog for a role with memories:clone", async () => {
-    await renderDetail();
-    const button = await screen.findByRole("button", { name: "Clone to…" });
+    await user.click(screen.getByRole("button", { name: "Memory actions" }));
     expect(screen.queryByTestId("clone-dialog")).not.toBeInTheDocument();
-    button.click();
+    await user.click(await screen.findByRole("button", { name: "Clone to…" }));
     expect(await screen.findByTestId("clone-dialog")).toBeInTheDocument();
   });
 
@@ -110,9 +89,11 @@ describe("MemoryDetail", () => {
     { name: "hides", showLocked: false },
     { name: "locks", showLocked: true },
   ])("$name Clone to… and Delete for a reader", async ({ showLocked }) => {
+    const user = userEvent.setup();
     await renderDetail({}, asReader({ showLocked, permissions: ["memories:read"] }));
     await screen.findByRole("heading", { name: "Deploy quirks" });
     await settle();
+    await user.click(screen.getByRole("button", { name: "Memory actions" }));
 
     for (const [name, reason] of [
       ["Clone to…", "Your role can't clone memories to another project"],
@@ -127,34 +108,49 @@ describe("MemoryDetail", () => {
     }
   });
 
-  it("shows the read-only title and when-to-use without memories:write", async () => {
+  it("shows the read-only title, folder and when-to-use without memories:write", async () => {
     await renderDetail({}, asReader({ permissions: ["memories:read"] }));
     expect(await screen.findByRole("heading", { name: "Deploy quirks" })).toBeInTheDocument();
     expect(screen.getByText("when deploying")).toBeInTheDocument();
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Folder/ })).not.toBeInTheDocument();
   });
 
   it("shows editable fields with memories:write", async () => {
     await renderDetail();
     expect(await screen.findByLabelText("Title")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "When to use" })).toHaveValue("when deploying");
     expect(screen.getByTestId("rich-text-editor")).toBeInTheDocument();
   });
 
-  it("locks the interview memory on and counts it against the cap", async () => {
-    await renderDetail({ memory: { ...memory, kind: "interview", always_included: true, body: "x".repeat(8001) } });
-    expect(await screen.findByText(/can't be switched off/)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
-  });
-
-  it("says the decisions log stays out of every turn", async () => {
-    await renderDetail({ memory: { ...memory, kind: "decisions_log" } });
-    expect(await screen.findByText(/never sent in every turn/)).toBeInTheDocument();
-  });
-
-  it("shows no cap and no switches for an ordinary memory; the list row holds them", async () => {
+  it("switches Always included from the record", async () => {
+    const user = userEvent.setup();
     await renderDetail();
     await screen.findByLabelText("Title");
+    await user.click(screen.getByRole("switch", { name: "Always included" }));
+    expect(mocks.put).toHaveBeenCalledWith("/api/memories/mem-1", expect.objectContaining({ always_included: true }));
+  });
+
+  it("moves the memory to the footer from its folder menu", async () => {
+    const user = userEvent.setup();
+    await renderDetail();
+    await user.click(await screen.findByRole("button", { name: "Folder: Main" }));
+    await user.click(await screen.findByRole("menuitemradio", { name: /Footer/ }));
+    expect(mocks.put).toHaveBeenCalledWith("/api/memories/mem-1", expect.objectContaining({ footer: true }));
+  });
+
+  it("locks the interview memory on, says why, and counts it against the cap", async () => {
+    await renderDetail({ memory: { ...memory, kind: "interview", always_included: true, body: "x".repeat(8001) } });
+    expect(await screen.findByText(/can't be switched off/)).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
-    expect(screen.queryByText(/characters/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Folder/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
+  });
+
+  it("says the decisions log is not sent every turn, and why", async () => {
+    await renderDetail({ memory: { ...memory, kind: "decisions_log" } });
+    expect(await screen.findByText("Not sent every turn")).toBeInTheDocument();
+    expect(screen.getByText(/when an agent needs the why/)).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 });

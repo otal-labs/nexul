@@ -659,7 +659,22 @@ once the body has two headings: one line per entry with the heading in its
 tooltip, indented from the doc's top level, and the section in view (the
 first before any scroll) in ink with the 2px `brand` edge. Narrower, the
 rail is not drawn and an "On this page" icon in the actions opens the same
-outline in a popover. A memory's body sits on the panel the same way.
+outline in a popover. A memory's body sits on the panel the same way, under
+the same three-line header: the `Memories` crumb and the folder, with Save and
+a `…` menu (Clone to…, then Delete) on its right; the title; and a settings
+line in place of the meta line: the folder as a ghost menu (Main or Footer,
+each with its one-line meaning), the Always included switch with its word, and
+the mono "updated · N versions". The interview and the decisions log show a
+14px lock and their state ("Always included", "Not sent every turn") instead
+of the switch, with their reason as a visible muted line under it, never only
+a tooltip. Above the body, the "When to use" microheader over the rule in a
+`surface-2` well with a 2px rule in `foreground` at 25% on its left, square on
+that side, growing with the text. Attachments and the newest five versions sit
+in the 13rem right rail from a 50rem pane and under the body below it; no
+tabs. In the list, a fixed memory's row carries the lock in the switch's
+column, as wide as the switch so the dates stay in one column, and the date
+and switch sit on the title's first line (`metaOnTitleLine`), because a title
+that wraps beside them would otherwise leave them level with neither line.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
 16px at 1.75 (quoted in a chat bubble 14px, in a rail 12px, both at 1.6), headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the

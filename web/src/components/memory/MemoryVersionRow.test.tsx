@@ -34,14 +34,14 @@ const version = (overrides: Partial<MemoryVersion> = {}): MemoryVersion => ({
 
 const memory = { id: "mem-1", project_id: "p-1" };
 
-const renderRow = (v: MemoryVersion, isCurrent: boolean, layout: "inline" | "stacked" = "inline", viewer = asOwner((url) => (url === "/api/memories/mem-1" ? memory : []))) => {
+const renderRow = (v: MemoryVersion, isCurrent: boolean, viewer = asOwner((url) => (url === "/api/memories/mem-1" ? memory : []))) => {
   mocks.get.mockImplementation(viewer);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
-        <MemoryVersionRow memoryId="mem-1" version={v} isCurrent={isCurrent} layout={layout} />
+        <MemoryVersionRow memoryId="mem-1" version={v} isCurrent={isCurrent} />
       </ul>
     </QueryClientProvider>,
   );
@@ -54,10 +54,10 @@ describe("MemoryVersionRow", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
-  it("shows the version number, title, and author", () => {
+  it("shows the version number and author, with the title in its tooltip", () => {
     renderRow(version(), false);
     expect(screen.getByText("v2")).toBeInTheDocument();
-    expect(screen.getByText("Deploy quirks")).toBeInTheDocument();
+    expect(screen.getByRole("listitem")).toHaveAttribute("title", "Deploy quirks");
     expect(screen.getByText(/onik97/)).toBeInTheDocument();
   });
 
@@ -66,19 +66,14 @@ describe("MemoryVersionRow", () => {
     expect(screen.getByText(/Agent via onik97/)).toBeInTheDocument();
   });
 
-  it("hides revert for the current version", () => {
-    renderRow(version(), true);
-    expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
-  });
-
   it("hides revert from a reader, and locks it with the reason where their role shows locked actions", async () => {
     const reader = (showLocked: boolean) => asReader({ showLocked, permissions: ["memories:read"] }, (url) => (url === "/api/memories/mem-1" ? memory : []));
-    renderRow(version(), false, "inline", reader(false));
+    renderRow(version(), false, reader(false));
     await settle();
     expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
     cleanup();
 
-    renderRow(version(), false, "inline", reader(true));
+    renderRow(version(), false, reader(true));
     const locked = await screen.findByRole("button", { name: /Revert/ });
     expect(locked).toHaveAttribute("aria-disabled", "true");
     expect(locked).toHaveAccessibleDescription("Your role can't revert memories");
@@ -89,25 +84,14 @@ describe("MemoryVersionRow", () => {
     const user = userEvent.setup();
     renderRow(version(), false);
 
-    await user.click(await screen.findByRole("button", { name: /Revert/ }));
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Revert" }));
-
-    expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
-  });
-
-  it("reverts from the rail row's icon button", async () => {
-    mocks.post.mockResolvedValue({ data: { id: "mem-1" } });
-    const user = userEvent.setup();
-    renderRow(version(), false, "stacked");
-
     await user.click(await screen.findByRole("button", { name: "Revert to v2" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Revert" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
   });
 
-  it("marks the current version in the rail row instead of offering revert", () => {
-    renderRow(version(), true, "stacked");
+  it("marks the current version instead of offering revert", () => {
+    renderRow(version(), true);
     expect(screen.getByText("current")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
   });

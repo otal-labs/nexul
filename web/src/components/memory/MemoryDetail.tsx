@@ -1,23 +1,21 @@
 import { useMemo, useState } from "react";
 
-import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocTitleField } from "@/components/doc/DocTitleField";
-import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
-import { MemoryRail } from "@/components/memory/MemoryRail";
-import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
+import { MemoryActionsMenu } from "@/components/memory/MemoryActionsMenu";
+import { memoryFolderOptions } from "@/components/memory/memoryGroups";
+import { MemorySections } from "@/components/memory/MemorySections";
+import { MemorySettingsLine } from "@/components/memory/MemorySettingsLine";
+import { MemoryWhenToUse } from "@/components/memory/MemoryWhenToUse";
 import { PageHeader } from "@/components/PageHeader";
-import { PageTabs, PageTabsContent } from "@/components/PageTabs";
-import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useActionState } from "@/hooks/useActionState";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { isDecisionsLogMemory, isInterviewMemory, type Memory } from "@/models/Memory";
+import { isInterviewMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
 interface MemoryDetailProps {
@@ -35,9 +33,9 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
   const [cloneOpen, setCloneOpen] = useState(false);
   const canWrite = useActionState({ permission: "memories:write", projectId: memory.project_id }).state === "live";
   const wsPath = useWorkspacePath();
-  const crumbs = useEmbeddedCrumbs([{ label: "Memories", to: wsPath("/memories") }]);
+  const folder = memoryFolderOptions.find((o) => o.id === (memory.footer ? "footer" : "main"))?.name ?? "";
+  const crumbs = useEmbeddedCrumbs([{ label: "Memories", to: wsPath("/memories") }, { label: folder }]);
   const interview = isInterviewMemory(memory);
-  const decisionsLog = isDecisionsLogMemory(memory);
   const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
 
   const dirty = title !== memory.title || whenToUse !== memory.when_to_use || body !== memory.body;
@@ -46,86 +44,40 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
     <div className="@container mx-auto w-full max-w-5xl">
       <PageHeader
         crumbs={crumbs}
+        actionsOn="crumbs"
+        className="border-b-0 pb-0"
         title={<DocTitleField editable={canWrite} title={title} staticTitle={memory.title} onChange={setTitle} />}
-        meta={<span className="font-mono text-xs tabular-nums">updated {formatUpdatedAgo(memory.updated_at)}</span>}
+        meta={<MemorySettingsLine memory={memory} />}
         actions={
           <>
-            <ActionButton permission="memories:clone" projectId={memory.project_id} variant="outline" size="sm" onClick={() => setCloneOpen(true)}>
-              Clone to…
-            </ActionButton>
-            <ActionButton permission="memories:delete" projectId={memory.project_id} variant="ghost" size="sm" onClick={onDelete}>
-              Delete
-            </ActionButton>
             {canWrite && (
-              <Button size="sm" loading={saving} disabled={!dirty} onClick={() => onSave({ title, when_to_use: whenToUse, body })}>
+              <Button size="sm" className="h-7" loading={saving} disabled={!dirty} onClick={() => onSave({ title, when_to_use: whenToUse, body })}>
                 Save
               </Button>
             )}
+            <MemoryActionsMenu memory={memory} onClone={() => setCloneOpen(true)} onDelete={onDelete} />
           </>
         }
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
-      <div className="mt-6 @4xl:flex @4xl:gap-8">
-        <MemoryRail memoryId={memory.id} currentVersion={memory.version} />
-
-        <div className="min-w-0 flex-1">
-          <article>
-            <div className="max-w-3xl">
-              {canWrite && (
-                <div className="mb-6 space-y-3">
-                  <Textarea
-                    value={whenToUse}
-                    onChange={(e) => setWhenToUse(e.target.value)}
-                    placeholder="When to use it, e.g. when writing React code"
-                    aria-label="When to use"
-                    rows={1}
-                    onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                    className="field-sizing-content min-h-9 resize-none py-1.5"
-                  />
-                  {interview && (
-                    <p className="text-sm text-muted-foreground">
-                      Always included in every agent turn in this project; it can't be switched off.
-                    </p>
-                  )}
-                  {decisionsLog && (
-                    <p className="text-sm text-muted-foreground">
-                      Pulled from the memory index when an agent needs the why; never sent in every turn.
-                    </p>
-                  )}
-                </div>
-              )}
-              {!canWrite && memory.when_to_use !== "" && (
-                <p className="mb-6 text-sm text-muted-foreground">{memory.when_to_use}</p>
-              )}
-
-              {canWrite && <RichTextEditor value={body} onChange={setBody} aria-label="Body" attachTo={{ memory_id: memory.id }} />}
-              {!canWrite && <DocBodyView body={memory.body} />}
-
-              {interview && canWrite && (
-                <div className="mt-6 flex justify-end">
-                  <InterviewLengthMeter length={interviewLength} />
-                </div>
-              )}
+      {/* The rail needs 50rem: a 35rem body, the gap and its 13rem; spare width sits between the body and the rail. */}
+      <div className="mt-6 @min-[50rem]:flex @min-[50rem]:justify-between @min-[50rem]:gap-8">
+        <article className="min-w-0 max-w-[42rem] flex-1 space-y-6">
+          <MemoryWhenToUse value={canWrite ? whenToUse : memory.when_to_use} editable={canWrite} onChange={setWhenToUse} />
+          {canWrite && <RichTextEditor value={body} onChange={setBody} aria-label="Body" attachTo={{ memory_id: memory.id }} />}
+          {!canWrite && <DocBodyView body={memory.body} />}
+          {interview && canWrite && interviewLength > 0 && (
+            <div className="flex justify-end">
+              <InterviewLengthMeter length={interviewLength} />
             </div>
-          </article>
-
-          {/* The rail holds these from @4xl; both read the same queries, so there is one request. */}
-          <div className="@4xl:hidden">
-            <PageTabs
-              label="Memory sections"
-              className="mt-8"
-              tabs={[
-                { value: "attachments", label: "Attachments" },
-                { value: "versions", label: "Versions" },
-              ]}
-            >
-              <PageTabsContent value="attachments">
-                <AttachmentsSection owner={{ memory_id: memory.id }} />
-              </PageTabsContent>
-              <PageTabsContent value="versions">
-                <MemoryVersionsFeed memoryId={memory.id} currentVersion={memory.version} />
-              </PageTabsContent>
-            </PageTabs>
+          )}
+          <div className="max-w-sm space-y-8 @min-[50rem]:hidden">
+            <MemorySections memoryId={memory.id} currentVersion={memory.version} />
+          </div>
+        </article>
+        <div className="hidden w-52 shrink-0 @min-[50rem]:block">
+          <div className="sticky top-6 -mr-2.5 -ml-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto pl-2 [scrollbar-gutter:stable]">
+            <MemorySections memoryId={memory.id} currentVersion={memory.version} />
           </div>
         </div>
       </div>

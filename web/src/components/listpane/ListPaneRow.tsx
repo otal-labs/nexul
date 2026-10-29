@@ -24,10 +24,13 @@ interface ListPaneRowProps {
   trailing?: ReactNode;
   /** One truncated line at a 32px pitch instead of up to two wrapped lines. */
   dense?: boolean;
+  /** Sets meta and trailing on the title's first line instead of centring them on a row whose title may wrap. */
+  metaOnTitleLine?: boolean;
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, menu, trailing, dense = false }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false }: ListPaneRowProps) => {
+  const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-[13px]";
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
 
@@ -41,7 +44,8 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
       <li
         ref={ref}
         className={cn(
-          "group relative flex items-center gap-2 px-3 transition-colors duration-150 ease-standard",
+          "group relative flex gap-2 px-3 transition-colors duration-150 ease-standard",
+          metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && (dense ? "min-h-8" : "min-h-10"),
           snippet !== "" && "min-h-14",
           selected ? currentRowFillClass : "hover:bg-accent/40",
@@ -55,7 +59,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
         >
           <span className="flex min-w-0 items-start gap-1.5 text-[13px]">
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
-            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", dense ? "truncate" : "line-clamp-2 break-words", selected && "font-medium")}>
+            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", dense ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
               {title}
             </span>
             {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}
@@ -70,6 +74,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
           <div
             className={cn(
               "flex shrink-0 items-center gap-1.5",
+              onTitleLine,
               hasActions && "group-focus-within:hidden group-hover:hidden group-has-[[data-state=open]]:hidden",
               hasActions && selected && "hidden",
             )}
@@ -87,7 +92,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
             {actions}
           </div>
         )}
-        {!!trailing && <div className="relative z-10 flex shrink-0 items-center">{trailing}</div>}
+        {!!trailing && <div className={cn("relative z-10 flex shrink-0 items-center", onTitleLine)}>{trailing}</div>}
       </li>
     </RowContextMenu>
   );

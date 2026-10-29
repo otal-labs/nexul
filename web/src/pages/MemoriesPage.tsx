@@ -32,6 +32,7 @@ export const MemoriesPage = () => {
       {current && memories && (
         <ListDetailLayout
           hasSelection={!!memoryId}
+          stableGutter
           list={<MemoriesListPane memories={memories} project={current} selectedId={memoryId} />}
           placeholder={
             <ListDetailPlaceholder
