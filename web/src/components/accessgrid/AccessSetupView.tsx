@@ -36,22 +36,22 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-8 shrink-0">
         <PageHeader crumbs={[crumb]} title="Who's in each project" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
         <p className="mt-5 max-w-2xl text-sm text-pretty text-muted-foreground">
           This update rebuilt permissions, so every project starts with nobody in it and only Owners can see them. Choose who's in each
           project; you can change it any time on the Access page.
         </p>
       </div>
-      <PageTabs label="Access setup" tabs={[{ value: "setup", label: "Set up" }, { value: "roles", label: "Roles" }]}>
-        <PageTabsContent value="setup">
+      <PageTabs label="Access setup" className="min-h-0 flex-1" tabs={[{ value: "setup", label: "Set up" }, { value: "roles", label: "Roles" }]}>
+        <PageTabsContent value="setup" className="min-h-0 overflow-y-auto">
           <ProjectsCard grid={grid} footer={<ProjectsReadback grid={grid} />} />
           <ChannelsCard
             grid={grid}
             alignWithProjects
             footer={
               <>
-                <span className="text-sm text-muted-foreground">Leave every box ticked to keep channels as they are.</span>
+                <span className="text-sm text-muted-foreground">Leave every cell empty to keep channels as they are.</span>
                 <Button size="sm" loading={save.isPending} onClick={() => void finish().catch(() => undefined)}>
                   Finish setup
                 </Button>
@@ -59,7 +59,7 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
             }
           />
         </PageTabsContent>
-        <PageTabsContent value="roles">
+        <PageTabsContent value="roles" className="flex min-h-0 flex-col">
           <RoleSettingsSection />
         </PageTabsContent>
       </PageTabs>

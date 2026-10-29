@@ -1,35 +1,36 @@
-import { LeadCheckbox } from "@/components/accessgrid/LeadCheckbox";
-import { leadStrip, stickyCell, stickyStrip } from "@/components/accessgrid/gridStyles";
-import { leadState, type AccessGridRole } from "@/models/AccessGrid";
+import { AccessGridLeadCell } from "@/components/accessgrid/AccessGridLeadCell";
+import { fadeEndCell, leadStrip, pinnedStrip, stickyCell, stickyStrip } from "@/components/accessgrid/gridStyles";
+import type { AccessGridRole } from "@/models/AccessGrid";
 import { cn } from "@/lib/utils";
 
 interface AccessGridLeadRowProps {
   label: string;
   roles: AccessGridRole[];
   rowIds: string[];
+  marks: "ticks" | "hidden";
   isOn: (rowId: string, roleId: string) => boolean;
   onSetAll: (roleId: string, on: boolean) => void;
   trailing: boolean;
 }
 
-// "Every project": one box per role that ticks it on every row shown, a dash while only some rows have it.
-export const AccessGridLeadRow = ({ label, roles, rowIds, isOn, onSetAll, trailing }: AccessGridLeadRowProps) => (
+// "Every project": one cell per role that sets it on every row shown, with how many rows hold it.
+export const AccessGridLeadRow = ({ label, roles, rowIds, marks, isOn, onSetAll, trailing }: AccessGridLeadRowProps) => (
   <tr>
-    <th scope="row" className={cn(stickyCell, stickyStrip, "border-b border-border py-2 pr-3 pl-6 text-left font-normal")}>
-      <span className="block text-sm font-medium">{label}</span>
-      <span className="block text-xs whitespace-nowrap text-muted-foreground">Tick a role everywhere</span>
+    <th scope="row" className={cn(stickyCell, stickyStrip, "h-11 border-b border-border pr-3 pb-1 pl-6 text-left text-sm font-medium")}>
+      {label}
     </th>
     {roles.map((role) => (
-      <td key={role.id} className={cn(leadStrip, "px-1.5 text-center")}>
-        <span className="inline-grid size-9 place-items-center">
-          <LeadCheckbox
-            checked={leadState(rowIds.filter((id) => isOn(id, role.id)).length, rowIds.length)}
-            onCheckedChange={(on) => onSetAll(role.id, on)}
-            label={`${role.name}: ${label.toLowerCase()}`}
-          />
-        </span>
-      </td>
+      <AccessGridLeadCell
+        key={role.id}
+        on={rowIds.filter((id) => isOn(id, role.id)).length}
+        rows={rowIds.length}
+        marks={marks}
+        label={`${role.name}: ${label.toLowerCase()}`}
+        onSetAll={(on) => onSetAll(role.id, on)}
+      />
     ))}
-    {trailing && <td className={leadStrip} />}
+    <td aria-hidden className={leadStrip} />
+    {trailing && <td className={pinnedStrip} />}
+    {!trailing && <td aria-hidden className={cn(fadeEndCell, "bg-card", stickyStrip)} />}
   </tr>
 );

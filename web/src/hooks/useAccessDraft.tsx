@@ -5,6 +5,8 @@ import type { AccessGrid, AccessGridSave } from "@/models/AccessGrid";
 
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
 
+const apart = (a: string[], b: string[]) => a.filter((id) => !b.includes(id)).length + b.filter((id) => !a.includes(id)).length;
+
 const flip = (ids: string[], id: string, on: boolean) => (on ? [...ids.filter((x) => x !== id), id] : ids.filter((x) => x !== id));
 
 // The grid as ticked on screen: the held ticks over the server's rows, and the rows that differ from it.
@@ -31,11 +33,29 @@ export const useAccessDraft = (grid: AccessGrid) => {
     .filter((c) => !!draft.channels[c.id] && !sameSet(hidden(c.id), c.hidden_role_ids))
     .map((c) => ({ channel_id: c.id, hidden_role_ids: hidden(c.id) }));
 
+  // How many boxes differ from the server: each role or person added or taken off a project, each role a channel's hiding changed.
+  const projectCells = projectChanges.reduce((n, change) => {
+    const p = grid.projects.find((x) => x.id === change.project_id);
+    return n + apart(change.role_ids, p?.role_ids ?? []) + apart(change.user_ids, p?.user_ids ?? []);
+  }, 0);
+  const channelCells = channelChanges.reduce(
+    (n, change) => n + apart(change.hidden_role_ids, grid.channels.find((c) => c.id === change.channel_id)?.hidden_role_ids ?? []),
+    0,
+  );
+  const serverProject = (projectId: string) => grid.projects.find((p) => p.id === projectId);
+  const serverChannel = (channelId: string) => grid.channels.find((c) => c.id === channelId);
+
   return {
     listing,
     hidden,
+    roleChanged: (projectId: string, roleId: string) =>
+      listing(projectId).roleIds.includes(roleId) !== (serverProject(projectId)?.role_ids.includes(roleId) ?? false),
+    hiddenChanged: (channelId: string, roleId: string) =>
+      hidden(channelId).includes(roleId) !== (serverChannel(channelId)?.hidden_role_ids.includes(roleId) ?? false),
     projectChanges,
     channelChanges,
+    projectCells,
+    channelCells,
     toggleRole: (projectId: string, roleId: string) => {
       const now = listing(projectId);
       setProjects({ [projectId]: { ...now, roleIds: flip(now.roleIds, roleId, !now.roleIds.includes(roleId)) } });

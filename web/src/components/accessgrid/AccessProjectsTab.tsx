@@ -4,7 +4,7 @@ import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useSaveAccessGrid } from "@/hooks/AccessGridHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useFlash } from "@/hooks/useFlash";
-import type { AccessGrid } from "@/models/AccessGrid";
+import { countLabel, type AccessGrid } from "@/models/AccessGrid";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface AccessProjectsTabProps {
@@ -28,6 +28,7 @@ export const AccessProjectsTab = ({ grid }: AccessProjectsTabProps) => {
   return (
     <form
       id={FORM}
+      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         void submit().catch(() => undefined);
@@ -35,6 +36,7 @@ export const AccessProjectsTab = ({ grid }: AccessProjectsTabProps) => {
     >
       <ProjectsCard
         grid={grid}
+        fill
         aside={setup.finished && <SettingsStatus tone="success" detail={by || undefined}>Set up</SettingsStatus>}
         footer={
           <SettingsSaveBar
@@ -44,6 +46,7 @@ export const AccessProjectsTab = ({ grid }: AccessProjectsTabProps) => {
             saved={saved}
             onDiscard={draft.clearProjects}
             hint="Changes apply to everyone once saved."
+            dirtyLabel={countLabel(draft.projectCells, "change", "changes")}
           />
         }
       />

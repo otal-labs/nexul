@@ -1,7 +1,7 @@
 import type { WelcomeStep } from "@nexul/client-core/welcome";
 
 import { PermissionArea, type PermissionInfo } from "@/models/Permission";
-import { domainsIn, levelName, levelOf, type PermissionDomain } from "@/models/PermissionLevel";
+import { domainsIn, domainsOf, levelName, levelOf, type PermissionDomain } from "@/models/PermissionLevel";
 
 // The role editor's tabs, widest first; each holds one catalog area.
 export interface RoleSection {
@@ -95,3 +95,25 @@ export const rungName = (domain: string, rung: number): string => (rung === 1 ? 
 
 // The short word beside an extra verb's checkbox; its full label is the tooltip.
 export const extraName = (action: string): string => SHORT[action] ?? action.charAt(0).toUpperCase() + action.slice(1);
+
+const apart = <T,>(a: T[], b: T[]): number => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
+
+// How many things an edit changes: each area whose level moved, each extra or switch flipped, each welcome step, and
+// the name, description and locked-actions switch.
+export const roleChangeCount = (
+  catalog: PermissionInfo[],
+  actions: string[],
+  loaded: string[],
+  steps: WelcomeStep[],
+  loadedSteps: WelcomeStep[],
+  fields: boolean[],
+): number =>
+  domainsOf(catalog).reduce(
+    (n, domain) =>
+      n +
+      Number(levelOf(domain, actions) !== levelOf(domain, loaded)) +
+      domain.extras.filter((extra) => actions.includes(extra.value) !== loaded.includes(extra.value)).length,
+    0,
+  ) +
+  apart(steps, loadedSteps) +
+  fields.filter(Boolean).length;

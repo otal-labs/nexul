@@ -15,17 +15,19 @@ interface SettingsSaveBarProps {
   saveLabel?: string;
   /** What saving does, shown while nothing has changed. */
   hint?: ReactNode;
+  /** What is unsaved, in place of "Unsaved changes" ("3 changes"). */
+  dirtyLabel?: string;
 }
 
 const strip = "transition-[opacity,translate,visibility] duration-150 ease-out";
 const off = "invisible -translate-x-1 opacity-0";
 
 // The card's footer strip for a form: always there, so nothing below it moves; a change wakes Discard and Save.
-export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLabel = "Save", hint }: SettingsSaveBarProps) => (
+export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLabel = "Save", hint, dirtyLabel = "Unsaved changes" }: SettingsSaveBarProps) => (
   <>
     <span className="grid min-w-0 flex-1 text-xs text-muted-foreground">
       <span className={cn("col-start-1 row-start-1 truncate", strip, (dirty || saved || !hint) && off)}>{hint}</span>
-      <span className={cn("col-start-1 row-start-1", strip, !dirty && off)}>Unsaved changes</span>
+      <span className={cn("col-start-1 row-start-1", strip, !dirty && off)}>{dirtyLabel}</span>
     </span>
     <span className="flex items-center gap-2">
       <Button type="button" variant="ghost" size="sm" className={cn(strip, !dirty && off)} tabIndex={dirty ? 0 : -1} aria-hidden={!dirty} onClick={onDiscard}>

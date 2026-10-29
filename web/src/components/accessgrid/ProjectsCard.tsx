@@ -14,24 +14,24 @@ interface ProjectsCardProps {
   grid: AccessGrid;
   footer: ReactNode;
   aside?: ReactNode;
+  fill?: boolean;
 }
 
 const SEARCH_FROM = 10;
 
 // Projects by roles, with the people a project names beyond its roles in a trailing column.
-export const ProjectsCard = ({ grid, footer, aside }: ProjectsCardProps) => {
+export const ProjectsCard = ({ grid, footer, aside, fill = false }: ProjectsCardProps) => {
   const [query, setQuery] = useState("");
   const draft = useAccessDraft(grid);
   const needle = query.trim().toLowerCase();
   const rows = grid.projects
     .filter((project) => !needle || project.name.toLowerCase().includes(needle))
     .map((project) => {
-      const { roleIds, userIds } = draft.listing(project.id);
+      const { userIds } = draft.listing(project.id);
       return {
         id: project.id,
         name: project.name,
-        mark: <ProjectMark project={project} className="size-7 rounded-md text-[10px]" />,
-        meta: roleIds.length + userIds.length === 0 ? "Owners only" : undefined,
+        mark: <ProjectMark project={project} className="size-6 rounded-md text-[9px]" />,
         trailing: <PeopleCell projectName={project.name} userIds={userIds} onToggle={(userId) => draft.togglePerson(project.id, userId)} />,
       };
     });
@@ -43,9 +43,10 @@ export const ProjectsCard = ({ grid, footer, aside }: ProjectsCardProps) => {
       description="Tick the roles that belong in each project. Everyone with a ticked role sees the project and everything in it."
       aside={aside}
       footer={footer}
+      fill={fill}
     >
       {grid.projects.length > SEARCH_FROM && (
-        <label className="relative mb-4 block max-w-xs">
+        <label className="relative mb-4 block max-w-xs shrink-0">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Filter ${grid.projects.length} projects`} aria-label="Filter projects" className="h-8 pl-8" />
         </label>
@@ -58,10 +59,13 @@ export const ProjectsCard = ({ grid, footer, aside }: ProjectsCardProps) => {
           leadLabel={needle ? "Every project shown" : "Every project"}
           rows={rows}
           roles={grid.roles}
+          marks="ticks"
           isOn={(rowId, roleId) => draft.listing(rowId).roleIds.includes(roleId)}
+          isChanged={(rowId, roleId) => draft.roleChanged(rowId, roleId)}
           onToggle={draft.toggleRole}
           onSetAll={(roleId, on) => draft.setRoleOnProjects(roleId, rows.map((row) => row.id), on)}
           trailingHead="People"
+          fill={fill}
         />
       )}
     </SettingsCard>

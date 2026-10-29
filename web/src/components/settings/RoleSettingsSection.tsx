@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
-import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
 import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
-import { RoleRow } from "@/components/settings/RoleRow";
+import { RoleMatrix } from "@/components/settings/RoleMatrix";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { ActionButton } from "@/components/action/ActionButton";
-import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
@@ -26,18 +23,18 @@ export const RoleSettingsSection = () => {
   const isPending = rolesPending || catalogPending;
   const error = rolesError ?? catalogError;
 
-  // Who holds each role; a viewer the server shows no team to just sees no avatars.
+  // Who holds each role; a viewer the server shows no team to just sees no counts.
   const { data: team } = useFetchTeam();
   const holdersOf = (roleId: string) => (team ? roleHolders(team, workspaceId, roleId) : undefined);
 
   const [creating, setCreating] = useState(false);
-  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
     <SettingsCard
       id="roles"
       title="Roles & permissions"
-      description="What each role can open and change in this workspace. Open a role to see every area."
+      description="Every role side by side: what it can open and change in this workspace."
+      fill
       footer={
         roles &&
         catalog && (
@@ -49,24 +46,9 @@ export const RoleSettingsSection = () => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {roles && catalog && (
-        <div className="space-y-4">
-          {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
-          {roles.length > 0 && (
-            <div ref={glideRef}>
-              <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-                {roles.filter((role) => role.is_owner_role).map((role) => (
-                  <OwnerRoleRow key={role.id} role={role} holders={holdersOf(role.id)} />
-                ))}
-                {roles.filter((role) => !role.is_owner_role).map((role) => (
-                  <RoleRow key={role.id} onLeave={prepareGlide} role={role} workspaceId={workspaceId} catalog={catalog} holders={holdersOf(role.id)} />
-                ))}
-              </EnterList>
-            </div>
-          )}
-          <RoleEditorDialog open={creating} onClose={() => setCreating(false)} />
-        </div>
-      )}
+      {roles && roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
+      {roles && roles.length > 0 && catalog && <RoleMatrix roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={holdersOf} />}
+      <RoleEditorDialog open={creating} onClose={() => setCreating(false)} />
     </SettingsCard>
   );
 };

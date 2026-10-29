@@ -3,6 +3,7 @@ import { WELCOME_STEPS } from "@nexul/client-core/welcome";
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
 import { BrowserTab } from "@/components/BrowserTab";
 import { RoleSectionList } from "@/components/settings/RoleSectionList";
+import { ScrollEndFade } from "@/components/ScrollEndFade";
 import { RoleWelcomeList } from "@/components/settings/RoleWelcomeList";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useRoleDraft } from "@/hooks/useRoleDraft";
@@ -66,8 +67,9 @@ export const RoleSectionTabs = ({ tab, onTab, workspaceName }: RoleSectionTabsPr
         </TabsList>
       </div>
       {sections.map(({ section, domains }) => (
-        <TabsContent key={section.area} value={section.area} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">
+        <TabsContent key={section.area} value={section.area} className="min-h-0 overflow-y-auto px-6 pt-4 [scrollbar-gutter:stable]">
           <RoleSectionList section={section} line={sectionLine(section.area, workspaceName ?? workspace?.name ?? "")} domains={domains} />
+          <ScrollEndFade className="-mx-6 from-popover" />
         </TabsContent>
       ))}
       <TabsContent value={WELCOME_TAB} className="min-h-0 overflow-y-auto px-6 pt-4 pb-6">

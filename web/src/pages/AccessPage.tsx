@@ -22,7 +22,7 @@ export const AccessPage = () => {
   useEffect(() => useAccessDraftStore.getState().clear, [workspaceId]);
 
   return (
-    <Container className="py-8">
+    <Container className="flex h-full flex-col py-8">
       {managesAccess && isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {grid && settingUp && <AccessSetupView grid={grid} />}

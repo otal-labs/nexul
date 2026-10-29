@@ -18,23 +18,22 @@ interface PeopleCellProps {
 
 const SHOWN = 3;
 
-// The people a project names beyond its roles: faces from a 42rem card, a count below it, then the add button.
+// The people a project names beyond its roles as faces, and the add button, which shows on the row's hover or focus.
 export const PeopleCell = ({ projectName, userIds, onToggle }: PeopleCellProps) => {
   const lookup = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const people = userIds.map(lookup);
   const names = people.map(personLabel).join(", ");
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex shrink-0 items-center gap-1">
       {people.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="flex -space-x-1.5" aria-label={names}>
-              <span className="font-mono text-xs text-muted-foreground tabular-nums @2xl:hidden">{people.length}</span>
               {people.slice(0, SHOWN).map((person) => (
-                <PersonAvatar key={person.user_id} login={person.login} src={person.avatar_url} label={personLabel(person)} className="hidden size-6 ring-2 ring-card @2xl:flex" />
+                <PersonAvatar key={person.user_id} login={person.login} src={person.avatar_url} label={personLabel(person)} className="size-5 text-[10px] ring-2 ring-card" />
               ))}
               {people.length > SHOWN && (
-                <span className="hidden size-6 place-items-center rounded-full bg-muted font-mono text-[10px] ring-2 ring-card @2xl:grid">+{people.length - SHOWN}</span>
+                <span className="grid size-5 place-items-center rounded-full bg-muted font-mono text-[10px] ring-2 ring-card">+{people.length - SHOWN}</span>
               )}
             </span>
           </TooltipTrigger>
@@ -45,7 +44,13 @@ export const PeopleCell = ({ projectName, userIds, onToggle }: PeopleCellProps) 
         <Tooltip>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={`Add a person to ${projectName}`}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                aria-label={`Add a person to ${projectName}`}
+              >
                 <UserPlus className="size-4" aria-hidden />
               </Button>
             </PopoverTrigger>
