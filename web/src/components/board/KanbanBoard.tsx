@@ -12,7 +12,7 @@ import {
   type Translate,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
@@ -40,6 +40,8 @@ interface KanbanBoardProps {
   onDrop: (actions: DragMoveAction[]) => Promise<void> | void;
   onReorderColumns: (statusIds: string[]) => Promise<void> | void;
   onAddTicket: (categoryId: string | null, statusId: string) => void;
+  /** Shown under the stage row when no lane has a ticket on show, so the stages still read at 0. */
+  empty?: ReactNode;
 }
 
 export interface Swimlane {
@@ -64,6 +66,7 @@ export const KanbanBoard = ({
   onReorderColumns,
   onAddTicket,
   onGutter,
+  empty,
 }: KanbanBoardProps) => {
   // Mouse + Touch (not Pointer) because PointerSensor's pointerdown always wins the race
   // against TouchSensor's touchstart, killing the touch delay and blocking native scroll on small swipes.
@@ -216,7 +219,7 @@ export const KanbanBoard = ({
               if (el) setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
             }}
             data-card-drag={activeTicket ? "" : undefined}
-            className="group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]"
+            className="group/board @container min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]"
           >
             <div className="relative mx-auto min-h-full w-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
               <div className="relative space-y-3">
@@ -224,6 +227,7 @@ export const KanbanBoard = ({
                 {shownSwimlanes.map((lane) => (
                   <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} overflowing={overflowing} />
                 ))}
+                {empty}
               </div>
             </div>
           </div>
