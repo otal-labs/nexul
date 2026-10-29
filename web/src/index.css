@@ -304,6 +304,11 @@ body {
   outline: none;
 }
 
+/* A full-width row in a scrolling list draws the ring inside itself, where the list's clip cannot cut it off. */
+.inset-focus:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Overlay scrim (dialog/sheet): the canvas colour, not black, so a light page dims to a soft wash instead of grey;
    opacity and blur come from the Appearance settings slider via --glass-opacity/--glass-blur. */
 .glass-overlay {
