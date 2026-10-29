@@ -32,9 +32,11 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
 - **A result T3 steered elsewhere.** A linked message that lands in a run outside the set went into a later turn of
   the thread, which will reply with it. The wait ends done with "The handed-off result went to a later reply in T3
   Code".
-- **The cap.** 60 minutes after Nexul's run reached `waiting` or a restart cancelled it, T3's own longest wait, the
-  turn ends done and the stored reply ends with "Part of this work is still running in T3 Code." A play still ends
-  done.
+- **The cap.** Once Nexul's run reached `waiting` or a restart cancelled it, 60 minutes with no news from the
+  thread or any handed-off agent's thread, T3's own longest wait, ends the turn done, and the stored reply ends with
+  "Part of this work is still running in T3 Code." A play still ends done. The clock restarts with each piece of news,
+  because a play's run frees its ticket and lets the next queued run start: a council whose reviewers work past the
+  hour must keep its run going, while a child that went silent must not hold it forever.
 - **Stop.** Interrupting Nexul's run leaves T3's delegated children running, so Stop first drops each followed
   T3-owned task's undelivered result, so no child's end can wake the thread, then interrupts the newest started run
   of each working child's thread, then cancels a queued wake run or interrupts a live one, and only then stops
