@@ -90,7 +90,7 @@
   --background: oklch(0.95 0.004 265);
   --surface-2: oklch(0.965 0.004 265);
   /* The board's column well, laid over the panel: a shade, not a colour, so it reads in every palette. */
-  --well-shade: color-mix(in oklab, var(--foreground) 4%, transparent);
+  --well-shade: color-mix(in oklab, var(--foreground) 7%, transparent);
   --foreground: oklch(0.2 0.01 265);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.2 0.01 265);

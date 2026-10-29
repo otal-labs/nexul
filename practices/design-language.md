@@ -86,7 +86,7 @@ in the three token files; this table holds the roles.
 |---|---|---|---|---|
 | `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
-| `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 4% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
+| `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 7% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
@@ -613,7 +613,7 @@ carries the lane's progress — a 96 × 4 line, `success` over `muted`, then
 "4/11 done" in mono 12px tabular on a 200px reservation — held at the board's
 visible right edge so it never scrolls away with the last stage, and the
 band's sticky offset is the stage row's exact height. Each
-stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
+stage's well (`well-shade`: ink at 7% in light, black at 45% in dark, a shade
 rather than a colour so it reads in every palette; a black panel takes a lighter
 well instead) fills each lane's cell, as tall as the lane, with the radius of a
 card, so a card dropped anywhere below a cell's last card lands in that cell and
