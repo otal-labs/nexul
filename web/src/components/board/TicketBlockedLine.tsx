@@ -1,5 +1,4 @@
 import { Ban } from "lucide-react";
-import { Fragment } from "react";
 
 import { useBoardCardData } from "@/hooks/useBoardCardData";
 import { linkedTicketKey } from "@/models/TicketLink";
@@ -14,20 +13,19 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
   const waitingOn = blockers?.[ticketId] ?? [];
   if (waitingOn.length === 0) return null;
 
-  const keys = waitingOn.map(linkedTicketKey);
+  const [first, ...rest] = waitingOn.map(linkedTicketKey);
 
-  // Every key shows whole, wrapping between keys when they run long: a cut key names no ticket.
+  // The first key and the count stay whole and may wrap under "Blocked by", so the line is two rows at most; the tooltip names every key.
   return (
-    <span title={`Blocked by ${keys.join(", ")}`} className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+    <span title={`Blocked by ${[first, ...rest].join(", ")}`} className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
       <Ban className="mt-[1.5px] size-3 shrink-0 text-warning" aria-hidden />
       <span className="min-w-0">
         Blocked by{" "}
-        {keys.map((key, index) => (
-          <Fragment key={key}>
-            {index > 0 && ", "}
-            <span className="whitespace-nowrap font-mono">{key}</span>
-          </Fragment>
-        ))}
+        <span className="whitespace-nowrap font-mono">
+          {first}
+          {rest.length > 0 && <span aria-hidden> +{rest.length}</span>}
+        </span>
+        {rest.length > 0 && <span className="sr-only">, {rest.join(", ")}</span>}
       </span>
     </span>
   );
