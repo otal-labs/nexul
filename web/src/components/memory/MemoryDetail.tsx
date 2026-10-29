@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useActionState } from "@/hooks/useActionState";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -73,12 +73,14 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
             <div className="max-w-3xl">
               {canWrite && (
                 <div className="mb-6 space-y-3">
-                  <Input
+                  <Textarea
                     value={whenToUse}
                     onChange={(e) => setWhenToUse(e.target.value)}
                     placeholder="When to use it, e.g. when writing React code"
                     aria-label="When to use"
-                    className="text-sm"
+                    rows={1}
+                    onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                    className="field-sizing-content min-h-9 resize-none py-1.5"
                   />
                   {interview && (
                     <p className="text-sm text-muted-foreground">
