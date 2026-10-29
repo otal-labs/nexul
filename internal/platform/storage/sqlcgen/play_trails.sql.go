@@ -290,6 +290,83 @@ func (q *Queries) ListActivePlayTrailsByTargets(ctx context.Context, arg ListAct
 	return items, nil
 }
 
+const listPlayRunsByIDs = `-- name: ListPlayRunsByIDs :many
+SELECT play_trails.id, play_trails.workspace_id, play_trails.play_id, play_trails.play_label, play_trails.target_type, play_trails.target_id, play_trails.project_id, play_trails.conversation_id, play_trails.starter_id, play_trails.via, play_trails.selected_memory_ids, play_trails.custom_instructions, play_trails.harness_session_id, play_trails.state, play_trails.started_at, play_trails.ended_at, play_trails.last_error, play_trails.reply_message_id, play_trails.activity, play_trails.computer_id, play_trails.provider, play_trails.model, play_trails.question, play_trails.failure_reason, play_trails.model_options, play_trails.harness_project_id, play_trails.worktree, play_trails.passed_over, play_trails.instructions_version,
+       CAST(COALESCE(tp.prefix || '-' || t.number, '') AS TEXT) AS target_key,
+       COALESCE(t.title, d.title, s.name, ip.name, '') AS target_title,
+       CAST(COALESCE((SELECT q.auto_play_id FROM play_queue q WHERE q.trail_id = play_trails.id AND q.trail_id <> '' LIMIT 1), '') AS TEXT) AS auto_play_id
+FROM play_trails
+LEFT JOIN tickets t ON play_trails.target_type = 'ticket' AND t.id = play_trails.target_id
+LEFT JOIN projects tp ON tp.id = t.project_id
+LEFT JOIN docs d ON play_trails.target_type = 'doc' AND d.id = play_trails.target_id
+LEFT JOIN stacks s ON play_trails.target_type = 'stack' AND s.id = play_trails.target_id
+LEFT JOIN projects ip ON play_trails.target_type = 'interview' AND ip.id = play_trails.target_id
+WHERE play_trails.id IN (SELECT value FROM json_each(?1))
+`
+
+type ListPlayRunsByIDsRow struct {
+	PlayTrail   PlayTrail
+	TargetKey   string
+	TargetTitle string
+	AutoPlayID  string
+}
+
+func (q *Queries) ListPlayRunsByIDs(ctx context.Context, ids interface{}) ([]ListPlayRunsByIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlayRunsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlayRunsByIDsRow
+	for rows.Next() {
+		var i ListPlayRunsByIDsRow
+		if err := rows.Scan(
+			&i.PlayTrail.ID,
+			&i.PlayTrail.WorkspaceID,
+			&i.PlayTrail.PlayID,
+			&i.PlayTrail.PlayLabel,
+			&i.PlayTrail.TargetType,
+			&i.PlayTrail.TargetID,
+			&i.PlayTrail.ProjectID,
+			&i.PlayTrail.ConversationID,
+			&i.PlayTrail.StarterID,
+			&i.PlayTrail.Via,
+			&i.PlayTrail.SelectedMemoryIds,
+			&i.PlayTrail.CustomInstructions,
+			&i.PlayTrail.HarnessSessionID,
+			&i.PlayTrail.State,
+			&i.PlayTrail.StartedAt,
+			&i.PlayTrail.EndedAt,
+			&i.PlayTrail.LastError,
+			&i.PlayTrail.ReplyMessageID,
+			&i.PlayTrail.Activity,
+			&i.PlayTrail.ComputerID,
+			&i.PlayTrail.Provider,
+			&i.PlayTrail.Model,
+			&i.PlayTrail.Question,
+			&i.PlayTrail.FailureReason,
+			&i.PlayTrail.ModelOptions,
+			&i.PlayTrail.HarnessProjectID,
+			&i.PlayTrail.Worktree,
+			&i.PlayTrail.PassedOver,
+			&i.PlayTrail.InstructionsVersion,
+			&i.TargetKey,
+			&i.TargetTitle,
+			&i.AutoPlayID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlayTrailsByTarget = `-- name: ListPlayTrailsByTarget :many
 SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree, passed_over, instructions_version FROM play_trails WHERE target_type = ? AND target_id = ? ORDER BY started_at DESC, id DESC
 `

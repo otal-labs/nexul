@@ -149,6 +149,37 @@ func TestRunHandler_List_LastStep_KeepsEachRunsNewestStepOnly(t *testing.T) {
 		"the full list still carries every step, so trimming never reached the stored trail")
 }
 
+func TestRunHandler_PlayRuns_PagesThePlaysRunsWithTheirNewestStep(t *testing.T) {
+	f := newRunnerFixture()
+	f.perm.projects = []string{projectID}
+	for i, id := range []string{"tr-1", "tr-2", "tr-3"} {
+		tr := seededTrail(f, id, TargetTicket, ticketID, fixedNow.Add(time.Duration(i)*time.Minute))
+		tr.Activity = []ActivityEntry{{Kind: ActivityNote, Summary: "Read main.go"}, {Kind: ActivityNote, Summary: "Opened the PR"}}
+		if id == "tr-1" {
+			tr.State = TrailWaiting
+		}
+		require.NoError(t, f.trails.UpdateTrail(t.Context(), tr))
+	}
+	h := NewRunHandler(f.runner, nil).Routes()
+	page := func(query string) playRunsPage {
+		rec := do(t, h, http.MethodGet, "/api/plays/runs?play_id="+fixPlayID+query, "", starter)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var p playRunsPage
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
+		return p
+	}
+
+	got := page("&limit=2&offset=1")
+	assert.Equal(t, 3, got.Total)
+	require.Len(t, got.Items, 2)
+	assert.Equal(t, []string{"tr-2", "tr-1"}, []string{got.Items[0].ID, got.Items[1].ID})
+	assert.Len(t, got.Items[0].Activity, 1, "a row shows only the newest step")
+
+	waiting := page("&state=waiting")
+	assert.Equal(t, 1, waiting.Total)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodGet, "/api/plays/runs?play_id="+fixPlayID, "", "stranger").Code)
+}
+
 func TestRunHandler_LatestChoices(t *testing.T) {
 	f := newRunnerFixture()
 	seededTrail(f, "tr-1", TargetTicket, ticketID, fixedNow)

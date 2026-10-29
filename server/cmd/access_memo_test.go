@@ -26,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
@@ -334,7 +335,7 @@ func addPlays(t *testing.T, f permFixture, n int) {
 }
 
 // TestStatements_PlayRulesCostTheSameAtAnyLength: rules for every role and the reader on every play cost the plays list,
-// the run menus, play_list, a play's queued runs and a ticket's trails no statement more than none do, at a few plays or
+// the run menus, play_list, a play's queued runs and runs, and a ticket's trails no statement more than none do, at a few plays or
 // many, since the play rules reaching a person come in one read.
 func TestStatements_PlayRulesCostTheSameAtAnyLength(t *testing.T) {
 	t.Parallel()
@@ -360,6 +361,10 @@ func TestStatements_PlayRulesCostTheSameAtAnyLength(t *testing.T) {
 		},
 		"a ticket's trails": func(ctx context.Context, f permFixture) error {
 			_, err := runnerOf(f).ListTrails(ctx, plays.TargetTicket, f.ticket.ID, "")
+			return err
+		},
+		"a play's runs": func(ctx context.Context, f permFixture) error {
+			_, _, err := runnerOf(f).ListPlayRuns(ctx, guardPlay, false, paging.Window{Limit: 50})
 			return err
 		},
 	}

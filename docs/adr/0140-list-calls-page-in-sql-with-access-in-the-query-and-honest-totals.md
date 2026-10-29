@@ -42,7 +42,8 @@ Lists that still page in memory: those that arrive whole from GitHub or Cloudfla
 `repository_list`, `dns_zone_list`, `dns_record_list`, `dns_tunnel_list`); configuration-sized ones (`workspace_list`,
 `project_list`, `account_list`, `invitation_list`, `permission_overwrite_list`, `automation_list`,
 `play_list`, `stack_list`, `machine_list`, `computer_list`, `gateway_list`, `exposure_list`, `botwebhook_list`);
-`mention_search`, whose results are bounded; `trail_list`, bounded by one target's runs; and `conversation_list`, whose
+`mention_search`, whose results are bounded; `trail_list` on one target, bounded by its runs (with `play_id` alone it
+pages one play's runs on every target in SQL); and `conversation_list`, whose
 private channels, DMs, and threads are each checked per kind in one batch before paging, as the sidebar needs the whole
 list anyway.
 

@@ -26,3 +26,16 @@ SELECT * FROM play_trails WHERE conversation_id = ? ORDER BY started_at DESC, id
 
 -- name: ListRunningPlayTrails :many
 SELECT * FROM play_trails WHERE state IN ('starting', 'running');
+
+-- name: ListPlayRunsByIDs :many
+SELECT sqlc.embed(play_trails),
+       CAST(COALESCE(tp.prefix || '-' || t.number, '') AS TEXT) AS target_key,
+       COALESCE(t.title, d.title, s.name, ip.name, '') AS target_title,
+       CAST(COALESCE((SELECT q.auto_play_id FROM play_queue q WHERE q.trail_id = play_trails.id AND q.trail_id <> '' LIMIT 1), '') AS TEXT) AS auto_play_id
+FROM play_trails
+LEFT JOIN tickets t ON play_trails.target_type = 'ticket' AND t.id = play_trails.target_id
+LEFT JOIN projects tp ON tp.id = t.project_id
+LEFT JOIN docs d ON play_trails.target_type = 'doc' AND d.id = play_trails.target_id
+LEFT JOIN stacks s ON play_trails.target_type = 'stack' AND s.id = play_trails.target_id
+LEFT JOIN projects ip ON play_trails.target_type = 'interview' AND ip.id = play_trails.target_id
+WHERE play_trails.id IN (SELECT value FROM json_each(sqlc.arg(ids)));

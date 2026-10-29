@@ -69,6 +69,37 @@ type Play struct {
 type Listed struct {
 	Play
 	CanRun bool `json:"can_run"`
+	RunHealth
+}
+
+// RunHealth is what the runs of a play the caller can see say about it, read for the plays list, never stored.
+type RunHealth struct {
+	// LastRun is nil until the play has run once.
+	LastRun *LastRun `json:"last_run"`
+	// Runs7d counts the runs started in the last seven days, Failed7d those of them that failed.
+	Runs7d   int `json:"runs_7d"`
+	Failed7d int `json:"failed_7d"`
+	// Waiting counts the runs waiting on an answer now and Running those starting or running, however old.
+	Waiting int `json:"waiting"`
+	Running int `json:"running"`
+}
+
+// LastRun is a play's newest run's state and start.
+type LastRun struct {
+	State     TrailState `json:"state"`
+	StartedAt time.Time  `json:"started_at"`
+}
+
+// healthWindow is how far back Runs7d and Failed7d count.
+const healthWindow = 7 * 24 * time.Hour
+
+// PlayRun is one run on a play's runs list: its trail, what it ran on (a ticket's key and title or a doc's, stack's or
+// project's name), and the auto play that started it, empty for a run a person or an automation started.
+type PlayRun struct {
+	Trail
+	TargetKey   string `json:"target_key"`
+	TargetTitle string `json:"target_title"`
+	AutoPlayID  string `json:"auto_play_id"`
 }
 
 // TargetType names what a play was fired from and pairs with Type; an interview target's id is its project's id.

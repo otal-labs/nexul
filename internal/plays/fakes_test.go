@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -25,7 +26,11 @@ type fakeRepo struct {
 	autoPlayErr error
 	// autoPlayLists counts ListAutoPlays calls, so a list proves it reads once per page.
 	autoPlayLists int
-	limits        map[string]AutoPlayLimits
+	// health is what RunHealth answers per play, and healthScope the scope it was last asked for.
+	health      map[string]RunHealth
+	healthErr   error
+	healthScope RunScope
+	limits      map[string]AutoPlayLimits
 	// automationNames answers AutomationNamesByLabel by the label asked for; the matching itself is storage's.
 	automationNames map[string][]string
 	namesErr        error
@@ -343,6 +348,25 @@ func (f *fakePerm) CallerProjects(ctx context.Context, _ permissions.Action) ([]
 		}
 	}
 	return open, false, nil
+}
+
+// DocsWith reaches every doc of the projects CallerProjects opens; no doc rule turns an answer here.
+func (f *fakePerm) DocsWith(ctx context.Context, _, _ string, action permissions.Action) (permissions.DocReach, error) {
+	open, _, err := f.CallerProjects(ctx, action)
+	return permissions.DocReach{ProjectIDs: open}, err
+}
+
+func (f *fakeRepo) RunHealth(_ context.Context, playIDs []string, scope RunScope, _ time.Time) (map[string]RunHealth, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.healthScope = scope
+	out := map[string]RunHealth{}
+	for _, id := range playIDs {
+		if h, ok := f.health[id]; ok {
+			out[id] = h
+		}
+	}
+	return out, f.healthErr
 }
 
 // hideProject makes projectID one userID may not open, as a Restricted member holding no access there.

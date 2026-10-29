@@ -3,11 +3,13 @@ package plays
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // RunHandler adapts the run pipeline to the HTTP/JSON gateway (ADR 0019); mounted under /api/plays.
@@ -231,8 +233,19 @@ func (h *RunHandler) get(w http.ResponseWriter, r *http.Request) {
 
 // list takes ?steps=last for a page that shows each run's newest step only: the whole transcript is up to
 // MaxTrailActivityLines steps a run, and GET /api/plays/runs/{trailID} still returns all of them.
+// playRunsPage is one page of a play's runs and how many there are in all.
+type playRunsPage struct {
+	Items []PlayRun `json:"items"`
+	Total int       `json:"total"`
+}
+
+// list serves a target's trails, or with play_id and no target that play's runs across every target, paged.
 func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	if q.Get("target_type") == "" && q.Get("target_id") == "" && q.Get("play_id") != "" {
+		h.playRuns(w, r)
+		return
+	}
 	list, err := h.runner.ListTrails(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"), q.Get("play_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
@@ -244,13 +257,34 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
+func (h *RunHandler) playRuns(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	runs, total, err := h.runner.ListPlayRuns(r.Context(), q.Get("play_id"), q.Get("state") == string(TrailWaiting), paging.Window{Offset: offset, Limit: limit})
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	for i := range runs {
+		runs[i].Activity = lastOf(runs[i].Activity)
+	}
+	httpx.WriteJSON(w, http.StatusOK, playRunsPage{Items: runs, Total: total})
+}
+
+// lastOf keeps a run's newest step, all a row shows.
+func lastOf(activity []ActivityEntry) []ActivityEntry {
+	if len(activity) > 1 {
+		return activity[len(activity)-1:]
+	}
+	return activity
+}
+
 func lastStepOnly(list []*Trail) []*Trail {
 	out := make([]*Trail, len(list))
 	for i, t := range list {
 		trimmed := *t
-		if n := len(t.Activity); n > 1 {
-			trimmed.Activity = t.Activity[n-1:]
-		}
+		trimmed.Activity = lastOf(t.Activity)
 		out[i] = &trimmed
 	}
 	return out
