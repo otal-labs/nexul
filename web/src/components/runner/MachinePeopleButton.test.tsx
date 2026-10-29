@@ -5,7 +5,7 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { MachinePeopleRow } from "@/components/runner/MachinePeopleRow";
+import { MachinePeopleButton } from "@/components/runner/MachinePeopleButton";
 import type { PermissionAnswer, PermissionGrant, PermissionSource } from "@/models/Permission";
 
 vi.mock("@/api/client", () => ({
@@ -60,7 +60,7 @@ const renderRow = () => {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MachinePeopleRow machine={{ id: "m-1", name: "edge-box" }} />
+      <MachinePeopleButton machine={{ id: "m-1", name: "edge-box" }} />
     </QueryClientProvider>,
   );
 };
@@ -80,11 +80,16 @@ beforeEach(() => {
   vi.mocked(api.put).mockReset().mockResolvedValue({ data: null });
 });
 
-describe("MachinePeopleRow", () => {
-  it("says only the instance Owner is on a machine no rule names, and offers to add people", async () => {
+describe("MachinePeopleButton", () => {
+  it("says only you are on a machine no rule names, to the instance Owner", async () => {
     renderRow();
     expect(await screen.findByText("Only you")).toBeInTheDocument();
-    expect(screen.getByText("Add people")).toBeInTheDocument();
+  });
+
+  it("says only the instance Owner is on it to someone else who manages it", async () => {
+    instanceOwner = false;
+    renderRow();
+    expect(await screen.findByText("Only the instance Owner")).toBeInTheDocument();
   });
 
   it("names who its rules reach instead, and opens the panel on the machine", async () => {
@@ -110,7 +115,7 @@ describe("MachinePeopleRow", () => {
       { resource_type: "machine", resource_id: "m-1", target: "person", user_id: "01a13b1e-gone", allow: ["machines:see"], deny: [], created_at: "2026-10-03", updated_at: "" },
     ];
     renderRow();
-    expect(await screen.findByText("bob, DevOps, Someone")).toBeInTheDocument();
+    expect(await screen.findByText("bob, DevOps +1")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /People on this machine/ }));
     const dialog = await screen.findByRole("dialog");

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { MachineGroup } from "@/components/runner/MachineGroup";
+import { FleetGroupSection } from "@/components/runner/FleetGroupSection";
 import type { Machine, Runner } from "@/models/Runner";
 import { resetViewer, viewer } from "@/test/viewerActions";
 
@@ -32,6 +32,7 @@ beforeEach(() => {
     if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [{ action: "machines:write", ...held }] } });
     if (url.startsWith("/api/permissions?")) return Promise.resolve({ data: { grants: [] } });
     if (url === "/api/team") return Promise.resolve({ data: { people: [], workspaces: [], can_manage_accounts: true } });
+    if (url === "/api/version") return Promise.resolve({ data: { version: "v0.3.0" } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   }) as typeof api.get);
 });
@@ -40,21 +41,21 @@ const runner = (name: string, connected: boolean): Runner => ({
   id: `r-${name}`, name, connected, last_seen: "2026-08-12T12:00:00Z", running_job: null, version: "v0.3.0", machine: "edge-box",
 });
 
-const renderCard = (actions: string[], runners: Runner[] = []) =>
+const renderGroup = (actions: string[], runners: Runner[] = []) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MemoryRouter>
-        <MachineGroup machine={machine(actions)} runners={runners} />
+      <MemoryRouter initialEntries={["/acme/runners"]}>
+        <FleetGroupSection group={{ machine: machine(actions), runners, codes: [] }} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 
-describe("MachineGroup people", () => {
-  it("offers People on this machine, the ⋯ and a right-click Permissions… to a Manage holder", async () => {
+describe("FleetGroupSection people", () => {
+  it("names who the machine's rules reach, and offers the ⋯ and a right-click Permissions… to a Manage holder", async () => {
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:write"]);
-    expect(await screen.findByRole("button", { name: /People on this machine/ })).toBeInTheDocument();
+    renderGroup(["machines:see", "machines:write"]);
+    expect(await screen.findByRole("button", { name: "People on this machine: Only you" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions for edge-box" })).toBeInTheDocument();
 
     await user.pointer({ keys: "[MouseRight]", target: screen.getByRole("heading", { name: "edge-box" }) });
@@ -63,7 +64,7 @@ describe("MachineGroup people", () => {
 
   it("shows nobody else's people to someone who may only see and deploy to the machine", async () => {
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:deploy"]);
+    renderGroup(["machines:see", "machines:deploy"]);
     expect(await screen.findByRole("heading", { name: "edge-box" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /People on this machine/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More actions for edge-box" })).not.toBeInTheDocument();
@@ -74,35 +75,36 @@ describe("MachineGroup people", () => {
   });
 });
 
-describe("MachineGroup on a machine the viewer only sees", () => {
-  const writes = [
-    "Import from this machine",
-    "Add a runner to this machine",
-    "Remove builder",
-    "Edit stack root /data/nexul",
-  ];
-
-  it("shows no live write control and no menu when no role shows locked actions", async () => {
-    renderCard(["machines:see"], [runner("builder", true)]);
+describe("FleetGroupSection on a machine the viewer only sees", () => {
+  it("shows no write control and no ⋯ when no role shows locked actions", async () => {
+    renderGroup(["machines:see"], [runner("builder", true)]);
     await screen.findByRole("heading", { name: "edge-box" });
 
-    for (const name of writes) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add a runner to this machine" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit stack root /data/nexul" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More actions for edge-box" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for builder" })).not.toBeInTheDocument();
+    expect(screen.getByText("/data/nexul")).toBeInTheDocument();
   });
 
-  it("locks each write with its reason, and Delete in the menu, when a role shows locked actions", async () => {
+  it("locks each write with its reason, in place and in the menus, when a role shows locked actions", async () => {
     viewer.showLocked = true;
     const user = userEvent.setup();
-    renderCard(["machines:see"], [runner("builder", true)]);
+    renderGroup(["machines:see"], [runner("builder", true)]);
 
-    for (const name of writes) {
-      const control = await screen.findByRole("button", { name });
-      expect(control).toHaveAttribute("aria-disabled", "true");
+    for (const name of ["Add a runner to this machine", "Edit stack root /data/nexul"]) {
+      expect(await screen.findByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
     }
-    expect(screen.getByRole("button", { name: "Remove builder" })).toHaveAccessibleDescription("Your role can't remove runners");
+
+    await user.click(screen.getByRole("button", { name: "More actions for builder" }));
+    const remove = await screen.findByRole("menuitem", { name: /Remove runner/ });
+    expect(remove).toHaveAttribute("aria-disabled", "true");
+    expect(remove).toHaveTextContent("Your role can't remove runners");
+    await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "More actions for edge-box" }));
-    const del = await screen.findByRole("menuitem", { name: /Delete/ });
+    expect(await screen.findByRole("menuitem", { name: /Import from this machine/ })).toHaveAttribute("aria-disabled", "true");
+    const del = screen.getByRole("menuitem", { name: /Delete/ });
     expect(del).toHaveAttribute("aria-disabled", "true");
     expect(del).toHaveTextContent("Your role can't delete machines");
     await user.click(del);
@@ -111,7 +113,31 @@ describe("MachineGroup on a machine the viewer only sees", () => {
   });
 });
 
-describe("MachineGroup delete", () => {
+describe("FleetGroupSection import", () => {
+  it("opens the import wizard on this machine from the ⋯", async () => {
+    const user = userEvent.setup();
+    renderGroup(["machines:see", "machines:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Import from this machine" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["can't write stacks", [], ["machines:see", "machines:write"]],
+    ["doesn't manage the machine", ["stacks:write"], ["machines:see", "machines:delete"]],
+  ])("leaves Import out for someone who %s, the two things the import writes", async (_, workspace, actions) => {
+    viewer.workspace = workspace;
+    const user = userEvent.setup();
+    renderGroup(actions);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
+    await screen.findByRole("menu");
+    expect(screen.queryByRole("menuitem", { name: /Import from this machine/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("FleetGroupSection delete", () => {
   const openDelete = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
@@ -125,7 +151,7 @@ describe("MachineGroup delete", () => {
 
   it("names what goes in the confirm, and deletes nothing when it is cancelled", async () => {
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:delete"], [runner("builder", false), runner("live", true)]);
+    renderGroup(["machines:see", "machines:delete"], [runner("builder", false), runner("live", true)]);
 
     const dialog = await openDelete(user);
     expect(dialog.getByText(/The offline runner/)).toHaveTextContent("builder");
@@ -135,9 +161,9 @@ describe("MachineGroup delete", () => {
     expect(api.delete).not.toHaveBeenCalled();
   });
 
-  it("deletes the machine once confirmed, for a card that is offline", async () => {
+  it("deletes the machine once confirmed", async () => {
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:delete"], [runner("builder", false)]);
+    renderGroup(["machines:see", "machines:delete"], [runner("builder", false)]);
 
     await user.click((await openDelete(user)).getByRole("button", { name: "Delete machine" }));
 
@@ -148,7 +174,7 @@ describe("MachineGroup delete", () => {
     const refusal = 'machine "edge-box" is still used by stack api, connected runner live; move or remove them first';
     vi.mocked(api.delete).mockRejectedValue({ response: { status: 409, data: { message: refusal, code: "CONFLICT" } } });
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:delete"]);
+    renderGroup(["machines:see", "machines:delete"]);
 
     await user.click((await openDelete(user)).getByRole("button", { name: "Delete machine" }));
 
@@ -157,7 +183,7 @@ describe("MachineGroup delete", () => {
 
   it("offers no Delete to someone who manages the machine without holding Delete", async () => {
     const user = userEvent.setup();
-    renderCard(["machines:see", "machines:write"]);
+    renderGroup(["machines:see", "machines:write"]);
 
     await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
     expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();

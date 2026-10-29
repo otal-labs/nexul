@@ -31,7 +31,7 @@ describe("RunnersPage", () => {
     viewer.instance = ["machines:create"];
     renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Runners" })).toBeInTheDocument();
-    expect(await screen.findByText("Waiting for a runner")).toBeInTheDocument();
+    expect(await screen.findByText("No runners yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add runner/ })).toBeInTheDocument();
   });
 
@@ -41,7 +41,7 @@ describe("RunnersPage", () => {
   ])("%s from someone who may not add machines", async (_name, showLocked) => {
     viewer.showLocked = showLocked;
     renderPage();
-    expect(await screen.findByText("Waiting for a runner")).toBeInTheDocument();
+    expect(await screen.findByText("No runners yet")).toBeInTheDocument();
 
     const add = screen.queryByRole("button", { name: /Add runner/ });
     expect(!!add).toBe(showLocked);

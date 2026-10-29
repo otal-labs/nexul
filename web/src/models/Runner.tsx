@@ -46,6 +46,8 @@ export const QueuedJobSchema = z.object({
   id: z.string().min(1),
   kind: z.string(),
   service: z.string().optional(),
+  // The machine the job must run on; empty when any machine's runner may take it.
+  target: z.string().optional(),
 });
 
 export type QueuedJob = z.infer<typeof QueuedJobSchema>;
