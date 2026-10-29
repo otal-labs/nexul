@@ -10,3 +10,6 @@ SELECT * FROM automation_runs WHERE automation_id = ? ORDER BY started_at DESC, 
 
 -- name: DeleteAutomationRunsOlderThan :execrows
 DELETE FROM automation_runs WHERE created_at < ?;
+
+-- name: ListFailedAutomationRunsByAutomation :many
+SELECT * FROM automation_runs WHERE automation_id = ? AND outcome <> 'success' ORDER BY started_at DESC, id DESC LIMIT ?;

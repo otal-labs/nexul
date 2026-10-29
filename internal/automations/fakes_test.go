@@ -522,6 +522,17 @@ func (f *fakeRunsRepo) ListByAutomation(_ context.Context, automationID string, 
 	return out, nil
 }
 
+func (f *fakeRunsRepo) ListFailedByAutomation(ctx context.Context, automationID string, limit int) ([]Run, error) {
+	all, _ := f.ListByAutomation(ctx, automationID, len(f.rows))
+	var out []Run
+	for _, r := range all {
+		if r.Outcome != RunOutcomeSuccess && len(out) < limit {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRunsRepo) DeleteOlderThan(_ context.Context, before time.Time) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

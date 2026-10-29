@@ -45,6 +45,8 @@ type RunsRepo interface {
 	Create(ctx context.Context, r *Run) error
 	Get(ctx context.Context, id string) (*Run, error)
 	ListByAutomation(ctx context.Context, automationID string, limit int) ([]Run, error)
+	// ListFailedByAutomation is ListByAutomation narrowed to failure and crash.
+	ListFailedByAutomation(ctx context.Context, automationID string, limit int) ([]Run, error)
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
 }
 
@@ -73,12 +75,16 @@ func NewRunsService(repo RunsRepo, automations Repo, perm PermissionGate) *RunsS
 	return &RunsService{repo: repo, automations: automations, perm: perm}
 }
 
-// ListByAutomation returns the automation's run history, newest first.
-func (s *RunsService) ListByAutomation(ctx context.Context, actorID, automationID string, limit int) ([]Run, error) {
+// ListByAutomation returns the automation's run history, newest first; failedOnly keeps failures and crashes.
+func (s *RunsService) ListByAutomation(ctx context.Context, actorID, automationID string, failedOnly bool, limit int) ([]Run, error) {
 	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
-	runs, err := s.repo.ListByAutomation(ctx, automationID, limit)
+	list := s.repo.ListByAutomation
+	if failedOnly {
+		list = s.repo.ListFailedByAutomation
+	}
+	runs, err := list(ctx, automationID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list runs for automation %s: %w", automationID, err)
 	}
@@ -121,6 +127,9 @@ func NewRunsHandler(svc *RunsService) *RunsHandler {
 
 const defaultRunsLimit = 50
 
+// runsOutcomeFailed is the outcome filter that lists failures and crashes together.
+const runsOutcomeFailed = "failed"
+
 // Routes returns the run-history REST endpoints, both gated on automations:read.
 func (h *RunsHandler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
@@ -136,7 +145,12 @@ func (h *RunsHandler) list(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	runs, err := h.svc.ListByAutomation(r.Context(), actorID(r), r.PathValue("id"), limit)
+	outcome := r.URL.Query().Get("outcome")
+	if outcome != "" && outcome != runsOutcomeFailed {
+		httpx.WriteError(w, fmt.Errorf("outcome %q: only %q filters runs: %w", outcome, runsOutcomeFailed, apperrs.ErrInvalid))
+		return
+	}
+	runs, err := h.svc.ListByAutomation(r.Context(), actorID(r), r.PathValue("id"), outcome == runsOutcomeFailed, limit)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
