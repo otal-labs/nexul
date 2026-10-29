@@ -97,6 +97,7 @@ func (s *Service) Update(ctx context.Context, workspaceID string, c *Canvas) (*C
 		merged.Nodes = append(merged.Nodes, sn)
 	}
 	merged.Edges = edgesBetween(merged.Nodes, c.Edges)
+	merged.Layout = max(merged.Layout, stored.Layout)
 	if err := s.save(ctx, workspaceID, &merged); err != nil {
 		return nil, err
 	}
@@ -340,7 +341,7 @@ func (s *Service) view(ctx context.Context, workspaceID string) (*Canvas, error)
 		return nil, err
 	}
 	placed := make(map[string]Position, len(saved.Nodes))
-	out := &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{}, Viewport: saved.Viewport}
+	out := &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{}, Viewport: saved.Viewport, Layout: saved.Layout}
 	for _, n := range saved.Nodes {
 		if n.Type == NodeService {
 			placed[serviceKey(n)] = n.Position

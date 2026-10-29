@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveWiring, hostnameNodeId, routeInHandle } from "@/components/topology/wiring";
+import { deriveWiring, hostnameNodeId, routeInHandle, summarize, tracePath } from "@/components/topology/wiring";
 import type { Exposure, Gateway } from "@/models/DNS";
 import { ContainerStatus, DeployStrategy, type Container, type Stack } from "@/models/Stack";
 import { ServiceStatus, type TopologyNode } from "@/models/Topology";
@@ -108,7 +108,7 @@ describe("deriveWiring", () => {
   it("routes straight to the service, port on the wire, when the gateway has no node", () => {
     const { edges } = deriveWiring([serviceNode("svc-api", "hello-api")], containers, stacks, [{ ...gateway, service_id: "" }], [exposure]);
     expect(edges).toEqual([
-      expect.objectContaining({ type: "relation", source: hostnameNodeId("exp-1"), target: "svc-api", data: { kind: "connects_to", label: ":3000" } }),
+      expect.objectContaining({ type: "relation", source: hostnameNodeId("exp-1"), target: "svc-api", data: expect.objectContaining({ kind: "connects_to", label: ":3000" }) }),
     ]);
   });
 
@@ -150,5 +150,36 @@ describe("deriveWiring", () => {
     const { networks, nodes } = deriveWiring([serviceNode("svc-api", "hello-api"), external], [container("svc-api", "hello-api")], stacks, [], []);
     expect(networks).toEqual([]);
     expect(nodes).toHaveLength(2);
+  });
+});
+
+describe("a service that needs attention", () => {
+  const failing = [serviceNode("svc-cf", "cloudflared-local"), { ...serviceNode("svc-api", "hello-api"), data: { ...serviceNode("svc-api", "hello-api").data, status: ServiceStatus.Failed } } as TopologyNode];
+
+  it("colours its whole path: the pill, both wires and the gateway row", () => {
+    const { hosts, edges, nodes } = deriveWiring(failing, containers, stacks, [gateway], [exposure]);
+    expect(hosts[0]!.data.tone).toBe(ServiceStatus.Failed);
+    expect(edges.map((e) => e.data?.tone)).toEqual([ServiceStatus.Failed, ServiceStatus.Failed]);
+    const gw = nodes.find((n) => n.type === "gateway");
+    expect(gw?.type === "gateway" && gw.data.routes[0]!.tone).toBe(ServiceStatus.Failed);
+  });
+
+  it("leaves a healthy path neutral and counts what needs attention", () => {
+    const healthy = deriveWiring(stored, containers, stacks, [gateway], [exposure]);
+    expect(healthy.edges.every((e) => !e.data?.tone)).toBe(true);
+    expect(summarize(deriveWiring(failing, containers, stacks, [gateway], [exposure]))).toEqual({ services: 2, failed: 1, stopped: 0, hostnames: 1 });
+  });
+});
+
+describe("tracePath", () => {
+  it("lights every route a node is on end to end, and the relations that touch it", () => {
+    const { edges } = deriveWiring(stored, containers, stacks, [gateway], [exposure]);
+    const relation = { id: "r", source: "svc-api", target: "db", type: "relation" as const, data: { kind: "depends_on" as const } };
+    const fromPill = tracePath(hostnameNodeId("exp-1"), [...edges, relation]);
+    expect([...fromPill.nodes].sort()).toEqual([hostnameNodeId("exp-1"), "svc-api", "svc-cf"].sort());
+    expect(fromPill.edges.has("r")).toBe(false);
+    const fromService = tracePath("svc-api", [...edges, relation]);
+    expect(fromService.nodes.has(hostnameNodeId("exp-1"))).toBe(true);
+    expect(fromService.edges.has("r")).toBe(true);
   });
 });

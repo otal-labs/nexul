@@ -1,8 +1,12 @@
+import { ROUTE_IN } from "@/components/topology/canvasStyles";
+import { routeRowHeights } from "@/components/topology/geometry";
 import type { Exposure, Gateway } from "@/models/DNS";
 import type { Container, Stack } from "@/models/Stack";
 import {
   NodeType,
   RelationKind,
+  ServiceStatus,
+  type AttentionStatus,
   type GatewayNode,
   type HostnameNode,
   type NetworkGroup,
@@ -23,25 +27,41 @@ export interface Wiring {
 export const hostnameNodeId = (exposureId: string) => `host-${exposureId}`;
 export const routeInHandle = (exposureId: string) => `in-${exposureId}`;
 
+// A service that needs attention colours the whole path that reaches it; a healthy one leaves it neutral.
+const toneOf = (status: string | undefined): AttentionStatus | undefined => {
+  if (status === ServiceStatus.Failed || status === ServiceStatus.Stopped) return status;
+  return undefined;
+};
+
+const withTone = (tone: AttentionStatus | undefined) => (tone ? { tone } : {});
+
 // A bare wire: the gateway row it touches already says everything.
-const routeEdge = (id: string, source: string, target: string, handles: Partial<Pick<RelationEdge, "sourceHandle" | "targetHandle">> = {}): RelationEdge => ({
+const routeEdge = (
+  id: string,
+  source: string,
+  target: string,
+  exposure: string,
+  tone: AttentionStatus | undefined,
+  handles: Partial<Pick<RelationEdge, "sourceHandle" | "targetHandle">> = {},
+): RelationEdge => ({
   id,
   source,
   target,
   type: "route",
-  data: { kind: RelationKind.ConnectsTo },
+  data: { kind: RelationKind.ConnectsTo, exposure, ...withTone(tone) },
   selectable: false,
   deletable: false,
   ...handles,
 });
 
 // Without a gateway node the port has nowhere else to live, so it labels the direct wire.
-const directEdge = (id: string, source: string, target: string, port: number): RelationEdge => ({
+const directEdge = (id: string, source: string, target: string, port: number, exposure: string, tone: AttentionStatus | undefined): RelationEdge => ({
   id,
   source,
   target,
+  targetHandle: ROUTE_IN,
   type: "relation",
-  data: { kind: RelationKind.ConnectsTo, label: `:${port}` },
+  data: { kind: RelationKind.ConnectsTo, label: `:${port}`, exposure, ...withTone(tone) },
   selectable: false,
   deletable: false,
 });
@@ -106,6 +126,7 @@ export const deriveWiring = (
           service: targetContainer?.name ?? e.service,
           port: e.port,
           address: targetNode?.data.address,
+          ...withTone(toneOf(targetNode?.data.status)),
         };
       });
     const view: GatewayNode = {
@@ -124,18 +145,24 @@ export const deriveWiring = (
     const target = e.service_id ? nodeByContainerId.get(e.service_id) : undefined;
     if (!target) continue;
     const hostId = hostnameNodeId(e.id);
+    const tone = toneOf(target.data.status);
     hosts.push({
       id: hostId,
       type: "hostname",
       position: { x: 0, y: 0 },
-      data: { hostname: e.hostname, kind: gateway?.kind },
+      data: { hostname: e.hostname, kind: gateway?.kind, ...withTone(tone) },
     });
     if (gatewayNode) {
-      edges.push(routeEdge(`route-${e.id}-in`, hostId, gatewayNode.id, { targetHandle: routeInHandle(e.id) }));
-      if (target.id !== gatewayNode.id) edges.push(routeEdge(`route-${e.id}-out`, gatewayNode.id, target.id, { sourceHandle: e.id }));
+      edges.push(routeEdge(`route-${e.id}-in`, hostId, gatewayNode.id, e.id, tone, { targetHandle: routeInHandle(e.id) }));
+      if (target.id !== gatewayNode.id) edges.push(routeEdge(`route-${e.id}-out`, gatewayNode.id, target.id, e.id, tone, { sourceHandle: e.id, targetHandle: ROUTE_IN }));
       continue;
     }
-    edges.push(directEdge(`route-${e.id}`, hostId, target.id, e.port));
+    edges.push(directEdge(`route-${e.id}`, hostId, target.id, e.port, e.id, tone));
+  }
+
+  const pillByRoute = new Map(hosts.map((h) => [h.id.slice("host-".length), h.data]));
+  for (const n of nodes) {
+    if (n.type === "gateway") n.data.rowHeights = routeRowHeights(n.data, pillByRoute);
   }
 
   return {
@@ -143,5 +170,34 @@ export const deriveWiring = (
     hosts,
     edges,
     networks: [...networks].map(([name, memberIds]) => ({ name, memberIds })).sort((a, b) => a.name.localeCompare(b.name)),
+  };
+};
+
+export interface TopologySummary {
+  services: number;
+  failed: number;
+  stopped: number;
+  hostnames: number;
+}
+
+// The toolbar's counts: every deployed container (a gateway is one), the ones that need attention, and the public names.
+export const summarize = (w: Wiring): TopologySummary => {
+  const deployed = w.nodes.filter((n) => n.type === NodeType.Service || n.type === "gateway");
+  const count = (status: string) => deployed.filter((n) => n.data.status === status).length;
+  return { services: deployed.length, failed: count("failed"), stopped: count("stopped"), hostnames: w.hosts.length };
+};
+
+export interface Trace {
+  nodes: Set<string>;
+  edges: Set<string>;
+}
+
+// What a hover lights: every route the node is on, end to end, and the relations that touch it.
+export const tracePath = (id: string, edges: RelationEdge[]): Trace => {
+  const exposures = new Set(edges.filter((e) => e.data?.exposure && (e.source === id || e.target === id)).map((e) => e.data!.exposure!));
+  const lit = edges.filter((e) => (e.data?.exposure && exposures.has(e.data.exposure)) || (!e.data?.exposure && (e.source === id || e.target === id)));
+  return {
+    nodes: new Set([id, ...lit.flatMap((e) => [e.source, e.target])]),
+    edges: new Set(lit.map((e) => e.id)),
   };
 };

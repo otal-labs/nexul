@@ -431,6 +431,12 @@ body {
   overflow: visible;
 }
 
+/* A page that is all canvas never scrolls, so it reserves no scrollbar gutter and its insets stay equal. */
+.app-frame:has([data-canvas-page]) {
+  overflow-y: hidden;
+  scrollbar-gutter: auto;
+}
+
 /* The light field behind the app: the brand's tint top right and bottom left, a lift of the card between.
    Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
 .light-field {

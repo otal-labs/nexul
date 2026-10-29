@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Background,
   BackgroundVariant,
-  Controls,
   ReactFlow,
   ViewportPortal,
+  useStoreApi,
   type NodeMouseHandler,
   type OnMoveEnd,
   type OnNodeDrag,
@@ -18,12 +18,14 @@ import { onConnect, onEdgesChange } from "@/components/topology/flowActions";
 import { FreeNodeDialog } from "@/components/topology/FreeNodeDialog";
 import { GatewayNode as GatewayNodeView } from "@/components/topology/GatewayNode";
 import { HostnameNode as HostnameNodeView } from "@/components/topology/HostnameNode";
+import { LaneFade } from "@/components/topology/LaneFade";
+import { LaneHeaders } from "@/components/topology/LaneHeaders";
 import { NetworkBox } from "@/components/topology/NetworkBox";
 import { NetworkNode as NetworkNodeView } from "@/components/topology/NetworkNode";
 import { RelationEdge as RelationEdgeView } from "@/components/topology/RelationEdge";
 import { RouteEdge as RouteEdgeView } from "@/components/topology/RouteEdge";
 import { ServiceNode as ServiceNodeView } from "@/components/topology/ServiceNode";
-import { TopologyPalette } from "@/components/topology/TopologyPalette";
+import { TopologyToolbar } from "@/components/topology/TopologyToolbar";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
 import { useActionState } from "@/hooks/useActionState";
@@ -44,6 +46,7 @@ const edgeTypes = { relation: RelationEdgeView, route: RouteEdgeView };
 // Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const TopologyFlow = () => {
   const navigate = useNavigate();
+  const flow = useStoreApi();
   const wsPath = useWorkspacePath();
   const can = useAreaAccess();
   const canOpenStack = can?.("stacks") ?? false;
@@ -56,18 +59,20 @@ export const TopologyFlow = () => {
   const selectNode = useFlowStore((s) => s.selectNode);
   const save = useSaveTopology();
   const { isPending } = useFetchTopology();
-  const { viewNodes, viewEdges, networkRects, handleNodesChange } = useTopologyView();
+  const { viewNodes, viewEdges, networkRects, lanes, handleNodesChange, summary, arrange, fit, trace } = useTopologyView();
 
   const [addingExternal, setAddingExternal] = useState(false);
 
   // Pan and zoom are part of the map: saved a moment after the camera stops, so a reload opens where it was left.
   const viewportSave = useRef<number | undefined>(undefined);
+  // A save still pending when the canvas goes (a workspace switch) would write this camera into the next one.
+  useEffect(() => () => window.clearTimeout(viewportSave.current), []);
   const handleMoveEnd: OnMoveEnd = (_, viewport) => {
     if (isPending || !canWrite) return;
     // Restoring the saved camera on load ends a move too; the same values are not worth a write.
     const saved = useFlowStore.getState().viewport;
     if (saved && saved.x === viewport.x && saved.y === viewport.y && saved.zoom === viewport.zoom) return;
-    storeViewport(viewport);
+    storeViewport({ ...viewport, width: flow.getState().width });
     window.clearTimeout(viewportSave.current);
     viewportSave.current = window.setTimeout(() => void save.mutateAsync(), 600);
   };
@@ -99,7 +104,9 @@ export const TopologyFlow = () => {
   };
 
   return (
-    <div className="relative h-full w-full">
+    <div className="flex h-full w-full flex-col">
+      <TopologyToolbar summary={summary} lanes={lanes} onAddExternal={() => setAddingExternal(true)} onArrange={arrange} onFit={fit} />
+      <div className="relative min-h-0 flex-1">
       <ReactFlow<TopologyNode, RelationEdge>
         nodes={viewNodes}
         edges={viewEdges}
@@ -111,6 +118,9 @@ export const TopologyFlow = () => {
         onNodeClick={handleNodeClick}
         onNodeDragStop={handleNodeDragStop}
         onMoveEnd={handleMoveEnd}
+        onNodeMouseEnter={(_, node) => trace.set(node.id)}
+        onNodeMouseLeave={() => trace.set(null)}
+        minZoom={0.5}
         nodesDraggable={canWrite}
         nodesConnectable={canWrite}
         edgesReconnectable={canWrite}
@@ -118,15 +128,16 @@ export const TopologyFlow = () => {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
-        <Controls />
         <ViewportPortal>
           {networkRects.map((rect) => (
             <NetworkBox key={rect.name} rect={rect} />
           ))}
+          <LaneHeaders lanes={lanes} />
         </ViewportPortal>
       </ReactFlow>
-      <TopologyPalette onAddExternal={() => setAddingExternal(true)} />
+      <LaneFade lanes={lanes} />
       {!isPending && nodes.length === 0 && <CanvasEmptyHint onAddNode={() => setAddingExternal(true)} />}
+      </div>
       <AddNodeDialog kind={NodeType.External} open={addingExternal} onClose={() => setAddingExternal(false)} />
       <FreeNodeDialog node={freeNode} onClose={() => selectNode(null)} />
     </div>

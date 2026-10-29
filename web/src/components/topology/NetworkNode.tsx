@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { NetworkIcon } from "lucide-react";
 
-import { nodeShell } from "@/components/topology/ServiceNode";
+import { handleClasses, nodeShell } from "@/components/topology/canvasStyles";
 import { cn } from "@/lib/utils";
 import type { NetworkNode as NetworkNodeType } from "@/models/Topology";
 
@@ -17,7 +17,7 @@ export const NetworkNode = ({ data, selected }: NodeProps<NetworkNodeType>) => (
     <Handle
       type="target"
       position={Position.Left}
-      className="!bg-muted-foreground !transition-transform !duration-150 !ease-standard group-hover:!scale-125"
+      className={handleClasses}
     />
     <div className="flex items-center gap-2">
       <NetworkIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -27,7 +27,7 @@ export const NetworkNode = ({ data, selected }: NodeProps<NetworkNodeType>) => (
     <Handle
       type="source"
       position={Position.Right}
-      className="!bg-muted-foreground !transition-transform !duration-150 !ease-standard group-hover:!scale-125"
+      className={handleClasses}
     />
   </div>
 );

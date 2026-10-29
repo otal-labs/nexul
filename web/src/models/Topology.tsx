@@ -106,6 +106,11 @@ export const RelationEdgeDataSchema = z.object({
   kind: z.enum([RelationKind.DependsOn, RelationKind.ConnectsTo, RelationKind.Mounts]),
   // Overrides the kind's label on derived route edges (":3000"); never stored.
   label: z.string().optional(),
+  // Derived route wires only, never stored: the exposure the wire carries, and its service's status when it needs attention.
+  exposure: z.string().optional(),
+  tone: z.enum([ServiceStatus.Failed, ServiceStatus.Stopped]).optional(),
+  // Set while a hover traces routes this edge is not on; its label, drawn in the label layer, dims with it.
+  dim: z.boolean().optional(),
 });
 
 export const RelationEdgeSchema = z.object({
@@ -117,13 +122,16 @@ export const RelationEdgeSchema = z.object({
 });
 
 // Where the owner last left the camera; saved with the map so a reload opens the canvas where it was.
-export const ViewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number() });
+// Width is the canvas pane's when the camera was saved: opened at another width the canvas fits again instead.
+export const ViewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number(), width: z.number().optional() });
 
 export const CanvasSchema = z.object({
   schema_version: z.literal(2),
   nodes: z.array(TopologyNodeSchema),
   edges: z.array(RelationEdgeSchema),
   viewport: ViewportSchema.optional(),
+  // The automatic layout the positions were last arranged by; below LANE_LAYOUT the canvas is laid out again once.
+  layout: z.number().int().nonnegative().optional(),
 });
 
 // A live push names the workspace whose canvas it carries.
@@ -152,7 +160,11 @@ export type ServiceNodeExtras = {
 export type HostnameNodeData = {
   hostname: string;
   kind?: GatewayKind | undefined;
+  // The status of the service it reaches, set only when that service needs attention.
+  tone?: AttentionStatus | undefined;
 };
+
+export type AttentionStatus = typeof ServiceStatus.Failed | typeof ServiceStatus.Stopped;
 
 // One route a gateway forwards: the row reads "→ service:port (address:port)" and owns a wire in and a wire out.
 export type RouteRow = {
@@ -161,6 +173,7 @@ export type RouteRow = {
   service: string;
   port: number;
   address?: string | undefined;
+  tone?: AttentionStatus | undefined;
 };
 
 // A gateway's service node, rendered as the hub its routes pass through; same id as the stored service node.
@@ -172,6 +185,10 @@ export type GatewayNodeData = ServiceNodeData & {
   routes: RouteRow[];
   // Every docker network the gateway is on; it sits outside the network boxes, so the card names them instead.
   networks: string[];
+  // Each route row's height, worked out with its pill's (geometry.ts) so the row and the pill stay level.
+  rowHeights?: number[] | undefined;
+  // While a hover traces routes, the rows on them; the rest of the card's rows dim.
+  litRoutes?: string[] | undefined;
 };
 
 export type ServiceNode = Node<ServiceNodeData & ServiceNodeExtras, "service">;

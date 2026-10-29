@@ -1,8 +1,9 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { GlobeIcon, NetworkIcon, ServerIcon, ShieldIcon, DatabaseIcon, BoxIcon } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { BoxIcon, DatabaseIcon, GlobeIcon, NetworkIcon, ServerIcon, ShieldIcon, type LucideIcon } from "lucide-react";
 
-import { nodeShell } from "@/components/topology/ServiceNode";
+import { microheaderClass } from "@/components/Microheader";
+import { EXTERNAL_W } from "@/components/topology/geometry";
+import { handleClasses, nodeShell } from "@/components/topology/canvasStyles";
 import { cn } from "@/lib/utils";
 import { ExternalLabel, type ExternalNode as ExternalNodeType } from "@/models/Topology";
 
@@ -15,37 +16,33 @@ const labelIcons: Record<ExternalLabel, LucideIcon> = {
   [ExternalLabel.Other]: BoxIcon,
 };
 
-// Free-form map element for things Nexul does not manage: domains, tunnels, third-party APIs.
+// Something Nexul does not run; the microheader keeps it from reading as a deployed service.
 export const ExternalNode = ({ data, selected }: NodeProps<ExternalNodeType>) => {
   const Icon = labelIcons[data.label] ?? BoxIcon;
   return (
-    <div
-      className={cn(
-        nodeShell,
-        "min-w-48 p-3",
-      )}
-      data-selected={selected}
-    >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!bg-muted-foreground !transition-transform !duration-150 !ease-standard group-hover:!scale-125"
-      />
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="whitespace-nowrap text-sm font-medium">{data.name}</span>
+    <div className="group" style={{ width: EXTERNAL_W }}>
+      <span className={cn("mb-1.5 block text-[10px] leading-4", microheaderClass)}>outside Nexul</span>
+      <div className={cn(nodeShell, "p-3")} data-selected={selected}>
+        <Handle type="target" position={Position.Left} className={handleClasses} />
+        <div className="flex items-start gap-2">
+          <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="min-w-0">
+            <span className="block text-sm leading-5 font-medium break-words text-pretty">{data.name}</span>
+            {data.url && (
+              <a className="block font-mono text-xs break-words text-muted-foreground" href={data.url}>
+                {data.url.split(/(?<=[/.])/).map((part, i) => (
+                  <span key={i}>
+                    {part}
+                    <wbr />
+                  </span>
+                ))}
+              </a>
+            )}
+            <span className="font-mono text-[11px] leading-4 text-muted-foreground">{data.label}</span>
+          </div>
+        </div>
+        <Handle type="source" position={Position.Right} className={handleClasses} />
       </div>
-      {data.url && (
-        <a className="block whitespace-nowrap font-mono text-xs text-muted-foreground" href={data.url}>
-          {data.url}
-        </a>
-      )}
-      <span className="font-mono text-xs text-muted-foreground">{data.label}</span>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-muted-foreground !transition-transform !duration-150 !ease-standard group-hover:!scale-125"
-      />
     </div>
   );
 };
