@@ -69,7 +69,7 @@ git history, and anything durable it decided is an ADR.
   a chosen-computer auto play's ordered list.
 - `.scratch/change-history/` — a wayfinder map toward a spec for version
   history with a "what changed" diff on docs, tickets, plays, memories and
-  automations. Every ticket but 05, the dialog prototype, is resolved; ticket 01's findings are in `research/`.
+  automations. Every ticket is resolved; the spec and build tickets come next; ticket 01's findings are in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

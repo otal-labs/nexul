@@ -39,9 +39,11 @@ does. When the spec is done, the building starts.
 - [One versions store, or one per entity](issues/08-one-versions-store-or-one-per-entity.md): a table per entity, cascading on delete; one shared route shape and one web dialog; automation versions stay as they are.
 - [Who reaches history, and where](issues/09-who-reaches-history-and-where.md): anyone who can read an item sees its history; agents read and revert through a `version` on each get and `revert_to_version` on each update, as memories do; an open list doesn't update live; no history on the phone.
 
+- [The "what changed" dialog](issues/05-the-what-changed-dialog.md): one History dialog, rendered text with green and struck-red word marks and a margin bar per changed paragraph, each version against the one before it; the list on the right holds versions and, on tickets and plays, field changes as plain rows; the word diff is written in-house.
+
 ## Not yet specified
 
-- The "what changed" dialog's look and its diff (ticket 05).
+Nothing. The spec and build tickets come next.
 
 ## Out of scope
 
