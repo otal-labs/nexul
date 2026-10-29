@@ -101,8 +101,8 @@ in the three token files; this table holds the roles.
 | `warning` | `#fbbf24` | `#8a6100` | in-flight states | |
 | `info` | `#5cc8f5` | `#0369a1` | open and informational states | |
 | `merged` | `#a371f7` | `#8250df` | merged pull requests only | |
-| `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests | |
-| `destructive-fill` | `oklch(0.55 0.2 25)` | `#c81e1e` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember | site: none, it has no destructive button |
+| `destructive` | `#f26074` | `#c41945` | errors, danger zone, closed pull requests; crimson, 20° off the `brand` ember's hue | |
+| `destructive-fill` | `oklch(0.55 0.2 15)` | `#a80f39` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember | site: none, it has no destructive button |
 | `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface | |
 | `ring` | `brand` | `brand` | canvas selection and the console glow | site: none; Fumadocs' `fd-ring` is `focus` |
 | `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
@@ -633,7 +633,7 @@ the spinner stays. The title takes the
 card's full width under it, in 13px at weight 450 (500 read as bold at that
 size on a dark card), at most three lines. A blocked card adds "Blocked by" and
 the key on a line of its own. Last comes the type as its icon (a bug in its
-red, every other type muted) and at most two labels, each an 18px pill in its
+fuchsia, every other type muted) and at most two labels, each an 18px pill in its
 own hue (the hue at 15% under its 800 ink, 300 in dark, 900 for lime and
 amber; 6:1 or better on the card), any more as "+N" naming them in its tooltip. Labels
 after the first drop out whole; a first label too long for the line truncates,
@@ -1639,6 +1639,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
 | Board: the identity header comes back, and the page stops capping the board (2026-10-29) | Reverses the two rows below, on the owner's call after living with them: the 16px sans title inside the toolbar row left the page with no name on it, so the first thing the eye met was a search box, and the cards, the stage names and the lane names all sat at 13px with nothing above them. The 1280 measure fixed the wrong end: it letterboxed a four-stage board while an eight-stage board still sat on the 180px floor, so the cap belongs on the track (`minmax(180px, 280px)`) and the page takes the panel. The project mark and the display face cost 40px above the first card, which the old board already gave back by never carrying a stage strip |
 | Light `warning` is ochre, and a bug's icon is rose (2026-10-29) | Against amber-700 and red-700: in light mode both sat within 15° of the `brand` ember's hue at its lightness, so In review's dot and stage-bar segment and every bug icon read as the accent. `#8a6100` (hue 80, 5.5:1 on white) moves warning toward the dark mode's `#fbbf24`; rose-700/400 keeps a bug red without borrowing `destructive`. Rejected: a per-palette warning, since no palette overrides the status hues |
+| Errors are crimson, and a bug's icon is fuchsia (2026-10-29) | Against the coral `destructive` (hue 27) that sat 8° from the `brand` ember (hue 35), so an error line read as the accent: crimson (hue 15) holds 5.4:1 on the dark panel and 5.9:1 on white. A bug's rose would then sit on the error hue at the same lightness in light mode, so the bug icon moves to fuchsia (hue 323). Rejected: rose errors with the bug moved elsewhere, and pink for the bug, which is the design type's |
 | Board empty cells take half the well (2026-10-29) | Against every cell at `well-shade`: on a real board most columns are empty, so the heaviest surface was drawn mostly where no work was, and four void columns read as more of the page than the cards did. Half keeps the footprint, the drop target and the three-surface order, and leaves the full well to a cell that holds cards |
 | Board lane band carries a progress line again (2026-10-29) | Against the count alone: "4/11 done" in muted 11px on a 32px band is a clause you have to read, and at 1440 a lane's progress was invisible until you found the number. 96 × 4 of `success` over `muted` is the one shape in the board that answers "how far along" without reading, and it sits on a 200px reservation at the board's visible right edge, so it reports on a collapsed lane and never scrolls away with the last stage. Rejected: 64 × 3 (too small to read as an instrument at 1440) and the old per-stage legend (it counted the project beside each lane's own count) |
 | Board title in the sans on one line with its count (2026-10-28) — reversed 2026-10-29 | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |

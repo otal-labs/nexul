@@ -18,7 +18,7 @@ const HUE_ICON_CLASS: Record<string, string> = {
 
 const TYPE_HUES: Record<string, string> = {
   task: "slate",
-  bug: "rose",
+  bug: "fuchsia",
   feature: "violet",
   chore: "amber",
   docs: "blue",

@@ -44,8 +44,8 @@
       --color-warning: #fbbf24;
       --color-info: #5cc8f5;
       --color-merged: #a371f7;
-      --color-destructive: #f97066;
-      --color-destructive-fill: oklch(0.55 0.2 25);
+      --color-destructive: #f26074;
+      --color-destructive-fill: oklch(0.55 0.2 15);
 
       --color-border: oklch(1 0 0 / 0.08);
       --color-input: oklch(1 0 0 / 0.12);
@@ -82,8 +82,8 @@
       --color-warning: #8a6100;
       --color-info: #0369a1;
       --color-merged: #8250df;
-      --color-destructive: #dc2626;
-      --color-destructive-fill: #c81e1e;
+      --color-destructive: #c41945;
+      --color-destructive-fill: #a80f39;
 
       --color-border: oklch(0.2 0.01 265 / 0.1);
       --color-input: oklch(0.2 0.01 265 / 0.16);

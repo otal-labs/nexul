@@ -62,7 +62,7 @@ export const LoginPage = () => {
         <>
           <SignedOutHeader
             title="Sign in to Nexul"
-            subtitle={clientsEnabled ? "GitHub for the team. Clients use the other options." : "Sign in with your GitHub account."}
+            subtitle={clientsEnabled ? "Use the account you were invited with." : "Sign in with your GitHub account."}
           />
           {failure != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{signInErrorMessage(failure)}</InlineNotice>}
           {exchange.error != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{errorMessage(exchange.error)}</InlineNotice>}

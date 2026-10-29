@@ -4,7 +4,7 @@ import { labelDotColor, ticketTypeColor } from "@/components/board/ticketTypeCol
 
 describe("ticketTypeColor", () => {
   it("returns a known text color for a recognized type, no background/border fill", () => {
-    expect(ticketTypeColor("bug")).toMatch(/rose/);
+    expect(ticketTypeColor("bug")).toMatch(/fuchsia/);
     expect(ticketTypeColor("Bug")).toEqual(ticketTypeColor("bug"));
     expect(ticketTypeColor("bug")).not.toMatch(/bg-|border-/);
   });
