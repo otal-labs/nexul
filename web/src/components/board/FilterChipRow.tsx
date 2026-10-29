@@ -13,8 +13,10 @@ export interface ChipOption {
 }
 
 interface FilterChipRowProps {
-  title: string;
+  title?: string;
   chips: ChipOption[];
+  /** A trailing Clear all, for the chip row under a toolbar. */
+  onClearAll?: () => void;
 }
 
 // Active chips carry a decorative × so a selected filter reads as "on, tap
@@ -27,15 +29,15 @@ const chip = (active: boolean) =>
       : "border-border bg-card text-muted-foreground hover:border-ring/40 hover:bg-accent hover:text-foreground",
   );
 
-export const FilterChipRow = ({ title, chips }: FilterChipRowProps) => (
+export const FilterChipRow = ({ title, chips, onClearAll }: FilterChipRowProps) => (
   <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-1.5">
-    <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{title}</span>
+    {title && <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{title}</span>}
     {chips.map((option) => (
       <button
         key={option.key}
         type="button"
         aria-pressed={option.active}
-        aria-label={option.ariaLabel}
+        aria-label={onClearAll ? `Remove ${option.label} filter` : option.ariaLabel}
         onClick={option.onToggle}
         className={chip(option.active)}
       >
@@ -44,5 +46,10 @@ export const FilterChipRow = ({ title, chips }: FilterChipRowProps) => (
         {option.active && <XIcon className="size-3" aria-hidden />}
       </button>
     ))}
+    {onClearAll && (
+      <button type="button" onClick={onClearAll} className="h-9 rounded-full px-2 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground">
+        Clear all
+      </button>
+    )}
   </div>
 );

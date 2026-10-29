@@ -560,13 +560,31 @@ take no indent. Every other notification is its own row, and all of them
 interleave by newest activity. The open pane before a pick says how many are
 unread and teaches the palette's shortcut.
 
-Board. One grid. The header is one row from 1280px: the title in the UI sans
-at 16px semibold with a muted "55 tickets · 8 people" on its baseline, then
-the toolbar, Create at the right edge; below 1280 the toolbar sits under the
-title. The board is the one page whose title is not the display face: it is a
-work surface opened all day, and its height is cards. No breadcrumb, project
-mark or stage summary: the sidebar's switchers show the workspace and the
-mark, and the stage row counts every stage.
+Board. One grid. The header carries the project's identity: its 32px mark,
+the name in the display face (`pageTitleClassFor`), and a mono 12px meta line
+under it — "12 of 55 tickets · 8 people", the tickets on show and the people
+on them. On the header's right edge, centred on that block, sits the stage bar
+(`BoardStageProgress`): 240 × 8, one rounded segment per stage in its stage
+mark's colour, 2px apart, each as wide as its share with a 4px floor; a stage
+showing nothing keeps a 4px sliver at 25%, Backlog sits at 50%, Done at full
+strength, and the bar is hidden when the board shows no tickets. There is no
+legend — the stage row under it names and counts every stage — and no
+breadcrumb.
+
+Toolbar. Its own row 12px under the header, never sharing it: a search field,
+Filter, the people facepile, Mine to test, Playing, then Create alone at the
+right edge; 36px controls, one row from 768. Setting a filter drops a chip row
+8px beneath it, Clear all last, so the controls never reflow. Below 900 the
+toggles go icon-only with their names in tooltips; below 768 Create is a 36px
+icon.
+
+Board width. The header, toolbar and grid share one box —
+`min(panel − 32px, max(the tracks at their 280px ceiling, 45.625rem))` —
+centred in the panel: the chrome never scrolls with the grid, and it is told
+the board's scrollbar width so Create and the last track end on one pixel. The
+Board is the one page that does not take `Container`'s measure; its width
+comes from its tracks, and a very wide screen leaves panel either side rather
+than stretching every card.
 
 The board scrolls on its own, both ways, under the header row. Its stage row
 (`BoardStageHeader`) is drawn once and pinned at the top of that scroll: each
@@ -577,25 +595,31 @@ name, count, chevron) with no well under it in any lane; the control opens it
 and takes drops while a card is held, a fold button in its header closes it, and the choice is
 kept per browser, because finished work is counted, not read, on a board kept
 open all day. Every lane's row and the stage row share one grid template
-(`boardGridTemplate`): 180px minimum and an equal share for each open stage,
-7.5rem for folded Done, so a stage is one column down the whole board; past
-the panel's width the board scrolls sideways and never squeezes a title, and
-the board takes the page's wide measure rather than the whole panel, so a
-very wide screen leaves panel either side instead of stretching every card, and
+(`boardGridTemplate`): `minmax(180px, 280px)` for each open stage and 7.5rem
+for folded Done, so a stage is one column down the whole board and no card
+grows past 280; past the panel's width the board scrolls sideways and never
+squeezes a title, the right edge fading only while there is more board, and
 below 1024 its right edge fades over 0.75rem, short enough that a cut
 column's titles stay readable, and the bottom fades into the panel's edge.
 The scrollbar sits in the page's right padding, beside the columns, with its
 space always kept, so opening or collapsing a lane never moves a column.
 A card dropped on the stage row lands in that stage in its own lane.
 
-A swimlane is a 28px band across the stage columns, pinned under the stage
-row while its lane scrolls: a chevron, the lane name in 13px semibold, and
-"4/11 done" in muted sans beside the name, a hairline under the band. Each
+A swimlane is a 32px band across every stage column, folded ones included,
+pinned under the stage row while its lane scrolls: a chevron, the lane name
+in 14px semibold truncating with its full name in a tooltip, and the lane's
+run marks (spinner and count, the waiting mark) in muted 12px. Its right end
+carries the lane's progress — a 96 × 4 line, `success` over `muted`, then
+"4/11 done" in mono 12px tabular on a 200px reservation — held at the board's
+visible right edge so it never scrolls away with the last stage, and the
+band's sticky offset is the stage row's exact height. Each
 stage's well (`well-shade`: ink at 4% in light, black at 45% in dark, a shade
 rather than a colour so it reads in every palette; a black panel takes a lighter
 well instead) fills each lane's cell, as tall as the lane, with the radius of a
 card, so a card dropped anywhere below a cell's last card lands in that cell and
-every band sits between rounded wells. A cell
+every band sits between rounded wells. An empty cell takes half of it
+(`well-shade/50`) — a place to land, not a slab — on the same footprint, so the
+columns never move. A cell
 mounts its first 10 cards and a "Show 10 more of N" row mounts the next. While
 a card is held, an empty cell and the folded Done cell show a card-tall
 dashed slot as the place to land.
@@ -694,7 +718,7 @@ tabular figures. Images take the large radius, a black or white 10% outline
 drawn inside, and the card shadow. Code blocks stay consoles at 13px. A
 blockquote is a 2px rule in `foreground` at 25%.
 
-Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
+Page width. `Container` is `max-w-7xl` for lists and grids (Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
 single-record pages (Configuration, Your settings, Project settings, Stack,
 Deploy, Automation); every page pads `py-8` inside its panel. Pages built
@@ -1463,8 +1487,11 @@ The web app's pattern decisions, each with what it was picked over.
 | Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body straight on the page panel, like the ticket body | Against a sheet (`bg-card`, ring, shadow, page margins) inside the panel: the page is already a raised panel, so the sheet was a panel inside a panel, its frame the heaviest line on the screen, and it cost the reading column 48px a side; the body now starts at the title's left edge and the measure alone gives it its shape |
-| Board title in the sans on one line with its count (2026-10-28) | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
-| Board header: the title and its count line only (2026-10-28) | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
+| Board: the identity header comes back, and the page stops capping the board (2026-10-29) | Reverses the two rows below, on the owner's call after living with them: the 16px sans title inside the toolbar row left the page with no name on it, so the first thing the eye met was a search box, and the cards, the stage names and the lane names all sat at 13px with nothing above them. The 1280 measure fixed the wrong end: it letterboxed a four-stage board while an eight-stage board still sat on the 180px floor, so the cap belongs on the track (`minmax(180px, 280px)`) and the page takes the panel. The project mark and the display face cost 40px above the first card, which the old board already gave back by never carrying a stage strip |
+| Board empty cells take half the well (2026-10-29) | Against every cell at `well-shade`: on a real board most columns are empty, so the heaviest surface was drawn mostly where no work was, and four void columns read as more of the page than the cards did. Half keeps the footprint, the drop target and the three-surface order, and leaves the full well to a cell that holds cards |
+| Board lane band carries a progress line again (2026-10-29) | Against the count alone: "4/11 done" in muted 11px on a 32px band is a clause you have to read, and at 1440 a lane's progress was invisible until you found the number. 96 × 4 of `success` over `muted` is the one shape in the board that answers "how far along" without reading, and it sits on a 200px reservation at the board's visible right edge, so it reports on a collapsed lane and never scrolls away with the last stage. Rejected: 64 × 3 (too small to read as an instrument at 1440) and the old per-stage legend (it counted the project beside each lane's own count) |
+| Board title in the sans on one line with its count (2026-10-28) — reversed 2026-10-29 | Against the 24px Fraunces title over a mono count line: on the one screen people keep open all day the serif was a display moment above the work, and the two lines put the first card about 225px down; one 16px line brings it near 190px and leaves the display face to the pages that are read, not worked in |
+| Board header: the title and its count line only (2026-10-28) — reversed 2026-10-29 | Against the five-colour stage bar beside the title, then a stage legend without the bar, a full-width stage strip and a stat row of stages: the bar was the loudest shape on the board and competed with the project's name; the legend's project-wide counts (Backlog 28) sat beside a lane's column counts (Backlog 6) and read as a contradiction; the strip and the row cost 50 to 80px of height on the page where height is cards. The breadcrumb and the 36px project mark went too: the sidebar's switchers show both, and the green mark was the largest colour block in the header, louder than Create |
 | The board is one grid: stage row once, lanes as bands, Done folded (2026-10-28) | Agreed by a review council after six score-driven rounds left it at 6: each lane had drawn its own five-column board, so the stage headers repeated per lane, a one-card stage stretched to the tallest stage in its lane, one lane filled 1440×900, and Done took a fifth of the width. Against dropping lanes for a category label (lanes carry per-category collapse and drag to recategorise) and against no wells (with lanes as bands the stages need their columns). Replaces the folded 72px and 128px rails and the per-lane column headers |
 | The ticket page keeps its standing on screen: a header strip in the board card's marks, the rail beside Ticket and Thread, Details below 52rem (2026-10-28) | The blockers, the pull request and the test result sat below the fold of a rail ordered by data type, the rail fell under the whole body at 768 and left the Thread tab entirely, and the meta line repeated the status while leaving out what the card shows. Against one scroll with the thread under the body (the thread is its own virtualised scroller with its own path, so the body shows its three latest lines instead) and against moving the rail inward off the panel edge (it stays where every issue page puts it) |
 | An empty column is a 72px rail with its name in two lines (2026-10-28) | Against a 160px column with its full header (two of them still took a fifth of the board to say No tickets), a 40px well of mark and count (In progress and Testing could not be told apart), a 40px strip with the name set vertically (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |

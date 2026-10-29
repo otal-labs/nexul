@@ -14,6 +14,8 @@ import { useBoardStore } from "@/stores/boardStore";
 interface BoardStageHeaderProps {
   columns: BoardStatus[];
   counts: Record<string, number>;
+  /** There is more board to the right: fade its edge away rather than cutting it. */
+  overflowing?: boolean;
   onAddTicket: (categoryId: string | null, statusId: string) => void;
 }
 
@@ -48,7 +50,7 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
           onClick={toggleDone}
           aria-label={`Show ${column.name}, ${count} tickets`}
           title={`Show ${column.name}`}
-          className="flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground group-data-[card-drag]/board:bg-accent"
+          className="flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground group-data-[card-drag]/board:bg-accent"
         >
           <StatusMark status={column} className="size-3.5 shrink-0" />
           <span className="flex min-w-0 items-baseline gap-1.5">
@@ -74,7 +76,7 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
         )}
       >
         <StatusMark status={column} className="size-3.5" />
-        <span className="truncate text-[13px] font-semibold">{column.name}</span>
+        <span title={column.name} className="truncate text-[13px] font-semibold">{column.name}</span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${count} tickets`}>
           {count}
         </span>
@@ -107,13 +109,17 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
 });
 
 // The stage row, drawn once above every lane and held at the top of the board's scroll.
-export const BoardStageHeader = ({ columns, counts, onAddTicket }: BoardStageHeaderProps) => {
+export const BoardStageHeader = ({ columns, counts, overflowing = false, onAddTicket }: BoardStageHeaderProps) => {
   const doneOpen = useBoardStore((s) => s.doneOpen);
   const ids = useMemo(() => columns.map((column) => `column-header-${column.id}`), [columns]);
   return (
     <div className="sticky top-0 z-20 rounded-md bg-[var(--panel)] pb-1">
       <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-        <div className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
+        <div
+          data-board-grid="stage-row"
+          className={cn("grid gap-2", overflowing && "[mask-image:linear-gradient(to_right,#000_calc(100%-1rem),transparent)]")}
+          style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}
+        >
           {columns.map((column) => (
             <StageHeaderCell
               key={column.id}
