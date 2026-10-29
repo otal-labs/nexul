@@ -114,9 +114,9 @@
   --warning: #8a6100;
   --info: #0369a1;
   --merged: #8250df;
-  --destructive: #dc2626;
+  --destructive: #c41945;
   /* the fill behind a destructive button's white label: deeper than the text hue so it never reads as the ember */
-  --destructive-fill: #c81e1e;
+  --destructive-fill: #a80f39;
 
   /* hairlines are ink at low alpha so they read the same on canvas, panel, card and popover */
   --border: oklch(0.2 0.01 265 / 0.1);
@@ -176,8 +176,8 @@
   --warning: #fbbf24;
   --info: #5cc8f5;
   --merged: #a371f7;
-  --destructive: #f97066;
-  --destructive-fill: oklch(0.55 0.2 25);
+  --destructive: #f26074;
+  --destructive-fill: oklch(0.55 0.2 15);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.12);

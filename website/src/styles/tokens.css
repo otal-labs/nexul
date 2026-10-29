@@ -53,7 +53,7 @@
 	--warning: light-dark(#8a6100, #fbbf24);
 	--info: light-dark(#0369a1, #5cc8f5);
 	--merged: light-dark(#8250df, #a371f7);
-	--destructive: light-dark(#dc2626, #f97066);
+	--destructive: light-dark(#c41945, #f26074);
 
 	--border: light-dark(oklch(0.2 0.01 265 / 0.1), oklch(1 0 0 / 0.08));
 	--input: light-dark(oklch(0.2 0.01 265 / 0.16), oklch(1 0 0 / 0.12));
