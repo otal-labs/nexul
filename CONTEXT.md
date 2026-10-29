@@ -497,6 +497,32 @@ another round reopens it. The people answering see only the questions,
 never the agent behind them.
 _Avoid_: Wayfinder, questionnaire, review, interview (that is a project's rules for agents)
 
+**Version**:
+A doc's title and text as they stood when it was saved, with the time, who it
+credits, and the automation or agent it came through when it was not the
+browser. A save that changes nothing writes none. A doc keeps its last 10
+unnamed versions; a named version, given a name when it was made, is kept for
+good. Restoring one writes its text again as a new version on top, so nothing
+in the list is ever rewritten.
+_Avoid_: Revision, snapshot, commit
+
+**History**:
+The dialog on a doc's menu that shows its versions: the text as it read, the
+list of versions newest first on the right, each compared word by word with
+the one before it (added words green, removed words struck through, a bar in
+the margin of each changed paragraph), and Restore this version. Anyone who
+can read the doc sees it; restoring needs edit permission, and a locked doc
+refuses it. The list is read when the dialog opens and does not update live.
+_Avoid_: Changelog, activity, audit log (that records who called which route)
+
+**Sitting**:
+One stretch of live editing in a doc, which writes one version, not one per
+keystroke: when the text has had no edits for 5 minutes, or when its last
+editor leaves, the version is credited to everyone who edited. Saves through
+the API, MCP or a restore write their own version at once and close the open
+sitting first, so none of it is lost.
+_Avoid_: Session (a sign-in, or a connection to the editor), edit
+
 **Note**:
 What an agent leaves on a ticket instead of growing its body: one Agent
 message in the ticket's thread together with the markdown file it carries,

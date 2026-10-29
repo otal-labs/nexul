@@ -1,6 +1,6 @@
 # 14 — The History dialog, on docs
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 10, 13
 
 Spec: `../spec.md`, decision 9 and The diff. Look: ticket 05's answer.

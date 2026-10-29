@@ -70,6 +70,13 @@ export const formatShortDate = (ts: string): string => {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 };
 
+// A list of versions: "Today at 14:23", "Yesterday at 14:23", else the short date and the clock, "25 Oct 14:23".
+export const formatVersionTime = (ts: string): string => {
+  const calendar = formatCalendarTime(ts);
+  if (calendar === ts || /^(Today|Yesterday) at /.test(calendar)) return calendar;
+  return `${formatShortDate(ts)} ${formatClockTime(ts)}`;
+};
+
 // A YYYY-MM-DD day as the reader's calendar writes it, "30 Oct 2026"; the day is read in local time, where Date would take it as UTC and show the evening before.
 export const formatDay = (day: string): string => {
   const [year, month, date] = day.split("-").map(Number);

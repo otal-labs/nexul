@@ -36,6 +36,14 @@ The row menu, on a right-click, also has **Lock**, **Archive**, **Clone**, **Per
 - **Archive** takes the doc out of the list without deleting it. **Show archived** in the list header's menu swaps the list to the archived docs, each with **Restore** in its row menu, and the menu's button reads **Archived** until you untick it. Archive and Restore need `docs:write`, and the doc page's menu has them too.
 - **Delete** is permanent. It's refused while a ticket names the doc as its source; clear that ticket's source first.
 
+### History
+
+A doc keeps its versions, and **History** in the doc page's menu shows them. Anyone who can read the doc can open it.
+
+- **What is kept.** A save that changes nothing writes no version. A doc keeps its last 10 versions, plus any named version, which is never dropped. People editing together at the same time write one version per sitting, once the text has had no edits for 5 minutes or the last editor leaves, credited to everyone who edited.
+- **The dialog.** The doc as it read is on the left and the versions are on the right, newest first, each with its time, its name if it has one, who made it, and the play or agent it came through. Pick a version to read it next to the one before it: added words are tinted green, removed words are struck through in red, and a bar in the margin marks each changed paragraph (grey for edited, green for added, red for removed). **Show changes** turns the marks off to read the version as it was. The oldest version kept has nothing before it, so it shows without marks. The list is read when you open the dialog and does not update while it is open.
+- **Restore.** **Restore this version** saves the picked version's title and text again as a new version on top, so nothing in the list is rewritten. It needs `docs:write`, is disabled on the newest version, and a locked doc refuses it.
+
 ### Clarify a doc
 
 When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the doc and asks a round of questions about what it leaves open.
