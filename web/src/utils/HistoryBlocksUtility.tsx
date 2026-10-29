@@ -165,3 +165,26 @@ export const diffBlocks = (before: HistoryBlock[], after: HistoryBlock[]): Histo
   flush();
   return rows;
 };
+
+export interface HistoryRun {
+  mark: RowMark;
+  rows: HistoryRow[];
+  /** Its 1-based place among the changed runs, which the stepper counts; 0 on an unchanged run. */
+  change: number;
+}
+
+// One change is one run of adjacent blocks with the same mark, so the stepper's count is the number of bars on screen; a changed title is change 1 and the runs count on from firstChange.
+export const groupRuns = (rows: HistoryRow[], firstChange = 1): HistoryRun[] => {
+  const runs: HistoryRun[] = [];
+  let changes = firstChange - 1;
+  for (const row of rows) {
+    const last = runs[runs.length - 1];
+    if (last?.mark === row.mark) {
+      last.rows.push(row);
+      continue;
+    }
+    if (row.mark !== "same") changes++;
+    runs.push({ mark: row.mark, rows: [row], change: row.mark === "same" ? 0 : changes });
+  }
+  return runs;
+};

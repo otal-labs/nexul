@@ -1461,6 +1461,44 @@ button.mention-chip:hover {
   scale: 1;
 }
 
+/* The fade a sticky header or the end of a scroller hangs over its content shows only while there is more to scroll to: the
+   top one once the scroll has begun, the bottom one until it ends, so the content at rest is never washed out. --fade is its
+   height. A scroller that fits has no timeline, so neither shows. Not motion: reduced motion keeps it. */
+.scroll-fade-top,
+.scroll-fade-bottom {
+  opacity: 0;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: scroll(nearest block);
+}
+.scroll-fade-top {
+  animation-name: scroll-fade-in;
+  animation-range: 0 var(--fade);
+}
+.scroll-fade-bottom {
+  animation-name: scroll-fade-out;
+  animation-range: calc(100% - var(--fade)) 100%;
+}
+@keyframes scroll-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes scroll-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-fade-top.scroll-fade-top,
+  .scroll-fade-bottom.scroll-fade-bottom {
+    animation-duration: auto !important;
+  }
+}
+
 /* An edge with more rows past it fades (24px at the top, 40px, most of a two-line row, at the bottom) instead of slicing a
    row; a list that fits has no timeline, so no fade. The kept gutter stops a scrollbar arriving from moving the rows. Not
    motion: reduced motion keeps it. */

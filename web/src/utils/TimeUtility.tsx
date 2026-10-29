@@ -70,10 +70,11 @@ export const formatShortDate = (ts: string): string => {
   return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 };
 
-// A list of versions: "Today at 14:23", "Yesterday at 14:23", else the short date and the clock, "25 Oct 14:23".
+// A version's time: "Today 14:23", "Yesterday 14:23", else the short date and the clock, "25 Oct 14:23".
 export const formatVersionTime = (ts: string): string => {
   const calendar = formatCalendarTime(ts);
-  if (calendar === ts || /^(Today|Yesterday) at /.test(calendar)) return calendar;
+  if (calendar === ts) return calendar;
+  if (/^(Today|Yesterday) at /.test(calendar)) return calendar.replace(" at ", " ");
   return `${formatShortDate(ts)} ${formatClockTime(ts)}`;
 };
 
