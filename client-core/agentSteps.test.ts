@@ -2,16 +2,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  commandText,
   formatElapsed,
+  groupHeadline,
   groupSteps,
   liveStepLabel,
+  runDirectory,
   segmentSteps,
   stepLabel,
   stepPhrase,
-  turnCounts,
+  turnOutcome,
   turnPhrase,
   turnSpanSeconds,
-  turnSummary,
   unwrapShellCommand,
   type AgentStep,
 } from "@nexul/client-core/agentSteps";
@@ -67,22 +69,20 @@ describe("unwrapShellCommand", () => {
   });
 });
 
-describe("turn counts and clock", () => {
-  it("counts tools, commands, and the Agent's sentences", () => {
-    const counts = turnCounts([text("a"), tool("Read"), tool("Bash"), tool("Edit"), { kind: "tool_call", tool: "Bash", summary: "ls", at: "" }]);
-    expect(counts).toEqual({ tools: 2, commands: 2, updates: 1 });
-    expect(turnSummary(counts)).toBe("Used 2 tools, ran 2 commands, and received 1 update");
-    expect(turnSummary({ tools: 1, commands: 0, updates: 0 })).toBe("Used 1 tool");
-    expect(turnSummary({ tools: 0, commands: 3, updates: 1 })).toBe("Ran 3 commands and received 1 update");
-    expect(turnSummary({ tools: 0, commands: 0, updates: 0 })).toBe("No steps yet");
-  });
-
+describe("turn clock and outcome", () => {
   it("spans first to last timestamp, skipping missing ones", () => {
     expect(turnSpanSeconds([text("a", ""), tool("Read", "2026-09-18T10:00:00Z"), tool("Edit", "2026-09-18T10:01:43Z"), text("b", "0001-01-01T00:00:00Z")])).toBe(103);
     expect(turnSpanSeconds([text("a")])).toBeNull();
     expect(formatElapsed(103)).toBe("1m 43s");
     expect(formatElapsed(12)).toBe("12s");
     expect(formatElapsed(3725)).toBe("1h 2m");
+  });
+
+  it("reads running over everything, then a failed step, then a call that never came back, else done", () => {
+    expect(turnOutcome([call, { ...result, summary: "go test · failed" }], true)).toBe("running");
+    expect(turnOutcome([call, { ...result, summary: "go test · failed" }], false)).toBe("failed");
+    expect(turnOutcome([read, result], false)).toBe("unfinished");
+    expect(turnOutcome([result, done], false)).toBe("done");
   });
 });
 
@@ -141,18 +141,64 @@ describe("groupSteps and turnPhrase", () => {
     step("mcp__github__create_pull_request", "{}"),
   ];
 
-  it("folds neighbouring reads and searches, and neighbouring edits, leaving every other step alone", () => {
-    expect(groupSteps(turn).map((g) => [g.act, g.entries.length])).toEqual([
+  it("folds neighbouring reads and searches, neighbouring edits and neighbouring commands, leaving every other step alone", () => {
+    expect(groupSteps([...turn, step("Bash", "make lint"), step("Shell", "git status"), step("mcp__nexul__account_get", "{}")]).map((g) => [g.act, g.entries.length])).toEqual([
       ["explore", 3],
       ["command", 1],
       ["say", 1],
       ["edit", 2],
       ["tool", 1],
+      ["command", 2],
+      ["tool", 1],
     ]);
+  });
+
+  it("heads a group with what it did, in the present while one of its steps runs", () => {
+    expect(groupHeadline("explore", turn.slice(0, 3), false)).toBe("Explored 1 file, 1 search");
+    expect(groupHeadline("edit", turn.slice(5, 7), true)).toBe("Editing 2 files");
+    expect(groupHeadline("command", [step("Bash", "a"), step("Bash", "b")], false)).toBe("Ran 2 commands");
   });
 
   it("counts a file read twice once, leaves the Agent's sentences out, and says nothing for a turn of sentences", () => {
     expect(turnPhrase(turn)).toBe("explored 1 file, 1 search, edited 2 files, ran 1 command, used 1 tool");
     expect(turnPhrase([text("Looking.")])).toBe("");
+  });
+});
+
+describe("runDirectory and commandText", () => {
+  const root = "/home/dev/.t3/worktrees/nexul/fix-the-board";
+  const cmds = [
+    step("Shell", `/bin/bash -lc "cd ${root} && git status"`),
+    step("Bash", `cd ${root}; bun run lint`),
+    step("Bash", `cd ${root}/web && bun run test · failed`),
+    step("Bash", "cd web && bun run typecheck"),
+    step("Read", `{"file_path":"${root}/a.go"}`),
+  ];
+
+  it("picks the absolute directory most commands start in or under, and none when no command starts with one", () => {
+    expect(runDirectory(cmds)).toBe(root);
+    expect(runDirectory([step("Bash", "cd web && ls"), step("Bash", "go test")])).toBeNull();
+    expect(runDirectory([step("Bash", `cd "/tmp/a b" && ls`)])).toBe("/tmp/a b");
+  });
+
+  it.each([
+    ["a cd into the run's directory, after && or ;", 0, "git status"],
+    ["a cd joined by a semicolon", 1, "bun run lint"],
+    ["a cd below it, made relative", 2, "cd web && bun run test"],
+    ["a relative cd, left whole", 3, "cd web && bun run typecheck"],
+  ])("%s", (_name, i, want) => {
+    expect(commandText(cmds[i]!, root)).toBe(want);
+  });
+
+  it("leaves a cd elsewhere, a bare cd, and every command when there is no run directory", () => {
+    expect(commandText(step("Bash", "cd /etc && cat hosts"), root)).toBe("cd /etc && cat hosts");
+    expect(commandText(step("Bash", `cd ${root}`), root)).toBe(`cd ${root}`);
+    expect(commandText(cmds[0]!, null)).toBe(`cd ${root} && git status`);
+  });
+
+  it("cuts the run's directory in the phrase, the live label and a lone step's label", () => {
+    expect(stepPhrase(cmds[1]!, false, root)).toEqual({ verb: "Ran", object: "bun run lint" });
+    expect(liveStepLabel([...cmds.slice(0, 2), step("Bash", `cd ${root} && go vet ./...`, "tool_call")])).toBe("Running go vet ./...");
+    expect(stepLabel(cmds[0]!)).toBe("git status");
   });
 });

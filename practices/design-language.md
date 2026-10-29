@@ -1166,22 +1166,33 @@ attach, the text and emoji. `MessageList`, `ConversationHeader` and `ChatCompose
 reference.
 
 Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
-setup transcript is a fold with no box. Its header is one muted line: while the
-turn runs, the step in flight in plain words ("Running bun run lint", "Reading
-BoardOrder.ts", "Thinking" between steps) under the `shimmer-text` sweep, then
-the clock ("· 12s"); once over, "Worked for 14s" and what it did ("·
-explored 2 files, 1 search, ran 1 command", at 70%), then the chevron. It is
-open while it runs, folded once over, and opens at any time, a running turn
-beside it included. Opened, the steps hang off a hairline left rule:
-neighbouring reads and searches as one line ("Explored 2 files, 1 search")
-over the file names and quoted patterns in mono, neighbouring edits the same
-way ("Edited 2 files"), a command as "Ran a command" over the command in a
-`surface-2` well, any other tool as its verb and mono name ("Called Github ·
-create_pull_request"), and what the Agent said between steps as plain text. A
-name, a command or a tool line opens its time, arguments and result. A failed
-step adds a `destructive` circled cross and the word "failed"; the step in
-flight spins a muted loader. `TrailTurnGroup` and `TurnStepGroup` are the
-reference.
+setup transcript is a fold with no box. Its header is one line led by a 16px
+outcome mark: a muted spinner while it runs, a muted check once done, a muted
+dashed circle when a call never came back, and a `destructive` warning when a
+step failed, the one mark with a hue. While the turn runs, the step in flight
+in plain words ("Running bun run lint", "Reading BoardOrder.ts", "Thinking"
+between steps) under the `shimmer-text` sweep, then the clock ("· 12s"); once
+over, "Worked for 14s" in medium ink and what it did ("· explored 2 files, 1
+search, ran 3 commands") muted, then the chevron. It is open while it runs,
+folded once over, and opens at any time, a running turn beside it included.
+Opened, the steps hang off a hairline rule dropped from the mark, every step
+one 13px row of the same weight: a muted 14px icon (a file search, a file pen,
+a terminal, a plug for an MCP tool, a wrench for any other) in the column the
+header's words start at, the verb muted and the name in mono. Neighbouring
+reads and searches list under one count ("Explored 2 files, 1 search") with
+the file names and quoted patterns side by side, neighbouring edits the same
+way ("Edited 2 files"), and neighbouring commands under "Ran 3 commands" one to
+a line; a lone command is one row ("Ran bun run lint"), like any other tool
+("Called Github · create_pull_request"). A command drops its leading `cd` into
+the run's own directory, and a `cd` below it reads relative ("cd web && bun
+run test"); the run's directory is the absolute one most of the turn's
+commands start in (`runDirectory` in `client-core/agentSteps.ts`). What the
+Agent said between steps is plain text at the rule's edge. A name, a command
+or a tool row opens its time, arguments and result. A failed step adds a
+`destructive` circled cross and the word "failed"; the step in flight spins a
+muted loader. A transcript's scroll-to-end button sits in its scroller's
+bottom-right corner (`TranscriptScrollButton`), never across the column.
+`TrailTurnGroup` and `TurnStepGroup` are the reference.
 
 Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, level
 with the title's first line (it shrinks to 0.6 as it fades over 150ms when
@@ -1433,6 +1444,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Decision | Why |
 |---|---|
 | On the board card a label is a pill in its own hue, and the type stays its icon (2026-10-29) | Reverses the neutral chip for the card only, on the owner's call: with the type reduced to an icon and the key on a mono eyebrow, the labels are the card's only tinted shape, so they no longer compete with a type pill, and a hue read at a glance across a column beats a 6px dot. The tint stays at 15% under the hue's ink, so a label stays quieter than the title. The ticket page and the phone card keep the neutral chip until they are brought in line |
+| The agent turn: an outcome mark over a rule, every step one row of one weight, commands listed like files (2026-10-29) | Against the fold as shipped: each command took two rows ("Ran a command" over a well holding the whole command), a leading `cd` into the run's directory pushed the command itself off the clamp, commands never grouped while reads and edits did, a tool was a bare line while a command was a box, and the muted 12px header weighed less than the body under it. One row per step and a count over neighbours keeps a run of twelve commands to about thirteen rows. The done mark stays muted rather than `success`: a long run is a column of turns, and a check in a hue on each read as a status board; failure keeps its hue. Rejected: a task card per turn (still the box the fold replaced) and a timer that moves through steps known up front (the Agent does not know its steps ahead) |
 | Docs opens on an overview, and its rows are one line with a time (2026-10-29) | Against "Select a doc" beside a list of titles alone: at 1440 the open pane gave about 900px to one sentence, the list could not say what moved lately, and a doc a play waited on hid in a collapsed folder. Rejected: a column table (it lost the folder and creator at 1024, where the list beside it already shows title and time) and a narrow column led by faces (it left the wide pane empty) |
 | A doc's outline is a right rail, and its actions sit on the breadcrumb's line (2026-10-28) | Against the 12rem outline to the body's left: beside the app sidebar and the docs list it was a third navigation column, it started the body about 220px right of its own title, and its entries wrapped. On the title's line the actions pushed the title onto two lines at 768 and 1024 |
 | Rich-text `h2` at 20px and `h1` at 22px (2026-10-28) | Against 18 and 20px: an 18px `h2` over 16px text did not step up, so a runbook's sections read as one block |
@@ -1686,7 +1698,7 @@ Opening a ticket from the board: decided 2026-10-08.
 Agent's live step: decided 2026-10-15.
 - Direction: a highlight sweeps left across the step's muted label, 2s a
   pass, linear, looping while the step runs; steps that join the open fold
-  settle in 4px over 200ms (`settle-in`); the loader in the well spins.
+  settle in 4px over 200ms (`settle-in`); the loader on the step's row spins.
 - Reduced motion: the label sits still in `muted-foreground`.
 - Rejected: task cards (a bordered card per turn with the live step as its
   title and the steps on a rail) put a box around every turn of a long run;
@@ -2324,10 +2336,12 @@ with the name and mono clock time; day dividers are the microheader between
 hairlines. Bot embeds are the web's status-edged cards with facts. The
 composer is one framed field with the send button inside it, ember once there
 is text. A hand-off folds each turn of the helper agent into one
-row, a status glyph (the orbit while it runs, a `success` check, a
+row: the web's outcome mark (the orbit while it runs, a muted check, a
 `destructive` warning when a step failed, a muted dashed circle when a call
-never came back), "Worked for" and its step counts, folding open to the steps
-behind a hairline rule. Open while it runs, folded once it ends.
+never came back), the step in flight or "Worked for" in medium ink over what it
+did ("Explored 2 files, ran 3 commands"), folding open to the web's step rows
+on a hairline rule dropped from the mark, a listed group's names one to a
+line. Open while it runs, folded once it ends.
 
 ### Phone motion
 

@@ -7,9 +7,9 @@ import { Pressable, View } from "react-native";
 import Animated, { interpolate, useAnimatedStyle } from "react-native-reanimated";
 import { useCSSVariable } from "uniwind";
 
-import { formatElapsed, isFailedStep, turnCounts, turnSpanSeconds, turnSummary } from "@nexul/client-core/agentSteps";
+import { formatElapsed, groupSteps, liveStepLabel, runDirectory, turnOutcome, turnPhrase, turnSpanSeconds, type TurnOutcome } from "@nexul/client-core/agentSteps";
 
-import { HandoffStepRow } from "@/components/chat/HandoffStepRow";
+import { HandoffStepGroup } from "@/components/chat/HandoffStepGroup";
 import { Orbit } from "@/components/LoadingDisplay";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -23,19 +23,19 @@ interface HandoffTurnGroupProps {
   until: string | null;
 }
 
-const headline = (running: boolean, seconds: number | null): string => {
-  const verb = running ? "Working" : "Worked";
-  if (seconds === null) return verb;
-  return `${verb} for ${formatElapsed(seconds)}`;
-};
+const worked = (seconds: number | null): string => (seconds === null ? "Worked" : `Worked for ${formatElapsed(seconds)}`);
 
-// A result replaces its call (harness CallID), so a call left in a turn that stopped never came back.
-const TurnGlyph = ({ entries, running }: { entries: HandoffStep[]; running: boolean }) => {
-  if (running) return <Orbit />;
-  if (entries.some(isFailedStep)) return <Icon as={TriangleAlert} aria-label="A step failed" className="size-4 text-destructive" />;
-  if (entries.some((e) => e.kind === "tool_call")) return <Icon as={CircleDashed} aria-label="Unfinished" className="size-4 text-muted-foreground" />;
-  return <Icon as={CircleCheck} aria-label="Done" className="size-4 text-success" />;
-};
+const sentence = (phrase: string): string => `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}`;
+
+// The web's outcome mark: only a failed step takes a status hue.
+const TurnGlyph = ({ outcome }: { outcome: TurnOutcome }) => (
+  <>
+    {outcome === "running" && <Orbit />}
+    {outcome === "failed" && <Icon as={TriangleAlert} aria-label="A step failed" className="size-4 text-destructive" />}
+    {outcome === "unfinished" && <Icon as={CircleDashed} aria-label="Unfinished" className="size-4 text-muted-foreground" />}
+    {outcome === "done" && <Icon as={CircleCheck} aria-label="Done" className="size-4 text-muted-foreground" />}
+  </>
+);
 
 // The opened steps fade and rise 4px over 200ms, the compact empty state's entrance; a 150ms fade under reduced motion.
 const Reveal = ({ children }: { children: ReactNode }) => {
@@ -48,34 +48,38 @@ const Reveal = ({ children }: { children: ReactNode }) => {
   return <Animated.View style={style}>{children}</Animated.View>;
 };
 
-// One turn of the helper agent: a status glyph, "Worked for" and its step counts, folding open to the steps behind a rule.
-// Open while it runs, folded once it ends; the parent keys it by running so the fold resets when the turn finishes.
+// One turn of the helper agent: its outcome mark, the step in flight or "Worked for", and what it did, folding open to
+// the steps on a rule dropped from the mark. Open while it runs, folded once it ends; the parent keys it by running so
+// the fold resets when the turn finishes.
 export const HandoffTurnGroup = ({ entries, running, from, until }: HandoffTurnGroupProps) => {
   const [open, setOpen] = useState(running);
   const [muted] = useCSSVariable(["--color-muted-foreground"]);
-  const title = headline(running, running ? null : turnSpanSeconds(entries, until, from));
-  const summary = turnSummary(turnCounts(entries));
+  const title = running ? liveStepLabel(entries) : worked(turnSpanSeconds(entries, until, from));
+  const phrase = sentence(turnPhrase(entries));
+  const root = runDirectory(entries);
   return (
     <View>
       <Pressable
         role="button"
         aria-expanded={open}
-        aria-label={`${title}, ${summary}`}
+        aria-label={phrase === "" ? title : `${title}, ${phrase}`}
         onPress={() => setOpen(!open)}
         className="min-h-11 flex-row items-center gap-2.5 rounded-md px-1 active:bg-accent"
       >
-        <TurnGlyph entries={entries} running={running} />
+        <TurnGlyph outcome={turnOutcome(entries, running)} />
         <View className="min-w-0 flex-1">
-          <Text className="text-sm">{title}</Text>
-          <Text className="text-xs text-muted-foreground">{summary}</Text>
+          <Text numberOfLines={1} className={running ? "text-sm text-muted-foreground" : "text-sm font-medium"}>
+            {title}
+          </Text>
+          {phrase !== "" && <Text className="text-xs text-muted-foreground">{phrase}</Text>}
         </View>
         <ChevronRight color={String(muted)} size={14} style={{ transform: [{ rotate: open ? "90deg" : "0deg" }] }} />
       </Pressable>
       {open && entries.length > 0 && (
         <Reveal>
-          <View className="mb-2 ml-3 mt-1 border-l border-border pl-4">
-            {entries.map((step, i) => (
-              <HandoffStepRow key={`${step.call_id ?? step.at}-${i}`} step={step} />
+          <View className="mb-2 ml-[11px] mt-1 border-l border-border pl-[18px]">
+            {groupSteps(entries).map((group, i) => (
+              <HandoffStepGroup key={`${group.act}-${i}`} group={group} root={root} running={running} />
             ))}
           </View>
         </Reveal>

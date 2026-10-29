@@ -1,6 +1,5 @@
 import {
   MessageScroller,
-  MessageScrollerButton,
   MessageScrollerContent,
   MessageScrollerProvider,
   MessageScrollerViewport,
@@ -12,6 +11,7 @@ import { TrailContinueForm } from "@/components/play/TrailContinueForm";
 import { TrailFacts } from "@/components/play/TrailFacts";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { TrailTranscript } from "@/components/play/TrailTranscript";
+import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
 import { useLiveTrailActivity, useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
 import { isTrailActive, trailSummary, type Trail } from "@/models/Trail";
@@ -54,7 +54,7 @@ export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
                 <TrailTranscript trail={trail} steps={steps} state={state} question={question} />
               </MessageScrollerContent>
             </MessageScrollerViewport>
-            <MessageScrollerButton />
+            <TranscriptScrollButton />
           </MessageScroller>
         </MessageScrollerProvider>
       </section>

@@ -72,7 +72,7 @@ test("a failed step marks its turn and reads as failed", async () => {
 
   expect(await screen.findByLabelText("A step failed")).toBeTruthy();
   await fireEvent.press(turn("Worked"));
-  expect(screen.getByLabelText("go test ./..., failed")).toBeTruthy();
+  expect(screen.getByLabelText("Ran go test ./..., failed")).toBeTruthy();
 });
 
 test("a call that never got its result marks the ended turn unfinished", async () => {
@@ -90,7 +90,7 @@ test("the hand-off shows the helper's prompt, its steps folded under how long it
   expect(await screen.findByText("Run the unit tests and report failures.")).toBeTruthy();
   expect(screen.queryByText("Another helper's prompt")).toBeNull();
   expect(screen.getByText("Worked for 1m 0s")).toBeTruthy();
-  expect(screen.getByText("Used 1 tool and ran 1 command")).toBeTruthy();
+  expect(screen.getByText("Ran 1 command")).toBeTruthy();
   expect(screen.getByLabelText("Done")).toBeTruthy();
   expect(screen.queryByText("bun run test")).toBeNull();
 
@@ -108,8 +108,20 @@ test("a running turn is open on its steps, and a message between turns reads as 
   await renderHandoff();
 
   expect(await screen.findByText("Tests compiled, running them now.")).toBeTruthy();
-  expect(screen.getByText("Working")).toBeTruthy();
+  expect(screen.getByText("Running bun run test")).toBeTruthy();
   expect(screen.getAllByText("bun run test")).toHaveLength(1);
+});
+
+test("neighbouring commands list under one count, without the leading cd into the run's directory", async () => {
+  const root = "/home/dev/.t3/worktrees/nexul/run-the-tests";
+  const command = (id: string, summary: string) => ({ kind: "tool_result", call_id: id, tool: "Shell", summary, at: "2026-10-04T10:00:00Z" }) as const;
+  get.mockResolvedValue([reply([{ ...handoff, steps: [command("t5", `/bin/bash -lc "cd ${root} && git status"`), command("t6", `cd ${root}/web && bun run lint · failed`)] }])]);
+  await renderHandoff();
+
+  await fireEvent.press(await screen.findByRole("button", { name: /^Worked/ }));
+  expect(screen.getAllByText("Ran 2 commands")).toHaveLength(2);
+  expect(screen.getByLabelText("git status")).toBeTruthy();
+  expect(screen.getByLabelText("cd web && bun run lint, failed")).toBeTruthy();
 });
 
 test.each([

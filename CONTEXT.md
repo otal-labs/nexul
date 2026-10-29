@@ -449,8 +449,9 @@ and its time), never a bare line, so the trail reads as a transcript. The
 transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one fold per turn (the live step while it runs, then
 "Worked for" and what it did) holding what the Agent said between actions,
-neighbouring file reads and edits as one line of file names, each command in
-a well, and any other tool by its name, the question card and the answer
+neighbouring file reads, edits and commands each under one count with
+their names, a command without its leading `cd` into the run's own
+directory, and any other tool by its name, the question card and the answer
 where they happened, a message the starter typed in T3 Code itself as their
 own bubble marked "via T3" (ADR 0126), the final reply as prose, and the lines
 about the run itself (a stop, a reconnect) as muted lines.

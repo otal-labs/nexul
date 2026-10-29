@@ -24,7 +24,7 @@ The agent decides where the ticket goes when it finishes. It reads your footer m
 
 ## Follow a run
 
-While a play runs, its button shows a spinner and opens the run; the other plays wait, greyed out. Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did. While the agent works, one line names the step it is on, such as "Running bun run test". Each stretch of work then folds to a line such as "Worked for 14s · explored 2 files, ran 1 command". Open the fold to see the files it read or edited, each command it ran, and any other tool it called. Click a file name, a command, or a tool to see its arguments and result.
+While a play runs, its button shows a spinner and opens the run; the other plays wait, greyed out. Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did. While the agent works, one line names the step it is on, such as "Running bun run test". Each stretch of work then folds to a line such as "Worked for 14s · explored 2 files, ran 1 command". Open the fold to see the files it read or edited, the commands it ran (neighbours listed under one count, without the `cd` into the run's own folder), and any other tool it called. Click a file name, a command, or a tool to see its arguments and result.
 
 While a run is going:
 

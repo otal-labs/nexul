@@ -36,6 +36,17 @@ export const unwrapShellCommand = (command: string): string => {
   return (closed ? inner.slice(1, -1) : inner.slice(1)).trim();
 };
 
+const LEADING_CD = /^cd +("[^"]+"|'[^']+'|\S+) *(?:&&|;) *([\s\S]*)$/;
+const ABSOLUTE_PATH = /^(?:\/|~|[A-Za-z]:[\\/])/;
+
+const unquote = (path: string): string => path.replace(/^(["'])([\s\S]*)\1$/, "$2");
+
+const leadingCd = (command: string): { dir: string; rest: string } | null => {
+  const match = LEADING_CD.exec(command);
+  if (!match?.[1] || !match[2]) return null;
+  return { dir: unquote(match[1]), rest: match[2] };
+};
+
 const MCP_TOOL_NAME = /^mcp__(.+?)__(.+)$/i;
 const SERVER_SEPARATOR = " · ";
 
@@ -67,12 +78,42 @@ export const isMcpTool = (tool: string | undefined): boolean => tool !== undefin
 
 const withoutFailed = (summary: string): string => (summary.endsWith(FAILED_SUFFIX) ? summary.slice(0, -FAILED_SUFFIX.length) : summary);
 
-// One line for a step: `Server · tool` for an MCP call, the command alone out of its shell wrapper, `tool: args` for
-// any other tool with a file read's path or pattern for its arguments, the tool alone when its summary only repeats it, the summary alone for text, notes, and legacy lines.
+const shellCommand = (step: AgentStep): string => unwrapShellCommand(withoutFailed(step.summary));
+
+// The run's own checkout: the absolute directory that the most commands start by changing into or below; null when none does.
+export const runDirectory = (steps: AgentStep[]): string | null => {
+  const dirs = steps
+    .filter((step) => isCommandTool(step.tool))
+    .map((step) => leadingCd(shellCommand(step))?.dir)
+    .filter((dir): dir is string => dir !== undefined && ABSOLUTE_PATH.test(dir));
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const dir of new Set(dirs)) {
+    const count = dirs.filter((d) => d === dir || d.startsWith(`${dir}/`)).length;
+    if (count <= bestCount) continue;
+    best = dir;
+    bestCount = count;
+  }
+  return best;
+};
+
+// A command out of its shell wrapper, a leading `cd` into the run's directory cut, and one below it made relative.
+export const commandText = (step: AgentStep, root: string | null): string => {
+  const command = shellCommand(step);
+  const cd = leadingCd(command);
+  if (root === null || cd === null) return command;
+  if (cd.dir === root) return cd.rest;
+  if (cd.dir.startsWith(`${root}/`)) return `cd ${cd.dir.slice(root.length + 1)} && ${cd.rest}`;
+  return command;
+};
+
+// One line for a step: `Server · tool` for an MCP call, the command alone out of its shell wrapper and its own leading
+// `cd`, `tool: args` for any other tool with a file read's path or pattern for its arguments, the tool alone when its
+// summary only repeats it, the summary alone for text, notes, and legacy lines.
 export const stepLabel = (step: AgentStep): string => {
   const summary = withoutFailed(step.summary);
   if (!step.tool) return summary;
-  if (isCommandTool(step.tool)) return unwrapShellCommand(summary);
+  if (isCommandTool(step.tool)) return commandText(step, runDirectory([step]));
   const mcp = mcpParts(step.tool);
   if (mcp) return `${mcp.server.charAt(0).toUpperCase()}${mcp.server.slice(1)}${SERVER_SEPARATOR}${mcp.name}`;
   if (summary === "" || summary === step.tool) return step.tool;
@@ -86,10 +127,10 @@ const SEARCH_KEYS = ["pattern", "path"];
 
 const isSearch = (step: AgentStep): boolean => SEARCH_TOOLS.has(step.tool ?? "");
 
-// What a step acts on: the command out of its shell wrapper, the path or pattern a file tool names, else the summary.
-export const stepTarget = (step: AgentStep): string => {
+// What a step acts on: the command as commandText reads it, the path or pattern a file tool names, else the summary.
+export const stepTarget = (step: AgentStep, root: string | null = null): string => {
   const summary = withoutFailed(step.summary);
-  if (isCommandTool(step.tool)) return unwrapShellCommand(summary);
+  if (isCommandTool(step.tool)) return commandText(step, root);
   if (!isFileTool(step.tool)) return summary;
   return readTarget(summary, isSearch(step) ? SEARCH_KEYS : PATH_KEYS) ?? summary;
 };
@@ -107,10 +148,11 @@ export const stepAct = (step: AgentStep): StepAct => {
   return "tool";
 };
 
-// A step as a verb and its object, in the present while it runs ("Running", "go test") and the past once done.
-export const stepPhrase = (step: AgentStep, live: boolean): { verb: string; object: string } => {
+// A step as a verb and its object, in the present while it runs ("Running", "go test") and the past once done; root
+// is the run's directory, cut from the front of a command.
+export const stepPhrase = (step: AgentStep, live: boolean, root: string | null = null): { verb: string; object: string } => {
   const act = stepAct(step);
-  const target = stepTarget(step);
+  const target = stepTarget(step, root);
   if (act === "command") return { verb: live ? "Running" : "Ran", object: target };
   if (act === "explore" && isSearch(step)) return { verb: live ? "Searching for" : "Searched for", object: target };
   if (act === "explore") return { verb: live ? "Reading" : "Read", object: fileName(target) };
@@ -124,23 +166,25 @@ export const stepPhrase = (step: AgentStep, live: boolean): { verb: string; obje
 export const liveStepLabel = (entries: AgentStep[]): string => {
   const last = entries[entries.length - 1];
   if (last?.kind !== "tool_call") return "Thinking";
-  const { verb, object } = stepPhrase(last, true);
+  const { verb, object } = stepPhrase(last, true, runDirectory(entries));
   return `${verb} ${object}`;
 };
 
-// Neighbouring file reads and searches fold into one explore group and neighbouring edits into one edit group; every
-// other step stands alone.
+// Neighbouring file reads and searches fold into one explore group, neighbouring edits into one edit group and
+// neighbouring commands into one command group; every other step stands alone.
 export interface StepGroup<T extends AgentStep> {
   act: StepAct;
   entries: T[];
 }
+
+const GROUPED_ACTS = new Set<StepAct>(["explore", "edit", "command"]);
 
 export const groupSteps = <T extends AgentStep>(entries: T[]): StepGroup<T>[] => {
   const out: StepGroup<T>[] = [];
   for (const entry of entries) {
     const act = stepAct(entry);
     const last = out[out.length - 1];
-    if (last?.act === act && (act === "explore" || act === "edit")) {
+    if (last?.act === act && GROUPED_ACTS.has(act)) {
       last.entries.push(entry);
       continue;
     }
@@ -164,6 +208,13 @@ export const exploreCount = (entries: AgentStep[]): string => {
 };
 
 export const editCount = (entries: AgentStep[]): string => plural(distinctFiles(entries.filter((e) => stepAct(e) === "edit")), "file");
+
+// The line over a group's names: "Explored 2 files, 1 search", "Edited 1 file", "Ran 3 commands"; present tense while one of them runs.
+export const groupHeadline = (act: "explore" | "edit" | "command", entries: AgentStep[], running: boolean): string => {
+  if (act === "explore") return `${running ? "Exploring" : "Explored"} ${exploreCount(entries)}`;
+  if (act === "edit") return `${running ? "Editing" : "Edited"} ${editCount(entries)}`;
+  return `${running ? "Running" : "Ran"} ${plural(entries.length, "command")}`;
+};
 
 // "explored 2 files, 1 search, edited 1 file, ran 2 commands"; the Agent's own sentences are not counted.
 export const turnPhrase = (entries: AgentStep[]): string => {
@@ -204,38 +255,15 @@ export const segmentSteps = <T extends AgentStep>(steps: T[], running: boolean):
   return out;
 };
 
-export interface TurnCounts {
-  tools: number;
-  commands: number;
-  updates: number;
-}
+// How a turn stands, for the mark that leads its header: a result replaces its call (harness CallID), so a call left
+// in a turn that is over never came back.
+export type TurnOutcome = "running" | "failed" | "unfinished" | "done";
 
-// Tool rows, command rows, and the Agent's sentences between them; a call and its result are one row.
-export const turnCounts = (entries: AgentStep[]): TurnCounts => {
-  const counts: TurnCounts = { tools: 0, commands: 0, updates: 0 };
-  for (const entry of entries) {
-    if (entry.kind === "text") {
-      counts.updates += 1;
-      continue;
-    }
-    if (isCommandTool(entry.tool)) {
-      counts.commands += 1;
-      continue;
-    }
-    counts.tools += 1;
-  }
-  return counts;
-};
-
-// "Used 12 tools, ran 5 commands, and received 1 update"; only the non-zero parts, in that order.
-export const turnSummary = ({ tools, commands, updates }: TurnCounts): string => {
-  const parts: string[] = [];
-  if (tools > 0) parts.push(`Used ${plural(tools, "tool")}`);
-  if (commands > 0) parts.push(`${parts.length === 0 ? "Ran" : "ran"} ${plural(commands, "command")}`);
-  if (updates > 0) parts.push(`${parts.length === 0 ? "Received" : "received"} ${plural(updates, "update")}`);
-  if (parts.length === 0) return "No steps yet";
-  if (parts.length === 1) return parts[0]!;
-  return `${parts.slice(0, -1).join(", ")}${parts.length > 2 ? "," : ""} and ${parts[parts.length - 1]}`;
+export const turnOutcome = (entries: AgentStep[], running: boolean): TurnOutcome => {
+  if (running) return "running";
+  if (entries.some(isFailedStep)) return "failed";
+  if (entries.some((e) => e.kind === "tool_call")) return "unfinished";
+  return "done";
 };
 
 const timestampMs = (iso: string): number | null => {

@@ -97,7 +97,7 @@ describe("TrailTranscript as a conversation", () => {
     expect(group.getByText("Reading the handler first.")).toBeInTheDocument();
     expect(group.getByText("Explored 1 file")).toBeInTheDocument();
     expect(group.getByRole("button", { name: "handler.go" })).toBeInTheDocument();
-    expect(group.getByText("Ran a command")).toBeInTheDocument();
+    expect(group.getByText("Ran")).toBeInTheDocument();
     expect(group.getByText("go test ./...")).toBeInTheDocument();
     expect(group.getByText("failed")).toBeInTheDocument();
     expect(group.queryByText(/· failed/)).not.toBeInTheDocument();
@@ -108,6 +108,23 @@ describe("TrailTranscript as a conversation", () => {
     expect(screen.getByRole("button", { name: /^Reading handler\.go/ })).toBeInTheDocument();
     expect(screen.getByText("Exploring 1 file")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
+  });
+
+  it("lists neighbouring commands under one count, each without the leading cd into the run's directory", async () => {
+    const user = userEvent.setup();
+    const root = "/home/dev/.t3/worktrees/nexul/fix-the-board";
+    const command = (id: string, summary: string): ActivityEntry => ({ kind: "tool_result", call_id: id, tool: "Bash", summary, detail: "{}", at: at(3) });
+    renderTranscript(
+      trail({
+        question: null,
+        activity: [command("k-1", `cd ${root} && git status`), command("k-2", `cd ${root}/web && bun run lint · failed`), read, reply],
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: /^Worked/ }));
+    expect(screen.getByText("Ran 2 commands")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "git status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "cd web && bun run lint" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("failed")).toBeInTheDocument();
   });
 
   it("legacy string steps render as plain rows in the group", async () => {
