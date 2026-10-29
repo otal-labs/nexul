@@ -32,10 +32,9 @@ export const ProjectPeopleAdd = ({ project, grants }: ProjectPeopleAddProps) => 
           permission="projects:access"
           projectId={project.id}
           answer={answer("projects:access")}
-          variant="ghost"
+          variant="outline"
           size="sm"
           loading={saving}
-          className="text-muted-foreground"
           icon={PlusIcon}
         >
           Add a role or person

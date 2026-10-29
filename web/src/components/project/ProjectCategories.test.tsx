@@ -8,6 +8,7 @@ import { ProjectCategories } from "@/components/project/ProjectCategories";
 import { api } from "@/api/client";
 import type { Category } from "@/models/Category";
 import { asReader, settle, withOwner } from "@/test/viewer";
+import { ticketCounts } from "@/test/ticketCounts";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
@@ -22,62 +23,13 @@ const categories: Category[] = [
   { id: "c-2", project_id: "p-1", name: "Bugs", position: 1, color: "", created_at: "", updated_at: "" },
 ];
 
-const tickets = [
-  {
-    id: "t-1",
-    project_id: "p-1",
-    category_id: "c-1",
-    type_id: "ticket-type-task",
-    title: "Fix auth",
-    body: "",
-    status: "open",
-    doc_id: "",
-    developer: "onik97",
-    tester: "",
-    reporter: { kind: "user", login: "onik97" },
-    created_at: "",
-    updated_at: "",
-    labels: [],
-  },
-  {
-    id: "t-2",
-    project_id: "p-1",
-    category_id: "c-2",
-    type_id: "ticket-type-task",
-    title: "Add tests",
-    body: "",
-    status: "open",
-    doc_id: "",
-    developer: "alice",
-    tester: "",
-    reporter: { kind: "user", login: "onik97" },
-    created_at: "",
-    updated_at: "",
-    labels: [],
-  },
-  {
-    id: "t-3",
-    project_id: "p-1",
-    category_id: "c-2",
-    type_id: "ticket-type-task",
-    title: "Docs",
-    body: "",
-    status: "open",
-    doc_id: "",
-    developer: "",
-    tester: "",
-    reporter: { kind: "user", login: "onik97" },
-    created_at: "",
-    updated_at: "",
-    labels: [],
-  },
-];
+const counts = ticketCounts({ tickets_by_category: { "c-1": 1, "c-2": 2 } });
 
 const renderCategories = (list: Category[] = categories) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
     if (url === "/api/categories") return { data: list };
-    if (url === "/api/tickets") return { data: tickets };
+    if (url === "/api/projects/p-1/ticket-counts") return { data: counts };
     return { data: [] };
   }));
   return render(
@@ -97,13 +49,13 @@ beforeEach(() => {
 });
 
 describe("ProjectCategories", () => {
-  it("lists categories with ticket count chips", async () => {
-    renderCategories();
+  it("lists categories with what each holds, saying so when one holds nothing", async () => {
+    renderCategories([...categories, { id: "c-3", project_id: "p-1", name: "Later", position: 2, color: "", created_at: "", updated_at: "" }]);
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.getByText("Bugs")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(await screen.findByText("1 ticket")).toBeInTheDocument();
+    expect(screen.getByText("2 tickets")).toBeInTheDocument();
+    expect(screen.getByText("No tickets")).toBeInTheDocument();
   });
 
   it("creates a category through the dialog", async () => {
@@ -166,7 +118,7 @@ describe("ProjectCategories", () => {
   });
 
   it("gives a viewer who cannot write no way to drag a row", async () => {
-    const reads: Record<string, unknown> = { "/api/categories": categories, "/api/tickets": tickets };
+    const reads: Record<string, unknown> = { "/api/categories": categories, "/api/projects/p-1/ticket-counts": counts };
     vi.mocked(api.get).mockImplementation(asReader({ permissions: ["projects:read", "tickets:read"] }, (url: string) => reads[url] ?? []));
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>

@@ -89,12 +89,12 @@ describe("ProjectServices", () => {
     const deployed = { ...services[0]!, build_source: { repo_owner: "acme", repo_name: "api" } };
     renderServices([deployed], [repo("acme/api"), repo("acme/portal"), repo("acme/e2e", "tests")]);
 
-    expect(await screen.findByRole("link", { name: /deploy this repository/i })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /^deploy$/i })).toHaveAttribute(
       "href",
       "/acme/wizard/project/repository?project=p-1&add=1&repo=acme%2Fportal",
     );
     expect(screen.getByText("acme/portal")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /deploy this repository/i })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: /^deploy$/i })).toHaveLength(1);
   });
 
   it("puts a waiting repository where the empty line was", async () => {

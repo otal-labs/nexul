@@ -19,11 +19,12 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useRowGlide } from "@/hooks/useRowGlide";
-import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
+import { useFetchProjectTicketCounts } from "@/hooks/ProjectHooks";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 
 interface ProjectCategoriesProps {
@@ -32,12 +33,11 @@ interface ProjectCategoriesProps {
 
 export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
   const { data: categories, isPending, error } = useFetchProjectCategories(projectId);
-  const { data: tickets } = useFetchTicketsByProject(projectId);
+  const { data: counts } = useFetchProjectTicketCounts(projectId);
   const reorderCategories = useReorderCategories();
   const { open: openAdd } = useFormDialog();
 
-  const countFor = (categoryId: string) =>
-    (tickets ?? []).filter((t) => t.category_id === categoryId).length;
+  const countFor = (categoryId: string) => counts && (counts.tickets_by_category[categoryId] ?? 0);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 2 } }),
@@ -74,7 +74,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
   return (
     <SettingsCard
       id="categories"
-      title="Categories"
+      title="Swimlanes"
       description="Each category is a swimlane on the board, in this order. Drag a row to reorder."
       footer={
         <ActionButton permission="projects:write" projectId={projectId} verb="add a category" variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
@@ -91,7 +91,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         <div ref={glideRef}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-              <EnterList className="divide-y divide-border rounded-md border border-border">
+              <EnterList className={settingsRowListClass}>
                 {categories.map((category, index) => (
                   <CategoryRow
                     key={category.id}

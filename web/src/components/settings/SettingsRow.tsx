@@ -53,3 +53,6 @@ export const SettingsRows = ({ children, className }: SettingsRowsProps) => (
 
 // A list inside a settings card: hairline rows straight on the card, under the rule that opens its body.
 export const settingsListClass = "divide-y divide-border border-t border-border";
+
+// The same list whose rows lift on hover: its rules reach 8px into the card padding, so the lift stays inside them and the text keeps the card's left edge.
+export const settingsRowListClass = "-mx-2 divide-y divide-border border-t border-border";

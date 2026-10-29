@@ -108,7 +108,8 @@ describe("ProjectPeopleSection", () => {
     respond([rule({ user_id: "lena", allow: ["projects:open", "tickets:write"] })]);
     renderCard();
 
-    await user.click(await screen.findByRole("button", { name: "Remove lena from Storefront" }));
+    await user.click(await screen.findByRole("button", { name: /^Actions for / }));
+    await user.click(await screen.findByRole("button", { name: "Remove" }));
     await user.click(await screen.findByRole("button", { name: "Remove" }));
 
     await waitFor(() =>

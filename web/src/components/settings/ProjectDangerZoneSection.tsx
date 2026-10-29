@@ -59,14 +59,14 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
   };
 
   return (
-    <DangerZone>
+    <DangerZone title="Can't be undone">
       <DangerAction
         title="Remove project"
         consequence="Removes this project for good. Only an empty project can be removed."
         details={
           impact &&
           isBlocked(impact) && (
-            <p className="pt-1 font-mono text-xs text-muted-foreground">
+            <p className="pt-1 font-mono text-xs text-pretty text-muted-foreground">
               Still holds {plural(impact.tickets, "ticket")} · {plural(impact.repos, "repo")} · {plural(impact.services, "service")}
             </p>
           )

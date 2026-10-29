@@ -9,7 +9,9 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", async () => {
   const { asOwner } = await import("@/test/viewer");
-  return { api: { get: vi.fn(asOwner()), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() };
+  const { ticketCounts } = await import("@/test/ticketCounts");
+  const counts = ticketCounts({ tickets_by_status: { open: 2 } });
+  return { api: { get: vi.fn(asOwner((url) => (url.endsWith("/ticket-counts") ? counts : []))), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() };
 });
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -61,6 +63,15 @@ describe("StatusRow", () => {
 
     await user.click(await screen.findByRole("button", { name: "Actions for Open" }));
     expect(screen.getByRole("button", { name: "Rename" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Delete/ })).toBeInTheDocument();
+  });
+
+  it("counts the column's tickets and keeps Delete off while it holds any, saying why", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    expect(await screen.findByText("2 tickets")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Actions for Open" }));
+    expect(screen.getByRole("button", { name: /^Delete\s*Used by 2 tickets$/ })).toBeDisabled();
   });
 });

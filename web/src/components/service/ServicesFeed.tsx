@@ -1,14 +1,15 @@
 import { EnterList } from "@/components/EnterList";
 import { ServiceCard } from "@/components/service/ServiceCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import type { ServiceDef } from "@/models/Service";
 
 interface ServicesFeedProps {
   services: ServiceDef[];
 }
 
-// Hairline rows in one bordered box, no column heads: each row names itself and says where it comes from.
+// Hairline rows straight on the card, no column heads: each row names itself and says where it runs.
 export const ServicesFeed = ({ services }: ServicesFeedProps) => (
-  <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+  <EnterList className={settingsRowListClass}>
     {services.map((svc) => (
       <ServiceCard key={svc.id} service={svc} />
     ))}

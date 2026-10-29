@@ -38,7 +38,7 @@ A project made over [MCP](/docs/guide/mcp-server/) or the API is set up straight
 From an existing project:
 
 - **New service**, in the project's **Settings → Services**, reopens the wizard at the repository step to deploy something else. If exactly one attached repository has no service yet, it skips the pick and opens **Service** for that repository.
-- **Deploy this repository** sits in **Settings → Services** beside each attached repository no service builds from, marked **Attached, not deployed yet**. It opens **Service** for that repository, and the row goes once a service deploys it. Only people who can read the project's stacks and add services see it.
+- **Deploy** sits in **Settings → Services** under **Not deployed**, beside each attached repository no service builds from, marked **Attached, not deployed yet**. It opens **Service** for that repository, and the row goes once a service deploys it. Only people who can read the project's stacks and add services see it.
 - **Add repo**, in **Settings → Repositories**, attaches a repository without deploying it.
 - **Import from this machine**, on the [Runners](/docs/guide/runners/) page next to a machine, adopts what's already running there as unmanaged stacks. Press **Attach repository** on one to give it a repository and make it deployable.
 
@@ -68,6 +68,6 @@ Agents archive with `workspace_update` and `archived` set to `true`, restore wit
 
 Projects are opt-in. Someone sees a project only once it lists them, or a role they hold; everything in a project they aren't in, its name included, is hidden from them. Inside a project they're in, their roles decide what they can do there. Workspace Owners see every project.
 
-Creating a project takes **Create projects**. The new project lists you and each of your roles, so it opens for you and for whoever holds those roles, and you can manage who else is in it: the wizard's **Who's in it** step, then **People in this project** in the project's **Settings → General**. See [People in this project](/docs/guide/people-and-access/#people-in-this-project).
+Creating a project takes **Create projects**. The new project lists you and each of your roles, so it opens for you and for whoever holds those roles, and you can manage who else is in it: the wizard's **Who's in it** step, then **People in this project** in the project's **Settings → Access**. See [People in this project](/docs/guide/people-and-access/#people-in-this-project).
 
 Projects made before the **Who's in it** step existed count it as done.

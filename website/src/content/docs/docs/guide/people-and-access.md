@@ -163,13 +163,13 @@ The release that made projects opt-in wiped every per-person permission, so righ
 
 A project they aren't in, with everything in it, is not found for someone: lists, links, search and agents alike. Inside a project they're in, their roles decide what they can do, and the project's rules can change that for a role or a person.
 
-A project's **Settings → General** holds **People in this project**, for whoever has **Manage this project's access** there:
+A project's **Settings → Access** holds **People in this project**, for whoever has **Manage this project's access** there; nobody else sees the **Access** section:
 
 - **Roles** lists the roles it lets in, each with how many people hold it.
 - **People** lists the people with a rule of their own here.
 - **Kept out** lists the people a rule keeps out, whatever their roles.
 
-**Add a role or person** lists one, which lets them in. Open a row to set what that role or person can do in the project. Its **×** takes it off the project, along with every rule it holds there, after asking; on someone kept out, it lets them back in. To keep someone out, open them and set **See this project** to **Deny**. A change reaches open browsers at once: a project opens in the sidebar of everyone a new role lets in, and drops out of the sidebar of someone kept out.
+**Add a role or person** lists one, which lets them in. Open a row to set what that role or person can do in the project. **Remove** in its **⋯** menu takes it off the project, along with every rule it holds there, after asking; on someone kept out, **Let back in** lets them back in. To keep someone out, open them and set **See this project** to **Deny**. A change reaches open browsers at once: a project opens in the sidebar of everyone a new role lets in, and drops out of the sidebar of someone kept out.
 
 The project wizard's **Who's in it** step sets the same roles when you create a project. Deleting a project says how many people lose it before you confirm.
 

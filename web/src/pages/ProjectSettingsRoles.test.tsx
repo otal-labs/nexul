@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { ProjectSettingsPage } from "@/pages/ProjectSettingsPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { ticketCounts } from "@/test/ticketCounts";
 import { asViewer, memberWho } from "@/test/viewer";
 
 vi.mock("@/api/client", () => ({
@@ -36,6 +37,7 @@ const serve = (showLocked: boolean) => {
       if (url === "/api/ticket-types") return [ticketType];
       if (url === "/api/tickets/labels") return ["bug"];
       if (url === "/api/projects/p-1/repos") return [repo];
+      if (url === "/api/projects/p-1/ticket-counts") return ticketCounts();
       return [];
     }),
   );
@@ -46,7 +48,7 @@ const renderSettings = (path: string) =>
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={[`/acme/projects/p-1/settings/${path}`]}>
         <Routes>
-          <Route path="/acme/projects/:projectId/settings/:section?/:tab?" element={<ProjectSettingsPage />} />
+          <Route path="/acme/projects/:projectId/settings/:section?" element={<ProjectSettingsPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -56,11 +58,11 @@ const renderSettings = (path: string) =>
 const pages = [
   { path: "general", anchor: "Backend", controls: ["Rename project", "Open the wizard"], menus: [] },
   { path: "categories", anchor: "Sprint 1", controls: ["New category"], menus: ["Actions for Sprint 1"] },
-  { path: "repositories", anchor: "acme/api", controls: ["Add repo", "Remove acme/api"], menus: [] },
-  { path: "services", anchor: "Attached, not deployed yet", controls: ["New service", "Deploy this repository"], menus: [] },
-  { path: "board", anchor: "Open", controls: ["Add backlog status"], menus: ["Actions for Open"] },
-  { path: "board/types", anchor: "task", controls: ["New ticket type", "Color for task"], menus: ["Actions for task"] },
-  { path: "board/labels", anchor: "bug", controls: ["Color for label bug"], menus: [], dot: ".bg-orange-500" },
+  { path: "repositories", anchor: "acme/api", controls: ["Add repo"], menus: ["Actions for acme/api"] },
+  { path: "services", anchor: "Attached, not deployed yet", controls: ["New service", "Deploy"], menus: [] },
+  { path: "statuses", anchor: "Open", controls: ["Add backlog status"], menus: ["Actions for Open"] },
+  { path: "types", anchor: "task", controls: ["New ticket type", "Color for task"], menus: ["Actions for task"] },
+  { path: "labels", anchor: "bug", controls: ["Color for label bug"], menus: [], dot: ".bg-orange-500" },
 ];
 
 const control = (name: string) => screen.queryByRole("button", { name }) ?? screen.queryByRole("link", { name });

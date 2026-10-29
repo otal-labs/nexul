@@ -42,9 +42,9 @@ describe("ServicesFeed", () => {
     );
     expect(screen.getByText("api")).toBeInTheDocument();
     expect(screen.getByText("10.0.0.1:22")).toBeInTheDocument();
-    expect(screen.getByText("compose")).toBeInTheDocument();
+    expect(screen.getByLabelText("compose")).toBeInTheDocument();
     expect(screen.getByText("db")).toBeInTheDocument();
     expect(screen.getByText("10.0.0.2:22")).toBeInTheDocument();
-    expect(screen.getByText("run")).toBeInTheDocument();
+    expect(screen.getByLabelText("run")).toBeInTheDocument();
   });
 });
