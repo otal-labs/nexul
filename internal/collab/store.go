@@ -51,6 +51,8 @@ type AccessChecker interface {
 // DocWriter commits skip heavyweight version rows: no version per keystroke or save.
 type DocWriter interface {
 	CommitCollab(ctx context.Context, docID, title, body string) error
+	// CommitSitting writes the version a sitting ends with, crediting editorIDs in first-edit order, when the body changed.
+	CommitSitting(ctx context.Context, docID string, editorIDs []string) error
 	// Locked reports a doc that refuses edits, so the relay drops its updates instead of storing them.
 	Locked(ctx context.Context, docID string) (bool, error)
 }

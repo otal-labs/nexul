@@ -106,3 +106,43 @@ func TestCollabReset_ServerWriteWinsOverLiveSession(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, saved.Body, "edit after the write", "a commit based on the post-reset state still saves")
 }
+
+// TestCollabReset_SavesTheOpenSittingBeforeTheServerWrite files what an editor typed as its own version, below the
+// version of the save that then replaces it, so the history reads in the order things happened.
+func TestCollabReset_SavesTheOpenSittingBeforeTheServerWrite(t *testing.T) {
+	t.Parallel()
+	svc, store := newWired(t)
+	seedMentionPeople(t, store)
+	doc, err := svc.docsSvc.Create(as("u-onik"), "project-general", "Plan", paragraphBody("first draft"))
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /ws/collab/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		svc.collabHub.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: "u-onik"})))
+	}))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	editor := dialCollab(t, srv, doc.ID, "edit")
+	readCollab(t, editor) // init
+	viewer := dialCollab(t, srv, doc.ID, "view")
+	readCollab(t, viewer) // init
+	sendCollab(t, editor, collab.ClientMsg{Type: "update", Update: "dXBkYXRl"})
+	relayed := readCollab(t, viewer)
+	sendCollab(t, editor, collab.ClientMsg{Type: "commit", Update: "c25hcA==", BaseSeq: relayed.Seq, Body: paragraphBody("browser edit")})
+	require.Equal(t, "commit", readCollab(t, viewer).Type)
+
+	_, err = svc.docsSvc.Update(as("u-onik"), doc.ID, "Plan", paragraphBody("agent rewrite"))
+	require.NoError(t, err)
+
+	hist, err := svc.docsSvc.History(as("u-onik"), doc.ID)
+	require.NoError(t, err)
+	require.Len(t, hist.Versions, 3)
+	assert.Equal(t, []string{"u-onik"}, hist.Versions[1].EditorIDs)
+	sitting, err := svc.docsSvc.GetVersion(as("u-onik"), doc.ID, hist.Versions[1].Version)
+	require.NoError(t, err)
+	assert.Contains(t, sitting.Body, "browser edit", "the version below the save holds what the editor typed")
+	save, err := svc.docsSvc.GetVersion(as("u-onik"), doc.ID, hist.Versions[0].Version)
+	require.NoError(t, err)
+	assert.Contains(t, save.Body, "agent rewrite")
+}

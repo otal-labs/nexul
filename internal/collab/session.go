@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"slices"
 	"sync"
+	"time"
 )
 
 // errPeerGone reports a send to a client whose write pump already exited.
@@ -42,7 +44,12 @@ type session struct {
 	resetSeq  int64          // commits whose base predates the last reset are dropped
 	hasState  bool           // the room holds stored or relayed state, so nobody seeds it
 	seeder    *client        // the one joiner told to seed the empty room
+	editors   []string       // users who sent a writable update since the last sitting version, first edit first
+	sitting   *time.Timer    // ends the sitting once SittingIdle passes with no writable update
 }
+
+// SittingIdle is how long a room's text may go without a writable update before the sitting's version is written.
+const SittingIdle = 5 * time.Minute
 
 func (s *session) join(c *client) {
 	s.mu.Lock()
@@ -132,8 +139,63 @@ func (s *session) handleUpdate(ctx context.Context, c *client, m ClientMsg) {
 			s.seq = seq
 		}
 	}
+	s.noteEdit(c.id)
 	s.mu.Unlock()
 	s.broadcast(c, ServerMsg{Type: msgUpdate, From: c.id, Seq: seq, Payload: m.Update})
+}
+
+// noteEdit credits userID with the sitting and restarts its idle timer; callers hold s.mu.
+func (s *session) noteEdit(userID string) {
+	if !slices.Contains(s.editors, userID) {
+		s.editors = append(s.editors, userID)
+	}
+	if s.sitting != nil {
+		s.sitting.Reset(SittingIdle)
+		return
+	}
+	s.sitting = time.AfterFunc(SittingIdle, s.sittingIdle)
+}
+
+// sittingIdle ends the sitting from its timer, fenced like any stored write.
+func (s *session) sittingIdle() {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	s.commitSitting(context.Background())
+}
+
+// endSittingIfUnattended ends the sitting once no editor remains in the room.
+func (s *session) endSittingIfUnattended(ctx context.Context) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	s.mu.Lock()
+	attended := false
+	for c := range s.clients {
+		attended = attended || c.mode == ModeEdit
+	}
+	s.mu.Unlock()
+	if attended {
+		return
+	}
+	s.commitSitting(ctx)
+}
+
+// commitSitting hands the editors since the last version to the writer and starts a fresh sitting; callers hold
+// writeMu, so no update lands mid-commit and a Hub.Reset write cannot overtake it.
+func (s *session) commitSitting(ctx context.Context) {
+	s.mu.Lock()
+	editors := s.editors
+	s.editors = nil
+	if s.sitting != nil {
+		s.sitting.Stop()
+		s.sitting = nil
+	}
+	s.mu.Unlock()
+	if len(editors) == 0 {
+		return
+	}
+	if err := s.writer.CommitSitting(ctx, s.docID, editors); err != nil {
+		s.log.Warn("collab: commit sitting failed", "doc", s.docID, "error", err)
+	}
 }
 
 // handleCommit persists a snapshot, trims already-applied increments, writes the canonical body, and broadcasts.

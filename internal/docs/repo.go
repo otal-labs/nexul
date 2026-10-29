@@ -79,6 +79,9 @@ type Repo interface {
 	ListVersionSummaries(ctx context.Context, docID string) ([]VersionSummary, error)
 	// CommitBody writes a converged collaboration state to the canonical doc without appending a version row.
 	CommitBody(ctx context.Context, d *Doc, editorID string, evts ...eventbus.OutboxEvent) error
+	// AppendSittingVersion writes the doc's current title and body as a version crediting editorIDs, the first as
+	// author, unless the newest version already holds them, then prunes like Update.
+	AppendSittingVersion(ctx context.Context, id string, editorIDs []string, at time.Time) error
 	// CreateNamedVersion appends a milestone version, capturing the doc's current state under a name and author.
 	CreateNamedVersion(ctx context.Context, v *DocVersion) error
 }

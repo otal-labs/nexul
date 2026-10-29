@@ -64,6 +64,27 @@ func TestDocUpdate_UnchangedTitleAndBody_WritesNoVersion(t *testing.T) {
 	assert.Len(t, f.versionNumbers(t), 2, "saving what the newest version already holds adds none")
 }
 
+func TestDocCommitSitting_WritesOneVersionCreditingEveryEditorAndSkipsAnUnchangedBody(t *testing.T) {
+	f := newHistoryFixture(t)
+	ctx := actor("alice")
+	require.NoError(t, f.svc.CommitCollab(ctx, f.doc.ID, "", "typed in the editor"))
+	assert.Equal(t, []int{1}, f.versionNumbers(t), "an editor flush alone writes no version")
+
+	require.NoError(t, f.svc.CommitSitting(ctx, f.doc.ID, []string{"bob", "alice"}))
+	assert.Equal(t, []int{2, 1}, f.versionNumbers(t), "the sitting lands on the version number the flush advanced the doc to")
+	hist, err := f.svc.History(ctx, f.doc.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"bob", "alice"}, hist.Versions[0].EditorIDs)
+	assert.Empty(t, hist.Versions[0].Via)
+	got, err := f.svc.GetVersion(ctx, f.doc.ID, 2)
+	require.NoError(t, err)
+	assert.Equal(t, "bob", got.AuthorID, "the first editor is the author")
+	assert.Contains(t, got.Body, "typed in the editor")
+
+	require.NoError(t, f.svc.CommitSitting(ctx, f.doc.ID, []string{"alice"}))
+	assert.Equal(t, []int{2, 1}, f.versionNumbers(t), "a sitting that left the text as the newest version has it adds none")
+}
+
 func TestDocUpdate_PastTenUnnamedVersions_PrunesTheOldestAndKeepsNamedOnes(t *testing.T) {
 	f := newHistoryFixture(t)
 	ctx := actor("alice")

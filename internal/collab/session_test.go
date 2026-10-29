@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -96,10 +97,14 @@ func (f *fakeStore) Reset(_ context.Context, docID string) (int64, error) {
 
 // fakeWriter records canonical-body commits.
 type fakeWriter struct {
-	mu     sync.Mutex
-	calls  []commitCall
-	fail   bool
-	locked bool
+	mu          sync.Mutex
+	calls       []commitCall
+	fail        bool
+	locked      bool
+	sittings    [][]string
+	failSitting bool
+	order       []string
+	sat         chan []string // when set, each sitting is also sent here, for tests that cross a real connection
 }
 
 type commitCall struct {
@@ -114,6 +119,27 @@ func (f *fakeWriter) CommitCollab(_ context.Context, docID, title, body string) 
 	}
 	f.calls = append(f.calls, commitCall{docID: docID, title: title, body: body})
 	return nil
+}
+
+// CommitSitting records each sitting's editors in the same log as a test's server-side writes, so order is visible.
+func (f *fakeWriter) CommitSitting(_ context.Context, _ string, editorIDs []string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failSitting {
+		return errors.New("sitting rejected")
+	}
+	f.sittings = append(f.sittings, editorIDs)
+	f.order = append(f.order, "sitting")
+	if f.sat != nil {
+		f.sat <- editorIDs
+	}
+	return nil
+}
+
+func (f *fakeWriter) sittingsSoFar() [][]string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.sittings)
 }
 
 func (f *fakeWriter) Locked(context.Context, string) (bool, error) {

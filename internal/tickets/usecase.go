@@ -629,6 +629,9 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	return nil
 }
 
+// CommitSitting writes nothing yet; ticket 15 of the change-history effort records description versions here.
+func (*Service) CommitSitting(context.Context, string, []string) error { return nil }
+
 // CanJoin reports whether the caller may join a ticket's live room under action; the hub's context carries them.
 func (s *Service) CanJoin(ctx context.Context, id string, action permissions.Action) (bool, error) {
 	if _, err := s.load(ctx, id, action); err != nil {
