@@ -1,7 +1,6 @@
 import { EnterList } from "@/components/EnterList";
 import { DocFolderHeader } from "@/components/doc/DocFolderHeader";
 import { DocListRow } from "@/components/doc/DocListRow";
-import { EmptyRow } from "@/components/EmptyRow";
 import type { DocFolderGroup } from "@/components/doc/docGroups";
 import { useDocFolderStore } from "@/stores/docFolderStore";
 
@@ -20,16 +19,13 @@ export const DocFolderSection = ({ group, projectToken, selectedId, forceOpen }:
   const open = forceOpen || !collapsed;
   return (
     <section aria-label={folder.name}>
-      <DocFolderHeader folder={folder} total={group.total} open={open} onToggle={() => toggle(folder.project_id, folder.id)} />
+      <DocFolderHeader folder={folder} total={group.total} open={open && group.docs.length > 0} onToggle={() => toggle(folder.project_id, folder.id)} />
       {open && group.docs.length > 0 && (
         <EnterList>
           {group.docs.map((doc) => (
             <DocListRow key={doc.id} doc={doc} projectToken={projectToken} selected={doc.id === selectedId} />
           ))}
         </EnterList>
-      )}
-      {open && group.docs.length === 0 && (
-        <EmptyRow className="rounded-none border-0 py-2 pl-13 text-left text-xs">No docs</EmptyRow>
       )}
     </section>
   );

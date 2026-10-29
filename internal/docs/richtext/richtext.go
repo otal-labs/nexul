@@ -155,6 +155,9 @@ func plainText(n Node) string {
 	if n.Text != "" {
 		return n.Text
 	}
+	if n.Type == "hardBreak" {
+		return " "
+	}
 	sep := " "
 	if n.Type == "paragraph" || n.Type == "heading" || n.Type == "codeBlock" {
 		sep = ""

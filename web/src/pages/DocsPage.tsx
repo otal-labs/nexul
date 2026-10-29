@@ -1,11 +1,10 @@
-import { FileTextIcon } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Navigate, useParams } from "react-router";
 
 import { DocsListPane } from "@/components/doc/DocsListPane";
+import { DocsOverview } from "@/components/doc/DocsOverview";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
-import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
@@ -22,8 +21,8 @@ export const DocsPage = () => {
   const { projects, current } = useSidebarProject();
   const wsPath = useWorkspacePath();
   const { data: docs, error, isPending } = useFetchDocsByProject(current?.id ?? "");
-  // The list shows live docs unless the Archived filter is on, so the placeholder counts those.
-  const live = docs?.filter((doc) => !doc.archived) ?? [];
+  // One search for both panes, so the overview never shows docs the list has filtered out.
+  const [search, setSearch] = useState("");
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
@@ -39,15 +38,8 @@ export const DocsPage = () => {
       {current && docs && (
         <ListDetailLayout
           hasSelection={!!docId}
-          list={<DocsListPane docs={docs} project={current} selectedId={docId} />}
-          placeholder={
-            <ListDetailPlaceholder
-              icon={FileTextIcon}
-              title={live.length === 0 ? "Nothing to open yet" : "Select a doc"}
-              summary={live.length === 0 ? `${current.name} has no docs.` : `${live.length} ${live.length === 1 ? "doc" : "docs"} in ${current.name}`}
-              searchable={live.length > 0}
-            />
-          }
+          list={<DocsListPane docs={docs} project={current} selectedId={docId} search={search} onSearch={setSearch} />}
+          placeholder={<DocsOverview docs={docs} project={current} query={search.trim().toLowerCase()} />}
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <DocPage key={docId} />

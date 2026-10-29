@@ -496,8 +496,10 @@ own padding and its hover lift separate them: a 13px normal-weight title in
 `foreground` over a muted one-line preview, mono meta trailing right. A
 title wraps to two lines at most, the full text in its tooltip, and sets its
 own direction so an Arabic title reads right to left. A
-row whose record already shows its details when open (Docs) is the title alone
-at about 40px, with a muted state icon after it (a lock) and no meta. The
+row whose record already shows its details when open (Docs) is one line at
+32px: a 14px state slot under the folder icon (a play waiting or running, questions closed) that is
+empty at rest, the title truncated with its full text in the tooltip, then the
+lock when locked and the mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
 `bg-accent/40` lift, never a boxed border. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
@@ -513,18 +515,31 @@ so with the compact orbit around the list's own icon (the one its sidebar
 link uses), "Select a doc", a muted count of what the list holds ("27 docs
 in Atlas Platform"), and, where the command palette finds these records,
 its shortcut ("Ctrl K to search"); `ListDetailPlaceholder` is the
-reference. Docs groups its rows by
+reference. Docs instead opens on its overview (`DocsOverview`), read from the
+set the list shows (live docs, or archived ones while that view is on) and
+filtered by the list's search: a muted line of the folder count and the last
+edit with the pane's one primary `New doc` at its right, a "Needs attention"
+group of the docs a play is writing or waiting on (waiting first, at most
+five), and "Recently edited" (the newest twenty, split under Today, Last 7 days
+and Earlier in 12px muted sans once there is more than one). Each overview row
+is the state slot, the title in 13px medium on the baseline of its mono time,
+and one muted line: the folder and either the run's state or "created by" and the creator and
+the doc's first line. An empty project's overview is the `EmptyState` with
+`New doc`; the list then shows its header alone. Docs groups its rows by
 folder below Pinned, the default folder first and the rest in creation order:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
-the name in the group-label style, and a muted mono count, and it toggles on
+the folder's own name in 12px medium sans, sentence case, and a muted mono
+count in the rows' time column, and it toggles on
 click, collapsed folders kept per browser and project. On hover and focus a
 `+` (new doc in that folder, never on the default folder, which the header's
 `+` already fills) takes the count's place, and a right-click opens New doc,
-Rename, then Delete (never on the default folder). Doc rows lead with a muted `FileText`
-icon aligned under the folder icon, and an empty open folder says "No docs" in
-one muted line. A search shows matching docs inside their folders, hides the
+Rename, then Delete (never on the default folder). Doc rows start their state slot under the folder icon, and an empty folder is
+its header alone, its count reading 0. A search shows matching docs inside their folders, hides the
 folders without a match, and opens collapsed ones while it runs. The header
-puts a ghost `FolderPlus` (New folder) beside the `+`, for writers only. No
+puts a ghost menu button before them that names the sort and the view ("Created",
+"Archived · Edited"), holding Sort by and Show archived, and a ghost
+`FolderPlus` (New folder) beside the `+`, for writers only. Below 1024px the
+list is the page, so the docs a play holds lead it under "Needs attention". No
 folder carries a color. Below 1024px one pane
 shows at a time. The list and the open record each scroll inside a panel
 that stays still and fade over their last 24px (`scroll-edge`), with bottom
@@ -1362,6 +1377,7 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
+| Docs opens on an overview, and its rows are one line with a time (2026-10-29) | Against "Select a doc" beside a list of titles alone: at 1440 the open pane gave about 900px to one sentence, the list could not say what moved lately, and a doc a play waited on hid in a collapsed folder. Rejected: a column table (it lost the folder and creator at 1024, where the list beside it already shows title and time) and a narrow column led by faces (it left the wide pane empty) |
 | A doc's outline is a right rail, and its actions sit on the breadcrumb's line (2026-10-28) | Against the 12rem outline to the body's left: beside the app sidebar and the docs list it was a third navigation column, it started the body about 220px right of its own title, and its entries wrapped. On the title's line the actions pushed the title onto two lines at 768 and 1024 |
 | Rich-text `h2` at 20px and `h1` at 22px (2026-10-28) | Against 18 and 20px: an 18px `h2` over 16px text did not step up, so a runbook's sections read as one block |
 | A label is a neutral chip with a 6px hue dot, and a ticket's type is its icon in the type hue beside plain text (2026-10-26) | Against a filled pill in each label's and each type's hue: on a card the labels were the loudest shapes, louder than the title, and a violet, green or cyan label sat beside the palette's own accent (a purple chip beside a purple Create button) so the accent stopped meaning "act here". A hairline pill on `foreground` 4% with muted text keeps the tag shape and the label's identity on the dot alone. The type is a bounded enum like status, so it takes the status shape: with the tint gone, a violet "feature" no longer reads as the accent on a chip, and the icon is the only coloured part of the card's type |
