@@ -180,8 +180,16 @@ describe("InboxPage", () => {
     mockApi();
     renderPage();
     const list = await screen.findByRole("navigation", { name: "Notifications" });
-    expect(await within(list).findByRole("button", { name: /Write migrations.*\d+d ago.*assigned to you/ })).toBeInTheDocument();
-    expect(within(list).getByRole("button", { name: /Spec.*\d+d ago/ })).toBeInTheDocument();
+    expect(await within(list).findByRole("button", { name: /Write migrations.*assigned to you.*(Aug 12|12 Aug)/ })).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /Spec.*(Aug 12|12 Aug)/ })).toBeInTheDocument();
+  });
+
+  it("counts what is unread in the list's header and the open pane", async () => {
+    mockApi();
+    renderPage();
+    const heading = await screen.findByRole("heading", { name: /Inbox/ });
+    expect(await within(heading).findByText("1")).toBeInTheDocument();
+    expect(screen.getByText("1 unread · 2 notifications")).toBeInTheDocument();
   });
 
   it("opens an already read notification without marking it read again", async () => {
@@ -228,7 +236,7 @@ describe("InboxPage", () => {
     renderPage();
 
     const folder = await screen.findByRole("region", { name: "GetSource" });
-    expect(within(folder).getByRole("button", { name: /GetSource/ })).toHaveTextContent("1 doc · 3 updates");
+    expect(within(folder).getByRole("button", { name: /GetSource/ })).toHaveTextContent(/GetSource\s*1$/);
     await user.click(within(folder).getByRole("button", { name: /EP07: Bluesky feeds/ }));
 
     expect(await screen.findByRole("heading", { name: "GetSource EP07: Bluesky feeds" })).toBeInTheDocument();

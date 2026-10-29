@@ -490,7 +490,8 @@ dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 300px default, one width shared by every page,
 kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
-search field. Rows are about 56px with 12px sides and no dividers, the row's
+search field (`ListPaneHeader`; a list nobody creates in or searches, the
+Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers, the row's
 own padding and its hover lift separate them: a 13px normal-weight title in
 `foreground` over a muted one-line preview, mono meta trailing right. A
 title wraps to two lines at most, the full text in its tooltip, and sets its
@@ -531,15 +532,18 @@ padding that clears the fade at the end, so content never meets a panel's
 rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
-Inbox. One row per doc however many notifications it has: the title with
-the newest time trailing in mono on its line, over a muted summary of what
-happened ("created · 2 updates"), unread while any of them is. Rows hover and select like the
-list pane's. Docs outside their project's
+Inbox. One row per doc however many notifications it has: the title, over
+a meta line saying what happened ("created · 2 updates") with the newest time
+trailing it in mono, unread while any of them is. Rows hover and select like the
+list pane's, with no dividers. The header is `ListPaneHeader` without New or
+search: the unread count in mono, hidden at zero, and Mark all read as a ghost
+check-check icon while anything is unread. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
-the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
-kept per browser; inside it a title drops a leading folder name. Every other
-notification is its own row with the same trailing time, and all of them
-interleave by newest activity.
+the Docs pane's, its meta the number of docs, expanded until collapsed and
+kept per browser; inside it a title drops a leading folder name, and its rows
+take no indent. Every other notification is its own row, and all of them
+interleave by newest activity. The open pane before a pick says how many are
+unread and teaches the palette's shortcut.
 
 Board. One grid. The header is one row from 1280px: the title in the UI sans
 at 16px semibold with a muted "55 tickets · 8 people" on its baseline, then
@@ -1143,11 +1147,18 @@ step adds a `destructive` circled cross and the word "failed"; the step in
 flight spins a muted loader. `TrailTurnGroup` and `TurnStepGroup` are the
 reference.
 
-Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
-(assigned, mentioned, status, doc created or edited, questions, memory, a
-play run), a `foreground` dot on its corner while unread (it shrinks to 0.6
-as it fades over 150ms when the row is read), then the title with
-the mono time on its first line and the summary under it.
+Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, level
+with the title's first line (it shrinks to 0.6 as it fades over 150ms when
+the row is read; a folder row's dot sits in the same gutter and shows only
+while the folder is collapsed), so unread reads as one column down the pane.
+The title is ink in both states, semibold while unread, two lines at most.
+Under it the meta line: a 14px icon for what happened (assigned, mentioned,
+status, doc created or edited, questions, memory, a play run), muted, or in
+its status hue for a notice that carries a state (a crash or 5xx over the
+limit `destructive`, their recovery `success`, a play waiting on an answer or
+a ticket due tomorrow `warning`), the summary, and the mono time on the
+right. Its focus ring draws inside the row (`inset-focus`), where the list's
+clip cannot cut it off.
 
 Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
@@ -1379,6 +1390,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
 | Bot embeds as status-edged reports, facts as sentences and a state tally (2026-10-28) | As cards (fill, ring, shadow, a label grid and a footer strip) two deploy posts took about 400 of the 750px a channel shows at 1440, a summary spent a 3×3 grid saying "healthy" to report one stopped cache, and the people sat in the bottom third. Without the box and with the facts on a line a deploy is about 90px and a summary names its one problem. Against folding every healthy post to one line behind a chevron (the facts are what people read in a deploy channel, so it traded height for a click on every post) and against dropping the edge (with the box gone it is what marks where a report starts); the leading edge is the topology node's status signal reused, picked earlier over a 2px bar across the top, which read as the accent's decoration rather than state |
 | List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
+| The Inbox row: an unread gutter, the title, then the kind icon, summary and time on one meta line (2026-10-29) | Against the 28px tile with a dot on its corner, row dividers and the time beside the title (about 175px of title at the 300px default, so most ticket titles clamped mid-sentence, and unread sat in two columns with the folder dot); the icon on the meta line gives the title about 260px and a crashed service reads in its hue at a glance. Rejected: the icon beside the title (35px less title), a 16px icon centred on both lines (floated off both), a single-line title (cut most titles in half) and a full-width list until a row is picked (the list jumped to 300px on every first open) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
 | Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |

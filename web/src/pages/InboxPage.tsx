@@ -8,6 +8,7 @@ import { NotificationsSidebar } from "@/components/notifications/NotificationsSi
 import { useFetchInbox, useMarkAllNotificationsRead, useSelectedInboxRow } from "@/hooks/NotificationHooks";
 import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { inboxSummary } from "@/utils/InboxUtility";
 
 // The open row is the path's; a row that is no longer listed falls back to the list.
 export const InboxPage = () => {
@@ -30,7 +31,9 @@ export const InboxPage = () => {
             isMarkingAllRead={markAllRead.isPending}
           />
         }
-        placeholder={<ListDetailPlaceholder icon={InboxIcon} title="Select a notification" />}
+        placeholder={
+          <ListDetailPlaceholder icon={InboxIcon} title="Select a notification" {...(data && { summary: inboxSummary(data) })} searchable />
+        }
         detail={<NotificationDetailPanel selected={selected?.notification} />}
       />
     </EmbeddedCrumbsContext>

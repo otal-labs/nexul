@@ -32,6 +32,8 @@ export interface InboxRow {
   title: string;
   summary: string;
   unreadIds: string[];
+  /** Every notification the row holds, a doc row counting each of its own. */
+  count: number;
 }
 
 /** The doc rows of one non-default folder, placed by the newest of them. */
@@ -40,9 +42,6 @@ export interface InboxFolder {
   key: string;
   name: string;
   rows: InboxRow[];
-  notificationCount: number;
-  /** "4 docs · 7 updates", every notification in the group counted as an update. */
-  summary: string;
   unread: boolean;
 }
 
@@ -54,14 +53,15 @@ const docSummary = (ns: Notification[]) => {
   const count = (kind: NotificationKind) => ns.filter((n) => n.kind === kind).length;
   const updates = count(NotificationKind.DocUpdated);
   const mentions = count(NotificationKind.DocMentioned);
+  // What asks something of you leads, so a narrow pane's ellipsis takes the edits first.
   const parts = [
-    count(NotificationKind.DocCreated) > 0 && "created",
-    updates === 1 && "updated",
-    updates > 1 && plural(updates, "update"),
     mentions === 1 && "mentioned you",
     mentions > 1 && `mentioned you ${mentions} times`,
     count(NotificationKind.DocQuestionsAsked) > 0 && kindLabels[NotificationKind.DocQuestionsAsked],
     count(NotificationKind.DocQuestionsAnswered) > 0 && kindLabels[NotificationKind.DocQuestionsAnswered],
+    count(NotificationKind.DocCreated) > 0 && "created",
+    updates === 1 && "updated",
+    updates > 1 && plural(updates, "update"),
   ];
   return parts.filter(Boolean).join(" · ");
 };
@@ -77,7 +77,7 @@ const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => 
   const newest = ns[0] as Notification;
   const unreadIds = ns.filter((n) => !n.read).map((n) => n.id);
   if (newest.subject_type !== SubjectType.Doc) {
-    return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: kindLabels[newest.kind], unreadIds };
+    return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: kindLabels[newest.kind], unreadIds, count: ns.length };
   }
   // These kinds word their title around the doc's, so the doc's own title comes from any other notification when there is one.
   const titleWorded: NotificationKind[] = [NotificationKind.DocMentioned, NotificationKind.DocQuestionsAsked, NotificationKind.DocQuestionsAnswered];
@@ -89,6 +89,7 @@ const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => 
     title: folderName ? stripFolderPrefix(title, folderName) : title,
     summary: docSummary(ns),
     unreadIds,
+    count: ns.length,
   };
 };
 
@@ -126,16 +127,12 @@ export const groupInbox = (notifications: Notification[]): InboxEntry[] => {
     const folder = folders.get(folderId);
     if (folder) {
       folder.rows.push(row);
-      folder.notificationCount += ns.length;
       folder.unread ||= row.unreadIds.length > 0;
       continue;
     }
-    const created: InboxFolder = { type: "folder", key: `folder:${folderId}`, name, rows: [row], notificationCount: ns.length, summary: "", unread: row.unreadIds.length > 0 };
+    const created: InboxFolder = { type: "folder", key: `folder:${folderId}`, name, rows: [row], unread: row.unreadIds.length > 0 };
     folders.set(folderId, created);
     entries.push(created);
-  }
-  for (const folder of folders.values()) {
-    folder.summary = `${plural(folder.rows.length, "doc")} · ${plural(folder.notificationCount, "update")}`;
   }
   return entries;
 };
@@ -143,3 +140,14 @@ export const groupInbox = (notifications: Notification[]): InboxEntry[] => {
 /** Every row in display order, a folder group's rows in its place. */
 export const inboxRows = (entries: InboxEntry[]): InboxRow[] =>
   entries.flatMap((e) => (e.type === "folder" ? e.rows : [e]));
+
+/** Unread notifications across every row, a doc row counting each of its own. */
+export const inboxUnreadCount = (entries: InboxEntry[]): number =>
+  inboxRows(entries).reduce((sum, row) => sum + row.unreadIds.length, 0);
+
+/** "15 unread · 47 notifications", what the open pane says before a row is picked. */
+export const inboxSummary = (entries: InboxEntry[]): string => {
+  const unread = inboxUnreadCount(entries);
+  const total = inboxRows(entries).reduce((sum, row) => sum + row.count, 0);
+  return `${unread > 0 ? `${unread} unread` : "Nothing unread"} · ${plural(total, "notification")}`;
+};

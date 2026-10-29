@@ -83,7 +83,7 @@ describe("groupInbox", () => {
       note({ kind: "doc.updated", created_at: at(11), ...inMain }),
     ]) as InboxRow[];
 
-    expect(doc?.summary).toBe("updated · mentioned you");
+    expect(doc?.summary).toBe("mentioned you · updated");
     expect(doc?.title).toBe("Spec");
   });
 
@@ -94,7 +94,7 @@ describe("groupInbox", () => {
       note({ kind: "doc.updated", created_at: at(10), ...inMain }),
     ]) as InboxRow[];
 
-    expect(doc?.summary).toBe("updated · new questions · questions answered");
+    expect(doc?.summary).toBe("new questions · questions answered · updated");
     expect(doc?.title).toBe("Spec");
   });
 
@@ -117,7 +117,6 @@ describe("groupInbox", () => {
     const folder = entries[0] as InboxFolder;
     expect(folder.name).toBe("GetSource");
     expect(folder.rows.map((r) => r.key)).toEqual(["doc:d-ep07", "doc:d-ep06"]);
-    expect(folder.summary).toBe("2 docs · 3 updates");
     expect((entries[1] as InboxRow).title).toBe("Roadmap");
   });
 
