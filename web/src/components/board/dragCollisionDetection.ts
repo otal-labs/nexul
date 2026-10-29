@@ -1,6 +1,6 @@
 import { closestCenter, pointerWithin, rectIntersection, type CollisionDetection, type DroppableContainer } from "@dnd-kit/core";
 
-import type { DropTargetData } from "@/components/board/dragMove";
+import { STAGE_HEADER, type DropTargetData } from "@/components/board/dragMove";
 
 const dataOf = (collision: ReturnType<CollisionDetection>[number]) =>
   collision.data?.droppableContainer.data.current as DropTargetData | undefined;
@@ -8,16 +8,31 @@ const dataOf = (collision: ReturnType<CollisionDetection>[number]) =>
 const matching = (candidates: ReturnType<CollisionDetection>, type: DropTargetData["type"]) =>
   candidates.filter((collision) => dataOf(collision)?.type === type);
 
-export const boardCollisionDetection: CollisionDetection = (args) => {
-  const activeData = args.active.data?.current as DropTargetData | undefined;
+// dnd-kit shifts each measured rect by the board's scroll since measuring, but the sticky stage row stays put, so its cells are read where they are drawn.
+const withLiveStageRow = (args: Parameters<CollisionDetection>[0]): Parameters<CollisionDetection>[0] => {
+  const stage = new Map(
+    args.droppableContainers
+      .filter((container) => (container.data.current as DropTargetData | undefined)?.categoryId === STAGE_HEADER)
+      .map((container) => [container.id, container.node] as const),
+  );
+  // Collision detection only reads rects by id, so the rest pass through unread.
+  const droppableRects = {
+    get: (id) => stage.get(id)?.current?.getBoundingClientRect() ?? args.droppableRects.get(id),
+  } as Pick<typeof args.droppableRects, "get"> as typeof args.droppableRects;
+  return { ...args, droppableRects };
+};
+
+export const boardCollisionDetection: CollisionDetection = (rawArgs) => {
+  const activeData = rawArgs.active.data?.current as DropTargetData | undefined;
   // A column only ever swaps with same-stage columns in its own lane; pointer detection would keep landing on the cards inside them.
   if (activeData?.type === "column") {
-    return matching(closestCenter(args), "column").filter((collision) => {
+    return matching(closestCenter(rawArgs), "column").filter((collision) => {
       const data = dataOf(collision);
       return data?.type === "column" && data.categoryId === activeData.categoryId && data.kind === activeData.kind;
     });
   }
 
+  const args = withLiveStageRow(rawArgs);
   // The dragged ticket's own card droppable rides along with it; without this a hover self-drops instead of moving.
   const others = args.droppableContainers.filter((container) => container.id !== args.active.id);
   const isCard = (container: DroppableContainer) => (container.data.current as DropTargetData | undefined)?.type === "card";
