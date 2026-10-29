@@ -3,20 +3,25 @@ import { GitBranchIcon } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
 import type { Stack } from "@/models/Stack";
+import { cn } from "@/lib/utils";
 
 interface StackMetaLineProps {
   stack: Stack;
   image: string | undefined;
 }
 
-// Image refs, paths and names here are identifiers someone copies, so they wrap instead of truncating.
-const Mono = ({ title, children }: { title: string; children: ReactNode }) => (
-  <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs wrap-anywhere" title={title}>
-    {children}
+// Each fact carries the dot before it in a 1.25rem slot; the row is pulled 1.25rem left inside a clipping box, so the dot of
+// whichever fact starts a line falls outside and no line starts or ends on a dot. A long fact shortens on its own, and a
+// copy or the tooltip still gives the whole value.
+const Fact = ({ title, value, wide = false, children }: { title: string; value: string; wide?: boolean; children: ReactNode }) => (
+  <span className={cn("inline-flex min-w-0 items-center", wide && "max-w-full flex-[1_1_auto]")}>
+    <span aria-hidden className="w-5 shrink-0 text-center text-muted-foreground/50">·</span>
+    {/* A whole number of mono characters wide, so a cut fact's ellipsis sits flush. */}
+    <span className={cn("inline-flex min-w-0 items-center gap-1 font-mono text-xs", !wide && "max-w-[36ch]")} title={`${title}: ${value}`}>
+      {children}
+    </span>
   </span>
 );
-
-const Dot = () => <span aria-hidden className="text-muted-foreground/50">·</span>;
 
 const repoLabel = (stack: Stack): string | undefined => {
   const src = stack.build_source;
@@ -24,44 +29,43 @@ const repoLabel = (stack: Stack): string | undefined => {
   return `${src.repo_owner}/${src.repo_name}`;
 };
 
+const fileName = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
+
 // What the stack is, under its title: the slug, then where it runs and what it is built from.
 export const StackMetaLine = ({ stack, image }: StackMetaLineProps) => {
   const repo = repoLabel(stack);
-  const strategy = stack.compose_path ? `${stack.strategy} ${stack.compose_path}` : stack.strategy;
+  const branch = stack.build_source?.branch;
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-      <Mono title="Slug">{stack.slug}</Mono>
-      <Dot />
-      <Mono title="Runner">{stack.machine}</Mono>
-      <Dot />
-      <Mono title="Strategy">{strategy}</Mono>
+    <span className="block min-w-0 overflow-hidden">
+    <span className="-ml-5 flex min-w-0 flex-wrap items-center gap-y-0.5 text-muted-foreground">
+      <Fact title="Slug" value={stack.slug}>
+        <span className="truncate">{stack.slug}</span>
+      </Fact>
+      <Fact title="Runner" value={stack.machine}>
+        <span className="truncate">{stack.machine}</span>
+      </Fact>
+      <Fact title="Strategy" value={stack.compose_path ? `${stack.strategy} ${stack.compose_path}` : stack.strategy}>
+        <span className="truncate">{stack.compose_path ? `${stack.strategy} ${fileName(stack.compose_path)}` : stack.strategy}</span>
+      </Fact>
       {repo && (
-        <>
-          <Dot />
-          <Mono title="Repository">
-            {repo}
-            {stack.build_source?.branch && (
-              <>
-                <GitBranchIcon className="size-3 shrink-0" aria-hidden />
-                {stack.build_source.branch}
-              </>
-            )}
-          </Mono>
-        </>
+        <Fact wide title="Repository" value={branch ? `${repo} ${branch}` : repo}>
+          <span className="truncate">{repo}</span>
+          {branch && <GitBranchIcon className="size-3 shrink-0" aria-hidden />}
+          {branch && <span className="truncate">{branch}</span>}
+        </Fact>
       )}
       {!repo && stack.docker_network && (
-        <>
-          <Dot />
-          <Mono title="Network">{stack.docker_network}</Mono>
-        </>
+        <Fact title="Network" value={stack.docker_network}>
+          <span className="truncate">{stack.docker_network}</span>
+        </Fact>
       )}
       {stack.strategy !== "compose" && image && (
-        <>
-          <Dot />
-          <Mono title="Image">{image}</Mono>
-        </>
+        <Fact wide title="Image" value={image}>
+          <span className="truncate">{image}</span>
+        </Fact>
       )}
-      {!stack.managed && <NoFillBadge color="bg-muted-foreground">unmanaged</NoFillBadge>}
+      {!stack.managed && <NoFillBadge color="bg-muted-foreground" className="ml-5">unmanaged</NoFillBadge>}
+    </span>
     </span>
   );
 };

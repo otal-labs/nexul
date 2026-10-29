@@ -59,7 +59,10 @@ const renderPage = (path = "/acme/stacks/stack-1") =>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/acme/stacks/:stackId/:section?" element={<StackPage />} />
+          <Route path="/acme/stacks/:stackId" element={<StackPage tab="overview" />} />
+          <Route path="/acme/stacks/:stackId/deploys" element={<StackPage tab="deploys" />} />
+          <Route path="/acme/stacks/:stackId/logs/:service?" element={<StackPage tab="logs" />} />
+          <Route path="/acme/stacks/:stackId/settings/:section?" element={<StackPage tab="settings" />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -143,7 +146,7 @@ describe("StackPage", () => {
 
     serve({ error_rate_episode: episode });
     const open = renderPage();
-    expect((await health()).getByText("5xx 7.2%")).toBeInTheDocument();
+    expect((await health()).getByText("5xx 7.2% · 5 min")).toBeInTheDocument();
     expect((await health()).getByText(/^since \d\d:\d\d$/)).toBeInTheDocument();
     expect((await health()).queryByText("No issues")).not.toBeInTheDocument();
     expect(open.container.querySelector("section[aria-label='Live status'] .bg-warning")).not.toBeNull();
@@ -161,7 +164,7 @@ describe("StackPage", () => {
     expect((await health()).queryByText(/^5xx/)).not.toBeInTheDocument();
   });
 
-  it("puts Requests between Services and Deploy for a stack with a hostname, and leaves it out otherwise", async () => {
+  it("puts Requests after Services on the overview for a stack with a hostname, and leaves it out otherwise", async () => {
     const counted = { counted: true, from: "2026-10-16T09:43:00.000Z", requests: Array.from({ length: 60 }, () => 5), errors_5xx: Array.from({ length: 60 }, () => 0) };
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
@@ -172,7 +175,7 @@ describe("StackPage", () => {
     const { unmount } = renderPage();
     const titles = async () => (await screen.findAllByRole("heading", { level: 2 })).map((h) => h.textContent);
     await screen.findByText("requests in the last hour");
-    expect((await titles()).slice(0, 3)).toEqual(["Services", "Requests", "Deploy"]);
+    expect(await titles()).toEqual(["Services", "Requests"]);
     unmount();
 
     mocks.get.mockImplementation((url: string) => {
@@ -200,48 +203,49 @@ describe("StackPage", () => {
     expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 
-  it("shows the header with the strategy and runner facts, lists the sections and lands on the overview", async () => {
+  it("shows the header with the strategy and runner facts, lists the tabs and lands on the overview", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "api" });
     expect(screen.getByText("compose")).toBeInTheDocument();
     expect(screen.getByText("instance")).toBeInTheDocument();
     expect(screen.getByText("No deploys yet")).toBeInTheDocument();
-    expect(screen.getByText("api", { selector: "header span.font-mono" })).toBeInTheDocument();
+    expect(screen.getByTitle("Slug: api")).toHaveTextContent("api");
     expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "Stack sections" });
-    expect(nav).toHaveTextContent("Overview");
-    expect(nav).toHaveTextContent("Branch deploys");
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
+    const tabs = screen.getByRole("tablist", { name: "Stack" });
+    expect(within(tabs).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Overview", "Deploys", "Settings"]);
+    expect(within(tabs).getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Deploy" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Services" })).toBeInTheDocument();
   });
 
-  it("links to the logs from the nav and from each Services row for a viewer who can read them", async () => {
+  it("offers a Logs tab and links each Services row to its logs for a viewer who can read them", async () => {
     access.areas = ["dns", "stackLogs"];
     renderPage();
     await screen.findByRole("heading", { name: "Services" });
 
-    const logsLinks = await screen.findAllByRole("link", { name: "Logs" });
-    expect(logsLinks.map((link) => link.getAttribute("href")).sort()).toEqual([
-      "/acme/stacks/stack-1/logs",
-      "/acme/stacks/stack-1/logs/api",
-    ]);
+    expect(screen.getByRole("tab", { name: "Logs" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Logs of api" })).toHaveAttribute("href", "/acme/stacks/stack-1/logs/api");
   });
 
   it("offers no Logs entry or link without stacks:logs", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Services" });
-    await screen.findByText(/api-api-1/);
+    await screen.findByTitle(/^container api-api-1/);
 
-    expect(screen.queryByRole("link", { name: "Logs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Logs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Logs/ })).not.toBeInTheDocument();
   });
 
-  it("offers no image field on a compose stack without a repository, only the note that says why", async () => {
+  it("shows Deploy unavailable with the reason on a compose stack with no repository and nothing to roll back to", async () => {
+    const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("heading", { name: "Deploy" });
+    const deploy = await screen.findByRole("button", { name: "Deploy" });
+    expect(deploy).toHaveAttribute("aria-disabled", "true");
+    await user.click(deploy);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByText(/has no repository to build from and nothing running to redeploy/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /redeploy/i })).not.toBeInTheDocument();
+    await user.hover(deploy);
+    expect((await screen.findAllByText(/has no repository to build from and nothing running to redeploy/i)).length).toBeGreaterThan(0);
   });
 
   it("redeploys the running image of a run stack without a repository", async () => {
@@ -255,6 +259,7 @@ describe("StackPage", () => {
       return Promise.resolve({ data: [] });
     });
     renderPage();
+    await user.click(await screen.findByRole("button", { name: "Deploy" }));
     await user.click(await screen.findByRole("button", { name: "Redeploy" }));
     await vi.waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/deploys", {
@@ -266,6 +271,7 @@ describe("StackPage", () => {
   });
 
   it("builds from a ref when a repository is attached", async () => {
+    const user = userEvent.setup();
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") {
         return Promise.resolve({
@@ -276,6 +282,7 @@ describe("StackPage", () => {
       return Promise.resolve({ data: [] });
     });
     renderPage();
+    await user.click(await screen.findByRole("button", { name: "Deploy" }));
     expect(await screen.findByRole("button", { name: /build & deploy/i })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /build & deploy ref/i })).toHaveValue("main");
     expect(screen.queryByRole("button", { name: "Redeploy" })).not.toBeInTheDocument();
@@ -288,22 +295,22 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/acme/stacks/stack-1/branches");
+    renderPage("/acme/stacks/stack-1/settings/branches");
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Branch deploys" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Environment" })).toHaveAttribute("aria-current", "page");
   });
 
   it("hides the exposures section, and skips reading exposures, for a viewer who cannot read DNS", async () => {
     access.areas = ["projects", "topology"];
-    renderPage("/acme/stacks/stack-1/exposures");
+    renderPage("/acme/stacks/stack-1/settings/exposures");
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Exposures" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Environment" })).toHaveAttribute("aria-current", "page");
     expect(mocks.get).not.toHaveBeenCalledWith("/api/dns/exposures");
   });
 
-  it("lists each service with its image, container, hostname and addresses", async () => {
+  it("lists each service on one row: its image, its first hostname, the rest of its addresses and its container in the tooltips", async () => {
     const db = { ...container, id: "svc-2", name: "db", container_name: "api-db-1", image: "postgres:16", ports: ["5432/tcp"] };
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
@@ -315,19 +322,16 @@ describe("StackPage", () => {
     });
     renderPage();
 
-    const api = await screen.findByRole("list", { name: "Addresses of api" });
-    expect(within(api).getByRole("link", { name: "app.example.com" })).toHaveAttribute("href", "https://app.example.com");
-    expect(within(api).getByText("api:8080")).toBeInTheDocument();
-    expect(within(api).getByText("host :8080")).toBeInTheDocument();
-    const dbAddresses = screen.getByRole("list", { name: "Addresses of db" });
-    expect(within(dbAddresses).getByText("db:5432")).toBeInTheDocument();
-    expect(within(dbAddresses).queryByText(/host/)).not.toBeInTheDocument();
-    expect(screen.getByText("container api-db-1")).toBeInTheDocument();
-    expect(screen.getByText("ghcr.io/onik/api:v1")).toBeInTheDocument();
-    expect(screen.getByText("2 services on api_default", { exact: false })).toBeInTheDocument();
+    const services = await screen.findByRole("region", { name: "Services" });
+    expect(await within(services).findByRole("link", { name: "app.example.com" })).toHaveAttribute("href", "https://app.example.com");
+    expect(within(services).getByTitle("app.example.com api:8080 → host :8080")).toHaveTextContent("+1");
+    expect(within(services).getByTitle("db:5432")).toHaveTextContent("db:5432");
+    expect(within(services).getByTitle("container api-db-1 db:5432")).toHaveTextContent("db");
+    expect(within(services).getAllByTitle("ghcr.io/onik/api:v1")[0]).toHaveTextContent("api:v1");
+    expect(within(services).getByText("2 services on api_default")).toBeInTheDocument();
   });
 
-  it("counts a compose stack's services in the header instead of naming one image", async () => {
+  it("names the one service that is down in Health, and counts them once there are several", async () => {
     const stopped = { ...container, id: "svc-2", name: "worker", image: "worker:1", status: "exited" };
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
@@ -338,8 +342,7 @@ describe("StackPage", () => {
 
     const strip = await screen.findByRole("region", { name: "Live status" });
     expect(await within(strip).findByText("worker down")).toBeInTheDocument();
-    expect(within(strip).getByText("1 up")).toBeInTheDocument();
-    expect(screen.queryByText("Image")).not.toBeInTheDocument();
+    expect(within(strip).queryByText("Services")).not.toBeInTheDocument();
   });
 
   it("reads a service with an open outage as down even while the runner still sees it running", async () => {
@@ -353,7 +356,6 @@ describe("StackPage", () => {
 
     const strip = await screen.findByRole("region", { name: "Live status" });
     expect(await within(strip).findByText(`${container.name} down`)).toBeInTheDocument();
-    expect(within(strip).getByText("0 up")).toBeInTheDocument();
     expect(within(strip).queryByText("No issues")).not.toBeInTheDocument();
   });
 
@@ -376,12 +378,15 @@ describe("StackPage", () => {
         return Promise.resolve({ data: [] });
       });
 
-    it("rolls back to the image of the last healthy deploy", async () => {
+    it("offers Rollback to the image of the last healthy deploy under Deploy", async () => {
+      const user = userEvent.setup();
       serve([{ ...healthy, image: "ghcr.io/onik/api:v1" }]);
       renderPage();
 
+      await user.click(await screen.findByRole("button", { name: "Deploy" }));
       expect(await screen.findByRole("button", { name: "Rollback" })).toBeEnabled();
-      expect(screen.getByText("Rollback re-deploys ghcr.io/onik/api:v1, the last healthy image.")).toBeInTheDocument();
+      expect(screen.getByText("Last healthy image")).toBeInTheDocument();
+      expect(screen.getAllByTitle("ghcr.io/onik/api:v1").length).toBeGreaterThan(0);
     });
 
     it("offers no Rollback when the last healthy deploy left no image, which the server refuses", async () => {
@@ -416,7 +421,7 @@ describe("StackPage", () => {
   it("deletes the stack from the danger zone after confirming", async () => {
     const user = userEvent.setup();
     mocks._delete.mockResolvedValue({ data: {} });
-    renderPage("/acme/stacks/stack-1/danger");
+    renderPage("/acme/stacks/stack-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Delete stack" }));
     const dialog = await screen.findByRole("dialog", { name: "Delete api?" });
@@ -449,7 +454,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/acme/stacks/stack-1/danger");
+    renderPage("/acme/stacks/stack-1/settings/danger");
     const dangerZone = await screen.findByRole("region", { name: "Danger zone" });
     expect(within(dangerZone).getByText("app.example.com")).toBeInTheDocument();
   });
@@ -478,10 +483,11 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/acme/stacks/stack-1/history");
-    expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
+    renderPage("/acme/stacks/stack-1/deploys");
+    expect(await screen.findByRole("heading", { name: "Deploys" })).toBeInTheDocument();
+    expect(screen.getAllByTitle("ghcr.io/onik/api:v1").length).toBeGreaterThan(0);
     expect(within(screen.getByRole("region", { name: "Live status" })).getByText("3h ago")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Deploys/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByText("d-1")).not.toBeInTheDocument();
   });
 

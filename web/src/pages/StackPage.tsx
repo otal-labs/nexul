@@ -10,11 +10,11 @@ import { StackAlertsSection } from "@/components/stack/StackAlertsSection";
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
 import { ServicesSection } from "@/components/stack/ServicesSection";
-import { StackDeployActions } from "@/components/stack/StackDeployActions";
 import { StackEnvironmentSection } from "@/components/stack/StackEnvironmentSection";
 import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
+import { StackTabs, type StackTab } from "@/components/stack/StackTabs";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import { useAreaAccess, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
@@ -28,14 +28,12 @@ import { projectSettingsPath, projectTokenById } from "@/models/Project";
 const imageOf = (c: StackContainer | undefined): string | undefined => c?.image || c?.declared.image;
 
 interface StackPageProps {
-  // The logs route carries a service instead of a section segment.
-  forcedSection?: StackSection;
+  // Each tab is its own route; Settings carries its section as the next path segment.
+  tab?: StackTab;
 }
 
-// Same section-per-view shape as the settings pages: the :section path segment drives the card, StackNav lists sections.
-export const StackPage = ({ forcedSection }: StackPageProps) => {
+export const StackPage = ({ tab = "overview" }: StackPageProps) => {
   const { stackId = "", section: pathSection, service } = useParams();
-  const rawSection = forcedSection ?? pathSection;
   const { data: stack, isPending, error } = useFetchStack(stackId);
   const { data: projects = [] } = useFetchProjects();
   const { data: services } = useFetchStackServices(stackId);
@@ -46,7 +44,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
   const wsPath = useWorkspacePath();
   const { data: exposures } = useFetchExposures(showExposures);
 
-  const requested: StackSection = isStackSection(rawSection) ? rawSection : DEFAULT_STACK_SECTION;
+  const requested: StackSection = isStackSection(pathSection) ? pathSection : DEFAULT_STACK_SECTION;
   const showBranches = !!stack && !stack.derived_from;
   const hidden = (requested === "branches" && !showBranches) || (requested === "exposures" && !showExposures);
   const section = hidden ? DEFAULT_STACK_SECTION : requested;
@@ -66,32 +64,23 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {stack && (
-        <>
-          <StackHeaderSection
-            stack={stack}
-            latest={latest}
-            image={image}
-            hostnames={hostnames}
-          />
-          <SettingsShell className="mt-6" section={section} nav={<StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />}>
-            {section === "overview" && (
-              <>
-                <ServicesSection stackId={stack.id} />
-                <RequestsSection stack={stack} />
-                <StackDeployActions stack={stack} lastHealthy={lastHealthy} image={image} />
-              </>
-            )}
-            {section === "environment" && <StackEnvironmentSection stack={stack} image={image} />}
-            {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
-            {section === "alerts" && <StackAlertsSection stack={stack} />}
-            {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
-            {section === "branches" && <StackBranchDeploySection stack={stack} />}
-            {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} error={deploysError} />}
-            {section === "danger" && (
-              <StackDangerZoneSection stack={stack} projectPath={projectPath} hostnames={hostnames} />
-            )}
-          </SettingsShell>
-        </>
+        <div className="space-y-6">
+          <StackHeaderSection stack={stack} latest={latest} lastHealthy={lastHealthy} image={image} hostnames={hostnames} />
+          <StackTabs stackId={stack.id} active={tab} showLogs={showLogs} deployCount={deploys?.length} />
+          {tab === "overview" && <ServicesSection stackId={stack.id} />}
+          {tab === "overview" && <RequestsSection stack={stack} />}
+          {tab === "deploys" && <DeployHistorySection deploys={deploys} lastHealthy={lastHealthy} isLoading={deploysPending} error={deploysError} />}
+          {tab === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
+          {tab === "settings" && (
+            <SettingsShell section={section} nav={<StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} />}>
+              {section === "environment" && <StackEnvironmentSection stack={stack} image={image} />}
+              {section === "alerts" && <StackAlertsSection stack={stack} />}
+              {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
+              {section === "branches" && <StackBranchDeploySection stack={stack} />}
+              {section === "danger" && <StackDangerZoneSection stack={stack} projectPath={projectPath} hostnames={hostnames} />}
+            </SettingsShell>
+          )}
+        </div>
       )}
     </Container>
   );

@@ -31,7 +31,7 @@ const renderHeader = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
-        <StackHeaderSection stack={stack} latest={undefined} image={undefined} hostnames={[]} />
+        <StackHeaderSection stack={stack} latest={undefined} lastHealthy={undefined} image={undefined} hostnames={[]} />
       </MemoryRouter>
     </QueryClientProvider>,
   );

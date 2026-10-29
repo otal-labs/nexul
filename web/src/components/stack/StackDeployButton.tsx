@@ -3,16 +3,20 @@ import { HammerIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FormInput } from "@/components/FormInput";
-import { SettingsCard } from "@/components/settings/SettingsCard";
+import { MonoRef } from "@/components/MonoRef";
 import { ActionButton } from "@/components/action/ActionButton";
+import { LockedReason } from "@/components/action/LockedReason";
 import { SettingsHint } from "@/components/settings/SettingsHint";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
 import { useStackActions } from "@/hooks/useStackActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { DeployRefFormSchema, deployPath, type Deploy, type DeployRefFormData, type Stack } from "@/models/Stack";
+import { imageShortName } from "@/utils/ImageRefUtility";
 
-interface StackDeployActionsProps {
+interface StackDeployButtonProps {
   stack: Stack;
   lastHealthy: Deploy | undefined;
   // The image this stack currently runs: the latest deploy's, else what the runner observed.
@@ -123,7 +127,6 @@ const RollbackButton = ({ stack, image, deployPending, rollback }: RollbackButto
       verb="deploy"
       type="button"
       variant="outline"
-      size="sm"
       icon={RefreshCwIcon}
       onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       loading={rollback.isPending}
@@ -135,39 +138,61 @@ const RollbackButton = ({ stack, image, deployPending, rollback }: RollbackButto
   );
 };
 
+const NO_WAY = "This stack has no repository to build from and nothing running to redeploy.";
+
 // One way to get the next version per stack shape: build from a ref (repo attached), redeploy the running image
-// (run stack, no repo), or nothing until a repository is attached (compose always deploys from its repo).
-export const StackDeployActions = ({ stack, lastHealthy, image }: StackDeployActionsProps) => {
+// (run stack, no repo), or nothing until a repository is attached (compose always deploys from its repo); the way
+// back, Rollback, sits under it. The page's one primary action, so it has a fixed seat in the header.
+export const StackDeployButton = ({ stack, lastHealthy, image }: StackDeployButtonProps) => {
   const deploy = useDeployStack();
   const rollback = useRollbackStack();
+  const answer = useStackActions(stack);
   const canBuild = stack.build_source != null;
   const canRedeploy = !canBuild && stack.strategy === "run" && !!image;
   // A build leaves no image and the server refuses a rollback without one.
   const rollbackImage = lastHealthy?.image;
+  const nothing = !canBuild && !canRedeploy && !rollbackImage;
 
   return (
-    <SettingsCard
-      id="deploy"
-      title="Deploy"
-      description="How this stack gets its next version."
-      footer={
-        rollbackImage && (
-          <>
-            <p className="min-w-0 flex-1 text-xs break-words text-muted-foreground">
-              Rollback re-deploys {rollbackImage}, the last healthy image.
-            </p>
-            <RollbackButton stack={stack} image={rollbackImage} deployPending={deploy.isPending} rollback={rollback} />
-          </>
-        )
-      }
-    >
-      {canBuild && <BuildRefForm stack={stack} deploy={deploy} />}
-      {canRedeploy && image && <RedeployRow stack={stack} image={image} deploy={deploy} />}
-      {!canBuild && !canRedeploy && (
-        <SettingsHint>
-          This stack has no repository to build from and nothing running to redeploy, so it can't be deployed from here.
-        </SettingsHint>
+    <>
+      {nothing && (
+        <LockedReason reason={NO_WAY}>
+          <Button type="button" size="sm" aria-disabled onClick={(event) => event.preventDefault()} className="cursor-default bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.06]">
+            <RocketIcon /> Deploy
+          </Button>
+        </LockedReason>
       )}
-    </SettingsCard>
+      {!nothing && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <ActionButton
+              permission="deploys:write"
+              projectId={stack.project_id || undefined}
+              answer={answer("deploys:write")}
+              verb="deploy"
+              type="button"
+              size="sm"
+              icon={RocketIcon}
+            >
+              Deploy
+            </ActionButton>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-96 space-y-3 p-4">
+            {canBuild && <BuildRefForm stack={stack} deploy={deploy} />}
+            {canRedeploy && image && <RedeployRow stack={stack} image={image} deploy={deploy} />}
+            {!canBuild && !canRedeploy && <SettingsHint>{NO_WAY}</SettingsHint>}
+            {rollbackImage && (
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                <p className="min-w-0 flex-1 font-mono text-xs text-muted-foreground" title={rollbackImage}>
+                  <span className="block font-sans">Last healthy image</span>
+                  <MonoRef value={imageShortName(rollbackImage)} kind="image" title={rollbackImage} />
+                </p>
+                <RollbackButton stack={stack} image={rollbackImage} deployPending={deploy.isPending} rollback={rollback} />
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+      )}
+    </>
   );
 };

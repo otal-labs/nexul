@@ -15,44 +15,40 @@ To adopt containers already running on a machine instead, see [Importing what's 
 
 ## The stack page
 
-Open a stack from its project's services, or from its node on **Topology**. The page has these sections:
+Open a stack from its project's services, or from its node on **Topology**. The page has four tabs:
 
-| Section | What you do there |
+| Tab | What you do there |
 | --- | --- |
-| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports, which services are down, and the last hour of requests |
-| **Environment** | Add, change and remove the stack's environment variables |
+| **Overview** | See each service's image, status and how it is reached, which services are down, and the last hour of requests |
+| **Deploys** | Every build and deploy, newest first, with its log; **Failed** narrows the list |
 | **Logs** | Read each container's output live |
-| **Alerts** | Have a crashed service open a ticket in the stack's project, post crashes in a channel, and set the error-rate rule |
-| **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
-| **Branch deploys** | Deploy other branches as their own copies |
-| **Deploy history** | Every build and deploy, with its log |
-| **Danger zone** | Delete the stack |
+| **Settings** | **Environment** (the stack's variables), **Alerts** (crash tickets, crash notices in a channel, the error-rate rule), **Exposures** (route hostnames to the stack's containers, see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)), **Branch deploys** (deploy other branches as their own copies) and **Danger zone** (delete the stack) |
 
-Above the sections, a status strip reads **Health** (what is down or over its error-rate rule now), **Last deploy**, **Services** and **Hostnames**. Last deploy says how the latest deploy went (Succeeded, Failed, Running or Pending) and how long ago, never how the stack is doing; Health does that.
+Above the tabs, a status strip reads **Health** (what is down or over its error-rate rule now, and how long ago the runner last looked when that was over an hour ago), **Last deploy**, **Requests** and **Hostnames**. Last deploy says how the latest deploy went (Succeeded, Failed, Running or Pending) and when, never how the stack is doing; Health does that. Under it, **live** names the image that runs now. Requests is the last hour's total and its 5xx share. Hover a shortened name or image to read it whole; **+2 more** under Hostnames lists every hostname.
 
 The containers table is read-only. To change a container, change the compose file or Dockerfile and deploy again.
 
 ## Deleting a stack
 
-**Delete stack** removes the stack, its hostnames' routes and its services from Nexul, and keeps its deploy history. The machine's runner also removes the stack's containers: it brings a compose project down, or removes a single container. If the runner is offline, it removes them when it next connects, even if the instance restarts first. Volumes, networks and the stack's checkout stay on the machine either way.
+**Delete stack**, under **Settings → Danger zone**, removes the stack, its hostnames' routes and its services from Nexul, and keeps its deploy history. The machine's runner also removes the stack's containers: it brings a compose project down, or removes a single container. If the runner is offline, it removes them when it next connects, even if the instance restarts first. Volumes, networks and the stack's checkout stay on the machine either way.
 
 A stack adopted by [importing what's already running](/docs/guide/runners/#importing-whats-already-running) is the exception. Its containers were started outside Nexul, so deleting the stack leaves them running, and the confirm says so. A branch deployment torn down from its base stack is removed like any other stack.
 
 ## Deploying
 
-The **Deploy** card shows one way to ship, depending on the stack:
+**Deploy**, at the top right of the stack page, opens the one way to ship that fits the stack:
 
 - **A stack with a repository**: type a branch, tag or commit in **Build & deploy ref** and click **Build & deploy**. The runner builds it on the stack's machine and deploys the result.
 - **A single container with no repository**: **Redeploy** pulls the same image again and restarts the container.
-- **A compose stack with no repository**: attach a repository first.
+- **A compose stack with no repository**: attach a repository first. **Deploy** shows as unavailable and says why when you hover it.
 
-**Rollback** deploys the image of the last deploy that came up healthy. It shows only when that deploy has an image to go back to. A build leaves none, so a stack that builds from a repository has no Rollback; to go back, **Build & deploy** the earlier ref.
+**Rollback**, under the same button, deploys the image of the last deploy that came up healthy, which it names. It shows only when that deploy has an image to go back to. A build leaves none, so a stack that builds from a repository has no Rollback; to go back, **Build & deploy** the earlier ref.
 
 A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
 
 ## Environment
 
-**Environment** lists the stack's variables, a name and a value each. Values show as dots until you click **Reveal values**. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.
+**Settings → Environment** lists the stack's variables, a name and a value each. Values show as dots until you click **Reveal values**. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.
 
 Saving doesn't redeploy: the running containers keep their old values, and the next deploy starts with the new ones. **Deploy now**, beside **Save**, ships it at once. It builds the stack's branch when a repository is attached, and redeploys the running image of a single container without one. It waits until your changes are saved and takes `deploys:write`.
 
@@ -67,7 +63,7 @@ Saving doesn't redeploy: the running containers keep their old values, and the n
 A failed deploy's page has **Retry**. It starts a new deploy of the same commit the failed one built, with the stack's settings as they are now. Change what made it fail, such as a missing environment variable on the stack, click **Retry**, and the build runs again on the same code with the new value.
 
 - A deploy records the commit its runner checked out, shown beside its id. A deploy that failed before the checkout finished has no commit yet, so **Retry** builds the ref it was asked for. A single-container redeploy retries the same image.
-- The failed deploy stays in **Deploy history**, and the new one is a separate entry. **Retry** takes the `deploys:write` permission on the stack, the same as a deploy, and a stack runs one deploy at a time, so it is refused while another is pending or running.
+- The failed deploy stays in **Deploys**, and the new one is a separate entry. **Retry** takes the `deploys:write` permission on the stack, the same as a deploy, and a stack runs one deploy at a time, so it is refused while another is pending or running.
 - Agents retry with `stack_deploy` and `retry` set to the failed deploy's id, and read each deploy's `ref` and `commit` with `deploy_list` and the deploy's `id`.
 
 ## Who can see and deploy a stack
@@ -96,7 +92,7 @@ Nexul keeps no copy of what the container printed. Docker holds a crashed contai
 
 ### Crash tickets
 
-A stack can open a ticket for you. Turn on **Open a ticket when a service crashes** under **Alerts**; it is off until someone does. It needs the stack to be in a project, and changing it needs permission to change the stack. Agents set it with `stack_update` and its `crash_tickets` field, and `stack_get` shows it.
+A stack can open a ticket for you. Turn on **Open a ticket when a service crashes** under **Settings → Alerts**; it is off until someone does. It needs the stack to be in a project, and changing it needs permission to change the stack. Agents set it with `stack_update` and its `crash_tickets` field, and `stack_get` shows it.
 
 With it on, the first crash of a service opens one ticket in the project, titled like `api crashed: exit 137, out of memory`. The ticket takes the project's default ticket type and lands in its first stage, with nobody assigned, and it is created by the instance rather than by a person. Its body names the stack, service, machine, exit code and when it went down, and says to read the container's output with `stack_get` and `logs` for that service. It carries no output lines, since Nexul keeps none.
 
@@ -104,7 +100,7 @@ While that ticket is open, the next crash of the same service adds a comment to 
 
 ### Crash notices
 
-A stack can also post its crashes in a channel, for instance the one your app's own bot already posts its alerts to, so everything that needs attention lands in one place. Under **Alerts**, pick the channel in **Crash notices**, then under **Post as** either one of that channel's bots or **System message**. It needs the stack to be in a project, you must be able to post in the channel, and changing it needs permission to change the stack. **Off** stops the notices. Agents set it with `stack_update` and its `crash_notice_conversation_id` and `crash_notice_bot_id` fields, and `stack_get` shows them.
+A stack can also post its crashes in a channel, for instance the one your app's own bot already posts its alerts to, so everything that needs attention lands in one place. Under **Settings → Alerts**, pick the channel in **Crash notices**, then under **Post as** either one of that channel's bots or **System message**. It needs the stack to be in a project, you must be able to post in the channel, and changing it needs permission to change the stack. **Off** stops the notices. Agents set it with `stack_update` and its `crash_notice_conversation_id` and `crash_notice_bot_id` fields, and `stack_get` shows them.
 
 Each outage posts once, such as `` `web` crashed on `api`: exit 137, out of memory. ``, and its recovery posts once, such as `` `web` came back on `api` after 3m0s down. It crashed 2 more times meanwhile. `` A restart loop is one outage, so it is one post, not one per restart. With crash tickets on, each post ends with a link to the service's crash ticket. The error-rate rule posts the same way when it trips and when it recovers. If the channel or the bot is deleted, or the bot's creator can no longer post there, the notice is dropped and nothing else changes.
 
@@ -116,7 +112,7 @@ Agents change it with `stack_update` and `watching`, which needs only read acces
 
 ## Requests
 
-A stack with a hostname shows a **Requests** card on its **Overview**, between Services and Deploy. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Its footer states the stack's [error-rate rule](#error-rate). Nexul keeps only these per-minute counts, for a day, and never a request itself. It counts a stack's requests only while that rule is on; a stack with the rule off shows the card with one line saying so, with a link to **Alerts**.
+A stack with a hostname shows a **Requests** card on its **Overview**, under Services. It gives the last hour's total requests, the share that answered 5xx, and one bar for each minute, with the 5xx part of a bar in amber. Its footer states the stack's [error-rate rule](#error-rate). Nexul keeps only these per-minute counts, for a day, and never a request itself. It counts a stack's requests only while that rule is on; a stack with the rule off shows the card with one line saying so, with a link to **Alerts** under **Settings**.
 
 Where the counts come from depends on the gateway carrying the hostname:
 
@@ -127,7 +123,7 @@ A minute nobody could count, because the runner was offline or Cloudflare did no
 
 ## Error rate
 
-A stack can watch its own 5xx answers. Open **Alerts**, find the **Error rate** card and turn on **Alert when 5xx errors stay high**. It is off until someone does, and changing it takes permission to change the stack. By default it trips when more than **5%** of the requests in the last **5 minutes** answered 5xx, with at least **20** requests in those minutes, so one failed request at 3am wakes nobody. The three numbers are fields under the switch: the limit from 0.1% to 100%, the minutes from 1 to 60, and the request floor from 1 up, saved with **Save**. The rule counts all of the stack's hostnames together. Agents set it with `stack_update` and its `error_rate` field (`enabled`, `percent`, `minutes`, `min_requests`; numbers left out keep their values), and `stack_get` shows the rule as `error_rate`.
+A stack can watch its own 5xx answers. Open **Settings → Alerts**, find the **Error rate** card and turn on **Alert when 5xx errors stay high**. It is off until someone does, and changing it takes permission to change the stack. By default it trips when more than **5%** of the requests in the last **5 minutes** answered 5xx, with at least **20** requests in those minutes, so one failed request at 3am wakes nobody. The three numbers are fields under the switch: the limit from 0.1% to 100%, the minutes from 1 to 60, and the request floor from 1 up, saved with **Save**. The rule counts all of the stack's hostnames together. Agents set it with `stack_update` and its `error_rate` field (`enabled`, `percent`, `minutes`, `min_requests`; numbers left out keep their values), and `stack_get` shows the rule as `error_rate`.
 
 The rule needs request counts, so the switch is greyed out with its reason when it can't work: **Needs a hostname on this stack** for a stack that no hostname reaches, and **Your Cloudflare token can't read analytics; add Zone Analytics Read to it** for a Cloudflare tunnel hostname when the connected token lacks that permission. `stack_get` returns the reason as `error_rate_unavailable`. A rule that is already on can always be switched off.
 
@@ -142,7 +138,7 @@ Tripping and recovering publish `stack.error_rate_crossed` and `stack.error_rate
 
 ## Logs
 
-**Logs** shows what each container prints, one tab per service: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or **Pause** to stop following. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
+**Logs** shows what each container prints, one tab per service, each with a dot for how the service is doing: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or pause to stop following. The marker at the end of the toolbar says whether the stream is live, paused or offline. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
 
 When the stack's runner is offline, the view says so and keeps retrying; **Details** under the sentence shows the server's own message.
 
@@ -156,7 +152,7 @@ A branch deploy rule maps a branch pattern to a Docker network. The pattern is a
 - A wildcard rule deploys a separate copy for each matching branch, a preview deployment, and tears it down when the branch is deleted.
 - An exact rule with a name suffix, like `staging`, deploys one separate copy.
 
-To add a rule, open **Branch deploys** and fill in **Branch pattern**, **Docker network**, and optionally:
+To add a rule, open **Settings → Branch deploys** and fill in **Branch pattern**, **Docker network**, and optionally:
 
 - **Hostname template**: `{branch}` becomes the branch as a hostname label. For a wildcard, only the part the wildcard matched counts, so `feature/dot.test` under `feature/*` with `{branch}.example.com` is served at `dot-test.example.com`. Dots, slashes and capitals become dashes and lower case, cut to 63 characters. A template needs a **Port**.
 - **Overrides**: `KEY=value` lines that replace the stack's environment values for this branch only, such as a `DATABASE_URL` pointing at a test database. Remove an override and the next deploy of that branch goes back to the stack's value. Rules that redeploy the stack itself have nothing to override; edit the stack's environment instead.

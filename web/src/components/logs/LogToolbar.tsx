@@ -23,13 +23,14 @@ interface ToolButtonProps {
   icon: typeof CopyIcon;
   onClick: () => void;
   disabled: boolean;
+  pressed?: boolean;
 }
 
-// Copy and Download are well-known tools, so they are icons; the row then fits one line beside its status marker.
-const ToolButton = ({ label, icon: Icon, onClick, disabled }: ToolButtonProps) => (
+// Pause, Copy and Download are well-known tools, so they are icons; the row then fits one line beside its status marker.
+const ToolButton = ({ label, icon: Icon, onClick, disabled, pressed }: ToolButtonProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <Button type="button" variant="outline" size="icon" aria-label={label} onClick={onClick} disabled={disabled} className="size-8">
+      <Button type="button" variant="outline" size="icon" aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="size-8">
         <Icon aria-hidden />
       </Button>
     </TooltipTrigger>
@@ -50,11 +51,13 @@ export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onP
       <ToggleGroupItem value="all">All</ToggleGroupItem>
       <ToggleGroupItem value="errors">Errors</ToggleGroupItem>
     </ToggleGroup>
-    <Button type="button" variant="outline" size="sm" onClick={() => onPausedChange(!paused)}>
-      {paused && <PlayIcon aria-hidden />}
-      {!paused && <PauseIcon aria-hidden />}
-      {paused ? "Resume" : "Pause"}
-    </Button>
+    <ToolButton
+      label={paused ? "Resume" : "Pause"}
+      icon={paused ? PlayIcon : PauseIcon}
+      onClick={() => onPausedChange(!paused)}
+      disabled={status !== "live" && !paused}
+      pressed={paused}
+    />
     <ToolButton label="Copy" icon={CopyIcon} onClick={onCopy} disabled={empty} />
     <ToolButton label="Download" icon={DownloadIcon} onClick={onDownload} disabled={empty} />
     <LogStatusMarker status={status} reason={reason} paused={paused} />

@@ -37,6 +37,11 @@ export const ContainerStatus = {
 
 export type ContainerStatus = (typeof ContainerStatus)[keyof typeof ContainerStatus];
 
+// A service is down while its outage is open, or when the runner last saw its container exited or stopped. Health counts
+// these and the Services card lists them first, so the two always agree.
+export const isServiceDown = (c: Pick<Container, "name" | "status">, outages: Pick<ServiceOutage, "service">[] | undefined): boolean =>
+  c.status === ContainerStatus.Exited || c.status === ContainerStatus.Stopped || !!outages?.some((o) => o.service === c.name);
+
 export interface BuildSource {
   repo_owner?: string;
   repo_name?: string;

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatCalendarTime, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatColumnTime, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -95,5 +95,12 @@ describe("formatVersionTime", () => {
     expect(thisYear).toMatch(/25 .*14:23$|.* 25 14:23$/);
     expect(thisYear).not.toContain("2026");
     expect(formatVersionTime(new Date(2025, 9, 25, 14, 23).toISOString())).toContain("2025");
+  });
+});
+
+describe("formatColumnTime", () => {
+  it("writes every month in three letters, so a right-aligned column keeps one width", () => {
+    expect(formatColumnTime(new Date(2026, 8, 29, 17, 7).toISOString())).toMatch(/^29 Sep \d\d:\d\d$/);
+    expect(formatColumnTime(new Date(2026, 9, 6, 9, 5).toISOString())).toMatch(/^\u20076 Oct \d\d:\d\d$/);
   });
 });

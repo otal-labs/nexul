@@ -97,7 +97,7 @@ describe("RequestsSection", () => {
     renderSection({ ...stack, error_rate: { enabled: false, percent: 5, minutes: 5, min_requests: 20 } });
 
     expect(await screen.findByText(/^Not counted\. Turn on the error-rate rule in/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Alerts" })).toHaveAttribute("href", expect.stringMatching(/\/stacks\/stack-1\/alerts$/));
+    expect(screen.getByRole("link", { name: "Alerts" })).toHaveAttribute("href", expect.stringMatching(/\/stacks\/stack-1\/settings\/alerts$/));
     expect(screen.queryByText(/^No error-rate rule on this stack/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^No request data yet/)).not.toBeInTheDocument();
   });

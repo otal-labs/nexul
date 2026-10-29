@@ -25,8 +25,8 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
           <span className="text-2xl font-medium tracking-tight">{total.toLocaleString()}</span>{" "}
           <span className="text-muted-foreground">requests in the last hour</span>
         </p>
-        <p className="flex items-center gap-2 font-mono text-sm tabular-nums">
-          {errors > 0 && <span aria-hidden className="size-2 shrink-0 rounded-full bg-warning" />}
+        <p className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
+          {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning" />}
           {errors > 0 && <span>{`5xx ${formatShare(share)}`}</span>}
           {errors > 0 && <span className="text-muted-foreground">{`(${errors.toLocaleString()})`}</span>}
           {errors === 0 && <span className="text-muted-foreground">No 5xx</span>}
@@ -63,7 +63,6 @@ export const RequestsSection = ({ stack }: RequestsSectionProps) => {
         <SettingsCard
           id="requests"
           title="Requests"
-          description="What this stack's hostnames served in the last hour, counted a minute at a time."
           footer={rule.enabled && <p className="text-xs text-muted-foreground">{`Alert when ${ruleText(rule)}.`}</p>}
         >
           {hasData && <Summary requests={requests} />}
@@ -71,7 +70,7 @@ export const RequestsSection = ({ stack }: RequestsSectionProps) => {
           {!hasData && !rule.enabled && (
             <EmptyRow flush>
               Not counted. Turn on the error-rate rule in{" "}
-              <Link to={wsPath(`/stacks/${stack.id}/alerts`)} className="text-brand underline-offset-4 hover:underline">
+              <Link to={wsPath(`/stacks/${stack.id}/settings/alerts`)} className="text-brand underline-offset-4 hover:underline">
                 Alerts
               </Link>
               .
