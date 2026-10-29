@@ -50,7 +50,7 @@
 	--brand-foreground: light-dark(oklch(1 0 0), oklch(0.16 0.03 35));
 
 	--success: light-dark(#15803d, #4ade80);
-	--warning: light-dark(#b45309, #fbbf24);
+	--warning: light-dark(#8a6100, #fbbf24);
 	--info: light-dark(#0369a1, #5cc8f5);
 	--merged: light-dark(#8250df, #a371f7);
 	--destructive: light-dark(#dc2626, #f97066);

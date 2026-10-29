@@ -1,7 +1,7 @@
 // A type's icon color, 700 light and 400 dark to hold 3:1 on either canvas.
 const TICKET_TYPE_COLORS: Record<string, string> = {
   task: "text-slate-700 dark:text-slate-400",
-  bug: "text-red-700 dark:text-red-400",
+  bug: "text-rose-700 dark:text-rose-400",
   feature: "text-violet-700 dark:text-violet-400",
   chore: "text-amber-700 dark:text-amber-400",
   docs: "text-blue-700 dark:text-blue-400",

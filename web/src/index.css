@@ -111,7 +111,7 @@
 
   /* status — green for success/health only; the rest cool + AA-checked */
   --success: #15803d;
-  --warning: #b45309;
+  --warning: #8a6100;
   --info: #0369a1;
   --merged: #8250df;
   --destructive: #dc2626;

@@ -287,8 +287,8 @@ describe("TicketCard", () => {
       await vi.waitFor(() => {
         expect(screen.getByText("Bug").closest('[data-slot="no-fill-badge"]')?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug", "cyan").split(" "));
       });
-      // ticketTypeColor("Bug") on its own would hash to red, proving the configured color won, not a coincidence.
-      expect(ticketTypeColor("Bug")).toMatch(/red/);
+      // ticketTypeColor("Bug") on its own would fall back to rose, proving the configured color won, not a coincidence.
+      expect(ticketTypeColor("Bug")).toMatch(/rose/);
     });
 
     it("uses the backend-configured color for a label once fetched, not the hash", async () => {
