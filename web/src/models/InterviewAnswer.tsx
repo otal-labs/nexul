@@ -37,6 +37,8 @@ export interface SaveInterviewAnswerInput {
 export interface RowDraft extends ChecklistDraft {
   id: string;
   value: AnswerValue;
+  // The sources it names that still exist, in the order it named them.
+  cited: InterviewSource[];
   where: string;
 }
 
@@ -62,12 +64,8 @@ const sameValue = (draft: InterviewDraft, answer: InterviewAnswer): boolean =>
 // A draft as its question's row shows it; a draft older than an answer that differs from it was overridden and is not shown.
 export const rowDraft = (draft: InterviewDraft | undefined, answer: InterviewAnswer | undefined, sources: InterviewSource[]): RowDraft | undefined => {
   if (!draft) return undefined;
-  const from = draft.source_ids
-    .map((id) => sources.find((s) => s.id === id))
-    .filter((s) => s !== undefined)
-    .map(sourceName)
-    .join(", ");
-  const base = { id: draft.id, value: draftValue(draft), from, where: draft.where };
+  const cited = draft.source_ids.map((id) => sources.find((s) => s.id === id)).filter((s) => s !== undefined);
+  const base = { id: draft.id, value: draftValue(draft), from: cited.map(sourceName).join(", "), sources: cited.length, cited, where: draft.where };
   const answered = !!answer && !answer.skipped && (answer.selected.length > 0 || answer.text !== "");
   if (!answered) return { ...base, state: "open" };
   if (sameValue(draft, answer)) return { ...base, state: "confirmed" };
@@ -179,12 +177,26 @@ export const answersChangedSinceRun = (answers: InterviewAnswer[], trails: Trail
   return answers.filter((a) => Date.parse(a.answered_at) > Date.parse(generated)).length;
 };
 
-// What a drafting run started at since has left on the template's questions, worded as their list counts it: drafts waiting
-// on unanswered questions, then suggested changes to answered ones; a confirmed draft no longer counts.
-export const draftRunCount = (questions: InterviewQuestion[], answers: InterviewAnswer[], drafts: InterviewDraft[], since: number): string => {
-  const rows = buildSections(questions, answers, drafts.filter((d) => Date.parse(d.drafted_at) >= since))[0]?.rows ?? [];
-  const drafted = rows.filter((r) => r.draft?.state === "open").length;
-  const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
-  if (drafted === 0 && suggested > 0) return `${suggested} suggested`;
-  return [`${drafted} of ${rows.length} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
+export interface DiffLine {
+  sign: "+" | "-";
+  text: string;
+}
+
+const textDiff = (oldText: string, newText: string): DiffLine[] => {
+  if (oldText === newText) return [];
+  const lines: DiffLine[] = [];
+  if (oldText !== "") lines.push({ sign: "-", text: oldText });
+  if (newText !== "") lines.push({ sign: "+", text: newText });
+  return lines;
+};
+
+// What accepting a suggestion changes: picks it adds or drops, then the text it replaces, old before new.
+export const suggestionDiff = (answer: InterviewAnswer | undefined, value: AnswerValue): DiffLine[] => {
+  const was = answer?.selected ?? [];
+  const now = value.selected ?? [];
+  return [
+    ...now.filter((s) => !was.includes(s)).map((s): DiffLine => ({ sign: "+", text: s })),
+    ...was.filter((s) => !now.includes(s)).map((s): DiffLine => ({ sign: "-", text: s })),
+    ...textDiff((answer?.text ?? "").trim(), (value.text ?? "").trim()),
+  ];
 };

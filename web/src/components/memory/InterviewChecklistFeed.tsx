@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { InterviewDoneRow } from "@/components/memory/InterviewDoneRow";
+import { InterviewProgress } from "@/components/memory/InterviewProgress";
 import { InterviewQuestionForm } from "@/components/memory/InterviewQuestionForm";
 import { InterviewSuggestionCard } from "@/components/memory/InterviewSuggestionCard";
 import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
@@ -8,7 +9,7 @@ import { QuestionSection } from "@/components/questions/QuestionSection";
 import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
 import type { AnswerValue } from "@nexul/client-core/question";
 import type { InterviewRow, InterviewSectionData } from "@/models/InterviewAnswer";
-import { countLine, firstPendingKey, nextPendingKey, rowStatus } from "@nexul/client-core/questionChecklist";
+import { firstPendingKey, nextPendingKey, progressCounts, rowProgress, rowStatus } from "@nexul/client-core/questionChecklist";
 
 interface InterviewChecklistFeedProps {
   projectId: string;
@@ -47,6 +48,8 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
     if (section) setFolds((f) => ({ ...f, [section.key]: false }));
   };
 
+  const settled = (section: InterviewSectionData) => `${progressCounts(section.rows).answered}/${section.rows.length}`;
+
   const progressOf = (section: InterviewSectionData, i: number) =>
     section.key === "0" ? `Question ${i + 1} of ${section.rows.length}` : `Follow-up ${i + 1} of ${section.rows.length}`;
 
@@ -60,6 +63,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
 
   return (
     <div className="min-w-0 space-y-6">
+      <InterviewProgress sections={sections} current={current} onJump={() => move(rows.find((r) => rowProgress(r) === "drafted" || rowProgress(r) === "waiting")?.key ?? null)} />
       {memoryWithoutAnswers && (
         <p className="text-sm text-muted-foreground">
           An earlier interview wrote this memory. Answer these and the agent updates it.
@@ -69,7 +73,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
         <QuestionSection
           key={section.key}
           label={section.label}
-          meta={countLine(section.rows)}
+          meta={settled(section)}
           folded={folded(section)}
           onToggle={() => setFolds((f) => ({ ...f, [section.key]: !folded(section) }))}
         >
@@ -81,6 +85,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
                 number={rows.indexOf(row) + 1}
                 open={row.key === current}
                 readOnly={readOnly}
+                skippedLabel="Skipped · the agent will ask about it"
                 onToggle={() => move(row.key === current ? null : row.key)}
               >
                 {row.draft?.state === "suggested" && (

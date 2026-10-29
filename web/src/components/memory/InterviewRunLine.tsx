@@ -24,7 +24,7 @@ const STATE_LABEL: Record<TrailState, string> = {
 const lineFor = (state: TrailState | undefined, memory: Memory | undefined, changed: number): { label: string; detail: string } => {
   const written = memory ? `Written ${formatRelativeTime(memory.updated_at)}` : "";
   const ready = (state === undefined || state === "done") && memory;
-  if (ready && changed > 0) return { label: "Memory ready", detail: `${changed} ${changed === 1 ? "answer" : "answers"} changed` };
+  if (ready && changed > 0) return { label: "Memory out of date", detail: `${changed} ${changed === 1 ? "answer" : "answers"} changed since the memory was written` };
   if (ready) return { label: "Memory ready", detail: written };
   if (state === undefined) return { label: "Not generated yet", detail: "" };
   return { label: STATE_LABEL[state], detail: state === "running" || state === "starting" ? "" : written };
@@ -38,7 +38,7 @@ export const InterviewRunLine = ({ projectId, memory, changed }: InterviewRunLin
   const icon = state ?? (memory ? "done" : undefined);
   const { label, detail } = lineFor(state, memory, changed);
   return (
-    <p className="flex min-w-0 flex-1 basis-64 items-center gap-2 text-sm">
+    <p className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-2 gap-y-0.5 text-sm @min-[60rem]/interview:basis-64">
       {stale && (
         <span role="img" aria-label="out of date" className="flex size-3.5 shrink-0 items-center justify-center">
           <span className="size-2 rounded-full bg-warning" />
@@ -46,7 +46,7 @@ export const InterviewRunLine = ({ projectId, memory, changed }: InterviewRunLin
       )}
       {!stale && icon && <TrailStateIcon state={icon} />}
       <span className="shrink-0 font-medium">{label}</span>
-      {detail !== "" && <span className="truncate text-muted-foreground">· {detail}</span>}
+      {detail !== "" && <span className="min-w-0 text-muted-foreground">· {detail}</span>}
     </p>
   );
 };

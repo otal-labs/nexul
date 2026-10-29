@@ -116,8 +116,19 @@ export const isReadableTextFile = (file: File): boolean =>
 export const isNamed = (source: InterviewSource): boolean => !source.gone && !source.not_visible;
 
 // What to call a source: its name, or only its kind when it is gone or hidden from this reader.
-export const sourceName = (source: InterviewSource): string =>
-  isNamed(source) ? source.label : SOURCE_KIND_LABEL[source.kind];
+export const isRepositoryRoot = (source: InterviewSource): boolean => source.kind === "path" && source.label === ".";
+
+export const sourceName = (source: InterviewSource): string => {
+  if (!isNamed(source)) return SOURCE_KIND_LABEL[source.kind];
+  return isRepositoryRoot(source) ? "Repository root" : source.label;
+};
+
+// How many drafts name each source, by source id.
+export const citationCounts = (drafts: InterviewDraft[]): Map<string, number> => {
+  const counts = new Map<string, number>();
+  drafts.flatMap((d) => d.source_ids).forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
+  return counts;
+};
 
 export const sourcesMeta = (sources: InterviewSource[]): string => {
   if (sources.length === 0) return "None yet";

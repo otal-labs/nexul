@@ -121,6 +121,8 @@ const mockApi = ({ memories = [], questions = [organised, testing], answers = []
     if (url === "/api/memories/interview-template") return { data: { questions } };
     if (url === "/api/memories/interview-answers") return { data: answers };
     if (url === "/api/workspaces/ws-1/plays/applicable") return { data: plays };
+    if (url === "/api/pairing/resolve") return { data: { ok: true, computer_id: "c-1" } };
+    if (url === "/api/pairing/presence") return { data: { computers: { "c-1": "connected" } } };
     return { data: [] };
   });
 
@@ -188,7 +190,7 @@ describe("InterviewPage", () => {
     expect(await section(/Which words mean something here\?/)).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /How is the code organised\?/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Layers")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("1 answered · 1 skipped");
+    expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("1/3");
     // Asked by project, so a member in it can read the questions.
     expect(api.get).toHaveBeenCalledWith("/api/memories/interview-template", { params: { project_id: "p-1" } });
   });
@@ -240,7 +242,7 @@ describe("InterviewPage", () => {
     renderPage();
 
     expect(await section(/Initial questions/)).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("0 of 1 answered");
+    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("0/1");
     expect(screen.getByText("The checkout has two folders.")).toBeInTheDocument();
   });
 
@@ -273,7 +275,7 @@ describe("InterviewPage", () => {
     renderPage();
 
     expect(await screen.findByText("An earlier interview wrote this memory. Answer these and the agent updates it.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("0 of 2 answered");
+    expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("0/2");
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
     expect(screen.queryByText("## Stack")).not.toBeInTheDocument();
 
@@ -379,7 +381,7 @@ describe("InterviewPage", () => {
 
     expect(await screen.findByRole("button", { name: /Regenerate the memory/ })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "out of date" })).toBeInTheDocument();
-    expect(screen.getByText("· 1 answer changed")).toBeInTheDocument();
+    expect(screen.getByText("· 1 answer changed since the memory was written")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
 
     trails = [waitingTrail({ id: "tr-1", state: "done", question: null, ended_at: "2026-10-03T11:05:00Z" }), ...trails];
@@ -404,7 +406,7 @@ describe("InterviewPage", () => {
     mockApi({ memories: [interview], answers: [stored(0, organised.text, { answered_at: "2026-10-03T11:00:00Z" })], plays: [interviewPlay] });
     renderPage();
     expect(await screen.findByRole("button", { name: /Regenerate the memory/ })).toBeInTheDocument();
-    expect(screen.getByText("· 1 answer changed")).toBeInTheDocument();
+    expect(screen.getByText("· 1 answer changed since the memory was written")).toBeInTheDocument();
   });
 
   it("offers Done again after a run that failed before writing the memory", async () => {
@@ -465,7 +467,7 @@ describe("InterviewPage", () => {
       answers: { runner: { selected: ["vitest"] }, floor: { text: "85" } },
     });
     expect(await screen.findByText("85")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("2 of 2 answered");
+    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("2/2");
     expect(screen.queryByRole("radio", { name: "Vitest (Recommended)" })).not.toBeInTheDocument();
   });
 

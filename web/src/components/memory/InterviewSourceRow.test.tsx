@@ -19,7 +19,7 @@ const renderRow = (s: InterviewSource) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ul>
-        <InterviewSourceRow source={s} change={null} readOnly={false} />
+        <InterviewSourceRow source={s} change={null} cites={0} readOnly={false} />
       </ul>
     </QueryClientProvider>,
   );
@@ -50,6 +50,13 @@ describe("InterviewSourceRow", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Paste some text")).toBeInTheDocument();
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("moves a source to the other stance in one press", async () => {
+    const user = userEvent.setup();
+    renderRow(source({}));
+    await user.click(screen.getByRole("button", { name: "Move Huly to Follow" }));
+    expect(mocks.patch).toHaveBeenCalledWith("/api/memories/interview-sources/s-1", { stance: "follow" });
   });
 
   it("offers no edit on a source that lives elsewhere", () => {

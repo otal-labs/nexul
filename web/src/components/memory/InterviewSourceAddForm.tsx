@@ -55,10 +55,10 @@ export const InterviewSourceAddForm = ({ projectId, onClose }: InterviewSourceAd
         aria-label="Add a source"
         className="animate-in fade-in-0 slide-in-from-top-1 space-y-4 rounded-lg border border-border p-4 duration-200 ease-out"
       >
-        <ToggleGroup type="single" variant="segmented" size="xs" aria-label="Kind of source" value={kind} onValueChange={pickKind}>
+        <ToggleGroup type="single" variant="segmented" size="xs" aria-label="Kind of source" value={kind} onValueChange={pickKind} className="w-full">
           {SOURCE_KINDS.map((k) => (
-            <ToggleGroupItem key={k} value={k}>
-              {SOURCE_KIND_LABEL[k]}
+            <ToggleGroupItem key={k} value={k} className="h-6 min-w-0 flex-1 px-1.5">
+              {k === "text" ? "Text" : SOURCE_KIND_LABEL[k]}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
-import { DraftedTag, QuestionOptionRow } from "@/components/questions/QuestionOptionRow";
-import { optionValue, toggleOption, type AnswerValue, type QuestionItem, type QuestionOption } from "@nexul/client-core/question";
-import { cn } from "@/lib/utils";
+import { QuestionOptionRow } from "@/components/questions/QuestionOptionRow";
+import { optionValue, toggleOption, type AnswerValue, type QuestionItem } from "@nexul/client-core/question";
 
 interface QuestionStepProps {
   item: QuestionItem;
@@ -15,8 +14,6 @@ interface QuestionStepProps {
   idPrefix: string;
   draft: AnswerValue | undefined;
   onDraft: (value: AnswerValue) => void;
-  // What a drafting run proposed, tagged on its options and its text.
-  drafted?: AnswerValue | undefined;
   // A line under the hint, such as where a draft came from.
   note?: ReactNode;
   // A question without options takes a growing text box, where Enter is a new line, instead of a one-line field.
@@ -26,11 +23,9 @@ interface QuestionStepProps {
 const listClass = "mt-2 divide-y divide-border overflow-hidden rounded-md border border-border";
 
 // The answering part of one question, under whatever title its host gives it: the hint muted, the option rows, the free text.
-export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, multiline = false }: QuestionStepProps) => {
+export const QuestionStep = ({ item, idPrefix, draft, onDraft, note, multiline = false }: QuestionStepProps) => {
   const textBox = multiline && item.options.length === 0;
   const selected = draft?.selected ?? [];
-  const isDrafted = (option: QuestionOption) => drafted?.selected?.includes(optionValue(option)) ?? false;
-  const draftedText = (drafted?.text ?? "") !== "";
   const rowId = (i: number) => `${idPrefix}-option-${i}`;
   return (
     <div>
@@ -45,7 +40,6 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, mu
                 number={i + 1}
                 option={option}
                 checked={selected.includes(optionValue(option))}
-                drafted={isDrafted(option)}
                 htmlFor={rowId(i)}
                 control={<RadioGroupItem id={rowId(i)} value={optionValue(option)} aria-label={option.label} />}
               />
@@ -61,7 +55,6 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, mu
               number={i + 1}
               option={option}
               checked={selected.includes(optionValue(option))}
-              drafted={isDrafted(option)}
               htmlFor={rowId(i)}
               control={
                 <Checkbox
@@ -75,11 +68,6 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, mu
           ))}
         </ul>
       )}
-      {draftedText && (
-        <div className="mt-2 flex justify-end">
-          <DraftedTag />
-        </div>
-      )}
       {textBox && (
         <Textarea
           aria-label="Your answer"
@@ -87,7 +75,7 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, mu
           rows={1}
           value={draft?.text ?? ""}
           onChange={(e) => onDraft({ text: e.target.value })}
-          className={cn("field-sizing-content min-h-8 resize-none py-1.5 text-sm", draftedText ? "mt-1" : "mt-2")}
+          className="mt-2 field-sizing-content min-h-8 resize-none py-1.5 text-sm"
         />
       )}
       {!textBox && (
@@ -97,7 +85,7 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, mu
           placeholder={item.options.length > 0 ? "Something else…" : "Your answer"}
           value={draft?.text ?? ""}
           onChange={(e) => onDraft({ text: e.target.value })}
-          className={cn("h-8 text-sm", draftedText ? "mt-1" : "mt-2")}
+          className="mt-2 h-8 text-sm"
         />
       )}
     </div>

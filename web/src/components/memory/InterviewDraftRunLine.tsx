@@ -1,8 +1,7 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
-import { useFetchInterviewDrafts, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
-import { useFetchInterviewAnswers, useFetchProjectInterviewTemplate } from "@/hooks/MemoryHooks";
-import { draftRunCount } from "@/models/InterviewAnswer";
+import { useFetchInterviewSources, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
+import { lastDraftedAt, sourceChange } from "@/models/InterviewSource";
 import type { TrailState } from "@/models/Trail";
 
 interface InterviewDraftRunLineProps {
@@ -18,23 +17,22 @@ const STATE_LABEL: Record<TrailState, string> = {
   interrupted: "Drafting stopped",
 };
 
-// The latest drafting run as one line: its trail icon, its state, and what it drafted that still waits on the person.
+// The latest drafting run's state and how many sources changed after it; its drafts are counted in the progress line.
 export const InterviewDraftRunLine = ({ projectId }: InterviewDraftRunLineProps) => {
-  const latest = useInterviewTrails(projectId).drafting?.[0];
+  const drafting = useInterviewTrails(projectId).drafting;
+  const latest = drafting?.[0];
+  const { data: sources } = useFetchInterviewSources(projectId);
+  const since = drafting && lastDraftedAt(drafting);
   const state = usePlayRunStore((s) => (latest ? (s.frames[latest.id]?.state ?? latest.state) : undefined));
-  const { data: drafts } = useFetchInterviewDrafts(projectId);
-  const { data: template } = useFetchProjectInterviewTemplate(projectId);
-  const { data: answers } = useFetchInterviewAnswers(projectId);
+  const changed = state === "done" ? (sources ?? []).filter((s) => sourceChange(s, since) !== null).length : 0;
   if (!latest || !state) return null;
   return (
-    <p className="flex min-w-0 items-center gap-2 px-1.5 py-1 text-sm">
+    <p className="flex min-w-0 items-center gap-2 px-1.5 text-xs text-muted-foreground">
       <TrailStateIcon state={state} />
-      <span className="shrink-0 font-medium">{STATE_LABEL[state]}</span>
-      {template && answers && (
-        <span className="truncate text-muted-foreground tabular-nums">
-          · {draftRunCount(template.questions, answers, drafts ?? [], Date.parse(latest.started_at))}
-        </span>
-      )}
+      <span className="truncate">
+        {STATE_LABEL[state]}
+        {changed > 0 && ` · ${changed} ${changed === 1 ? "source" : "sources"} changed since drafting`}
+      </span>
     </p>
   );
 };

@@ -1308,6 +1308,23 @@ written and its reply under its header, folded or not. The page opens on
 Questions while some wait. `DocQuestionsPanel` in
 `web/src/components/doc/clarification/` is the reference.
 
+Interview. The page caps at 68rem and has two tabs, Questions and Memory.
+Questions opens on a meter, one 4px segment per question grouped by round
+(answered ink at 55%, skipped at 20%, a draft or suggestion waiting `warning`
+at 45%, unanswered a hairline, the open one `brand`), over one mono line from
+the same partition: answered, skipped, and a "need you" button that opens the
+first. The rows are the shared checklist: one glyph each (a check, a dash, or
+the number with a `warning` dot while a draft waits), titles that wait on the
+person in ink at 500, settled ones muted, and the open row as the current row.
+A draft names its sources as neutral chips that open them. A suggested change
+is a `surface-2` well: Now, then each pick or sentence it adds (+, `success`)
+or drops (−, `destructive`). From a 60rem container the sources sit in a 20rem
+rail beside the list, sticky with its own scroll, grouped Follow and Question
+under microheaders, each row's citation count giving way to its actions on
+hover and focus; a chip hovered lights its row there. Below 60rem the rail
+stacks under the list. `ProjectInterview` and `InterviewSourcesSection` in
+`web/src/components/memory/` are the reference.
+
 Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,
 the workspace switcher (a 32px initial tile), then one scroll: Search and
 Inbox, the project (its switcher leads with the project mark at 28px, then
