@@ -1,28 +1,29 @@
 import { DueTicketRow } from "@/components/calendar/DueTicketRow";
 import { MeetingEntryRow } from "@/components/calendar/MeetingEntryRow";
 import type { DayEntries } from "@/hooks/useCalendarEntries";
+import { cn } from "@/lib/utils";
+import { overlapsEarlier } from "@/utils/CalendarUtility";
 
 interface DayEntriesListProps {
   entries: DayEntries;
   detailed?: boolean;
-  // A month cell shows this many and leaves the rest to its week.
-  limit?: number;
 }
 
-// Due tickets lead, being all-day; meetings follow in start order.
-export const DayEntriesList = ({ entries, detailed = false, limit = Infinity }: DayEntriesListProps) => {
-  const shownDue = entries.due.slice(0, limit);
-  const shownMeetings = entries.meetings.slice(0, limit - shownDue.length);
+// Due tickets lead, being all-day; meetings follow in start order, the week marking one that starts inside another.
+export const DayEntriesList = ({ entries, detailed = false }: DayEntriesListProps) => {
+  const live = entries.meetings.map(({ meeting, occurrence }) => ({ ...occurrence, ...(meeting.cancelled_at ? { ends_at: occurrence.starts_at } : {}) }));
+  const overlaps = detailed ? overlapsEarlier(live) : [];
   return (
-    <ul className="space-y-0.5">
-      {shownDue.map((ticket) => (
-        <li key={ticket.id}>
+    <ul className={cn(!detailed && "space-y-px")}>
+      {entries.due.map((ticket) => (
+        // A box gives a pixel of its line to the gap, so two stacked boxes never read as one doubled hairline.
+        <li key={ticket.id} className={cn(!detailed && "pb-px")}>
           <DueTicketRow ticket={ticket} detailed={detailed} />
         </li>
       ))}
-      {shownMeetings.map((entry) => (
+      {entries.meetings.map((entry, i) => (
         <li key={`${entry.meeting.id}@${entry.occurrence.slot}`}>
-          <MeetingEntryRow entry={entry} detailed={detailed} />
+          <MeetingEntryRow entry={entry} detailed={detailed} overlaps={overlaps[i] === true && !entry.meeting.cancelled_at} />
         </li>
       ))}
     </ul>

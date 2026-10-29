@@ -105,12 +105,12 @@ describe("CalendarPage", () => {
     expect(await screen.findByRole("heading", { name: /November 2026/ })).toBeInTheDocument();
   });
 
-  it("opens a busy day's week from its more row", async () => {
+  it("counts what a busy day has no line for beside its number, and opens its week from the count", async () => {
     const many = Array.from({ length: 5 }, (_, i) => meetingOf({ id: `m-${i + 10}`, title: `Sync ${i}`, starts_at: at(4, i + 1), ends_at: at(4, i + 1, 30) }));
     data.range = { meetings: many, occurrences: many.map((m) => occurrenceOf(m)) };
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole("button", { name: "2 more" }));
+    await user.click(await screen.findByRole("button", { name: "+1, show the week" }));
     expect(useCalendarStore.getState().view).toBe("week");
     expect(await screen.findAllByRole("button", { name: /Sync/ })).toHaveLength(5);
   });

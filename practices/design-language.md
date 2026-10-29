@@ -750,21 +750,37 @@ page that works as a full detail view is not forced into a drawer.
 
 Calendar. A page of its own, not a list pane: the title and New meeting over
 one toolbar row of previous, next and Today as outline buttons, the period's
-name, and a Month | Week segmented control at the right. The month is a
-hairline grid of seven columns, a week to a row, each cell its day number
-(today in an ink disc, never the accent) over its entries; days of the
-neighbouring months are muted, and a cell past three entries ends in "N more",
-which opens that day's week. The week is seven hairline rows, the weekday and
-number on the left and every entry beside it in time order. An entry is one
-line, a mono time then the title, the title wrapping under the time when the
-cell is narrow; a due ticket leads its day with a small calendar icon, its key
-in mono and its title; a cancelled meeting is muted and struck through and
-opens like any other. A meeting opens in the right sheet, its address
+name, and a Month | Week segmented control at the right, every control 32px;
+the header drops its hairline here, and the view fills the rest of the panel.
+The month is a hairline grid of seven columns, the weekend's at 0.65 of a
+weekday's above 880px of grid, a week to a row; the rows share the panel's
+height above a floor that fits a cell's head and its lines, so nothing clips
+and a short screen scrolls. A cell holds five lines in a five-week month and
+four in a six-week one, a number taken from the week count, never measured.
+Its head is the day number (today in an ink disc, never the accent) and, at the
+right, what had no line, counted by kind in mono (`+1 due · +3`, the total
+alone under 880px), a button that opens that day's week. Days of the
+neighbouring months sit in the board's `well-shade`, and the grid ends in 8px
+corners. Due tickets lead as outlined
+boxes (4px, `foreground` at 4%, a hairline ring, the calendar-clock icon and
+the title, the key in the tooltip), giving lines to the meetings while they
+need them; a meeting is one 20px line, its zero-padded start in mono on a lead
+track so every title starts on one edge. Under 880px of grid the title takes the
+whole line, the time and the box's icon left to the tooltip and the box.
+The week is seven days, each a heading of its number and weekday over its
+entries on shared tracks: a 120px lead (the zero-padded range, a `warning` dot
+before one that starts inside an earlier meeting, `+1` after one that runs
+past midnight; a due ticket's icon and "Due"), the title capped at 40rem with a
+due ticket's key after it in mono, and from 1100px of grid the meeting's place
+and how many are coming, muted, at the right; an empty day says "Nothing
+scheduled". A cancelled meeting is muted, its title struck through, and opens
+like any other. A meeting opens in the right sheet, its address
 `?meeting=<id>&slot=<occurrence>` so a notice can link to it: title and time in
-the header, facts, notes, the people grouped Coming, Declined and No reply, and
-what the viewer can do at the foot. The grid stands while the next period
-loads, so stepping never swaps it for a spinner. New meeting and Edit are one
-form dialog at 36rem.
+the header, facts, the people grouped Coming, Declined and No reply, the notes
+held to eight lines behind Show all, and what the viewer can do at the foot
+(Cancel meeting, never a bare Cancel beside the sheet's close). The grid stands
+while the next period loads, so stepping never swaps it for a spinner. New
+meeting and Edit are one form dialog at 36rem.
 
 Ticket page. The page runs the full width beside the sidebar, with no centred
 cap, as one full-height panel. Its header spans the panel, so a long title

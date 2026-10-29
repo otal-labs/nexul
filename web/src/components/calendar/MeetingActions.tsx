@@ -29,7 +29,7 @@ export const MeetingActions = ({ meeting, slot }: MeetingActionsProps) => {
       {canChange && !cancelled && (
         <Button variant="outline" size="sm" loading={pending} onClick={() => void cancel()}>
           <XIcon aria-hidden />
-          Cancel
+          Cancel meeting
         </Button>
       )}
       {canChange && cancelled && (

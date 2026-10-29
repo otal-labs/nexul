@@ -22,6 +22,19 @@ const noEntries: DayEntries = { due: [], meetings: [] };
 
 export const entriesOn = (byDay: Map<string, DayEntries>, day: Date): DayEntries => byDay.get(dayKey(day)) ?? noEntries;
 
+export interface ShownEntries extends DayEntries {
+  hiddenDue: number;
+  hiddenMeetings: number;
+}
+
+// Due tickets lead but leave a busy day two lines of meetings at least; a band with room to spare gives it to the other.
+export const shownIn = (entries: DayEntries, lines: number): ShownEntries => {
+  const dueRoom = Math.max(Math.min(2, lines - 2), lines - entries.meetings.length);
+  const due = entries.due.slice(0, dueRoom);
+  const meetings = entries.meetings.slice(0, lines - due.length);
+  return { due, meetings, hiddenDue: entries.due.length - due.length, hiddenMeetings: entries.meetings.length - meetings.length };
+};
+
 // What the view shows; its days come from the view alone, so the grid stands while its entries load.
 export const useCalendarEntries = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);

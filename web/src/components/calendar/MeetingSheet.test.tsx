@@ -56,7 +56,7 @@ describe("the meeting panel", () => {
   it("shows what, when, where, the notes and who is coming, declined and silent", async () => {
     renderSheet([], weekly, SLOT);
     expect(await screen.findByRole("heading", { name: "Standup" })).toBeInTheDocument();
-    expect(screen.getByText(/10:00 – 10:30|10:00 AM – 10:30 AM/)).toBeInTheDocument();
+    expect(screen.getByText(/10:00–10:30|10:00 AM–10:30 AM/)).toBeInTheDocument();
     expect(screen.getByText("Weekly")).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: /Join huddle/ })).toHaveAttribute("href", "/acme/chat/vc-1");
     expect(screen.getByText("updates").tagName).toBe("STRONG");
@@ -111,7 +111,7 @@ describe("who may change a meeting", () => {
     await screen.findByRole("heading", { name: meeting.title });
     await settle();
     expect(!!screen.queryByRole("button", { name: "Edit" })).toBe(may);
-    expect(!!screen.queryByRole("button", { name: "Cancel" })).toBe(may);
+    expect(!!screen.queryByRole("button", { name: "Cancel meeting" })).toBe(may);
   });
 
   it("offers Restore, not Cancel, on a cancelled meeting, and restores it", async () => {
@@ -119,7 +119,7 @@ describe("who may change a meeting", () => {
     renderSheet(["calendar:write"], cancelled);
     vi.mocked(api.patch).mockResolvedValue({ data: { ...cancelled, cancelled_at: undefined } });
     const restore = await screen.findByRole("button", { name: "Restore" });
-    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel meeting" })).not.toBeInTheDocument();
     await user.click(restore);
     await waitFor(() => expect(lastPatch()).toEqual(["/api/meetings/m-c", { cancelled: false }]));
   });
@@ -130,7 +130,7 @@ describe("cancelling", () => {
     const user = userEvent.setup();
     renderSheet(["calendar:write"], mine);
     vi.mocked(api.patch).mockResolvedValue({ data: { ...mine, cancelled_at: at(3, 9) } });
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     expect(await screen.findByText(/Cancel this meeting\? Everyone invited is told/)).toBeInTheDocument();
     expect(api.patch).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Cancel meeting" }));
@@ -140,7 +140,7 @@ describe("cancelling", () => {
   it("keeps the meeting when the confirmation is declined", async () => {
     const user = userEvent.setup();
     renderSheet(["calendar:write"], mine);
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     await user.click(await screen.findByRole("button", { name: "Keep" }));
     expect(api.patch).not.toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe("cancelling", () => {
     renderSheet(["calendar:write"], weekly, SLOT);
     const rest = { ...weekly, id: "m-rest", starts_at: SLOT, cancelled_at: at(3, 9) };
     vi.mocked(api.patch).mockResolvedValue({ data: rest });
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     expect(await screen.findByRole("radio", { name: "This meeting" })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: "This and following meetings" }));
     await user.click(screen.getByRole("button", { name: "Cancel meeting" }));
@@ -164,7 +164,7 @@ describe("cancelling", () => {
     const user = userEvent.setup();
     renderSheet(["calendar:write"], weekly, SLOT);
     vi.mocked(api.patch).mockResolvedValue({ data: { ...weekly, id: "m-one", repeats: "none", series_id: "m-w", replaces_at: SLOT, cancelled_at: at(3, 9) } });
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     await waitFor(() => expect(lastPatch()).toEqual(["/api/meetings/m-w", { cancelled: true, slot: SLOT, scope: "this" }]));
     await waitFor(() => expect(screen.getByLabelText("where")).toHaveTextContent(/^\?meeting=m-one$/));
@@ -173,11 +173,11 @@ describe("cancelling", () => {
   it("goes back to the panel when the scope question is dismissed", async () => {
     const user = userEvent.setup();
     renderSheet(["calendar:write"], weekly, SLOT);
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel meeting" }));
     await user.click(await screen.findByRole("button", { name: "Keep" }));
     await waitFor(() => expect(screen.queryByRole("radio", { name: "This meeting" })).not.toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Standup" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel meeting" })).toBeInTheDocument();
     expect(api.patch).not.toHaveBeenCalled();
   });
 });
