@@ -7,7 +7,7 @@ import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { useUpdateAutomationConfig } from "@/hooks/AutomationHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useFlash } from "@/hooks/useFlash";
-import { parseConfigSchema, parseConfigValues } from "@/models/Automation";
+import { configValuesToSave, parseConfigSchema, parseConfigValues } from "@/models/Automation";
 import type { Automation } from "@/models/Automation";
 
 interface AutomationConfigFormProps {
@@ -24,12 +24,14 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
   const writable = useActionState({ permission: "automations:write" }).state === "live";
   const form = useForm<Record<string, string>>({
     disabled: !writable,
-    defaultValues: Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? f.default ?? ""])),
+    defaultValues: Object.fromEntries(
+      fields.map((f) => [f.key, values[f.key] ?? f.default ?? (f.type === "boolean" ? "false" : "")]),
+    ),
   });
 
   const [saved, flash] = useFlash();
   const onSubmit = (data: Record<string, string>) =>
-    updateConfig.mutate(data, {
+    updateConfig.mutate(configValuesToSave(fields, data), {
       onSuccess: () => {
         form.reset(data);
         flash();

@@ -52,7 +52,7 @@ export const useCreateAutomation = () => {
 export const useUpdateAutomationConfig = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("automations:write", async (configValues: Record<string, string>) =>
+    mutationFn: requires("automations:write", async (configValues: Record<string, string | number | boolean>) =>
       (await api.patch<Automation>(`/api/automations/${id}/config`, { config_values: configValues })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });

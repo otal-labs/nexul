@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { AutomationKind } from "@/enums/Automation";
 import {
   automationNeedsConfiguration,
+  configValuesToSave,
   parseConfigSchema,
   parseConfigValues,
   type Automation,
@@ -57,6 +58,21 @@ describe("parseConfigSchema", () => {
     expect(schema.fields[2]).toMatchObject({ key: "note", type: "string", default: "hi" });
   });
 
+  it("reads boolean, number and integer properties as their own types, defaults as text", () => {
+    const schema = parseConfigSchema({
+      properties: {
+        onlyFailures: { type: "boolean", default: false },
+        limit: { type: "number", default: 5 },
+        retries: { type: "integer" },
+      },
+    });
+    expect(schema.fields.map((f) => [f.type, f.default])).toEqual([
+      ["boolean", "false"],
+      ["number", "5"],
+      ["number", undefined],
+    ]);
+  });
+
   it("falls back to the key as label and string type for unknown formats", () => {
     const schema = parseConfigSchema({ properties: { plain: { type: "string", format: "mystery" } } });
     expect(schema.fields[0]).toMatchObject({ key: "plain", label: "plain", type: "string" });
@@ -69,8 +85,34 @@ describe("parseConfigValues", () => {
     expect(parseConfigValues("nope")).toEqual({});
   });
 
-  it("keeps only string-valued entries", () => {
-    expect(parseConfigValues({ a: "1", b: 2, c: "3" })).toEqual({ a: "1", c: "3" });
+  it("keeps scalar entries as text and drops the rest", () => {
+    expect(parseConfigValues({ a: "1", b: 2, c: false, d: null, e: { nested: true } })).toEqual({
+      a: "1",
+      b: "2",
+      c: "false",
+    });
+  });
+});
+
+describe("configValuesToSave", () => {
+  const { fields } = parseConfigSchema({
+    properties: {
+      note: { type: "string" },
+      onlyFailures: { type: "boolean" },
+      limit: { type: "number" },
+    },
+  });
+
+  it("sends booleans and numbers as their JSON types", () => {
+    expect(configValuesToSave(fields, { note: "hi", onlyFailures: "true", limit: "12" })).toEqual({
+      note: "hi",
+      onlyFailures: true,
+      limit: 12,
+    });
+  });
+
+  it("leaves out an empty number and reads a missing boolean as false", () => {
+    expect(configValuesToSave(fields, { note: "", limit: " " })).toEqual({ note: "", onlyFailures: false });
   });
 });
 

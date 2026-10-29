@@ -105,6 +105,33 @@ describe("AutomationConfigForm", () => {
     );
   });
 
+  it("saves a switch and a number field as a boolean and a number", async () => {
+    mocks.patch.mockResolvedValue({ data: automation() });
+    const user = userEvent.setup();
+    const typed: Automation = {
+      ...automation(),
+      config_schema: {
+        properties: { onlyFailures: { type: "boolean", title: "Only failures" }, limit: { type: "number", title: "Limit" } },
+      },
+      config_values: { onlyFailures: false, limit: 3 },
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <AutomationConfigForm automation={typed} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("switch", { name: "Only failures" }));
+    await user.clear(screen.getByLabelText("Limit"));
+    await user.type(screen.getByLabelText("Limit"), "7");
+    await user.click(screen.getByRole("button", { name: "Save configuration" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/automations/a1/config", {
+      config_values: { onlyFailures: true, limit: 7 },
+    });
+  });
+
   it("shows a no-config message when the schema has no fields", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const bare: Automation = { ...automation(), config_schema: { properties: {} } };
