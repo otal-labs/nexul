@@ -67,13 +67,17 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
               <span className="flex shrink-0 items-baseline gap-2.5 text-xs tabular-nums text-muted-foreground">
                 {runs.running > 0 && (
                   <span className="flex items-baseline gap-1">
-                    <LoaderCircle className="size-3 self-center animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running" />{" "}
+                    <LoaderCircle className="size-3 self-center animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running">
+                      <title>Plays running</title>
+                    </LoaderCircle>{" "}
                     {runs.running} {runs.running === 1 ? "ticket" : "tickets"}
                   </span>
                 )}{" "}
                 {runs.waiting > 0 && (
                   <span className="flex items-baseline gap-1">
-                    <CircleHelp className="size-3 self-center text-info" role="img" aria-label="Waiting for an answer" />{" "}
+                    <CircleHelp className="size-3 self-center text-info" role="img" aria-label="Waiting for an answer">
+                      <title>Plays waiting for an answer</title>
+                    </CircleHelp>{" "}
                     {runs.waiting} {runs.waiting === 1 ? "ticket" : "tickets"}
                   </span>
                 )}

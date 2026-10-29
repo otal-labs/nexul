@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -142,6 +142,19 @@ describe("TicketCard", () => {
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByTitle("Blocked by REF-7")).toHaveTextContent("Blocked by REF-7");
+  });
+
+  it("counts every blocker after the first and names them all in the tooltip", async () => {
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    const blocker = (n: number) => ({ id: `t-${n}`, project_id: "p-1", prefix: "REF", number: n, title: "API", status: "open", done: false });
+    vi.mocked(api.get).mockImplementation(async (url, config) => {
+      if (url === "/api/tickets/blockers") return { data: { "t-1": [blocker(7), blocker(10001), blocker(9)] } };
+      return base(url, config);
+    });
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    const line = await screen.findByTitle("Blocked by REF-7, REF-10001, REF-9");
+    expect(line).toHaveTextContent("Blocked by REF-7 +2, REF-10001, REF-9");
+    expect(within(line).getByText("+2", { exact: false })).toHaveAttribute("aria-hidden");
   });
 
   it("shows no blocked line for a ticket with no uncleared blockers", async () => {
