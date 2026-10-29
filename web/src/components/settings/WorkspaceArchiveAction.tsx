@@ -9,9 +9,11 @@ import type { Workspace } from "@/models/Workspace";
 
 interface WorkspaceArchiveActionProps {
   workspace: Workspace;
+  // The instance's own workspace keeps the row, with the button off and this as its reason.
+  blocked?: string | undefined;
 }
 
-export const WorkspaceArchiveAction = ({ workspace }: WorkspaceArchiveActionProps) => {
+export const WorkspaceArchiveAction = ({ workspace, blocked }: WorkspaceArchiveActionProps) => {
   const archive = useArchiveWorkspace();
   const { data: people } = useFetchWorkspacePeople(workspace.id);
   const { data: projects } = useFetchWorkspaceProjects(workspace.id);
@@ -30,14 +32,15 @@ export const WorkspaceArchiveAction = ({ workspace }: WorkspaceArchiveActionProp
   return (
     <DangerAction
       title="Archive workspace"
-      consequence="Hides this workspace from everyone in it. The instance Owner restores it from Settings → Instance."
+      consequence={blocked ?? "Hides this workspace from everyone in it. The instance Owner restores it from Settings\u00a0→\u00a0Instance."}
       action={
         <ActionButton
           permission="workspaces:delete"
           verb="archive workspaces"
           variant="outline"
           size="sm"
-          liveClassName={dangerButtonClass}
+          liveClassName={blocked ? "" : dangerButtonClass}
+          disabled={!!blocked}
           loading={archive.isPending}
           onClick={() => void onArchive()}
         >

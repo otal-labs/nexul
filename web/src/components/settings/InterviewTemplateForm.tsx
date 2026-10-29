@@ -3,18 +3,15 @@ import { useState, type FormEvent } from "react";
 import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
-import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
-import { ActionButton } from "@/components/action/ActionButton";
+import { useWorkspaceTemplateHead } from "@/components/settings/WorkspaceTemplateHead";
 import { useSaveInterviewTemplate } from "@/hooks/MemoryHooks";
-import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useFlash } from "@/hooks/useFlash";
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 
 export const INTERVIEW_TEMPLATE_CARD = {
   id: "interview-template",
-  title: "Interview template",
-  description:
-    "Every new project's interview starts from this. It follows the instance template until this workspace saves its own. Editing it never changes an existing interview.",
+  title: "Starting questions",
+  description: "New projects' interviews start from this; existing ones never change.",
 };
 
 const FORM_ID = "interview-template-form";
@@ -27,9 +24,15 @@ interface InterviewTemplateFormProps {
 export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateFormProps) => {
   const [body, setBody] = useState(template.body);
   const saveTemplate = useSaveInterviewTemplate();
-  const openClone = useCloneTemplateDialog();
   const [saved, flash] = useFlash();
-  const at = { scope: "workspace" as const, workspace_id: template.workspace_id };
+  const head = useWorkspaceTemplateHead({
+    kind: "interview",
+    name: "Interview",
+    workspaceId: template.workspace_id,
+    edited: template.edited,
+    description: INTERVIEW_TEMPLATE_CARD.description,
+    clonePermission: "memories:template",
+  });
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -39,9 +42,9 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
   return (
     <SettingsCard
       {...INTERVIEW_TEMPLATE_CARD}
-      aside={
-        <TemplateOriginLine kind="interview" templateKey="" at={at} state={template.edited ? "edited" : "following"} />
-      }
+      stickyFooter
+      description={head.description}
+      aside={head.aside}
       footer={
         <GatedSaveBar
           permission="memories:template"
@@ -62,18 +65,9 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
           questionCount={template.questions.length}
           error={saveTemplate.error}
           readOnly={!canWrite}
+          hideLabel
+          grow
         />
-        <ActionButton
-          permission="memories:template"
-          verb="clone this template"
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="-ml-2.5"
-          onClick={() => void openClone({ kind: "interview", key: "", name: "Interview", from: at })}
-        >
-          Clone to…
-        </ActionButton>
       </form>
     </SettingsCard>
   );

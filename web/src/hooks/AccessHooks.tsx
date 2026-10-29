@@ -1,6 +1,7 @@
 import { AREA_PERMISSION, hasPermission, projectPermissions, workspaceWidePermissions, type Area } from "@nexul/client-core/permissions";
 
 import { isInstanceSection, type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchMachines } from "@/hooks/RunnerHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
@@ -114,10 +115,12 @@ export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
 };
 
 // The workspace sections of Configuration the viewer may open; the instance ones live on the Settings page.
+// Danger zone holds only Archive, so a viewer whose role hides that action has no Danger zone to open.
 export const useConfigurationSections = (): SettingsSection[] | undefined => {
   const sections = useVisibleSettingsSections();
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
-  return sections?.filter((section) => !isInstanceSection(section, teamIsInstanceWide));
+  const archiveHidden = useActionState({ permission: "workspaces:delete" }).state === "hidden";
+  return sections?.filter((section) => !isInstanceSection(section, teamIsInstanceWide) && !(section === "danger" && archiveHidden));
 };
 
 // The instance sections the viewer may open from the Settings page.

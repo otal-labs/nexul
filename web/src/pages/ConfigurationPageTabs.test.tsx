@@ -49,18 +49,27 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("lists only workspace sections, even for a viewer holding every instance permission", async () => {
-    renderPage("/acme/configuration", everythingAnywhere, ["workspaces:write", "roles:write"]);
+    renderPage("/acme/configuration", everythingAnywhere, ["workspaces:write", "roles:write", "workspaces:delete"]);
 
     const nav = within(await screen.findByRole("navigation", { name: "Configuration sections" }));
     await screen.findByRole("link", { name: "General" });
     expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual(["General", "Mention chips", "Danger zone"]);
   });
 
-  it("lands an instance-only viewer on Danger zone, never on an instance section", async () => {
-    renderPage("/acme/configuration/automation-secrets", ["connectors:read"]);
+  it("leaves Danger zone out for a viewer whose role hides Archive, and sends a link to it to the first section", async () => {
+    renderPage("/acme/configuration/danger", everythingAnywhere, ["workspaces:write"]);
 
-    expect(await screen.findByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
+    expect(await screen.findByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Danger zone" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "General" })).toBeInTheDocument();
+  });
+
+  it("never opens an instance section for an instance-only viewer", async () => {
+    renderPage("/acme/configuration/connectors", ["connectors:read"]);
+
+    await screen.findByRole("navigation", { name: "Configuration sections" });
     expect(screen.queryByRole("link", { name: "Connectors" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Connectors" })).not.toBeInTheDocument();
   });
 
   it("keeps Team among the workspace sections of a members:write holder without accounts:read", async () => {

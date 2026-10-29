@@ -17,13 +17,25 @@ interface SettingsSaveBarProps {
   hint?: ReactNode;
   /** What is unsaved, in place of "Unsaved changes" ("3 changes"). */
   dirtyLabel?: string;
+  /** A change that can't be saved yet: Discard stays, Save stays off. */
+  invalid?: boolean;
 }
 
 const strip = "transition-[opacity,translate,visibility] duration-150 ease-out";
 const off = "invisible -translate-x-1 opacity-0";
 
 // The card's footer strip for a form: always there, so nothing below it moves; a change wakes Discard and Save.
-export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLabel = "Save", hint, dirtyLabel = "Unsaved changes" }: SettingsSaveBarProps) => (
+export const SettingsSaveBar = ({
+  form,
+  dirty,
+  saving,
+  saved,
+  onDiscard,
+  saveLabel = "Save",
+  hint,
+  dirtyLabel = "Unsaved changes",
+  invalid = false,
+}: SettingsSaveBarProps) => (
   <>
     <span className="grid min-w-0 flex-1 text-xs text-muted-foreground">
       <span className={cn("col-start-1 row-start-1 truncate", strip, (dirty || saved || !hint) && off)}>{hint}</span>
@@ -38,7 +50,7 @@ export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLab
         form={form}
         size="sm"
         loading={saving}
-        disabled={!dirty && !saved}
+        disabled={(!dirty && !saved) || invalid}
       >
         <span className="swap">
           <span {...(saved ? { "data-off": "" } : {})} aria-hidden={saved}>

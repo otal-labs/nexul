@@ -67,7 +67,7 @@ Each run writes a new audit. Run **To tickets via AI** on it to turn the finding
 
 The questions come from the workspace's interview template, in **Configuration → Interview template**. It's markdown: a `##` heading per question, text under it as a hint, `- ` bullets for single-choice options and `- [ ]` bullets for multi-select ones. A question with no bullets takes free text.
 
-Until you edit it, the workspace follows the instance's template, and the editor says **Following the instance template**. **Reset to instance template** goes back. Editing the template never changes a memory already written. Saving or resetting it takes **Edit the workspace Interview template** (`memories:template`), a workspace permission in the role editor, which also shows the template in **Configuration**; anyone in a project reads it there.
+Until you edit it, the workspace follows the instance's template, and the card says **Instance template**; once the workspace saves its own it says **Edited here**, and **Reset to instance template** beside it goes back. Editing the template never changes a memory already written. Saving or resetting it takes **Edit the workspace Interview template** (`memories:template`), a workspace permission in the role editor, which also shows the template in **Configuration**; anyone in a project reads it there.
 
 ## When there is no interview
 

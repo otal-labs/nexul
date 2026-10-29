@@ -7,6 +7,7 @@ import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
 
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { WorkspaceUrlField } from "@/components/settings/WorkspaceUrlField";
 import { useFlash } from "@/hooks/useFlash";
@@ -54,11 +55,11 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
     <SettingsCard
       id="workspace"
       title="Workspace"
-      description="Its name in the sidebar and the switcher, and its address in every link."
       footer={
         <SettingsSaveBar
           form="workspace-general"
-          dirty={isDirty && isValid}
+          dirty={isDirty}
+          invalid={!isValid}
           saving={isSubmitting}
           saved={saved}
           onDiscard={() => form.reset()}
@@ -66,9 +67,17 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
       }
     >
       <FormProvider {...form}>
-        <form id="workspace-general" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          <FormInput control={form.control} name="name" label="Name" className="max-w-sm" />
-          <WorkspaceUrlField savedSlug={workspace.slug} />
+        <form id="workspace-general" onSubmit={form.handleSubmit(onSubmit)}>
+          <SettingsRows>
+            <SettingsRow label="Name" description="In the sidebar and the switcher." stacked>
+              <div className="w-full">
+                <FormInput control={form.control} name="name" label="Name" hideLabel className="text-ellipsis" />
+              </div>
+            </SettingsRow>
+            <SettingsRow label="URL" description="Every link uses it. Old links stop working when it changes." stacked>
+              <WorkspaceUrlField />
+            </SettingsRow>
+          </SettingsRows>
         </form>
       </FormProvider>
     </SettingsCard>

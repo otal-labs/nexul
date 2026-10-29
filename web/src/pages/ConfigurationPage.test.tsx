@@ -67,8 +67,8 @@ describe("ConfigurationPage mention chip layout gating", () => {
   it("hides the mention chip layout panel without workspaces:write", async () => {
     renderPage("/configuration/mentions");
 
-    await screen.findByRole("heading", { name: "Configuration" });
-    expect(screen.queryByText("Mention chip layout")).not.toBeInTheDocument();
+    await screen.findByRole("navigation", { name: "Configuration sections" });
+    expect(screen.queryByText("Ticket mentions")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Mention chips" })).not.toBeInTheDocument();
   });
 
@@ -84,8 +84,8 @@ describe("ConfigurationPage mention chip layout gating", () => {
     const user = userEvent.setup();
     renderPage("/configuration/mentions");
 
-    expect(await screen.findByText("Mention chip layout")).toBeInTheDocument();
-    const section = within(screen.getByRole("region", { name: "Mention chip layout" }));
+    expect(await screen.findByText("Ticket mentions")).toBeInTheDocument();
+    const section = within(screen.getByRole("region", { name: "Ticket mentions" }));
     const input = section.getByLabelText("Format");
     expect(input).toHaveValue("{ticket.Ticket} {ticket.Status}");
 
@@ -109,7 +109,7 @@ describe("ConfigurationPage general section gating", () => {
   it("hides General and its card without workspaces:write", async () => {
     renderPage("/configuration/general");
 
-    await screen.findByRole("heading", { name: "Configuration" });
+    await screen.findByRole("navigation", { name: "Configuration sections" });
     expect(screen.queryByRole("link", { name: "General" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Workspace" })).not.toBeInTheDocument();
   });

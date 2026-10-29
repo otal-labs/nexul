@@ -53,12 +53,12 @@ describe("WorkspaceGeneralSection", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
   });
 
-  it("starts unchanged: Save is off and no warning about links shows", async () => {
+  it("starts unchanged: Save is off, and the URL says up front that old links stop working", async () => {
     renderSection();
     expect(await screen.findByLabelText("Name")).toHaveValue("Acme");
     expect(screen.getByLabelText("URL")).toHaveValue("acme");
     expect(save()).toBeDisabled();
-    expect(screen.queryByText(/old address will stop working/)).not.toBeInTheDocument();
+    expect(screen.getByText("Every link uses it. Old links stop working when it changes.")).toBeInTheDocument();
   });
 
   it("sends only the name when only the name changed, and stays on the same address", async () => {
@@ -73,7 +73,7 @@ describe("WorkspaceGeneralSection", () => {
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/configuration/general");
   });
 
-  it("warns that old links stop working, sends only the slug, and moves this tab onto the new address", async () => {
+  it("sends only the slug, and moves this tab onto the new address", async () => {
     mocks.patch.mockResolvedValue({ data: { ...acme, slug: "acme-labs" } });
     const user = renderSection();
     const url = await screen.findByLabelText("URL");
@@ -81,7 +81,6 @@ describe("WorkspaceGeneralSection", () => {
     await user.type(url, "Acme Labs");
 
     expect(url).toHaveValue("acme-labs");
-    expect(screen.getByText("Links using the old address will stop working.")).toBeInTheDocument();
     await user.click(save());
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1", { slug: "acme-labs" });
@@ -89,7 +88,7 @@ describe("WorkspaceGeneralSection", () => {
     expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("acme-labs");
   });
 
-  it("refuses a reserved address inline and never sends it", async () => {
+  it("refuses a reserved address inline, keeps Discard, and never sends it", async () => {
     const user = renderSection();
     const url = await screen.findByLabelText("URL");
     await user.clear(url);
@@ -97,6 +96,7 @@ describe("WorkspaceGeneralSection", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("That address is used by the app itself");
     expect(save()).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Discard" })).toHaveAttribute("aria-hidden", "false");
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 

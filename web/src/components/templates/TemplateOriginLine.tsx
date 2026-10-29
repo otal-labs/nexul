@@ -1,6 +1,7 @@
 import { ActionButton } from "@/components/action/ActionButton";
 import { useResetTemplate } from "@/hooks/TemplateHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { cn } from "@/lib/utils";
 import type { TemplateKind, TemplateLocation } from "@/models/Template";
 
 // Following and edited for the kinds that follow the instance live; matches and differs for the ones copied at creation.
@@ -13,17 +14,17 @@ const ORIGIN_TEXT: Record<TemplateOrigin, string> = {
   differs: "Differs from the instance template",
 };
 
-interface TemplateOriginLineProps {
+interface TemplateResetButtonProps {
   kind: TemplateKind;
   templateKey: string;
   at: TemplateLocation;
-  state: TemplateOrigin;
+  className?: string;
 }
 
-export const TemplateOriginLine = ({ kind, templateKey, at, state }: TemplateOriginLineProps) => {
+// Puts the instance template's text back here, after asking.
+export const TemplateResetButton = ({ kind, templateKey, at, className }: TemplateResetButtonProps) => {
   const reset = useResetTemplate();
   const { open: confirm } = useConfirmationDialog();
-  const ownText = state === "edited" || state === "differs";
 
   const onReset = async () => {
     const ok = await confirm({
@@ -35,22 +36,31 @@ export const TemplateOriginLine = ({ kind, templateKey, at, state }: TemplateOri
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      <span>{ORIGIN_TEXT[state]}</span>
-      {ownText && (
-        <ActionButton
-          permission="templates:write"
-          verb="reset templates"
-          type="button"
-          variant="link"
-          size="sm"
-          className="h-auto p-0 text-xs"
-          loading={reset.isPending}
-          onClick={() => void onReset()}
-        >
-          Reset to instance template
-        </ActionButton>
-      )}
-    </div>
+    <ActionButton
+      permission="templates:write"
+      verb="reset templates"
+      type="button"
+      variant="link"
+      size="sm"
+      className={cn("h-auto p-0 text-xs", className)}
+      loading={reset.isPending}
+      onClick={() => void onReset()}
+    >
+      Reset to instance template
+    </ActionButton>
   );
 };
+
+interface TemplateOriginLineProps {
+  kind: TemplateKind;
+  templateKey: string;
+  at: TemplateLocation;
+  state: TemplateOrigin;
+}
+
+export const TemplateOriginLine = ({ kind, templateKey, at, state }: TemplateOriginLineProps) => (
+  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+    <span>{ORIGIN_TEXT[state]}</span>
+    {(state === "edited" || state === "differs") && <TemplateResetButton kind={kind} templateKey={templateKey} at={at} />}
+  </div>
+);
