@@ -44,7 +44,8 @@ as written. In particular:
   `isPending`, `error`, then `data`.
 - Early return, no `else`. `useState` and `useEffect` are a last resort:
   server state in TanStack Query, cross-screen client state in Zustand,
-  derived values in `useMemo`.
+  derived values computed during render (`useMemo` only when expensive or
+  when the result needs a stable identity).
 - Imports by full path through the `@/` alias (`native/src`), `import type`
   for types, no barrels, no `index.ts`. A module the web runs too is imported
   from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:

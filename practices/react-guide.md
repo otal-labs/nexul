@@ -253,8 +253,9 @@ const label = isPending ? "Saving…" : "Save";
 ### F5: `useState`/`useEffect` are a last resort
 
 - **DO NOT** fetch data in `useEffect`; use TanStack Query hooks.
-- **DO NOT** compute derived values in `useEffect`/`useState`; derive with
-  `useMemo` during render.
+- **DO NOT** compute derived values in `useEffect`/`useState`; derive them
+  during render, in `useMemo` only when the work is expensive or the result
+  needs a stable identity (a `memo` child's prop, a hook dependency).
 - **DO NOT** sync fetched data into local state; render from the query cache.
 - `useEffect` is for **side effects only** (subscriptions, one-shot DOM/redirect,
   logging). `useState` is for genuine local UI state (open/closed, drag target).
