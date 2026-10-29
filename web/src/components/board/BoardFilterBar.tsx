@@ -129,7 +129,7 @@ export const BoardFilterBar = ({
           )}
           {showWaitingForMeToTest && (
             <Button
-              variant={filters.waitingForMeToTest ? "default" : "ghost"}
+              variant={filters.waitingForMeToTest ? "default" : "outline"}
               size="sm"
               aria-pressed={filters.waitingForMeToTest}
               onClick={onToggleWaitingForMeToTest}
@@ -137,13 +137,13 @@ export const BoardFilterBar = ({
               className={cn("h-8 px-2.5 text-xs", !filters.waitingForMeToTest && "text-muted-foreground")}
             >
               <FlaskConicalIcon className="size-3.5" />
-              {/* Icon-only below 1280, named by its tooltip, so the toolbar keeps one row under the title. */}
+              {/* Icon-only below 1060, named by its tooltip, so the toolbar keeps one row under the title. */}
               <span className="max-[1060px]:sr-only">Mine to test</span>
             </Button>
           )}
           {showPlaying && (
             <Button
-              variant={filters.playing ? "default" : "ghost"}
+              variant={filters.playing ? "default" : "outline"}
               size="sm"
               aria-pressed={filters.playing}
               onClick={onTogglePlaying}

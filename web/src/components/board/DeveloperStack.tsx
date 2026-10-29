@@ -38,7 +38,7 @@ const DeveloperStackAvatar = ({ developer, active, dimmed, onToggle }: Developer
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={person.login} src={person.avatar_url} className="size-7 text-[11px]" />
+    <PersonAvatar login={person.login} src={person.avatar_url} label={personLabel(person)} name={person.display_name} className="size-7 text-[11px]" />
   </button>
   );
 };
@@ -53,7 +53,7 @@ const DeveloperStackMenuItem = ({ developer, active, onToggle }: Omit<DeveloperT
     onClick={() => onToggle(developer.key)}
     className="quiet-focus flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent"
   >
-    <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" />
+    <PersonAvatar login={person.login} src={person.avatar_url} name={person.display_name} className="size-6" />
     <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>
     {active && <CheckIcon className="size-3.5 shrink-0" aria-hidden />}
   </button>
@@ -69,7 +69,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
   const anySelected = selected.length > 0;
 
   return (
-    <div role="group" aria-label="Filter by developer" className="flex items-center -space-x-1.5">
+    <div role="group" aria-label="Filter by developer" className="flex items-center -space-x-1">
       {visible.map((developer) => (
         <DeveloperStackAvatar
           key={developer.key}
