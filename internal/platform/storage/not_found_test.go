@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -60,7 +61,9 @@ func TestRepos_AnIdNobodyStoredIsNotFound(t *testing.T) {
 		{"OutboxRepo.MarkPublished", func(ctx context.Context) error { return s.Outbox.MarkPublished(ctx, "missing") }},
 		{"PATsRepo.GetByHash", func(ctx context.Context) error { return ign(s.PATs.GetByHash(ctx, "missing")) }},
 		{"PlaysRepo.Get", func(ctx context.Context) error { return ign(s.Plays.Get(ctx, "missing")) }},
-		{"PlaysRepo.Update", func(ctx context.Context) error { return s.Plays.Update(ctx, newTestPlay("missing", "ws-1")) }},
+		{"PlaysRepo.Update", func(ctx context.Context) error {
+			return s.Plays.Update(ctx, newTestPlay("missing", "ws-1"), plays.Revision{})
+		}},
 		{"PlaysRepo.Delete", func(ctx context.Context) error { return s.Plays.Delete(ctx, "missing") }},
 		{"RolesRepo.Get", func(ctx context.Context) error { return ign(s.Roles.Get(ctx, "missing")) }},
 		{"RolesRepo.Update", func(ctx context.Context) error { return s.Roles.Update(ctx, newTestRole("missing", "ws-1")) }},

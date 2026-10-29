@@ -33,7 +33,7 @@ func TestPlaysRepo_Create_Get_RoundTrip(t *testing.T) {
 	want.ShowWhenStage = &stage
 	want.ExcludedProjectIDs = []string{"proj-2", "proj-1"} // repo persists the order the caller (usecase) hands it
 	want.CreatedBy = "user-1"
-	require.NoError(t, s.Plays.Create(context.Background(), want))
+	require.NoError(t, s.Plays.Create(context.Background(), want, plays.Revision{}))
 
 	got, err := s.Plays.Get(context.Background(), "play-1")
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestPlaysRepo_Create_DocPlay_HasNoStage(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
-	require.NoError(t, s.Plays.Create(context.Background(), newTestPlay("play-1", "ws-1")))
+	require.NoError(t, s.Plays.Create(context.Background(), newTestPlay("play-1", "ws-1"), plays.Revision{}))
 
 	got, err := s.Plays.Get(context.Background(), "play-1")
 	require.NoError(t, err)
@@ -68,9 +68,9 @@ func TestPlaysRepo_List_ScopesToWorkspaceAndSortsByLabel(t *testing.T) {
 	alpha := newTestPlay("play-alpha", "ws-1")
 	alpha.Label = "Alpha"
 	other := newTestPlay("play-other", "ws-2")
-	require.NoError(t, s.Plays.Create(context.Background(), zeta))
-	require.NoError(t, s.Plays.Create(context.Background(), alpha))
-	require.NoError(t, s.Plays.Create(context.Background(), other))
+	require.NoError(t, s.Plays.Create(context.Background(), zeta, plays.Revision{}))
+	require.NoError(t, s.Plays.Create(context.Background(), alpha, plays.Revision{}))
+	require.NoError(t, s.Plays.Create(context.Background(), other, plays.Revision{}))
 
 	got, err := s.Plays.List(context.Background(), "ws-1")
 	require.NoError(t, err)
@@ -84,13 +84,13 @@ func TestPlaysRepo_Update(t *testing.T) {
 	s := newTestStore(t)
 	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
 	p := newTestPlay("play-1", "ws-1")
-	require.NoError(t, s.Plays.Create(context.Background(), p))
+	require.NoError(t, s.Plays.Create(context.Background(), p, plays.Revision{}))
 
 	p.Label = "Renamed"
 	p.Enabled = false
 	p.ExcludedProjectIDs = []string{"proj-1"}
 	p.UpdatedAt = time.Now()
-	require.NoError(t, s.Plays.Update(context.Background(), p))
+	require.NoError(t, s.Plays.Update(context.Background(), p, plays.Revision{}))
 
 	got, err := s.Plays.Get(context.Background(), "play-1")
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestPlaysRepo_Delete(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
-	require.NoError(t, s.Plays.Create(context.Background(), newTestPlay("play-1", "ws-1")))
+	require.NoError(t, s.Plays.Create(context.Background(), newTestPlay("play-1", "ws-1"), plays.Revision{}))
 
 	require.NoError(t, s.Plays.Delete(context.Background(), "play-1"))
 	_, err := s.Plays.Get(context.Background(), "play-1")
@@ -155,17 +155,17 @@ func TestPlaysRepo_CreateAndUpdate_TakenLabel_ReturnsConflict(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
 	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Globex")))
-	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1")))
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1"), plays.Revision{}))
 	other := newTestPlay("play-2", "ws-1")
 	other.Label = "Other"
-	require.NoError(t, s.Plays.Create(ctx, other))
+	require.NoError(t, s.Plays.Create(ctx, other, plays.Revision{}))
 
 	taken := newTestPlay("play-3", "ws-1")
 	taken.Label = "DOC PLAY"
-	require.ErrorIs(t, s.Plays.Create(ctx, taken), apperrs.ErrConflict)
+	require.ErrorIs(t, s.Plays.Create(ctx, taken, plays.Revision{}), apperrs.ErrConflict)
 	other.Label = "doc play"
-	require.ErrorIs(t, s.Plays.Update(ctx, other), apperrs.ErrConflict)
-	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-4", "ws-2")), "another workspace's labels are its own")
+	require.ErrorIs(t, s.Plays.Update(ctx, other, plays.Revision{}), apperrs.ErrConflict)
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-4", "ws-2"), plays.Revision{}), "another workspace's labels are its own")
 }
 
 func TestPlaysRepo_GetByLabel_IgnoresCaseWithinTheWorkspace(t *testing.T) {
@@ -174,7 +174,7 @@ func TestPlaysRepo_GetByLabel_IgnoresCaseWithinTheWorkspace(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
 	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Globex")))
-	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1")))
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1"), plays.Revision{}))
 
 	got, err := s.Plays.GetByLabel(ctx, "ws-1", "DOC play")
 	require.NoError(t, err)

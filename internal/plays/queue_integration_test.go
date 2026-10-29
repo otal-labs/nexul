@@ -69,7 +69,7 @@ func (r *rig) play(t *testing.T, label string) *plays.Play {
 		ID: ids.New(), WorkspaceID: ws, Label: label, Type: plays.TypeTicket, Instructions: "Do it.", Enabled: true,
 		ShowWhenStage: &stage, ExcludedProjectIDs: []string{}, CreatedAt: r.clock, UpdatedAt: r.clock,
 	}
-	require.NoError(t, r.store.Plays.Create(t.Context(), p))
+	require.NoError(t, r.store.Plays.Create(t.Context(), p, plays.Revision{}))
 	return p
 }
 
@@ -536,7 +536,7 @@ func TestDispatch_RecheckAtTheFront(t *testing.T) {
 		}, plays.QueueSkipped, "its conditions no longer hold"},
 		{"play disabled", func(r *rig, t *testing.T, _ *plays.AutoPlay, p *plays.Play) {
 			p.Enabled = false
-			require.NoError(t, r.store.Plays.Update(t.Context(), p))
+			require.NoError(t, r.store.Plays.Update(t.Context(), p, plays.Revision{}))
 		}, plays.QueueSkipped, "is disabled"},
 		{"pressed while it waited", func(r *rig, t *testing.T, _ *plays.AutoPlay, p *plays.Play) {
 			r.press(t, p.ID, "t-1", tester)

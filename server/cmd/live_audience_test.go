@@ -102,7 +102,7 @@ func TestLiveAudience_GrantFramesReachWhoManagesTheRules(t *testing.T) {
 	ctx := t.Context()
 	now := time.Now()
 	require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: "play-rules", WorkspaceID: "workspace-default", Label: "Ship it", Type: plays.TypeDoc,
-		Instructions: "Do it.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+		Instructions: "Do it.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}, plays.Revision{}))
 	require.NoError(t, f.store.Access.Set(ctx, "doc", f.doc, uReader, grant("permissions:write"), nil))
 	require.NoError(t, f.store.Access.Set(ctx, "play", "play-rules", uWriter, grant("plays:write"), nil))
 	a := liveAudience{access: f.svc.accessSvc}

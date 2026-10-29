@@ -46,7 +46,7 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 		return fmt.Errorf("encode the computers trail %s passed over: %w", t.ID, err)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).CreatePlayTrail(ctx, sqlcgen.CreatePlayTrailParams{
+		version, err := r.q.WithTx(tx).CreatePlayTrail(ctx, sqlcgen.CreatePlayTrailParams{
 			ID: t.ID, WorkspaceID: t.WorkspaceID, PlayID: t.PlayID, PlayLabel: t.PlayLabel,
 			TargetType: string(t.TargetType), TargetID: t.TargetID, ProjectID: t.ProjectID, ConversationID: t.ConversationID,
 			StarterID: t.StarterID, Via: string(t.Via), SelectedMemoryIds: memories, CustomInstructions: t.CustomInstructions,
@@ -54,11 +54,12 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 			StartedAt: t.StartedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt), LastError: t.LastError,
 			ReplyMessageID: t.ReplyMessageID, Activity: activity, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: options,
 			Question: question, FailureReason: t.FailureReason, HarnessProjectID: t.HarnessProjectID, Worktree: boolToInt(t.Worktree),
-			PassedOver: string(passedOver),
+			PassedOver: string(passedOver), VersionPlayID: t.PlayID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert trail %s: %w", t.ID, classifyWriteErr(err))
 		}
+		t.InstructionsVersion = optionalIntPtr(version)
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})
 }
@@ -229,5 +230,14 @@ func toTrail(row sqlcgen.PlayTrail) (*plays.Trail, error) {
 		HarnessSessionID: row.HarnessSessionID, State: plays.TrailState(row.State),
 		StartedAt: time.Unix(row.StartedAt, 0).UTC(), EndedAt: endedAt, LastError: row.LastError, FailureReason: row.FailureReason,
 		ReplyMessageID: row.ReplyMessageID, Activity: activity, Question: question,
+		InstructionsVersion: optionalIntPtr(row.InstructionsVersion),
 	}, nil
+}
+
+func optionalIntPtr(n sql.NullInt64) *int {
+	if !n.Valid {
+		return nil
+	}
+	v := int(n.Int64)
+	return &v
 }

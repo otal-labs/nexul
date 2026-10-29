@@ -109,7 +109,7 @@ func newPlayLocationFixture(t *testing.T, client *harnesstest.Client, session ha
 	turn := &pausedPlayTurn{Service: agent.NewService(agent.Config{Live: noopPublisher{}, Conversations: agentConversations{svc: f.svc.chatSvc}, Targets: svc, Harnesses: registry, Tickets: agentTicketReader{svc: f.svc.ticketsSvc, projects: f.store.Projects, statuses: f.store.Statuses}}), ready: make(chan struct{}, 4), resume: make(chan struct{}), done: make(chan struct{}, 4)}
 	stage := plays.StageBacklog
 	play := &plays.Play{ShowWhenStage: &stage, ID: "play-location", WorkspaceID: wsDefault, Label: "Run", Type: plays.TypeTicket, Instructions: "Complete the ticket", Enabled: true, CreatedAt: now, UpdatedAt: now}
-	require.NoError(t, f.store.Plays.Create(ctx, play))
+	require.NoError(t, f.store.Plays.Create(ctx, play, plays.Revision{}))
 	runner := plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Perm: f.svc.accessSvc, Targets: playsTargetReader{tickets: f.svc.ticketsSvc, workspace: f.svc.workspaceSvc}, Projects: playsProjectLookup{memoriesProjectLookup{projects: f.store.Projects}}, Harness: playsHarnessResolver{svc: svc}, Memories: playsMemoryReader{svc: f.svc.memoriesSvc}, Threads: playsThreads{svc: f.svc.chatSvc}, Turns: turn})
 	return f, svc, runner, turn
 }

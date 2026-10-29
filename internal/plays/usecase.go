@@ -227,7 +227,7 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.repo.Create(ctx, p, s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
+	if err := s.repo.Create(ctx, p, creation(ctx, p), s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
 		return nil, labelTaken(p, fmt.Errorf("create play in workspace %s: %w", workspaceID, err))
 	}
 	return p, nil
@@ -242,6 +242,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 	if err := s.requireOn(ctx, p, permissions.PlaysWrite); err != nil {
 		return nil, err
 	}
+	before := *p
 	p.Label = strings.TrimSpace(in.Label)
 	p.Description = strings.TrimSpace(in.Description)
 	p.Instructions = in.Instructions
@@ -252,7 +253,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.repo.Update(ctx, p, s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
+	if err := s.repo.Update(ctx, p, revision(ctx, &before, p), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
 		return nil, labelTaken(p, fmt.Errorf("update play %s: %w", id, err))
 	}
 	return p, nil
@@ -392,7 +393,7 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		if err := p.Validate(); err != nil {
 			return err
 		}
-		if err := s.repo.Create(ctx, p, s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
+		if err := s.repo.Create(ctx, p, creation(ctx, p), s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
 			return fmt.Errorf("seed default play %q for workspace %s: %w", p.Label, workspaceID, err)
 		}
 		if err := s.seedAutoPlay(ctx, p, b.AutoPlay); err != nil {
@@ -447,9 +448,10 @@ func (s *Service) SetBuiltinInstructions(ctx context.Context, workspaceID, key, 
 	if err := s.requireOn(ctx, p, permissions.PlaysWrite); err != nil {
 		return nil, err
 	}
+	before := *p
 	p.Instructions = instructions
 	p.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, p, s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
+	if err := s.repo.Update(ctx, p, revision(ctx, &before, p), s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
 		return nil, fmt.Errorf("update play %s: %w", p.ID, err)
 	}
 	return p, nil

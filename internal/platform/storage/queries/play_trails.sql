@@ -1,6 +1,9 @@
--- name: CreatePlayTrail :exec
-INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, model_options, question, failure_reason, harness_project_id, worktree, passed_over)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+-- name: CreatePlayTrail :one
+-- The run records the play's newest instructions version in the same statement that inserts it.
+INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, model_options, question, failure_reason, harness_project_id, worktree, passed_over, instructions_version)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    (SELECT MAX(v.version) FROM play_instruction_versions v WHERE v.play_id = sqlc.arg(version_play_id)))
+RETURNING instructions_version;
 
 -- name: GetPlayTrail :one
 SELECT * FROM play_trails WHERE id = ?;

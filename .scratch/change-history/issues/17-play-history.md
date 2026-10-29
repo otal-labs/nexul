@@ -1,6 +1,6 @@
 # 17 — Play history, and which version a run used
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, decisions 2, 5, 10, Storage.

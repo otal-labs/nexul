@@ -29,10 +29,14 @@ type fakeRepo struct {
 	// automationNames answers AutomationNamesByLabel by the label asked for; the matching itself is storage's.
 	automationNames map[string][]string
 	namesErr        error
+	// revisions is what each save handed the repo, oldest first; versions and changes are the history they add up to.
+	revisions []Revision
+	versions  map[string][]*VersionBody
+	changes   map[string][]Change
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{byID: map[string]*Play{}, limits: map[string]AutoPlayLimits{}}
+	return &fakeRepo{byID: map[string]*Play{}, limits: map[string]AutoPlayLimits{}, versions: map[string][]*VersionBody{}, changes: map[string][]Change{}}
 }
 
 func (f *fakeRepo) CreateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
@@ -148,7 +152,7 @@ func (f *fakeRepo) SetAutoPlayLimits(_ context.Context, workspaceID string, limi
 	return nil
 }
 
-func (f *fakeRepo) Create(_ context.Context, p *Play, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Create(_ context.Context, p *Play, rev Revision, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createErr != nil {
@@ -159,8 +163,40 @@ func (f *fakeRepo) Create(_ context.Context, p *Play, evts ...eventbus.OutboxEve
 	}
 	cp := *p
 	f.byID[p.ID] = &cp
+	f.record(p, rev)
 	f.published = append(f.published, evts...)
 	return nil
+}
+
+// record keeps rev and the history it adds to, without the caps storage prunes to.
+func (f *fakeRepo) record(p *Play, rev Revision) {
+	f.revisions = append(f.revisions, rev)
+	if v := rev.Instructions; v != nil {
+		n := len(f.versions[p.ID]) + 1
+		info := VersionInfo{Version: n, CreatedAt: p.UpdatedAt, EditorIDs: v.EditorIDs, Via: v.Via, BuiltinDefault: v.BuiltinDefault}
+		f.versions[p.ID] = append(f.versions[p.ID], &VersionBody{VersionInfo: info, Body: v.Body})
+	}
+	f.changes[p.ID] = append(slices.Clone(rev.Changes), f.changes[p.ID]...)
+}
+
+func (f *fakeRepo) ListHistory(_ context.Context, playID string) (History, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	h := History{Changes: f.changes[playID]}
+	for i := len(f.versions[playID]) - 1; i >= 0; i-- {
+		h.Versions = append(h.Versions, f.versions[playID][i].VersionInfo)
+	}
+	return h, nil
+}
+
+func (f *fakeRepo) GetVersion(_ context.Context, playID string, version int) (*VersionBody, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if version < 1 || version > len(f.versions[playID]) {
+		return nil, apperrs.ErrNotFound
+	}
+	cp := *f.versions[playID][version-1]
+	return &cp, nil
 }
 
 // labelTaken mirrors the unique label index: another play of p's workspace has its label, ignoring case.
@@ -215,7 +251,7 @@ func (f *fakeRepo) List(_ context.Context, workspaceID string) ([]*Play, error) 
 	return out, nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, p *Play, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Update(_ context.Context, p *Play, rev Revision, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -229,6 +265,7 @@ func (f *fakeRepo) Update(_ context.Context, p *Play, evts ...eventbus.OutboxEve
 	}
 	cp := *p
 	f.byID[p.ID] = &cp
+	f.record(p, rev)
 	f.published = append(f.published, evts...)
 	return nil
 }

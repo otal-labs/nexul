@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -73,7 +74,7 @@ func TestRepos_ADuplicateOrADanglingReferenceIsAConflict(t *testing.T) {
 			return s.Memories.Create(ctx, newTestMemory("mem-2", "does-not-exist"), "")
 		}},
 		{"a play in a workspace nobody stored", func(ctx context.Context) error {
-			return s.Plays.Create(ctx, newTestPlay("play-1", "missing-workspace"))
+			return s.Plays.Create(ctx, newTestPlay("play-1", "missing-workspace"), plays.Revision{})
 		}},
 		{"a role in a workspace nobody stored", func(ctx context.Context) error {
 			return s.Roles.Create(ctx, newTestRole("role-1", "missing-workspace"))
