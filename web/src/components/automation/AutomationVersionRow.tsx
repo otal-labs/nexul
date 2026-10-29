@@ -23,7 +23,7 @@ export const AutomationVersionRow = ({ automationId, version }: AutomationVersio
   const { open: confirm } = useConfirmationDialog();
   const nameOf = usePersonNamer();
   const pusher = version.pusher_id === SEED_PUSHER_ID ? "Nexul" : nameOf(version.pusher_id);
-  const canRollback = version.status !== AutomationVersionStatus.Active;
+  const canRollback = version.status === AutomationVersionStatus.Inactive;
 
   const onRollback = async () => {
     const ok = await confirm({
