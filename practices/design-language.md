@@ -1045,8 +1045,9 @@ its bar.
 Stack detail page. An ops view first: the daily jobs (is it healthy, what
 runs, what was deployed when, what it prints) get the page's full width, and
 configuration sits behind one Settings tab. The header keeps the detail-page
-shape (breadcrumb of the workspace and project, title, actions top right) and
-its meta line says what the stack is, in mono: the slug, the runner, the
+shape (breadcrumb of the workspace and project, title, actions top right),
+and its meta line sits under the title row at the page's full width rather than
+in the column the actions leave; it says what the stack is, in mono: the slug, the runner, the
 strategy with its compose file's name (the whole path in the tooltip), the
 repository with its branch (or the network when no repository is attached), and
 a run stack's image. Each fact carries the dot before it and shortens on its
@@ -1087,7 +1088,8 @@ count), Logs (for whoever holds `stacks:logs`) and Settings, each its own path
 (`/stacks/:id`, `/deploys`, `/logs/:service?`, `/settings/:section?`).
 Overview is Services, then Requests (a stack with a hostname: the mono totals
 for the last hour with the 5xx share behind its hue, per-minute bars in a
-`surface-2` well with the 5xx part in the status hue, and the error-rate rule
+`surface-2` well with the 5xx part in the status hue, a quiet minute a 2px mark
+on the floor and a minute nobody counted a faint full-height track, and the error-rate rule
 in the footer). The Services card has no column headers and one line per
 service, rows sorted down first, then on their way, healthy, then stopped: the
 name, the image by its last segment cut in the middle, how it is reached (the
@@ -1104,10 +1106,10 @@ not a footer strip. Deploys is one card titled Deploys with All / Failed in its
 `aside`, then one hairline row per deploy straight on the card: the outcome (a
 running one with its elapsed time) in a fixed column, what was deployed (the
 image by its last segment, or a branch icon with the ref and the short commit
-for a build) with a muted "current" on the deploy whose image runs now, who
-and why in muted mono (actor, pull request, rule), and the time ("Today at
-14:02", "27 Oct 07:43") right, with the relative age in its tooltip. Below a
-42rem card the who-and-why drops under what was deployed. The newest 25 show,
+for a build) with who and why under it in muted mono ("current" on the deploy
+whose image runs now, then actor, pull request, rule; nothing, not a dash, when
+there is none), and the time ("29 Oct 14:02") right, with the relative age in
+its tooltip. The newest 25 show,
 the rest behind "Show 11 older". Logs is the Logs view below.
 
 Settings is the settings shell: `SettingsSectionNav` driving a `/:section`
@@ -1472,7 +1474,8 @@ dense rows. The block reaches down to the panel's bottom, never shorter than
 30rem, and while it has no lines its one sentence (and a Details disclosure
 with the server's words) sits centred in it. Above it sit All / Errors, then
 Pause, Copy and Download as 32px icon buttons with tooltips (Pause is off
-while the stream is not live), on one row with one mono status marker at the
+while the stream is not live, Copy and Download while the block is empty, All /
+Errors while no line came and none is coming), on one row with one mono status marker at the
 end, always one word with the reason in its tooltip: Live while following,
 Paused after the button, Scrolled up once scrolling released following, and
 the connection's own state (Offline, Ended) ahead of those. Errors means a

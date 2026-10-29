@@ -196,6 +196,7 @@ describe("StackLogsSection", () => {
     await dropSocket(1006, "the runner disconnected");
 
     expect(screen.getByRole("status")).toHaveTextContent("Offline");
+    expect(screen.getByRole("radio", { name: "Errors" })).toBeEnabled();
     await advance(1_000);
     expect(FakeSocket.all).toHaveLength(2);
     expect(last().url).toContain("tail=20");
@@ -240,6 +241,7 @@ describe("StackLogsSection", () => {
       "The runner on m1 is offline, so live logs can't be read right now.",
     );
     expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Errors" })).toBeDisabled();
     await advance(1_000);
     expect(FakeSocket.all).toHaveLength(2);
   });

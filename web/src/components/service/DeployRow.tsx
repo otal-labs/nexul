@@ -22,7 +22,7 @@ interface DeployRowProps {
 const sourceOf = (deploy: Deploy, current: boolean): string =>
   [current && "current", deploy.triggered_by, deploy.pr_number && `#${deploy.pr_number}`, deploy.rule_name && `rule ${deploy.rule_name}`, deploy.kind === "build" && !deploy.triggered_by && !deploy.rule_name && "build"]
     .filter(Boolean)
-    .join(" · ") || "—";
+    .join(" · ");
 
 // What the deploy put on the machine: the image by its last segment, else the ref a build started from.
 const What = ({ deploy }: { deploy: Deploy }) => {
@@ -49,7 +49,7 @@ export const DeployRow = ({ deploy, current }: DeployRowProps) => {
   const now = useNow(inFlight);
   const source = sourceOf(deploy, current);
   const rowClass =
-    "grid min-h-11 grid-cols-[8.5rem_minmax(0,1fr)_7rem] items-center gap-x-4 py-2.5 text-sm @3xl:grid-cols-[8.5rem_minmax(0,1.4fr)_minmax(0,1fr)_7rem]";
+    "grid min-h-11 grid-cols-[8.5rem_minmax(0,1fr)_7rem] items-center gap-x-4 py-2.5 text-sm";
   const time = (
     <time dateTime={deploy.created_at} title={formatRelativeTime(deploy.created_at)} className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
       {formatColumnTime(deploy.created_at)}
@@ -61,12 +61,11 @@ export const DeployRow = ({ deploy, current }: DeployRowProps) => {
         <DeployStatusBadge status={deploy.status} />
         {inFlight && <span className="font-mono text-xs text-muted-foreground tabular-nums">{`· ${elapsedShort(deploy.created_at, now)}`}</span>}
       </span>
-      {/* Narrow, the source drops under what was deployed instead of squeezing both. */}
-      <span className="min-w-0 @max-3xl:space-y-0.5">
+      {/* The source sits under what was deployed, so a short tag leaves no empty column and a long rule keeps the width. */}
+      <span className="min-w-0 space-y-0.5">
         <What deploy={deploy} />
-        {source && <span className="block truncate font-mono text-xs text-muted-foreground @3xl:hidden">{source}</span>}
+        {source && <span className="block truncate font-mono text-xs text-muted-foreground" title={source}>{source}</span>}
       </span>
-      <span className="hidden truncate font-mono text-xs text-muted-foreground @3xl:block" title={source}>{source}</span>
       {time}
     </>
   );
