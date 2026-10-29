@@ -1,13 +1,17 @@
 import { personLabel } from "@nexul/client-core/person";
 
+import { HistoryFieldValue } from "@/components/history/HistoryFieldValue";
 import { HistorySpine } from "@/components/history/HistorySpine";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import type { HistoryFieldChange } from "@/models/History";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { actorLabel, deltaSign, fieldName } from "@/utils/HistoryChangeUtility";
 import { formatFullTime } from "@/utils/TimeUtility";
 
-// "due_on" reads "Due on".
-const fieldName = (field: string) => field.charAt(0).toUpperCase() + field.slice(1).replaceAll("_", " ");
+const shapeOf = (field: string, sign: string | undefined): "created" | "delta" | "move" => {
+  if (field === "created") return "created";
+  return sign ? "delta" : "move";
+};
 
 interface HistoryFieldRowProps {
   change: HistoryFieldChange;
@@ -16,19 +20,36 @@ interface HistoryFieldRowProps {
 }
 
 // A field a save changed, between the versions it happened among: one muted line, "Status  In progress → Testing". It is
-// not part of any description version, so it is never picked; the person and the time are in its tooltip.
+// not part of any description version, so it is never picked; who made it, through what, and when are in its tooltip and
+// its accessible name.
 export const HistoryFieldRow = ({ change, first, last }: HistoryFieldRowProps) => {
   const person = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
-  const { user_id: userId, automation_name: automation, play_label: play } = change.actor;
-  const who = (userId && personLabel(person(userId))) || automation || play || "";
+  const { field, from, to, actor } = change;
+  const who = actorLabel(actor, actor.user_id ? personLabel(person(actor.user_id)) : "");
+  const when = [who, formatFullTime(change.created_at)].filter(Boolean).join(" · ");
+  const sign = deltaSign(field, from, to);
+  const shape = shapeOf(field, sign);
 
   return (
-    <div aria-disabled="true" title={[who, formatFullTime(change.created_at)].filter(Boolean).join(" · ")} className="flex h-7 items-center gap-2 pr-4 pl-4 text-xs">
+    <div aria-disabled="true" title={when} className="relative flex h-7 items-center gap-2 pr-4 pl-4 text-xs">
       <HistorySpine node="field" first={first} last={last} />
-      <span className="min-w-0 flex-1 truncate">
-        <span className="mr-2 text-muted-foreground">{fieldName(change.field)}</span>
-        {change.from && <span className="text-muted-foreground">{change.from} → </span>}
-        {change.to}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="shrink-0 text-muted-foreground">{fieldName(field)}</span>
+        {shape === "created" && <span className="min-w-0 truncate text-muted-foreground">by {who || "someone"}</span>}
+        {shape === "delta" && (
+          <>
+            <span className="shrink-0 text-muted-foreground">{sign}</span>
+            <HistoryFieldValue field={field} value={sign === "+" ? to : from} />
+          </>
+        )}
+        {shape === "move" && (
+          <>
+            <HistoryFieldValue field={field} value={from} muted />
+            <span className="shrink-0 text-muted-foreground">→</span>
+            <HistoryFieldValue field={field} value={to} />
+          </>
+        )}
+        <span className="sr-only">, {when}</span>
       </span>
     </div>
   );

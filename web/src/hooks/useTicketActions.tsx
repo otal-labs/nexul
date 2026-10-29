@@ -10,7 +10,7 @@ import { boardPath } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 
 // After Delete, a ticket shown inside another page (the Inbox) stays put; a ticket page returns to its board.
-export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined): RowAction[] => {
+export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined, onHistory: () => void): RowAction[] => {
   const embedded = useIsEmbedded();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
@@ -31,5 +31,8 @@ export const useTicketActions = (ticket: Ticket, label: string, project: Project
     });
   };
 
-  return [{ label: "Delete", destructive: true, permission: "tickets:delete", onSelect: () => void remove() }];
+  return [
+    { label: "History", permission: "tickets:read", verb: "read this ticket's history", onSelect: onHistory },
+    { label: "Delete", destructive: true, permission: "tickets:delete", onSelect: () => void remove() },
+  ];
 };

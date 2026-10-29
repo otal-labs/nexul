@@ -410,6 +410,22 @@ describe("TicketPage delete", () => {
   });
 });
 
+describe("TicketPage history", () => {
+  const history = { versions: [{ version: 1, created_at: "2026-10-01T10:00:00Z", name: "", editor_ids: [], via: "", current: true }], changes: [] };
+
+  it("opens the History dialog from the ticket's menu for a reader, who is not offered Delete", async () => {
+    const user = userEvent.setup();
+    mockTicket({ "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:read"] }, "/api/tickets/t-1/history": history, "/api/tickets/t-1/versions/1": { version: 1, body: "" } });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for BE-7" }));
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "History" }));
+
+    expect(await screen.findByRole("dialog", { name: "History" })).toBeInTheDocument();
+  });
+});
+
 describe("TicketPage attachments", () => {
   // Writes tickets in p-1 and only reads in p-2; the sidebar's project is where the viewer happens to be looking.
   const me = {

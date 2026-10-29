@@ -46,6 +46,8 @@ A doc keeps its versions, and **History** in the doc page's menu shows them. Any
 - **One version.** A doc with only one version shows a small panel saying when it was saved and by whom; older versions appear after the next edit.
 - **Restore.** **Restore** names the picked version's time ("Restore 24 Oct 14:00") and saves its title and text again as a new version on top, so nothing in the list is rewritten. It needs `docs:write`, is disabled on the newest version, and a locked doc refuses it.
 
+A ticket has the same dialog under **History** in its menu, for anyone who can read the ticket. The versions are the ticket's description, and **Restore** puts an older description back (it needs `tickets:write`). Between the versions, in time order, each field that changed gets its own line: "Status In progress → Testing", "Labels + security", "Developer None → sam". Hover a line to see who made the change, the play, automation or agent it came through, and when. The last line is **Created**. A ticket keeps its last 100 field changes. Field changes are only shown: they have no **Restore**, and nothing in the list sets a field back, so change a field on the ticket itself.
+
 ### Clarify a doc
 
 When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the doc and asks a round of questions about what it leaves open.

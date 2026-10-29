@@ -15,14 +15,16 @@ interface HistoryDocumentProps {
 
 export const HistoryDocument = ({ title, titleChanged, runs, changes }: HistoryDocumentProps) => (
   <>
-    <div
-      {...(titleChanged && { role: "group", "aria-label": `Change 1 of ${changes}, edited`, "data-change": 1, tabIndex: -1 })}
-      className={cn("mb-4", titleChanged && editedBarClass)}
-    >
-      <h3 className={`${displayTitleClass} text-2xl`}>
-        <HistoryText parts={title} />
-      </h3>
-    </div>
+    {title.length > 0 && (
+      <div
+        {...(titleChanged && { role: "group", "aria-label": `Change 1 of ${changes}, edited`, "data-change": 1, tabIndex: -1 })}
+        className={cn("mb-4", titleChanged && editedBarClass)}
+      >
+        <h3 className={`${displayTitleClass} text-2xl`}>
+          <HistoryText parts={title} />
+        </h3>
+      </div>
+    )}
     <div className="prose-rich text-sm">
       {runs.map((run, i) => (
         <HistoryRunBox key={i} run={run} changes={changes} />

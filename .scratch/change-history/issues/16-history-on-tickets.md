@@ -1,6 +1,6 @@
 # 16 — The History dialog on tickets
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 14, 15
 
 Spec: `../spec.md`, decision 9. Look: ticket 05's answer, mock D.
