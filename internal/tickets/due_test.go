@@ -19,7 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-func (f *fakeRepo) UpdateDueOn(_ context.Context, id, dueOn string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdateDueOn(_ context.Context, id, dueOn string, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]

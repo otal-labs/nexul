@@ -54,7 +54,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 
 	ticket := &tickets.Ticket{ID: "tk-1", ProjectID: "project-general", Title: "Fix the bug", Body: "body", Status: tickets.StatusOpen, TypeID: "ticket-type-task", Developer: "onik97"}
 	require.NoError(t, s.Tickets.Create(ctx, ticket))
-	require.NoError(t, s.Tickets.UpdateStatus(ctx, ticket.ID, tickets.StatusOpen, nil))
+	require.NoError(t, s.Tickets.UpdateStatus(ctx, ticket.ID, tickets.StatusOpen, nil, nil))
 
 	accessSvc := access.NewService(s.Access, accessUsers{users: s.Users})
 	accessSvc.SetScopes(accessScopes{projects: s.Projects, members: s.WorkspaceMembers})

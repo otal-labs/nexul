@@ -1,6 +1,6 @@
 # 15 — Ticket history: description versions and field changes
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 12
 
 Spec: `../spec.md`, decisions 2, 5, 10, Storage, The route shape.

@@ -113,6 +113,15 @@ func (r *StatusesRepo) Exists(ctx context.Context, id string) (bool, error) {
 	return n > 0, nil
 }
 
+// Name returns a status column's name; satisfies tickets' StatusStore seam.
+func (r *StatusesRepo) Name(ctx context.Context, id string) (string, error) {
+	row, err := r.q.GetStatus(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("name of status %s: %w", id, notFoundIfNoRows(err))
+	}
+	return row.Name, nil
+}
+
 // FirstStatus returns the project's first column in board order, backlog first; satisfies tickets' StatusStore seam.
 func (r *StatusesRepo) FirstStatus(ctx context.Context, projectID string) (string, error) {
 	rows, err := r.q.ListStatusesByProject(ctx, projectID)

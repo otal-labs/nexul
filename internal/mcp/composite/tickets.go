@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -204,20 +205,43 @@ func linkedKey(l tickets.LinkedTicket) string {
 type ticketGetIn struct {
 	ID        string `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
 	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
+	Version   int    `json:"version,omitzero" jsonschema:"Read this version, not the current one."`
+}
+
+// recentChanges caps the field changes ticket_get lists, newest first.
+const recentChanges = 20
+
+type ticketVersionResult struct {
+	Version   int       `json:"version"`
+	EditorIDs []string  `json:"editor_ids"`
+	Via       string    `json:"via,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ticketChangeResult struct {
+	Field     string        `json:"field"`
+	From      string        `json:"from"`
+	To        string        `json:"to"`
+	Actor     tickets.Actor `json:"actor"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
 type ticketDetail struct {
 	ticketResult
-	PullRequests  []pullRequestResult  `json:"pull_requests"`
-	Branches      []tickets.BranchLink `json:"branches"`
-	FoundIn       *linkedResult        `json:"found_in,omitempty"`
-	OriginUnknown bool                 `json:"origin_unknown,omitempty"`
-	BugsFound     []linkedResult       `json:"bugs_found"`
-	BlockedBy     []linkedResult       `json:"blocked_by"`
-	Blocks        []linkedResult       `json:"blocks"`
-	Blocked       bool                 `json:"blocked"`
-	Reviews       []reviewResult       `json:"reviews"`
-	TestTarget    tickets.TestTarget   `json:"test_target"`
+	// CurrentVersion is the newest description version, set when version asked for an older body.
+	CurrentVersion int                   `json:"current_version,omitempty"`
+	Versions       []ticketVersionResult `json:"versions"`
+	Changes        []ticketChangeResult  `json:"changes"`
+	PullRequests   []pullRequestResult   `json:"pull_requests"`
+	Branches       []tickets.BranchLink  `json:"branches"`
+	FoundIn        *linkedResult         `json:"found_in,omitempty"`
+	OriginUnknown  bool                  `json:"origin_unknown,omitempty"`
+	BugsFound      []linkedResult        `json:"bugs_found"`
+	BlockedBy      []linkedResult        `json:"blocked_by"`
+	Blocks         []linkedResult        `json:"blocks"`
+	Blocked        bool                  `json:"blocked"`
+	Reviews        []reviewResult        `json:"reviews"`
+	TestTarget     tickets.TestTarget    `json:"test_target"`
 }
 
 type pullRequestResult struct {
@@ -250,7 +274,7 @@ func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Servi
 		"Returns one ticket with its markdown body and fields, plus its "+
 			"linked pull requests and branches, the ticket it was found in and the bugs found in it, what blocks it "+
 			"and what it blocks (each with done read from its column's stage), the code reviews of its pull requests, "+
-			"and its test_target. Use it before changing a ticket with ticket_update, and before testing one: "+
+			"its versions, latest 20 changes, and test_target. Use it before changing a ticket with ticket_update, and before testing one: "+
 			"test_target is its branch's preview (kind preview) or a shared test environment (kind shared), never "+
 			"production, and an empty url means nowhere is safe to test. To find tickets by text or project, use "+
 			"ticket_list.",
@@ -265,6 +289,9 @@ func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Servi
 				return nil, err
 			}
 			d := ticketDetail{ticketResult: base}
+			if err := d.addHistory(ctx, t, tk.ID, in.Version); err != nil {
+				return nil, err
+			}
 			if err := d.addLinks(ctx, t, tk.ID); err != nil {
 				return nil, err
 			}
@@ -276,6 +303,38 @@ func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Servi
 			}
 			return d, nil
 		})
+}
+
+// addHistory lists the kept description versions and the recent field changes, and swaps in an older body when asked.
+func (d *ticketDetail) addHistory(ctx context.Context, t *tickets.Service, id string, version int) error {
+	h, err := t.History(ctx, id)
+	if err != nil {
+		return err
+	}
+	d.Versions = make([]ticketVersionResult, 0, len(h.Versions))
+	for _, v := range h.Versions {
+		d.Versions = append(d.Versions, ticketVersionResult{Version: v.Version, EditorIDs: v.EditorIDs, Via: v.Via, CreatedAt: v.CreatedAt})
+	}
+	d.Changes = make([]ticketChangeResult, 0, min(len(h.Changes), recentChanges))
+	for _, c := range h.Changes[:min(len(h.Changes), recentChanges)] {
+		d.Changes = append(d.Changes, ticketChangeResult{Field: c.Field, From: c.From, To: c.To, Actor: c.Actor, CreatedAt: c.CreatedAt})
+	}
+	if version == 0 {
+		return nil
+	}
+	v, err := t.GetVersion(ctx, id, version)
+	if err != nil {
+		return err
+	}
+	body, err := richtext.ToMarkdown(v.Body)
+	if err != nil {
+		body = v.Body
+	}
+	d.Body = body
+	if len(h.Versions) > 0 {
+		d.CurrentVersion = h.Versions[0].Version
+	}
+	return nil
 }
 
 func (d *ticketDetail) addLinks(ctx context.Context, t *tickets.Service, id string) error {
@@ -418,6 +477,14 @@ type ticketUpdateIn struct {
 	LinkBranch       *branchLinkIn `json:"link_branch,omitempty" jsonschema:"A branch to link to the ticket."`
 	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink; one that is not linked changes nothing."`
 	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink; one that is not linked changes nothing."`
+	RevertToVersion  *int          `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
+}
+
+// revertsAlone reports a revert sent with no other field, which would otherwise be half applied.
+func (in ticketUpdateIn) revertsAlone() bool {
+	rest := in
+	rest.ID, rest.Workspace, rest.RevertToVersion = "", "", nil
+	return reflect.ValueOf(rest).IsZero()
 }
 
 type prLinkIn struct {
@@ -450,12 +517,15 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 		"Changes a ticket's title, body, project, status column and position, type, category, developer "+
 			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. "+
 			"The changes apply in the order the fields are listed here and "+
-			"stop at the first failure. To record a test "+
+			"stop at the first failure. revert_to_version restores a version, listed by ticket_get. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in ticketUpdateIn) (any, error) {
 			if err := in.checkFoundIn(); err != nil {
 				return nil, err
+			}
+			if in.RevertToVersion != nil && !in.revertsAlone() {
+				return nil, fmt.Errorf("%w: revert_to_version restores that version's whole body; send it alone, then update again", apperrs.ErrInvalid)
 			}
 			tk, err := resolveTicket(ctx, t, in.Workspace, in.ID)
 			if err != nil {
@@ -466,7 +536,7 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 				return nil, err
 			}
 			u := ticketUpdate{t: t, w: w, id: tk.ID, workspace: scope}
-			applied, err := runSteps(tickets.WithViaMCP(ctx), u.steps(in))
+			applied, err := runSteps(tickets.WithViaMCP(ctx), u.allSteps(in))
 			if err != nil {
 				return nil, err
 			}
@@ -502,6 +572,16 @@ type ticketUpdate struct {
 	id string
 	// workspace is where the keys in the link fields resolve.
 	workspace string
+}
+
+// allSteps is the one restore a revert makes, or the steps of the fields sent.
+func (u ticketUpdate) allSteps(in ticketUpdateIn) []step {
+	if in.RevertToVersion == nil {
+		return u.steps(in)
+	}
+	return []step{{"revert_to_version", "ticket_get lists the versions", func(ctx context.Context) error {
+		return discard(u.t.RestoreVersion(ctx, u.id, *in.RevertToVersion))
+	}}}
 }
 
 func (u ticketUpdate) steps(in ticketUpdateIn) []step {

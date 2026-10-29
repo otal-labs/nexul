@@ -227,7 +227,7 @@ func signedBy(tester string, viaMCP bool) string {
 
 // testActor records a move made through MCP as user:mcp, the kind reporter gives a ticket filed that way.
 func testActor(ctx context.Context, viaMCP bool) Actor {
-	actor := statusActor(ctx)
+	actor := ActorOf(ctx)
 	if viaMCP && actor.Kind == ActorKindUser {
 		actor.Kind = ActorKindUserMCP
 	}

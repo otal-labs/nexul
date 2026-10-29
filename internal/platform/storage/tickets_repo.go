@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -60,7 +61,8 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 	if err != nil {
 		return err
 	}
-	err = r.q.WithTx(tx).CreateTicket(ctx, sqlcgen.CreateTicketParams{
+	q := r.q.WithTx(tx)
+	err = q.CreateTicket(ctx, sqlcgen.CreateTicketParams{
 		ID:                     t.ID,
 		Title:                  t.Title,
 		Body:                   t.Body,
@@ -83,7 +85,10 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 	if err != nil {
 		return fmt.Errorf("insert ticket %s: %w", t.ID, classifyWriteErr(err))
 	}
-	return insertTicketLabels(ctx, tx, t.ID, t.Labels)
+	if err := insertTicketLabels(ctx, tx, t.ID, t.Labels); err != nil {
+		return err
+	}
+	return recordCreated(ctx, q, t)
 }
 
 func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, error) {
@@ -218,7 +223,7 @@ func (r *TicketsRepo) ListByProject(ctx context.Context, projectID string) ([]*t
 }
 
 // UpdateStatus moves a ticket to a new status, appending it rather than carrying the old position over.
-func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status tickets.Status, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status tickets.Status, unblocked tickets.UnblockedEvents, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		row, err := q.GetTicketStatusAndCategory(ctx, id)
@@ -240,6 +245,9 @@ func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status ticket
 			Status: string(status), Position: int64(pos), UpdatedAt: time.Now().Unix(), ID: id,
 		}); err != nil {
 			return fmt.Errorf("update ticket %s status: %w", id, err)
+		}
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
 		}
 		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
@@ -431,7 +439,7 @@ func (r *TicketsRepo) ListOpenPRNumbers(ctx context.Context, owner, repo string)
 	return out, nil
 }
 
-func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
+func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked tickets.UnblockedEvents, changes []tickets.Change, evts ...eventbus.OutboxEvent) (bool, error) {
 	var set bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
@@ -449,6 +457,9 @@ func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time
 			return nil
 		}
 		set = true
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
+		}
 		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
 	if err != nil {
@@ -494,9 +505,10 @@ func (r *TicketsRepo) ListBranchLinks(ctx context.Context, id string) ([]tickets
 }
 
 // UpdateType changes a ticket's type id in place; the type FK guarantees only a real type id is referenced.
-func (r *TicketsRepo) UpdateType(ctx context.Context, id, typeID string) error {
+func (r *TicketsRepo) UpdateType(ctx context.Context, id, typeID string, changes []tickets.Change) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateTicketType(ctx, sqlcgen.UpdateTicketTypeParams{
+		q := r.q.WithTx(tx)
+		n, err := q.UpdateTicketType(ctx, sqlcgen.UpdateTicketTypeParams{
 			TypeID: sql.NullString{String: typeID, Valid: true}, UpdatedAt: time.Now().Unix(), ID: id,
 		})
 		if err != nil {
@@ -505,12 +517,12 @@ func (r *TicketsRepo) UpdateType(ctx context.Context, id, typeID string) error {
 		if n == 0 {
 			return fmt.Errorf("update ticket %s type: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return writeTicketChanges(ctx, q, id, changes)
 	})
 }
 
 // UpdatePerson sets a ticket's developer or tester, enqueueing evts in the same transaction; nobody clears it.
-func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.Role, p tickets.Person, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.Role, p tickets.Person, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		now := time.Now().Unix()
@@ -528,19 +540,26 @@ func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.
 		if n == 0 {
 			return fmt.Errorf("update ticket %s %s: %w", id, role, apperrs.ErrNotFound)
 		}
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
+		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
 }
 
 // UpdateDueOn sets a ticket's due date, enqueueing evts in the same transaction; empty clears it.
-func (r *TicketsRepo) UpdateDueOn(ctx context.Context, id, dueOn string, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdateDueOn(ctx context.Context, id, dueOn string, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateTicketDueOn(ctx, sqlcgen.UpdateTicketDueOnParams{DueOn: dueOn, UpdatedAt: time.Now().Unix(), ID: id})
+		q := r.q.WithTx(tx)
+		n, err := q.UpdateTicketDueOn(ctx, sqlcgen.UpdateTicketDueOnParams{DueOn: dueOn, UpdatedAt: time.Now().Unix(), ID: id})
 		if err != nil {
 			return fmt.Errorf("update ticket %s due date: %w", id, classifyWriteErr(err))
 		}
 		if n == 0 {
 			return fmt.Errorf("update ticket %s due date: %w", id, apperrs.ErrNotFound)
+		}
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
 		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
@@ -567,10 +586,12 @@ func (r *TicketsRepo) ListDue(ctx context.Context, workspaceID, from, to string,
 
 // UpdateTicket edits a ticket's title and body in place, enqueueing the
 // given outbox events in the same transaction.
-func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, changes []tickets.Change, credit *tickets.Credit, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateTicketTitleBody(ctx, sqlcgen.UpdateTicketTitleBodyParams{
-			Title: title, Body: body, UpdatedAt: time.Now().Unix(), ID: id,
+		q := r.q.WithTx(tx)
+		now := time.Now()
+		n, err := q.UpdateTicketTitleBody(ctx, sqlcgen.UpdateTicketTitleBodyParams{
+			Title: title, Body: body, UpdatedAt: now.Unix(), ID: id,
 		})
 		if err != nil {
 			return fmt.Errorf("update ticket %s: %w", id, classifyWriteErr(err))
@@ -578,14 +599,23 @@ func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, 
 		if n == 0 {
 			return fmt.Errorf("update ticket %s: %w", id, apperrs.ErrNotFound)
 		}
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
+		}
+		if credit != nil {
+			if err := writeDescriptionVersion(ctx, q, id, body, credit.EditorIDs, credit.Via, now); err != nil {
+				return err
+			}
+		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
 }
 
 // UpdateDoc sets or clears a ticket's source doc, enqueueing the events in the same transaction.
-func (r *TicketsRepo) UpdateDoc(ctx context.Context, id, docID string, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdateDoc(ctx context.Context, id, docID string, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateTicketDoc(ctx, sqlcgen.UpdateTicketDocParams{
+		q := r.q.WithTx(tx)
+		n, err := q.UpdateTicketDoc(ctx, sqlcgen.UpdateTicketDocParams{
 			DocID: sql.NullString{String: docID, Valid: docID != ""}, UpdatedAt: time.Now().Unix(), ID: id,
 		})
 		if err != nil {
@@ -593,6 +623,9 @@ func (r *TicketsRepo) UpdateDoc(ctx context.Context, id, docID string, evts ...e
 		}
 		if n == 0 {
 			return fmt.Errorf("update ticket %s doc: %w", id, apperrs.ErrNotFound)
+		}
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
 		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
@@ -616,29 +649,59 @@ func moveTicketCategory(ctx context.Context, tx *sql.Tx, ticketID, categoryID st
 	if err != nil {
 		return err
 	}
+	now := time.Now()
 	if _, err := q.MoveTicketCategory(ctx, sqlcgen.MoveTicketCategoryParams{
-		CategoryID: sql.NullString{String: categoryID, Valid: categoryID != ""}, Position: int64(pos), UpdatedAt: time.Now().Unix(), ID: ticketID,
+		CategoryID: sql.NullString{String: categoryID, Valid: categoryID != ""}, Position: int64(pos), UpdatedAt: now.Unix(), ID: ticketID,
 	}); err != nil {
 		return classifyWriteErr(err)
 	}
-	return nil
+	// The category move belongs to workspace, which cannot import tickets, so its change is written here, in its transaction.
+	change := tickets.Change{
+		ID: ids.New(), Field: tickets.FieldCategory, From: categoryName(ctx, q, row.CategoryID.String), To: categoryName(ctx, q, categoryID),
+		Actor: tickets.ActorOf(ctx), CreatedAt: now,
+	}
+	return writeTicketChanges(ctx, q, ticketID, []tickets.Change{change})
 }
 
-func (r *TicketsRepo) AddLabel(ctx context.Context, id, label string) error {
+// categoryName shows a category by its name; none shows as empty, and an id that no longer names one as itself.
+func categoryName(ctx context.Context, q *sqlcgen.Queries, id string) string {
+	if id == "" {
+		return ""
+	}
+	c, err := q.GetCategory(ctx, id)
+	if err != nil {
+		return id
+	}
+	return c.Name
+}
+
+// AddLabel records changes only when the label was not already on the ticket.
+func (r *TicketsRepo) AddLabel(ctx context.Context, id, label string, changes []tickets.Change) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).AddTicketLabel(ctx, sqlcgen.AddTicketLabelParams{TicketID: id, Label: label}); err != nil {
+		q := r.q.WithTx(tx)
+		n, err := q.AddTicketLabel(ctx, sqlcgen.AddTicketLabelParams{TicketID: id, Label: label})
+		if err != nil {
 			return fmt.Errorf("add label %q to ticket %s: %w", label, id, classifyWriteErr(err))
 		}
-		return nil
+		if n == 0 {
+			return nil
+		}
+		return writeTicketChanges(ctx, q, id, changes)
 	})
 }
 
-func (r *TicketsRepo) RemoveLabel(ctx context.Context, id, label string) error {
+// RemoveLabel records changes only when the label was on the ticket.
+func (r *TicketsRepo) RemoveLabel(ctx context.Context, id, label string, changes []tickets.Change) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).RemoveTicketLabel(ctx, sqlcgen.RemoveTicketLabelParams{TicketID: id, Label: label}); err != nil {
+		q := r.q.WithTx(tx)
+		n, err := q.RemoveTicketLabel(ctx, sqlcgen.RemoveTicketLabelParams{TicketID: id, Label: label})
+		if err != nil {
 			return fmt.Errorf("remove label %q from ticket %s: %w", label, id, err)
 		}
-		return nil
+		if n == 0 {
+			return nil
+		}
+		return writeTicketChanges(ctx, q, id, changes)
 	})
 }
 
@@ -725,7 +788,7 @@ func insertTicketLabels(ctx context.Context, tx *sql.Tx, ticketID string, labels
 		if label == "" {
 			continue
 		}
-		if err := q.AddTicketLabel(ctx, sqlcgen.AddTicketLabelParams{TicketID: ticketID, Label: label}); err != nil {
+		if _, err := q.AddTicketLabel(ctx, sqlcgen.AddTicketLabelParams{TicketID: ticketID, Label: label}); err != nil {
 			return fmt.Errorf("insert label %q for ticket %s: %w", label, ticketID, err)
 		}
 	}

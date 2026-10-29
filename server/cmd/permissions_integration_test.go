@@ -300,6 +300,18 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			_, err := s.ticketsSvc.Create(ctx, "project-general", "New", "", "", "")
 			return err
 		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uOutsider: notFound}},
+		{"tickets: history", func(ctx context.Context) error {
+			_, err := s.ticketsSvc.History(ctx, f.ticket.ID)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"tickets: read a description version", func(ctx context.Context) error {
+			_, err := s.ticketsSvc.GetVersion(ctx, f.ticket.ID, 1)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"tickets: restore a description version", func(ctx context.Context) error {
+			_, err := s.ticketsSvc.RestoreVersion(ctx, f.ticket.ID, 1)
+			return err
+		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uPlain: forbidden, uOutsider: notFound}},
 		{"tickets: delete", func(ctx context.Context) error {
 			return s.ticketsSvc.Delete(ctx, f.ticket.ID)
 		}, map[string]string{uWriter: forbidden, uOutsider: notFound}},

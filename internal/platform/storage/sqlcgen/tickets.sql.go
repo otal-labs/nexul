@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const addTicketLabel = `-- name: AddTicketLabel :exec
+const addTicketLabel = `-- name: AddTicketLabel :execrows
 INSERT INTO ticket_labels (ticket_id, label) VALUES (?, ?)
 ON CONFLICT(ticket_id, label) DO NOTHING
 `
@@ -21,9 +21,12 @@ type AddTicketLabelParams struct {
 	Label    string
 }
 
-func (q *Queries) AddTicketLabel(ctx context.Context, arg AddTicketLabelParams) error {
-	_, err := q.db.ExecContext(ctx, addTicketLabel, arg.TicketID, arg.Label)
-	return err
+func (q *Queries) AddTicketLabel(ctx context.Context, arg AddTicketLabelParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, addTicketLabel, arg.TicketID, arg.Label)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const claimTicketDeveloperLogin = `-- name: ClaimTicketDeveloperLogin :exec
@@ -1161,7 +1164,7 @@ func (q *Queries) MoveTicketCategory(ctx context.Context, arg MoveTicketCategory
 	return result.RowsAffected()
 }
 
-const removeTicketLabel = `-- name: RemoveTicketLabel :exec
+const removeTicketLabel = `-- name: RemoveTicketLabel :execrows
 DELETE FROM ticket_labels WHERE ticket_id = ? AND label = ?
 `
 
@@ -1170,9 +1173,12 @@ type RemoveTicketLabelParams struct {
 	Label    string
 }
 
-func (q *Queries) RemoveTicketLabel(ctx context.Context, arg RemoveTicketLabelParams) error {
-	_, err := q.db.ExecContext(ctx, removeTicketLabel, arg.TicketID, arg.Label)
-	return err
+func (q *Queries) RemoveTicketLabel(ctx context.Context, arg RemoveTicketLabelParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, removeTicketLabel, arg.TicketID, arg.Label)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const searchTicketPRLinksInWorkspace = `-- name: SearchTicketPRLinksInWorkspace :many

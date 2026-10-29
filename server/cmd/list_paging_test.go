@@ -375,8 +375,8 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 	require.NoError(t, err)
 	blocker, err := f.svc.ticketsSvc.Create(ctx, pGeneral, "Login rate limit", "", "", "")
 	require.NoError(t, err)
-	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: f.ticket.ID, Kind: tickets.LinkBlockedBy, TargetID: clientTicket.ID, CreatedAt: now}))
-	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: clientTicket.ID, Kind: tickets.LinkBlockedBy, TargetID: blocker.ID, CreatedAt: now}))
+	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: f.ticket.ID, Kind: tickets.LinkBlockedBy, TargetID: clientTicket.ID, CreatedAt: now}, nil))
+	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: clientTicket.ID, Kind: tickets.LinkBlockedBy, TargetID: blocker.ID, CreatedAt: now}, nil))
 	for id, due := range map[string]string{f.ticket.ID: "2026-10-05", clientTicket.ID: "2026-10-05", blocker.ID: "2026-11-03"} {
 		_, err := f.svc.ticketsSvc.SetDueOn(ctx, id, due)
 		require.NoError(t, err)

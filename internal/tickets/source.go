@@ -48,8 +48,8 @@ func (s *Service) SetSource(ctx context.Context, id, docID string) (*Ticket, err
 	updated := *current
 	updated.DocID = docID
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Ticket: updated, ActorID: statusActor(ctx).UserID}}
-	if err := s.repo.UpdateDoc(ctx, current.ID, docID, evt); err != nil {
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Ticket: updated, ActorID: ActorOf(ctx).UserID}}
+	if err := s.repo.UpdateDoc(ctx, current.ID, docID, s.changed(ActorOf(ctx), FieldDoc, current.DocID, docID), evt); err != nil {
 		return nil, fmt.Errorf("set source on ticket %s: %w", id, err)
 	}
 	return &updated, nil

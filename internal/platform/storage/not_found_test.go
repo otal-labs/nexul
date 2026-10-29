@@ -78,10 +78,10 @@ func TestRepos_AnIdNobodyStoredIsNotFound(t *testing.T) {
 		{"WorkspacesRepo.Get", func(ctx context.Context) error { return ign(s.Workspaces.Get(ctx, "missing")) }},
 		{"TicketsRepo.GetByID", func(ctx context.Context) error { return ign(s.Tickets.GetByID(ctx, "missing")) }},
 		{"TicketsRepo.UpdateTicket", func(ctx context.Context) error {
-			return s.Tickets.UpdateTicket(ctx, "missing", "New title", "New body")
+			return s.Tickets.UpdateTicket(ctx, "missing", "New title", "New body", nil, nil)
 		}},
 		{"TicketsRepo.UpdateStatus", func(ctx context.Context) error {
-			return s.Tickets.UpdateStatus(ctx, "missing", tickets.StatusDone, nil)
+			return s.Tickets.UpdateStatus(ctx, "missing", tickets.StatusDone, nil, nil)
 		}},
 		{"TicketsRepo.Delete", func(ctx context.Context) error { return s.Tickets.Delete(ctx, "missing", nil) }},
 		{"TopologyRepo.Get", func(ctx context.Context) error { return ign(s.Topology.Get(ctx, "prod")) }},

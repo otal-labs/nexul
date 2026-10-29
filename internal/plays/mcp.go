@@ -47,8 +47,8 @@ func toPlayResult(p *Play) playResult {
 
 type playListIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
-	ID          string `json:"id,omitempty" jsonschema:"A play's id. Returns that one play with its auto plays, recent versions of its instructions, and recent changes instead of a list."`
-	Version     int    `json:"version,omitzero" jsonschema:"With id: a version number from 1 up, to read instead of the current one."`
+	ID          string `json:"id,omitempty" jsonschema:"A play's id. Returns that play with its auto plays and history instead of a list."`
+	Version     int    `json:"version,omitzero" jsonschema:"Read this version, not the current one."`
 	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, interview, or stack. Lists only plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id."`
 	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done)."`
@@ -78,7 +78,7 @@ type playUpdateIn struct {
 	AddAutoPlays       []autoPlayIn       `json:"add_auto_plays,omitempty" jsonschema:"Auto plays to add, each starting the play by itself when its moment matches. A new one starts switched off; turn it on with update_auto_plays."`
 	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes by auto play id, from play_list; only the fields passed change."`
 	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete, from play_list."`
-	RevertToVersion    *int               `json:"revert_to_version,omitempty" jsonschema:"Restore this version of the instructions as a new version. Send it alone."`
+	RevertToVersion    *int               `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
 }
 
 func (in playUpdateIn) changesPlay() bool {
@@ -99,7 +99,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"lists every definition, and a caller with autoplays:read also gets each play's auto_plays: moment, "+
 				"conditions, priority, once_within_minutes, run_on, and enabled switch. With type (and "+
 				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
-				"which is what to check before play_run. With id it returns that one play, and with version its older instructions.",
+				"which is what to check before play_run. With id it returns that one play; version reads an older one.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in playListIn) (any, error) {
 				if in.ID != "" {
@@ -148,7 +148,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"call the play by its old one with runPlay; warnings then names them, since they fail until their code "+
 				"changes. Needs plays:write for its fields, autoplays:write to add or change auto plays, and "+
 				"autoplays:delete to remove them. The decisions check is switched on or off through its play's auto "+
-				"play, with update_auto_plays and enabled. revert_to_version restores earlier instructions as a new version.",
+				"play, with update_auto_plays and enabled. revert_to_version restores a version, listed by play_list.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playUpdateIn) (any, error) {
 				return updatePlay(ctx, s, in)

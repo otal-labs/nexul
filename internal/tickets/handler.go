@@ -138,7 +138,56 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tickets/{id}/test-target", h.testTarget)
 	mux.HandleFunc("POST /api/tickets/{id}/test/pass", h.testPass)
 	mux.HandleFunc("POST /api/tickets/{id}/test/fail", h.testFail)
+	mux.HandleFunc("GET /api/tickets/{id}/history", h.history)
+	mux.HandleFunc("GET /api/tickets/{id}/versions/{version}", h.getVersion)
+	mux.HandleFunc("POST /api/tickets/{id}/versions/{version}/restore", h.restoreVersion)
 	return mux
+}
+
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	hist, err := h.svc.History(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, hist)
+}
+
+// versionNumber reads the {version} path value, which counts from 1.
+func versionNumber(r *http.Request) (int, error) {
+	version, err := strconv.Atoi(r.PathValue("version"))
+	if err != nil || version < 1 {
+		return 0, fmt.Errorf("%w: version must be a positive integer", apperrs.ErrInvalid)
+	}
+	return version, nil
+}
+
+func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
+	version, err := versionNumber(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	v, err := h.svc.GetVersion(r.Context(), r.PathValue("id"), version)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+func (h *Handler) restoreVersion(w http.ResponseWriter, r *http.Request) {
+	version, err := versionNumber(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	t, err := h.svc.RestoreVersion(r.Context(), r.PathValue("id"), version)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, t)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {

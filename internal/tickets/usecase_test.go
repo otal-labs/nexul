@@ -154,7 +154,7 @@ func (f *fakeRepo) Page(_ context.Context, filter TicketFilter, _ TicketScope, w
 	return out[min(w.Offset, len(out)):min(w.Offset+w.Limit, len(out))], len(out), nil
 }
 
-func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, unblocked UnblockedEvents, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.unblocked = unblocked
@@ -298,7 +298,7 @@ func (f *fakeRepo) ListIDsByPR(_ context.Context, owner, repo string, number int
 	return ids, nil
 }
 
-func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
+func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, unblocked UnblockedEvents, _ []Change, evts ...eventbus.OutboxEvent) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.unblocked = unblocked
@@ -415,6 +415,8 @@ type fakeStatusStore struct {
 	firstErr error
 }
 
+func (f fakeStatusStore) Name(_ context.Context, id string) (string, error) { return id, nil }
+
 func (f fakeStatusStore) FirstStatus(context.Context, string) (string, error) {
 	return f.first, f.firstErr
 }
@@ -429,7 +431,7 @@ func (f fakeStatusStore) Exists(_ context.Context, id string) (bool, error) {
 	return f.known[Status(id)], nil
 }
 
-func (f *fakeRepo) UpdateType(_ context.Context, id, typeID string) error {
+func (f *fakeRepo) UpdateType(_ context.Context, id, typeID string, _ []Change) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -440,7 +442,7 @@ func (f *fakeRepo) UpdateType(_ context.Context, id, typeID string) error {
 	return nil
 }
 
-func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, p Person, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, p Person, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -457,7 +459,7 @@ func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, p Perso
 	return nil
 }
 
-func (f *fakeRepo) UpdateTicket(_ context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdateTicket(_ context.Context, id, title, body string, _ []Change, _ *Credit, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -473,7 +475,7 @@ func (f *fakeRepo) UpdateTicket(_ context.Context, id, title, body string, evts 
 	return nil
 }
 
-func (f *fakeRepo) UpdateDoc(_ context.Context, id, docID string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdateDoc(_ context.Context, id, docID string, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -502,7 +504,7 @@ func (f *fakeRepo) SetPosition(_ context.Context, id string, position int) error
 	return nil
 }
 
-func (f *fakeRepo) AddLabel(_ context.Context, id, label string) error {
+func (f *fakeRepo) AddLabel(_ context.Context, id, label string, _ []Change) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -518,7 +520,7 @@ func (f *fakeRepo) AddLabel(_ context.Context, id, label string) error {
 	return nil
 }
 
-func (f *fakeRepo) RemoveLabel(_ context.Context, id, label string) error {
+func (f *fakeRepo) RemoveLabel(_ context.Context, id, label string, _ []Change) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]

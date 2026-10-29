@@ -67,7 +67,7 @@ func (r *TicketsRepo) SameWorkspace(ctx context.Context, projectA, projectB stri
 }
 
 // PutLink inserts a link; a found_in link first clears the ticket's earlier found-in in the same transaction.
-func (r *TicketsRepo) PutLink(ctx context.Context, link tickets.TicketLink, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) PutLink(ctx context.Context, link tickets.TicketLink, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if link.Kind == tickets.LinkFoundIn {
@@ -81,12 +81,15 @@ func (r *TicketsRepo) PutLink(ctx context.Context, link tickets.TicketLink, evts
 		if err != nil {
 			return fmt.Errorf("insert %s link on ticket %s: %w", link.Kind, link.TicketID, classifyWriteErr(err))
 		}
+		if err := writeTicketChanges(ctx, q, link.TicketID, changes); err != nil {
+			return err
+		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
 }
 
 // DeleteLink enqueues evts only when a row went away, so removing a missing link publishes nothing.
-func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
+func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, unblocked tickets.UnblockedEvents, changes []tickets.Change, evts ...eventbus.OutboxEvent) (bool, error) {
 	var removed bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
@@ -105,6 +108,9 @@ func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, u
 		removed = n > 0
 		if !removed {
 			return nil
+		}
+		if err := writeTicketChanges(ctx, q, link.TicketID, changes); err != nil {
+			return err
 		}
 		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})

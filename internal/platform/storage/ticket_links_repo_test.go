@@ -52,7 +52,7 @@ func TestTicketLinks_Integration_BlockedClearsOnDoneStageAndCascades(t *testing.
 
 	_, err = svc.AddBlocker(ctx, backend.ID, frontend.ID)
 	require.ErrorIs(t, err, apperrs.ErrConflict)
-	err = s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: backend.ID})
+	err = s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: backend.ID}, nil)
 	require.ErrorIs(t, err, apperrs.ErrConflict, "the unique index refuses a duplicate blocker")
 
 	uncleared, err := svc.UnclearedBlockers(ctx)
@@ -81,7 +81,7 @@ func TestTicketLinks_Integration_BlockedClearsOnDoneStageAndCascades(t *testing.
 	assert.Len(t, origin.BugsFound, 1)
 	assert.Len(t, origin.Blocks, 1)
 
-	removed, err := s.Tickets.DeleteLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: "missing"}, nil)
+	removed, err := s.Tickets.DeleteLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: "missing"}, nil, nil)
 	require.NoError(t, err)
 	assert.False(t, removed)
 
