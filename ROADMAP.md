@@ -438,7 +438,12 @@ without changing the core architecture.
   access domain regains a `comment` action when this lands.
 - **Runner labels and selectors** for routing a job to the right runners,
   beyond the machine a stack targets.
-- **Ticket workflow depth** — an activity timeline and custom fields on ticket
+- **Change history** — every doc, ticket, play, memory and automation keeps
+  its recent versions, and a History dialog shows what changed between them
+  word by word, with restore (`.scratch/change-history/`). A ticket's and a
+  play's field changes sit in the same list, so this is also the ticket
+  activity timeline.
+- **Ticket workflow depth** — custom fields on ticket
   types (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page
   (`.scratch/branch-from-ticket/`); one search box across every entity
   (`.scratch/global-search/`).
