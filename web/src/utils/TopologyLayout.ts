@@ -307,9 +307,16 @@ export const laneCamera = (lanes: Lane[], paneWidth: number): { x: number; y: nu
   return { x: CAMERA_PAD - left * zoom, y: CAMERA_PAD - top * zoom, zoom };
 };
 
-// Whether part of the drawing sits off the pane's left edge (after panning to later lanes).
-export const drawingLeft = (lanes: Lane[], viewport: { x: number; zoom: number }): boolean =>
-  lanes.some((l) => viewport.x + l.left * viewport.zoom < CAMERA_PAD / 2);
+// The last lane that starts off the pane's left edge (after panning to later lanes), or none.
+export const laneBefore = (lanes: Lane[], viewport: { x: number; zoom: number }): Lane | undefined =>
+  [...lanes].reverse().find((l) => viewport.x + l.left * viewport.zoom < CAMERA_PAD / 2);
+
+// Pans so that lane's left edge comes into view, keeping the zoom.
+export const panBackTo = (lane: Lane, viewport: { y: number; zoom: number }) => ({
+  x: CAMERA_PAD - lane.left * viewport.zoom,
+  y: viewport.y,
+  zoom: viewport.zoom,
+});
 
 // Whether the drawing runs on below the pane's bottom edge.
 export const drawingBelow = (lanes: Lane[], viewport: { y: number; zoom: number }, paneHeight: number): boolean =>

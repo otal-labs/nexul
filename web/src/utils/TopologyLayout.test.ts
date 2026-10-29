@@ -10,8 +10,12 @@ import {
   alignPillsToRows,
   buildNetworkRects,
   footprintOf,
+  laneBefore,
+  laneBeyond,
   laneCamera,
   laneLayout,
+  panBackTo,
+  panTo,
   lanesOf,
   MIN_FIT_ZOOM,
   overlaps,
@@ -185,5 +189,25 @@ describe("lanesOf and laneCamera", () => {
     // Some lane ends inside the view and the next one starts past it: no lane is cut by the fit itself.
     expect(all.some((l) => l.right <= shownRight)).toBe(true);
     expect(laneCamera(all, 200).zoom).toBe(MIN_FIT_ZOOM);
+  });
+});
+
+describe("laneBeyond and laneBefore", () => {
+  const lanes = [
+    { label: "Hostnames", left: 0, right: 300, top: 0, bottom: 100 },
+    { label: "Gateways", left: 356, right: 716, top: 0, bottom: 100 },
+    { label: "Services", left: 772, right: 1108, top: 0, bottom: 100 },
+  ];
+
+  it("pans More to the first lane past the right edge and Back to the last one off the left, and back again", () => {
+    const start = { x: 32, y: 0, zoom: 1 };
+    expect(laneBefore(lanes, start)).toBeUndefined();
+    const next = laneBeyond(lanes, start, 800)!;
+    expect(next.label).toBe("Services");
+    const panned = panTo(next, start, 800);
+    expect(laneBefore(lanes, panned)!.label).toBe("Hostnames");
+    const back = panBackTo(laneBefore(lanes, panned)!, panned);
+    expect(back.x).toBe(start.x);
+    expect(laneBefore(lanes, back)).toBeUndefined();
   });
 });
