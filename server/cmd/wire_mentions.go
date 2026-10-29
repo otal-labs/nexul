@@ -108,7 +108,7 @@ func (a mentionStatusSource) Get(ctx context.Context, id string) (*mentions.Stat
 	if err != nil {
 		return nil, err
 	}
-	return &mentions.Status{ID: st.ID, Name: st.Name}, nil
+	return &mentions.Status{ID: st.ID, Name: st.Name, Kind: string(st.Kind)}, nil
 }
 
 // mentionProjectSource adapts projects to mentions.ProjectSource so chips render {ticket.Project} as PREFIX-NUMBER.

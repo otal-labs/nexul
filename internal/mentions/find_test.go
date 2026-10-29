@@ -143,14 +143,14 @@ func TestFind_TicketsAndDocs(t *testing.T) {
 		search: []SearchHit{{ID: "d-locked"}, {ID: "d-open"}, {ID: "d-gone"}},
 	}
 	access := &fakeAccessChecker{canOpen: map[string]bool{"d-open": true, "d-gone": true}}
-	svc := newTestService(t, tickets, docs, &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}, access)
+	svc := newTestService(t, tickets, docs, &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open", Kind: "progress"}}}, access)
 	svc.cfg.Projects = &fakeProjectSource{projects: map[string]Project{"p-1": {ID: "p-1", Prefix: "WEB"}}}
 
 	found, err := svc.Find(actorCtx("u-1"), "deploy", "ws-1", "", 5)
 	require.NoError(t, err)
 	assert.Equal(t, "ws-1", tickets.searchWorkspace)
 	require.Len(t, found.Hits, 3)
-	assert.Equal(t, Hit{Type: "ticket", ID: "t-title", Title: "Deploy logs", Hint: "WEB-4", StatusLabel: "Open", ProjectID: "p-1", UpdatedAt: now.Add(-time.Hour)}, found.Hits[0])
+	assert.Equal(t, Hit{Type: "ticket", ID: "t-title", Title: "Deploy logs", Hint: "WEB-4", StatusLabel: "Open", StatusKind: "progress", ProjectID: "p-1", UpdatedAt: now.Add(-time.Hour)}, found.Hits[0])
 	assert.True(t, found.Hits[1].InBody, "a ticket whose title lacks the word was found in its body")
 	assert.Equal(t, "d-open", found.Hits[2].ID, "a doc the caller cannot open is left out")
 

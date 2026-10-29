@@ -13,6 +13,9 @@ export const formatRelativeTime = (ts: string): string => {
   return `${Math.floor(diffMs / DAY_MS)}d ago`;
 };
 
+// The same buckets without the "ago", for a meta column: "now", "5m", "3h", "2d".
+export const formatAge = (ts: string): string => formatRelativeTime(ts).replace("just now", "now").replace(" ago", "");
+
 // The shared gate callers use to decide when to switch from the relative form above to their own fallback.
 export const daysAgo = (ts: string): number => {
   const date = new Date(ts);

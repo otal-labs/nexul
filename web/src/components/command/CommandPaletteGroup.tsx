@@ -3,6 +3,7 @@ import { useId } from "react";
 import { CommandPaletteOption } from "@/components/command/CommandPaletteOption";
 import { microheaderClass } from "@/components/Microheader";
 import type { CommandGroup, CommandItem } from "@/models/Command";
+import { cn } from "@/lib/utils";
 
 interface CommandPaletteGroupProps {
   group: CommandGroup;
@@ -16,8 +17,8 @@ interface CommandPaletteGroupProps {
 export const CommandPaletteGroup = ({ group, start, activeIndex, onHover, onSelect }: CommandPaletteGroupProps) => {
   const headingId = useId();
   return (
-    <div role="group" aria-labelledby={headingId} className="pb-1">
-      <div id={headingId} className={`${microheaderClass} px-3 pt-3 pb-1.5`}>
+    <div role="group" aria-labelledby={headingId} className={cn(!group.quiet && "pb-1", group.quiet && "first:pt-1.5")}>
+      <div id={headingId} className={cn(group.quiet ? "sr-only" : `${microheaderClass} px-3 pt-3 pb-1.5`)}>
         {group.heading}
       </div>
       {group.items.map((item, i) => (

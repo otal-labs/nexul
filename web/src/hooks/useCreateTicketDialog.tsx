@@ -9,6 +9,8 @@ interface CreateTicketOptions {
   docId?: string;
   // Files the new ticket under this category.
   categoryId?: string;
+  // Starts the title field with this text.
+  title?: string;
 }
 
 // Opens the New ticket dialog in projectId and resolves with the new ticket's id; undefined for a viewer who may not
@@ -19,7 +21,7 @@ export const useCreateTicketDialog = (
   const canCreate = useAreaAccess(projectId)?.("editTickets") ?? false;
   const { open } = useFormDialog();
   if (!canCreate) return undefined;
-  return async ({ docId = "", categoryId = "" }: CreateTicketOptions = {}) => {
+  return async ({ docId = "", categoryId = "", title = "" }: CreateTicketOptions = {}) => {
     const { CreateTicketForm, CreateTicketFooter } = await loadTicketForm();
     const result = await open<SaveTicketFormData>({
       title: "New ticket",
@@ -28,7 +30,7 @@ export const useCreateTicketDialog = (
       header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm defaultProjectId={projectId} docId={docId} defaultCategoryId={categoryId} />,
-      formOptions: { defaultValues: emptyTicketForm() },
+      formOptions: { defaultValues: { ...emptyTicketForm(), title } },
     });
     return (result.data as { id?: string } | null)?.id;
   };

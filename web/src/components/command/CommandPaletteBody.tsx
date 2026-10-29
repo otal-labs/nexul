@@ -1,21 +1,31 @@
 import { useCallback, useRef, useState, type KeyboardEvent } from "react";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SquarePlusIcon } from "lucide-react";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { CommandPaletteFooter } from "@/components/command/CommandPaletteFooter";
 import { CommandPaletteGroup } from "@/components/command/CommandPaletteGroup";
 import { Spinner } from "@/components/ui/spinner";
-import { useCommandActionItems } from "@/hooks/useCommandActionItems";
+import { useCommandActionItems, useNewTicketRun } from "@/hooks/useCommandActionItems";
 import { useCommandNavItems } from "@/hooks/useCommandNavItems";
 import { useCommandSettingsItems } from "@/hooks/useCommandSettingsItems";
 import { useCommandSearch } from "@/hooks/useCommandSearch";
 import { useCommandPaletteStore } from "@/stores/commandPaletteStore";
-import { commandOptionId, filterCommandGroups, type CommandItem } from "@/models/Command";
+import { arrangeCommandGroups, commandOptionId, type CommandGroup, type CommandItem } from "@/models/Command";
 
 const LIST_ID = "command-palette-list";
 
 // Rows shown at open appear with the palette; only rows that join the list after it fade in (index.css).
 const settled = (el: HTMLDivElement) => requestAnimationFrame(() => (el.dataset.settled = ""));
+
+// The kept scrollbar gutter comes out of the right padding, so classic scrollbars leave the rows evenly inset.
+const measureGutter = (el: HTMLDivElement) => el.style.setProperty("--gutter", `${el.offsetWidth - el.clientWidth}px`);
+
+// How many rows the typed list shows, or that a kind had more than it shows; nothing while browsing or with no results.
+const footerStatus = (quiet: boolean, searching: boolean, cut: boolean, rows: number): string => {
+  if (quiet || searching || rows === 0) return "";
+  if (cut) return "More than shown · add a word";
+  return `${rows} found`;
+};
 
 // Mounted only while the palette is open, so its queries run only then.
 export const CommandPaletteBody = () => {
@@ -25,16 +35,31 @@ export const CommandPaletteBody = () => {
   const list = useRef<HTMLDivElement>(null);
   const settle = useCallback((el: HTMLDivElement | null) => {
     list.current = el;
-    if (el) settled(el);
+    if (!el) return;
+    measureGutter(el);
+    settled(el);
   }, []);
   const browsing = query.trim() === "";
   const nav = useCommandNavItems();
   const settings = useCommandSettingsItems(browsing);
   const actions = useCommandActionItems(browsing);
-  const { groups: found, searching, cut } = useCommandSearch(query, true);
+  const newTicket = useNewTicketRun();
+  const { groups: found, searching, cut, found: hits } = useCommandSearch(query, true);
 
-  // Browsing leads with what changed lately; typing leads with pages, then what the search found.
-  const groups = filterCommandGroups(browsing ? [...found, ...nav, ...settings, ...actions] : [...nav, ...settings, ...found, ...actions], query);
+  const arranged = arrangeCommandGroups(browsing ? [...nav, ...actions] : [...nav, ...settings, ...actions], found, query);
+  // Once a search of two characters or more has answered with nothing, Enter still does something: a ticket of that title.
+  const nothing = arranged.length === 0 && hits !== undefined && !searching;
+  const create: CommandGroup[] =
+    nothing && newTicket
+      ? [{ heading: "Create", quiet: true, items: [{ id: "create:ticket-titled", label: `New ticket “${query.trim()}”`, icon: SquarePlusIcon, run: () => newTicket(query.trim()) }] }]
+      : [];
+  const fresh = [...arranged, ...create];
+  // A search still on its way keeps the last rows on screen, so the palette never collapses between two answers.
+  const waiting = searching && fresh.length === 0;
+  const freshKey = fresh.map((group) => group.items.map((item) => item.id).join()).join("|");
+  const [shown, setShown] = useState({ key: "", groups: fresh });
+  if (!waiting && shown.key !== freshKey) setShown({ key: freshKey, groups: fresh });
+  const groups = waiting ? shown.groups : fresh;
   const items = groups.flatMap((group) => group.items);
   const activeIndex = Math.min(active, items.length - 1);
   const starts = groups.map((_, g) => groups.slice(0, g).reduce((sum, group) => sum + group.items.length, 0));
@@ -69,7 +94,7 @@ export const CommandPaletteBody = () => {
   };
 
   // The empty sentence announces itself; otherwise the count is read once the search settles.
-  const announcement = searching || items.length === 0 ? "" : `${items.length} ${items.length === 1 ? "result" : "results"}`;
+  const announcement = searching || nothing || items.length === 0 ? "" : `${items.length} ${items.length === 1 ? "result" : "results"}`;
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -100,7 +125,7 @@ export const CommandPaletteBody = () => {
         id={LIST_ID}
         role="listbox"
         aria-label="Results"
-        className="command-results max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain px-2 pb-1"
+        className="command-results max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain pr-[max(0px,calc(0.5rem-var(--gutter,0px)))] pb-1 pl-2"
       >
         {groups.map((group, g) => (
           <CommandPaletteGroup
@@ -113,12 +138,11 @@ export const CommandPaletteBody = () => {
           />
         ))}
       </div>
-      {items.length === 0 && !searching && <EmptyRow className="-mt-1 pt-0 wrap-anywhere">No results for “{query.trim()}”</EmptyRow>}
-      {cut && !searching && <EmptyRow className="-mt-1 pt-0">More matches than shown. Add a word to narrow.</EmptyRow>}
+      {nothing && <EmptyRow className="pt-1 pr-4 pb-4 pl-12 text-[13px] wrap-anywhere">Nothing titled or mentioning “{query.trim()}”</EmptyRow>}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <CommandPaletteFooter />
+      <CommandPaletteFooter status={footerStatus(browsing || nothing, searching, cut, items.length)} open={items.length > 0} />
     </div>
   );
 };
