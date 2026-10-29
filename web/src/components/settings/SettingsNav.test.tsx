@@ -62,6 +62,13 @@ describe("SettingsNav", () => {
     expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/acme/configuration/team");
   });
 
+  it("sets Danger zone apart with a hairline in the top row, and lets every label hold its medium width", () => {
+    renderNav(workspaceSections(everything));
+    const danger = screen.getByRole("link", { name: "Danger zone" }).closest("li");
+    expect(danger?.previousElementSibling).toHaveAttribute("aria-hidden");
+    expect(screen.getByText("Mention chips")).toHaveAttribute("data-label", "Mention chips");
+  });
+
   it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {
     renderNav(workspaceSections(nothing));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Danger zone"]);

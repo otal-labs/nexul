@@ -1094,7 +1094,11 @@ settings-style page (Your settings, Configuration, Project settings, a stack's S
 a nav with two jobs (Your settings' You and Instance settings)
 labels each group with a mono microheader in the side column and a hairline
 between the groups in the top row, which fades over its last 24px, and a group
-with nothing the viewer may open shows no label. A sideways row (this nav's top
+with nothing the viewer may open shows no label. Danger zone is set apart the
+same way: a hairline above it in the side column, with even space either side,
+and before it in the top row. Each label holds its medium-weight width, so the
+current item turning medium never moves the others, and focus draws inside
+the item, clear of its neighbours. A sideways row (this nav's top
 row, a tab row) never draws a scrollbar under its labels (`scrollbar-none`);
 its fade says there is more. Environment is one card of mono name and
 value rows, values dots until the card's Reveal toggle, with Deploy now in the footer beside Save; someone who can't change
