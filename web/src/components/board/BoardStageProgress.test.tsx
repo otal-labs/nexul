@@ -29,7 +29,9 @@ describe("BoardStageProgress", () => {
     const { container } = render(<BoardStageProgress columns={columns} counts={{ open: 4, done: 0 }} />);
     const empty = container.querySelector('[data-stage-segment="done"]');
     expect(empty).not.toBeNull();
-    expect((empty as HTMLElement).style.flexGrow).toBe("1");
+    // A stage holding nothing gets no share of the bar, only the 4px floor, so a filtered board cannot read as 20% per stage.
+    expect((empty as HTMLElement).style.flexGrow).toBe("0");
+    expect(empty?.className).toContain("min-w-1");
     expect(empty?.className).toContain("opacity-25");
   });
 

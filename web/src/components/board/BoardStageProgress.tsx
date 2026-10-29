@@ -27,7 +27,7 @@ export const BoardStageProgress = ({ columns, counts, className }: BoardStagePro
               statusStage(column.kind).dot,
               count === 0 ? "opacity-25" : column.kind === StatusKind.Backlog && "opacity-50",
             )}
-            style={{ flexGrow: Math.max(count, 1), flexBasis: 0 }}
+            style={{ flexGrow: count, flexBasis: 0 }}
           />
         );
       })}

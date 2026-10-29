@@ -18,7 +18,6 @@ import { createPortal } from "react-dom";
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { BoardStageHeader } from "@/components/board/BoardStageHeader";
 import { boardGridMinWidth, countByStatus } from "@/components/board/boardGrid";
-import { cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/boardStore";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
@@ -201,24 +200,18 @@ export const KanbanBoard = ({
       >
         {/* The board scrolls on its own, both ways, so the stage header and each lane band can pin while the toolbar stays put. */}
         {/* The frame reaches into the page's right padding (Container's px-6) and the scrollbar lives there, so opening a lane never narrows the columns. */}
-        <div className="@container mx-auto flex min-h-0 w-full flex-1 flex-col" style={{ maxWidth }}>
+        <div className="@container mx-auto mt-3 flex min-h-0 w-full flex-1 flex-col" style={{ maxWidth }}>
           {/* It runs to the panel's bottom and fades there; below 1024 the right edge fades too, so a cut column reads as more board. */}
           <div
             ref={scrollRef}
             data-card-drag={activeTicket ? "" : undefined}
-            className={cn(
-              "group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable]",
-              // The vertical edge always fades into the panel; the sideways one only says "more board" when there is more board.
-              overflowing
-                ? "[mask-composite:intersect] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent),linear-gradient(to_right,#000_calc(100%-1rem),transparent)]"
-                : "[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]",
-            )}
+            className="group/board min-h-0 flex-1 overflow-auto pb-6 [scrollbar-gutter:stable] [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.5rem),transparent)]"
           >
             <div className="relative mx-auto min-h-full w-full" style={{ minWidth: boardGridMinWidth(shownColumns, doneOpen) }}>
               <div className="relative space-y-3">
-                <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} />
+                <BoardStageHeader columns={shownColumns} counts={counts} onAddTicket={onAddTicket} overflowing={overflowing} />
                 {shownSwimlanes.map((lane) => (
-                  <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} />
+                  <SwimlaneSection key={lane.key} lane={lane} columns={shownColumns} overflowing={overflowing} />
                 ))}
               </div>
             </div>

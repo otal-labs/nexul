@@ -16,9 +16,11 @@ import { useBoardStore } from "@/stores/boardStore";
 interface SwimlaneSectionProps {
   lane: Swimlane;
   columns: BoardStatus[];
+  /** There is more board to the right: fade each lane's edge away rather than cutting it. */
+  overflowing?: boolean;
 }
 
-export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
+export const SwimlaneSection = ({ lane, columns, overflowing = false }: SwimlaneSectionProps) => {
   const { projectId: routeParam = "" } = useParams();
   const { data: projects = [] } = useFetchProjects();
   const projectId = resolveProject(projects, routeParam)?.id ?? routeParam;
@@ -79,13 +81,15 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
             )}
           </span>{" "}
           {/* The lane's own progress, held at the right edge of what the board shows, so it never scrolls away with the last stage. */}
-          <span className="sticky right-5 ml-auto flex w-[200px] shrink-0 items-center justify-end gap-2">
+          <span className="sticky right-2 ml-auto flex w-[200px] shrink-0 items-center justify-end gap-2">
             <span className="h-1 w-24 shrink-0 overflow-hidden rounded-full bg-muted max-md:hidden" aria-hidden>
               <span className="block h-full rounded-full bg-success" style={{ width: `${lane.tickets.length === 0 ? 0 : Math.round((doneCount / lane.tickets.length) * 100)}%` }} />
             </span>
-            <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-              {doneCount}/{lane.tickets.length} done
-            </span>
+            {lane.tickets.length > 0 && (
+              <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                {doneCount}/{lane.tickets.length} done
+              </span>
+            )}
           </span>
         </button>
       </h3>
@@ -97,7 +101,11 @@ export const SwimlaneSection = ({ lane, columns }: SwimlaneSectionProps) => {
         className={cn("disclosure", collapsed && "contain-inline-size")}
       >
         <div className="min-h-0 overflow-hidden">
-          <div data-board-grid="lane" className="grid gap-2" style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}>
+          <div
+            data-board-grid="lane"
+            className={cn("grid gap-2", overflowing && "[mask-image:linear-gradient(to_right,#000_calc(100%-1rem),transparent)]")}
+            style={{ gridTemplateColumns: boardGridTemplate(columns, doneOpen) }}
+          >
               {columns.map((column) => (
                 <KanbanColumn
                   key={`${lane.key}-${column.id}`}

@@ -45,9 +45,9 @@ const KanbanColumnImpl = ({ droppableId, laneLabel, categoryId, column, collapse
       aria-label={`${column.name} column in ${laneLabel}`}
       className={cn(
         "flex min-w-0 flex-col gap-1.5 rounded-lg p-1.5",
-        // An empty cell is a place to land, not a slab: half the well, same footprint, still a drop target.
-        empty && "bg-well-shade/50",
-        !empty && (folded ? "group-data-[card-drag]/board:bg-well-shade" : "bg-well-shade"),
+        // An empty open cell is a place to land, not a slab: half the well, same footprint, still a drop target.
+        // A folded done cell draws no well until a card is held, whatever its lane holds.
+        folded ? "group-data-[card-drag]/board:bg-well-shade" : empty ? "bg-well-shade/50" : "bg-well-shade",
       )}
     >
       {/* The 1px top padding is room for a card's hover lift. */}
