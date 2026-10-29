@@ -94,6 +94,8 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
       room.on(livekit.RoomEvent.ParticipantDisconnected, watchAlone);
       room.on(livekit.RoomEvent.Disconnected, (reason) => {
         if (seq !== joinSeq) return; // an intentional leave/rejoin already handled state
+        // A connect that fails also fires this; its catch below shows the error instead.
+        if (get().status !== "connected") return;
         stopAloneTimer();
         set({ activeConversationId: null, status: "idle", room: null });
         if (reason !== livekit.DisconnectReason.CLIENT_INITIATED) {
