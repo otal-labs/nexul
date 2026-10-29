@@ -85,11 +85,10 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
             <span className="h-1 w-24 shrink-0 overflow-hidden rounded-full bg-muted max-md:hidden" aria-hidden>
               <span className="block h-full rounded-full bg-success" style={{ width: `${lane.tickets.length === 0 ? 0 : Math.round((doneCount / lane.tickets.length) * 100)}%` }} />
             </span>
-            {lane.tickets.length > 0 && (
-              <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                {doneCount}/{lane.tickets.length} done
-              </span>
-            )}
+            {/* The count keeps its 72px whether or not the lane has tickets, so the line does not slide between lanes. */}
+            <span className="min-w-[72px] shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+              {lane.tickets.length > 0 ? `${doneCount}/${lane.tickets.length} done` : ""}
+            </span>
           </span>
         </button>
       </h3>

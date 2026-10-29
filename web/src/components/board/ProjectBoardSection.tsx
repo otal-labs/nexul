@@ -11,6 +11,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { ProjectMark } from "@/components/project/ProjectMark";
+import { Button } from "@/components/ui/button";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -130,21 +131,23 @@ export const ProjectBoardSection = ({
       </div>
       {isLoading && <LoadingDisplay label="Loading board…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
-      {tickets && swimlanes.length === 0 && (
-        <NoDataDisplay
-          message={
-            // projectIds is the route's scope here, not a user-picked filter (same rule as BoardFilterBar's count).
-            filters.categoryId ||
-            filters.typeId ||
-            filters.waitingForMeToTest ||
-            filters.search.trim() !== "" ||
-            filters.labels.length + filters.statusIds.length + filters.developers.length > 0
-              ? "No tickets match these filters."
-              : "No tickets yet. Create one to start the board."
-          }
-        />
+      {tickets && shownCount === 0 && (
+        <div className="flex flex-col items-center gap-3 py-10">
+          <NoDataDisplay
+            message={
+              totalCount === 0
+                ? "No tickets yet. Create one to start the board."
+                : "No tickets match these filters."
+            }
+          />
+          {totalCount > 0 && (
+            <Button variant="outline" size="sm" onClick={onClear}>
+              Clear filters
+            </Button>
+          )}
+        </div>
       )}
-      {tickets && swimlanes.length > 0 && (
+      {tickets && shownCount > 0 && (
         <KanbanBoard
           projectId={projectId}
           maxWidth={chromeWidth}
