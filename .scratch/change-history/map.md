@@ -36,17 +36,16 @@ does. When the spec is done, the building starts.
 - [When editing a doc writes a version](issues/06-when-editing-a-doc-writes-a-version.md): one version per sitting, about 5 minutes after the last edit or when the last editor leaves, credited to everyone who edited; saves that change nothing write no version.
 - [What a play version captures](issues/03-what-a-play-version-captures.md): instructions as body versions (last 10), other settings as field changes (100); existing plays start with their current instructions; each trail records the version it ran.
 - [Restore from history](issues/04-restore-from-history.md): restore text (docs, ticket descriptions, play instructions, memories) as a new version on top; field changes never undone from history; a restore replaces live text after saving the open sitting; edit permission and the lock apply.
+- [One versions store, or one per entity](issues/08-one-versions-store-or-one-per-entity.md): a table per entity, cascading on delete; one shared route shape and one web dialog; automation versions stay as they are.
+- [Who reaches history, and where](issues/09-who-reaches-history-and-where.md): anyone who can read an item sees its history; agents read and revert through a `version` on each get and `revert_to_version` on each update, as memories do; an open list doesn't update live; no history on the phone.
 
 ## Not yet specified
 
-- How agents reach history over MCP within the tool budget: a `version`
-  field on each `get`, a diff in the result, or nothing.
-- Live push: whether an open history list updates when someone else saves.
-- Who sees history: the entity's read permission, or something stricter.
-- The phone app: whether it shows history at all.
+- The "what changed" dialog's look and its diff (ticket 05).
 
 ## Out of scope
 
+- History on the phone app (ticket 09).
 - Agent find-and-replace edits on `doc_update`, `ticket_update`,
   `play_update` and `memory_update` (so an agent stops resending whole
   bodies). Already clear, so it ships as its own PR outside this map.
