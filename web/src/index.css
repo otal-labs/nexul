@@ -288,10 +288,25 @@ body {
   }
 }
 
-/* Thin, quiet scrollbars (emil: only customise small/simple surfaces). */
-* {
+/* Thin, quiet scrollbars (emil: only customise small/simple surfaces). In the base layer, so a scrollbar utility can override it. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+}
+
+/* A sideways tab or nav row scrolls without drawing a bar under its labels; its fade says there is more. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+}
+
+@utility scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
 }
 
 :focus-visible {
@@ -401,6 +416,8 @@ body {
 .app-frame {
   height: 100%;
   overflow-y: auto;
+  /* A page that grows past the panel (a stack's section switched) must not move sideways when the scrollbar arrives. */
+  scrollbar-gutter: stable;
 }
 
 .app-frame:not(:has([data-pane-layout])) {
