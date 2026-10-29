@@ -43,7 +43,7 @@ does. When the spec is done, the building starts.
 
 ## Not yet specified
 
-Nothing. The spec and build tickets come next.
+Nothing. The destination is reached: `spec.md` and build tickets 10–19.
 
 ## Out of scope
 
