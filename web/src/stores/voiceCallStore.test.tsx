@@ -90,6 +90,22 @@ describe("voiceCallStore", () => {
     expect(s.error).toBe("network unreachable");
   });
 
+  it("a connect that fails, after the room reports its own disconnect, still lands in the error state", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { ws_url: "wss://lk", token: "tok" } });
+    connect.mockImplementationOnce(async () => {
+      const onDisconnected = on.mock.calls.find(([event]) => event === "disconnected")?.[1] as (reason?: number) => void;
+      onDisconnected(7);
+      throw new Error("could not establish signal connection");
+    });
+
+    await useVoiceCallStore.getState().join("c1", "huddle");
+
+    const s = useVoiceCallStore.getState();
+    expect(s.status).toBe("error");
+    expect(s.activeConversationId).toBe("c1");
+    expect(s.error).toBe("could not establish signal connection");
+  });
+
   it("leave disconnects the room, posts the server-side leave, and resets state", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ws_url: "wss://lk", token: "tok" } });
     await useVoiceCallStore.getState().join("c1", "huddle");
