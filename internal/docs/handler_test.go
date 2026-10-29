@@ -161,6 +161,19 @@ func TestDocsHandler_Versions(t *testing.T) {
 	})
 }
 
+func TestDocsHandler_RestoreVersion_AnswersWithTheDocOnTop(t *testing.T) {
+	h, _ := newDocsHandler()
+	created := decodeDoc(t, serve(t, h, http.MethodPost, "/api/docs", `{"project_id":"project-1","title":"A","body":"1"}`))
+	serve(t, h, http.MethodPut, "/api/docs/"+created.ID, `{"title":"B","body":"2"}`)
+
+	rec := serve(t, h, http.MethodPost, "/api/docs/"+created.ID+"/versions/1/restore", "")
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	got := decodeDoc(t, rec)
+	assert.Equal(t, 3, got.Version)
+	assert.Equal(t, "A", got.Title)
+}
+
 func TestDocsHandler_ArchiveRestore(t *testing.T) {
 	h, _ := newDocsHandler()
 	created := decodeDoc(t, serve(t, h, http.MethodPost, "/api/docs", `{"project_id":"project-1","title":"A","body":"1"}`))
@@ -272,6 +285,8 @@ func TestDocsHandler_Refusals(t *testing.T) {
 		{"search without a query", http.MethodGet, "/api/docs/search", "", http.StatusBadRequest},
 		{"get a missing version", http.MethodGet, "/api/docs/{id}/versions/9", "", http.StatusNotFound},
 		{"get a version by a non-number", http.MethodGet, "/api/docs/{id}/versions/abc", "", http.StatusBadRequest},
+		{"restore a missing version", http.MethodPost, "/api/docs/{id}/versions/9/restore", "", http.StatusNotFound},
+		{"restore a version by a non-number", http.MethodPost, "/api/docs/{id}/versions/abc/restore", "", http.StatusBadRequest},
 		{"archive a missing doc", http.MethodPost, "/api/docs/nope/archive", "", http.StatusNotFound},
 		{"lock a missing doc", http.MethodPost, "/api/docs/nope/lock", "", http.StatusNotFound},
 		{"watch a missing doc", http.MethodPut, "/api/docs/nope/watchers/me", "", http.StatusNotFound},

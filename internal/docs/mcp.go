@@ -3,6 +3,7 @@ package docs
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/docs/richtext"
@@ -26,6 +27,10 @@ type docResult struct {
 	Watching bool            `json:"watching"`
 	// Clarification is the doc's rounds of questions and answers, empty until a Clarify via AI run opens one.
 	Clarification *Clarification `json:"clarification"`
+	// CurrentVersion is set only when an older version is shown in place of the current one.
+	CurrentVersion int `json:"current_version,omitempty"`
+	// Versions is doc_get's newest versions, without bodies.
+	Versions []VersionSummary `json:"versions,omitempty"`
 }
 
 type watcherResult struct {
@@ -42,7 +47,8 @@ type docListIn struct {
 }
 
 type docGetIn struct {
-	ID string `json:"id" jsonschema:"The doc's id, from doc_list."`
+	ID      string `json:"id" jsonschema:"The doc's id, from doc_list."`
+	Version int    `json:"version,omitzero" jsonschema:"A version number from 1 up, to read instead of the current one."`
 }
 
 type docCreateIn struct {
@@ -61,6 +67,8 @@ type docUpdateIn struct {
 	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it."`
 	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; a locked doc moves too."`
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher, so its edits reach your notifications; false stops that, and your own later edits do not start it again."`
+
+	RevertToVersion *int `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new version. Send it alone."`
 
 	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Works on a locked doc."`
 	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once, only by that round's own run. Post them, then end the turn."`
@@ -121,6 +129,7 @@ func docGetTool(s *Service) mcptool.Tool {
 		"Returns one doc with its full body as markdown, its folder_id, version, and archived and locked state. "+
 			"It also returns its watchers, the people its edits notify (its creator, everyone who edited it, and anyone who chose to watch), with watching true when you are one, "+
 			"and its clarification: every round of questions with their answers, each round's Anything else? text and reply, whether a round is running, and whether it is closed. "+
+			"It lists its newest 10 versions; with version it returns that version's title and body instead, and current_version says which is live. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docGetIn) (any, error) {
@@ -128,8 +137,35 @@ func docGetTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toDocResult(ctx, s, d)
+			out, err := toDocResult(ctx, s, d)
+			if err != nil {
+				return nil, err
+			}
+			h, err := s.History(ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			out.Versions = h.Versions[:min(len(h.Versions), KeptUnnamedVersions)]
+			if in.Version == 0 {
+				return out, nil
+			}
+			v, err := s.GetVersion(ctx, in.ID, in.Version)
+			if err != nil {
+				return nil, err
+			}
+			return withVersion(out, v)
 		})
+}
+
+// withVersion shows an older version's title and body in place of the current ones.
+func withVersion(out docResult, v *DocVersion) (docResult, error) {
+	md, err := richtext.ToMarkdown(v.Body)
+	if err != nil {
+		return docResult{}, fmt.Errorf("render doc %s version %d: %w", out.ID, v.Version, err)
+	}
+	out.CurrentVersion = out.Version
+	out.Version, out.Title, out.Body = v.Version, v.Title, md
+	return out, nil
 }
 
 func docCreateTool(s *Service) mcptool.Tool {
@@ -163,6 +199,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
 		"Changes a doc's title, body, folder, archived or locked state, or whether you watch it. "+
 			"A new title or body saves a new version; read the doc with doc_get first, because body replaces the whole body. "+
+			"revert_to_version restores an earlier version as a new one; doc_get lists the versions. "+
 			"Archived true hides the doc from search until archived false restores it, and doc_delete removes it for good. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
 			"a doc play locks its doc when its run starts and leaves it locked, "+
@@ -172,7 +209,11 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			"questions, anything_else_reply, and no_gaps are for the running Clarify via AI or Update doc via AI round's own run.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docUpdateIn) (any, error) {
-			d, err := updateDoc(withViaMCP(ctx), s, in)
+			apply := updateDoc
+			if in.RevertToVersion != nil {
+				apply = revertDoc
+			}
+			d, err := apply(withViaMCP(ctx), s, in)
 			if err != nil {
 				return nil, err
 			}
@@ -236,6 +277,16 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 		return nil, err
 	}
 	return d, nil
+}
+
+// revertDoc restores a version on its own: it replaces the whole text, so a field beside it would be ambiguous.
+func revertDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
+	id, version := in.ID, *in.RevertToVersion
+	in.ID, in.RevertToVersion = "", nil
+	if !reflect.ValueOf(in).IsZero() {
+		return nil, fmt.Errorf("%w: revert_to_version restores that version's whole content; send it alone, then update again", apperrs.ErrInvalid)
+	}
+	return s.RestoreVersion(ctx, id, version)
 }
 
 // writeNoGaps takes a Clarify round's no-gaps rewrite, with the reply to the last Anything else? when it has one.

@@ -1,6 +1,6 @@
 # 13 — Restore a doc version, from the web and MCP
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 12
 
 Spec: `../spec.md`, decision 6 and Surfaces (MCP).
