@@ -47,7 +47,7 @@ describe("MentionChip", () => {
     const link = await screen.findByRole("link", { name: /Fix the bug/ });
     expect(link).toHaveAttribute("href", "/acme/tickets/t-1");
     expect(link).toHaveAttribute("data-can-open", "true");
-    expect(link).toHaveTextContent("Fix the bug In progress");
+    expect(link).toHaveTextContent("Fix the bug · In progress");
   });
 
   it("substitutes a custom template's tokens from the resolved chip fields", async () => {
@@ -64,7 +64,7 @@ describe("MentionChip", () => {
     render(wrap(<MentionChip type="ticket" id="t-1" label="old" chip={chip} />));
 
     const link = await screen.findByRole("link", { name: /ERF-1/ });
-    expect(link).toHaveTextContent("ERF-1 Fix login redirect loop");
+    expect(link).toHaveTextContent("ERF-1 · Fix login redirect loop");
   });
 
   it("passes an unrecognized token through literally", async () => {
@@ -75,7 +75,7 @@ describe("MentionChip", () => {
     // findByRole matching just the title would also match the pre-fetch fallback
     // render, so wait for the fully substituted text instead (only present once the
     // custom template resolves).
-    const text = await screen.findByText("Fix the bug {ticket.NotAField}");
+    const text = await screen.findByText("Fix the bug · {ticket.NotAField}");
     expect(text.closest("a")).toHaveAttribute("href", "/acme/tickets/t-1");
   });
 
@@ -104,7 +104,7 @@ describe("MentionChip", () => {
     render(wrap(<MentionChip type="ticket" id="t-9" label="old" chip={chip} />));
 
     const inert = await screen.findByTestId("mention-chip");
-    expect(inert).toHaveTextContent("Rotate keys In progress");
+    expect(inert).toHaveTextContent("Rotate keys · In progress");
     expect(screen.getByRole("img", { name: "You don't have access" })).toBeInTheDocument();
     await user.hover(inert);
     expect(await screen.findByRole("tooltip")).toHaveTextContent("You don't have access");

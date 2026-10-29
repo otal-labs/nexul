@@ -104,7 +104,7 @@ describe("DocBodyView", () => {
 
     const link = await screen.findByRole("link", { name: /Fix the bug/ });
     expect(link).toHaveAttribute("href", "/acme/tickets/t-1");
-    expect(link).toHaveTextContent("Fix the bug In progress");
+    expect(link).toHaveTextContent("Fix the bug · In progress");
   });
 
   it("keeps inaccessible chips inert with title disclosed", async () => {
