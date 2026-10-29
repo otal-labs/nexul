@@ -69,7 +69,7 @@ git history, and anything durable it decided is an ADR.
   a chosen-computer auto play's ordered list.
 - `.scratch/change-history/` — a wayfinder map toward a spec for version
   history with a "what changed" diff on docs, tickets, plays, memories and
-  automations. Ticket 01 is resolved, and its findings are in `research/`.
+  automations. Tickets 01, 02, 06 and 07 are resolved; ticket 01's findings are in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
@@ -77,8 +77,8 @@ git history, and anything durable it decided is an ADR.
   the owner *before* doing the work". Never act on one silently.
 - Specs carried over from the dissolved requirement docs, all `needs-triage`
   because the owner has not re-confirmed them since they were written:
-  `.scratch/ticket-workflow-depth/` (what is left is an activity timeline and
-  custom fields), `.scratch/global-search/` (the command palette covers tickets
+  `.scratch/ticket-workflow-depth/` (what is left is custom fields; the activity
+  timeline moved to `.scratch/change-history/`), `.scratch/global-search/` (the command palette covers tickets
   and docs; the all-entity search is not built), `.scratch/branch-from-ticket/`,
   `.scratch/second-git-host/`, `.scratch/integration-store/`, and
   `.scratch/workspace-scoped-automation-surfaces/` (automations are scoped;
