@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { TicketCard } from "@/components/board/TicketCard";
-import { labelDotColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 import { usePlayRunStore } from "@/stores/playRunStore";
 
@@ -95,12 +95,11 @@ describe("TicketCard", () => {
     expect(badge?.querySelector("svg")).toHaveClass(...ticketTypeColor("Bug").split(" "));
   });
 
-  it("renders each label as a chip whose hue is only on its dot", () => {
+  it("renders each label as a pill in its own hue", () => {
     const { container } = renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent"] }} />);
     const chip = screen.getByText("urgent").closest('[data-slot="label-chip"]');
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
-    expect(chip?.querySelector("[aria-hidden]")).toHaveClass(labelDotColor("urgent"));
-    expect(chip).not.toHaveClass(labelDotColor("urgent"));
+    expect(chip).toHaveClass(...labelPillColor("urgent").split(" "));
   });
 
   it("mutes every type icon but a bug's, so the type never adds a second accent to the card", async () => {
@@ -123,6 +122,7 @@ describe("TicketCard", () => {
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
     expect(screen.queryByText("i18n")).not.toBeInTheDocument();
     expect(screen.getByText("+2")).toHaveAttribute("title", "i18n, ux");
+    expect(container.querySelector('[data-slot="label-chip"]')).toHaveAttribute("title", "bug");
   });
 
   it("renders the developer's GitHub avatar outside testing columns", () => {
@@ -189,7 +189,7 @@ describe("TicketCard", () => {
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByLabelText("Play running")).toBeInTheDocument();
-    expect(await screen.findByText(/^2m \d+s$/)).toBeInTheDocument();
+    expect(await screen.findByText("2m")).toBeInTheDocument();
 
     act(() =>
       usePlayRunStore.getState().applyFrame({
@@ -197,7 +197,7 @@ describe("TicketCard", () => {
       }),
     );
     expect(screen.queryByLabelText("Play running")).not.toBeInTheDocument();
-    expect(screen.queryByText(/^2m \d+s$/)).not.toBeInTheDocument();
+    expect(screen.queryByText("2m")).not.toBeInTheDocument();
   });
 
   it("shows a question mark instead of the spinner while the run waits on an answer", async () => {
@@ -304,9 +304,9 @@ describe("TicketCard", () => {
       );
       await screen.findByText("urgent");
       await vi.waitFor(() => {
-        expect(screen.getByText("urgent").closest('[data-slot="label-chip"]')?.querySelector("[aria-hidden]")).toHaveClass("bg-orange-500");
+        expect(screen.getByText("urgent").closest('[data-slot="label-chip"]')).toHaveClass(...labelPillColor("urgent", "orange").split(" "));
       });
-      expect(labelDotColor("urgent")).not.toBe("bg-orange-500");
+      expect(labelPillColor("urgent")).not.toBe(labelPillColor("urgent", "orange"));
     });
   });
 });

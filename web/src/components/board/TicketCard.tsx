@@ -7,13 +7,12 @@ import { useNavigate } from "react-router";
 import { personLabel } from "@nexul/client-core/person";
 import { findTicketPerson } from "@nexul/client-core/ticketPeople";
 
-import { LabelChip } from "@/components/LabelChip";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
-import { ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
@@ -61,15 +60,23 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const hiddenLabels = labels.slice(fitting);
   const labelRun = labels.length > 0 && (
     <>
-      {/* Labels give way first and drop out whole, never cut mid-word; what dropped is counted in +N, named in its tooltip. */}
-      <span ref={labelsRef} className="relative flex h-4 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden">
+      {/* Labels after the first drop out whole and are counted in +N, named in its tooltip; the first truncates when it alone is too long. */}
+      <span ref={labelsRef} className="relative flex h-[18px] min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
         {labels.slice(0, CARD_LABELS).map((label, index) => (
-          <LabelChip
+          // A pill in the label's own hue; the type stays an icon, so the label is the card's one tinted shape.
+          <span
             key={label}
-            label={label}
-            color={labelColors?.[label]}
-            className={cn("max-w-none shrink-0 gap-1 border-transparent bg-transparent px-0 py-0 font-sans text-[11px] leading-4", index >= fitting && "invisible")}
-          />
+            data-slot="label-chip"
+            title={label}
+            className={cn(
+              "inline-flex h-[18px] min-w-0 items-center rounded-full px-1.5 font-medium",
+              labelPillColor(label, labelColors?.[label]),
+              index === 0 ? "shrink" : "shrink-0",
+              index >= fitting && "invisible",
+            )}
+          >
+            <span className="truncate">{label}</span>
+          </span>
         ))}
       </span>
       {hiddenLabels.length > 0 && (
@@ -96,7 +103,11 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
       {runState !== undefined && runState !== "waiting" && (
         <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running" />
       )}
-      {runState !== undefined && runState !== "waiting" && runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
+      {runState !== undefined && runState !== "waiting" && runStartedAt !== undefined && (
+        <span className="-ml-0.5">
+          <RunTimer startedAt={runStartedAt} />
+        </span>
+      )}
     </>
   );
   const thread = hasThread && (
@@ -108,12 +119,15 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
       {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the labels a row of their own. */}
       <span className="flex h-4 items-center gap-1.5 font-mono text-[11px] leading-4 text-muted-foreground">
         <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
-        {/* The timer is the one mark that gives way: on a narrow card it wraps out of the clipped line, the spinner stays. */}
-        <span className="flex h-4 min-w-0 flex-1 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden">{run}</span>
-        {thread}
+        {/* Marks wrap out of the clipped line from the end, the thread first, then the timer; the empty before keeps a lone icon on the key's line. */}
+        <span className="flex h-4 min-w-0 flex-1 flex-wrap content-start items-center justify-end gap-x-1.5 overflow-hidden before:h-4 before:content-['']">
+          {run}
+          {thread}
+        </span>
         {avatar}
       </span>
-      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words text-pretty">{ticket.title}</span>
+      {/* Balanced, not pretty: pretty leaves a title like "…with open blockers" on a one-word last line. */}
+      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words text-balance">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
       {(type !== "" || labels.length > 0) && (
         <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] leading-4 text-muted-foreground">

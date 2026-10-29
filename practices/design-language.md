@@ -597,14 +597,18 @@ a card is held, an empty cell and the folded Done cell show a card-tall
 dashed slot as the place to land.
 
 A card is three rows. An eyebrow in 11px mono leads: the key, then at its end
-the run marks, the thread mark and the 16px avatar of whoever acts next; on a
-narrow card the run timer gives way and the spinner stays. The title takes the
+the run marks, the thread mark and the 16px avatar of whoever acts next, all
+centred on the key's cap height. The run timer shows one unit ("45s", "16m",
+"2h"); on a narrow card the thread mark gives way first, then the timer, and
+the spinner stays. The title takes the
 card's full width under it, in 13px at weight 450 (500 read as bold at that
 size on a dark card), at most three lines. A blocked card adds "Blocked by" and
 the key on a line of its own. Last comes the type as its icon (a bug in its
-red, every other type muted) and at most two labels, each its 6px hue dot and
-its name without a pill, any more as "+N" naming them in its tooltip; labels
-drop out whole rather than cut mid-word. The card pads 8px
+red, every other type muted) and at most two labels, each an 18px pill in its
+own hue (the hue at 15% under its 800 ink, 300 in dark, 900 for lime and
+amber; 6:1 or better on the card), any more as "+N" naming them in its tooltip. Labels
+after the first drop out whole; a first label too long for the line truncates,
+its full name in its tooltip. The card pads 8px
 top and bottom and 10px at the sides, `card` with the card shadow and its
 hairline, so the board reads as three surfaces: panel, well, card.
 
@@ -1394,6 +1398,7 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
+| On the board card a label is a pill in its own hue, and the type stays its icon (2026-10-29) | Reverses the neutral chip for the card only, on the owner's call: with the type reduced to an icon and the key on a mono eyebrow, the labels are the card's only tinted shape, so they no longer compete with a type pill, and a hue read at a glance across a column beats a 6px dot. The tint stays at 15% under the hue's ink, so a label stays quieter than the title. The ticket page and the phone card keep the neutral chip until they are brought in line |
 | Docs opens on an overview, and its rows are one line with a time (2026-10-29) | Against "Select a doc" beside a list of titles alone: at 1440 the open pane gave about 900px to one sentence, the list could not say what moved lately, and a doc a play waited on hid in a collapsed folder. Rejected: a column table (it lost the folder and creator at 1024, where the list beside it already shows title and time) and a narrow column led by faces (it left the wide pane empty) |
 | A doc's outline is a right rail, and its actions sit on the breadcrumb's line (2026-10-28) | Against the 12rem outline to the body's left: beside the app sidebar and the docs list it was a third navigation column, it started the body about 220px right of its own title, and its entries wrapped. On the title's line the actions pushed the title onto two lines at 768 and 1024 |
 | Rich-text `h2` at 20px and `h1` at 22px (2026-10-28) | Against 18 and 20px: an 18px `h2` over 16px text did not step up, so a runbook's sections read as one block |

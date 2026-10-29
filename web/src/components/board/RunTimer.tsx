@@ -1,5 +1,4 @@
-import { formatElapsed } from "@nexul/client-core/agentSteps";
-
+import { cardElapsed } from "@/components/board/cardElapsed";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 
 interface RunTimerProps {
@@ -9,5 +8,5 @@ interface RunTimerProps {
 // Its own leaf so the once-a-second tick re-renders the timer, not the memoized card body.
 export const RunTimer = ({ startedAt }: RunTimerProps) => {
   const seconds = useElapsedSeconds(Date.parse(startedAt));
-  return <span className="tabular-nums">{formatElapsed(seconds)}</span>;
+  return <span className="tabular-nums">{cardElapsed(seconds)}</span>;
 };
