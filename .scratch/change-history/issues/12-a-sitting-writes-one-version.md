@@ -1,6 +1,6 @@
 # 12 — The live editor writes one version per sitting
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 11
 
 Spec: `../spec.md`, The sitting.

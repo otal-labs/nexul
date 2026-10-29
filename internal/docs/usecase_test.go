@@ -308,6 +308,10 @@ func (f *fakeRepo) CreateNamedVersion(_ context.Context, v *DocVersion) error {
 	return nil
 }
 
+func (f *fakeRepo) AppendSittingVersion(context.Context, string, []string, time.Time) error {
+	return nil
+}
+
 func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 	f.mu.Lock()
 	defer f.mu.Unlock()

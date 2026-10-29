@@ -21,6 +21,10 @@ func (w collabDocWriter) CommitCollab(ctx context.Context, docID, title, body st
 	return w.docs.CommitCollab(ctx, docID, title, body)
 }
 
+func (w collabDocWriter) CommitSitting(ctx context.Context, docID string, editorIDs []string) error {
+	return w.docs.CommitSitting(ctx, docID, editorIDs)
+}
+
 func (w collabDocWriter) Locked(ctx context.Context, docID string) (bool, error) {
 	return w.docs.Locked(ctx, docID)
 }
@@ -42,6 +46,9 @@ func (n collabNoteRooms) CommitCollab(ctx context.Context, messageID, _, body st
 	}
 	return n.chat.CommitNote(ctx, messageID, markdown)
 }
+
+// CommitSitting writes nothing: a note keeps no history.
+func (n collabNoteRooms) CommitSitting(context.Context, string, []string) error { return nil }
 
 func (n collabNoteRooms) Locked(ctx context.Context, messageID string) (bool, error) {
 	return n.chat.NoteLocked(ctx, messageID)

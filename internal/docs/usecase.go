@@ -662,6 +662,18 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	return nil
 }
 
+// CommitSitting writes the version a live editing sitting ends with, crediting everyone who edited; the room already
+// refused edits to a locked doc, and a body the newest version holds writes nothing.
+func (s *Service) CommitSitting(ctx context.Context, id string, editorIDs []string) error {
+	if len(editorIDs) == 0 {
+		return nil
+	}
+	if err := s.repo.AppendSittingVersion(ctx, id, editorIDs, s.now().UTC()); err != nil {
+		return fmt.Errorf("commit sitting of doc %s: %w", id, err)
+	}
+	return nil
+}
+
 // CreateNamedVersion snapshots the doc's current state as a named milestone version; requires the edit bit.
 func (s *Service) CreateNamedVersion(ctx context.Context, docID, name string) (*DocVersion, error) {
 	if strings.TrimSpace(docID) == "" {

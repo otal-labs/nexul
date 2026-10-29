@@ -112,6 +112,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("collab joined", "doc", docID, "user", actor.ID, "mode", mode)
 	defer func() {
 		s.leave(c)
+		s.endSittingIfUnattended(context.WithoutCancel(r.Context()))
 		h.removeSession(docID)
 	}()
 
@@ -208,6 +209,7 @@ func (h *Hub) Reset(ctx context.Context, roomID string, write func(context.Conte
 	if s != nil {
 		s.writeMu.Lock()
 		defer s.writeMu.Unlock()
+		s.commitSitting(ctx)
 	}
 	if err := write(ctx); err != nil {
 		return err

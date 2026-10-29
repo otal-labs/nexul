@@ -44,7 +44,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 		if err != nil {
 			return fmt.Errorf("insert doc %s: %w", d.ID, classifyWriteErr(err))
 		}
-		if err := insertDocVersion(ctx, q, d, d.CreatedBy, d.Via); err != nil {
+		if err := insertDocVersion(ctx, q, d, soleEditor(d.CreatedBy), d.Via); err != nil {
 			return err
 		}
 		if err := addAutoWatcher(ctx, q, d.ID, d.CreatedBy, d.CreatedAt); err != nil {
@@ -126,7 +126,7 @@ func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID, via string
 		if n == 0 {
 			return fmt.Errorf("update doc %s: %w", d.ID, apperrs.ErrNotFound)
 		}
-		if err := writeSaveVersion(ctx, q, d, editorID, via); err != nil {
+		if err := writeSaveVersion(ctx, q, d, soleEditor(editorID), via); err != nil {
 			return err
 		}
 		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
@@ -190,6 +190,21 @@ func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, editorID string,
 			return err
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
+	})
+}
+
+// AppendSittingVersion writes the doc's current title and body as a version crediting editorIDs, unless the newest
+// version already holds them; it reuses the doc's own version number, which flushes advance without a row.
+func (r *DocsRepo) AppendSittingVersion(ctx context.Context, id string, editorIDs []string, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		row, err := q.GetDoc(ctx, id)
+		if err != nil {
+			return fmt.Errorf("sitting version of doc %s: %w", id, notFoundIfNoRows(err))
+		}
+		d := toDoc(row)
+		d.UpdatedAt = at
+		return writeSaveVersion(ctx, q, d, editorIDs, "")
 	})
 }
 
@@ -348,14 +363,22 @@ func toDocs(rows []sqlcgen.Doc) []*docs.Doc {
 	return out
 }
 
-func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editorID, via string) error {
-	editors := []string{}
-	if editorID != "" {
-		editors = append(editors, editorID)
+func soleEditor(id string) []string {
+	if id == "" {
+		return []string{}
+	}
+	return []string{id}
+}
+
+// insertDocVersion credits editors, the first as author; none is a write with no user behind it.
+func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editors []string, via string) error {
+	author := ""
+	if len(editors) > 0 {
+		author = editors[0]
 	}
 	err := q.InsertDocVersion(ctx, sqlcgen.InsertDocVersionParams{
 		DocID: d.ID, Version: int64(d.Version), Title: d.Title, Body: d.Body,
-		AuthorID: editorID, EditorIds: idsJSON(editors), Via: via, CreatedAt: d.UpdatedAt.Unix(),
+		AuthorID: author, EditorIds: idsJSON(editors), Via: via, CreatedAt: d.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert doc version %s v%d: %w", d.ID, d.Version, classifyWriteErr(err))
@@ -364,7 +387,7 @@ func insertDocVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, edit
 }
 
 // writeSaveVersion appends the version a save makes, unless the doc already reads as its newest version, then prunes.
-func writeSaveVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editorID, via string) error {
+func writeSaveVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, editors []string, via string) error {
 	same, err := q.DocMatchesLatestVersion(ctx, sqlcgen.DocMatchesLatestVersionParams{ForDoc: d.ID, WantTitle: d.Title, WantBody: d.Body})
 	if err != nil {
 		return fmt.Errorf("compare doc %s with its newest version: %w", d.ID, err)
@@ -372,7 +395,7 @@ func writeSaveVersion(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, edit
 	if same {
 		return nil
 	}
-	if err := insertDocVersion(ctx, q, d, editorID, via); err != nil {
+	if err := insertDocVersion(ctx, q, d, editors, via); err != nil {
 		return err
 	}
 	if err := q.PruneDocVersions(ctx, sqlcgen.PruneDocVersionsParams{ForDoc: d.ID, Keep: docs.KeptUnnamedVersions}); err != nil {
