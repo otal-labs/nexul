@@ -11,13 +11,15 @@ interface PersonAvatarProps {
   className?: string | undefined;
   /** The hover text; the login when omitted. */
   label?: string | undefined;
+  /** The display name, whose initials stand in for a missing picture; the login's when omitted. */
+  name?: string | undefined;
 }
 
 // The flat circle covers a picture that is missing, still loading, or 404s; under 24px it keeps one initial at 10px.
-const AvatarImage = ({ login, src, className, label = login }: PersonAvatarProps) => {
+const AvatarImage = ({ login, src, className, label = login, name }: PersonAvatarProps) => {
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
   const showImage = !!src && failedSrc !== src;
-  const [first = "", second = ""] = initials(login);
+  const [first = "", second = ""] = initials(name || login);
 
   return (
     <>
@@ -51,18 +53,18 @@ const AvatarImage = ({ login, src, className, label = login }: PersonAvatarProps
 };
 
 // An uploaded picture is served under /api/ and needs the session, so it loads through the blob cache, keyed by its versioned URL.
-const ServedAvatar = ({ login, src, className, label }: PersonAvatarProps) => {
+const ServedAvatar = ({ login, src, className, label, name }: PersonAvatarProps) => {
   const { data: blobUrl } = useAttachmentBlob(src ?? null);
-  return <AvatarImage login={login} src={blobUrl} className={className} label={label} />;
+  return <AvatarImage login={login} src={blobUrl} className={className} label={label} name={name} />;
 };
 
-export const PersonAvatar = ({ login, src, className, label }: PersonAvatarProps) => {
+export const PersonAvatar = ({ login, src, className, label, name }: PersonAvatarProps) => {
   const served = src?.startsWith("/api/") === true;
   return (
     <>
-      {served && <ServedAvatar login={login} src={src} className={className} label={label} />}
+      {served && <ServedAvatar login={login} src={src} className={className} label={label} name={name} />}
       {!served && (
-        <AvatarImage login={login} src={src || `https://github.com/${login}.png`} className={className} label={label} />
+        <AvatarImage login={login} src={src || `https://github.com/${login}.png`} className={className} label={label} name={name} />
       )}
     </>
   );
