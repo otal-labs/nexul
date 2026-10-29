@@ -29,7 +29,7 @@ export interface AutomationTokenMint {
 }
 
 // Semantic pickers ride JSON Schema's `format` ("status"/"channel"/"project") over a base string type.
-export type AutomationConfigFieldType = "string" | "status" | "channel" | "project";
+export type AutomationConfigFieldType = "string" | "number" | "boolean" | "status" | "channel" | "project";
 
 export interface AutomationConfigField {
   key: string;
@@ -49,7 +49,12 @@ export interface AutomationConfigSchema {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const isScalar = (value: unknown): value is string | number | boolean =>
+  typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+
 const parseConfigFieldType = (prop: Record<string, unknown>): AutomationConfigFieldType => {
+  if (prop.type === "boolean") return "boolean";
+  if (prop.type === "number" || prop.type === "integer") return "number";
   const format = typeof prop.format === "string" ? prop.format : "";
   return format === "status" || format === "channel" || format === "project" ? format : "string";
 };
@@ -59,7 +64,7 @@ const parseConfigField = (key: string, prop: Record<string, unknown>, required: 
   label: typeof prop.title === "string" && prop.title !== "" ? prop.title : key,
   type: parseConfigFieldType(prop),
   required: required.includes(key),
-  ...(typeof prop.default === "string" && { default: prop.default }),
+  ...(isScalar(prop.default) && { default: String(prop.default) }),
   ...(typeof prop.description === "string" && { description: prop.description }),
   ...(typeof prop.project_id === "string" && { project_id: prop.project_id }),
 });
@@ -78,12 +83,31 @@ export const parseConfigSchema = (raw: unknown): AutomationConfigSchema => {
   return { fields };
 };
 
+// The form holds every value as text; booleans and numbers turn back into JSON types in configValuesToSave.
 export const parseConfigValues = (raw: unknown): Record<string, string> => {
   if (!isRecord(raw)) return {};
   return Object.fromEntries(
-    Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    Object.entries(raw).flatMap(([key, value]) => (isScalar(value) ? [[key, String(value)]] : [])),
   );
 };
+
+const typedConfigValue = (field: AutomationConfigField, value: string): string | number | boolean | undefined => {
+  if (field.type === "boolean") return value === "true";
+  if (field.type !== "number") return value;
+  if (value.trim() === "") return undefined;
+  return Number(value);
+};
+
+export const configValuesToSave = (
+  fields: AutomationConfigField[],
+  data: Record<string, string>,
+): Record<string, string | number | boolean> =>
+  Object.fromEntries(
+    fields.flatMap((field) => {
+      const value = typedConfigValue(field, data[field.key] ?? "");
+      return value === undefined ? [] : [[field.key, value]];
+    }),
+  );
 
 // The Automation record has no "needs configuration" flag; it's computed client-side from its own schema.
 export const automationNeedsConfiguration = (automation: Automation): boolean => {
