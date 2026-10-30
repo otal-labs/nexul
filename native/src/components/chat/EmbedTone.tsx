@@ -8,7 +8,7 @@ import type { EmbedTone } from "@nexul/client-core/embed";
 
 export const toneBg: Record<EmbedTone, string> = {
   success: "bg-success",
-  warning: "bg-warning",
+  warning: "bg-warning-mark",
   destructive: "bg-destructive",
   info: "bg-info",
 };

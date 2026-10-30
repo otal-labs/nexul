@@ -18,7 +18,7 @@ export const nodeShell =
 export const statusDot: Record<ServiceStatus, string> = {
   [ServiceStatus.Healthy]: "bg-success",
   [ServiceStatus.Running]: "bg-info",
-  [ServiceStatus.Stopped]: "bg-warning",
+  [ServiceStatus.Stopped]: "bg-warning-mark",
   [ServiceStatus.Failed]: "bg-destructive",
 };
 

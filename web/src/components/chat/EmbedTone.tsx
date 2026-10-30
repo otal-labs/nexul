@@ -11,7 +11,7 @@ export const toneText: Record<EmbedTone, string> = {
 
 export const toneBg: Record<EmbedTone, string> = {
   success: "bg-success",
-  warning: "bg-warning",
+  warning: "bg-warning-mark",
   destructive: "bg-destructive",
   info: "bg-info",
 };

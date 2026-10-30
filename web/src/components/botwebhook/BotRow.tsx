@@ -23,7 +23,7 @@ export const BotRow = ({ bot, onOpen }: BotRowProps) => {
           {bot.name}
         </span>
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={meta}>
-          {bot.stopped && <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />}
+          {bot.stopped && <span className="size-1.5 shrink-0 rounded-full bg-warning-mark" aria-hidden />}
           <span className="truncate">{meta}</span>
         </span>
       </span>

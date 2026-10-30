@@ -25,7 +25,7 @@ export const ContainerStatus = {
 export type ContainerStatus = (typeof ContainerStatus)[keyof typeof ContainerStatus];
 
 const DEPLOY_STATUS_DOT: Record<DeployStatus, string> = {
-  [DeployStatus.Pending]: "bg-warning",
+  [DeployStatus.Pending]: "bg-warning-mark",
   [DeployStatus.Running]: "bg-info",
   [DeployStatus.Healthy]: "bg-success",
   [DeployStatus.Failed]: "bg-destructive",
@@ -36,7 +36,7 @@ export const deployStatusDot = (status: DeployStatus | undefined): string =>
   status ? DEPLOY_STATUS_DOT[status] : "bg-muted-foreground";
 
 const CONTAINER_STATUS_DOT: Record<ContainerStatus, string> = {
-  [ContainerStatus.Pending]: "bg-warning",
+  [ContainerStatus.Pending]: "bg-warning-mark",
   [ContainerStatus.Running]: "bg-info",
   [ContainerStatus.Healthy]: "bg-success",
   [ContainerStatus.Exited]: "bg-destructive",

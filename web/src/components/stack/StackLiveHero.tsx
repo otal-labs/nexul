@@ -48,7 +48,7 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
       )}
       {/* The rule's own window, which the Requests cell's hour would otherwise contradict. */}
       {rate && (
-        <HeroLine dot={rate.tone === "warning" ? "bg-warning" : "bg-success"}>
+        <HeroLine dot={rate.tone === "warning" ? "bg-warning-mark" : "bg-success"}>
           {rate.tone === "warning" ? `${rate.text} · ${errorRateOf(stack).minutes} min` : rate.text}
         </HeroLine>
       )}

@@ -3,7 +3,7 @@ import type { HandoffState } from "@/models/Handoff";
 import { cn } from "@/lib/utils";
 
 const dotClass: Record<HandoffState, string> = {
-  running: "bg-warning animate-[status-pulse_2.4s_ease-standard_infinite]",
+  running: "bg-warning-mark animate-[status-pulse_2.4s_ease-standard_infinite]",
   done: "bg-success",
   failed: "bg-destructive",
   interrupted: "bg-muted-foreground",

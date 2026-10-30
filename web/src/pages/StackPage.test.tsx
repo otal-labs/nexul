@@ -149,7 +149,7 @@ describe("StackPage", () => {
     expect((await health()).getByText("5xx 7.2% · 5 min")).toBeInTheDocument();
     expect((await health()).getByText(/^since \d\d:\d\d$/)).toBeInTheDocument();
     expect((await health()).queryByText("No issues")).not.toBeInTheDocument();
-    expect(open.container.querySelector("section[aria-label='Live status'] .bg-warning")).not.toBeNull();
+    expect(open.container.querySelector("section[aria-label='Live status'] .bg-warning-mark")).not.toBeNull();
     open.unmount();
 
     serve({ error_rate_recovered_at: "2026-10-16T09:52:00Z" });

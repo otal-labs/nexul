@@ -12,7 +12,7 @@ interface InterviewProgressProps {
 const SEGMENT: Record<RowProgress, string> = {
   answered: "bg-foreground/55",
   skipped: "bg-foreground/20 ring-1 ring-foreground/45 ring-inset",
-  drafted: "bg-warning/45",
+  drafted: "bg-warning-mark/45",
   waiting: "bg-foreground/10",
 };
 

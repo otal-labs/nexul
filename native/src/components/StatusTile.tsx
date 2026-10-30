@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface StatusTileProps {
   icon: LucideIcon;
-  // A status dot class (bg-success, bg-warning…); the dot sits on the tile's corner, cut out by a canvas ring.
+  // A status dot class (bg-success, bg-warning-mark…); the dot sits on the tile's corner, cut out by a canvas ring.
   dot?: string | undefined;
   dashed?: boolean;
 }

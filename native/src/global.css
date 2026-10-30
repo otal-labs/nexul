@@ -42,6 +42,7 @@
 
       --color-success: #4ade80;
       --color-warning: #fbbf24;
+      --color-warning-mark: #fbbf24;
       --color-info: #5cc8f5;
       --color-merged: #a371f7;
       --color-destructive: #f26074;
@@ -80,6 +81,7 @@
 
       --color-success: #15803d;
       --color-warning: #8a6100;
+      --color-warning-mark: #a07800;
       --color-info: #0369a1;
       --color-merged: #8250df;
       --color-destructive: #c41945;

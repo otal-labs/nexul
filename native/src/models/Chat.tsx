@@ -39,7 +39,7 @@ const HANDOFF_STATE_LABEL: Record<HandoffState, string> = {
 };
 
 const HANDOFF_STATE_DOT: Record<HandoffState, string> = {
-  running: "bg-warning",
+  running: "bg-warning-mark",
   done: "bg-success",
   failed: "bg-destructive",
   interrupted: "bg-muted-foreground",

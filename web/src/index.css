@@ -36,6 +36,7 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-mark: var(--warning-mark);
   --color-info: var(--info);
   --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
@@ -107,6 +108,8 @@
   /* status — green for success/health only; the rest cool + AA-checked */
   --success: #15803d;
   --warning: #8a6100;
+  /* A dot or mark needs 3:1, not text's 4.5:1, so it can be a clearer amber the brand ember never reads as. */
+  --warning-mark: #a07800;
   --info: #0369a1;
   --merged: #8250df;
   --destructive: #c41945;
@@ -169,6 +172,7 @@
 
   --success: #4ade80;
   --warning: #fbbf24;
+  --warning-mark: #fbbf24;
   --info: #5cc8f5;
   --merged: #a371f7;
   --destructive: #f26074;

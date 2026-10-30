@@ -6,7 +6,7 @@ export type SettingsStatusTone = "success" | "warning" | "destructive" | "info" 
 
 const dotClass: Record<SettingsStatusTone, string> = {
   success: "bg-success",
-  warning: "bg-warning",
+  warning: "bg-warning-mark",
   destructive: "bg-destructive",
   info: "bg-info",
   muted: "bg-muted-foreground/50",

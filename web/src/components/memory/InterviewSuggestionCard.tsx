@@ -39,7 +39,7 @@ export const InterviewSuggestionCard = ({ row, draft, projectId, progress, onMov
         </div>
         <div>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span aria-hidden className="size-1.5 rounded-full bg-warning" />
+            <span aria-hidden className="size-1.5 rounded-full bg-warning-mark" />
             Suggested
           </p>
           <ul className="mt-0.5 space-y-0.5 text-sm">

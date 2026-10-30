@@ -26,7 +26,7 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
           <span className="text-muted-foreground">requests in the last hour</span>
         </p>
         <p className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
-          {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning" />}
+          {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning-mark" />}
           {errors > 0 && <span>{`5xx ${formatShare(share)}`}</span>}
           {errors > 0 && <span className="text-muted-foreground">{`(${errors.toLocaleString()})`}</span>}
           {errors === 0 && <span className="text-muted-foreground">No 5xx</span>}

@@ -75,7 +75,7 @@ export const BotForm = ({ conversationId, bot, note, onNavigate }: BotFormProps)
       {bot && <BotUrlBlock bot={bot} note={note} />}
       {bot?.stopped && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
+          <span className="size-1.5 shrink-0 rounded-full bg-warning-mark" aria-hidden />
           {bot.stopped}
         </p>
       )}

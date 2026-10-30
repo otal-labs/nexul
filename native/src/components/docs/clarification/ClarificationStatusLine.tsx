@@ -14,7 +14,7 @@ interface ClarificationStatusLineProps {
 const StatusIcon = ({ icon }: { icon: ClarificationStatus["icon"] }) => (
   <>
     {icon === "waiting" && <View className="size-2 rounded-full bg-info" />}
-    {icon === "running" && <View className="size-2 rounded-full bg-warning" />}
+    {icon === "running" && <View className="size-2 rounded-full bg-warning-mark" />}
     {icon === "done" && <Icon as={CircleCheck} size={16} className="text-success" />}
   </>
 );
