@@ -115,13 +115,13 @@ describe("ConnectorsSection", () => {
     expect(within(row).queryByRole("button", { name: /connect/i })).not.toBeInTheDocument();
   });
 
-  it("lands on Connected and shows the pill and Disconnect button for a configured connector", async () => {
+  it("lands on Connected and shows who connected it and the Disconnect button for a configured connector", async () => {
     serve({
       data: [connectorEntry({ status: { configured: true, connected_by: "u1" } })],
     });
     renderSection();
 
-    expect(await screen.findByText("Connected", { selector: "span" })).toBeInTheDocument();
+    expect(await screen.findByText(/^by /)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /^connected$/i })).toHaveAttribute("aria-checked", "true");
     expect(await screen.findByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();

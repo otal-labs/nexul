@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronRight, Plus, RefreshCw, Wrench } from "lucide-react";
 import { useSearchParams } from "react-router";
 
@@ -9,7 +9,7 @@ import { ComputerLoad } from "@/components/settings/ComputerLoad";
 import { useComputerOrder } from "@/components/settings/ComputerOrderContext";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
-import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
@@ -18,7 +18,7 @@ import { useDeleteComputer } from "@/hooks/PairingHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
-import { computerLanes } from "@/models/ComputerChecks";
+import { computerLanes, worstFirst } from "@/models/ComputerChecks";
 import { computerEntity } from "@/models/PermissionPanel";
 import { onlySkillsOutdated, RenameComputerFormSchema, setupSummary, stillPairing, type Computer, type RenameComputerFormData } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,10 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const name = computer.name || UNNAMED;
   const connected = computer.runner?.connected === true;
   const summary = setup && setupSummary(setup);
+  const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode }[] = [
+    ...computerLanes(computer, presence, pairNow.isPending),
+    ...(summary ? [{ tone: summary.tone, text: summary.text, detail: summary.providers && <SetupProviderMarks lines={summary.providers} /> }] : []),
+  ];
   const setupLabel = setup?.confirmed_at ? "Re-run setup" : "Set up";
   const primary: Primary = (() => {
     if (!computer.runner) return "again";
@@ -156,16 +160,11 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
         <RowActionsMenu subject={name} actions={actions} />
       </div>
       <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-18" : "pl-6")}>
-        {computerLanes(computer, presence, pairNow.isPending).map((lane) => (
-          <SettingsStatus key={lane.text} tone={lane.tone} detail={lane.detail}>
-            {lane.text}
+        {worstFirst(lines).map((line) => (
+          <SettingsStatus key={line.text} tone={line.tone} detail={line.detail}>
+            {line.text}
           </SettingsStatus>
         ))}
-        {summary && (
-          <SettingsStatus tone={summary.tone} detail={summary.providers && <SetupProviderMarks lines={summary.providers} />}>
-            {summary.text}
-          </SettingsStatus>
-        )}
       </p>
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>

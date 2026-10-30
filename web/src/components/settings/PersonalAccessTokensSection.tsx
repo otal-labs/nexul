@@ -20,6 +20,8 @@ export const PersonalAccessTokensSection = () => {
   const mint = useMintPAT();
   const [newToken, setNewToken] = useState<string | null>(null);
 
+  const tokens = data && [...data.tokens].sort((a, b) => Number(Boolean(a.revoked_at)) - Number(Boolean(b.revoked_at)));
+
   const form = useForm<PATNameFormData>({
     defaultValues: { name: "" },
     resolver: zodResolver(PATNameFormSchema),
@@ -53,7 +55,7 @@ export const PersonalAccessTokensSection = () => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && (
+      {tokens && (
         <div className="space-y-4">
           {newToken && (
             <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-md border border-border bg-surface-2 p-3 duration-200 ease-out">
@@ -64,10 +66,10 @@ export const PersonalAccessTokensSection = () => {
               </div>
             </div>
           )}
-          {data.tokens.length === 0 && <EmptyRow flush>No personal access tokens yet. Name one below to create it.</EmptyRow>}
-          {data.tokens.length > 0 && (
+          {tokens.length === 0 && <EmptyRow flush>No personal access tokens yet. Name one below to create it.</EmptyRow>}
+          {tokens.length > 0 && (
             <EnterList className={settingsListClass}>
-              {data.tokens.map((token) => (
+              {tokens.map((token) => (
                 <PATRow key={token.id} token={token} />
               ))}
             </EnterList>

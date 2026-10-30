@@ -66,16 +66,10 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
-          <span className="text-sm font-medium">{connector.name}</span>
-          {status.configured && (
-            <SettingsStatus tone="success" detail={connectedDetail || undefined}>
-              Connected
-            </SettingsStatus>
-          )}
-          {unconfigured && <SettingsStatus tone="muted">Not connected</SettingsStatus>}
-          {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
-        </p>
+        <p className="text-sm font-medium">{connector.name}</p>
+        {/* The tab already says connected or not, so line two keeps only who connected it and the one state the tab does not. */}
+        {status.configured && connectedDetail && <p className="truncate text-xs text-muted-foreground">{connectedDetail}</p>}
+        {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
         <SettingsHint className="line-clamp-2">{connector.description}</SettingsHint>
       </div>
       {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}

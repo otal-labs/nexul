@@ -76,7 +76,7 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
   if (t3?.state === "missing") return { tone: "destructive", text: "T3 Code not installed" };
   if (t3?.state === "not_loopback") return { tone: "destructive", text: "T3 Code not on loopback" };
   if (stillPairing(computer)) return { tone: "warning", text: "Pairing" };
-  return { tone: "muted", text: "T3 Code not answering" };
+  return { tone: "warning", text: "T3 Code not answering" };
 };
 
 // A runner computer's health, one lane at a time: the computer's own connection, then T3 Code through it.
@@ -87,6 +87,11 @@ export const computerLanes = (computer: Computer, presence: string | undefined, 
   if (repairing) return [{ tone: "success", text: "Online" }, { tone: "info", text: "Re-pairing" }];
   return [{ tone: "success", text: "Online" }, t3Lane(computer, presence)];
 };
+
+const toneRank: Record<SettingsStatusTone, number> = { destructive: 0, warning: 1, info: 2, muted: 3, success: 4 };
+
+// A row.s states, the one that needs doing first.
+export const worstFirst = <T extends { tone: SettingsStatusTone }>(lanes: T[]): T[] => [...lanes].sort((a, b) => toneRank[a.tone] - toneRank[b.tone]);
 
 // A computer's runner in a word: online, back any moment after a drop, or offline.
 export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
