@@ -39,7 +39,7 @@ export const ReviewerAvatars = ({ names }: ReviewerAvatarsProps) => {
     <div
       role="group"
       aria-label={`${avatars.length} reviewer${avatars.length === 1 ? "" : "s"}`}
-      className="flex items-center -space-x-2"
+      className="flex items-center -space-x-1"
     >
       {avatars.map((name, index) => (
         <span key={`${name}-${index}`} className="group/avatar relative">

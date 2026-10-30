@@ -131,6 +131,9 @@
   --shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
   /* The shade a sticky grid column casts on what scrolls under it, at its edge. */
   --edge-shade: oklch(0.2 0.02 265 / 0.1);
+  /* A scrollbar's thumb at rest and under the pointer; ink, so a palette's scrollbars follow its text. */
+  --scrollbar: color-mix(in oklab, var(--foreground) 22%, transparent);
+  --scrollbar-hover: color-mix(in oklab, var(--foreground) 40%, transparent);
 
   /* The frosted panel every page floats in; derived from card so a palette's panels follow it. */
   --panel: var(--card);
@@ -191,6 +194,8 @@
   --shadow-elevated: 0 4px 8px oklch(0 0 0 / 0.4), 0 16px 36px oklch(0 0 0 / 0.45);
   --shadow-overlay: 0 24px 64px oklch(0 0 0 / 0.6);
   --edge-shade: oklch(0 0 0 / 0.35);
+  --scrollbar: color-mix(in oklab, var(--foreground) 18%, transparent);
+  --scrollbar-hover: color-mix(in oklab, var(--foreground) 34%, transparent);
 
   --panel: color-mix(in oklab, var(--card) 60%, var(--background));
   --panel-ring: oklch(1 0 0 / 0.07);
@@ -303,11 +308,32 @@ body {
   }
 }
 
-/* Thin, quiet scrollbars (emil: only customise small/simple surfaces). In the base layer, so a scrollbar utility can override it. */
+/* One scrollbar, no arrows. Chromium draws the platform's arrowed bar for any non-auto scrollbar-width or -color, so those stay in Firefox. */
 @layer base {
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--muted-foreground) transparent;
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: var(--scrollbar) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-hover);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar) transparent;
+    }
   }
 }
 
@@ -316,8 +342,24 @@ body {
   scrollbar-width: none;
 }
 
+/* Puts the shared scrollbar back after scrollbar-none. */
 @utility scrollbar-thin {
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+  }
+}
+
+/* The "+N" after an avatar stack: a solid neutral disc, so it reads as one more face beside the avatars' fills. */
+@utility avatar-more {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background-color: var(--muted-foreground);
+  color: var(--card);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 @utility scrollbar-gutter-stable {

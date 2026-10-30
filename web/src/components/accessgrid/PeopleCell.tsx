@@ -28,12 +28,12 @@ export const PeopleCell = ({ projectName, userIds, onToggle }: PeopleCellProps) 
       {people.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="flex -space-x-1.5" aria-label={names}>
+            <span className="flex -space-x-1" aria-label={names}>
               {people.slice(0, SHOWN).map((person) => (
                 <PersonAvatar key={person.user_id} login={person.login} name={personLabel(person)} src={person.avatar_url} label={personLabel(person)} className="size-5 text-[10px] ring-2 ring-card" />
               ))}
               {people.length > SHOWN && (
-                <span className="grid size-5 place-items-center rounded-full bg-muted font-mono text-[10px] ring-2 ring-card">+{people.length - SHOWN}</span>
+                <span className="avatar-more size-5 text-[10px] ring-2 ring-card">+{people.length - SHOWN}</span>
               )}
             </span>
           </TooltipTrigger>

@@ -39,7 +39,7 @@ export const HistoryAuthor = ({ people, via }: HistoryAuthorProps) => {
         {people.length > 1 && (
           <span aria-hidden className="flex shrink-0 -space-x-1">
             {people.slice(1, 3).map((p) => (
-              <PersonAvatar key={p.user_id} login={p.login} name={personLabel(p)} src={p.avatar_url} label={personLabel(p)} className="size-3.5 ring-1 ring-popover" />
+              <PersonAvatar key={p.user_id} login={p.login} name={personLabel(p)} src={p.avatar_url} label={personLabel(p)} className="size-3.5 ring-2 ring-popover" />
             ))}
           </span>
         )}

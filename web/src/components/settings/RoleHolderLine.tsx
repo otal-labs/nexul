@@ -19,7 +19,7 @@ const holderText = (holders: TeamPerson[]): string => {
 export const RoleHolderLine = ({ holders }: RoleHolderLineProps) => (
   <DialogDescription className="flex items-start gap-2">
     {holders.length > 0 && (
-      <span className="flex h-5 shrink-0 items-center -space-x-1.5">
+      <span className="flex h-5 shrink-0 items-center -space-x-1">
         {holders.slice(0, 4).map((person) => (
           <PersonAvatar
             key={person.id}
