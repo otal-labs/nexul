@@ -4,7 +4,8 @@ import { findModel, type ModelPick } from "@/models/ModelPick";
 import type { HarnessProvider, OptionSetting } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
-const INNER = "h-full rounded-none border-0 bg-transparent shadow-none first:rounded-l-md last:rounded-r-md dark:bg-transparent";
+// Each half draws focus inside itself, so the ring names the focused half and never crosses the shared frame.
+const INNER = "inset-focus h-full rounded-none border-0 bg-transparent shadow-none first:rounded-l-md last:rounded-r-md dark:bg-transparent";
 
 interface ModelChoiceProps {
   providers: HarnessProvider[];
@@ -17,11 +18,12 @@ interface ModelChoiceProps {
   allowDefault?: boolean;
   defaultLabel?: string;
   disabled?: boolean;
+  mark?: boolean;
   className?: string;
 }
 
 // The model button, a hairline, then its options button, in one frame; a model with no options shows the model alone.
-export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, defaultLabel, disabled = false, className }: ModelChoiceProps) => {
+export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, defaultLabel, disabled = false, mark = true, className }: ModelChoiceProps) => {
   const modelOptions = findModel(providers, value)?.options ?? [];
   return (
     <div className={cn("inline-flex h-8 min-w-0 items-center rounded-md border border-input shadow-xs dark:bg-input/20", className)}>
@@ -33,6 +35,7 @@ export const ModelChoice = ({ providers, value, options, onPick, onOptions, labe
         allowDefault={allowDefault}
         {...(defaultLabel && { defaultLabel })}
         disabled={disabled}
+        mark={mark}
         className={cn(INNER, "min-w-0 flex-1")}
       />
       {modelOptions.length > 0 && <span aria-hidden className="h-4 w-px shrink-0 bg-border" />}

@@ -1,12 +1,15 @@
 import { ChevronRight } from "lucide-react";
+import { useId } from "react";
 
 import { Switch } from "@/components/ui/switch";
 import { HarnessProviderMark } from "@/components/model/HarnessProviderMark";
 import { ModelChoice } from "@/components/model/ModelChoice";
+import { SetupModelText } from "@/components/pairing/SetupModelText";
 import { SetupProviderAction } from "@/components/pairing/SetupProviderAction";
-import { SetupStateGlyph } from "@/components/pairing/SetupStateGlyph";
+import { SetupProviderStatus } from "@/components/pairing/SetupProviderStatus";
 import { SetupTranscript } from "@/components/pairing/SetupTranscript";
-import { setupProviderLine, type OptionSetting, type SetupProviderRow } from "@/models/Pairing";
+import { useSetupActivityStore } from "@/stores/setupActivityStore";
+import type { OptionSetting, SetupProviderRow } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
 interface SetupProviderItemProps {
@@ -14,8 +17,6 @@ interface SetupProviderItemProps {
   model: string;
   options: OptionSetting[];
   open: boolean;
-  // The first row waiting on the person, lifted so the eye lands on it.
-  next: boolean;
   busy: boolean;
   onInclude: (provider: string, on: boolean) => void;
   onPick: (provider: string, model: string) => void;
@@ -24,35 +25,39 @@ interface SetupProviderItemProps {
   onToggle: (provider: string) => void;
 }
 
-// One provider: its switch, name over its state, the model its turn runs on, and its own run; the name opens its transcript.
-export const SetupProviderItem = ({ row, model, options, open, next, busy, onInclude, onPick, onOptions, onRun, onToggle }: SetupProviderItemProps) => {
+// One provider on one grid: mark, name, the model its turn runs on, its own run and its switch, then its state across the row; the name opens its transcript.
+export const SetupProviderItem = ({ row, model, options, open, busy, onInclude, onPick, onOptions, onRun, onToggle }: SetupProviderItemProps) => {
+  const statusId = useId();
   const running = row.state === "running" || row.state === "queued";
+  const listed = !!row.choice;
+  // Off or gone, a row has no picker or action, and its name takes their columns.
+  const picking = row.on && listed;
+  // Steps live only in this tab and arrive a while after a turn starts; until there are some, the state line says it all.
+  const kept = useSetupActivityStore((s) => !!row.run?.turnId && (s.steps[row.run.turnId]?.length ?? 0) > 0);
+  const transcript = kept ? row.run : undefined;
+  const name = (
+    <span title={row.name} className={cn("truncate text-sm font-medium", (!row.on || !listed) && "text-muted-foreground")}>
+      {row.name}
+    </span>
+  );
   return (
-    <li className={cn("transition-colors duration-150 ease-standard", next && "bg-accent/40")}>
-      <div className="flex min-h-14 items-center gap-3 px-3 py-2">
-        <Switch aria-label={`Use ${row.name}`} checked={row.on} disabled={running} onCheckedChange={(on) => onInclude(row.provider, on)} />
-        <HarnessProviderMark driver={row.driver} className={cn("size-4 shrink-0", !row.on && "opacity-50")} />
-        <button
-          type="button"
-          aria-expanded={row.run ? open : undefined}
-          disabled={!row.run}
-          onClick={() => onToggle(row.provider)}
-          className="quiet-focus min-w-0 flex-1 rounded-md text-left focus-visible:outline-2 focus-visible:outline-focus disabled:cursor-default"
-        >
-          <span className={cn("flex min-w-0 items-center gap-1 text-sm font-medium", !row.on && "text-muted-foreground")}>
-            <span className="truncate">{row.name}</span>
-            {row.run && (
-              <ChevronRight aria-hidden className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard", open && "rotate-90")} />
-            )}
-          </span>
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-            {row.on && <SetupStateGlyph state={row.state} className="size-3.5" />}
-            <span className="truncate" role={running ? "status" : undefined}>
-              {setupProviderLine(row)}
-            </span>
-          </span>
-        </button>
-        {row.on && row.choice && (
+    <li className="py-3">
+      <div className="grid grid-cols-[1rem_minmax(0,1fr)_17rem_5.5rem_2rem] grid-rows-[2rem_auto] items-center gap-x-3 gap-y-1">
+        <HarnessProviderMark driver={row.driver} className={cn("size-4 shrink-0", (!row.on || !listed) && "opacity-50")} />
+        {transcript && (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-describedby={statusId}
+            onClick={() => onToggle(row.provider)}
+            className={cn("flex min-w-0 items-center gap-1 justify-self-start rounded-sm text-left", !picking && "col-span-3")}
+          >
+            {name}
+            <ChevronRight aria-hidden className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard", open && "rotate-90")} />
+          </button>
+        )}
+        {!transcript && <span className={cn("flex min-w-0", !picking && "col-span-3")}>{name}</span>}
+        {picking && row.choice && !running && (
           <ModelChoice
             providers={[row.choice.instance]}
             value={{ provider: row.choice.instance.id, model }}
@@ -61,15 +66,24 @@ export const SetupProviderItem = ({ row, model, options, open, next, busy, onInc
             onOptions={(next) => onOptions(row.provider, next)}
             label={`${row.name} model`}
             allowDefault
-            disabled={running}
-            className="w-48 shrink-0 @xl:w-60"
+            mark={false}
+            className="w-68"
           />
         )}
-        {row.on && row.choice && <SetupProviderAction row={row} busy={busy} onRun={onRun} />}
+        {picking && row.choice && running && <SetupModelText choice={row.choice} model={model} options={options} />}
+        {picking && <SetupProviderAction row={row} busy={busy} onRun={onRun} />}
+        <Switch
+          aria-label={`Use ${row.name}`}
+          checked={row.on}
+          disabled={running}
+          onCheckedChange={(on) => onInclude(row.provider, on)}
+          className="justify-self-end disabled:opacity-100"
+        />
+        <SetupProviderStatus id={statusId} row={row} className="col-span-4 col-start-2" />
       </div>
-      {open && row.run && (
-        <div className="settle-in px-3 pb-3 pl-[4.75rem]">
-          <SetupTranscript row={row.run} />
+      {open && transcript && (
+        <div className="settle-in pt-2 pl-7">
+          <SetupTranscript row={transcript} />
         </div>
       )}
     </li>

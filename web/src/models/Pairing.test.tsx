@@ -2,8 +2,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  openSetupRow,
   providerSetupLines,
   setupModelChoices,
+  setupProviderLine,
+  setupProviderRows,
   setupRunRows,
   setupRunning,
   setupSummary,
@@ -68,6 +71,29 @@ describe("setupRunRows", () => {
       ["opencode", "queued"],
       ["codex", "confirmed"],
     ]);
+  });
+});
+
+describe("openSetupRow", () => {
+  it("opens the one running turn, a failure when several run, and nothing for a settled run", () => {
+    const running = (provider: string) => turn({ provider, turn_id: provider, state: "running" });
+    const failed = turn({ provider: "opencode", turn_id: "f", state: "failed" });
+    expect(openSetupRow(setupRunRows([running("codex"), failed], undefined))?.provider).toBe("codex");
+    expect(openSetupRow(setupRunRows([running("codex"), running("claudeagent"), failed], undefined))?.provider).toBe("opencode");
+    expect(openSetupRow(setupRunRows([running("codex"), running("claudeagent")], undefined))).toBeUndefined();
+    expect(openSetupRow(setupRunRows([turn({})], undefined))).toBeUndefined();
+  });
+});
+
+describe("setupProviderRows", () => {
+  const setup: ComputerSetup = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], models: {}, model_options: {}, folder: "", turns: [] };
+
+  it("calls a provider only a past turn remembers gone once T3 Code's list has answered, never before", () => {
+    const rows = setupRunRows([turn({ provider: "cursor", provider_name: "Cursor" })], undefined);
+    const [read] = setupProviderRows([], rows, setup, false);
+    const [answered] = setupProviderRows([], rows, setup);
+    expect([read?.gone, read && setupProviderLine(read)]).toEqual([false, "Confirmed"]);
+    expect([answered?.gone, answered && setupProviderLine(answered)]).toEqual([true, "No longer in T3 Code"]);
   });
 });
 

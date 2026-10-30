@@ -1,7 +1,7 @@
 import { AddComputerStep } from "@/components/pairing/AddComputerStep";
 import { ComputerChecks } from "@/components/pairing/ComputerChecks";
 import { MovedStep } from "@/components/pairing/MovedStep";
-import { PAIR_DIALOG_FRAME } from "@/components/pairing/PairDialogFrame";
+import { PAIR_DIALOG_FRAME, PAIR_DIALOG_HEADER } from "@/components/pairing/PairDialogFrame";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export const MoveComputerDialog = ({ computer, open, enroll, onClose }: MoveComp
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className={PAIR_DIALOG_FRAME} onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
+        <DialogHeader className={PAIR_DIALOG_HEADER}>
           <DialogTitle className="pr-8">{moved ? `${computer.name} moved to the Nexul app` : `Move ${computer.name} to the Nexul app`}</DialogTitle>
           <DialogDescription>{lead(computer.name, moved)}</DialogDescription>
         </DialogHeader>

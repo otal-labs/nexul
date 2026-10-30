@@ -226,9 +226,11 @@ export const setupModelChoices = (
     return [{ provider: p.driver.toLowerCase(), name: p.name, instance, ...preselect(p, defaults, saved) }];
   });
 
-// The row that opens by itself: the running one, else the first failure; a settled run stays folded.
-export const openSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined =>
-  rows.find((r) => r.state === "running") ?? rows.find((r) => r.state === "failed");
+// The row that opens by itself: the one running row, else the first failure; several running open none, and a settled run stays folded.
+export const openSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined => {
+  const running = rows.filter((r) => r.state === "running");
+  return (running.length === 1 ? running[0] : undefined) ?? rows.find((r) => r.state === "failed");
+};
 
 export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
 
@@ -242,15 +244,18 @@ export interface SetupProviderRow {
   // Absent when T3 Code no longer lists the provider: its last turn still shows and can be switched off, with nothing to pick or run.
   choice?: SetupModelChoice;
   run?: SetupRunRow;
+  // T3 Code answered and doesn't list it; before it answers, a provider only a turn remembers isn't gone, just not read yet.
+  gone: boolean;
 }
 
-// Every provider T3 Code lists, in its order, then any that only a past turn remembers.
-export const setupProviderRows = (choices: SetupModelChoice[], runRows: SetupRunRow[], setup: ComputerSetup): SetupProviderRow[] => {
+// Every provider T3 Code lists, in its order, then any that only a past turn remembers; answered is whether T3 Code's list came back.
+export const setupProviderRows = (choices: SetupModelChoice[], runRows: SetupRunRow[], setup: ComputerSetup, answered = true): SetupProviderRow[] => {
   const confirmed = (provider: string) => setup.providers.some((p) => p.provider === provider && p.confirmed_at);
   const row = (provider: string, name: string, driver: string, choice?: SetupModelChoice): SetupProviderRow => {
     const run = runRows.find((r) => r.provider === provider);
     const state = run?.state ?? (confirmed(provider) ? "confirmed" : "unset");
-    return { provider, name, driver, on: !setup.skipped_providers.includes(provider), state, ...(choice && { choice }), ...(run && { run }) };
+    const gone = answered && !choice && state !== "running";
+    return { provider, name, driver, on: !setup.skipped_providers.includes(provider), state, gone, ...(choice && { choice }), ...(run && { run }) };
   };
   const listed = choices.map((c) => row(c.provider, c.name, c.instance.driver, c));
   const gone = runRows.filter((r) => !choices.some((c) => c.provider === r.provider)).map((r) => row(r.provider, r.name, r.provider));
@@ -259,15 +264,13 @@ export const setupProviderRows = (choices: SetupModelChoice[], runRows: SetupRun
 
 // The muted line under a provider's name.
 export const setupProviderLine = (row: SetupProviderRow) => {
-  if (!row.on) return "Off · plays leave it out";
+  if (!row.on) return row.gone ? "Off · no longer in T3 Code" : "Off · plays leave it out";
+  if (row.gone) return "No longer in T3 Code";
   if (row.state === "unset") return "Not set up yet";
   if (row.state === "queued") return "Starting";
   if (row.state === "confirmed") return row.run?.kind === "skills" ? "Confirmed · skills updated" : "Confirmed";
   return row.run?.status || SETUP_STATE_LABEL[row.state];
 };
-
-// Waiting on the person: switched on and either never set up or failed.
-export const needsSetup = (row: SetupProviderRow) => row.on && (row.state === "unset" || row.state === "failed");
 
 export interface ProviderSetupLine {
   provider: string;
