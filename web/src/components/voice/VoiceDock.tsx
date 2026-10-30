@@ -1,4 +1,5 @@
 import { PhoneOff } from "lucide-react";
+import { useParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ export const VoiceDock = ({ collapsed }: VoiceDockProps) => {
     );
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: conversations } = useFetchConversations(active ? workspaceId : undefined);
+  // On the call's own page the stage carries the controls, so the dock only says where you are.
+  const onCallPage = useParams().conversationId === active;
 
   if (!active) return null;
   const channelName = conversations?.find((c) => c.id === active)?.name ?? "voice";
@@ -45,6 +48,7 @@ export const VoiceDock = ({ collapsed }: VoiceDockProps) => {
       {!collapsed && (
         <VoiceDockExpanded
           status={status}
+          showControls={!onCallPage}
           channelName={channelName}
           micEnabled={micEnabled}
           cameraEnabled={cameraEnabled}

@@ -5,6 +5,7 @@ import type { VoiceCallStatus } from "@/stores/voiceCallStore";
 
 interface VoiceDockExpandedProps {
   status: VoiceCallStatus;
+  showControls: boolean;
   channelName: string;
   micEnabled: boolean;
   cameraEnabled: boolean;
@@ -18,6 +19,7 @@ interface VoiceDockExpandedProps {
 
 export const VoiceDockExpanded = ({
   status,
+  showControls,
   channelName,
   micEnabled,
   cameraEnabled,
@@ -30,7 +32,7 @@ export const VoiceDockExpanded = ({
 }: VoiceDockExpandedProps) => (
   <>
     <VoiceDockStatusRow status={status} channelName={channelName} onLeave={onLeave} />
-    {status === "connected" && (
+    {status === "connected" && showControls && (
       <VoiceDockControls
         micEnabled={micEnabled}
         cameraEnabled={cameraEnabled}
