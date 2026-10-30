@@ -109,6 +109,8 @@ describe("GitHubExistingAppForm", () => {
     expect(rows[1]).toHaveTextContent(/no GitHub App with slug/i);
     expect(rows[0]).toHaveAttribute("data-state", "ok");
     expect(rows[2]).toHaveAttribute("data-state", "ok");
+    expect(screen.getByLabelText(/github app slug/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/github oauth client secret/i)).toHaveAttribute("aria-invalid", "false");
     expect(screen.getByRole("button", { name: /^verify$/i })).toBeEnabled();
     expect(mocks.assign).not.toHaveBeenCalled();
   });
@@ -153,9 +155,9 @@ describe("GitHubExistingAppForm", () => {
     mocks.post.mockImplementation((url: string) =>
       url === VERIFY_URL
         ? Promise.resolve({})
-        : Promise.reject({ response: { status: 400, data: { message: "invalid: GitHub rejected the client secret" } } }),
+        : Promise.reject({ response: { status: 400, data: { message: "GitHub rejected the client secret" } } }),
     );
-    mocks.errorMessage.mockReturnValue("invalid: GitHub rejected the client secret");
+    mocks.errorMessage.mockReturnValue("GitHub rejected the client secret");
     const user = userEvent.setup();
     renderPage();
 

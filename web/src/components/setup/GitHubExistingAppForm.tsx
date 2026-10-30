@@ -93,6 +93,7 @@ export const GitHubExistingAppForm = ({ instanceUrl }: GitHubExistingAppFormProp
         name="client_secret"
         label="GitHub OAuth client secret"
         type="password"
+        invalid={outcomeFor("secret").state === "failed"}
         placeholder="••••••••••••••••"
       />
       <FormInput
@@ -100,6 +101,7 @@ export const GitHubExistingAppForm = ({ instanceUrl }: GitHubExistingAppFormProp
         name="app_slug"
         label="GitHub App slug"
         leading="github.com/apps/"
+        invalid={outcomeFor("slug").state === "failed"}
         className="font-mono"
         placeholder="my-nexul-app"
       />

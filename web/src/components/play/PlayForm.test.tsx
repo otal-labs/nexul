@@ -172,7 +172,7 @@ describe("PlayForm", () => {
     vi.mocked(api.post).mockRejectedValue({
       response: {
         status: 409,
-        data: { message: "taken", code: "CONFLICT", errors: { label: ['conflict: a play named "Fix with AI" already exists in this workspace'] } },
+        data: { message: "taken", code: "CONFLICT", errors: { label: ['a play named "Fix with AI" already exists in this workspace'] } },
       },
     });
     renderHarness();
