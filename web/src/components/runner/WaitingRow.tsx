@@ -1,3 +1,4 @@
+import { JobMeta } from "@/components/runner/JobMeta";
 import { JobName } from "@/components/runner/JobName";
 import { fleetTracks } from "@/components/runner/fleetTracks";
 import type { QueuedJob } from "@/models/Runner";
@@ -21,9 +22,10 @@ export const WaitingRow = ({ job, position, reason, className }: WaitingRowProps
       <JobName name={job.service || job.kind} />
     </span>
     <span className="font-mono text-xs text-muted-foreground">{job.kind}</span>
-    <span className="col-span-2 min-w-0 text-muted-foreground">
-      {reason} on {job.target && <span className="font-mono text-xs">{job.target}</span>}
+    <span className="@container/doing col-span-2 min-w-0 text-muted-foreground">
+      {reason} on {job.target && <span className="font-mono text-xs whitespace-nowrap">{job.target}</span>}
       {!job.target && "any machine"}
+      <JobMeta at={job.requested_at} by={job.triggered_by} inline />
     </span>
   </li>
 );

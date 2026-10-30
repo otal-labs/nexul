@@ -2,12 +2,12 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { personName } from "@/utils/TeamUtility";
 
-// Names an account from the Team the viewer already holds; someone outside the viewer's view stays unnamed.
+// Names an account, by id or login, from the Team the viewer already holds; someone outside the viewer's view stays unnamed.
 export const usePersonNamer = () => {
   const { data: team } = useFetchTeam();
   const { data: me } = useFetchMe();
   return (id: string): string => {
-    const person = team?.people.find((candidate) => candidate.id === id);
+    const person = team?.people.find((candidate) => candidate.id === id || candidate.login === id);
     if (person) return personName(person);
     if (id === me?.user.id) return "you";
     return "another member";
