@@ -9,7 +9,7 @@ import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { stackServicesQuery, stacksQuery } from "@/hooks/StackHooks";
 import { projectStatusesQuery } from "@/hooks/StatusHooks";
-import { useFetchAllLabels } from "@/hooks/TicketHooks";
+import { useFetchAllLabels } from "@/hooks/LabelHooks";
 import { projectTicketTypesQuery } from "@/hooks/TicketTypeHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { FIELD_LABELS, ID_FIELDS, type AutoPlayField } from "@/models/AutoPlay";

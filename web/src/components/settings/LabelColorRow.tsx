@@ -1,8 +1,9 @@
 import { ColorSwatchButton } from "@/components/settings/ColorSwatchButton";
+import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { SettingsListRow } from "@/components/settings/SettingsListRow";
 import { HUE_DOT_CLASS } from "@/components/board/ticketTypeColor";
 import { useFetchProjectTicketCounts } from "@/hooks/ProjectHooks";
-import { useSetLabelColor } from "@/hooks/TicketHooks";
+import { useDeleteLabel, useSetLabelColor } from "@/hooks/LabelHooks";
 import { countLabel } from "@/utils/CountUtility";
 
 interface LabelColorRowProps {
@@ -12,11 +13,13 @@ interface LabelColorRowProps {
   projectId: string;
 }
 
-// Labels aren't a real entity (ADR 0005): the pill is the one action, its color; an unset one shows the hollow ring, not the board's fallback.
+// The pill sets the color, and an unset one shows the hollow ring, not the board's fallback; only an unused label can be deleted.
 export const LabelColorRow = ({ label, color, projectId }: LabelColorRowProps) => {
   const setLabelColor = useSetLabelColor();
+  const deleteLabel = useDeleteLabel();
   const { data: counts } = useFetchProjectTicketCounts(projectId);
   const unset = !HUE_DOT_CLASS[color];
+  const used = counts?.tickets_by_label[label] ?? 0;
 
   return (
     <SettingsListRow
@@ -33,10 +36,24 @@ export const LabelColorRow = ({ label, color, projectId }: LabelColorRowProps) =
         />
       }
       meta={unset && "No color"}
-      count={counts && countLabel(counts.tickets_by_label[label] ?? 0, "ticket")}
-      // No menu, but the `⋯` column is kept so the counts line up with every other list's.
-      actions={<span aria-hidden className="w-8" />}
-      showActions
+      count={counts && countLabel(used, "ticket")}
+      actions={
+        <RowActionsMenu
+          subject={label}
+          projectId={projectId}
+          actions={[
+            {
+              label: "Delete",
+              destructive: true,
+              permission: "tickets:write",
+              verb: "delete labels",
+              disabled: used > 0,
+              hint: used > 0 ? `On ${countLabel(used, "ticket")}` : undefined,
+              onSelect: () => deleteLabel.mutate({ label, project_id: projectId }),
+            },
+          ]}
+        />
+      }
     />
   );
 };

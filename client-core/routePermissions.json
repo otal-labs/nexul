@@ -50,6 +50,7 @@
   "DELETE /api/statuses/{id}": ["projects:delete"],
   "DELETE /api/templates/{kind}": ["templates:write"],
   "DELETE /api/ticket-types/{id}": ["projects:delete"],
+  "DELETE /api/tickets/labels/colors/{label}": ["tickets:write"],
   "DELETE /api/tickets/{id}": ["tickets:delete"],
   "DELETE /api/tickets/{id}/blocked-by/{blockerId}": ["tickets:write"],
   "DELETE /api/tickets/{id}/branches": ["tickets:write"],

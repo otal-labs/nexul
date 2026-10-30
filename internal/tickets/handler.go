@@ -109,6 +109,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tickets/labels", h.listAllLabels)
 	mux.HandleFunc("POST /api/tickets/labels/colors", h.labelColors)
 	mux.HandleFunc("PUT /api/tickets/labels/{label}/color", h.setLabelColor)
+	mux.HandleFunc("DELETE /api/tickets/labels/colors/{label}", h.deleteLabel)
 	mux.HandleFunc("POST /api/tickets/dev-status", h.devStatus)
 	mux.HandleFunc("GET /api/tickets/blockers", h.unclearedBlockers)
 	mux.HandleFunc("GET /api/tickets/due", h.due)
@@ -430,6 +431,14 @@ func (h *Handler) setLabelColor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, lc)
+}
+
+func (h *Handler) deleteLabel(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DeleteLabel(r.Context(), r.URL.Query().Get("project_id"), r.PathValue("label")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) labelColors(w http.ResponseWriter, r *http.Request) {

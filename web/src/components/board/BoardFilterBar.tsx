@@ -23,7 +23,7 @@ import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
+import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { cn } from "@/lib/utils";
 

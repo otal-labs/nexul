@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { labelDotColor } from "@/components/board/ticketTypeColor";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { rowClass, rowIconClass, rowLabelClass } from "@/components/ticket/ticketPropertyRowStyle";
-import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
+import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/models/Ticket";
 

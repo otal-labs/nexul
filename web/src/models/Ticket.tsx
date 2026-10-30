@@ -176,3 +176,9 @@ export const ReportBugFormSchema = SaveTicketFormSchema.refine((d) => !!d.origin
   message: "Pick the ticket this bug was found in, or tick Origin unknown",
   path: ["origin_id"],
 });
+
+export const SaveLabelFormSchema = z.object({
+  name: z.string().trim().min(1, "Label name is required"),
+});
+
+export type SaveLabelFormData = z.infer<typeof SaveLabelFormSchema>;

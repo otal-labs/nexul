@@ -6,7 +6,7 @@ import { BoardCardDataContext, CanMoveTicketsContext } from "@/hooks/useBoardCar
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchLabelColors } from "@/hooks/TicketHooks";
+import { useFetchLabelColors } from "@/hooks/LabelHooks";
 import { useFetchBlockers } from "@/hooks/TicketLinkHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useFetchActiveTrails } from "@/hooks/TrailHooks";

@@ -361,4 +361,43 @@ describe("Statuses, Ticket types and Labels", () => {
       color: "orange",
     });
   });
+
+  it("makes a label no ticket carries yet, refusing one that already exists", async () => {
+    mocks.put.mockResolvedValue({ data: { label: "urgent", color: "emerald" } });
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/tickets/labels") return Promise.resolve({ data: ["bug"] });
+      return Promise.resolve({ data: [] });
+    });
+    mocks.post.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection("labels");
+
+    await user.click(await screen.findByRole("button", { name: "New label" }));
+    await user.type(screen.getByLabelText("New label"), "bug");
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+    expect(await screen.findByText("That label already exists")).toBeInTheDocument();
+    expect(mocks.put).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("New label"));
+    await user.type(screen.getByLabelText("New label"), " urgent ");
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+
+    expect(mocks.put).toHaveBeenCalledWith("/api/tickets/labels/urgent/color", { project_id: PROJECT_ID, color: "emerald" });
+  });
+
+  it("deletes a label no ticket carries", async () => {
+    mocks.del.mockResolvedValue({ data: undefined });
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/tickets/labels") return Promise.resolve({ data: ["spare"] });
+      return Promise.resolve({ data: [] });
+    });
+    mocks.post.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection("labels");
+
+    await user.click(await screen.findByRole("button", { name: "Actions for spare" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(mocks.del).toHaveBeenCalledWith("/api/tickets/labels/colors/spare", { params: { project_id: PROJECT_ID } });
+  });
 });

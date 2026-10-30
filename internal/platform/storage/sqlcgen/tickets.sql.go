@@ -291,6 +291,25 @@ func (q *Queries) DeleteTicketPRLink(ctx context.Context, arg DeleteTicketPRLink
 	return err
 }
 
+const deleteUnusedLabelColor = `-- name: DeleteUnusedLabelColor :execrows
+DELETE FROM label_colors WHERE label_colors.project_id = ?1 AND label_colors.label = ?2
+  AND NOT EXISTS (SELECT 1 FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id
+                  WHERE tickets.project_id = ?1 AND ticket_labels.label = ?2)
+`
+
+type DeleteUnusedLabelColorParams struct {
+	ProjectID string
+	Label     string
+}
+
+func (q *Queries) DeleteUnusedLabelColor(ctx context.Context, arg DeleteUnusedLabelColorParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteUnusedLabelColor, arg.ProjectID, arg.Label)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getTicket = `-- name: GetTicket :one
 SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
        CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
@@ -475,6 +494,33 @@ func (q *Queries) ListLabelColors(ctx context.Context, arg ListLabelColorsParams
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectColoredLabels = `-- name: ListProjectColoredLabels :many
+SELECT label FROM label_colors WHERE project_id = ?
+`
+
+func (q *Queries) ListProjectColoredLabels(ctx context.Context, projectID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listProjectColoredLabels, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, err
+		}
+		items = append(items, label)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

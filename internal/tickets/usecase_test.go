@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -558,6 +559,31 @@ func (f *fakeRepo) SetLabelColor(_ context.Context, projectID, label string, col
 	}
 	f.labelColors[projectID][label] = color
 	return nil
+}
+
+func (f *fakeRepo) ColoredLabels(_ context.Context, projectID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.labelColorErr != nil {
+		return nil, f.labelColorErr
+	}
+	return slices.Collect(maps.Keys(f.labelColors[projectID])), nil
+}
+
+func (f *fakeRepo) DeleteUnusedLabel(_ context.Context, projectID, label string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.labelColorErr != nil {
+		return false, f.labelColorErr
+	}
+	for _, t := range f.tickets {
+		if t.ProjectID == projectID && slices.Contains(t.Labels, label) {
+			return false, nil
+		}
+	}
+	_, ok := f.labelColors[projectID][label]
+	delete(f.labelColors[projectID], label)
+	return ok, nil
 }
 
 func (f *fakeRepo) LabelColors(_ context.Context, projectID string, labels []string) (map[string]colors.Color, error) {

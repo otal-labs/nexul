@@ -413,6 +413,25 @@ func (r ticketRepo) LabelColors(_ context.Context, projectID string, labels []st
 	return out, nil
 }
 
+func (r ticketRepo) ColoredLabels(_ context.Context, projectID string) ([]string, error) {
+	var out []string
+	for key := range r.w.labelColor {
+		if l, ok := strings.CutPrefix(key, projectID+"/"); ok {
+			out = append(out, l)
+		}
+	}
+	return out, nil
+}
+
+func (r ticketRepo) DeleteUnusedLabel(_ context.Context, projectID, label string) (bool, error) {
+	if len(r.filter(func(t *tickets.Ticket) bool { return t.ProjectID == projectID && slices.Contains(t.Labels, label) })) > 0 {
+		return false, nil
+	}
+	_, ok := r.w.labelColor[projectID+"/"+label]
+	delete(r.w.labelColor, projectID+"/"+label)
+	return ok, nil
+}
+
 func (r ticketRepo) LinkPR(_ context.Context, id string, ref tickets.PRRef, state tickets.PRState) error {
 	r.w.prs[id] = append(r.w.prs[id], tickets.PRLink{PRRef: ref, State: state})
 	return nil

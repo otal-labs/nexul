@@ -172,16 +172,18 @@ func TestProjectUpdate_EveryField(t *testing.T) {
 	assert.Equal(t, workspace.StatusIconDone, d.Statuses[1].Icon)
 	assert.Equal(t, colors.Cyan, d.Categories[0].Color)
 	assert.Equal(t, "## Question\n", d.TicketTypes[0].BodyTemplate)
-	assert.Equal(t, colors.Fuchsia, f.w.labelColor["p-3/urgent"])
+	assert.Equal(t, []labelResult{{Name: "urgent", Color: colors.Fuchsia}}, d.Labels, "a colored label is the project's before any ticket carries it")
 	assert.Equal(t, "p-3", f.w.projects.items[0].ID, "position 0 moves the project first")
 
 	todo, done := d.Statuses[0].ID, d.Statuses[1].ID
 	got, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-3",
 		"statuses":{"update":[{"id":"`+done+`","position":0,"stage":"testing","icon":""}],"delete":["`+todo+`"]},
 		"categories":{"update":[{"id":"`+d.Categories[0].ID+`","color":""}],"delete":["`+d.Categories[0].ID+`"]},
-		"ticket_types":{"update":[{"id":"`+d.TicketTypes[0].ID+`","body_template":"","position":0}],"delete":["`+d.TicketTypes[0].ID+`"]}}`)
+		"ticket_types":{"update":[{"id":"`+d.TicketTypes[0].ID+`","body_template":"","position":0}],"delete":["`+d.TicketTypes[0].ID+`"]},
+		"remove_labels":["urgent"]}`)
 	require.NoError(t, err)
 	d = got.(projectUpdateResult).Project
+	assert.Empty(t, d.Labels)
 	require.Len(t, d.Statuses, 1)
 	assert.Equal(t, done, d.Statuses[0].ID)
 	assert.Equal(t, workspace.StatusKindTesting, d.Statuses[0].Stage)

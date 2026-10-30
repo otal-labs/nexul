@@ -200,7 +200,8 @@ type projectUpdateIn struct {
 	Statuses      *statusChanges     `json:"statuses,omitempty" jsonschema:"Status columns to create, change, or delete."`
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
-	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project, even for a label no ticket uses yet."`
+	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project; coloring a label no ticket uses yet makes it."`
+	RemoveLabels  []string           `json:"remove_labels,omitempty" jsonschema:"Labels to delete; only a label no ticket in the project carries can go."`
 	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. The default folder, Main, takes new docs and can be renamed but never deleted."`
 	Setup         *setupIn           `json:"setup,omitempty" jsonschema:"The project wizard's record of this project, as project_get shows it under setup."`
 }
@@ -311,7 +312,7 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) m
 	return mcptool.New("project_update", "Update project",
 		"Changes a project's name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
-			"status columns, categories, and ticket types; sets label colors; creates, renames, and deletes doc "+
+			"status columns, categories, and ticket types; makes, colors, and deletes labels; creates, renames, and deletes doc "+
 			"folders (doc_update moves a doc between them); and finishes or reopens its setup "+
 			"and marks project wizard steps done or skipped. The changes apply in the order the fields are listed here, creates "+
 			"before updates before deletes, and stop at the first failure. "+
@@ -371,6 +372,11 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 	for i, lc := range in.LabelColors {
 		steps = append(steps, step{fmt.Sprintf("label_colors[%d]", i), "", func(ctx context.Context) error {
 			return discard(u.t.SetLabelColor(ctx, u.id, lc.Label, colors.Color(lc.Color)))
+		}})
+	}
+	for i, l := range in.RemoveLabels {
+		steps = append(steps, step{fmt.Sprintf("remove_labels[%d]", i), "", func(ctx context.Context) error {
+			return u.t.DeleteLabel(ctx, u.id, l)
 		}})
 	}
 	steps = append(steps, u.docFolderSteps(in.DocFolders)...)
