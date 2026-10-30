@@ -476,8 +476,10 @@ is a straight line and the pills read as a column of row labels; a pill grows
 to its hostname up to 320px, then wraps after a dot, and its row grows to stay
 level. A hostname whose gateway is not on the canvas joins the same column,
 level with its service, and its wire carries the port. Services stack in their
-network boxes (`foreground` at 3.5% with a hairline ring and the large radius,
-the mono `network · <name>` microheader with the member count at its right) in
+network boxes (`foreground` at 3.5% over an opaque `surface-2`, so the dot grid
+stops at the box, with a hairline ring and the large radius; the mono
+`network · <name>` microheader with the member count at its right, and under
+it the machine when every member runs on it, which their cards then leave out) in
 the order the gateway rows reach them, so the wires out fan without crossing;
 a service on no network takes its place in that order without a box. A drawn
 node is a 240px card under an "outside Nexul" microheader, so it never reads
@@ -1722,6 +1724,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Runners: one list, a `surface-2` band per machine over one-line runner rows on shared tracks, a column head row, the fleet's health in the header and the queue above the list (2026-10-29) | Against one card per machine (a server tile, three header actions and a People row on every machine put a one-runner machine at about 200px, columns were laid out per card, and the queue sat in a side rail that fell to the bottom of the page at 768) and against bands separated by space alone or a heading over a box per machine (both read as separate pages); the stat well's four figures moved into the header's health line, the trash column and Import into `⋯` menus, and "just now" was dropped, since a connected runner's last seen always reads that |
 | Topology in lanes, read at a legible zoom (2026-10-29) | The fitted canvas sat near 0.5, where the mono route rows rendered at 6 to 8px, and its automatic layout scattered the hostnames, gateways and services so the left-to-right sentence only held inside each gateway card; at its worst the fit still cut hostnames and drawn nodes off both sides. Fixed lanes, pills level with their rows and a 0.8 floor keep the sentence whole. Against a docked route index listing every hostname (hostnames shown twice, which the hub rows were chosen to avoid) and against anchoring the camera on one lane (the whole sentence fits at 1440). The gateway, service, pill, drawn-node and frame shapes were picked from screenshot variants |
 | Topology service cards: the name on its own line, status and strategy under it, the machine under a rule (2026-10-29) | Replaced the icon tile with the status trailing the name, which squeezed long names at a fixed lane width; the tile stays on the gateway card, the one card whose icon says something |
+| Topology network boxes: opaque over the dot grid, and the machine every member shares named once under the box label (2026-10-30) | Against the translucent box, whose dots read as texture behind the cards, and against repeating one machine on every card in the box, which cost a ruled row per card and said nothing new |
 | The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |
 | Sidebar rows at 13px, about 28px tall, in a 224px sidebar, with sentence-case labels (2026-10-28) | Against 14px rows near 34px tall in 240px under mono uppercase labels: the labels were the most tracked-out, most technical-looking text in the chrome for the least important words, and the tall rows pushed Voice channels to the fold at 900px; the compact rows sit level with the board's 13px card titles and give the panel 16px |
 | Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |

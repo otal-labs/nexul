@@ -165,11 +165,18 @@ export const deriveWiring = (
     if (n.type === "gateway") n.data.rowHeights = routeRowHeights(n.data, pillByRoute);
   }
 
+  // A machine every member of a box runs on is named once in the box header, not on each card.
+  const machineOf = new Map(nodes.map((n) => [n.id, n.type === NodeType.Service ? n.data.target : undefined]));
+  const groups = [...networks].map(([name, memberIds]): NetworkGroup => {
+    const machine = machineOf.get(memberIds[0]!);
+    return { name, memberIds, ...(machine && memberIds.every((id) => machineOf.get(id) === machine) ? { machine } : {}) };
+  });
+  const boxedOn = new Set(groups.flatMap((g) => (g.machine ? g.memberIds : [])));
   return {
-    nodes,
+    nodes: nodes.map((n) => (n.type === NodeType.Service && boxedOn.has(n.id) ? { ...n, data: { ...n.data, machineInBox: true } } : n)),
     hosts,
     edges,
-    networks: [...networks].map(([name, memberIds]) => ({ name, memberIds })).sort((a, b) => a.name.localeCompare(b.name)),
+    networks: groups.sort((a, b) => a.name.localeCompare(b.name)),
   };
 };
 

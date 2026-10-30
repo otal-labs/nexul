@@ -149,6 +149,8 @@ export type RelationEdgeData = z.infer<typeof RelationEdgeDataSchema>;
 // Type aliases, not interfaces: React Flow node data must be assignable to Record<string, unknown>.
 export type ServiceNodeExtras = {
   target?: string | undefined;
+  // Set when the network box around the card already names this machine, so the card leaves it out.
+  machineInBox?: boolean | undefined;
   strategy?: string | undefined;
   // The owning stack's id (service_id is now a container id, spec §2) — lets a node click open its stack page.
   stackId?: string | undefined;
@@ -204,4 +206,6 @@ export type RelationEdge = Edge<RelationEdgeData, "relation" | "route">;
 export interface NetworkGroup {
   name: string;
   memberIds: string[];
+  // The machine every member runs on, shown once in the box header.
+  machine?: string | undefined;
 }

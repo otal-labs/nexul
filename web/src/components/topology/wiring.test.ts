@@ -84,7 +84,7 @@ describe("deriveWiring", () => {
   it("keeps the gateway out of the network boxes and lists every network it joins on its card", () => {
     const spanning = { ...gateway, networks: ["nexul_default", "app_default"] };
     const { nodes, networks } = deriveWiring(stored, containers, stacks, [spanning], [exposure]);
-    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["svc-api"] }]);
+    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["svc-api"], machine: "instance" }]);
     const gw = nodes.find((n) => n.id === "svc-cf");
     expect(gw?.type === "gateway" && gw.data.networks).toEqual(["nexul_default", "app_default"]);
   });
@@ -101,8 +101,27 @@ describe("deriveWiring", () => {
 
   it("groups service nodes by docker network and annotates them with machine, strategy, and stack id", () => {
     const { nodes, networks } = deriveWiring(stored, containers, stacks, [gateway], [exposure]);
-    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["svc-api"] }]);
+    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["svc-api"], machine: "instance" }]);
     expect(nodes.find((n) => n.id === "svc-api")?.data).toMatchObject({ target: "instance", strategy: "run", stackId: "stack-1" });
+  });
+
+  it("names a box's machine once when every member runs on it, and leaves it on each card when they differ", () => {
+    const other: Stack = { ...stack, id: "stack-2", machine: "edge-2" };
+    const on = (id: string, net: string, stackId = "stack-1") => ({ ...container(id, id, net), stack_id: stackId });
+    const { nodes, networks } = deriveWiring(
+      ["a", "b", "c", "d"].map((id) => serviceNode(id, id)),
+      [on("a", "shared"), on("b", "shared"), on("c", "mixed"), on("d", "mixed", "stack-2")],
+      [stack, other],
+      [],
+      [],
+    );
+    expect(networks).toEqual([
+      { name: "mixed", memberIds: ["c", "d"] },
+      { name: "shared", memberIds: ["a", "b"], machine: "instance" },
+    ]);
+    const inBox = (id: string) => nodes.find((n) => n.id === id)?.type === "service" && nodes.find((n) => n.id === id)!.data;
+    expect(inBox("a")).toMatchObject({ target: "instance", machineInBox: true });
+    expect(inBox("c")).not.toHaveProperty("machineInBox");
   });
 
   it("routes straight to the service, port on the wire, when the gateway has no node", () => {
@@ -142,7 +161,7 @@ describe("deriveWiring", () => {
     expect(nodes.find((n) => n.id === "stack-1")?.data).toMatchObject({ service_id: "c-api", stackId: "stack-1" });
     expect(nodes.find((n) => n.id === "stack-cf")?.type).toBe("gateway");
     expect(edges).toContainEqual(expect.objectContaining({ source: "stack-cf", sourceHandle: "exp-1", target: "stack-1" }));
-    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["stack-1"] }]);
+    expect(networks).toEqual([{ name: "nexul_default", memberIds: ["stack-1"], machine: "instance" }]);
   });
 
   it("leaves compose services and hand-drawn nodes ungrouped", () => {
