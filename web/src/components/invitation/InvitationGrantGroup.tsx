@@ -21,8 +21,8 @@ interface InvitationGrantGroupProps {
 }
 
 const projectCount = (count: number): string => {
-  if (count === 0) return "No projects yet";
-  return `${count} ${count === 1 ? "project" : "projects"}`;
+  if (count === 0) return "Opens no projects yet";
+  return `Opens ${count} ${count === 1 ? "project" : "projects"}`;
 };
 
 // One workspace the link admits to: its name, then a card of the roles given there with what each allows.

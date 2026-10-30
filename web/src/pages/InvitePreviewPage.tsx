@@ -34,10 +34,11 @@ export const InvitePreviewPage = () => {
   const fragment = useMemo(() => parseInvitationFragment(location.hash), [location.hash]);
   const [credential, setCredential] = useState("");
   const [acceptance, setAcceptance] = useState<InvitationAcceptance | null>(null);
-  // "Not you?" after a provider round trip: the page holds only the acceptance, so it reads the link again from the token this tab kept.
+  // "Not you?": back to the providers, from the acceptance a round trip left, or from the link this tab kept when a refusal left neither.
   const [restarted, setRestarted] = useState(false);
   const started = useRef(false);
-  const inviteToken = restarted ? keptToken ?? "" : fragment.acceptance ? "" : fragment.token;
+  const fromAcceptance = restarted && fragment.acceptance && acceptance !== null;
+  const inviteToken = restarted && !fragment.acceptance ? keptToken ?? "" : fragment.acceptance ? "" : fragment.token;
   const preview = useFetchInvitationPreview(fragment.malformed || isLoggedIn ? "" : inviteToken);
   const exchange = useCreateInvitationAcceptance();
   const oauth = useStartInvitationOAuth();
@@ -66,7 +67,7 @@ export const InvitePreviewPage = () => {
 
   const publicPreview = preview.data;
   const shownAcceptance = restarted ? null : acceptance;
-  const details = shownAcceptance ?? publicPreview;
+  const details = shownAcceptance ?? publicPreview ?? (fromAcceptance ? acceptance : undefined);
   const providers: InvitationProvider[] = [];
   if (bootstrapStatus?.configured) providers.push("github");
   if (bootstrapStatus?.google_configured) providers.push("google");
@@ -89,8 +90,13 @@ export const InvitePreviewPage = () => {
   };
 
   const startOAuth = (provider: InvitationProvider) => {
+    const go = { onSuccess: (data: { url: string }) => window.location.assign(data.url) };
+    if (fromAcceptance) {
+      oauth.mutate({ provider, acceptanceToken: credential }, go);
+      return;
+    }
     keepToken(inviteToken);
-    oauth.mutate({ provider, token: inviteToken }, { onSuccess: (data) => window.location.assign(data.url) });
+    oauth.mutate({ provider, token: inviteToken }, go);
   };
 
   const accept = () => {
@@ -114,14 +120,14 @@ export const InvitePreviewPage = () => {
 
   const decline = () => {
     forgetToken();
-    navigate("/login", { replace: true });
+    navigate("/login?declined=1", { replace: true });
   };
 
   return (
     <SignedOutFrame card>
       {refusal?.kind === "gone" && <InvitationGoneScreen />}
       {refusal?.kind === "existing_account" && (
-        <InvitationExistingAccountScreen person={refusedPerson} onSignOut={isLoggedIn ? switchAccount : undefined} onRestart={() => setRestarted(true)} />
+        <InvitationExistingAccountScreen person={refusedPerson} canRestart={isLoggedIn || keptToken !== null} onRestart={isLoggedIn ? switchAccount : () => setRestarted(true)} />
       )}
       {!refusal && (
         <InvitationConsentPanel details={details}>
@@ -143,10 +149,11 @@ export const InvitePreviewPage = () => {
               pending={redeem.isPending}
               onAccept={accept}
               onDecline={decline}
+              canRestart
               onRestart={() => setRestarted(true)}
             />
           )}
-          {!invalid && !shownAcceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
+          {!invalid && !shownAcceptance && (publicPreview || fromAcceptance) && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
         </InvitationConsentPanel>
       )}
     </SignedOutFrame>
