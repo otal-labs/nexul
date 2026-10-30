@@ -4,10 +4,11 @@ import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
 import { BoardDragContext, useCardDrag, useLifted } from "@/components/board/boardDrag";
-import { labelDot } from "@/components/board/ticketTypeColor";
+import { labelDot, labelDotStyle } from "@/components/board/ticketTypeColor";
 import { TicketTypeBadge } from "@/components/board/TicketTypeBadge";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
+import { useBoardLabelColors } from "@/hooks/LabelHooks";
 import { useTicketPersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
@@ -23,9 +24,9 @@ export interface TicketCardBodyProps {
 }
 
 // A label is a tag: a neutral hairline pill, its hue only on the leading dot.
-const LabelChip = ({ label, dotClass }: { label: string; dotClass: string }) => (
+const LabelChip = ({ label, color }: { label: string; color: string | undefined }) => (
   <View className="max-w-full flex-row items-center gap-1.5 rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5">
-    <View className={cn("size-1.5 shrink-0 rounded-full", dotClass)} />
+    <View className={cn("size-1.5 shrink-0 rounded-full", labelDot(label, color))} style={labelDotStyle(color)} />
     <Text numberOfLines={1} className="shrink text-xs font-medium text-muted-foreground">
       {label}
     </Text>
@@ -37,6 +38,7 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
   const resolvePerson = useTicketPersonLookup(useCurrentWorkspaceId());
   const person = cardPerson(ticket, stage);
   const labels = ticket.labels ?? [];
+  const { data: labelColors } = useBoardLabelColors(ticket.project_id);
   return (
     <>
       <Text className="font-mono text-[11px] text-muted-foreground">{ticketKey(ticket, projectPrefix)}</Text>
@@ -48,7 +50,7 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
           <View className="min-w-0 flex-1 flex-row flex-wrap gap-1.5">
             {typeName && <TicketTypeBadge name={typeName} color={typeColor} />}
             {labels.map((label) => (
-              <LabelChip key={label} label={label} dotClass={labelDot(label)} />
+              <LabelChip key={label} label={label} color={labelColors?.[label]} />
             ))}
           </View>
           {person.login && <PersonAvatar person={resolvePerson(person)} size={22} />}

@@ -9,7 +9,7 @@ import type { Project } from "@/models/Project";
 import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-jest.mock("@/api/client", () => ({ api: { get: jest.fn(), patch: jest.fn() } }));
+jest.mock("@/api/client", () => ({ api: { get: jest.fn(), patch: jest.fn(), post: jest.fn() } }));
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
@@ -36,13 +36,15 @@ const tickets = [
   { id: "t-3", project_id: "p-1", type_id: "", title: "Ship it", status: "st-shipped", position: 0, number: 14, developer: "", tester: "", labels: null },
 ];
 
+let boardTickets: typeof tickets = tickets;
+
 const mockGet = (url: string) => {
   if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1" }]);
   if (url.startsWith("/api/auth/me")) return Promise.resolve(me);
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve(myRole);
   if (url.startsWith("/api/projects")) return Promise.resolve(projects);
   if (url.startsWith("/api/statuses")) return Promise.resolve(statuses);
-  if (url.startsWith("/api/tickets")) return Promise.resolve(tickets);
+  if (url.startsWith("/api/tickets")) return Promise.resolve(boardTickets);
   if (url.startsWith("/api/ticket-types")) return Promise.resolve([]);
   throw new Error(`unexpected GET ${url}`);
 };
@@ -60,6 +62,7 @@ const renderScreen = async () => {
 beforeEach(() => {
   projects = [project];
   myRole = writer;
+  boardTickets = tickets;
   useBoardStore.setState({ selectedProjectId: null });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
 });
@@ -165,5 +168,16 @@ describe("BoardScreen", () => {
     await renderScreen();
 
     expect(await screen.findByText(shows)).toBeTruthy();
+  });
+
+  test("draws each label's dot in its configured color, fetched once for the whole board", async () => {
+    boardTickets = tickets.map((t, i) => ({ ...t, labels: [["frontend", "backend"], ["frontend"], ["docs"]][i] ?? null })) as unknown as typeof tickets;
+    jest.mocked(api.post).mockReset().mockResolvedValue({ frontend: "#0fb5ae", backend: "cyan" });
+
+    await renderScreen();
+    await waitFor(() => expect(JSON.stringify(screen.toJSON())).toContain('"backgroundColor":"#0fb5ae"'));
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith("/api/tickets/labels/colors", { project_id: "p-1", labels: ["backend", "docs", "frontend"] });
   });
 });
