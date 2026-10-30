@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { useJoinMutedStore } from "@/stores/joinMutedStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 
 vi.mock("@/api/client", () => ({
@@ -15,7 +16,10 @@ vi.mock("@/api/client", () => ({
 const connect = vi.fn(async () => undefined);
 const disconnect = vi.fn();
 const on = vi.fn();
-const setMicrophoneEnabled = vi.fn(async () => undefined);
+let micOn = false;
+const setMicrophoneEnabled = vi.fn(async (on: boolean) => {
+  micOn = on;
+});
 const remoteParticipants = new Map<string, object>();
 
 vi.mock("livekit-client", () => ({
@@ -26,7 +30,9 @@ vi.mock("livekit-client", () => ({
       on,
       remoteParticipants,
       localParticipant: {
-        isMicrophoneEnabled: true,
+        get isMicrophoneEnabled() {
+          return micOn;
+        },
         isCameraEnabled: false,
         isScreenShareEnabled: false,
         setMicrophoneEnabled,
@@ -43,8 +49,12 @@ vi.mock("livekit-client", () => ({
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
 
 const initialState = useVoiceCallStore.getState();
+const initialJoinMuted = useJoinMutedStore.getState();
 
 beforeEach(() => {
+  micOn = false;
+  setMicrophoneEnabled.mockClear();
+  useJoinMutedStore.setState(initialJoinMuted, true);
   vi.mocked(api.post).mockReset();
   connect.mockClear();
   disconnect.mockClear();
@@ -67,6 +77,19 @@ describe("voiceCallStore", () => {
     expect(s.activeConversationId).toBe("c1");
     expect(s.micEnabled).toBe(true);
     expect(s.room).not.toBeNull();
+    expect(s.connectedAt).toEqual(expect.any(Number));
+  });
+
+  it("join with the mic set to start muted lands connected with the mic off", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { ws_url: "wss://lk", token: "tok" } });
+    useJoinMutedStore.setState({ joinMuted: true });
+
+    await useVoiceCallStore.getState().join("c1", "huddle");
+
+    const s = useVoiceCallStore.getState();
+    expect(setMicrophoneEnabled).not.toHaveBeenCalled();
+    expect(s.status).toBe("connected");
+    expect(s.micEnabled).toBe(false);
   });
 
   it("join surfaces the owner-setup-needed state on the LiveKit-not-configured error", async () => {
@@ -118,6 +141,7 @@ describe("voiceCallStore", () => {
     expect(s.status).toBe("idle");
     expect(s.activeConversationId).toBeNull();
     expect(s.room).toBeNull();
+    expect(s.connectedAt).toBeNull();
   });
 
   it("an unexpected disconnect resets state and toasts", async () => {

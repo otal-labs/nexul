@@ -80,9 +80,9 @@ Automations and integrations never receive a private channel's events, or a dire
 
 A voice channel is a call with its own text chat. Its row shows who's in the call without joining.
 
-1. Select the voice channel's row to join the call. Opened any other way, by a link or after you leave, the channel shows who's in the call above its chat, with **Join**, or **Start call** when nobody is there. If you're already in another channel's call, the button reads **Switch call**.
-2. In the call, everyone has a tile: their camera, or their avatar with their name. A green ring marks whoever is talking, and a crossed-out microphone marks whoever is muted. At wider screens the chat sits beside the call.
-3. Use the buttons under the tiles to mute your microphone, turn on your camera, share your screen, or leave. A muted microphone shows in red.
+1. Select the voice channel's row to join the call. Opened any other way, by a link or after you leave, the channel shows who's in the call above its chat, with **Join**, or **Start call** when nobody is there. If you're already in another channel's call, the button reads **Switch call**. Beside it, the microphone button sets whether you join muted; a crossed-out red microphone means the call starts with your microphone off, and the choice is remembered on this browser.
+2. In the call, everyone has a tile: their camera, or their avatar with their name. A green ring marks whoever is talking, and a crossed-out microphone marks whoever is muted. A small signal mark after a name means that person's connection is weak (grey) or lost (red). At wider screens the chat sits beside the call.
+3. Use the buttons under the tiles to mute your microphone, turn on your camera, share your screen, or leave. A muted microphone shows in red. How long you've been in the call counts up at the left of the buttons.
 4. A shared screen takes the whole call area, with whose screen it is and everyone in the call as avatars under it. It has a **Full screen** button; Esc exits. When you share, your own screen isn't shown back to you: the call area says you're sharing, with **Stop sharing**.
 
 If you're alone in a call for 5 minutes you leave it automatically, and the channel offers **Rejoin**.

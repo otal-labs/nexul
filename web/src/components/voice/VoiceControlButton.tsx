@@ -12,6 +12,8 @@ interface VoiceControlButtonProps {
   look: Look;
   /** Omitted for an action, not a toggle. */
   pressed?: boolean;
+  /** The 32px size beside a lobby button. */
+  compact?: boolean;
   onClick: () => void;
 }
 
@@ -23,7 +25,7 @@ const LOOKS: Record<Look, string> = {
   leave: "",
 };
 
-export const VoiceControlButton = ({ label, icon: Icon, look, pressed, onClick }: VoiceControlButtonProps) => (
+export const VoiceControlButton = ({ label, icon: Icon, look, pressed, compact, onClick }: VoiceControlButtonProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <Button
@@ -32,7 +34,7 @@ export const VoiceControlButton = ({ label, icon: Icon, look, pressed, onClick }
         aria-label={label}
         aria-pressed={pressed}
         onClick={onClick}
-        className={cn("size-9", LOOKS[look])}
+        className={cn(compact ? "size-8" : "size-9", LOOKS[look])}
       >
         <Icon className={cn("size-4", look === "plain" && "text-muted-foreground")} aria-hidden />
       </Button>

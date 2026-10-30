@@ -6,6 +6,7 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { isVoiceNotConfiguredError, type VoiceJoinToken } from "@/models/Voice";
+import { useJoinMutedStore } from "@/stores/joinMutedStore";
 
 const ALONE_LEAVE_MINUTES = 5;
 
@@ -18,6 +19,8 @@ export type VoiceCallStore = {
   /** Why the last call ended by itself, shown where the call was until the person rejoins or moves on. */
   leftAlone: { conversationId: string; reason: string } | null;
   status: VoiceCallStatus;
+  /** Wall-clock ms the call reached connected; null otherwise. */
+  connectedAt: number | null;
   room: Room | null;
   error: string | undefined;
   micEnabled: boolean;
@@ -53,6 +56,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
   activeChannelName: "",
   leftAlone: null,
   status: "idle",
+  connectedAt: null,
   room: null,
   error: undefined,
   micEnabled: false,
@@ -66,7 +70,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
     const seq = ++joinSeq;
     stopAloneTimer();
     disconnectRoom(prev.room, prev.room ? prev.activeConversationId : null);
-    set({ activeConversationId: conversationId, activeChannelName: channelName, leftAlone: null, status: "connecting", room: null, error: undefined });
+    set({ activeConversationId: conversationId, activeChannelName: channelName, leftAlone: null, status: "connecting", connectedAt: null, room: null, error: undefined });
     try {
       const [{ data }, livekit] = await Promise.all([
         requires("none", api.post<VoiceJoinToken>(`/api/voice/${conversationId}/token`)),
@@ -97,7 +101,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
         // A connect that fails also fires this; its catch below shows the error instead.
         if (get().status !== "connected") return;
         stopAloneTimer();
-        set({ activeConversationId: null, status: "idle", room: null });
+        set({ activeConversationId: null, status: "idle", connectedAt: null, room: null });
         if (reason !== livekit.DisconnectReason.CLIENT_INITIATED) {
           toast.error("Disconnected from the voice call");
         }
@@ -107,10 +111,11 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
         room.disconnect();
         return;
       }
-      await room.localParticipant.setMicrophoneEnabled(true).catch(() => undefined);
+      if (!useJoinMutedStore.getState().joinMuted) await room.localParticipant.setMicrophoneEnabled(true).catch(() => undefined);
       set({
         room,
         status: "connected",
+        connectedAt: Date.now(),
         micEnabled: room.localParticipant.isMicrophoneEnabled,
         cameraEnabled: room.localParticipant.isCameraEnabled,
         screenShareEnabled: room.localParticipant.isScreenShareEnabled,
@@ -130,6 +135,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
     set({
       activeConversationId: null,
       status: "idle",
+      connectedAt: null,
       room: null,
       error: undefined,
       micEnabled: false,

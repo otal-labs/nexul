@@ -1433,7 +1433,8 @@ Before joining, one lobby row sits above the messages in the stream's column:
 a `surface-2` well at `rounded-lg`, 64px, holding a stack of up to five 28px
 avatars (then a mono `+N`), the first names in medium ("Lena, Sam and Bob",
 "Lena, Sam and 6 others") over the count ("3 in the call", the number in
-mono), and Join at the right; an empty room leads with a dashed 28px ghost
+mono), and Join at the right, a 32px mic toggle just left of it (a slashed mic in
+`destructive` when you join muted, remembered across reloads); an empty room leads with a dashed 28px ghost
 avatar and reads "Nobody's here" with Start call, and Switch call keeps the
 count and names the call you are in. Every other state takes the same slot,
 height and button place, its one action a primary button and a dismiss beside
@@ -1453,7 +1454,9 @@ touch, a last row that is not full centres, and the people who don't fit go
 behind a `+N` tile opening the list of everyone. A tile is
 `card` with the hairline: an avatar with the name under it in muted 12px and a
 `destructive` slashed mic after the name when muted, or a camera on
-`media` with the name in a chip over it. Speaking is a 2px `success` ring
+`media` with the name in a chip over it; a weak connection adds a small
+signal-low mark after the name (and in the call list), `muted-foreground` when
+poor and `destructive` once lost, nothing while it is good. Speaking is a 2px `success` ring
 outside the tile, 2px off it on the well, so it reads the same over a camera; an avatar in a list or under a
 shared screen takes the same ring.
 A shared screen takes the stage on `media`, whole (`object-fit: contain`),
@@ -1467,7 +1470,9 @@ one state in colour (`destructive` at 12% with the slashed mic in
 `destructive`), a camera or share that is on reads as pressed in ink
 (`foreground` at 10% under a 25% border), never the ember, which beside the
 reds reads as a third alarm, and Leave is a solid `destructive` button past a
-short divider, each with a tooltip. Your own tile and row add "(you)"; while a
+short divider, each with a tooltip; how long you have been in the call
+(`m:ss`, `h:mm:ss` past an hour) sits at the bar's left end in 12px mono
+tabular `muted-foreground`, the buttons staying centred. Your own tile and row add "(you)"; while a
 screen is shared, the stacked stage grows to `clamp(320px, 66vh, 640px)`, and
 when people overflow, whoever starts talking swaps in from behind the `+N`
 without moving the others.
