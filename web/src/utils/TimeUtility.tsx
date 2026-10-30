@@ -2,6 +2,13 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
+// en-GB writes September "Sept", four letters where every other month has three; it is cut back so a column of dates keeps one width.
+export const formatDateParts = (date: Date, options: Intl.DateTimeFormatOptions, locale?: string): string =>
+  new Intl.DateTimeFormat(locale, options)
+    .formatToParts(date)
+    .map((part) => (part.type === "month" && part.value === "Sept" ? "Sep" : part.value))
+    .join("");
+
 // Uncapped; surfaces needing a day-based cutover compute `daysAgo` and layer their own fallback on top.
 export const formatRelativeTime = (ts: string): string => {
   const date = new Date(ts);
@@ -67,7 +74,7 @@ export const formatShortDate = (ts: string): string => {
   const date = new Date(ts);
   if (Number.isNaN(date.getTime())) return ts;
   const sameYear = date.getFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+  return formatDateParts(date, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -92,5 +99,5 @@ export const formatVersionTime = (ts: string): string => {
 export const formatDay = (day: string): string => {
   const [year, month, date] = day.split("-").map(Number);
   if (!year || !month || !date) return day;
-  return new Date(year, month - 1, date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return formatDateParts(new Date(year, month - 1, date), { day: "numeric", month: "short", year: "numeric" });
 };

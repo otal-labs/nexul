@@ -1,5 +1,5 @@
 import type { Deploy } from "@/models/Stack";
-import { daysAgo, formatRelativeTime as formatRelativeTimeCore } from "@/utils/TimeUtility";
+import { daysAgo, formatDateParts, formatRelativeTime as formatRelativeTimeCore } from "@/utils/TimeUtility";
 
 // Extends the shared TimeUtility core with a months/years tail past 30 days.
 export const formatRelativeTime = (ts: string): string => {
@@ -24,12 +24,12 @@ export const formatDayLabel = (ts: string): string => {
   const diffDays = Math.round((startOfUtcDay(now) - startOfUtcDay(date)) / MS_PER_DAY);
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
-  return date.toLocaleDateString("en-US", {
+  return formatDateParts(date, {
     timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: date.getUTCFullYear() === now.getUTCFullYear() ? undefined : "numeric",
-  });
+  }, "en-US");
 };
 
 export interface DeployDayGroup {

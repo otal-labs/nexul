@@ -160,6 +160,14 @@ export const useFetchOrCreateTicketThread = (workspaceId: string, ticketId: stri
     enabled: enabled && !!ticketId,
   });
 
+// The ticket thread's messages, read only once the thread exists; it never opens one.
+export const useTicketThreadMessages = (workspaceId: string, ticketId: string | undefined) => {
+  const { data: status } = useFetchTicketThreadStatus(ticketId);
+  const exists = !!ticketId && workspaceId !== "" && status?.[ticketId] === true;
+  const { data: conversation } = useFetchOrCreateTicketThread(workspaceId, ticketId, exists);
+  return useFetchMessages(conversation?.id);
+};
+
 // The doc thread's Thread button navigates to the chat page (ADR 0093) rather than rendering inline like a ticket's,
 // so this is a mutation triggered by the click, not a query loaded on mount.
 export const useGetOrCreateDocThread = (workspaceId: string) => {

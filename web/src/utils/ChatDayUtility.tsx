@@ -1,3 +1,5 @@
+import { formatDateParts } from "@/utils/TimeUtility";
+
 const DAY_MS = 86_400_000;
 const startOfDay = (date: Date): number => new Date(date).setHours(0, 0, 0, 0);
 
@@ -7,7 +9,7 @@ export const chatDayLabel = (ts: string, now = new Date()): string => {
   const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY_MS);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
-  return date.toLocaleDateString([], {
+  return formatDateParts(date, {
     weekday: "short",
     day: "numeric",
     month: "short",

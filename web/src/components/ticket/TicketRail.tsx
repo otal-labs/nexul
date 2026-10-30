@@ -1,9 +1,9 @@
-import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { ReviewPanel } from "@/components/codereview/ReviewPanel";
 import { DecisionsCheckNotice } from "@/components/play/DecisionsCheckNotice";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
 import { TrailSection } from "@/components/play/TrailSection";
 import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
+import { TicketAttachmentsSection } from "@/components/ticket/TicketAttachmentsSection";
 import { TicketBugsSection } from "@/components/ticket/TicketBugsSection";
 import { TicketCreatedLine } from "@/components/ticket/TicketCreatedLine";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
@@ -34,7 +34,7 @@ export const TicketRail = ({ ticket, workspaceId, onTransition, onSetType, onAdd
     <TicketTestSection ticket={ticket} />
     <PlaysRailSection ticket={ticket} />
     <DecisionsCheckNotice ticketId={ticket.id} />
-    <AttachmentsSection owner={{ ticket_id: ticket.id }} projectId={ticket.project_id} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
+    <TicketAttachmentsSection ticketId={ticket.id} projectId={ticket.project_id} workspaceId={workspaceId} />
     <TicketBugsSection ticket={ticket} />
     {workspaceId !== "" && (
       <TrailSection

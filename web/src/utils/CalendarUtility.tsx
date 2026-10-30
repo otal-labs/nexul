@@ -1,8 +1,10 @@
 import { dayKey, type CalendarView } from "@nexul/client-core/calendar";
 
+import { formatDateParts } from "@/utils/TimeUtility";
+
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" });
-const shortDayFormat = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
+const shortDayOptions: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
 const monthFormat = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 const weekdayNameFormat = new Intl.DateTimeFormat(undefined, { weekday: "long" });
@@ -45,13 +47,13 @@ export const formatWeekdayName = (day: Date): string => weekdayNameFormat.format
 
 export const formatDayOfMonth = (day: Date): string => String(day.getDate());
 
-export const formatShortDay = (day: Date): string => shortDayFormat.format(day);
+export const formatShortDay = (day: Date): string => formatDateParts(day, shortDayOptions);
 
 // "October 2026" for a month, "26 Oct – 1 Nov" for a week.
 export const periodTitle = (view: CalendarView, anchor: Date, days: Date[]): string => {
   if (view === "month") return monthFormat.format(anchor);
   const [first, last] = [days[0], days[days.length - 1]];
-  return first && last ? `${shortDayFormat.format(first)} – ${shortDayFormat.format(last)}` : "";
+  return first && last ? `${formatDateParts(first, shortDayOptions)} – ${formatDateParts(last, shortDayOptions)}` : "";
 };
 
 // The reader's local date and time as the form's inputs write them, and back to the instant they name.
