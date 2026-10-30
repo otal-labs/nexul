@@ -265,7 +265,7 @@ func TestHandler_popFitting_SkipsToFirstMatchingJob(t *testing.T) {
 func TestHandler_idleConnected_PoolsByMachine(t *testing.T) {
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
 	busy := &runnerConn{id: "r-1", machine: "prod"}
-	busy.setJob(&DeployRequestedEvent{ID: "running"})
+	busy.setJob(&DeployRequestedEvent{ID: "running"}, time.Time{})
 	idleSameMachine := &runnerConn{id: "r-2", machine: "prod"}
 	idleOtherMachine := &runnerConn{id: "r-3", machine: "staging"}
 	h.mu.Lock()

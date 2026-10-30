@@ -11,6 +11,8 @@ export const RunningJobSchema = z.object({
   id: z.string(),
   kind: z.string(),
   service: z.string().optional(),
+  triggered_by: z.string().optional(),
+  started_at: z.string().optional(),
 });
 
 export type RunningJob = z.infer<typeof RunningJobSchema>;
@@ -48,6 +50,8 @@ export const QueuedJobSchema = z.object({
   service: z.string().optional(),
   // The machine the job must run on; empty when any machine's runner may take it.
   target: z.string().optional(),
+  triggered_by: z.string().optional(),
+  requested_at: z.string().optional(),
 });
 
 export type QueuedJob = z.infer<typeof QueuedJobSchema>;

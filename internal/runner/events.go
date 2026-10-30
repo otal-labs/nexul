@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -218,6 +219,9 @@ type DeployRequestedEvent struct {
 	// empty GatewayContainer skips it.
 	GatewayContainer string   `json:"gateway_container,omitempty"`
 	JoinNetworks     []string `json:"join_networks,omitempty"`
+	// TriggeredBy is who started the deploy; RequestedAt is when it was created.
+	TriggeredBy string    `json:"triggered_by,omitempty"`
+	RequestedAt time.Time `json:"requested_at,omitzero"`
 }
 
 // StackDeletedEvent is the slice of the service.deleted payload the runner acts on.
@@ -233,14 +237,14 @@ type DeployCancelRequestedEvent struct {
 	ID string `json:"id"`
 }
 
-// RunningJob builds the live job view for a runner executing this request.
-func (r DeployRequestedEvent) RunningJob() *RunningJob {
-	return &RunningJob{ID: r.ID, Kind: r.Kind, Service: r.Service}
+// RunningJob builds the live job view for a runner that took this request at startedAt.
+func (r DeployRequestedEvent) RunningJob(startedAt time.Time) *RunningJob {
+	return &RunningJob{ID: r.ID, Kind: r.Kind, Service: r.Service, TriggeredBy: r.TriggeredBy, StartedAt: startedAt}
 }
 
 // Queued builds the queue view entry for a request waiting for a runner.
 func (r DeployRequestedEvent) Queued() QueuedJob {
-	return QueuedJob{ID: r.ID, Kind: r.Kind, Service: r.Service, Target: r.Target}
+	return QueuedJob{ID: r.ID, Kind: r.Kind, Service: r.Service, Target: r.Target, TriggeredBy: r.TriggeredBy, RequestedAt: r.RequestedAt}
 }
 
 // fits reports whether r may run on c: a job fits any idle connected deploy runner whose machine name equals the

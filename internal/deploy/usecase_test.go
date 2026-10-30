@@ -1301,3 +1301,30 @@ func TestService_Cancel(t *testing.T) {
 		require.Error(t, s.Cancel(context.Background(), "d1"))
 	})
 }
+
+// A deploy.requested payload says who started the deploy and when it was created, so a runner's queue can show both.
+func TestDeploy_RequestedEvent_CarriesWhoStartedItAndWhen(t *testing.T) {
+	tests := []struct {
+		name        string
+		triggeredBy string
+	}{
+		{"started by a person", "user-1"},
+		{"started by nobody", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			s := newTestService(repo, newFakeBus())
+			req := validRequest()
+			req.TriggeredBy = tt.triggeredBy
+
+			d, err := s.Deploy(context.Background(), req)
+			require.NoError(t, err)
+
+			payload := deployRequestedPayload(t, repo.of(TopicDeployRequested))
+			assert.Equal(t, tt.triggeredBy, payload.TriggeredBy)
+			assert.True(t, payload.RequestedAt.Equal(d.CreatedAt), "requested_at is the deploy's creation time")
+			assert.Equal(t, time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC), payload.RequestedAt.UTC())
+		})
+	}
+}

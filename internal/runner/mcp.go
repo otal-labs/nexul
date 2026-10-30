@@ -63,6 +63,11 @@ type jobResult struct {
 	Kind    RequestKind `json:"kind"`
 	Stack   string      `json:"stack,omitempty"`
 	Machine string      `json:"machine,omitempty"`
+	// TriggeredBy is who started the job.
+	TriggeredBy string `json:"triggered_by,omitempty"`
+	// RequestedAt is when a queued job began to wait; StartedAt is when a runner took a running job.
+	RequestedAt *time.Time `json:"requested_at,omitempty"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
 }
 
 // machineList pages the machines; the queue and any runner not yet tied to a machine ride along unpaged.
@@ -112,7 +117,7 @@ func machineListTool(s *Service) mcptool.Tool {
 			results, unassignedHosts := groupAutomationsHosts(results, hosts)
 			jobs := make([]jobResult, 0, len(queue))
 			for _, q := range queue {
-				jobs = append(jobs, jobResult{ID: q.ID, Kind: q.Kind, Stack: q.Service, Machine: q.Target})
+				jobs = append(jobs, jobResult{ID: q.ID, Kind: q.Kind, Stack: q.Service, Machine: q.Target, TriggeredBy: q.TriggeredBy, RequestedAt: timePtr(q.RequestedAt)})
 			}
 			return machineList{
 				Page: mcptool.Paginate(results, in.PageArgs), UnassignedRunners: unassigned,
@@ -170,9 +175,17 @@ func groupAutomationsHosts(machines []machineResult, hosts []AutomationsHost) ([
 func toRunnerResult(r RunnerView) runnerResult {
 	out := runnerResult{ID: r.ID, Name: r.Name, Version: r.Version, Connected: r.Connected, LastSeen: r.LastSeen}
 	if j := r.RunningJob; j != nil {
-		out.RunningJob = &jobResult{ID: j.ID, Kind: j.Kind, Stack: j.Service}
+		out.RunningJob = &jobResult{ID: j.ID, Kind: j.Kind, Stack: j.Service, TriggeredBy: j.TriggeredBy, StartedAt: timePtr(j.StartedAt)}
 	}
 	return out
+}
+
+// timePtr leaves a zero time out of the result, as a job from before the field existed has none.
+func timePtr(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 type machineDiscoverIn struct {
