@@ -253,6 +253,7 @@ func (f *fakeRepo) List(_ context.Context, workspaceID string) ([]*Play, error) 
 			out = append(out, &cp)
 		}
 	}
+	slices.SortFunc(out, func(a, b *Play) int { return strings.Compare(a.ID, b.ID) })
 	return out, nil
 }
 
