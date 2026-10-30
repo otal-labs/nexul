@@ -44,6 +44,9 @@ type RunningJob struct {
 	ID      string      `json:"id"`
 	Kind    RequestKind `json:"kind"`
 	Service string      `json:"service,omitempty"`
+	// TriggeredBy is who started the job; StartedAt is when the hub assigned it to this runner.
+	TriggeredBy string    `json:"triggered_by,omitempty"`
+	StartedAt   time.Time `json:"started_at,omitzero"`
 }
 
 // EnrollmentCode is a stored one-time code: bound to the runner name it enrolls and, optionally, its machine; a
@@ -118,6 +121,9 @@ type QueuedJob struct {
 	Kind    RequestKind `json:"kind"`
 	Service string      `json:"service,omitempty"`
 	Target  string      `json:"target,omitempty"`
+	// RequestedAt is when the deploy was created, which is when it began to wait; TriggeredBy is who started it.
+	RequestedAt time.Time `json:"requested_at,omitzero"`
+	TriggeredBy string    `json:"triggered_by,omitempty"`
 }
 
 // instanceRunnerName names the bundled runner beside the server; upgrades dispatch to it, never to a pool.

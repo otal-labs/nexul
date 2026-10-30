@@ -77,8 +77,8 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-1", Name: "alpha", Version: "v0.1.6", Connected: true, MachineID: "m-1"}))
 	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-new", Name: "fresh"}))
 	dispatch := &fakeDispatch{
-		runners: []RunnerStatus{{RunnerID: "r-1", RunningJob: &RunningJob{ID: "d-1", Kind: RequestDeploy, Service: "api"}}},
-		queue:   []QueuedJob{{ID: "d-2", Kind: RequestBuild, Service: "web", Target: "prod"}},
+		runners: []RunnerStatus{{RunnerID: "r-1", RunningJob: &RunningJob{ID: "d-1", Kind: RequestDeploy, Service: "api", TriggeredBy: "user-1", StartedAt: now}}},
+		queue:   []QueuedJob{{ID: "d-2", Kind: RequestBuild, Service: "web", Target: "prod", TriggeredBy: "user-2", RequestedAt: now}},
 	}
 	s := NewService(runners, dispatch).WithMachines(machines)
 
@@ -92,11 +92,11 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	}
 	require.Len(t, byName["prod"].Runners, 1)
 	assert.Equal(t, "v0.1.6", byName["prod"].Runners[0].Version)
-	assert.Equal(t, &jobResult{ID: "d-1", Kind: RequestDeploy, Stack: "api"}, byName["prod"].Runners[0].RunningJob)
+	assert.Equal(t, &jobResult{ID: "d-1", Kind: RequestDeploy, Stack: "api", TriggeredBy: "user-1", StartedAt: &now}, byName["prod"].Runners[0].RunningJob)
 	assert.Empty(t, byName["edge"].Runners)
 	require.Len(t, list.UnassignedRunners, 1)
 	assert.Equal(t, "r-new", list.UnassignedRunners[0].ID)
-	assert.Equal(t, []jobResult{{ID: "d-2", Kind: RequestBuild, Stack: "web", Machine: "prod"}}, list.Queue)
+	assert.Equal(t, []jobResult{{ID: "d-2", Kind: RequestBuild, Stack: "web", Machine: "prod", TriggeredBy: "user-2", RequestedAt: &now}}, list.Queue)
 	b, err := json.Marshal(got)
 	require.NoError(t, err)
 	assert.NotContains(t, string(b), `"target"`)
@@ -198,4 +198,13 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		assert.Equal(t, "admin-1:mcp", upgrade.RequestedBy)
 		assert.Equal(t, "v0.2.1", upgrade.ToVersion)
 	})
+}
+
+// A job that carries no time (one queued before the field existed) leaves the field out instead of reporting year 1.
+func TestToRunnerResult_JobWithoutTimes_OmitsThem(t *testing.T) {
+	got := toRunnerResult(RunnerView{ID: "r-1", RunningJob: &RunningJob{ID: "d-1", Kind: RequestDeploy}})
+	b, err := json.Marshal(got.RunningJob)
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), "started_at")
+	assert.NotContains(t, string(b), "triggered_by")
 }

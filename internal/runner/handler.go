@@ -75,6 +75,8 @@ type HandlerConfig struct {
 	WriteTimeout time.Duration
 	// ReadLimit caps a single inbound frame. Defaults to 64KiB.
 	ReadLimit int64
+	// Now stamps the moment a job is assigned to a runner. Defaults to time.Now.
+	Now func() time.Time
 }
 
 // Handler is the server-side WebSocket endpoint for runners.
@@ -137,6 +139,7 @@ type runnerConn struct {
 	lastHeartbeat time.Time
 	jobMu         sync.Mutex
 	job           *DeployRequestedEvent
+	jobStartedAt  time.Time
 	upgradeMu     sync.Mutex
 	// upgradeID is the instance_upgrades record this connection is running, mirroring job for the busy check; empty when idle.
 	upgradeID string
@@ -161,6 +164,9 @@ func NewHandler(cfg HandlerConfig) *Handler {
 	}
 	if cfg.ReadLimit <= 0 {
 		cfg.ReadLimit = 64 << 10
+	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
 	}
 	return &Handler{
 		log:             cfg.Logger,
@@ -413,7 +419,7 @@ func (h *Handler) dispatchOne(ctx context.Context, c *runnerConn, req DeployRequ
 		return err
 	}
 	// Owned before the frame goes out, so a cancel racing the runner's start finds the job instead of dropping.
-	c.setJob(&req)
+	c.setJob(&req, h.cfg.Now().UTC())
 	if err := h.sendFrame(ctx, c, frame); err != nil {
 		c.clearJob(req.ID)
 		return err
@@ -847,11 +853,7 @@ func (h *Handler) Runners() []RunnerStatus {
 	defer h.mu.Unlock()
 	out := make([]RunnerStatus, 0, len(h.conns))
 	for id, c := range h.conns {
-		var job *RunningJob
-		if req := c.jobSnapshot(); req != nil {
-			job = req.RunningJob()
-		}
-		out = append(out, RunnerStatus{RunnerID: id, Name: c.name, RunningJob: job})
+		out = append(out, RunnerStatus{RunnerID: id, Name: c.name, RunningJob: c.runningJob()})
 	}
 	return out
 }
@@ -1003,11 +1005,21 @@ func (c *runnerConn) lastBeat() time.Time {
 	return c.lastHeartbeat
 }
 
-// setJob records the job this runner is executing, or clears it with nil.
-func (c *runnerConn) setJob(job *DeployRequestedEvent) {
+// setJob records the job this runner is executing and when it took it, or clears it with nil.
+func (c *runnerConn) setJob(job *DeployRequestedEvent, startedAt time.Time) {
 	c.jobMu.Lock()
-	c.job = job
+	c.job, c.jobStartedAt = job, startedAt
 	c.jobMu.Unlock()
+}
+
+// runningJob is the live view of the current job, or nil when the runner is idle.
+func (c *runnerConn) runningJob() *RunningJob {
+	c.jobMu.Lock()
+	defer c.jobMu.Unlock()
+	if c.job == nil {
+		return nil
+	}
+	return c.job.RunningJob(c.jobStartedAt)
 }
 
 // jobSnapshot returns the current job, or nil when the runner is idle.

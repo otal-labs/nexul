@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"strings"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
@@ -97,8 +98,10 @@ type DeployRequestedEvent struct {
 	// GatewayContainer/JoinNetworks make this deploy's last step "docker network connect" the gateway serving
 	// this stack onto JoinNetworks, so a compose stack that recreates its network on every deploy stays
 	// reachable; empty GatewayContainer skips the step entirely.
-	GatewayContainer string   `json:"gateway_container,omitempty"`
-	JoinNetworks     []string `json:"join_networks,omitempty"`
+	GatewayContainer string    `json:"gateway_container,omitempty"`
+	JoinNetworks     []string  `json:"join_networks,omitempty"`
+	TriggeredBy      string    `json:"triggered_by,omitempty" jsonschema:"Who started the deploy; empty when nobody did."`
+	RequestedAt      time.Time `json:"requested_at" jsonschema:"When the deploy was created."`
 }
 
 // DeployStatusChangedEvent is the deploy.status_changed payload: a deploy's terminal state, reported by the runner.
@@ -208,13 +211,13 @@ func redactEnv(env map[string]string) map[string]string {
 
 // toEvent builds the deploy.requested payload; a Ref deploy (kind build) also carries the repo/ref.
 // gatewayContainer/joinNetworks are resolved by the caller (a dns seam), since deploy never imports dns (ADR 0017).
-func (r DeployRequest) toEvent(id string, stack *Stack, gatewayContainer string, joinNetworks []string) DeployRequestedEvent {
+func (r DeployRequest) toEvent(d *Deploy, stack *Stack, gatewayContainer string, joinNetworks []string) DeployRequestedEvent {
 	kind := "deploy"
 	if r.Ref != "" {
 		kind = "build"
 	}
 	ev := DeployRequestedEvent{
-		ID:               id,
+		ID:               d.ID,
 		Kind:             kind,
 		Service:          stack.Name,
 		Target:           stack.Machine,
@@ -231,6 +234,8 @@ func (r DeployRequest) toEvent(id string, stack *Stack, gatewayContainer string,
 		StackRoot:        defaultStackRoot,
 		GatewayContainer: gatewayContainer,
 		JoinNetworks:     joinNetworks,
+		TriggeredBy:      d.TriggeredBy,
+		RequestedAt:      d.CreatedAt,
 	}
 	if bs := stack.BuildSource; bs != nil {
 		ev.Repo = bs.RepoOwner + "/" + bs.RepoName

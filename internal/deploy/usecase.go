@@ -295,7 +295,7 @@ func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) 
 		CreatedAt: now, UpdatedAt: now,
 	}
 	gatewayContainer, joinNetworks := s.resolveGatewayJoin(ctx, stack)
-	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicDeployRequested, Payload: req.toEvent(d.ID, stack, gatewayContainer, joinNetworks)}}
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicDeployRequested, Payload: req.toEvent(d, stack, gatewayContainer, joinNetworks)}}
 	if retryOf != "" {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeployRetried, Payload: DeployRetriedEvent{
 			ID: d.ID, RetryOf: retryOf, StackID: stack.ID, Ref: req.Ref, Image: req.Image,
