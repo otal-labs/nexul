@@ -1,11 +1,12 @@
 import { ServerIcon, SettingsIcon, ShieldCheck, SlidersHorizontalIcon, UserCogIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import { PROJECT_SETTINGS_SECTIONS, sectionLabels as projectLabels, type ProjectSettingsSection } from "@/components/settings/ProjectSettingsNav";
+import { sectionLabels as projectLabels, visibleProjectSettingsSections, type ProjectSettingsSection } from "@/components/settings/ProjectSettingsNav";
 import { sectionLabels, type SettingsSection } from "@/components/settings/SettingsNav";
 import { YOUR_SETTINGS_SECTIONS, sectionLabels as yourLabels, type YourSettingsSection } from "@/components/you/YourSettingsNav";
 import { useCanOpen, useConfigurationSections, useInstanceSettingsSections, useManagesAccess, useAreaAccess } from "@/hooks/AccessHooks";
 import { useIsWorkspaceOwner } from "@/hooks/AccessGridHooks";
+import { useCanManageAccess } from "@/hooks/useCanManageAccess";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
@@ -59,17 +60,15 @@ const SECTION_TABS: Partial<Record<SettingsSection, Tab[]>> = {
 };
 
 const PROJECT_KEYWORDS: Partial<Record<ProjectSettingsSection, string>> = {
+  access: "people members who can open permissions",
+  statuses: "status columns board stages",
+  types: "ticket types templates",
+  labels: "label colors colours tags",
   services: "stacks deploys",
   repositories: "github repo",
   categories: "swimlanes",
   danger: "delete archive",
 };
-
-const BOARD_TABS: Tab[] = [
-  ["", "Status columns", "statuses"],
-  ["types", "Ticket types"],
-  ["labels", "Label colors", "labels tags"],
-];
 
 const yourRows = (): Row[] =>
   YOUR_SETTINGS_SECTIONS.flatMap((section) => [
@@ -83,14 +82,13 @@ const sectionRows = (sections: SettingsSection[], base: string, hint: string): R
     ...tabRows(`${base}/${section}`, `${hint} › ${sectionLabels[section]}`, SECTION_TABS[section] ?? []),
   ]);
 
-const projectRows = (base: string, name: string): Row[] =>
-  PROJECT_SETTINGS_SECTIONS.flatMap((section) => {
-    const path = section === "general" ? base : `${base}/${section}`;
-    return [
-      { label: projectLabels[section], path, hint: `${name} settings`, keywords: PROJECT_KEYWORDS[section] },
-      ...(section === "board" ? tabRows(path, `${name} settings › Board`, BOARD_TABS) : []),
-    ];
-  });
+const projectRows = (base: string, name: string, canManageAccess: boolean): Row[] =>
+  visibleProjectSettingsSections(canManageAccess).map((section) => ({
+    label: projectLabels[section],
+    path: section === "general" ? base : `${base}/${section}`,
+    hint: `${name} settings`,
+    keywords: PROJECT_KEYWORDS[section],
+  }));
 
 // Settings sections and tabs the viewer can open, found by typing; empty, the palette lists none.
 export const useCommandSettingsItems = (browsing: boolean): CommandGroup[] => {
@@ -104,6 +102,7 @@ export const useCommandSettingsItems = (browsing: boolean): CommandGroup[] => {
   const canWriteRoles = useHasPermission("roles:write");
   const owner = useIsWorkspaceOwner();
   const can = useAreaAccess(current?.id);
+  const canManageProjectAccess = useCanManageAccess(current && { type: "project", id: current.id });
 
   const items = (icon: CommandItem["icon"], rows: Row[], inWorkspace: boolean): CommandItem[] =>
     rows.map(({ label, path, hint, keywords }) => ({
@@ -122,7 +121,7 @@ export const useCommandSettingsItems = (browsing: boolean): CommandGroup[] => {
     ...(canWriteRoles ? [{ label: "Roles", path: "/access/roles", hint: "Access", keywords: "permissions role" }] : []),
     ...(owner ? [{ label: "Public channels", path: "/access/channels", hint: "Access" }] : []),
   ];
-  const project = current && can?.("projects") ? projectRows(projectSettingsPath(projectToken(current)), current.name) : [];
+  const project = current && can?.("projects") ? projectRows(projectSettingsPath(projectToken(current)), current.name, canManageProjectAccess) : [];
 
   return [
     {

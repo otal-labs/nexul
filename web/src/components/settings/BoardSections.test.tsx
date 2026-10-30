@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BoardSettingsSection } from "@/components/settings/BoardSettingsSection";
+import { BoardLabelColorsSection } from "@/components/settings/BoardLabelColorsSection";
+import { BoardStatusColumnsSection } from "@/components/settings/BoardStatusColumnsSection";
+import { BoardTicketTypesSection } from "@/components/settings/BoardTicketTypesSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +21,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/api/client", async () => {
   const { withOwner } = await import("@/test/viewer");
-  return { api: { get: withOwner(mocks.get), put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del }, errorMessage: mocks.errorMessage };
+  const { ticketCounts } = await import("@/test/ticketCounts");
+  // Every list here counts tickets; nothing in these tests holds any.
+  const get = (url: string, ...rest: never[]) => (url.endsWith("/ticket-counts") ? Promise.resolve({ data: ticketCounts() }) : mocks.get(url, ...rest));
+  return { api: { get: withOwner(get), put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del }, errorMessage: mocks.errorMessage };
 });
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -47,22 +52,23 @@ const ticketType = (overrides: Record<string, unknown> = {}) => ({
 
 const PROJECT_ID = "proj-1";
 
-// Columns, types, and label colors are separate tabs; tests open the one they exercise through the path.
-const renderSection = (tab = "columns") => {
+const sections = {
+  columns: <BoardStatusColumnsSection projectId={PROJECT_ID} />,
+  types: <BoardTicketTypesSection projectId={PROJECT_ID} />,
+  labels: <BoardLabelColorsSection projectId={PROJECT_ID} />,
+};
+
+const renderSection = (section: keyof typeof sections = "columns") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MemoryRouter initialEntries={[`/projects/proj-1/settings/board/${tab}`]}>
-        <Routes>
-          <Route path="/projects/:projectId/settings/board/:tab?" element={<BoardSettingsSection projectId={PROJECT_ID} />} />
-        </Routes>
-      </MemoryRouter>
+      <MemoryRouter>{sections[section]}</MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
-describe("BoardSettingsSection", () => {
+describe("Statuses, Ticket types and Labels", () => {
   beforeEach(() => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockReset();
@@ -84,43 +90,20 @@ describe("BoardSettingsSection", () => {
     expect(await screen.findByText("Statuses failed")).toBeInTheDocument();
   });
 
-  it("shows empty states for both lists", async () => {
-    const user = userEvent.setup();
-    renderSection();
+  it("shows an empty state for each empty list", async () => {
+    const { unmount } = renderSection();
     expect(await screen.findByText(/no backlog statuses/i)).toBeInTheDocument();
     expect(screen.getByText(/no done statuses/i)).toBeInTheDocument();
+    unmount();
 
-    await user.click(screen.getByRole("tab", { name: "Ticket types" }));
-    expect(screen.getByText(/no ticket types yet/i)).toBeInTheDocument();
-    expect(screen.queryByText(/no backlog statuses/i)).not.toBeInTheDocument();
-  });
-
-  it("opens on the status columns tab and switches to label colors", async () => {
-    const user = userEvent.setup();
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/tickets/labels") return Promise.resolve({ data: ["bug"] });
-      return Promise.resolve({ data: [] });
-    });
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={["/projects/proj-1/settings/board"]}>
-          <Routes>
-            <Route path="/projects/:projectId/settings/board/:tab?" element={<BoardSettingsSection projectId={PROJECT_ID} />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("tab", { name: "Status columns" })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: "Label colors" }));
-    expect(await screen.findByRole("button", { name: "Color for label bug" })).toBeInTheDocument();
+    renderSection("types");
+    expect(await screen.findByText(/no ticket types yet/i)).toBeInTheDocument();
   });
 
   it("does not show the empty states while statuses are still loading", () => {
     mocks.get.mockReturnValue(new Promise(() => {}));
     renderSection();
     expect(screen.queryByText(/no backlog statuses/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/no ticket types yet/i)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -270,7 +253,7 @@ describe("BoardSettingsSection", () => {
     await user.click(screen.getByRole("button", { name: "Rename" }));
     const iconPicker = within(screen.getByRole("radiogroup", { name: "Icon" }));
     await user.click(iconPicker.getByRole("radio", { name: "CircleX" }));
-    await user.click(screen.getByRole("heading", { name: "Status columns" }));
+    await user.click(screen.getByRole("heading", { name: "Columns" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/statuses/open", {
       name: "Open",

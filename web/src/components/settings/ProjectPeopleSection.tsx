@@ -24,14 +24,14 @@ export const ProjectPeopleSection = ({ project }: ProjectPeopleSectionProps) => 
     <SettingsCard
       id="people"
       title="People in this project"
-      description={`Only the roles and people listed here can open ${project.name}. Open one to set what it can do.`}
+      description="Only these roles and people can open the project. Open one to set what it can do."
       footer={grants && <ProjectPeopleAdd project={project} grants={grants} />}
     >
       {(isPending || (grants && !ready)) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {rules && rules.roles.length + rules.people.length === 0 && <EmptyRow flush>Nobody is in {project.name} yet. Only Owners can open it.</EmptyRow>}
       {rules && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {rules.roles.length > 0 && <ProjectPeopleGroup title="Roles" project={project} grants={rules.roles} />}
           {rules.people.length > 0 && <ProjectPeopleGroup title="People" project={project} grants={rules.people} />}
           {rules.keptOut.length > 0 && <ProjectPeopleGroup title="Kept out" project={project} grants={rules.keptOut} keptOut />}

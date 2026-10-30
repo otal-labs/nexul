@@ -119,6 +119,14 @@ export interface DeleteImpact {
   services: number;
 }
 
+// A project's tickets counted per status, category and ticket type id, and per label; a key with no tickets is absent.
+export interface TicketCounts {
+  tickets_by_status: Record<string, number>;
+  tickets_by_category: Record<string, number>;
+  tickets_by_type: Record<string, number>;
+  tickets_by_label: Record<string, number>;
+}
+
 export const SaveProjectFormSchema = z.object({
   name: z.string().trim().min(1, "Project name is required"),
   prefix: z

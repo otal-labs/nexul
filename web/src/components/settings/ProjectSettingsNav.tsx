@@ -4,10 +4,13 @@ import { projectSettingsPath, projectToken, type Project } from "@/models/Projec
 
 export const PROJECT_SETTINGS_SECTIONS = [
   "general",
+  "access",
+  "statuses",
   "categories",
+  "types",
+  "labels",
   "repositories",
   "services",
-  "board",
   "danger",
 ] as const;
 
@@ -20,28 +23,49 @@ export const isProjectSettingsSection = (value: string | null | undefined): valu
 
 export const sectionLabels: Record<ProjectSettingsSection, string> = {
   general: "General",
+  access: "Access",
+  statuses: "Statuses",
   categories: "Categories",
+  types: "Ticket types",
+  labels: "Labels",
   repositories: "Repositories",
   services: "Services",
-  board: "Board",
   danger: "Danger zone",
 };
+
+const sectionGroups: Record<ProjectSettingsSection, string | undefined> = {
+  general: "Project",
+  access: "Project",
+  statuses: "Board",
+  categories: "Board",
+  types: "Board",
+  labels: "Board",
+  repositories: "Delivery",
+  services: "Delivery",
+  danger: undefined,
+};
+
+// Access is who may open the project, so only someone who can change that sees it; for anyone else it is not a section.
+export const visibleProjectSettingsSections = (canManageAccess: boolean): ProjectSettingsSection[] =>
+  PROJECT_SETTINGS_SECTIONS.filter((section) => section !== "access" || canManageAccess);
 
 interface ProjectSettingsNavProps {
   project: Project;
   active: ProjectSettingsSection;
+  canManageAccess: boolean;
 }
 
-export const ProjectSettingsNav = ({ project, active }: ProjectSettingsNavProps) => {
+export const ProjectSettingsNav = ({ project, active, canManageAccess }: ProjectSettingsNavProps) => {
   const wsPath = useWorkspacePath();
   return (
     <SettingsSectionNav
       ariaLabel="Project settings sections"
       basePath={wsPath(projectSettingsPath(projectToken(project)))}
       active={active}
-      items={PROJECT_SETTINGS_SECTIONS.map((section) => ({
+      items={visibleProjectSettingsSections(canManageAccess).map((section) => ({
         section,
         label: sectionLabels[section],
+        group: sectionGroups[section],
         danger: section === "danger",
       }))}
     />

@@ -1,8 +1,5 @@
-import { ChevronRightIcon, XIcon } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TargetMark } from "@/components/access/TargetMark";
+import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useProjectPeopleActions } from "@/hooks/useProjectPeopleActions";
@@ -20,7 +17,7 @@ interface ProjectPeopleRowProps {
   keptOut?: boolean | undefined;
 }
 
-// One role or person on the project: the whole row opens the panel on it, the X takes it off.
+// One role or person on the project: the whole row opens the panel on it, its menu also takes it off.
 export const ProjectPeopleRow = ({ project, grant, keptOut = false }: ProjectPeopleRowProps) => {
   const { targetOf } = usePanelTargets({ workspaceId: project.workspace_id });
   // Holder counts come from Team, so only a viewer who may read Team asks for it.
@@ -44,15 +41,11 @@ export const ProjectPeopleRow = ({ project, grant, keptOut = false }: ProjectPeo
   ]
     .filter(Boolean)
     .join(" · ");
-  const removeLabel = keptOut ? `Let ${target.name} back into ${project.name}` : `Remove ${target.name} from ${project.name}`;
+  const open = () => void openPanel(projectEntity(project), target.key);
 
   return (
-    <li className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => void openPanel(projectEntity(project), target.key)}
-        className="-ml-2 flex min-w-0 flex-1 items-center gap-3 rounded-md py-2 pr-1 pl-2 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
-      >
+    <li className="group/row relative flex min-h-14 items-center gap-2 px-2 before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40">
+      <button type="button" onClick={open} className="relative flex min-w-0 flex-1 items-center gap-3 self-stretch text-left">
         <TargetMark target={target} />
         <span className="min-w-0 flex-1">
           <span title={target.name} className="block truncate text-sm font-medium">
@@ -60,22 +53,17 @@ export const ProjectPeopleRow = ({ project, grant, keptOut = false }: ProjectPeo
           </span>
           <span className="block truncate text-xs text-muted-foreground">{line}</span>
         </span>
-        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            aria-label={removeLabel}
-            onClick={() => void remove(target, grant, keptOut)}
-          >
-            <XIcon className="size-4" aria-hidden />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{removeLabel}</TooltipContent>
-      </Tooltip>
+      <span className="relative flex shrink-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100">
+        <RowActionsMenu
+          subject={target.name}
+          projectId={project.id}
+          actions={[
+            { label: "Open", onSelect: open },
+            { label: keptOut ? "Let back in" : "Remove", destructive: !keptOut, onSelect: () => void remove(target, grant, keptOut) },
+          ]}
+        />
+      </span>
     </li>
   );
 };

@@ -5,22 +5,24 @@ import { useForm } from "react-hook-form";
 
 import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { TicketTypeRow } from "@/components/settings/TicketTypeRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
-import { useCreateTicketType } from "@/hooks/TicketTypeHooks";
+import { useCreateTicketType, useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { SaveTicketTypeFormSchema, type SaveTicketTypeFormData } from "@/models/TicketType";
-import type { TicketType } from "@/models/TicketType";
 
 interface BoardTicketTypesSectionProps {
   projectId: string;
-  ticketTypes: TicketType[] | undefined;
 }
 
 // Adding a type isn't the card's main job, so its form waits behind the footer button.
-export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketTypesSectionProps) => {
+export const BoardTicketTypesSection = ({ projectId }: BoardTicketTypesSectionProps) => {
+  const { data: ticketTypes, isPending, error } = useFetchProjectTicketTypes(projectId);
   const createTicketType = useCreateTicketType();
   const [adding, setAdding] = useState(false);
 
@@ -32,7 +34,7 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
   return (
     <SettingsCard
       id="ticket-types"
-      title="Ticket types"
+      title="Colors and templates"
       description="Each type has a color and a body template its new tickets start from."
       footer={
         !adding && (
@@ -42,9 +44,11 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
         )
       }
     >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {ticketTypes && ticketTypes.length === 0 && !adding && <EmptyRow>No ticket types yet. Add one to sort tickets by kind.</EmptyRow>}
       {ticketTypes && ticketTypes.length > 0 && (
-        <EnterList className="divide-y divide-border rounded-md border border-border">
+        <EnterList className={settingsRowListClass}>
           {ticketTypes.map((type) => (
             <TicketTypeRow key={type.id} type={type} projectId={projectId} />
           ))}

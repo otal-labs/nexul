@@ -63,7 +63,7 @@ describe("ProjectRepos", () => {
   it("marks the tests repository and only that one", async () => {
     renderRepos();
     expect(await screen.findByText("onik97/nexul-e2e")).toBeInTheDocument();
-    expect(screen.getAllByText("tests")).toHaveLength(1);
+    expect(screen.getAllByText("Tests, never deployed")).toHaveLength(1);
   });
 
   it("shows an empty state when there are no repos", async () => {
@@ -94,7 +94,8 @@ describe("ProjectRepos", () => {
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     renderRepos();
 
-    await user.click(await screen.findByRole("button", { name: "Remove onik97/nexul" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for onik97/nexul" }));
+    await user.click(await screen.findByRole("button", { name: "Remove" }));
     expect(api.delete).not.toHaveBeenCalled();
     await user.click(await screen.findByRole("button", { name: "Remove repo" }));
     expect(api.delete).toHaveBeenCalledWith("/api/projects/repos/onik97/nexul");

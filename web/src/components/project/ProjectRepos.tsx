@@ -6,9 +6,12 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
+import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { AddProjectRepoFormSchema, type AddProjectRepoFormData } from "@/models/Project";
 
@@ -20,6 +23,10 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
   const { data: repos, isPending, error } = useFetchProjectRepos(projectId);
   const { open: openAdd } = useFormDialog();
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
+  const canReadStacks = useAreaAccess(projectId)?.("stacks") ?? false;
+  const { data: services } = useFetchServices(projectId, canReadStacks);
+  const buildsFrom = (repo: { owner: string; name: string }) =>
+    services?.filter((s) => s.build_source?.repo_owner === repo.owner && s.build_source?.repo_name === repo.name).length;
 
   const onAdd = async () => {
     await openAdd<AddProjectRepoFormData>({
@@ -34,7 +41,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
   return (
     <SettingsCard
       id="repositories"
-      title="Repositories"
+      title="Attached"
       description="Where this project's code lives. A tests repository is never deployed."
       footer={
         <ActionButton permission="projects:write" projectId={projectId} verb="add repositories" variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
@@ -47,9 +54,9 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
       {repos && repos.length === 0 && <EmptyRow>No repositories yet. Add one to link its pull requests to tickets.</EmptyRow>}
       {repos && repos.length > 0 && (
         <div ref={glideRef}>
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          <EnterList className={settingsRowListClass}>
             {repos.map((repo) => (
-              <RepoRow key={`${repo.owner}/${repo.name}`} projectId={projectId} repo={repo} onLeave={prepareGlide} />
+              <RepoRow key={`${repo.owner}/${repo.name}`} projectId={projectId} repo={repo} services={buildsFrom(repo)} onLeave={prepareGlide} />
             ))}
           </EnterList>
         </div>

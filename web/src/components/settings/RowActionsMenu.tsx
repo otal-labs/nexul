@@ -15,6 +15,8 @@ export interface RowAction {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
+  // Why a disabled action can't run, under its label: "Used by 8 tickets".
+  hint?: string | undefined;
   destructive?: boolean;
   // Set when the row changes something: it is then hidden or locked for a viewer who lacks it (ADR 0152).
   permission?: PermissionAction;
@@ -42,14 +44,14 @@ export const RowActionsMenu = ({ subject, actions, projectId }: RowActionsMenuPr
       <Tooltip>
         <PopoverTrigger asChild>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label={`Actions for ${subject}`}>
+            <Button variant="ghost" size="sm" className="w-8 px-0" aria-label={`Actions for ${subject}`}>
               <MoreHorizontalIcon className="size-3.5" />
             </Button>
           </TooltipTrigger>
         </PopoverTrigger>
         <TooltipContent>More actions</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-40 p-1">
+      <PopoverContent align="end" className="w-auto min-w-40 max-w-64 p-1">
         <div className="flex flex-col">
           {actions.map((action, i) => (
             <RowActionItem
@@ -79,6 +81,12 @@ const RowActionItem = ({ action, projectId, separated, onDone }: RowActionItemPr
     onDone();
     action.onSelect();
   };
+  const label = (
+    <span className="flex flex-col items-start">
+      {action.label}
+      {action.hint && <span className="text-xs font-normal text-muted-foreground">{action.hint}</span>}
+    </span>
+  );
   return (
     <>
       {action.permission && (
@@ -91,7 +99,7 @@ const RowActionItem = ({ action, projectId, separated, onDone }: RowActionItemPr
           disabled={action.disabled}
           onSelect={select}
         >
-          {action.label}
+          {label}
         </ActionMenuItem>
       )}
       {!action.permission && separated && <MenuSeparator />}
@@ -102,7 +110,7 @@ const RowActionItem = ({ action, projectId, separated, onDone }: RowActionItemPr
           disabled={action.disabled}
           onClick={select}
         >
-          {action.label}
+          {label}
         </button>
       )}
     </>

@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({ put: vi.fn(), errorMessage: vi.fn() }));
 
 vi.mock("@/api/client", async () => {
   const { asOwner } = await import("@/test/viewer");
-  return { api: { get: vi.fn(asOwner()), put: mocks.put, post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: mocks.errorMessage };
+  const { ticketCounts } = await import("@/test/ticketCounts");
+  const counts = ticketCounts({ tickets_by_type: { "tt-bug": 3 } });
+  return { api: { get: vi.fn(asOwner((url) => (url.endsWith("/ticket-counts") ? counts : []))), put: mocks.put, post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: mocks.errorMessage };
 });
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -76,5 +78,14 @@ describe("TicketTypeRow template", () => {
 
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("counts the type's tickets and keeps Delete off while any uses it, saying why", async () => {
+    const user = userEvent.setup();
+    renderRow();
+
+    expect(await screen.findByText("3 tickets")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Actions for bug" }));
+    expect(screen.getByRole("button", { name: /^Delete\s*Used by 3 tickets$/ })).toBeDisabled();
   });
 });

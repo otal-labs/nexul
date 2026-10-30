@@ -5,15 +5,16 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { RepoRole, TestsLocation } from "@/enums/Project";
-import type { DeleteImpact, Project, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
+import type { DeleteImpact, Project, TicketCounts, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { refetchHolding, type LiveFollower } from "@/lib/live";
+import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getProjectsKey = "getProjects";
 export const getProjectKey = "getProject";
 const getProjectReposKey = "getProjectRepos";
 const getProjectImpactKey = "getProjectImpact";
+const getProjectTicketCountsKey = "getProjectTicketCounts";
 
 // The projects of a workspace the viewer may open; Team and invitations read workspaces other than the selected one.
 export const useFetchWorkspaceProjects = (workspaceId: string, enabled = true) =>
@@ -38,6 +39,13 @@ export const useFetchProjectDeleteImpact = (id: string | undefined) =>
   useQuery({
     queryKey: [getProjectImpactKey, id],
     queryFn: async () => (await api.get<DeleteImpact>(`/api/projects/${id}/impact`)).data,
+    enabled: !!id,
+  });
+
+export const useFetchProjectTicketCounts = (id: string | undefined) =>
+  useQuery({
+    queryKey: [getProjectTicketCountsKey, id],
+    queryFn: async () => (await api.get<TicketCounts>(`/api/projects/${id}/ticket-counts`)).data,
     enabled: !!id,
   });
 
@@ -211,6 +219,11 @@ export const useRemoveProjectRepo = () => {
   });
 };
 
+// Only a settings list on screen holds the counts, so a ticket frame refetches nothing anywhere else.
+const ticketCountsChanged = (_: unknown, { client }: { client: QueryClient }) =>
+  client.invalidateQueries({ queryKey: [getProjectTicketCountsKey] });
+
 export const projectFollower: LiveFollower = {
   "project.setup_changed": (payload: SetupChangedPayload, { client }) => followSetup(client, payload),
+  ...followEach(["ticket.created", "ticket.updated", "ticket.status_changed", "ticket.category_changed", "ticket.deleted"], ticketCountsChanged),
 };

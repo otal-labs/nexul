@@ -2,10 +2,13 @@ import { useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { isStatusIconName, StatusIcon } from "@/components/board/StatusIcon";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
+import { SettingsListRow } from "@/components/settings/SettingsListRow";
 import { StatusIconPicker } from "@/components/settings/StatusIconPicker";
+import { useFetchProjectTicketCounts } from "@/hooks/ProjectHooks";
 import { useDeleteStatus, useRenameStatus } from "@/hooks/StatusHooks";
 import { cn } from "@/lib/utils";
 import { statusStage, type BoardStatus } from "@/models/Status";
+import { countLabel } from "@/utils/CountUtility";
 
 interface StatusRowProps {
   projectId: string;
@@ -21,6 +24,8 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(status.name);
   const [iconDraft, setIconDraft] = useState(status.icon);
+  const { data: counts } = useFetchProjectTicketCounts(projectId);
+  const held = counts?.tickets_by_status[status.id] ?? 0;
 
   const startEditing = () => {
     setNameDraft(status.name);
@@ -47,41 +52,58 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
   };
 
   const stage = statusStage(status.kind);
-  const kindDotClass = cn("size-1.5 shrink-0 rounded-full", stage.dot);
-  const kindIconClass = cn("size-3.5 shrink-0", stage.text);
+  const actions = (
+    <RowActionsMenu
+      subject={status.name}
+      projectId={projectId}
+      actions={[
+        { label: "Rename", permission: "projects:write", verb: "rename statuses", onSelect: startEditing },
+        { label: "Move up", permission: "projects:write", verb: "reorder statuses", disabled: index === 0, onSelect: () => onMove(-1) },
+        { label: "Move down", permission: "projects:write", verb: "reorder statuses", disabled: index === total - 1, onSelect: () => onMove(1) },
+        {
+          label: "Delete",
+          destructive: true,
+          permission: "projects:delete",
+          verb: "delete statuses",
+          // The server keeps a column that still holds tickets, so the menu says so instead of failing on click.
+          disabled: held > 0,
+          hint: held > 0 ? `Used by ${countLabel(held, "ticket")}` : undefined,
+          onSelect: () => deleteStatus.mutate(status.id),
+        },
+      ]}
+    />
+  );
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <>
       {editing && (
-        <div onBlur={handleGroupBlur} className="flex flex-1 flex-wrap items-center gap-3">
-          <input
-            className="min-w-0 flex-1 rounded-md border border-input px-2 py-1 text-sm"
-            aria-label="Status name"
-            value={nameDraft}
-            autoFocus
-            onChange={(event) => setNameDraft(event.target.value)}
-            onKeyDown={handleNameKeyDown}
-          />
-          <StatusIconPicker label="Icon" value={iconDraft} onChange={setIconDraft} />
-        </div>
+        <li className="flex min-h-11 items-center">
+          <div onBlur={handleGroupBlur} className="flex flex-1 flex-wrap items-center gap-3">
+            <input
+              className="min-w-0 flex-1 rounded-md border border-input px-2 py-1 text-sm"
+              aria-label="Status name"
+              value={nameDraft}
+              autoFocus
+              onChange={(event) => setNameDraft(event.target.value)}
+              onKeyDown={handleNameKeyDown}
+            />
+            <StatusIconPicker label="Icon" value={iconDraft} onChange={setIconDraft} />
+          </div>
+        </li>
       )}
       {!editing && (
-        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
-          {isStatusIconName(status.icon) && <StatusIcon icon={status.icon} className={kindIconClass} />}
-          {!isStatusIconName(status.icon) && <span className={cn(kindDotClass, "mx-1")} aria-hidden />}
-          <span className="truncate" title={status.name}>{status.name}</span>
-        </span>
+        <SettingsListRow
+          lead={
+            <>
+              {isStatusIconName(status.icon) && <StatusIcon icon={status.icon} className={cn("size-3.5", stage.text)} />}
+              {!isStatusIconName(status.icon) && <span className={cn("size-2 rounded-full", stage.dot)} aria-hidden />}
+            </>
+          }
+          name={<span className="truncate font-medium" title={status.name}>{status.name}</span>}
+          count={counts && countLabel(held, "ticket")}
+          actions={actions}
+        />
       )}
-      <RowActionsMenu
-        subject={status.name}
-        projectId={projectId}
-        actions={[
-          { label: "Rename", permission: "projects:write", verb: "rename statuses", onSelect: startEditing },
-          { label: "Move up", permission: "projects:write", verb: "reorder statuses", disabled: index === 0, onSelect: () => onMove(-1) },
-          { label: "Move down", permission: "projects:write", verb: "reorder statuses", disabled: index === total - 1, onSelect: () => onMove(1) },
-          { label: "Delete", destructive: true, permission: "projects:delete", verb: "delete statuses", onSelect: () => deleteStatus.mutate(status.id) },
-        ]}
-      />
-    </li>
+    </>
   );
 };

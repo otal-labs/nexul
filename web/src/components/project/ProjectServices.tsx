@@ -1,9 +1,11 @@
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { Microheader } from "@/components/Microheader";
 import { WaitingRepositoryRow } from "@/components/project/WaitingRepositoryRow";
 import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { AddServiceLink } from "@/components/wizard/AddServiceLink";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useWaitingRepos } from "@/hooks/useWaitingRepos";
@@ -19,7 +21,7 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
   return (
     <SettingsCard
       id="services"
-      title="Services"
+      title="Deployed"
       description="What this project deploys, each with its own deploys, logs, and hostnames."
       footer={
         <AddServiceLink projectId={projectId} variant="outline" size="sm">
@@ -34,11 +36,14 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
       )}
       {services && services.length > 0 && <ServicesFeed services={services} />}
       {services && waiting && waiting.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border not-first:mt-4">
-          {waiting.map((repo) => (
-            <WaitingRepositoryRow key={repo.full_name} projectId={projectId} repo={repo} />
-          ))}
-        </ul>
+        <section aria-label="Not deployed" className="not-first:mt-6">
+          <Microheader className="flex h-8 items-center">Not deployed</Microheader>
+          <ul className={settingsRowListClass}>
+            {waiting.map((repo) => (
+              <WaitingRepositoryRow key={repo.full_name} projectId={projectId} repo={repo} />
+            ))}
+          </ul>
+        </section>
       )}
     </SettingsCard>
   );

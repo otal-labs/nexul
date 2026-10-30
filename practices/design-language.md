@@ -1147,10 +1147,10 @@ card are hairline rows straight on the card, under the rule that opens its body 
 inside the card; permission and access rows (Permission rows, below) and a list whose rows each fold open an editor (Run settings) keep their bordered list.
 Nothing nests a card inside a card.
 A project's Services card lists each attached repository no service builds
-from as a row in one bordered box, after the services or in place of the
-empty line: the mono name over a hollow muted dot and "Attached, not deployed
-yet", and an outline "Deploy this repository" with a rocket. No banner, no
-dismiss; the row goes once a service builds from it.
+from under a Not deployed microheader, after the services or in place of the
+empty line, as project settings rows: the GitHub mark, the mono name and
+"Attached, not deployed yet", and an outline Deploy with a rocket. No banner,
+no dismiss; the row goes once a service builds from it.
 
 Permission rows. Wherever access is set (a role, an automation's scopes) the
 domains sit in one list led by an "Every domain" or "Every area" row on a
@@ -1231,8 +1231,8 @@ Saved with a check for 1.4s. Settings that apply the moment they are picked
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
-instance sections Instance-wide. On Your settings and Configuration the open section is the page
-title ("Security" under a `Settings` crumb, "Mention chips" under the workspace and
+instance sections Instance-wide. On Your settings, Configuration and a project's settings the open section is the page
+title ("Security" or "Labels" under a `Settings` crumb, "Mention chips" under the workspace and
 `Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
 card that only named the section names its job instead (Name and picture,
 People, Starting questions, Ticket mentions). A template a workspace can follow or edit says which, once,
@@ -1255,17 +1255,37 @@ baseline for the extra verbs held (named in its tooltip); a yes-or-no permission
 someone holds asks first, naming how many people lose it. `RoleMatrix` and
 `RoleMatrixHead` in `web/src/components/settings/` are the reference.
 
-People in this project. A project's Settings → General card for whoever
-manages its access: a Roles microheader over the roles it lets in, People over
-the people with a rule of their own, then Kept out over the people a rule keeps
-out. A row is the 24px target mark (a role a muted people icon on a
-`surface-2` tile with the hairline ring, a person their avatar), the name in
-14px medium over a muted line (who holds a role, what a person holds, the
-rules here), and a trailing chevron; the whole row opens the permissions panel
-on that target, and a ghost `×` beside it asks before taking the target off.
-The footer's "Add a role or person" lists one, which lets it in, and opens
-nothing. `ProjectPeopleSection` in `web/src/components/settings/` is the
-reference; the panel's target column uses the same marks.
+People in this project. A project's Settings → Access card, a section only
+whoever manages its access sees: a Roles microheader over the roles it lets
+in, People over the people with a rule of their own, then Kept out over the
+people a rule keeps out, each a hairline list straight on the card. A row is
+the 24px target mark (a role a muted people icon on a `surface-2` tile with
+the hairline ring, a person their avatar) and the name in 14px medium over a
+muted line (who holds a role, what a person holds, the rules here); the whole
+row opens the permissions panel on that target, and its `⋯` holds Open and
+Remove (Let back in on someone kept out), which asks first. The footer's "Add
+a role or person" lists one, which lets it in, and opens nothing.
+`ProjectPeopleSection` in `web/src/components/settings/` is the reference; the
+panel's target column uses the same marks.
+
+Project settings lists. Statuses, Categories, Ticket types, Labels,
+Repositories and Services are one row (`SettingsListRow`), a hairline apart
+straight on the card, at least 44px: a 16px leading slot, the name in 14px
+medium with its muted meta on the same line (a template state, a machine, a
+repository's role; the meta gives way before the name), a right-aligned mono
+count that says what it counts ("8 tickets", "No tickets", from the project's
+grouped ticket counts), and the `⋯`, shown on hover or keyboard focus where the
+device can hover and always where it can't. The row lifts on hover inside its
+hairlines. The leading slot is a colour's dot, or a hollow ring when none is
+set (never the hue the board falls back to); a status's icon or its stage's
+dot; the GitHub mark on a repository; a service's strategy icon. A ticket
+type's dot and a label's pill are the colour button itself; a label has no
+`⋯`, its colour being its one action. A status or type that still holds
+tickets keeps Delete in its menu, disabled, with the reason under it ("Used
+by 8 tickets"). Statuses group under the five stages, each a mono microheader with
+its `+` in the rows' `⋯` column. The section nav groups them under Project
+(General, Access), Board (Statuses, Categories, Ticket types, Labels) and
+Delivery (Repositories, Services), then Danger zone.
 
 Danger zone. Every danger zone (Configuration, project, stack, automation)
 is one `DangerZone` card (`danger`, the warning icon) holding `DangerAction`
@@ -1715,6 +1735,7 @@ The web app's pattern decisions, each with what it was picked over.
 | The Access grids fill the panel and scroll in one box (2026-10-29) | The card used to scroll inside the page, two scrollbars, the save strip below the fold and the names scrolling away with the boxes. A sticky head inside a box that scrolls sideways sticks to that box, so the box became the only scroller rather than syncing a separate head; it is paint-contained, because its sticky cells otherwise widened the page by 210px at 768 |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |
+| Project settings: one nav level, the section as the title, one list row (2026-10-29) | Against the Board section with its own tab strip (two navigation levels, two at 768 stacked as scrolling rows), a "Settings" title over a card named like the nav row, and each list in its own bordered box inside the card with its colour dot left on some lists and right on others, "no colour" drawn three ways and a count only on Categories. One row with a named count on every list says what a column or type holds and why it can't be removed; its `⋯` waits for hover so a dense list reads as names. The project mark stays on General's first row, the crumb names the project |
 | Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a title flowing into its rows keeps the unit whole and saves the rule |
 | Settings type: 16px title, 14px label, 12px muted hint | Replaces the 15px title over 14px descriptions: the title sat one pixel off the dialog title and the description matched the label's size, so a card was two sizes and one weight told them apart, while the field hints beneath the controls were already 12px, a fourth look. Against 13px hints (a pixel under the label does not separate the levels, and it would have meant re-sizing every field hint that already reads at 12px); 12px is the size meta text already uses, and the longest hint in the settings pages (168 characters) still reads as a short paragraph at it |
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |

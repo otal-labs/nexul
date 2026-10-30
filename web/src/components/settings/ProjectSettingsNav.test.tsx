@@ -10,45 +10,45 @@ import type { Project } from "@/models/Project";
 
 const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, workspace_id: "ws-1", icon: "", tests_location: "same", setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
 
-describe("ProjectSettingsNav", () => {
-  it("renders one link per section, each pointing at its section param", () => {
-    render(
-      <MemoryRouter initialEntries={["/acme/projects/p-1/settings"]}>
-        <ProjectSettingsNav project={project} active="general" />
-      </MemoryRouter>,
-    );
+const renderNav = (canManageAccess: boolean) =>
+  render(
+    <MemoryRouter initialEntries={["/acme/projects/p-1/settings"]}>
+      <ProjectSettingsNav project={project} active="general" canManageAccess={canManageAccess} />
+    </MemoryRouter>,
+  );
 
-    expect(screen.getByRole("link", { name: "General" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/general",
-    );
-    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/categories",
-    );
-    expect(screen.getByRole("link", { name: "Repositories" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/repositories",
-    );
-    expect(screen.getByRole("link", { name: "Services" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/services",
-    );
-    expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/board",
-    );
-    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/danger",
-    );
+describe("ProjectSettingsNav", () => {
+  it("renders one link per section under its group, each pointing at its section param", () => {
+    renderNav(true);
+
+    const sections: [string, string][] = [
+      ["General", "general"],
+      ["Access", "access"],
+      ["Statuses", "statuses"],
+      ["Categories", "categories"],
+      ["Ticket types", "types"],
+      ["Labels", "labels"],
+      ["Repositories", "repositories"],
+      ["Services", "services"],
+      ["Danger zone", "danger"],
+    ];
+    for (const [name, section] of sections) {
+      expect(screen.getByRole("link", { name })).toHaveAttribute("href", `/acme/projects/BE/settings/${section}`);
+    }
+    expect(screen.getByText("Board")).toBeInTheDocument();
+    expect(screen.getByText("Delivery")).toBeInTheDocument();
   });
 
+  it("leaves Access out for someone who can't change who gets in", () => {
+    renderNav(false);
+    expect(screen.queryByRole("link", { name: "Access" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "General" })).toBeInTheDocument();
+  });
 });
 
 describe("isProjectSettingsSection", () => {
   it("accepts a known section and rejects anything else", () => {
-    expect(isProjectSettingsSection("board")).toBe(true);
-    for (const section of ["nope", "pairing", null, undefined, ""]) expect(isProjectSettingsSection(section)).toBe(false);
+    expect(isProjectSettingsSection("labels")).toBe(true);
+    for (const section of ["board", "nope", "pairing", null, undefined, ""]) expect(isProjectSettingsSection(section)).toBe(false);
   });
 });

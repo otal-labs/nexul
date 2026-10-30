@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectSettingsPage } from "@/pages/ProjectSettingsPage";
+import { ticketCounts } from "@/test/ticketCounts";
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -49,6 +50,7 @@ beforeEach(() => {
     if (url === "/api/projects/p-1") return { data: project };
     if (url === "/api/projects/p-1/impact") return { data: { tickets: 0, repos: 0, services: 0 } };
     if (url === "/api/categories") return { data: categories };
+    if (url === "/api/projects/p-1/ticket-counts") return { data: ticketCounts() };
     return { data: [] };
   });
 });
@@ -83,21 +85,31 @@ describe("ProjectSettingsPage", () => {
   it("names the project in the breadcrumb and renders the full section nav", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Backend" })).toHaveAttribute("href", "/acme/board/BE");
-    expect(screen.getByRole("link", { name: "Categories" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Repositories" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Services" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Board" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "T3 pairing" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Danger zone" })).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
+    for (const name of ["Statuses", "Categories", "Ticket types", "Labels", "Repositories", "Services", "Danger zone"]) {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+  });
+
+  it("titles the page by the open section", async () => {
+    renderPage("/acme/projects/p-1/settings/labels");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Labels" })).toBeInTheDocument();
+  });
+
+  it("lands an old board path on General, the way any unknown section does", async () => {
+    renderPage("/acme/projects/p-1/settings/board");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "General" })).toBeInTheDocument();
   });
 
   it("defaults to the General section", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "General" })).toBeInTheDocument();
-    expect(screen.getByText(/It can't change/)).toBeInTheDocument();
+    expect(await screen.findByText(/It can't change/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "General" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -105,7 +117,7 @@ describe("ProjectSettingsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await screen.findByRole("heading", { name: "General" });
+    await screen.findByText(/It can't change/);
     await user.click(screen.getByRole("link", { name: "Categories" }));
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
@@ -117,7 +129,7 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/categories");
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "General" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Categories" })).toBeInTheDocument();
   });
 
   it("General renames the project inline", async () => {

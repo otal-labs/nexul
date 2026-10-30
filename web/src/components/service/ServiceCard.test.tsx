@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceCard } from "@/components/service/ServiceCard";
-import { DeployStatus, DeployStrategy, type ServiceDef } from "@/models/Service";
+import { DeployStrategy, type ServiceDef } from "@/models/Service";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 const manage = vi.hoisted(() => ({ stack: false }));
@@ -28,10 +28,10 @@ const baseService = (overrides: Partial<ServiceDef> = {}): ServiceDef => ({
   ...overrides,
 });
 
-const renderCard = (service: ServiceDef, status?: DeployStatus) =>
+const renderCard = (service: ServiceDef) =>
   render(
     <MemoryRouter>
-      <ServiceCard service={service} {...(status !== undefined ? { status } : {})} />
+      <ServiceCard service={service} />
     </MemoryRouter>,
   );
 
@@ -49,14 +49,16 @@ describe("ServiceCard", () => {
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Permissions…"]);
   });
 
-  it("shows the build repo as the mono image line for repo-driven services", () => {
+  it("names the machine, then the repository a repo-driven service builds from", () => {
     renderCard(
       baseService({
+        target: "",
+        machine: "prod-eu-west-01",
         build_source: { repo_owner: "onik97", repo_name: "api", branch: "main" },
       }),
     );
-    expect(screen.getByText("onik97/api")).toBeInTheDocument();
-    expect(screen.queryByText("10.0.0.1:22")).not.toBeInTheDocument();
+    expect(screen.getByText("prod-eu-west-01 · onik97/api")).toBeInTheDocument();
+    expect(screen.getByLabelText("compose")).toBeInTheDocument();
   });
 
   it("falls back to the machine, then the older target, for image-only services", () => {
@@ -65,17 +67,6 @@ describe("ServiceCard", () => {
     unmount();
     renderCard(baseService());
     expect(screen.getByText("10.0.0.1:22")).toBeInTheDocument();
-  });
-
-  it("renders the status badge and health dot when a status is provided", () => {
-    renderCard(baseService(), DeployStatus.Healthy);
-    expect(screen.getByText("Succeeded")).toBeInTheDocument();
-  });
-
-  it("omits the status badge and health dot without a status", () => {
-    renderCard(baseService());
-    expect(screen.queryByText("Succeeded")).not.toBeInTheDocument();
-    expect(screen.queryByText("Failed")).not.toBeInTheDocument();
   });
 
   it("links to the service detail page", () => {
