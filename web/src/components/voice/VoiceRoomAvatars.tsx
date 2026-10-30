@@ -17,7 +17,7 @@ export const VoiceRoomAvatars = ({ occupants, speaking }: VoiceRoomAvatarsProps)
   const lookup = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const rest = occupants.length - SHOWN;
   return (
-    <div className="flex shrink-0 items-center -space-x-2">
+    <div className="flex shrink-0 items-center -space-x-1">
       {occupants.slice(0, SHOWN).map((occupant) => (
         <PersonAvatar
           key={occupant.identity}
@@ -32,7 +32,7 @@ export const VoiceRoomAvatars = ({ occupants, speaking }: VoiceRoomAvatarsProps)
         />
       ))}
       {rest > 0 && (
-        <span className="flex size-7 items-center justify-center rounded-full bg-muted font-mono text-[11px] text-muted-foreground tabular-nums ring-2 ring-surface-2">
+        <span className="avatar-more size-7 text-[11px] ring-2 ring-surface-2">
           +{rest}
         </span>
       )}

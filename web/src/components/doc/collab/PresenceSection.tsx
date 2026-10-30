@@ -20,14 +20,14 @@ export const PresenceSection = ({ participants, max = 4, size = "md" }: Presence
   const overflow = participants.length - shown.length;
 
   return (
-    <div className="flex items-center -space-x-2" data-testid="presence-section">
+    <div className="flex items-center -space-x-1" data-testid="presence-section">
       {shown.map((p) => (
         <PresenceAvatar key={p.clientID} participant={p} sizeClass={sizes[size]} />
       ))}
       {overflow > 0 && (
         <span
           aria-label={`${overflow} more`}
-          className={cn("flex items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground ring-2 ring-background", sizes[size])}
+          className={cn("avatar-more ring-2 ring-background", sizes[size])}
         >
           +{overflow}
         </span>

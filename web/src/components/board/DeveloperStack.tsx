@@ -85,7 +85,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
             <button
               type="button"
               aria-label={`${overflow.length} more developers`}
-              className="relative flex size-7 items-center justify-center rounded-full bg-muted font-mono text-[11px] text-muted-foreground ring-2 ring-card transition-[color,background-color] duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
+              className="avatar-more relative size-7 text-[11px] ring-2 ring-card transition-[background-color] duration-150 ease-standard hover:bg-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
             >
               +{overflow.length}
             </button>

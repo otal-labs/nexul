@@ -88,6 +88,7 @@ in the three token files; this table holds the roles.
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
 | `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 7% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
 | `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
+| `scrollbar` / `scrollbar-hover` | `foreground` at 18% / 34% | `foreground` at 22% / 40% | a scroller's thumb at rest and under the pointer | web only |
 | `media` | `oklch(0.16 0 0)` | `oklch(0.16 0 0)` | behind a camera feed or a shared screen, and the name chip over one (at 80%): it frames media, not the theme, so it stays near-black in every palette and mode | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `panel-opaque` | `panel` at `--panel-opacity` over `background` | same | a band rows scroll under inside a panel (a list's pinned group row, a record's pinned crumbs): the panel as it reads, but opaque | web only |
@@ -263,6 +264,13 @@ type](#phone-tokens-and-type).
   profile's preview included; under 24px it shows one initial at 10px. Never a
   gradient or a second hue: the one accent is `brand`. A project's mark and
   the phone's tiles use the same fill.
+- An avatar stack overlaps each face by 4px (`-space-x-1`), so an initial is
+  never cut, and rings every face in a 2px ring of the surface it sits on. Its
+  "+N" is a disc the size of the avatars, in the same ring: `avatar-more`, a
+  solid `muted-foreground` fill with `card` ink in the mono face.
+- One scrollbar in every scroller: a 6px rounded thumb in `scrollbar` (and
+  `scrollbar-hover` under the pointer) in a clear 10px track, with no arrow
+  buttons. A sideways tab row hides it (`scrollbar-none`) behind its fade.
 
 ### Motion
 
