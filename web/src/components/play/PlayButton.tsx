@@ -25,6 +25,8 @@ interface PlayButtonProps {
   className?: string;
   // Styles the play's own button, apart from the Stop beside it.
   mainClassName?: string;
+  // 28px tall with its Stop, for a header row of that height.
+  compact?: boolean;
 }
 
 const disabledReason = (running: boolean, waiting: boolean, blocked: string | undefined): string => {
@@ -34,7 +36,7 @@ const disabledReason = (running: boolean, waiting: boolean, blocked: string | un
 };
 
 // Hidden unless the play's can_run says the viewer may run it; while it runs it opens the run, and the starter or a plays:write holder gets Stop beside it.
-export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className, mainClassName }: PlayButtonProps) => {
+export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className, mainClassName, compact = false }: PlayButtonProps) => {
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
   const blocked = useRunBlockedReason(projectId);
@@ -53,6 +55,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   const waiting = ownRun && (liveState ?? activeTrail.state) === "waiting";
   const anyWaiting = (liveState ?? activeTrail?.state) === "waiting";
   const reason = disabledReason(running, anyWaiting, blocked);
+  const main = cn(compact && "h-7", mainClassName);
 
   return (
     // A disabled button takes no pointer events, so the reason's tooltip sits on the wrapper.
@@ -61,7 +64,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         <Button
           variant={variant === "default" ? "outline" : variant}
           size="sm"
-          className={mainClassName}
+          className={main}
           title={waiting ? `${play.label} asked a question` : "Open this run"}
           onClick={() => setTrailOpen(true)}
         >
@@ -74,7 +77,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         <Button
           size="icon"
           variant={variant === "ghost" ? "ghost" : "outline"}
-          className={cn("shrink-0 text-muted-foreground hover:text-foreground", variant === "ghost" ? "size-7" : "size-8")}
+          className={cn("shrink-0 text-muted-foreground hover:text-foreground", compact || variant === "ghost" ? "size-7" : "size-8")}
           title="Stop this run"
           aria-label={`Stop ${play.label}`}
           disabled={stopTrail.isPending}
@@ -87,7 +90,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         <Button
           variant={variant}
           size="sm"
-          className={mainClassName}
+          className={main}
           disabled={reason !== "" || blocked === undefined}
           title={reason || play.description || play.label}
           onClick={() => setDialogOpen(true)}
