@@ -7,6 +7,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -103,11 +104,47 @@ type HistoryRepo interface {
 	AppendSittingVersion(ctx context.Context, id string, editorIDs []string, at time.Time) error
 }
 
-// ActorOf is the actor a save is recorded under: an automation, a person, or a person's agent over MCP.
+// RunningPlays finds a person's play run on a target, crediting their MCP saves to it; tickets never imports plays (ADR 0017).
+type RunningPlays interface {
+	RunningOn(ctx context.Context, userID, targetType, targetID string) (label, trailID string, ok bool, err error)
+}
+
+// SetRunningPlays wires the run lookup; without it an MCP save is always credited to the person's agent.
+func (s *Service) SetRunningPlays(r RunningPlays) { s.runs = r }
+
+type playRunKey struct{}
+
+type playRun struct{ label, trailID string }
+
+// playRunTarget is the plays domain's target type for a ticket.
+const playRunTarget = "ticket"
+
+// WithViaMCPOn marks a call as a person's over MCP on a ticket and, when they have a play running on it, as that run's.
+func (s *Service) WithViaMCPOn(ctx context.Context, ticketID string) context.Context {
+	ctx = WithViaMCP(ctx)
+	actor, _ := identity.ActorFromCtx(ctx)
+	if s.runs == nil || actor.ID == "" || actor.Automation != nil {
+		return ctx
+	}
+	label, trailID, ok, err := s.runs.RunningOn(ctx, actor.ID, playRunTarget, ticketID)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("find the play run behind an MCP save", "ticket", ticketID, "error", err)
+		return ctx
+	}
+	if !ok {
+		return ctx
+	}
+	return context.WithValue(ctx, playRunKey{}, playRun{label: label, trailID: trailID})
+}
+
+// ActorOf is the actor a save is recorded under: an automation, a person, or their agent over MCP or a running play.
 func ActorOf(ctx context.Context) Actor {
 	actor, _ := identity.ActorFromCtx(ctx)
 	if actor.Automation != nil {
 		return Actor{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
+	}
+	if run, ok := ctx.Value(playRunKey{}).(playRun); ok {
+		return Actor{Kind: ActorKindPlayMCP, PlayLabel: run.label, TrailID: run.trailID, UserID: actor.ID}
 	}
 	if ctx.Value(viaMCPKey{}) != nil {
 		return Actor{Kind: ActorKindUserMCP, UserID: actor.ID}
@@ -115,11 +152,14 @@ func ActorOf(ctx context.Context) Actor {
 	return Actor{Kind: ActorKindUser, UserID: actor.ID}
 }
 
-// ViaOf is what a description version records as the way a save came: the automation's name, "mcp" for an agent, else "".
+// ViaOf is a description version's via: the automation's name, the running play's label, "mcp" for an agent, else "".
 func ViaOf(ctx context.Context) string {
 	actor, _ := identity.ActorFromCtx(ctx)
 	if actor.Automation != nil {
 		return actor.Automation.Name
+	}
+	if run, ok := ctx.Value(playRunKey{}).(playRun); ok {
+		return run.label
 	}
 	if ctx.Value(viaMCPKey{}) != nil {
 		return viaMCP

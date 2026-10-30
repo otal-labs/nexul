@@ -48,6 +48,8 @@ A doc keeps its versions, and **History** in the doc page's menu shows them. Any
 
 A ticket has the same dialog under **History** in its menu, for anyone who can read the ticket. The versions are the ticket's description, and **Restore** puts an older description back (it needs `tickets:write`). Between the versions, in time order, each field that changed gets its own line: "Status In progress → Testing", "Labels + security", "Developer None → sam". Hover a line to see who made the change, the play, automation or agent it came through, and when. The last line is **Created**. A ticket keeps its last 100 field changes. Field changes are only shown: they have no **Restore**, and nothing in the list sets a field back, so change a field on the ticket itself.
 
+Docs and tickets share one rule for agents: a save an agent makes on a doc or ticket while a play you started is running on it shows the play's name, such as **Implement with AI**. Any other save an agent makes for you shows as an agent.
+
 ### Clarify a doc
 
 When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the doc and asks a round of questions about what it leaves open.

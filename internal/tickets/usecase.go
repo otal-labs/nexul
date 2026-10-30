@@ -34,6 +34,7 @@ type Service struct {
 	people   ProjectPeople
 	live     LiveSessions
 	prStates PRStates
+	runs     RunningPlays
 	now      func() time.Time
 }
 

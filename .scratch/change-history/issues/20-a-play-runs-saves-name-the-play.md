@@ -1,6 +1,7 @@
 # 20 — A play run's saves name the play
 
-**Status:** needs-triage
+**Status:** resolved
+Decision: inferred from the caller's own running trail on the saved ticket or doc; plays and memories stay mcp.
 **Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, Storage (`via`). Decision 2 wants "Alice, via Implement

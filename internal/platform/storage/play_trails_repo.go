@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -95,6 +96,18 @@ func (r *PlayTrailsRepo) UpdateTrail(ctx context.Context, t *plays.Trail, evts .
 		}
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})
+}
+
+// RunningOn is the label and id of the newest starting or running run userID started on the target; ok is false when they have none.
+func (r *PlayTrailsRepo) RunningOn(ctx context.Context, userID, targetType, targetID string) (label, trailID string, ok bool, err error) {
+	row, err := r.q.LatestRunningPlayTrailOn(ctx, sqlcgen.LatestRunningPlayTrailOnParams{TargetType: targetType, TargetID: targetID, StarterID: userID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, fmt.Errorf("find %s's running run on %s %s: %w", userID, targetType, targetID, err)
+	}
+	return row.PlayLabel, row.ID, true, nil
 }
 
 func (r *PlayTrailsRepo) ListTrailsByTarget(ctx context.Context, targetType plays.TargetType, targetID string) ([]*plays.Trail, error) {

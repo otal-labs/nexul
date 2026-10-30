@@ -101,9 +101,13 @@ A version or change is written in the same transaction as the save that
 causes it, followed by one prune statement that deletes the oldest unnamed
 rows past the cap. `via` is the automation name when an automation made the
 save, `mcp` when an agent made it over MCP (the memory precedent, ADR 0049),
-and empty for the browser. A play run's own name can't be recorded yet: its
-agent calls MCP with the person's computer token, which names no run
-(ticket 20).
+and empty for the browser. A play run's agent calls MCP with the person's
+computer token, which names no run, so the run is inferred: an MCP save of a
+ticket or doc by someone who has a starting or running trail of their own on
+that same ticket or doc records the trail's play label as `via` (a ticket's
+field changes record a `play:mcp` actor with the label and trail id), the
+newest trail when several match. Plays and memories have no trails on them and
+stay `mcp`.
 
 ## The sitting
 
