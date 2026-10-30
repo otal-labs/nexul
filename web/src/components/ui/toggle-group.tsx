@@ -10,7 +10,8 @@ import { ActiveIndicator } from "@/components/ActiveIndicator"
 
 // One segmented control: a well with a raised thumb that slides to the chosen side (practices/design-language.md, Navigation).
 const SEGMENTED_TRACK = "relative isolate gap-0.5 bg-surface-2 p-0.5 ring-1 ring-border ring-inset"
-const SEGMENTED_THUMB = "rounded-sm bg-card shadow-card ring-1 ring-border ring-inset dark:ring-input"
+// In dark the thumb is a share of the ink over the well, so it stands clear of it in every palette, even one that paints card and well alike.
+export const segmentedThumbClass = "rounded-sm bg-card shadow-card ring-1 ring-border ring-inset dark:bg-foreground/14 dark:ring-input"
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
@@ -47,7 +48,7 @@ function ToggleGroup({
       )}
       {...props}
     >
-      {variant === "segmented" && <ActiveIndicator selector='[data-state="on"]' className={SEGMENTED_THUMB} />}
+      {variant === "segmented" && <ActiveIndicator selector='[data-state="on"]' className={segmentedThumbClass} />}
       <ToggleGroupContext.Provider value={{ variant, size, spacing }}>
         {children}
       </ToggleGroupContext.Provider>

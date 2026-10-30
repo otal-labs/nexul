@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { ThemeId } from "@/enums/Theme";
 import { currentRowFillClass } from "@/components/CurrentRow";
+import { segmentedThumbClass } from "@/components/ui/toggle-group";
 import css from "@/index.css?raw";
 import { applyThemePalette, THEME_DEFINITIONS } from "@/lib/themePalettes";
 
@@ -198,6 +199,30 @@ describe("palette card lift", () => {
     ({ id }) => {
       applyThemePalette(id, "dark");
       expect(cardLift("dark")).toBeGreaterThanOrEqual(MIN_CARD_LIFT);
+    },
+  );
+});
+
+// A segmented control's thumb in dark as its class draws it: the ink's `dark:bg-foreground/N` share laid over the well, else the card.
+const darkSegmentedThumb = (): Rgb => {
+  const { card, "surface-2": well } = surfaces("dark");
+  const share = Number(segmentedThumbClass.match(/dark:bg-foreground\/(\d+)/)?.[1] ?? 0) / 100;
+  if (share === 0) return card!;
+  return ink("dark", "foreground").map((v, i) => v * share + well![i]! * (1 - share)) as Rgb;
+};
+
+describe("segmented control thumb", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.map((theme) => ({ id: theme.id, label: theme.label })))(
+    "$label dark lifts the picked side a clear step above its well, its label still at 4.5:1",
+    ({ id }) => {
+      applyThemePalette(id, "dark");
+      const thumb = darkSegmentedThumb();
+      expect(lightness(thumb) - lightness(surfaces("dark")["surface-2"]!)).toBeGreaterThanOrEqual(0.08);
+      expect(ratio(ink("dark", "foreground"), thumb)).toBeGreaterThanOrEqual(MIN_RATIO);
     },
   );
 });

@@ -31,7 +31,7 @@ export const ChannelMemberRow = ({ channel, userId, isYou }: ChannelMemberRowPro
 
   return (
     <li className="flex min-h-11 items-center gap-3">
-      <PersonAvatar login={person.login} src={person.avatar_url} className="size-6 text-xs" />
+      <PersonAvatar login={person.login} name={name} src={person.avatar_url} className="size-6 text-xs" />
       <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
       {isYou && <span className="pr-2 font-mono text-xs text-muted-foreground">you</span>}
       {(message || canRemove) && (

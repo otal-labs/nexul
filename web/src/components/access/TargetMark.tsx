@@ -17,6 +17,6 @@ export const TargetMark = ({ target, className }: TargetMarkProps) => (
         <UsersIcon className="size-[55%]" aria-hidden />
       </span>
     )}
-    {target.kind === "person" && <PersonAvatar login={target.login} src={target.avatarUrl} className={cn("size-6", className)} label={target.name} />}
+    {target.kind === "person" && <PersonAvatar login={target.login} name={target.name} src={target.avatarUrl} className={cn("size-6", className)} label={target.name} />}
   </>
 );

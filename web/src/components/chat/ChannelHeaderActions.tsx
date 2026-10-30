@@ -26,7 +26,7 @@ const MemberStack = ({ channel, onOpen }: { channel: Conversation; onOpen: (() =
         >
           <span className="flex -space-x-1">
             {ids.slice(0, SHOWN_MEMBERS).map((id) => (
-              <PersonAvatar key={id} login={resolvePerson(id).login} src={resolvePerson(id).avatar_url} className="size-5 text-[10px] ring-2 ring-panel" />
+              <PersonAvatar key={id} login={resolvePerson(id).login} name={resolvePerson(id).display_name} src={resolvePerson(id).avatar_url} className="size-5 text-[10px] ring-2 ring-panel" />
             ))}
           </span>
           {ids.length > SHOWN_MEMBERS && <span className="translate-y-px font-mono text-xs tabular-nums">+{ids.length - SHOWN_MEMBERS}</span>}

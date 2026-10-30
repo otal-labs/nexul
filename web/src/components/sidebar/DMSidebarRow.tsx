@@ -27,7 +27,7 @@ export const DMSidebarRow = ({ conversation, label, unreadCount }: DMSidebarRowP
         conversationId={conversation.id}
         label={label}
         icon={Users}
-        leading={person && <PersonAvatar login={person.login} src={person.avatar_url} label={label} className="size-[18px]" />}
+        leading={person && <PersonAvatar login={person.login} name={person.display_name} src={person.avatar_url} label={label} className="size-[18px]" />}
         unreadCount={unreadCount}
         menu={{ onBots }}
       />

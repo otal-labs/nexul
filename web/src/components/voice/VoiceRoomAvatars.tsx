@@ -22,6 +22,7 @@ export const VoiceRoomAvatars = ({ occupants, speaking }: VoiceRoomAvatarsProps)
         <PersonAvatar
           key={occupant.identity}
           login={lookup(occupant.identity).login}
+          name={occupant.name}
           src={lookup(occupant.identity).avatar_url}
           label={occupant.name}
           className={cn(

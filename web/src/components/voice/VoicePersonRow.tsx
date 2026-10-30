@@ -26,6 +26,7 @@ export const VoicePersonRow = ({ participant }: VoicePersonRowProps) => {
     <div title={name} className="relative flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-sm px-2">
       <PersonAvatar
         login={person.login}
+        name={name}
         src={person.avatar_url}
         label={name}
         className={cn("ring-2 ring-transparent ring-offset-1 ring-offset-popover transition-shadow duration-150 ease-standard", speaking && "ring-success")}

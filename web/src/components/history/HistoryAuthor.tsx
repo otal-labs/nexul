@@ -28,7 +28,7 @@ export const HistoryAuthor = ({ people, via }: HistoryAuthorProps) => {
   const [first] = people;
   return (
     <span className="mt-1.5 flex items-center gap-1.5" title={[people.map(personLabel).join(", "), via && viaLabel(via)].filter(Boolean).join(" ") || undefined}>
-      {first && <PersonAvatar login={first.login} src={first.avatar_url} label={personLabel(first)} className="size-[18px]" />}
+      {first && <PersonAvatar login={first.login} name={personLabel(first)} src={first.avatar_url} label={personLabel(first)} className="size-[18px]" />}
       {!first && (
         <span aria-hidden className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground">
           <ViaMark via={via} className="size-3" />
@@ -39,7 +39,7 @@ export const HistoryAuthor = ({ people, via }: HistoryAuthorProps) => {
         {people.length > 1 && (
           <span aria-hidden className="flex shrink-0 -space-x-1">
             {people.slice(1, 3).map((p) => (
-              <PersonAvatar key={p.user_id} login={p.login} src={p.avatar_url} label={personLabel(p)} className="size-3.5 ring-1 ring-popover" />
+              <PersonAvatar key={p.user_id} login={p.login} name={personLabel(p)} src={p.avatar_url} label={personLabel(p)} className="size-3.5 ring-1 ring-popover" />
             ))}
           </span>
         )}
