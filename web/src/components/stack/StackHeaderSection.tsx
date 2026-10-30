@@ -42,33 +42,38 @@ export const StackHeaderSection = ({ stack, latest, lastHealthy, image, hostname
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        className="border-b-0 pb-0"
-        crumbs={crumbs}
-        title={stack.name}
-        meta={<StackMetaLine stack={stack} image={image} />}
-        actions={
-          <div className="flex items-center gap-2">
-            {!stack.managed && !!stack.project_id && (
-              <ActionButton
-                permission={["stacks:write", "projects:write"]}
-                projectId={stack.project_id}
-                answer={answer("stacks:write")}
-                verb="attach repositories"
-                variant="outline"
-                size="sm"
-                icon={GitBranchIcon}
-                to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}
-              >
-                Attach repository
-              </ActionButton>
-            )}
-            <StackDeployButton stack={stack} lastHealthy={lastHealthy} image={image} />
-            <StackWatchButton stackId={stack.id} />
-            {manages && <RowActions itemLabel={stack.name} {...menu} />}
-          </div>
-        }
-      />
+      <div>
+        <PageHeader
+          className="border-b-0 pb-0"
+          crumbs={crumbs}
+          title={stack.name}
+          actions={
+            <div className="flex items-center gap-2">
+              {!stack.managed && !!stack.project_id && (
+                <ActionButton
+                  permission={["stacks:write", "projects:write"]}
+                  projectId={stack.project_id}
+                  answer={answer("stacks:write")}
+                  verb="attach repositories"
+                  variant="outline"
+                  size="sm"
+                  icon={GitBranchIcon}
+                  to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}
+                >
+                  Attach repository
+                </ActionButton>
+              )}
+              <StackDeployButton stack={stack} lastHealthy={lastHealthy} image={image} />
+              <StackWatchButton stackId={stack.id} />
+              {manages && <RowActions itemLabel={stack.name} {...menu} />}
+            </div>
+          }
+        />
+        {/* Under the title row, not beside it, so the facts take the page's width rather than what the actions leave. */}
+        <div className="mt-2 text-sm text-muted-foreground">
+          <StackMetaLine stack={stack} image={image} />
+        </div>
+      </div>
 
       <StackLiveHero stack={stack} latest={latest} lastHealthy={lastHealthy} hostnames={hostnames} />
     </div>

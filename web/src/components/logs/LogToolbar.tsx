@@ -16,6 +16,8 @@ interface LogToolbarProps {
   onCopy: () => void;
   onDownload: () => void;
   empty: boolean;
+  // False with nothing received and nothing coming, where All and Errors would both show an empty block.
+  filterable: boolean;
 }
 
 interface ToolButtonProps {
@@ -38,7 +40,7 @@ const ToolButton = ({ label, icon: Icon, onClick, disabled, pressed }: ToolButto
   </Tooltip>
 );
 
-export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onPausedChange, onCopy, onDownload, empty }: LogToolbarProps) => (
+export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onPausedChange, onCopy, onDownload, empty, filterable }: LogToolbarProps) => (
   <div className="flex flex-wrap items-center gap-2">
     <ToggleGroup
       type="single"
@@ -46,6 +48,7 @@ export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onP
       size="xs"
       value={filter}
       onValueChange={(value) => value && onFilterChange(value as LogFilter)}
+      disabled={!filterable}
       aria-label="Show"
     >
       <ToggleGroupItem value="all">All</ToggleGroupItem>

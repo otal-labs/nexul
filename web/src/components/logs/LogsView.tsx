@@ -38,6 +38,7 @@ export const LogsView = ({ source }: LogsViewProps) => {
           onCopy={() => void copy()}
           onDownload={() => saveTextFile(`${source.name}.log`, containerLogToText(shown))}
           empty={shown.length === 0}
+          filterable={logs.status === "live" || logs.lines.length > 0}
         />
         <LogBlock lines={shown} empty={emptyLogMessage(logs, filter, source.forbidden)} />
       </div>

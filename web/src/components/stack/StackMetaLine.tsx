@@ -16,8 +16,8 @@ interface StackMetaLineProps {
 const Fact = ({ title, value, wide = false, children }: { title: string; value: string; wide?: boolean; children: ReactNode }) => (
   <span className={cn("inline-flex min-w-0 items-center", wide && "max-w-full flex-[1_1_auto]")}>
     <span aria-hidden className="w-5 shrink-0 text-center text-muted-foreground/50">·</span>
-    {/* A whole number of mono characters wide, so a cut fact's ellipsis sits flush. */}
-    <span className={cn("inline-flex min-w-0 items-center gap-1 font-mono text-xs", !wide && "max-w-[36ch]")} title={`${title}: ${value}`}>
+    {/* A whole number of mono characters wide, with slack for rounding, so a cut fact's ellipsis sits flush. */}
+    <span className={cn("inline-flex min-w-0 items-center gap-1 font-mono text-xs", !wide && "max-w-[calc(36ch+0.5px)]")} title={`${title}: ${value}`}>
       {children}
     </span>
   </span>

@@ -52,4 +52,15 @@ describe("DeployRow", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getAllByText("build").length).toBeGreaterThan(0);
   });
+
+  it("leaves the source out, with no placeholder, when nobody and no rule started the deploy", () => {
+    render(
+      <MemoryRouter>
+        <ul>
+          <DeployRow deploy={{ ...deploy, kind: "deploy", image: "registry.example.com/acme/api:1.4.0" }} current={false} />
+        </ul>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
+  });
 });
