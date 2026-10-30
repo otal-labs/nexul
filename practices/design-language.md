@@ -579,8 +579,9 @@ padding that clears the fade at the end, so content never meets a panel's
 rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
-Inbox. One row per doc however many notifications it has: the title, over
-a meta line saying what happened ("created · 2 updates") with the newest time
+Inbox. One row per doc or ticket however many notifications it has: the
+title, over a meta line saying what happened ("created · 2 updates",
+"mentioned you · 2 status changes") with the newest time
 trailing it in mono, unread while any of them is. Rows hover and select like the
 list pane's, with no dividers. The header is `ListPaneHeader` without New or
 search: the unread count in mono, hidden at zero, and Mark all read as a ghost
@@ -588,7 +589,8 @@ check-check icon while anything is unread. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
 the Docs pane's, its meta the number of docs, expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name, and its rows
-take no indent. Every other notification is its own row, and all of them
+take no indent. A ticket's play runs join its row. Every other notification
+is its own row, and all of them
 interleave by newest activity. The open pane before a pick says how many are
 unread and teaches the palette's shortcut.
 
