@@ -18,7 +18,7 @@ curl -fsSL https://nexul.io/install.sh | sh
 You can [read the script](/install.sh) first. It downloads the `nexul` command for your CPU (amd64 or arm64), checks it against the release's `checksums.txt`, and runs `nexul install`. Press Enter to accept each default:
 
 ```
-Nexul v0.2.1 installer
+Nexul vX.Y.Z installer
 
 Press Enter to accept the default.
 
@@ -36,7 +36,7 @@ Press Enter to accept the default.
   Runner .......... nexul-runner-instance
   Automations ..... nexul-automations-instance
 
-Nexul v0.2.1 is running.
+Nexul vX.Y.Z is running.
   Setup page     http://203.0.113.4:5123/
   Setup code     nxs_…
   Data           /data/nexul  (back this folder up)
@@ -55,7 +55,9 @@ To install without questions, pass the answers as flags:
 curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 --yes
 ```
 
-Put `NEXUL_VERSION=v0.2.1` before `sh` to pin a release. Without it you get the newest stable release, or the newest beta while there is no stable one.
+Put `NEXUL_VERSION=vX.Y.Z` before `sh` to pin a release. Without it you get the newest stable release, or the newest beta while there is no stable one.
+
+`vX.Y.Z` in the sample output and in that pin is a placeholder. The current version is on the [releases page](https://github.com/otal-labs/nexul/releases).
 
 The installer:
 

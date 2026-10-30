@@ -60,12 +60,14 @@ An [automations host](/docs/guide/automations/#where-automations-run) follows it
 3. Click **Create install command** and copy the command for the machine's system:
 
    ```sh
-   curl -fsSL https://nexul.io/runner.sh | NEXUL_VERSION=v0.2.1 sh -s -- --server https://nexul.example.com --name build-box-1 --code nxe_…
+   curl -fsSL https://nexul.io/runner.sh | NEXUL_VERSION=vX.Y.Z sh -s -- --server https://nexul.example.com --name build-box-1 --code nxe_…
    ```
 
    ```powershell
-   $env:NEXUL_VERSION='v0.2.1'; & ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) --server https://nexul.example.com --name build-box-1 --code nxe_…
+   $env:NEXUL_VERSION='vX.Y.Z'; & ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) --server https://nexul.example.com --name build-box-1 --code nxe_…
    ```
+
+   `vX.Y.Z` in those commands is a placeholder for the release the instance is running. The current version is on the [releases page](https://github.com/otal-labs/nexul/releases).
 
 4. Run it on the machine: on Linux as root or with `sudo`, on a Mac as yourself, on Windows in PowerShell (it asks for administrator rights). The dialog shows **Server connected** under the command once a runner with that name connects, with its name and machine.
 
