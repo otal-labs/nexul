@@ -35,7 +35,7 @@ export const DnsStep = ({ title, description, state, summary, onChange, last = f
           <Check className="size-2.5 animate-in zoom-in-50 duration-150 ease-out" strokeWidth={3} />
         )}
       </span>
-      {!last && <span aria-hidden className="dns-step-rail mt-1 w-px flex-1 bg-border" />}
+      {!last && <span aria-hidden className="dns-step-rail mt-1 -mb-8 w-px flex-1 bg-border" />}
     </div>
     <div className="min-w-0 flex-1">
       <div className="flex items-start justify-between gap-3">

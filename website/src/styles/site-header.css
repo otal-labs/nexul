@@ -202,12 +202,12 @@
 	margin: 0;
 	padding: 0;
 	border: 1px solid transparent;
+	border-top-color: var(--panel-highlight);
 	border-radius: var(--shape-xl);
 	background: color-mix(in oklab, var(--popover) 88%, transparent);
 	-webkit-backdrop-filter: blur(24px) saturate(1.4);
 	backdrop-filter: blur(24px) saturate(1.4);
 	box-shadow:
-		inset 0 1px 0 0 var(--panel-highlight),
 		0 0 0 1px var(--panel-ring),
 		var(--shadow-overlay);
 	color: var(--foreground);

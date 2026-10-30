@@ -17,7 +17,7 @@ interface SignedOutFrameProps {
 // Sign-in, invitation and setup share this frame: the instance in the top-left corner, the screen in one 448px column.
 // Setup sits at one height on every step, so a step or tab that grows never moves the header or the control just pressed.
 export const SignedOutFrame = ({ live = false, quiet = false, exit, card = false, children }: SignedOutFrameProps) => (
-  <ShowcaseSurface live={live} quiet={quiet} className="[scrollbar-gutter:stable_both-edges]">
+  <ShowcaseSurface live={live} quiet={quiet} fullScreen className="[scrollbar-gutter:stable_both-edges]">
     <div className="flex min-h-full flex-col">
       <div className="flex items-center justify-between gap-4 px-6 pt-6 lg:px-8">
         <span className="flex min-w-0 items-center gap-2">

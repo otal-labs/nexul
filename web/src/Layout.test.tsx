@@ -140,6 +140,14 @@ describe("Layout", () => {
     expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
   });
 
+  it("draws a signed-in invitation in its own full-screen frame, not inside the app frame a wizard gets", () => {
+    useSessionStore.setState({ token: "t", isLoggedIn: true });
+    const { container, unmount } = renderLayout("/invite");
+    expect(container.querySelector(".app-frame")).toBeNull();
+    unmount();
+    expect(renderLayout("/wizard/onboarding/owner").container.querySelector(".app-frame")).not.toBeNull();
+  });
+
   it("shows the signed-in nav and account menu trigger", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();

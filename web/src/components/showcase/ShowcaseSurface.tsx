@@ -7,20 +7,22 @@ import { cn } from "@/lib/utils";
 interface ShowcaseSurfaceProps {
   live?: boolean;
   quiet?: boolean;
+  // Fills the screen even signed in, for a page drawn outside the app frame.
+  fullScreen?: boolean;
   className?: string;
   children: ReactNode;
 }
 
 // Signed out it fills the screen; signed in it takes the frame's place as one opaque surface, so nothing moves behind a blur.
-export const ShowcaseSurface = ({ live = false, quiet = false, className, children }: ShowcaseSurfaceProps) => {
-  const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
+export const ShowcaseSurface = ({ live = false, quiet = false, fullScreen = false, className, children }: ShowcaseSurfaceProps) => {
+  const framed = useSessionStore((s) => s.isLoggedIn) && !fullScreen;
   return (
     <div
-      data-pane-layout={isLoggedIn ? "" : undefined}
+      data-pane-layout={framed ? "" : undefined}
       className={cn(
         "relative isolate overflow-hidden",
-        isLoggedIn
-          ? "h-full rounded-xl border border-transparent shadow-[inset_0_1px_0_0_var(--panel-highlight),0_0_0_1px_var(--panel-ring),var(--panel-shadow)]"
+        framed
+          ? "h-full rounded-xl border border-transparent border-t-(--panel-highlight) shadow-[0_0_0_1px_var(--panel-ring),var(--panel-shadow)]"
           : "h-dvh",
       )}
     >
