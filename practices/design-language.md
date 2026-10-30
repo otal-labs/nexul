@@ -821,8 +821,8 @@ corners. Due tickets lead as outlined
 boxes (4px, `foreground` at 4%, a hairline ring, the calendar-clock icon and
 the title, the key in the tooltip), giving lines to the meetings while they
 need them; a meeting is one 20px line, its zero-padded start in mono on a lead
-track so every title starts on one edge. Under 880px of grid the title takes the
-whole line, the time and the box's icon left to the tooltip and the box.
+track so every title starts on one edge. Under 880px of grid a meeting's time gives
+way to a 6px muted dot (the time in its tooltip) and the box drops its icon.
 The week is seven days, each a heading of its number and weekday over its
 entries on shared tracks: a 120px lead (the zero-padded range, a `warning` dot
 before one that starts inside an earlier meeting, `+1` after one that runs
