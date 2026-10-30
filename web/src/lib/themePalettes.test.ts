@@ -120,3 +120,12 @@ describe("destructive in every palette", () => {
     }
   });
 });
+
+describe("Brutalism's primary", () => {
+  // Black on its pure red passed 4.5:1 yet read as a maroon smudge on dark's buttons.
+  it("labels the red in white in dark as in light", () => {
+    const { light, dark } = getThemeDefinition(ThemeId.Brutalism).colors!;
+    expect(dark.primary).toBe(light.primary);
+    expect(dark["primary-foreground"]).toBe(light["primary-foreground"]);
+  });
+});

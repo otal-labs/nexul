@@ -53,3 +53,13 @@ describe("ShowcaseField", () => {
     expect(screen.queryByTestId("live-field")).not.toBeInTheDocument();
   });
 });
+
+describe("ShowcaseField still", () => {
+  // A quiet glow spans about three levels per channel, so without grain each step drew a ring on the light canvas.
+  it("overlays grain on the glows", async () => {
+    await renderField({ reduced: true, gpu: false, live: false });
+    const still = document.querySelector<HTMLElement>("[aria-hidden]")!;
+    expect(still.style.backgroundImage).toMatch(/^url\("data:image\/svg\+xml,.*feTurbulence/);
+    expect(still.style.backgroundBlendMode).toBe("overlay, normal, normal, normal");
+  });
+});

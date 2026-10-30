@@ -374,6 +374,7 @@ The decisions every surface inherits. Each surface section records its own.
 | Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
 | One flat low-chroma fill per person without a photo | One of 12 hues per login, at a chroma that reads as a colour at 20px, still tells people apart at a glance where one grey circle for everyone did not. Against the seeded multi-hue gradient (the loudest colour on a chat or board in every palette, and a blue-violet or green one competed with the brand beside it) |
 | Brutalism's hairlines at 20% ink, its fields solid (2026-10-28) | Against solid ink on every `border`: every card and every label chip on the board drew a full-black outline, so a board of twenty cards was forty black rectangles and the chips outweighed the titles; the palette keeps its zero radius, its red and its solid field edges, which is where hard ink earns its place |
+| Brutalism's one red, labelled in white, in both modes (2026-10-30) | Dark drew black on pure sRGB red: 5.25:1 on paper, but at label size the thin strokes blurred into maroon and the primary read lowest in the sweep. The light red with white holds 4.83:1 and reads clean on the black canvas. Rejected: a lighter, coral red under black (no longer the palette's red) |
 | Stroked icons draw at 1.75 (web and site) | Beside 13 to 14px Inter in dense chrome (the sidebar, menus, the ticket rail, toolbars) a 2px stroke carries more weight than the text it labels; 1.75 sits level with it. Rejected: the library's 2 |
 
 ## Web app
@@ -972,7 +973,9 @@ home and sign-in, opted into with `live`; the invitation, the wizards and the
 error page show the still, which every caller gets by default. Home, sign-in
 and invitation are at full strength; the wizards and the error page are
 `quiet`, at about half, so form text sits on near-plain canvas. The still,
-the light field's own three radial gradients, is the container background: it
+the light field's own three radial gradients under a fine mid-grey grain
+(overlay, so the tone stays put; a quiet glow spans about three levels per
+channel and banded into rings without it), is the container background: it
 shows while the shader compiles, without WebGPU, and as the whole
 reduced-motion variant (the shader is never mounted then); the live layer
 fades in over 700ms once ready, and pauses with the browser's animation
