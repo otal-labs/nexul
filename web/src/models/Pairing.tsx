@@ -239,7 +239,7 @@ export interface SetupProviderRow {
   driver: string;
   on: boolean;
   state: SetupRunRow["state"] | "unset";
-  // Absent when T3 Code no longer lists the provider: its last turn still shows, with nothing to pick or run.
+  // Absent when T3 Code no longer lists the provider: its last turn still shows and can be switched off, with nothing to pick or run.
   choice?: SetupModelChoice;
   run?: SetupRunRow;
 }

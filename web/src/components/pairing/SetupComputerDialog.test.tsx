@@ -271,6 +271,18 @@ describe("SetupComputerDialog", () => {
       await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", expect.objectContaining({ providers: ["claudeagent", "opencode"] })));
     });
 
+    it("switches off a provider T3 Code no longer lists, so its old confirmation stops counting", async () => {
+      setup = { ...emptySetup, turns: [turn("grok", "Grok", "confirmed", "Confirmed with 12 skills", "r0", "t0")] };
+      const user = userEvent.setup();
+      renderDialog(paired);
+
+      await user.click(screen.getByRole("button", { name: /^open$/i }));
+      await user.click(await screen.findByRole("switch", { name: "Use Grok" }));
+      await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/choices", expect.objectContaining({ skipped_providers: ["grok"] })));
+      expect(screen.getByRole("button", { name: /^grok/i })).toHaveTextContent("Off · plays leave it out");
+      expect(screen.getByText("0/3 confirmed")).toBeInTheDocument();
+    });
+
     it("opens with saved switches off, and needs one provider on to set anything up", async () => {
       setup = { ...emptySetup, skipped_providers: ["codex"] };
       const user = userEvent.setup();
