@@ -31,6 +31,6 @@ export const FolderToggle = ({ name, hint, open, onToggle, meta, metaClassName, 
     {!open && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
     <span className="truncate">{name}</span>
     {hint && <span className="truncate pl-1 font-normal">{hint}</span>}
-    <span className={cn("ml-auto shrink-0 font-mono text-[11px] font-normal tabular-nums", metaClassName)}>{meta}</span>
+    <span className={cn("ml-auto shrink-0 pl-1.5 font-mono text-[11px] font-normal tabular-nums", metaClassName)}>{meta}</span>
   </button>
 );

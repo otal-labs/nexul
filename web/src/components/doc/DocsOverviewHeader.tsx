@@ -19,7 +19,7 @@ export const DocsOverviewHeader = ({ docs, project }: DocsOverviewHeaderProps) =
   const lastEdit = docs.reduce((latest, doc) => (doc.updated_at > latest ? doc.updated_at : latest), "");
   const folderCount = folders?.length ?? 0;
   const ago = formatShortAgo(lastEdit);
-  // Only the figure is mono, so "14m ago" keeps a word space rather than a mono cell.
+  // Only a relative figure is mono, so "14m ago" keeps a word space and "8 Oct" reads as words.
   const relative = /\d[mhd]$/.test(ago);
   return (
     <div className="flex items-center justify-between gap-4 pb-5">
@@ -32,8 +32,13 @@ export const DocsOverviewHeader = ({ docs, project }: DocsOverviewHeaderProps) =
         {folders && lastEdit !== "" && " · "}
         {lastEdit !== "" && (
           <>
-            last edit <span className="font-mono tabular-nums">{ago}</span>
-            {relative && " ago"}
+            last edit{" "}
+            {relative && (
+              <>
+                <span className="font-mono tabular-nums">{ago}</span> ago
+              </>
+            )}
+            {!relative && ago}
           </>
         )}
       </p>

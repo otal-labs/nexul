@@ -27,13 +27,13 @@ describe("overviewLists", () => {
     expect(attention.map((a) => a.doc.id)).toEqual(["wait-new", "wait-old", "run-new", "run-4", "run-3"]);
   });
 
-  it("lists the twenty newest edits, whatever their state", () => {
+  it("lists the twenty newest edits other than the docs needing attention", () => {
     const docs = Array.from({ length: 25 }, (_, i) => doc(`d${i + 1}`, i + 1));
 
-    const { recent } = overviewLists(docs, docs.map(() => undefined));
+    const { recent } = overviewLists(docs, docs.map((d) => (d.id === "d25" ? "waiting" : undefined)));
 
     expect(recent).toHaveLength(20);
-    expect(recent[0]?.id).toBe("d25");
-    expect(recent.at(-1)?.id).toBe("d6");
+    expect(recent[0]?.id).toBe("d24");
+    expect(recent.at(-1)?.id).toBe("d5");
   });
 });

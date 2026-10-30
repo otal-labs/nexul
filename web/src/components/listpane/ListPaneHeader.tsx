@@ -5,6 +5,7 @@ import type { PermissionAction } from "@nexul/client-core/permissionActions";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface ListPaneHeaderProps {
   title: string;
@@ -19,6 +20,8 @@ interface ListPaneHeaderProps {
   /** Left out for a list scoped to the workspace, such as plays. */
   projectId?: string;
   onNew?: () => void;
+  /** Hides the New button where another control already creates (the docs overview from 1024px). */
+  newClassName?: string;
   /** The search band, left out on a list read top down (the inbox). */
   search?: string;
   onSearch?: (value: string) => void;
@@ -26,7 +29,7 @@ interface ListPaneHeaderProps {
   controls?: ReactNode;
 }
 
-export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, newPermission, newVerb, projectId, onNew, search, onSearch, controls }: ListPaneHeaderProps) => (
+export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, newPermission, newVerb, projectId, onNew, newClassName, search, onSearch, controls }: ListPaneHeaderProps) => (
   <div className="shrink-0">
     <div className="flex h-14 items-center justify-between border-b border-border pr-2 pl-3">
       <h1 className="flex items-baseline gap-2 text-sm font-semibold">
@@ -42,7 +45,7 @@ export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, 
           {...(projectId && { projectId })}
           variant="ghost"
           size="icon"
-          className="size-8"
+          className={cn("size-8", newClassName)}
           aria-label={newLabel}
           title={newLabel}
           icon={PlusIcon}
