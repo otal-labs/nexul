@@ -13,9 +13,11 @@ A computer someone adds for their own agent work runs a runner of its own too. I
 
 ## Reading the page
 
-The line under the title counts the fleet: runners online out of all of them, how many are busy, how many are offline, and how many jobs wait. While a job waits, **Waiting for a runner** lists the queue in order, each job with the machine it needs and why it waits: **no runner online** on that machine, **all runners busy**, or **next in line**.
+The line under the title counts the fleet: runners online out of all of them, how many are busy, how many are offline, how many runner codes are still unused, and how many jobs wait. While a job waits, **Waiting for a runner** lists the queue in order, each job with its kind, why it waits on the machine it needs (**no runner online**, **all runners busy**, or **next in line**), how long it has waited and who started it. A narrow window shows the first three, a wide one the first five; **Show more** lists the rest.
 
-Below it, every machine you are on is one band in a single list, with its runners under it, one line each: the name, the version, and what the runner is doing (the job it runs, **idle**, or **offline** with when it was last seen). A runner on an older release than the instance shows **↑** after its version. A code made for a machine and not used yet sits under that machine, and runners and codes that belong to no machine are listed last, under **No machine**.
+Below it, every machine you are on is one band in a single list, with its runners under it, one line each: the name, the version, and what the runner is doing (the job it runs, with how long it has run and who started it, **idle**, or **offline** with when it was last seen). In a narrow window the page leaves out who started a job. A name too long for its column keeps its end, and hovering it shows the whole name. A runner on an older release than the instance shows **↑** after its version. A code made for a machine and not used yet sits under that machine, and runners and codes that belong to no machine are listed last, under **No machine**.
+
+A machine's band stays at the top of the page while you scroll through its runners. Its arrow folds the machine to its band and shows how many rows it hides; a machine whose runners are all offline starts folded.
 
 ## Who sees a machine
 
@@ -27,7 +29,7 @@ After an upgrade from a release that listed every machine to everyone who could 
 
 ## People on this machine
 
-Each machine's band on the **Runners** page shows who its rules reach, for the instance Owner and anyone holding **Manage** on it: **Only you** on a machine nobody has a rule on, otherwise the roles and people they name. Click it, or open the band's **⋯** or right-click the band and pick **Permissions…**, to open the permissions panel. In a narrow window the band keeps only **+** and **⋯**, so use **Permissions…**.
+Each machine's band on the **Runners** page shows who its rules reach, for the instance Owner and anyone holding **Manage** on it: **Only you** on a machine nobody has a rule on, otherwise the roles and people they name. Click it, or open the band's **⋯** or right-click the band and pick **Permissions…**, to open the permissions panel.
 
 The panel sets four permissions: **See**, **Deploy to**, **Manage** and **Delete**, each Allow, Fallback or Deny, for a role of any workspace (named with its workspace, such as "Member in Northwind") or for a person. Allowing See is what puts someone on the machine: the list, the pickers and the live updates start showing it to them. **Check access** shows a person's answer for each permission and the rule or role it came from. You can't allow what you don't hold on the machine, nor lift a Deny on it, but you can always add a Deny. A change shows at once to the person it names and to everyone who manages the machine.
 
@@ -53,7 +55,7 @@ An [automations host](/docs/guide/automations/#where-automations-run) follows it
 
 ## Adding a runner
 
-1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **+** (**Add a runner to this machine**) on that machine's band instead. A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
+1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add runner** on that machine's band instead (a **+** in a narrow window, or **Add runner** under a machine with no runners yet). A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
 2. Type a **Runner name**: lower case letters, digits and dashes, up to 32 characters. The runner joins a machine named after the computer's hostname, so runners on one computer share a machine.
 3. Click **Create install command** and copy the command for the machine's system:
 

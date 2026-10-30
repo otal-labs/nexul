@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import { machineAnswer } from "@nexul/client-core/actionState";
 import { hasPermission } from "@nexul/client-core/permissions";
 
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
+import { GroupDot } from "@/components/runner/GroupDot";
 import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
 import { MachineDeleteDetails } from "@/components/runner/MachineDeleteDetails";
 import { MachineMenu } from "@/components/runner/MachineMenu";
@@ -14,30 +16,17 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { machineEntity } from "@/models/PermissionPanel";
 import type { Machine, Runner } from "@/models/Runner";
-import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/utils/TimeUtility";
+import { groupState } from "@/utils/RunnerFleetUtility";
 
 interface MachineBandProps {
   machine: Machine;
   runners: Runner[];
+  codes: number;
+  toggle?: ReactNode;
 }
 
-type Tone = "online" | "partial" | "offline";
-
-const toneOf = (online: number, total: number): Tone => {
-  if (total > 0 && online === total) return "online";
-  if (online > 0) return "partial";
-  return "offline";
-};
-
-const stateOf = (tone: Tone, online: number, total: number, machine: Machine) => {
-  if (tone === "partial") return `${online} of ${total} online`;
-  if (tone === "online") return "online";
-  return `offline · seen ${formatRelativeTime(machine.last_seen)}`;
-};
-
-// The group's head: the dot sits on the runner dots' x, the name keeps its full text, and only + and ⋯ trail below 44rem.
-export const MachineBand = ({ machine, runners }: MachineBandProps) => {
+// The group's head, pinned while its rows scroll: the dot sits on the runner dots' x and the name keeps its full text.
+export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProps) => {
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
   const deleteGate = { permission: "machines:delete", answer: machineAnswer(machine, "machines:delete") } as const;
@@ -60,30 +49,19 @@ export const MachineBand = ({ machine, runners }: MachineBandProps) => {
     onDelete: canDelete ? () => void onDelete() : undefined,
     deleteGate,
   };
-  const online = runners.filter((r) => r.connected).length;
-  const tone = toneOf(online, runners.length);
+  const state = groupState(runners, codes, machine.last_seen);
   const host = machine.reported_hostname && machine.reported_hostname !== machine.name ? machine.reported_hostname : "";
 
   return (
     <RowContextMenu menu={menu} manages={manages}>
-      <div className="flex items-start gap-3 border-b border-border bg-well-shade px-4 py-2.5">
-        <span className="flex h-5 shrink-0 items-center" title={tone}>
-          <span
-            aria-hidden
-            className={cn(
-              "size-2 rounded-full",
-              tone === "online" && "bg-success",
-              tone === "partial" && "bg-warning",
-              tone === "offline" && "ring-[1.5px] ring-muted-foreground/60 ring-inset",
-            )}
-          />
-        </span>
+      <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-border group-has-[>ul[hidden]]/fleet:border-b-0 bg-card bg-linear-to-b from-well-shade to-well-shade px-4 py-2.5">
+        <GroupDot tone={state.tone} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2.5">
             <h2 id={`machine-${machine.id}`} className="min-w-0 text-sm/5 font-semibold wrap-anywhere">
               {machine.name}
             </h2>
-            <span className="text-xs text-muted-foreground">{stateOf(tone, online, runners.length, machine)}</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{state.words}</span>
           </div>
           <div className="flex min-w-0 items-baseline gap-2 font-mono text-xs text-muted-foreground">
             {host && <span className="min-w-0 truncate">{host}</span>}
@@ -94,8 +72,9 @@ export const MachineBand = ({ machine, runners }: MachineBandProps) => {
           </div>
         </div>
         <div className="-my-1.5 flex shrink-0 items-center gap-0.5">
-          {manages && <MachinePeopleButton machine={machine} className="hidden @[44rem]:inline-flex" />}
-          <AddRunnerDialog machine={machine} triggerSize="sm" triggerVariant="ghost" iconOnly />
+          {toggle}
+          {manages && <MachinePeopleButton machine={machine} className="max-w-32 @[44rem]:max-w-56" />}
+          {runners.length + codes > 0 && <AddRunnerDialog machine={machine} triggerSize="sm" triggerVariant="ghost" compact />}
           <MachineMenu machine={machine} menu={menu} manages={manages} />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
@@ -38,7 +38,7 @@ const busyRunner = {
   name: "alpha",
   connected: true,
   last_seen: "2026-08-12T12:00:00Z",
-  running_job: { id: "d-9", kind: "deploy", service: "api" },
+  running_job: { id: "d-9", kind: "deploy", service: "api", triggered_by: "u-alice", started_at: new Date(Date.now() - 5 * 60_000).toISOString() },
   version: "v0.1.4",
   machine: "prod",
 };
@@ -64,7 +64,7 @@ const machine = {
 };
 
 const shapes: Record<string, unknown> = {
-  "/api/team": { people: [], workspaces: [], can_manage_accounts: true },
+  "/api/team": { people: [{ id: "u-alice", login: "alice", display_name: "Alice" }, { id: "u-bob", login: "bob", name: "Bob" }], workspaces: [], can_manage_accounts: true },
   "/api/auth/me": { user: { id: "u-1" }, instance_permissions: [], instance_owner: true },
 };
 
@@ -89,10 +89,10 @@ describe("RunnersPanel", () => {
     const group = within(await screen.findByRole("region", { name: "prod" }));
     expect(group.getByText("prod-host")).toBeInTheDocument();
     expect(group.getByText("1 of 2 online")).toBeInTheDocument();
-    expect(group.getByText("api")).toBeInTheDocument();
+    await waitFor(() => expect(group.getByText("api").parentElement).toHaveTextContent(/api\s*· 5m\s*· Alice/));
     expect(group.getByText(/^offline ·/)).toBeInTheDocument();
-    expect(group.getByTitle("alpha")).toBeInTheDocument();
-    expect(group.getByTitle("beta")).toBeInTheDocument();
+    expect(group.getByText("alpha")).toBeInTheDocument();
+    expect(group.getByText("beta")).toBeInTheDocument();
     expect(screen.getByText("Runner").parentElement).toHaveTextContent("RunnerVersionDoing");
     expect(screen.queryByText(/^d-9$/)).not.toBeInTheDocument();
   });
@@ -102,15 +102,15 @@ describe("RunnersPanel", () => {
       "/api/runners": [busyRunner, { ...offlineRunner, machine: "lab" }],
       "/api/machines": [machine, { ...machine, id: "m-2", name: "lab" }],
       "/api/runners/queue": [
-        { id: "d-1", kind: "deploy", service: "web", target: "prod" },
+        { id: "d-1", kind: "deploy", service: "web", target: "prod", triggered_by: "bob:mcp", requested_at: new Date(Date.now() - 3 * 60_000).toISOString() },
         { id: "d-2", kind: "build", target: "lab" },
       ],
     });
     renderPanel();
 
     const waiting = within(await screen.findByRole("region", { name: /Waiting for a runner/ }));
-    expect(waiting.getByLabelText("Queue position 1").parentElement).toHaveTextContent("all runners busy");
-    expect(waiting.getByLabelText("Queue position 2").parentElement).toHaveTextContent("no runner online");
+    await waitFor(() => expect(waiting.getByLabelText("Queue position 1").closest("li")).toHaveTextContent("all runners busy on prod · 3m · Bob"));
+    expect(waiting.getByLabelText("Queue position 2").closest("li")).toHaveTextContent("no runner online on lab");
     expect(waiting.getAllByText("build").length).toBeGreaterThan(0);
   });
 
@@ -127,8 +127,9 @@ describe("RunnersPanel", () => {
     renderPanel();
 
     const group = within(await screen.findByRole("region", { name: "prod" }));
-    expect(await group.findByTitle("build-box")).toBeInTheDocument();
-    expect(screen.queryByTitle("computer-ab12cd34")).not.toBeInTheDocument();
+    expect(await group.findByText("build-box")).toBeInTheDocument();
+    expect(group.getByText("online · 1 unused code")).toBeInTheDocument();
+    expect(screen.queryByText("computer-ab12cd34")).not.toBeInTheDocument();
 
     await user.click(group.getByRole("button", { name: "More actions for the code for build-box" }));
     await user.click(await screen.findByRole("menuitem", { name: "Revoke code" }));
@@ -144,17 +145,27 @@ describe("RunnersPanel", () => {
     renderPanel();
 
     const group = within(await screen.findByRole("region", { name: "No machine" }));
-    expect(group.getByTitle("alpha")).toBeInTheDocument();
-    expect(await group.findByTitle("laptop")).toBeInTheDocument();
+    expect(group.getByText("alpha")).toBeInTheDocument();
+    expect(await group.findByText("laptop")).toBeInTheDocument();
   });
 
-  it("offers Add runner on a machine with no runners", async () => {
+  it("offers Add runner once on a machine with no runners, in the empty row", async () => {
     serve({ "/api/runners": [], "/api/machines": [machine] });
     renderPanel();
 
     const group = within(await screen.findByRole("region", { name: "prod" }));
-    expect(group.getByText("No runners yet")).toBeInTheDocument();
-    expect(group.getAllByRole("button", { name: /add a runner to this machine/i })).toHaveLength(2);
+    expect(group.getByText("No runners yet").closest("li")).toContainElement(group.getByRole("button", { name: /add runner to this machine/i }));
+  });
+
+  it("folds a machine whose runners are all offline, and opens it from the band", async () => {
+    const user = userEvent.setup();
+    serve({ "/api/runners": [offlineRunner], "/api/machines": [machine] });
+    renderPanel();
+
+    const group = within(await screen.findByRole("region", { name: "prod" }));
+    expect(group.getByText("beta")).not.toBeVisible();
+    await user.click(group.getByRole("button", { name: "1 row on prod" }));
+    expect(group.getByText("beta")).toBeVisible();
   });
 
   it("shows the empty state when no machine or runner is visible", async () => {

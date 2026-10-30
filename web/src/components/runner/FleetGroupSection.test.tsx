@@ -80,7 +80,7 @@ describe("FleetGroupSection on a machine the viewer only sees", () => {
     renderGroup(["machines:see"], [runner("builder", true)]);
     await screen.findByRole("heading", { name: "edge-box" });
 
-    expect(screen.queryByRole("button", { name: "Add a runner to this machine" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add runner to this machine" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit stack root /data/nexul" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More actions for edge-box" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More actions for builder" })).not.toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("FleetGroupSection on a machine the viewer only sees", () => {
     const user = userEvent.setup();
     renderGroup(["machines:see"], [runner("builder", true)]);
 
-    for (const name of ["Add a runner to this machine", "Edit stack root /data/nexul"]) {
+    for (const name of ["Add runner to this machine", "Edit stack root /data/nexul"]) {
       expect(await screen.findByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
     }
 
