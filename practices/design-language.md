@@ -1549,8 +1549,9 @@ look, and the job picks the control, never the page:
   never in the path: Connected / Not connected, All / Errors, Doc |
   Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
   well with a hairline ring and a 2px inset, holding a raised thumb (`card`,
-  the hairline ring, `shadow-card`) that slides to the chosen side; the
-  items are muted text, the chosen one `foreground`. It is radios to a
+  the hairline ring, `shadow-card`; the `input` ring in dark, where some
+  palettes paint `card` and the well alike) that slides to the chosen side;
+  the items are muted text, the chosen one `foreground`. It is radios to a
   screen reader. The permission level strip is not one: its rungs fill up to
   the level (Permission rows).
 
