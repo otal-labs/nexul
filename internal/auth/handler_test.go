@@ -1142,3 +1142,42 @@ func TestHandler_SetTimezone(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Europe/London", got.Timezone)
 }
+
+// TestHandler_InvitationOAuth_RestartsFromAnAcceptance: "Not you?" after a round trip holds only the acceptance, which
+// starts another provider's handoff for the same invitation; anything else is refused before a handoff is written.
+func TestHandler_InvitationOAuth_RestartsFromAnAcceptance(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+		wantStart  bool
+	}{
+		{"the acceptance a round trip left", `{"provider":"github","acceptance_token":"accept-1"}`, http.StatusOK, true},
+		{"an acceptance this instance never gave", `{"provider":"github","acceptance_token":"someone-else"}`, http.StatusNotFound, false},
+		{"both tokens at once", `{"provider":"github","token":"raw-invitation","acceptance_token":"accept-1"}`, http.StatusNotFound, false},
+		{"neither token", `{"provider":"github"}`, http.StatusNotFound, false},
+		{"a provider that is not a sign-in", `{"provider":"gitlab","acceptance_token":"accept-1"}`, http.StatusNotFound, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _, _, settings := newTestHarness(&fakeGitHub{})
+			settings.st.GitHubOAuthClientID = "client"
+			settings.st.GitHubOAuthClientSecret = "secret"
+			handoffs := &fakeOAuthHandoffStore{}
+			s.SetInvitationGate(&fakeInvitationGate{token: "raw-invitation", acceptance: "accept-1", invitation: &InvitationAcceptance{InvitationID: "inv-1"}})
+			s.SetOAuthHandoffStore(handoffs)
+
+			rec := httptest.NewRecorder()
+			NewHandler(s).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/invitations/oauth", strings.NewReader(tt.body)))
+
+			require.Equal(t, tt.wantStatus, rec.Code, rec.Body.String())
+			if !tt.wantStart {
+				assert.Nil(t, handoffs.handoff)
+				return
+			}
+			require.NotNil(t, handoffs.handoff)
+			assert.Equal(t, "inv-1", handoffs.handoff.InvitationID)
+			assert.NotEmpty(t, rec.Result().Cookies(), "the new handoff's state cookie is set like a first start's")
+		})
+	}
+}

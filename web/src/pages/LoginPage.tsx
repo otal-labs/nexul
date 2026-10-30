@@ -38,6 +38,7 @@ export const LoginPage = () => {
   const token = searchParams.get("token");
   const code = searchParams.get("code");
   const failure = searchParams.get("error");
+  const declined = searchParams.has("declined");
 
   // Must run exactly once; the ref guards against StrictMode double-invoking effects in dev.
   useEffect(() => {
@@ -64,6 +65,7 @@ export const LoginPage = () => {
             title="Sign in to Nexul"
             subtitle={clientsEnabled ? "Use the account you were invited with." : "Sign in with your GitHub account."}
           />
+          {declined && <InlineNotice tone="info" title="Invitation declined" className="mt-6">The link stays unused.</InlineNotice>}
           {failure != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{signInErrorMessage(failure)}</InlineNotice>}
           {exchange.error != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{errorMessage(exchange.error)}</InlineNotice>}
           <div className="mt-6 grid gap-2">

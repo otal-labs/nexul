@@ -8,13 +8,14 @@ interface InvitationAcceptancePanelProps {
   pending: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  canRestart: boolean;
   onRestart: () => void;
 }
 
 // Decline leaves the link unused, the same as walking away.
-export const InvitationAcceptancePanel = ({ person, pending, onAccept, onDecline, onRestart }: InvitationAcceptancePanelProps) => (
+export const InvitationAcceptancePanel = ({ person, pending, onAccept, onDecline, canRestart, onRestart }: InvitationAcceptancePanelProps) => (
   <div className="mt-5 space-y-3">
-    {person && <InvitationIdentityRow person={person} action={<InvitationNotYou onRestart={onRestart} />} />}
+    {person && <InvitationIdentityRow person={person} action={<InvitationNotYou canRestart={canRestart} onRestart={onRestart} />} />}
     <div className="grid gap-1.5">
       <Button type="button" size="lg" className="w-full" loading={pending} onClick={onAccept}>Accept invitation</Button>
       <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={onDecline}>Decline</Button>

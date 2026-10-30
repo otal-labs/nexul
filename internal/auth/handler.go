@@ -285,9 +285,11 @@ func (h *Handler) startOAuth(provider Provider) http.HandlerFunc {
 	}
 }
 
+// Token is the invitation link's; AcceptanceToken, sent instead, starts another provider from a finished round trip.
 type invitationOAuthRequest struct {
-	Provider Provider `json:"provider"`
-	Token    string   `json:"token"`
+	Provider        Provider `json:"provider"`
+	Token           string   `json:"token"`
+	AcceptanceToken string   `json:"acceptance_token"`
 }
 
 func (h *Handler) startInvitationOAuth(w http.ResponseWriter, r *http.Request) {
@@ -298,13 +300,24 @@ func (h *Handler) startInvitationOAuth(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	start, err := h.svc.StartInvitationOAuth(ctx, req.Provider, req.Token)
+	if req.Token != "" && req.AcceptanceToken != "" {
+		httpx.WriteError(w, invalidInvitationError())
+		return
+	}
+	start, err := h.invitationOAuthStart(ctx, req)
 	if err != nil {
 		httpx.WriteError(w, classifyInvitationError(err))
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: start.CookieName, Value: start.State, Path: "/", MaxAge: int(stateMaxAge.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": start.URL})
+}
+
+func (h *Handler) invitationOAuthStart(ctx context.Context, req invitationOAuthRequest) (*InvitationOAuthStart, error) {
+	if req.AcceptanceToken != "" {
+		return h.svc.RestartInvitationOAuth(ctx, req.Provider, req.AcceptanceToken)
+	}
+	return h.svc.StartInvitationOAuth(ctx, req.Provider, req.Token)
 }
 
 type invitationRedeemRequest struct {

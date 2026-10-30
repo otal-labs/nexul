@@ -29,6 +29,29 @@ func (s *Service) StartInvitationOAuth(ctx context.Context, provider Provider, r
 	if err != nil {
 		return nil, classifyInvitationError(err)
 	}
+	return s.startInvitationHandoff(ctx, provider, invitation.InvitationID)
+}
+
+// RestartInvitationOAuth starts another provider's sign-in from the acceptance a round trip left, for "Not you?": the
+// invite page no longer holds the link itself, and nothing is written until Accept.
+func (s *Service) RestartInvitationOAuth(ctx context.Context, provider Provider, acceptance string) (*InvitationOAuthStart, error) {
+	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
+		return nil, fmt.Errorf("%w: invitation OAuth is unavailable", apperrs.ErrInvalid)
+	}
+	if strings.TrimSpace(acceptance) == "" {
+		return nil, invalidInvitationError()
+	}
+	if _, ok := signInProviders[provider]; !ok {
+		return nil, invalidInvitationError()
+	}
+	invitation, err := s.cfg.Invitations.GetInvitationByAcceptance(ctx, hashCredential(acceptance), s.cfg.Now())
+	if err != nil {
+		return nil, classifyInvitationError(err)
+	}
+	return s.startInvitationHandoff(ctx, provider, invitation.InvitationID)
+}
+
+func (s *Service) startInvitationHandoff(ctx context.Context, provider Provider, invitationID string) (*InvitationOAuthStart, error) {
 	state, err := s.NewState()
 	if err != nil {
 		return nil, err
@@ -38,7 +61,7 @@ func (s *Service) StartInvitationOAuth(ctx context.Context, provider Provider, r
 	if err != nil {
 		return nil, err
 	}
-	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: invitation.InvitationID, OAuthStateHash: stateHash, Provider: provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
+	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: invitationID, OAuthStateHash: stateHash, Provider: provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
 	if err := s.cfg.OAuthHandoffs.StartOAuthHandoff(ctx, handoff); err != nil {
 		return nil, fmt.Errorf("start invitation OAuth: %w", err)
 	}

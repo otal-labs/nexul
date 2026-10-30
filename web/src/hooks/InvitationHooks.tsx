@@ -62,8 +62,9 @@ export const useFetchInvitationPreview = (token: string) =>
 
 export const useStartInvitationOAuth = () =>
   useMutation({
-    mutationFn: requires("none", async ({ provider, token }: { provider: InvitationProvider; token: string }) =>
-      (await api.post<{ url: string }>("/api/invitations/oauth", { provider, token })).data),
+    // An acceptance instead of the link starts another provider after a round trip ("Not you?").
+    mutationFn: requires("none", async ({ provider, token, acceptanceToken }: { provider: InvitationProvider; token?: string; acceptanceToken?: string }) =>
+      (await api.post<{ url: string }>("/api/invitations/oauth", acceptanceToken ? { provider, acceptance_token: acceptanceToken } : { provider, token })).data),
     onError: (error) => toast.error(errorMessage(error)),
   });
 

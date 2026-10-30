@@ -18,22 +18,19 @@ export const InvitationGoneScreen = () => (
 
 interface InvitationExistingAccountScreenProps {
   person?: RefusedPerson | undefined;
-  // Set while this browser holds a session: signing out returns the card to the providers with the same link.
-  onSignOut?: (() => void) | undefined;
+  // Signs out when this browser holds a session, else goes back to the providers; both keep the same link.
+  canRestart: boolean;
   onRestart: () => void;
 }
 
 // Turned away before anything is written, so the link stays unused for the person it was made for.
-export const InvitationExistingAccountScreen = ({ person, onSignOut, onRestart }: InvitationExistingAccountScreenProps) => (
+export const InvitationExistingAccountScreen = ({ person, canRestart, onRestart }: InvitationExistingAccountScreenProps) => (
   <>
     <SignedOutHeader title="You already have an account here" subtitle="This invitation is for someone new." />
-    {person && <InvitationIdentityRow person={person} className="mt-6" action={!onSignOut && <InvitationNotYou onRestart={onRestart} />} />}
-    <div className="mt-4 grid gap-1.5">
-      <Button asChild size="lg" className="w-full">
-        <Link to="/" replace>Go to {window.location.host}</Link>
-      </Button>
-      {onSignOut && <Button type="button" size="lg" variant="ghost" className="w-full text-muted-foreground" onClick={onSignOut}>Sign out and use another account</Button>}
-    </div>
+    {person && <InvitationIdentityRow person={person} className="mt-6" action={<InvitationNotYou canRestart={canRestart} onRestart={onRestart} />} />}
+    <Button asChild size="lg" className="mt-4 w-full">
+      <Link to="/" replace>Go to {window.location.host}</Link>
+    </Button>
     <p className="mt-4 text-xs text-pretty text-muted-foreground">The link stays unused for the person it was meant for.</p>
   </>
 );

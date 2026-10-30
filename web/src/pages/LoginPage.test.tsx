@@ -119,6 +119,12 @@ describe("LoginPage", () => {
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
+  it("says an invitation was declined, as a note rather than an error", async () => {
+    renderPage(["/login?declined=1"]);
+    expect(await screen.findByRole("status")).toHaveTextContent("Invitation declined");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows an error when the code exchange fails", async () => {
     mocks.post.mockRejectedValue({ response: { data: { message: "OAuth failed", code: "oauth" } } });
     Object.defineProperty(window, "location", {

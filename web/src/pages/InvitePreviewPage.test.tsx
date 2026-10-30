@@ -41,7 +41,7 @@ describe("InvitePreviewPage", () => {
     expect(screen.getByRole("heading", { name: "Engineering" })).toBeInTheDocument();
     expect(screen.getAllByRole("listitem").map((role) => role.textContent)).toEqual(["EditorEdits tickets and docs.", "Frontend"]);
     expect(screen.getByText("Sign in to accept")).toBeInTheDocument();
-    expect(screen.queryByText(/projects?:|No projects yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/projects?:|no projects yet/i)).not.toBeInTheDocument();
     expect(screen.queryByText("You may be added to more projects later.")).not.toBeInTheDocument();
   });
 
@@ -98,9 +98,9 @@ describe("InvitePreviewPage", () => {
     renderPage();
     expect(await screen.findByText("Website relaunch, Mobile app")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Join 2 workspaces" })).toBeInTheDocument();
-    expect(screen.getByText("2 projects")).toBeInTheDocument();
+    expect(screen.getByText("Opens 2 projects")).toBeInTheDocument();
     expect(screen.getByText("2 projects:")).toBeInTheDocument();
-    expect(screen.getByText("No projects yet")).toBeInTheDocument();
+    expect(screen.getByText("Opens no projects yet")).toBeInTheDocument();
     expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
     expect(screen.getByText(/@lena · GitHub/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
@@ -165,36 +165,48 @@ describe("InvitePreviewPage", () => {
   describe("the way out of the wrong account", () => {
     const acceptance = { data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }] }], expires_at: "later", authenticated_user: { id: "", provider: "github", login: "lena", name: "Lena Fischer" }, acceptance_token: "acceptance-token" } };
 
-    it("goes back to the providers with the link this tab kept, after a provider round trip", async () => {
+    it("goes back to the providers after a round trip, starting the next sign-in from the acceptance in any tab", async () => {
       window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
+      mocks.post.mockResolvedValueOnce(acceptance).mockResolvedValueOnce({ data: { url: "https://oauth.example/authorize" } });
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("button", { name: "Not you?" }));
+      expect(await screen.findByText("Sign in to accept")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Accept invitation" })).not.toBeInTheDocument();
+      Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/invite", search: "", hash: "", assign: vi.fn() } });
+      await user.click(screen.getByRole("button", { name: /continue with github/i }));
+      expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/oauth", { provider: "github", acceptance_token: "acceptance-token" });
+    });
+
+    const refusedByProvider = "/invite#login=lena&name=Lena+Fischer&provider=github&refused=existing_account";
+
+    it("goes back to the providers with the link this tab kept, when a provider's refusal left no token", async () => {
+      window.history.replaceState(null, "", refusedByProvider);
       useInvitationTokenStore.setState({ token: "kept-token" });
-      mocks.post.mockResolvedValueOnce(acceptance).mockResolvedValueOnce({ data: { grants: acceptance.data.grants, expires_at: "later" } });
+      mocks.post.mockResolvedValueOnce({ data: { grants: acceptance.data.grants, expires_at: "later" } });
       const user = userEvent.setup();
       renderPage();
       await user.click(await screen.findByRole("button", { name: "Not you?" }));
       expect(await screen.findByText("Sign in to accept")).toBeInTheDocument();
       expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "kept-token" });
-      expect(screen.queryByRole("button", { name: "Accept invitation" })).not.toBeInTheDocument();
     });
 
-    it("says to open the link again when this tab kept no link", async () => {
-      window.history.replaceState(null, "", "/invite#acceptance-token=acceptance-token");
-      mocks.post.mockResolvedValueOnce(acceptance);
+    it("says to open the link again when a refusal left no token and this tab kept no link", async () => {
+      window.history.replaceState(null, "", refusedByProvider);
       const user = userEvent.setup();
       renderPage();
       await user.click(await screen.findByRole("button", { name: "Not you?" }));
       expect(screen.getByText("Open the invitation link again and pick another account.")).toBeInTheDocument();
-      expect(mocks.post).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("button", { name: "Not you?" })).not.toBeInTheDocument();
+      expect(mocks.post).not.toHaveBeenCalled();
     });
 
-    it("signs a signed-in person out, instead of a Not you that has no session to leave", async () => {
+    it("signs a signed-in person out from the same Not you, and shows the providers for the same link", async () => {
       useSessionStore.setState({ token: "session", isLoggedIn: true });
       mocks.post.mockRejectedValueOnce(Object.assign(new Error("conflict"), { response: { status: 409, data: { code: "existing_account", message: "conflict", details: { provider: "github", login: "lena", name: "Lena Fischer", avatar_url: "" } } } })).mockResolvedValueOnce({ data: { grants: acceptance.data.grants, expires_at: "later" } });
       const user = userEvent.setup();
       renderPage();
-      const signOut = await screen.findByRole("button", { name: "Sign out and use another account" });
-      expect(screen.queryByRole("button", { name: "Not you?" })).not.toBeInTheDocument();
-      await user.click(signOut);
+      await user.click(await screen.findByRole("button", { name: "Not you?" }));
       expect(mocks.delete).toHaveBeenCalledWith("/api/auth/sessions/current");
       expect(useSessionStore.getState().isLoggedIn).toBe(false);
       expect(await screen.findByText("Sign in to accept")).toBeInTheDocument();
