@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Notification } from "@/models/Notification";
-import { groupInbox, inboxRows, type InboxFolder, type InboxRow } from "@/utils/InboxUtility";
+import { groupInbox, inboxRows, unreadEntries, type InboxFolder, type InboxRow } from "@/utils/InboxUtility";
 
 let seq = 0;
 const note = (over: Partial<Notification>): Notification => ({
@@ -207,5 +207,21 @@ describe("inboxRows", () => {
       note({ id: "t1", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", created_at: at(11) }),
     ]);
     expect(inboxRows(entries).map((r) => r.key)).toEqual(["doc:d-ep01", "ticket:t-1"]);
+  });
+});
+
+describe("unreadEntries", () => {
+  it("keeps unread rows and the open one, and a folder only with those rows", () => {
+    const entries = groupInbox([
+      note({ id: "a", subject_id: "doc-a", subject_title: "Read", created_at: at(14) }),
+      note({ id: "b", subject_id: "doc-b", subject_title: "Unread", read: false, created_at: at(13) }),
+      note({ id: "c", subject_id: "doc-c", subject_title: "Open", created_at: at(12) }),
+      note({ id: "d", subject_id: "doc-d", subject_title: "GetSource EP01", read: false, created_at: at(11), ...inGetSource }),
+      note({ id: "e", subject_id: "doc-e", subject_title: "GetSource EP02", created_at: at(10), ...inGetSource }),
+      note({ id: "f", subject_id: "doc-f", subject_title: "Old", created_at: at(9), folder_id: "f-old", folder_name: "Old", folder_is_default: false }),
+    ]);
+    const kept = unreadEntries(entries, "doc:doc-c");
+    expect(kept.map((e) => e.key)).toEqual(["doc:doc-b", "doc:doc-c", "folder:f-gs"]);
+    expect((kept[2] as InboxFolder).rows.map((r) => r.title)).toEqual(["EP01"]);
   });
 });

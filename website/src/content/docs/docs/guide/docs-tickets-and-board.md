@@ -97,7 +97,7 @@ A ticket is finished once it has at least one merged pull request and none still
 
 ## Inbox
 
-**Inbox** lists what happened to the tickets, docs, memories and stacks you follow, newest first. Opening a row marks it read. To put a read row back as unread, so it stays bold and counts in your badge until you come back to it, right-click it and pick **Mark unread**. A doc's notifications share one row, and so do a ticket's, its play runs included; **Mark unread** puts the row's newest one back. Agents use `notification_update` with `unread: true`.
+**Inbox** lists what happened to the tickets, docs, memories and stacks you follow, newest first, across the whole page until you open a row. Opening a row marks it read. **Unread** at the top right shows only what you haven't read yet, plus the row you have open; **All** shows everything again, and the browser remembers your pick. To put a read row back as unread, so it stays bold and counts in your badge until you come back to it, right-click it and pick **Mark unread**. A doc's notifications share one row, and so do a ticket's, its play runs included; **Mark unread** puts the row's newest one back. Agents use `notification_update` with `unread: true`.
 
 A stack you watch adds a row when one of its services crashes and another when it comes back; opening the row takes you to the stack. Every reader of a stack watches it unless they turn off **Watching** on its page, see [Watching a stack](/docs/guide/stacks-and-deploys/#watching-a-stack). A second crash while the first row is still unread lifts that row with the newer service's name instead of adding another.
 

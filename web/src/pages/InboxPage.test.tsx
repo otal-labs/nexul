@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { InboxPage } from "@/pages/InboxPage";
+import { useInboxFilterStore } from "@/stores/inboxFilterStore";
 import { useInboxFolderStore } from "@/stores/inboxFolderStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -106,6 +107,7 @@ beforeEach(() => {
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
   useInboxFolderStore.setState({ collapsed: [] });
+  useInboxFilterStore.setState({ filter: "all" });
 });
 
 describe("InboxPage", () => {
@@ -123,13 +125,12 @@ describe("InboxPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
     await user.click(await within(screen.getByRole("navigation", { name: "Notifications" })).findByRole("button", { name: /Write migrations/ }));
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Inbox" }));
-    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument());
+    expect(screen.getByRole("navigation", { name: "Notifications" })).toBeInTheDocument();
   });
 
   it("opens the move notice on what to do, with the way to Computers", async () => {
@@ -173,7 +174,9 @@ describe("InboxPage", () => {
   it("falls back to the list when the path names a row that is gone", async () => {
     mockApi();
     renderPage("/acme/inbox/n:gone");
-    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    expect(await within(list).findByRole("button", { name: /Write migrations/ })).toHaveAttribute("aria-current", "false");
+    expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument();
   });
 
   it("shows when it happened on every row, tickets as well as docs", async () => {
@@ -184,12 +187,37 @@ describe("InboxPage", () => {
     expect(within(list).getByRole("button", { name: /Spec.*(Aug 12|12 Aug)/ })).toBeInTheDocument();
   });
 
-  it("counts what is unread in the list's header and the open pane", async () => {
+  it("counts what is unread in the list's header", async () => {
     mockApi();
     renderPage();
     const heading = await screen.findByRole("heading", { name: /Inbox/ });
     expect(await within(heading).findByText("1")).toBeInTheDocument();
-    expect(screen.getByText("1 unread · 2 notifications")).toBeInTheDocument();
+  });
+
+  it("lists only what is unread under Unread", async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderPage();
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    await within(list).findByRole("button", { name: /Spec/ });
+    await user.click(screen.getByRole("radio", { name: "Unread" }));
+    expect(within(list).queryByRole("button", { name: /Spec/ })).not.toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /Write migrations/ })).toBeInTheDocument();
+  });
+
+  it("keeps the open row under Unread once it is read", async () => {
+    mockApi();
+    useInboxFilterStore.setState({ filter: "unread" });
+    renderPage("/acme/inbox/doc:doc-1");
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    expect(await within(list).findByRole("button", { name: /Spec/ })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("says nothing is unread under Unread when everything is read", async () => {
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [docNotification] }) : mockApiResponse(url)));
+    useInboxFilterStore.setState({ filter: "unread" });
+    renderPage();
+    expect(await screen.findByText("Nothing unread")).toBeInTheDocument();
   });
 
   it("opens an already read notification without marking it read again", async () => {

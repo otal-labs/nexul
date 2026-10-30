@@ -182,9 +182,12 @@ export const inboxRows = (entries: InboxEntry[]): InboxRow[] =>
 export const inboxUnreadCount = (entries: InboxEntry[]): number =>
   inboxRows(entries).reduce((sum, row) => sum + row.unreadIds.length, 0);
 
-/** "15 unread · 47 notifications", what the open pane says before a row is picked. */
-export const inboxSummary = (entries: InboxEntry[]): string => {
-  const unread = inboxUnreadCount(entries);
-  const total = inboxRows(entries).reduce((sum, row) => sum + row.count, 0);
-  return `${unread > 0 ? `${unread} unread` : "Nothing unread"} · ${plural(total, "notification")}`;
+/** The rows still unread and the open one, which stays listed after opening it marks it read; a folder keeps those rows or leaves. */
+export const unreadEntries = (entries: InboxEntry[], openKey: string | undefined): InboxEntry[] => {
+  const keep = (row: InboxRow) => row.unreadIds.length > 0 || row.key === openKey;
+  return entries.flatMap((e): InboxEntry[] => {
+    if (e.type !== "folder") return keep(e) ? [e] : [];
+    const rows = e.rows.filter(keep);
+    return rows.length > 0 ? [{ ...e, rows }] : [];
+  });
 };
