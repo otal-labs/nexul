@@ -108,7 +108,7 @@ function SheetContent({
         data-side={side}
         {...drag}
         className={cn(
-          "sheet-surface glass-popover fixed z-50 flex flex-col gap-4 outline-none",
+          "sheet-surface glass-menu fixed z-50 flex flex-col gap-4 outline-none",
           side === "right" && "inset-y-2 right-2 w-3/4 rounded-xl sm:max-w-sm",
           side === "left" && "inset-y-2 left-2 w-3/4 rounded-xl sm:max-w-sm",
           side === "top" && "inset-x-2 top-2 h-auto rounded-xl",
