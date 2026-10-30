@@ -9,6 +9,10 @@ An automation is code that runs when an event happens: a ticket is created, a pu
 
 Each automation belongs to one workspace. It hears that workspace's events, plus instance-wide ones such as runners and DNS, and you switch and configure it on that workspace's **Automations** page. It never hears a direct message or a private channel.
 
+## Which ones need you
+
+The top of the **Automations** page counts the automations that are on, failing and needing attention. An automation is **failing** when it is on and its last run failed or crashed; its row shows that run's error in place of its description. It **needs attention** when it is on and something waits on a person: a required setting is empty, its host is offline, its token was revoked, or a pushed version waits to be merged. The row names the most urgent of these. **All**, **Failing**, **Needs attention** and **Off** above the list narrow it to one kind, and the list keeps the most urgent first: failing, then needs attention, then on, then off. Each row also shows when the automation last ran and how many of its runs in the last seven days failed; hover its mark for the last run's error in full.
+
 ## The defaults
 
 Every workspace comes with its own copy of three. The first two are switched on:

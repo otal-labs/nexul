@@ -1,3 +1,5 @@
+import { Workflow } from "lucide-react";
+
 import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
 import { AutomationsFeed } from "@/components/automation/AutomationsFeed";
 import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
@@ -5,6 +7,7 @@ import { AutomationHostsSection } from "@/components/automationHost/AutomationHo
 import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { useFetchAutomations } from "@/hooks/AutomationHooks";
@@ -33,7 +36,8 @@ export const AutomationsPage = () => {
         <PageTabsContent value="automations">
           {isPending && <LoadingDisplay />}
           {error && <ErrorDisplay error={error} />}
-          {data && <AutomationsFeed automations={data} />}
+          {data && data.length === 0 && <NoDataDisplay icon={Workflow} message="No automations yet" />}
+          {data && data.length > 0 && <AutomationsFeed automations={data} />}
         </PageTabsContent>
         <PageTabsContent value="hosts">
           <AutomationHostsSection />

@@ -5,8 +5,9 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationRow } from "@/components/automation/AutomationRow";
-import { AutomationKind } from "@/enums/Automation";
+import { AutomationKind, AutomationRunOutcome } from "@/enums/Automation";
 import type { Automation } from "@/models/Automation";
+import { automationListItems } from "@/utils/AutomationListUtility";
 
 const mocks = vi.hoisted(() => ({ patch: vi.fn() }));
 
@@ -40,7 +41,7 @@ const renderRow = (a: Automation) => {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <AutomationRow automation={a} />
+        <AutomationRow item={automationListItems([a], new Set())[0]!} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -51,19 +52,26 @@ describe("AutomationRow", () => {
     mocks.patch.mockReset();
   });
 
-  it("shows name, description, kind badge, and the needs-configuration badge when required config is missing", () => {
-    renderRow(automation());
+  it("shows what a healthy automation does under its name, with no chip", () => {
+    renderRow(automation({ config_values: { targetStatus: "status-1" } }));
 
     expect(screen.getByText("Ticket finished")).toBeInTheDocument();
     expect(screen.getByText(/Moves a ticket to done/)).toBeInTheDocument();
-    expect(screen.getByText("Default")).toBeInTheDocument();
+    expect(screen.queryByText("Needs configuration")).not.toBeInTheDocument();
+  });
+
+  it("shows the needs-configuration chip while a required setting is empty", () => {
+    renderRow(automation());
+
     expect(screen.getByText("Needs configuration")).toBeInTheDocument();
   });
 
-  it("does not show needs-configuration once required config is filled in", () => {
-    renderRow(automation({ config_values: { targetStatus: "status-1" } }));
+  it("puts the last error in place of the description while its last run failed", () => {
+    renderRow(automation({ last_run: { outcome: AutomationRunOutcome.Crash, started_at: "2026-08-01T00:00:00Z", error: "handler exceeded the 30 second limit" } }));
 
-    expect(screen.queryByText("Needs configuration")).not.toBeInTheDocument();
+    expect(screen.getByText(/Crashed/)).toBeInTheDocument();
+    expect(screen.getByText(/handler exceeded the 30 second limit/)).toBeInTheDocument();
+    expect(screen.queryByText(/Moves a ticket to done/)).not.toBeInTheDocument();
   });
 
   it("toggles enabled via PATCH when the switch is flipped", async () => {

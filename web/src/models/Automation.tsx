@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationKind } from "@/enums/Automation";
 
 // Name/description/subscriptions/config_schema are code-declared and overwritten by the SDK on every dial-in.
@@ -20,7 +21,61 @@ export interface Automation {
   host_id: string | null;
   created_at: string;
   updated_at: string;
+  // Read with the list and the record; absent on what a write returns.
+  last_run?: AutomationLastRun | null;
+  runs_7d?: AutomationRunCounts;
+  pending_version?: number | null;
 }
+
+export interface AutomationLastRun {
+  outcome: AutomationRunOutcome;
+  started_at: string;
+  error?: string;
+}
+
+// Failed counts failures and crashes.
+export interface AutomationRunCounts {
+  total: number;
+  failed: number;
+}
+
+export const AutomationState = {
+  Failing: "failing",
+  Attention: "attention",
+  On: "on",
+  Off: "off",
+} as const;
+
+export type AutomationState = (typeof AutomationState)[keyof typeof AutomationState];
+
+export const AutomationAttention = {
+  HostOffline: "host_offline",
+  NeedsConfiguration: "needs_configuration",
+  TokenRevoked: "token_revoked",
+  PendingVersion: "pending_version",
+} as const;
+
+export type AutomationAttention = (typeof AutomationAttention)[keyof typeof AutomationAttention];
+
+// The most urgent thing waiting on someone, or null; the instance host (no host_id) is never offline.
+export const automationAttention = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationAttention | null => {
+  if (automation.host_id && offlineHostIds.has(automation.host_id)) return AutomationAttention.HostOffline;
+  if (automationNeedsConfiguration(automation)) return AutomationAttention.NeedsConfiguration;
+  if (automation.token_revoked_at) return AutomationAttention.TokenRevoked;
+  if (automation.pending_version != null) return AutomationAttention.PendingVersion;
+  return null;
+};
+
+// One rule for the summary, the filter, the sort and the status mark: off wins, then a failed last run, then anything waiting on someone.
+export const automationState = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationState => {
+  if (!automation.enabled) return AutomationState.Off;
+  if (automationLastRunFailed(automation)) return AutomationState.Failing;
+  if (automationAttention(automation, offlineHostIds)) return AutomationState.Attention;
+  return AutomationState.On;
+};
+
+export const automationLastRunFailed = (automation: Automation): boolean =>
+  automation.last_run != null && automation.last_run.outcome !== AutomationRunOutcome.Success;
 
 // Returned once at mint time (create + rotate) and never again.
 export interface AutomationTokenMint {

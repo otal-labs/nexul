@@ -7,6 +7,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { AutomationSecretForm } from "@/components/automation/AutomationSecretForm";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchAutomationSecrets } from "@/hooks/AutomationSecretHooks";
@@ -39,7 +40,7 @@ export const AutomationSecretsSection = () => {
         {data && data.length === 0 && !editing && <EmptyRow>No secrets yet. Add one for automations to read.</EmptyRow>}
         {data && data.length > 0 && (
           <div ref={glideRef}>
-            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className={settingsRowListClass}>
               {data.map((secret) => (
                 <AutomationSecretRow key={secret.name} secret={secret} onReplace={() => setEditing({ name: secret.name })} onLeave={prepareGlide} />
               ))}
