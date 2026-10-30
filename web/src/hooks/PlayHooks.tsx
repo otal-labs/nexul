@@ -12,7 +12,6 @@ import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { followEach, type LiveFollower } from "@/lib/live";
-import { withoutErrorPrefix } from "@/utils/PlayQueueUtility";
 
 export const getWorkspacePlaysKey = "getWorkspacePlays";
 export const getApplicablePlaysKey = "getApplicablePlays";
@@ -149,8 +148,7 @@ export const useApplicableTicketPlays = (ticket: Ticket | undefined) => {
 
 // A taken label comes back keyed under the label field; the play dialog shows it there rather than in a toast.
 export const playLabelError = (error: unknown): string | undefined => {
-  const message = (error as AxiosError<ApiErrorBody> | null)?.response?.data?.errors?.label?.[0];
-  return message && withoutErrorPrefix(message);
+  return (error as AxiosError<ApiErrorBody> | null)?.response?.data?.errors?.label?.[0];
 };
 
 const toastUnlessLabelError = (error: unknown) => {

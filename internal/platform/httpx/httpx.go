@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
@@ -81,21 +82,21 @@ func mapError(err error) (status int, code, message string) {
 func mapSentinel(err error) (status int, code, message string) {
 	switch {
 	case errors.Is(err, apperrs.ErrNotFound):
-		return http.StatusNotFound, "NOT_FOUND", err.Error()
+		return http.StatusNotFound, "NOT_FOUND", withoutSentinel(err, apperrs.ErrNotFound)
 	case errors.Is(err, apperrs.ErrConflict):
-		return http.StatusConflict, "CONFLICT", err.Error()
+		return http.StatusConflict, "CONFLICT", withoutSentinel(err, apperrs.ErrConflict)
 	case errors.Is(err, apperrs.ErrUnauthorized):
-		return http.StatusUnauthorized, "UNAUTHORIZED", err.Error()
+		return http.StatusUnauthorized, "UNAUTHORIZED", withoutSentinel(err, apperrs.ErrUnauthorized)
 	case errors.Is(err, apperrs.ErrForbidden):
-		return http.StatusForbidden, "FORBIDDEN", err.Error()
+		return http.StatusForbidden, "FORBIDDEN", withoutSentinel(err, apperrs.ErrForbidden)
 	case errors.Is(err, apperrs.ErrInvalid):
-		return http.StatusBadRequest, "INVALID", err.Error()
+		return http.StatusBadRequest, "INVALID", withoutSentinel(err, apperrs.ErrInvalid)
 	case errors.Is(err, apperrs.ErrRateLimited):
-		return http.StatusTooManyRequests, "RATE_LIMITED", err.Error()
+		return http.StatusTooManyRequests, "RATE_LIMITED", withoutSentinel(err, apperrs.ErrRateLimited)
 	case errors.Is(err, apperrs.ErrRetryable):
-		return http.StatusServiceUnavailable, "RETRYABLE", err.Error()
+		return http.StatusServiceUnavailable, "RETRYABLE", withoutSentinel(err, apperrs.ErrRetryable)
 	case errors.Is(err, apperrs.ErrFatal):
-		return http.StatusUnprocessableEntity, "FATAL", err.Error()
+		return http.StatusUnprocessableEntity, "FATAL", withoutSentinel(err, apperrs.ErrFatal)
 	default:
 		return http.StatusInternalServerError, "INTERNAL", "internal error"
 	}
@@ -109,4 +110,13 @@ func ClientAddr(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// withoutSentinel drops the "invalid: " a wrapped sentinel leads the message with, since the code already names the class.
+func withoutSentinel(err, sentinel error) string {
+	msg := err.Error()
+	if rest, ok := strings.CutPrefix(msg, sentinel.Error()+": "); ok {
+		return rest
+	}
+	return msg
 }

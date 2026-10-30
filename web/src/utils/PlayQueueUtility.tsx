@@ -70,8 +70,8 @@ const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^get (ticket|doc|stack) \S+: not found$/, (m) => `the ${m[1]} is gone`],
 ];
 
-// A server error's message without the sentinel's prefix, so a sentence reads as one.
-export const withoutErrorPrefix = (message: string): string => message.replace(/^(invalid|forbidden|conflict|not found): /, "");
+// A stored run reason keeps the sentinel's prefix the HTTP envelope drops, so a sentence reads as one.
+const withoutErrorPrefix = (message: string): string => message.replace(/^(invalid|forbidden|conflict|not found): /, "");
 
 // A decided run's reason in plain words; the server's sentences pass through without their error prefix.
 export const outcomeText = (reason: string): string => {

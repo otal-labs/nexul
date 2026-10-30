@@ -51,7 +51,7 @@ func TestWriteFieldError_KeysTheMessageUnderTheField(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteFieldError(rec, fmt.Errorf("%w: token refused", apperrs.ErrInvalid), "token")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	assert.JSONEq(t, `{"message":"invalid: token refused","code":"INVALID","errors":{"token":["invalid: token refused"]}}`, rec.Body.String())
+	assert.JSONEq(t, `{"message":"token refused","code":"INVALID","errors":{"token":["token refused"]}}`, rec.Body.String())
 }
 
 type detailedErr struct{ err error }
@@ -114,7 +114,7 @@ func TestWriteError_CodedError_ReportsItsOwnCode(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(rec, apperrs.WithCode("invalid_code", fmt.Errorf("%w: enrollment code is unknown, used or expired", apperrs.ErrUnauthorized)))
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.JSONEq(t, `{"message":"unauthorized: enrollment code is unknown, used or expired","code":"invalid_code"}`, rec.Body.String())
+	assert.JSONEq(t, `{"message":"enrollment code is unknown, used or expired","code":"invalid_code"}`, rec.Body.String())
 }
 
 func TestWriteError_CodedInternalError_KeepsTheCodeHidden(t *testing.T) {
