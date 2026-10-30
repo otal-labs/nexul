@@ -36,9 +36,9 @@ export const InterviewDraftRunLine = ({ projectId }: InterviewDraftRunLineProps)
   ].filter(Boolean).join(" · ");
   if (line === "") return null;
   return (
-    <p className="flex min-w-0 items-center gap-2 px-1.5 text-xs text-muted-foreground">
-      {state && <TrailStateIcon state={state} />}
-      <span className="truncate">{line}</span>
+    <p className="flex min-w-0 items-start gap-2 px-1.5 text-xs text-muted-foreground">
+      {state && <TrailStateIcon state={state} className="mt-px" />}
+      <span className="min-w-0 text-pretty">{line}</span>
     </p>
   );
 };
