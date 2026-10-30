@@ -14,7 +14,7 @@ import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog
 import { AutomationHostsSection } from "@/components/automationHost/AutomationHostsSection";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AutomationKind, AutomationVersionStatus } from "@/enums/Automation";
-import type { Automation } from "@/models/Automation";
+import { AutomationState, type Automation } from "@/models/Automation";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { expectWriteControls, type WriteControl } from "@/test/gates";
 import { asReader } from "@/test/viewer";
@@ -54,7 +54,7 @@ const reason = (what: string) => `Your role can't ${what}`;
 
 // What a reader is offered on every automations surface, one row per surface.
 const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[] }[] = [
-  { name: "a row", ui: <AutomationRow automation={automation} />, controls: [{ role: "switch", name: "Disable Ticket finished", reason: reason("switch automations on or off") }] },
+  { name: "a row", ui: <AutomationRow item={{ automation, state: AutomationState.On, attention: null }} />, controls: [{ role: "switch", name: "Disable Ticket finished", reason: reason("switch automations on or off") }] },
   { name: "New automation", ui: <NewAutomationDialog />, controls: [{ role: "button", name: "New automation", reason: reason("create automations") }] },
   {
     name: "the token",

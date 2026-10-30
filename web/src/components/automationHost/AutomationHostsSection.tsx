@@ -5,6 +5,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsRowListClass } from "@/components/settings/SettingsRow";
 import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
 import { useFetchMachines } from "@/hooks/RunnerHooks";
 import { useActionState } from "@/hooks/useActionState";
@@ -28,7 +29,7 @@ export const AutomationHostsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {hosts && hosts.length === 0 && <EmptyRow>No automations hosts yet. Add one to run automations on another machine.</EmptyRow>}
       {hosts && hosts.length > 0 && (
-        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        <EnterList className={settingsRowListClass}>
           {hosts.map((host) => (
             <AutomationHostRow key={host.id} host={host} machine={machineOfHost(host, machines)} />
           ))}

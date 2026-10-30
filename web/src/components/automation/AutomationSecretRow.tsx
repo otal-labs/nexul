@@ -22,7 +22,7 @@ export const AutomationSecretRow = ({ onLeave, secret, onReplace }: AutomationSe
   const [leaving, setLeaving] = useState(false);
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-center justify-between gap-3 px-4 py-2.5")}>
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-center justify-between gap-3 px-2 py-2.5")}>
       <div className="min-w-0">
         <p className="truncate font-mono text-sm font-medium">{secret.name}</p>
         <p className="font-mono text-xs text-muted-foreground">
