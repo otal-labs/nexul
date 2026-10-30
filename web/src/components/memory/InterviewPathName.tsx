@@ -7,7 +7,7 @@ interface InterviewPathNameProps {
 
 const TAIL = 10;
 
-// Marks the head data-cut while its text runs past it: the mono ellipsis sits left in its cell, so the tail pulls in.
+// Marks the head data-cut while its text runs past it: the mono ellipsis sits left in its cell, so the tail shifts left (a shift, not a margin, which would hand the folders the space).
 const markCut = (el: HTMLSpanElement | null) => {
   if (!el) return;
   const observer = new ResizeObserver(() => el.toggleAttribute("data-cut", el.scrollWidth > el.clientWidth));
@@ -36,7 +36,7 @@ export const InterviewPathName = ({ path, className }: InterviewPathNameProps) =
         style={{ minWidth: `min(${head.length}ch, calc(100% - ${tail.length}ch))` }}>
         {head}
       </span>
-      <span className="shrink-0 peer-data-cut/head:-ml-[0.4ch]">{tail}</span>
+      <span className="shrink-0 peer-data-cut/head:-translate-x-[0.4ch]">{tail}</span>
     </span>
   );
 };
