@@ -1,7 +1,8 @@
 import { MessagesSquareIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
-import { navLinkClass } from "@/components/SidebarNav";
+import { navLinkClass, railDotClass } from "@/components/SidebarNav";
+import { cn } from "@/lib/utils";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { useFetchChatUnread } from "@/hooks/ChatHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -20,7 +21,7 @@ export const SidebarChatRailLink = () => {
           <MessagesSquareIcon className="size-4" aria-hidden />
         </span>
         <span className="sr-only">{waiting ? "Chat, unread messages" : "Chat"}</span>
-        {waiting && <span aria-hidden className="absolute top-1 left-[30px] size-2 rounded-full bg-foreground ring-2 ring-background" />}
+        {waiting && <span aria-hidden className={cn(railDotClass, "bg-foreground")} />}
       </NavLink>
     </RailTooltip>
   );
