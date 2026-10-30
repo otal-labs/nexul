@@ -20,7 +20,7 @@ export const AutomationConfigStatusField = ({ control, field }: AutomationConfig
       render={({ field: rhf }) => (
         <Select value={rhf.value} onValueChange={rhf.onChange} disabled={!field.project_id}>
           <SelectTrigger id={field.key}>
-            <SelectValue placeholder={field.project_id ? "Select a status" : "No project declared for this field"} />
+            <SelectValue placeholder={field.project_id ? "Select a status" : "Its code names no project to list statuses from"} />
           </SelectTrigger>
           <SelectContent>
             {(statuses ?? []).map((status) => (

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -122,6 +122,17 @@ describe("AutomationPage", () => {
     renderPage({ ...baseEndpoints, "/api/automations/a1/history": { versions: [only], changes: [] } });
 
     await user.click(await screen.findByRole("button", { name: "History" }));
+
+    expect(await screen.findByText(/One version, saved/)).toBeInTheDocument();
+  });
+
+  it("opens the version history from the Versions tab", async () => {
+    const user = userEvent.setup();
+    const only = { id: "v1", version: 1, created_at: "2026-08-01T00:00:00Z", name: "", editor_ids: [], via: "Nexul", current: true, status: "active" };
+    renderPage({ ...baseEndpoints, "/api/automations/a1/history": { versions: [only], changes: [] } }, "/automations/a1/versions");
+
+    await screen.findByText(/Older versions and Roll back/);
+    await user.click(within(screen.getByRole("tabpanel")).getByRole("button", { name: "History" }));
 
     expect(await screen.findByText(/One version, saved/)).toBeInTheDocument();
   });
