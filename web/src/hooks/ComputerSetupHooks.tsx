@@ -58,6 +58,15 @@ export const useRunSetup = (computerId: string) => {
   });
 };
 
+// Ends one provider's running setup or skills turn; it settles as failed, Stopped, through the setup push.
+export const useStopSetup = (computerId: string) =>
+  useMutation({
+    mutationFn: requires("none", async (provider: string) => {
+      await api.post(`/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/stop`);
+    }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
 // One short turn on the computer's first confirmed provider rewrites Nexul's skills for every provider there.
 export const useUpdateSkills = (computerId: string) => {
   const client = useQueryClient();

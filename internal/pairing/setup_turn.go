@@ -2,6 +2,7 @@ package pairing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -108,6 +109,8 @@ func (s *Service) firstConfirmedProvider(ctx context.Context, session Computer, 
 
 // runSkillsTurn is one session that rewrites the skills from skill_get and reports their version through computer_setup_update.
 func (s *Service) runSkillsTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, prompt setupPrompt) SetupTurn {
+	ctx, stop := s.stoppable(ctx, run.ComputerID, strings.ToLower(p.Driver))
+	defer stop(nil)
 	turn, client, ht, err := s.beginSetupTurn(ctx, userID, run, p, pick, SetupTurnSkills, "Updating skills")
 	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
@@ -337,13 +340,47 @@ func setupKey(computerID, driver string) string { return computerID + "/" + driv
 func (s *Service) claimSetup(computerID string, drivers []string) bool {
 	s.setupMu.Lock()
 	defer s.setupMu.Unlock()
-	if slices.ContainsFunc(drivers, func(d string) bool { return s.settingUp[setupKey(computerID, d)] }) {
+	if slices.ContainsFunc(drivers, func(d string) bool { _, claimed := s.settingUp[setupKey(computerID, d)]; return claimed }) {
 		return false
 	}
 	for _, d := range drivers {
-		s.settingUp[setupKey(computerID, d)] = true
+		s.settingUp[setupKey(computerID, d)] = nil
 	}
 	return true
+}
+
+// errSetupStopped is why a turn the person stopped ends, so its session tells a stop from a timeout.
+var errSetupStopped = errors.New("setup turn stopped")
+
+// stoppable gives a driver's running turn a context that StopSetupProvider cancels; the turn calls the returned stop when it ends.
+func (s *Service) stoppable(ctx context.Context, computerID, driver string) (context.Context, context.CancelCauseFunc) {
+	ctx, stop := context.WithCancelCause(ctx)
+	s.setupMu.Lock()
+	defer s.setupMu.Unlock()
+	if _, claimed := s.settingUp[setupKey(computerID, driver)]; claimed {
+		s.settingUp[setupKey(computerID, driver)] = stop
+	}
+	return ctx, stop
+}
+
+// StopSetupProvider ends a provider's running setup or skills turn on the caller's computer; the turn ends failed as Stopped.
+func (s *Service) StopSetupProvider(ctx context.Context, userID, computerID, provider string) error {
+	provider, err := validateProvider(provider)
+	if err != nil {
+		return err
+	}
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return err
+	}
+	s.setupMu.Lock()
+	stop := s.settingUp[setupKey(session.ID, strings.ToLower(provider))]
+	s.setupMu.Unlock()
+	if stop == nil {
+		return fmt.Errorf("%w: no setup turn is running for %s on %s", apperrs.ErrInvalid, provider, session.Name)
+	}
+	stop(errSetupStopped)
+	return nil
 }
 
 func (s *Service) releaseSetup(computerID, driver string) {
@@ -408,6 +445,8 @@ func (s *Service) beginSetupTurn(ctx context.Context, userID string, run SetupRu
 // runSetupTurn is a prepare session that connects MCP and installs skills, then a fresh session that loads them and confirms.
 func (s *Service) runSetupTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, prompt setupPrompt) SetupTurn {
 	computerID := run.ComputerID
+	ctx, stop := s.stoppable(ctx, computerID, strings.ToLower(p.Driver))
+	defer stop(nil)
 	turn, client, ht, err := s.beginSetupTurn(ctx, userID, run, p, pick, SetupTurnSetup, "Connecting Nexul and installing skills")
 	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
@@ -459,6 +498,9 @@ func (s *Service) runSetupSession(ctx context.Context, client harness.Client, ta
 			return reason
 		case <-ctx.Done():
 			s.interruptSetup(ctx, client, target)
+			if errors.Is(context.Cause(ctx), errSetupStopped) {
+				return "Stopped"
+			}
 			return fmt.Sprintf("No result within %s", setupSessionTimeout)
 		}
 	}

@@ -88,6 +88,7 @@ type computerSetupRunIn struct {
 	ModelOptions map[string][]harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options each provider's picked model runs with, keyed by driver kind like models, for example {\"codex\": [{\"id\": \"reasoningEffort\", \"value\": \"high\"}]}: a choice id for a select option, true or false for a switch, as the harness lists them per model. Only applies beside a picked model."`
 	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default."`
 	SkillsOnly   bool                               `json:"skills_only,omitempty" jsonschema:"true only updates Nexul's skills and goes alone with computer_id: one turn on the first confirmed provider, on its saved model and folder."`
+	Stop         bool                               `json:"stop,omitempty" jsonschema:"true with provider stops that provider's running setup or skills turn; it ends failed as Stopped."`
 }
 
 type computerSetupUpdateIn struct {
@@ -387,9 +388,13 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			"computer_list shows skills_outdated on confirmed providers: one short turn on the first confirmed "+
 			"provider rewrites Nexul's skills from skill_get and reports the version for all. Returns at once with "+
 			"the run; computer_list shows each turn's state. Pass folder to run in any project folder when the "+
-			"default is gone. One setup or skills update runs per computer at a time.",
+			"default is gone. One setup or skills update runs per computer at a time. Pass stop with provider to stop "+
+			"that provider's running turn.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerSetupRunIn) (any, error) {
+			if in.Stop {
+				return stopSetup(ctx, s, in)
+			}
 			if in.SkillsOnly {
 				return updateSkills(ctx, s, in)
 			}
@@ -407,6 +412,17 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			}
 			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model, in.ModelOptions[in.Provider], in.Folder)
 		})
+}
+
+// stopSetup is computer_setup_run's stop mode, which ends one provider's running turn.
+func stopSetup(ctx context.Context, s *Service, in computerSetupRunIn) (any, error) {
+	if in.Provider == "" || in.SkillsOnly || in.Model != "" || len(in.Providers) > 0 || len(in.Models) > 0 || len(in.ModelOptions) > 0 || in.Folder != "" {
+		return nil, fmt.Errorf("%w: stop goes with computer_id and provider only", apperrs.ErrInvalid)
+	}
+	if err := s.StopSetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider); err != nil {
+		return nil, err
+	}
+	return map[string]any{"stopped": in.Provider}, nil
 }
 
 // updateSkills is computer_setup_run's skills_only mode, which picks its own provider, model, and folder.

@@ -204,6 +204,7 @@
   "POST /api/pairing/computers/{id}/projects": ["none"],
   "POST /api/pairing/computers/{id}/repair": ["none"],
   "POST /api/pairing/computers/{id}/setup/providers/{provider}/retry": ["none"],
+  "POST /api/pairing/computers/{id}/setup/providers/{provider}/stop": ["none"],
   "POST /api/pairing/computers/{id}/setup/runs": ["none"],
   "POST /api/pairing/computers/{id}/setup/skills": ["none"],
   "POST /api/plays/decisions-check": ["plays:run"],

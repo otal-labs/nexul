@@ -18,15 +18,17 @@ interface SetupProviderItemProps {
   options: OptionSetting[];
   open: boolean;
   busy: boolean;
+  stopping: boolean;
   onInclude: (provider: string, on: boolean) => void;
   onPick: (provider: string, model: string) => void;
   onOptions: (provider: string, options: OptionSetting[]) => void;
   onRun: (provider: string) => void;
+  onStop: (provider: string) => void;
   onToggle: (provider: string) => void;
 }
 
 // One provider on one grid: mark, name, the model its turn runs on, its own run and its switch, then its state across the row; the name opens its transcript.
-export const SetupProviderItem = ({ row, model, options, open, busy, onInclude, onPick, onOptions, onRun, onToggle }: SetupProviderItemProps) => {
+export const SetupProviderItem = ({ row, model, options, open, busy, stopping, onInclude, onPick, onOptions, onRun, onStop, onToggle }: SetupProviderItemProps) => {
   const statusId = useId();
   const running = row.state === "running" || row.state === "queued";
   const listed = !!row.choice;
@@ -71,7 +73,7 @@ export const SetupProviderItem = ({ row, model, options, open, busy, onInclude, 
           />
         )}
         {picking && row.choice && running && <SetupModelText choice={row.choice} model={model} options={options} />}
-        {picking && <SetupProviderAction row={row} busy={busy} onRun={onRun} />}
+        {picking && <SetupProviderAction row={row} busy={busy} stopping={stopping} onRun={onRun} onStop={onStop} />}
         <Switch
           aria-label={`Use ${row.name}`}
           checked={row.on}

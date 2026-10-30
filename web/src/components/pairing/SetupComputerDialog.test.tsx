@@ -216,6 +216,18 @@ describe("SetupComputerDialog", () => {
     expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
   });
 
+  it("stops a running provider's turn from its row", async () => {
+    setup = { ...emptySetup, turns: [turn("codex", "Codex", "running", "Connecting Nexul and installing skills", "r0", "t0")] };
+    mocks.post.mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    await user.click(await screen.findByRole("button", { name: "Stop Codex" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/stop"));
+    expect(screen.queryByRole("button", { name: "Stop Claude" })).not.toBeInTheDocument();
+  });
+
   it("runs one provider on its own row while another still runs", async () => {
     setup = { ...emptySetup, turns: [turn("codex", "Codex", "running", "Connecting Nexul and installing skills", "r0", "t0")] };
     mocks.post.mockResolvedValue(run(["claudeagent", "Claude"]));
