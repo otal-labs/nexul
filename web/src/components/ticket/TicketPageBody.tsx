@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import { TicketThreadMenu } from "@/components/chat/TicketThreadMenu";
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
 import { TicketNotesTab } from "@/components/note/TicketNotesTab";
 import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
@@ -61,7 +62,12 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
                 </div>
               </div>
             )}
-            <PageTabs label="Ticket sections" tabs={tabs} className={cn(layout.tabs, onNotes && layout.tabsWide)}>
+            <PageTabs
+              label="Ticket sections"
+              tabs={tabs}
+              className={cn(layout.tabs, onNotes && layout.tabsWide)}
+              trailing={hasThread && current === "thread" && <TicketThreadMenu workspaceId={workspaceId} ticketId={ticket.id} />}
+            >
               <PageTabsContent value="ticket" className={layout.ticketTab}>
                 {article}
                 {hasThread && <TicketThreadPreview workspaceId={workspaceId} ticketId={ticket.id} threadPath={tabPath("thread")} />}
