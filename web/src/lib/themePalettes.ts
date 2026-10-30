@@ -23,7 +23,8 @@ type Role =
   | "border"
   | "input"
   | "ring"
-  | "well-shade";
+  | "well-shade"
+  | "destructive";
 
 type ThemeRoleOverrides = Partial<Record<Role, string>>;
 
@@ -189,6 +190,8 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         input: "oklch(0.4336 0.0113 100.22)",
         ring: "oklch(0.6724 0.1308 38.76)",
         "surface-2": "oklch(0.2357 0.0024 67.71)",
+        // Its card is a lighter grey than most dark palettes, so the default crimson falls under 4.5:1 there; same hue, lighter.
+        destructive: "oklch(0.76 0.14 12)",
       },
     },
   },
@@ -498,6 +501,8 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         input: "oklch(0.0 0.0 0.0)",
         ring: "oklch(0.5799 0.238 29.23)",
         "surface-2": "oklch(0.9848 0.0 0.0)",
+        // Its accent is pure red, so failures move to raspberry to keep the default's gap from the accent.
+        destructive: "oklch(0.5 0.2 0)",
       },
       dark: {
         background: "oklch(0.0 0.0 0.0)",
@@ -518,6 +523,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         input: "oklch(1.0 0.0 0.0)",
         ring: "oklch(0.628 0.2577 29.23)",
         "surface-2": "oklch(0.1157 0.0 0.0)",
+        destructive: "oklch(0.72 0.19 0)",
         // A black panel has no darker step to give, so its column wells sit a step lighter instead.
         "well-shade": "oklch(1.0 0.0 0.0 / 0.025)",
       },
@@ -551,6 +557,7 @@ const ROLE_CSS_VAR: Record<Role, string> = {
   input: "--input",
   ring: "--ring",
   "well-shade": "--well-shade",
+  destructive: "--destructive",
 };
 
 const RADIUS_CSS_VAR: Record<"sm" | "md" | "lg" | "xl" | "2xl", string> = {
