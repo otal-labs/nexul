@@ -57,14 +57,19 @@ export const AutomationAttention = {
 
 export type AutomationAttention = (typeof AutomationAttention)[keyof typeof AutomationAttention];
 
-// The most urgent thing waiting on someone, or null; the instance host (no host_id) is never offline.
-export const automationAttention = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationAttention | null => {
-  if (automation.host_id && offlineHostIds.has(automation.host_id)) return AutomationAttention.HostOffline;
-  if (automationNeedsConfiguration(automation)) return AutomationAttention.NeedsConfiguration;
-  if (automation.token_revoked_at) return AutomationAttention.TokenRevoked;
-  if (automation.pending_version != null) return AutomationAttention.PendingVersion;
-  return null;
+// What waits on someone, most urgent first; the instance host (no host_id) is never offline.
+export const automationAttentions = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationAttention[] => {
+  const causes: [boolean, AutomationAttention][] = [
+    [!!automation.host_id && offlineHostIds.has(automation.host_id), AutomationAttention.HostOffline],
+    [automationNeedsConfiguration(automation), AutomationAttention.NeedsConfiguration],
+    [!!automation.token_revoked_at, AutomationAttention.TokenRevoked],
+    [automation.pending_version != null, AutomationAttention.PendingVersion],
+  ];
+  return causes.filter(([applies]) => applies).map(([, cause]) => cause);
 };
+
+export const automationAttention = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationAttention | null =>
+  automationAttentions(automation, offlineHostIds)[0] ?? null;
 
 // One rule for the summary, the filter, the sort and the status mark: off wins, then a failed last run, then anything waiting on someone.
 export const automationState = (automation: Automation, offlineHostIds: ReadonlySet<string>): AutomationState => {

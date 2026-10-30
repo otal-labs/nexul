@@ -15,7 +15,7 @@ interface AutomationVersionDiffProps {
 
 const lineClass = (type: "context" | "add" | "remove") =>
   cn(
-    "block px-3",
+    "block pr-3 pl-[calc(0.75rem+2ch)] -indent-[2ch]",
     type === "add" && "bg-success/10 text-success before:content-['+_']",
     type === "remove" && "bg-destructive/10 text-destructive before:content-['-_']",
     type === "context" && "text-muted-foreground before:content-['___']",
@@ -32,13 +32,10 @@ export const AutomationVersionDiff = ({ automationId, diff }: AutomationVersionD
     <SettingsCard
       id="pending-version"
       title="Pending vs active"
-      description="A pushed version waits here until you merge it. The active one keeps running."
-      footer={
-        pending && (
-          <ActionButton permission="automations:write" verb="merge automation versions" type="button" size="sm" onClick={() => merge.mutate(pending.id)} loading={merge.isPending}>
-            Merge
-          </ActionButton>
-        )
+      description={
+        pending
+          ? `Merging makes #${pending.sequence} active${diff.active ? `; #${diff.active.sequence} stays to roll back to` : ""}.`
+          : "A pushed version waits here until you merge it. The active one keeps running."
       }
     >
       {!pending && <EmptyRow>No pending version</EmptyRow>}
@@ -52,6 +49,17 @@ export const AutomationVersionDiff = ({ automationId, diff }: AutomationVersionD
               #{diff.active?.sequence ?? 0} → #{pending.sequence}
               {sides.bySource ? "" : " · bundled code"}
             </span>
+            <ActionButton
+              permission="automations:write"
+              verb="merge automation versions"
+              type="button"
+              size="sm"
+              className="ml-auto"
+              onClick={() => merge.mutate(pending.id)}
+              loading={merge.isPending}
+            >
+              Merge
+            </ActionButton>
           </div>
           <pre className="terminal-window__body max-h-96 overflow-y-auto whitespace-pre-wrap break-words">
             {lines.map((line, index) => (

@@ -13,6 +13,8 @@ Each automation belongs to one workspace. It hears that workspace's events, plus
 
 The top of the **Automations** page counts the automations that are on, failing and needing attention. An automation is **failing** when it is on and its last run failed or crashed; its row shows that run's error in place of its description. It **needs attention** when it is on and something waits on a person: a required setting is empty, its host is offline, its token was revoked, or a pushed version waits to be merged. The row names the most urgent of these. **All**, **Failing**, **Needs attention** and **Off** above the list narrow it to one kind, and the list keeps the most urgent first: failing, then needs attention, then on, then off. Each row also shows when the automation last ran and how many of its runs in the last seven days failed; hover its mark for the last run's error in full.
 
+An automation's own page names the same problems under its title, each one a link to where it is fixed: a failed run to **Runs**, empty settings and a revoked token to **Settings**, a waiting version to **Versions**, an offline host to the **Hosts** tab. **Runs** lists the newest 50 runs by day, and **Failures** there lists the newest 50 failed or crashed ones; runs are kept 30 days. **Settings** holds its configuration, the host it runs on, its token and **Delete automation**.
+
 ## The defaults
 
 Every workspace comes with its own copy of three. The first two are switched on:
@@ -20,7 +22,7 @@ Every workspace comes with its own copy of three. The first two are switched on:
 - **Ticket finished** moves a ticket to a status you choose once all its pull requests have merged.
 - **PR opened** moves a ticket to a status you choose when a linked pull request opens.
 
-Open each one's **Configuration** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
+Open each one's **Settings** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
 
 The third, **Crash intake**, starts switched off. It turns crash reports a [bot](/docs/guide/bots/) posts into bug tickets, described below.
 
@@ -28,7 +30,7 @@ The third, **Crash intake**, starts switched off. It turns crash reports a [bot]
 
 Your app reports a crash by posting it through a bot's URL in the crash-report/1 format: the line `Crash fingerprint: <hash>` as the message, and one embed whose fields are Contract (`crash-report/1`), Fingerprint, Kind, Process type, App version, Build commit, OS, Arch, First seen, Signature, Stack, Truncated, and optionally Suppressed duplicates. Any other post is ignored.
 
-Switch it on, then on its **Configuration** tab pick the channel the bot posts in and the project its tickets go to. Until you do, it skips every bot post and logs why. The bug type (`bug`) and the high-priority label (`high-priority`) can be changed there too. For each report, it looks for a ticket in that project whose body has the report's fingerprint line:
+Switch it on, then on its **Settings** tab pick the channel the bot posts in and the project its tickets go to. Until you do, it skips every bot post and logs why. The bug type (`bug`) and the high-priority label (`high-priority`) can be changed there too. For each report, it looks for a ticket in that project whose body has the report's fingerprint line:
 
 - **None:** it files a bug in the first column, with the fingerprint line, the kind, the first version, the OS, the signature and the stack. Its origin is marked unknown.
 - **An open ticket:** it keeps one **Seen again** note on it, updated in place with the number of reports, the versions and when it was last seen. It never files a second ticket.

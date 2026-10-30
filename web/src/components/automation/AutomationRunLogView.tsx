@@ -20,7 +20,13 @@ export const AutomationRunLogView = ({ logs }: AutomationRunLogViewProps) => (
       </div>
     )}
     {logs.trim() !== "" && (
-      <pre className="terminal-window__body max-h-96 overflow-y-auto whitespace-pre-wrap break-words">{logs}</pre>
+      <pre className="terminal-window__body max-h-96 overflow-y-auto whitespace-pre-wrap break-words">
+        {logs.split("\n").map((line, index) => (
+          <span key={index} className="block pl-[2ch] -indent-[2ch]">
+            {line || " "}
+          </span>
+        ))}
+      </pre>
     )}
   </div>
 );

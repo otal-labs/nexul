@@ -5,10 +5,12 @@ import type { AutomationRun } from "@/models/AutomationRun";
 
 export const getAutomationRunsKey = "getAutomationRuns";
 
-export const useFetchAutomationRuns = (automationId: string | undefined) =>
+// The newest 50 runs, or with failedOnly the newest 50 failures and crashes.
+export const useFetchAutomationRuns = (automationId: string | undefined, failedOnly = false) =>
   useQuery({
-    queryKey: [getAutomationRunsKey, automationId],
-    queryFn: async () => (await api.get<AutomationRun[]>(`/api/automations/${automationId}/runs`)).data,
+    queryKey: [getAutomationRunsKey, automationId, failedOnly],
+    queryFn: async () =>
+      (await api.get<AutomationRun[]>(`/api/automations/${automationId}/runs`, { params: failedOnly ? { outcome: "failed" } : {} })).data,
     enabled: !!automationId,
   });
 

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 
 import { PageBreadcrumb, type Crumb } from "@/components/PageBreadcrumb";
 import { cn } from "@/lib/utils";
+import { markClamped } from "@/utils/ClampUtility";
 
 // The display face for a headline; never below 20px. Empty-state and showcase headlines add their own size.
 export const displayTitleClass = "type-display text-balance break-words";
@@ -14,19 +15,6 @@ const titleSizeClass = (length: number) => {
 
 // A title someone typed steps down the scale as it grows (28, 24, 20px), so a sentence-long one stays a header.
 export const pageTitleClassFor = (title: string) => `${displayTitleClass} ${titleSizeClass(title.length)}`;
-
-// Marks the box data-clamped while its title runs past it; watching the content too catches a title that grows while clamped.
-// Fractional heights, because the rounded scrollHeight runs 2px past clientHeight on one line at some page zooms.
-const markClamped = (el: HTMLDivElement | null) => {
-  const content = el?.firstElementChild;
-  if (!el || !content) return;
-  const mark = () =>
-    el.toggleAttribute("data-clamped", content.getBoundingClientRect().height > el.getBoundingClientRect().height + 1);
-  const observer = new ResizeObserver(mark);
-  observer.observe(el);
-  observer.observe(content);
-  return () => observer.disconnect();
-};
 
 interface ClampedTitleProps {
   title: string;

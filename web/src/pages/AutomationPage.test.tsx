@@ -79,37 +79,32 @@ describe("AutomationPage", () => {
     expect(await screen.findByText("error")).toBeInTheDocument();
   });
 
-  it("hides the Danger zone tab without automations:delete, even when the path asks for it", async () => {
-    renderPage(
-      { ...baseEndpoints, "/api/workspaces/ws-1/me": { role_name: "Viewer", permissions: [] } },
-      "/automations/a1/danger",
-    );
+  it("leaves the delete action out of Settings without automations:delete", async () => {
+    renderPage({ ...baseEndpoints, "/api/workspaces/ws-1/me": { role_name: "Viewer", permissions: [] } }, "/automations/a1/settings");
 
-    expect(await screen.findByText("No runs yet")).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Danger zone" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /delete automation/i })).not.toBeInTheDocument();
   });
 
-  it("opens on Runs, then shows subscriptions on Configuration and the delete action on Danger zone", async () => {
+  it("opens on Runs, then shows subscriptions on Versions and the delete action on Settings", async () => {
     const user = userEvent.setup();
     renderPage(baseEndpoints);
 
-    expect(await screen.findByText("Ticket finished")).toBeInTheDocument();
-    expect(await screen.findByText("No runs yet")).toBeInTheDocument();
+    expect(await screen.findByText("No runs yet. It runs when ticket.pr_merged arrives.")).toBeInTheDocument();
     expect(screen.queryByText("ticket.pr_merged")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Configuration" }));
+    await user.click(screen.getByRole("tab", { name: "Versions" }));
     expect(screen.getByText("ticket.pr_merged")).toBeInTheDocument();
 
-    await user.click(await screen.findByRole("tab", { name: "Danger zone" }));
-    expect(screen.getByRole("button", { name: /delete automation/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(await screen.findByRole("button", { name: /delete automation/i })).toBeInTheDocument();
   });
 
-  it("links the pending-version banner on Configuration to the Versions tab", async () => {
+  it("links the pending chip under the title to the Versions tab", async () => {
     const user = userEvent.setup();
-    renderPage({ ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/configuration");
+    renderPage({ ...baseEndpoints, "/api/automations/a1": { ...automation, pending_version: 2 }, "/api/automations/a1/versions/diff": pendingDiff });
 
-    await user.click(await screen.findByText(/waiting to be merged/));
+    await user.click(await screen.findByText("#2 pending"));
 
     expect(await screen.findByRole("tab", { name: "Versions", selected: true })).toBeInTheDocument();
     expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
