@@ -21,8 +21,18 @@ vi.mock("@/hooks/PeopleHooks", () => ({
   usePersonLookup: () => (identity: string) => ({ user_id: identity, login: identity, display_name: "", avatar_url: "" }),
 }));
 
-const room = vi.hoisted(() => ({ occupants: [] as { identity: string; name: string }[] }));
-vi.mock("@/hooks/VoiceHooks", () => ({ useVoiceOccupancy: () => ({ c1: room.occupants }) }));
+const room = vi.hoisted(() => ({
+  occupants: [] as { identity: string; name: string }[],
+  speaking: new Set<string>(),
+  listens: [] as [string, boolean][],
+}));
+vi.mock("@/hooks/VoiceHooks", () => ({
+  useVoiceOccupancy: () => ({ c1: room.occupants }),
+  useVoiceLobbySpeakers: (conversationId: string, listening: boolean) => {
+    room.listens.push([conversationId, listening]);
+    return room.speaking;
+  },
+}));
 
 const conversation: Conversation = {
   id: "c1",
@@ -52,6 +62,8 @@ const initialState = useVoiceCallStore.getState();
 beforeEach(() => {
   useVoiceCallStore.setState(initialState, true);
   room.occupants = [];
+  room.speaking = new Set();
+  room.listens = [];
 });
 
 describe("VoiceCallSection", () => {
@@ -69,6 +81,22 @@ describe("VoiceCallSection", () => {
     expect(screen.getByRole("status")).toHaveTextContent("2 in the call");
     await user.click(screen.getByRole("button", { name: "Join" }));
     expect(join).toHaveBeenCalledWith("c1", "huddle");
+  });
+
+  it("listens for speakers only on the join prompt of a room with people in it", () => {
+    room.occupants = [{ identity: "u2", name: "Lena Kowalski" }];
+    renderSection(false);
+    expect(room.listens.at(-1)).toEqual(["c1", true]);
+  });
+
+  it.each([
+    ["an empty room", false, []],
+    ["a call being joined", true, [{ identity: "u2", name: "Lena Kowalski" }]],
+  ])("does not listen in %s", (_name, active, occupants) => {
+    room.occupants = occupants;
+    stageCall("connecting");
+    renderSection(active);
+    expect(room.listens.at(-1)).toEqual(["c1", false]);
   });
 
   it("offers to start the call in an empty room", async () => {

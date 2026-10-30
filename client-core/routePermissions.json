@@ -250,6 +250,7 @@
   "POST /api/topology/edges": ["topology:write"],
   "POST /api/topology/nodes": ["topology:write"],
   "POST /api/voice/{conversationID}/leave": ["none"],
+  "POST /api/voice/{conversationID}/listen": ["none"],
   "POST /api/voice/{conversationID}/token": ["none"],
   "POST /api/workspaces": ["workspaces:create"],
   "POST /api/workspaces/{workspaceID}/archive": ["workspaces:delete"],

@@ -3,6 +3,8 @@ package voice
 import (
 	"sort"
 	"sync"
+
+	"github.com/otal-labs/nexul/internal/livekit"
 )
 
 // occupancyStore is voice's in-memory conversationID -> occupant-set map (ephemeral, no DB writes).
@@ -15,10 +17,14 @@ func newOccupancyStore() *occupancyStore {
 	return &occupancyStore{rooms: map[string]map[string]Occupant{}}
 }
 
-// join adds/updates one occupant, returning the room's new full list and whether membership actually changed.
+// join adds/updates one occupant, returning the room's new full list and whether membership actually changed;
+// a lobby listener is not an occupant (ADR 0175), so every feed that reaches the store skips it here.
 func (s *occupancyStore) join(room string, o Occupant) ([]Occupant, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if livekit.IsListener(o.Identity) {
+		return snapshotRoom(s.rooms[room]), false
+	}
 	occupants, ok := s.rooms[room]
 	if !ok {
 		occupants = map[string]Occupant{}
@@ -96,6 +102,9 @@ func (s *occupancyStore) reconcile(rooms map[string][]Occupant) []string {
 		seen[room] = true
 		next := make(map[string]Occupant, len(occupants))
 		for _, o := range occupants {
+			if livekit.IsListener(o.Identity) {
+				continue
+			}
 			next[o.Identity] = o
 		}
 		if !equalRooms(s.rooms[room], next) {

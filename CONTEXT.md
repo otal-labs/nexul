@@ -623,6 +623,13 @@ _Avoid_: Integration (a separate service with a scoped token), Agent, app
 Who's currently in a voice channel, shown live in the channel list without
 joining.
 
+**Lobby listener**:
+The hidden, receive-nothing participant a browser connects to a voice
+channel's room while its lobby row shows who is in the call, to ring whoever
+is speaking. It joins as `listen:<user id>`, publishes nothing, is never
+Occupancy, and disconnects when the lobby goes away or you join (ADR 0175).
+_Avoid_: Spectator, observer, bot
+
 **Topology**:
 The map of your infrastructure, drawn as a canvas. The canvas JSON *is* the
 infra model — not a picture of it. Each workspace has its own: its projects'

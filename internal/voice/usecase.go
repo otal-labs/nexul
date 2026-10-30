@@ -47,37 +47,64 @@ type JoinToken struct {
 
 // Join mints a room-join token for userID; an unconfigured LiveKit connector is ErrInvalid, not ErrNotFound.
 func (s *Service) Join(ctx context.Context, conversationID, userID string) (JoinToken, error) {
+	t, err := s.voiceTarget(ctx, conversationID, userID)
+	if err != nil {
+		return JoinToken{}, err
+	}
+	name, err := s.users.DisplayName(ctx, t.userID)
+	if err != nil {
+		return JoinToken{}, fmt.Errorf("resolve display name for user %s: %w", t.userID, err)
+	}
+	token, err := t.client.MintToken(t.userID, name, t.conversationID)
+	if err != nil {
+		return JoinToken{}, fmt.Errorf("mint livekit token for conversation %s: %w", t.conversationID, err)
+	}
+	// Optimistic presence: register now, don't wait on the webhook/poll; a publish failure must not fail the join.
+	occupants, changed := s.occupancy.join(t.conversationID, Occupant{Identity: t.userID, Name: name})
+	_ = s.publishIfChanged(ctx, t.conversationID, occupants, changed)
+	return JoinToken{WSURL: t.client.WSURL, Token: token}, nil
+}
+
+// Listen mints a token for userID's hidden lobby listener under Join's checks; a listener is never presence (ADR 0175).
+func (s *Service) Listen(ctx context.Context, conversationID, userID string) (JoinToken, error) {
+	t, err := s.voiceTarget(ctx, conversationID, userID)
+	if err != nil {
+		return JoinToken{}, err
+	}
+	token, err := t.client.MintListenToken(t.userID, t.conversationID)
+	if err != nil {
+		return JoinToken{}, fmt.Errorf("mint livekit listen token for conversation %s: %w", t.conversationID, err)
+	}
+	return JoinToken{WSURL: t.client.WSURL, Token: token}, nil
+}
+
+// target is what Join and Listen both resolve: trimmed ids, a voice channel the caller reads, a configured connector.
+type target struct {
+	conversationID, userID string
+	client                 livekit.Client
+}
+
+func (s *Service) voiceTarget(ctx context.Context, conversationID, userID string) (target, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {
-		return JoinToken{}, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+		return target{}, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
 	}
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
-		return JoinToken{}, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+		return target{}, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
 	ok, err := s.conversations.IsVoiceChannel(ctx, conversationID)
 	if err != nil {
-		return JoinToken{}, fmt.Errorf("check voice channel %s: %w", conversationID, err)
+		return target{}, fmt.Errorf("check voice channel %s: %w", conversationID, err)
 	}
 	if !ok {
-		return JoinToken{}, fmt.Errorf("%w: conversation %s is not a voice channel", apperrs.ErrInvalid, conversationID)
+		return target{}, fmt.Errorf("%w: conversation %s is not a voice channel", apperrs.ErrInvalid, conversationID)
 	}
 	client, err := s.credentials.LiveKit(ctx)
 	if err != nil {
-		return JoinToken{}, fmt.Errorf("%w: voice channels need a LiveKit connector configured by the workspace owner: %v", apperrs.ErrInvalid, err)
+		return target{}, fmt.Errorf("%w: voice channels need a LiveKit connector configured by the workspace owner: %v", apperrs.ErrInvalid, err)
 	}
-	name, err := s.users.DisplayName(ctx, userID)
-	if err != nil {
-		return JoinToken{}, fmt.Errorf("resolve display name for user %s: %w", userID, err)
-	}
-	token, err := client.MintToken(userID, name, conversationID)
-	if err != nil {
-		return JoinToken{}, fmt.Errorf("mint livekit token for conversation %s: %w", conversationID, err)
-	}
-	// Optimistic presence: register now, don't wait on the webhook/poll; a publish failure must not fail the join.
-	occupants, changed := s.occupancy.join(conversationID, Occupant{Identity: userID, Name: name})
-	_ = s.publishIfChanged(ctx, conversationID, occupants, changed)
-	return JoinToken{WSURL: client.WSURL, Token: token}, nil
+	return target{conversationID: conversationID, userID: userID, client: client}, nil
 }
 
 // Leave removes userID from the occupant list immediately, Join's optimistic-presence counterpart.
@@ -148,8 +175,10 @@ func (s *Service) RemoveFromCall(ctx context.Context, conversationID string, use
 		return fmt.Errorf("livekit credentials: %w", err)
 	}
 	for _, userID := range gone {
-		if err := client.RemoveParticipant(ctx, conversationID, userID); err != nil {
-			return fmt.Errorf("remove %s from livekit room %s: %w", userID, conversationID, err)
+		for _, identity := range []string{userID, livekit.ListenerIdentity(userID)} {
+			if err := client.RemoveParticipant(ctx, conversationID, identity); err != nil {
+				return fmt.Errorf("remove %s from livekit room %s: %w", identity, conversationID, err)
+			}
 		}
 		occupants, changed := s.occupancy.leave(conversationID, userID)
 		if err := s.publishIfChanged(ctx, conversationID, occupants, changed); err != nil {

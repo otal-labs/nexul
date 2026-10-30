@@ -477,6 +477,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/botwebhooks/{id}/avatar", "A bot's own avatar, to anyone who reads its conversation", "botwebhooks")
 	spec.Register("POST", "/api/botwebhooks/{id}/{token}", "Post as a bot with Discord's execute-webhook JSON; the token is the credential; ?wait=true returns the message", "botwebhooks")
 	spec.Register("POST", "/api/voice/{conversationID}/token", "Mint a LiveKit join token for a voice channel", "voice")
+	spec.Register("POST", "/api/voice/{conversationID}/listen", "Mint a hidden, receive-only LiveKit token so the lobby shows who is speaking", "voice")
 	spec.Register("POST", "/api/voice/{conversationID}/leave", "Leave a voice channel (removes optimistic presence)", "voice")
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")
 	spec.Register("POST", "/api/agent/conversations/{id}/interrupt", "Stop the in-flight agent turn on a conversation", "agent")

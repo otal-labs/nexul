@@ -41,6 +41,7 @@ var readOnlyRoutes = []string{
 	"POST /api/repositories/scan",
 	"POST /api/tickets/dev-status",
 	"POST /api/tickets/labels/colors",
+	"POST /api/voice/{conversationID}/listen",
 }
 
 // newRouter wires the server the way serve does, over a fresh database, and returns its real handler.

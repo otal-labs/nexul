@@ -37,6 +37,7 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/voice/{conversationID}/token", h.join)
+	mux.HandleFunc("POST /api/voice/{conversationID}/listen", h.listen)
 	mux.HandleFunc("POST /api/voice/{conversationID}/leave", h.leave)
 	mux.HandleFunc("GET /api/voice/occupancy", h.occupancy)
 	return mux
@@ -52,6 +53,15 @@ func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 	tok, err := h.svc.Join(r.Context(), r.PathValue("conversationID"), UserIDFromCtx(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, tok)
+}
+
+func (h *Handler) listen(w http.ResponseWriter, r *http.Request) {
+	tok, err := h.svc.Listen(r.Context(), r.PathValue("conversationID"), UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

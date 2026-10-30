@@ -37,6 +37,7 @@ var readOnlyRoutes = []string{
 	"POST /api/repositories/scan",
 	"POST /api/tickets/dev-status",
 	"POST /api/tickets/labels/colors",
+	"POST /api/voice/{conversationID}/listen",
 }
 
 // readOnlyMux matches readOnlyRoutes with the router's own pattern rules.
