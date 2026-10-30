@@ -23,7 +23,6 @@ export const ScreenShareTile = ({ trackRef }: ScreenShareTileProps) => {
   const fullscreen = useSyncExternalStore(subscribeFullscreen, isTileFullscreen);
   const label = fullscreen ? "Exit full screen" : "Full screen";
   const Icon = fullscreen ? Minimize2 : Maximize2;
-  const sharer = trackRef.participant.name || trackRef.participant.identity;
 
   const toggle = () => {
     const request = fullscreen ? document.exitFullscreen() : tile.current?.requestFullscreen();
@@ -38,11 +37,6 @@ export const ScreenShareTile = ({ trackRef }: ScreenShareTileProps) => {
       onDoubleClick={toggle}
     >
       <VideoTrack trackRef={trackRef} className="size-full object-contain" />
-      <span className="dark absolute bottom-2 left-2 flex h-5 max-w-[calc(100%-16px)] items-center rounded-sm bg-media/80 px-1.5 text-xs font-medium text-white">
-        <span className="truncate" dir="auto">
-          {sharer}'s screen
-        </span>
-      </span>
       {document.fullscreenEnabled && (
         <Button
           type="button"

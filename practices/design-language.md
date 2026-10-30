@@ -1452,9 +1452,11 @@ behind a `+N` tile opening the list of everyone. A tile is
 `media` with the name in a chip over it. Speaking is a 2px `success` ring
 outside the tile, 2px off it on the well, so it reads the same over a camera.
 A shared screen takes the stage on `media`, whole (`object-fit: contain`),
-with its full screen button always shown on a dark chip; everyone is listed
-beside it as 32px rows, or as 24px avatars under it in a narrower thread, their mute
-marks muted, since nine red marks would drown the one that matters. The
+with its full screen button always shown on a dark chip, across the stage's
+full width; under it, whose screen it is and everyone in the call as 24px
+avatars, their mute marks muted, since nine red marks would drown the one
+that matters. Your own shared screen is not played back to you (you see it,
+and a mirror of it loops): its place says so, with Stop sharing. The
 controls are icon buttons centred under a hairline: a muted microphone is the
 one state in colour (`destructive` at 12% with the slashed mic in
 `destructive`), a camera or share that is on reads as pressed in ink
