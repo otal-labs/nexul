@@ -327,7 +327,7 @@ describe("Statuses, Ticket types and Labels", () => {
   });
 
   it("sets a ticket type's color without touching its name", async () => {
-    mocks.patch.mockResolvedValue({ data: ticketType({ color: "cyan" }) });
+    mocks.patch.mockResolvedValue({ data: ticketType({ color: "#06b6d4" }) });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/ticket-types") return Promise.resolve({ data: [ticketType()] });
       return Promise.resolve({ data: [] });
@@ -336,14 +336,13 @@ describe("Statuses, Ticket types and Labels", () => {
     renderSection("types");
 
     await user.click(await screen.findByRole("button", { name: "Color for task" }));
-    const colorPicker = within(screen.getByRole("radiogroup", { name: "Color for task" }));
-    await user.click(colorPicker.getByRole("radio", { name: "cyan" }));
+    await user.click(within(screen.getByRole("radiogroup", { name: "Quick colors" })).getByRole("radio", { name: "#06b6d4" }));
 
-    expect(mocks.patch).toHaveBeenCalledWith("/api/ticket-types/task", { name: "task", color: "cyan" });
+    expect(mocks.patch).toHaveBeenCalledWith("/api/ticket-types/task", { name: "task", color: "#06b6d4" });
   });
 
-  it("sets a label's color from the Labels list", async () => {
-    mocks.put.mockResolvedValue({ data: { label: "bug", color: "orange" } });
+  it("saves a label's color once, when its picker closes, however far it was dragged", async () => {
+    mocks.put.mockResolvedValue({ data: { label: "bug", color: "#ff0000" } });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/tickets/labels") return Promise.resolve({ data: ["bug"] });
       return Promise.resolve({ data: [] });
@@ -353,12 +352,17 @@ describe("Statuses, Ticket types and Labels", () => {
     renderSection("labels");
 
     await user.click(await screen.findByRole("button", { name: "Color for label bug" }));
-    const colorPicker = within(screen.getByRole("radiogroup", { name: "Color for label bug" }));
-    await user.click(colorPicker.getByRole("radio", { name: "orange" }));
+    await user.clear(screen.getByRole("textbox", { name: "Hex color" }));
+    await user.type(screen.getByRole("textbox", { name: "Hex color" }), "#ff0000");
+    screen.getByRole("slider", { name: "Hue" }).focus();
+    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
+    expect(mocks.put).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
 
+    expect(mocks.put).toHaveBeenCalledTimes(1);
     expect(mocks.put).toHaveBeenCalledWith("/api/tickets/labels/bug/color", {
       project_id: PROJECT_ID,
-      color: "orange",
+      color: "#ff0d00",
     });
   });
 

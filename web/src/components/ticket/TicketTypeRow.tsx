@@ -1,5 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { hueStyle, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { PropertyRowTrigger } from "@/components/ticket/PropertyRowTrigger";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
@@ -21,7 +21,7 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
 
   const content = (
     <>
-      <span className={rowIconClass}>
+      <span className={rowIconClass} style={hueStyle(current?.color)}>
         <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5", ticketTypeColor(current?.name ?? "", current?.color))} aria-hidden />
       </span>
       <span className={rowLabelClass}>Type</span>

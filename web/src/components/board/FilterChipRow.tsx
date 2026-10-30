@@ -1,4 +1,5 @@
 import { XIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,6 +10,7 @@ export interface ChipOption {
   ariaLabel?: string;
   /** A label option leads with its hue dot, the same one its chip carries. */
   dotClass?: string;
+  dotStyle?: CSSProperties | undefined;
   onToggle: () => void;
 }
 
@@ -41,7 +43,7 @@ export const FilterChipRow = ({ title, chips, onClearAll }: FilterChipRowProps) 
         onClick={option.onToggle}
         className={chip(option.active)}
       >
-        {option.dotClass && !option.active && <span className={cn("size-1.5 shrink-0 rounded-full", option.dotClass)} aria-hidden />}
+        {option.dotClass && !option.active && <span className={cn("size-1.5 shrink-0 rounded-full", option.dotClass)} style={option.dotStyle} aria-hidden />}
         {option.label}
         {option.active && <XIcon className="size-3" aria-hidden />}
       </button>

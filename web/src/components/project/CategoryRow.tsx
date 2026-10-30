@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS, type ConfigurableColorName } from "@/components/board/ticketTypeColor";
+import { hasColor, hueDotClass, hueStyle } from "@/components/board/ticketTypeColor";
 import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { ColorDot } from "@/components/settings/SettingsListRow";
@@ -14,9 +14,6 @@ import { EASE_OUT, lastInputWasKeyboard, ROW_GLIDE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/models/Category";
 import { countLabel } from "@/utils/CountUtility";
-
-const isConfigurableColor = (color: string): color is ConfigurableColorName =>
-  (CONFIGURABLE_COLOR_NAMES as readonly string[]).includes(color);
 
 interface CategoryRowProps {
   category: Category;
@@ -90,14 +87,14 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
               draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
             )}
           >
-            <span className="flex size-4 shrink-0 items-center justify-center">
-              <ColorDot className={isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : undefined} />
+            <span className="flex size-4 shrink-0 items-center justify-center" style={hueStyle(category.color)}>
+              <ColorDot className={hueDotClass(category.color)} />
             </span>
             <span className="flex min-w-0 flex-1 items-baseline gap-2">
               <span className="min-w-0 shrink-[3] truncate font-medium" title={category.name}>
                 {category.name}
               </span>
-              {!isConfigurableColor(category.color) && <span className="shrink-0 text-xs text-muted-foreground">No color</span>}
+              {!hasColor(category.color) && <span className="shrink-0 text-xs text-muted-foreground">No color</span>}
               {count !== undefined && <span className="ml-auto shrink-0 pl-2 font-mono text-xs text-muted-foreground tabular-nums">{countLabel(count, "ticket")}</span>}
             </span>
           </div>

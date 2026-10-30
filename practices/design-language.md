@@ -709,7 +709,8 @@ size on a dark card), at most three lines. A blocked card adds "Blocked by" and
 the key on a line of its own. Last comes the type as its icon (a bug in its
 fuchsia, every other type muted) and at most two labels, each an 18px pill in its
 own hue (the hue at 15% under its 800 ink, 300 in dark, 900 for lime and
-amber; 6:1 or better on the card), any more as "+N" naming them in its tooltip. Labels
+amber; 6:1 or better on the card; an owner's own hex at 15% under the hex mixed
+65% into `foreground`, ADR 0176), any more as "+N" naming them in its tooltip. Labels
 after the first drop out whole; a first label too long for the line truncates,
 its full name in its tooltip. The card pads 8px
 top and bottom and 10px at the sides, `card` with the card shadow and its

@@ -55,8 +55,17 @@ const hashIndex = (value: string, length: number): number => {
   return Math.abs(hash) % length;
 };
 
+// An owner's own hex has no light and dark shade, so the icon takes it as its color prop, as picked.
+const hexColor = (color?: string): string | undefined => (color && /^#[0-9a-f]{6}$/i.test(color) ? color : undefined);
+
+export const hexIconColor = (color?: string): { color?: string } => {
+  const hex = hexColor(color);
+  return hex ? { color: hex } : {};
+};
+
 // An unrecognized `color` value falls through to the hash exactly like unset does; it can't crash the card.
 export const ticketTypeColor = (typeName: string, color?: string): string => {
+  if (hexColor(color)) return "";
   if (color && CONFIGURABLE_HUES.has(color)) return HUE_ICON_CLASS[color]!;
   const key = typeName.trim().toLowerCase();
   return HUE_ICON_CLASS[TYPE_HUES[key] ?? TYPE_FALLBACK_HUES[hashIndex(key, TYPE_FALLBACK_HUES.length)]!]!;

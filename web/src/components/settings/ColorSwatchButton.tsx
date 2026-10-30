@@ -5,8 +5,8 @@ import type { ActionGate } from "@nexul/client-core/actionState";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { LockedReason } from "@/components/action/LockedReason";
-import { HUE_DOT_CLASS } from "@/components/board/ticketTypeColor";
-import { ColorPicker } from "@/components/settings/ColorPicker";
+import { hueDotClass, hueStyle } from "@/components/board/ticketTypeColor";
+import { ColorPanel } from "@/components/settings/ColorPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
@@ -22,14 +22,21 @@ interface ColorSwatchButtonProps extends Pick<ActionGate, "permission" | "projec
   pill?: string;
 }
 
-// One dot, not an inline swatch row — five hues per row breaks the color-as-signal ceiling at scale.
+// One dot, not an inline swatch row, so a long list of rows keeps its colors as signal.
 // The color is data first: a viewer who can't change it still sees the dot, locked beside a lock.
 export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, permission, projectId, verb, dotClass, pill }: ColorSwatchButtonProps) => {
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+  // A drag only previews; the color saves once, when the popover closes or a quick color is picked.
+  const close = (color: string) => {
+    setOpen(false);
+    if (color !== value) onChange(color);
+  };
   const action = useActionState({ permission, projectId, verb });
   const dot = (
     <span
-      className={cn(pill ? "relative -top-px size-1.5 shrink-0 self-center" : "size-2", "rounded-full", dotClass ?? (value && HUE_DOT_CLASS[value] ? HUE_DOT_CLASS[value] : "border border-muted-foreground"))}
+      className={cn(pill ? "relative -top-px size-1.5 shrink-0 self-center" : "size-2", "rounded-full", dotClass ?? hueDotClass(value) ?? "border border-muted-foreground")}
+      style={hueStyle(value)}
       aria-hidden
     />
   );
@@ -61,7 +68,17 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
         </LockedReason>
       )}
       {action.state === "live" && (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            if (next) {
+              setDraft(value);
+              setOpen(true);
+              return;
+            }
+            close(draft);
+          }}
+        >
           <PopoverTrigger asChild>
             <ActionButton
               permission={permission}
@@ -74,16 +91,8 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
               {face}
             </ActionButton>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-auto p-1.5">
-            <ColorPicker
-              label={label}
-              value={value}
-              allowNone={allowNone}
-              onChange={(color) => {
-                setOpen(false);
-                onChange(color);
-              }}
-            />
+          <PopoverContent align="end" className="w-auto p-2.5" aria-label={label}>
+            <ColorPanel value={draft} allowNone={allowNone} onChange={setDraft} onPick={close} />
           </PopoverContent>
         </Popover>
       )}
