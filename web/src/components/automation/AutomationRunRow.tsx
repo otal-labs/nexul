@@ -15,7 +15,7 @@ export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => (
     <button
       type="button"
       onClick={() => onSelect(run.id)}
-      className="group grid w-full grid-cols-[5rem_minmax(0,1fr)_4.5rem_4.5rem_1rem] items-center gap-x-3 px-4 py-2.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+      className="group grid w-full grid-cols-[5rem_minmax(0,1fr)_4.5rem_4.5rem_1rem] items-center gap-x-3 px-4 py-2.5 text-left transition-colors duration-150 ease-standard hover:bg-accent"
     >
       <AutomationRunOutcomeBadge outcome={run.outcome} />
       <span className="truncate font-mono text-sm">{run.event_topic}</span>

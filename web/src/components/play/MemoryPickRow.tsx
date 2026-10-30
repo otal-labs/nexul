@@ -11,7 +11,7 @@ interface MemoryPickRowProps {
 
 // A required memory is ticked and locked: the run hands it to the agent whether or not the caller asks.
 export const MemoryPickRow = ({ memory, checked, onToggle }: MemoryPickRowProps) => (
-  <label className="flex cursor-pointer items-start gap-3 border-b border-border px-3 py-2 last:border-b-0 hover:bg-accent/40">
+  <label className="flex cursor-pointer items-start gap-3 border-b border-border px-3 py-2 last:border-b-0 hover:bg-accent">
     <Checkbox
       checked={checked}
       disabled={memory.always_included}

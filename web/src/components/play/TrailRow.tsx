@@ -32,7 +32,7 @@ export const TrailRow = ({ workspaceId, trail, onOpen, layout = "inline" }: Trai
         type="button"
         onClick={() => onOpen(trail.id)}
         className={cn(
-          "flex w-full gap-2 px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40",
+          "flex w-full gap-2 px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent",
           stacked ? "items-start" : "items-center",
         )}
       >

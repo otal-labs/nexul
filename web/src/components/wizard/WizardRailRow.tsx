@@ -40,7 +40,7 @@ export const WizardRailRow = ({ label, mark, ordinal, total, onOpen, nested = fa
         aria-current={current ? "step" : undefined}
         className={cn(
           "group inset-focus relative flex w-full items-start gap-3 rounded-md px-2 py-2 text-left transition-colors duration-150 ease-standard",
-          onOpen && "hover:bg-accent/40",
+          onOpen && "hover:bg-accent",
         )}
       >
         <WizardRailNode mark={mark} />

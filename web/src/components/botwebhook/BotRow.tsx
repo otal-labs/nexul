@@ -36,7 +36,7 @@ export const BotRow = ({ bot, onOpen }: BotRowProps) => {
         <button
           type="button"
           onClick={onOpen}
-          className="flex w-full min-w-0 items-center gap-3 rounded-lg py-2.5 pr-2 pl-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="flex w-full min-w-0 items-center gap-3 rounded-lg py-2.5 pr-2 pl-3 text-left transition-colors duration-150 ease-standard hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {content}
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />

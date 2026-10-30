@@ -28,7 +28,7 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
         aria-current={selected}
         className={cn(
           "relative flex w-full items-start px-3 py-2 inset-focus text-left focus-visible:rounded-md text-[13px] leading-5 transition-colors duration-150 ease-standard",
-          selected ? currentRowFillClass : "hover:bg-accent/40",
+          selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
         {selected && <CurrentRowEdge />}

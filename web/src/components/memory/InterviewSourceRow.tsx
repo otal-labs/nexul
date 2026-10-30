@@ -66,7 +66,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
       {...handlers}
       className={cn(
         "group/source relative flex min-h-9 items-center gap-2 rounded-md px-1.5 py-1 transition-colors duration-150 ease-standard",
-        lit ? currentRowFillClass : "hover:bg-accent/40",
+        lit ? currentRowFillClass : "hover:bg-accent",
       )}
     >
       {lit && <CurrentRowEdge />}

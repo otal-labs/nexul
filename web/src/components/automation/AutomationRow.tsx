@@ -16,7 +16,7 @@ export const AutomationRow = ({ automation }: AutomationRowProps) => {
   const wsPath = useWorkspacePath();
 
   return (
-    <li className="flex items-center gap-3 p-4 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-3 p-4 transition-colors duration-150 ease-standard hover:bg-accent">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Link

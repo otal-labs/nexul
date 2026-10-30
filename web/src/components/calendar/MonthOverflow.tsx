@@ -18,7 +18,7 @@ export const MonthOverflow = ({ day, shown: { hiddenDue, hiddenMeetings } }: Mon
       onClick={() => showWeekOf(day)}
       aria-label={`${label}, show the week`}
       title={label}
-      className="h-5 min-w-0 truncate rounded-sm px-1 font-mono leading-5 text-[11px] text-muted-foreground tabular-nums transition-colors duration-150 ease-standard hover:bg-accent/40 hover:text-foreground"
+      className="h-5 min-w-0 truncate rounded-sm px-1 font-mono leading-5 text-[11px] text-muted-foreground tabular-nums transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground"
     >
       <span className="@max-[55rem]:hidden">{label}</span>
       <span className="hidden @max-[55rem]:inline">+{hidden}</span>

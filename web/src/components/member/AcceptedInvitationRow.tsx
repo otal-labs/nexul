@@ -23,7 +23,7 @@ export const AcceptedInvitationRow = ({ invitation, person, inviter, onOpen }: A
         type="button"
         onClick={() => onOpen(person.id)}
         aria-label={`Open ${personName(person)}`}
-        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 sm:px-4"
+        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent sm:px-4"
       >
         <PersonAvatar login={person.login} src={person.avatar_url} className="size-7 shrink-0" />
         <span className="min-w-0 flex-1 space-y-1">

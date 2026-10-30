@@ -56,7 +56,7 @@ export const PanelTargetRow = ({ target, selected, onSelect, subline, onRemove }
       className={cn(
         "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left transition-colors duration-150 ease-standard @3xl/panel:rounded-none @3xl/panel:px-3 @3xl/panel:py-2",
         selected && cn(currentRowFillClass, "ring-1 ring-border @3xl/panel:ring-0"),
-        !selected && "hover:bg-accent/40",
+        !selected && "hover:bg-accent",
         onRemove && "pr-9 @3xl/panel:pr-9",
       )}
     >

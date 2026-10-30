@@ -24,7 +24,7 @@ export const InstanceAreaRow = ({ area }: InstanceAreaRowProps) => {
       <button
         type="button"
         onClick={() => void openPanel(areaEntity(area))}
-        className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 py-2 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+        className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 py-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
       >
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted-foreground ring-1 ring-border ring-inset">
           <ShieldIcon className="size-[55%]" aria-hidden />

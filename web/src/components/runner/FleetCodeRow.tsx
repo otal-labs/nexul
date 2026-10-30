@@ -18,7 +18,7 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
   const revoke = useRevokeEnrollment();
   const until = formatClockTime(code.expires_at);
   return (
-    <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent/40")}>
+    <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
       <span className="flex min-w-0 items-baseline gap-3">
         <span className="flex self-center" title="Not added yet">
           <span aria-hidden className="size-2 rounded-full border border-dashed border-muted-foreground" />

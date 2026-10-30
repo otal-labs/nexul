@@ -73,7 +73,7 @@ export const DeployRow = ({ deploy, current }: DeployRowProps) => {
   return (
     <li>
       {canOpen && (
-        <Link to={wsPath(deployPath(deploy))} className={cn(rowClass, "inset-focus rounded-sm px-2 transition-colors duration-150 ease-standard hover:bg-accent/40")}>
+        <Link to={wsPath(deployPath(deploy))} className={cn(rowClass, "inset-focus rounded-sm px-2 transition-colors duration-150 ease-standard hover:bg-accent")}>
           {row}
         </Link>
       )}

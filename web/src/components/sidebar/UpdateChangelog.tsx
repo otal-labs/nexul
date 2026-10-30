@@ -59,7 +59,7 @@ export const UpdateChangelog = ({ current, latest, changes }: UpdateChangelogPro
     )}
     <Link
       to={INSTANCE_VERSION_SECTION_URL}
-      className="border-t border-border px-3 py-2 text-sm font-medium transition-colors duration-150 ease-standard hover:bg-accent/40"
+      className="border-t border-border px-3 py-2 text-sm font-medium transition-colors duration-150 ease-standard hover:bg-accent"
     >
       Upgrade in Settings
     </Link>

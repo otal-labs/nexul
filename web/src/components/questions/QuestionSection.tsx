@@ -22,7 +22,7 @@ export const QuestionSection = ({ label, meta, folded, onToggle, action, childre
         type="button"
         aria-expanded={!folded}
         onClick={onToggle}
-        className="group/lane flex grow cursor-pointer items-center justify-between gap-2 rounded-sm px-1.5 py-1 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+        className="group/lane flex grow cursor-pointer items-center justify-between gap-2 rounded-sm px-1.5 py-1 text-left transition-colors duration-150 ease-standard hover:bg-accent"
       >
         <span className="shrink-0 text-sm font-semibold">{label}</span>
         <span className="flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums transition-colors group-hover/lane:text-foreground">

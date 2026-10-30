@@ -48,7 +48,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
           metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && (dense ? "min-h-8" : "min-h-10"),
           snippet !== "" && "min-h-14",
-          selected ? currentRowFillClass : "hover:bg-accent/40",
+          selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
         {selected && <CurrentRowEdge />}

@@ -85,7 +85,7 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
           className={cn(
             "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md px-2.5 py-3 text-left focus-visible:-outline-offset-3!",
             (open || lit) && currentRowFillClass,
-            !open && "transition-colors duration-150 ease-standard hover:bg-accent/40",
+            !open && "transition-colors duration-150 ease-standard hover:bg-accent",
           )}
         >
           {summary}

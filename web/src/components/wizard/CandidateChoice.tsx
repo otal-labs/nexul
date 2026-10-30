@@ -12,7 +12,7 @@ const CandidateRow = ({ candidate }: CandidateRowProps) => {
   return (
     <label
       htmlFor={id}
-      className="-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40"
+      className="-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-3 transition-colors duration-150 ease-standard hover:bg-accent"
     >
       <RadioGroupItem id={id} value={candidateKey(candidate)} className="mt-0.5" />
       <span className="min-w-0 flex-1">

@@ -30,7 +30,7 @@ export const LinkedTicketRow = ({ ticket, waiting = false, onRemove, hostProject
   const wsPath = useWorkspacePath();
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-0 has-[a:focus-visible]:outline-[color:var(--focus)]">
+    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-0 has-[a:focus-visible]:outline-[color:var(--focus)]">
       <Icon className={cn("size-3.5 shrink-0", color)} role="img" aria-label={label} />
       <HoverCard openDelay={300} closeDelay={100}>
         <HoverCardTrigger asChild>

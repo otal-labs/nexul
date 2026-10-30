@@ -24,7 +24,7 @@ const ReactionChip = ({ reaction, mine, names, onToggle }: ReactionChipProps) =>
     onClick={onToggle}
     className={cn(
       "inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs transition-colors duration-150 ease-standard",
-      mine ? "border-ring/50 bg-accent" : "border-border bg-card hover:bg-accent/40",
+      mine ? "border-ring/50 bg-accent" : "border-border bg-card hover:bg-accent",
     )}
   >
     <span aria-hidden>{reaction.emoji}</span>

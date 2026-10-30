@@ -10,7 +10,7 @@ interface ReviewRowProps {
 
 // Row pattern: hairline `divide-y`, background-lift-only hover, mono/tabular-nums for the id.
 export const ReviewRow = ({ review }: ReviewRowProps) => (
-    <li className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 ease-standard hover:bg-accent">
       <GitPullRequestIcon className="size-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate font-mono text-sm tabular-nums">
         {review.repo}#{review.pr_number}

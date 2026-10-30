@@ -22,7 +22,7 @@ export const MemoryVersionRow = ({ version, onOpen }: MemoryVersionRowProps) => 
       <button
         type="button"
         onClick={() => onOpen(version.version)}
-        className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:bg-accent/40"
+        className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent focus-visible:bg-accent/40"
       >
         <span className="min-w-0 flex-1 text-xs">
           <span className="block truncate">

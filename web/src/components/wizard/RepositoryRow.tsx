@@ -19,7 +19,7 @@ export const RepositoryRow = ({ repo, busy, onSelect, open }: RepositoryRowProps
         type="button"
         onClick={onSelect}
         disabled={busy}
-        className="flex w-full items-center gap-3 px-2 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 disabled:opacity-60"
+        className="flex w-full items-center gap-3 px-2 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent disabled:opacity-60"
       >
         <RepoProviderMark provider={repo.provider} />
         <span className="min-w-0 flex-1">
