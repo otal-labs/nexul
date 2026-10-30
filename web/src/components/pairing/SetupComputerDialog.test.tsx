@@ -110,7 +110,7 @@ describe("SetupComputerDialog", () => {
     });
   });
 
-  it("opens the failed provider's row on its reason, and retries only that one", async () => {
+  it("shows a failed provider's reason on its row, with no empty transcript to open, and retries only that one", async () => {
     setup = {
       ...emptySetup,
       confirmed_at: "2026-09-24T00:00:00Z",
@@ -123,16 +123,34 @@ describe("SetupComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /^open$/i }));
     expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
     const list = within(await screen.findByRole("list", { name: "Providers" }));
-    const failedRow = await list.findByRole("button", { name: /^opencode/i });
-    expect(failedRow).toHaveAttribute("aria-expanded", "true");
-    expect(failedRow).toHaveTextContent(/No result within 10m0s/);
-    expect(list.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "false");
-    expect(list.getByRole("button", { name: /^claude/i })).toHaveTextContent("Not set up yet");
-    expect(screen.getByText("1/3 confirmed")).toBeInTheDocument();
+    expect(await list.findByText("No result within 10m0s")).toBeInTheDocument();
+    expect(list.queryByRole("button", { name: /^opencode/i })).not.toBeInTheDocument();
+    expect(list.getByText("Not set up yet")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/^1\/3Setup didn.t finish/);
 
     await user.click(list.getByRole("button", { name: /^retry opencode$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "pickle", model_options: [], folder: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when T3 Code can't be reached, and asks it again from the same place", async () => {
+    let reachable = false;
+    const base = mocks.get.getMockImplementation();
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url.endsWith("/providers") && !reachable) throw apiError({ message: "T3 Code isn't answering" });
+      return base?.(url);
+    });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    expect(await screen.findByText("Couldn't reach T3 Code on this computer")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set up all/i })).not.toBeInTheDocument();
+
+    reachable = true;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("button", { name: /set up all/i })).toBeEnabled();
+    expect(screen.getByRole("status")).toHaveTextContent(/^0\/3/);
   });
 
   it("retries a failed skills update as another update, not a setup of that provider", async () => {
@@ -152,7 +170,7 @@ describe("SetupComputerDialog", () => {
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
-  it("sets every switched-on provider up at once and follows the running one's transcript until another is clicked", async () => {
+  it("sets every switched-on provider up at once, opens none of several running turns by itself, and shows the one clicked once it has steps", async () => {
     mocks.post.mockImplementation(async () => {
       setup = {
         ...emptySetup,
@@ -180,19 +198,21 @@ describe("SetupComputerDialog", () => {
     expect(await screen.findByText("Setting up 3 providers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /set up all/i })).toBeDisabled();
     expect(screen.getByRole("switch", { name: "Use Codex" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("button", { name: /^codex/i })).not.toBeInTheDocument();
 
-    const push = (kind: ActivityKind, summary: string, call_id: string) =>
-      act(() => useSetupActivityStore.getState().push("t2", { kind, call_id, tool: "Shell", summary, detail: "", at: "" }));
-    push("tool_call", "nexul mcp add", "call-1");
-    push("tool_result", "nexul mcp add", "call-1");
-    push("tool_call", "ls ~/.claude/skills", "call-2");
+    const push = (turn: string, kind: ActivityKind, summary: string, call_id: string) =>
+      act(() => useSetupActivityStore.getState().push(turn, { kind, call_id, tool: "Shell", summary, detail: "", at: "" }));
+    push("t2", "tool_call", "nexul mcp add", "call-1");
+    push("t2", "tool_result", "nexul mcp add", "call-1");
+    push("t2", "tool_call", "ls ~/.claude/skills", "call-2");
+    expect(screen.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "false");
+    await user.click(screen.getByRole("button", { name: /^codex/i }));
     const log = screen.getByRole("log", { name: "Codex steps" });
     expect(within(log).getAllByText(/^(nexul mcp add|ls ~\/\.claude\/skills)$/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
 
-    await user.click(screen.getByRole("button", { name: /^opencode/i }));
-    expect(screen.getByRole("button", { name: /^opencode/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Starting its turn.")).toBeInTheDocument();
+    push("t1", "tool_call", "cat ~/.claude.json", "call-3");
+    await user.click(screen.getByRole("button", { name: /^claude/i }));
+    expect(screen.getByRole("button", { name: /^claude/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
   });
 
@@ -263,9 +283,9 @@ describe("SetupComputerDialog", () => {
           folder: "",
         }),
       );
-      expect(screen.getByRole("button", { name: /^codex/i })).toHaveTextContent("Off · plays leave it out");
+      expect(screen.getByText("Off · plays leave it out")).toBeInTheDocument();
       expect(screen.queryByRole("combobox", { name: "Codex model" })).not.toBeInTheDocument();
-      expect(screen.getByText("0/2 confirmed")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(/^0\/2Not set up yet/);
 
       await user.click(screen.getByRole("button", { name: /set up all/i }));
       await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", expect.objectContaining({ providers: ["claudeagent", "opencode"] })));
@@ -279,8 +299,8 @@ describe("SetupComputerDialog", () => {
       await user.click(screen.getByRole("button", { name: /^open$/i }));
       await user.click(await screen.findByRole("switch", { name: "Use Grok" }));
       await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/choices", expect.objectContaining({ skipped_providers: ["grok"] })));
-      expect(screen.getByRole("button", { name: /^grok/i })).toHaveTextContent("Off · plays leave it out");
-      expect(screen.getByText("0/3 confirmed")).toBeInTheDocument();
+      expect(screen.getByText("Off · no longer in T3 Code")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(/^0\/3/);
     });
 
     it("opens with saved switches off, and needs one provider on to set anything up", async () => {

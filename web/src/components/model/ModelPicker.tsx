@@ -20,18 +20,20 @@ interface ModelPickerProps {
   // What the empty pick reads as: the computer's default, or the person's defaults inside a project.
   defaultLabel?: string;
   disabled?: boolean;
+  // Off where the row beside it already shows the provider's mark.
+  mark?: boolean;
   className?: string;
 }
 
 // A model button opening a searchable list of every provider's models, as the harness lists them.
-export const ModelPicker = ({ providers, value, onChange, label, allowDefault = false, defaultLabel = COMPUTER_DEFAULT, disabled = false, className }: ModelPickerProps) => {
+export const ModelPicker = ({ providers, value, onChange, label, allowDefault = false, defaultLabel = COMPUTER_DEFAULT, disabled = false, mark = true, className }: ModelPickerProps) => {
   const [open, setOpen] = useState(false);
   const provider = providers.find((p) => p.id === value.provider);
   const text = findModel(providers, value)?.name ?? (value.model || (value.provider ? "Provider default" : defaultLabel));
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger role="combobox" aria-label={label} aria-expanded={open} aria-haspopup="listbox" disabled={disabled} className={cn(pickerTriggerClass, className)}>
-        {provider && <HarnessProviderMark driver={provider.driver} className="size-3.5 shrink-0 text-muted-foreground" />}
+        {mark && provider && <HarnessProviderMark driver={provider.driver} className="size-3.5 shrink-0 text-muted-foreground" />}
         <span className={cn("min-w-0 flex-1 truncate text-left", !value.provider && !value.model && "text-muted-foreground")}>{text}</span>
         <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
       </PopoverTrigger>

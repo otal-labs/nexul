@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { AddComputerStep } from "@/components/pairing/AddComputerStep";
-import { PAIR_DIALOG_FRAME, SETUP_DIALOG_FRAME, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
+import { PAIR_DIALOG_FRAME, PAIR_DIALOG_HEADER, SETUP_BODY, SETUP_DIALOG_FRAME, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
 import { SetupDoneButton } from "@/components/pairing/SetupDoneButton";
 import { SetupStep } from "@/components/pairing/SetupStep";
 import { Button } from "@/components/ui/button";
@@ -63,15 +63,15 @@ export const AddComputerDialog = ({ trigger, again }: AddComputerDialogProps) =>
         // A stray click beside the command or a long setup must not throw the dialog away; Cancel and Esc close it on purpose.
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
+        <DialogHeader className={PAIR_DIALOG_HEADER}>
           <DialogTitle className="pr-8">{dialogTitle(step, computer?.name || again?.name, again)}</DialogTitle>
           <DialogDescription>{step === "setup" ? SETUP_LEAD : ADD_LEAD}</DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+        <div className={step === "setup" ? SETUP_BODY : "min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6"}>
           {enroll.isPending && <LoadingDisplay label="Making the command" />}
           {enroll.error && <ErrorDisplay error={enroll.error} title="Couldn't make the command." />}
           {enroll.data && computer && step === "add" && <AddComputerStep enrollment={enroll.data} computer={computer} />}
-          {computer && step === "setup" && <SetupStep computer={computer} />}
+          {computer && step === "setup" && <SetupStep computer={computer} framed />}
         </div>
         <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
           <DialogClose asChild>

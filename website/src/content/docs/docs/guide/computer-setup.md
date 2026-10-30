@@ -12,9 +12,9 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 1. Open your settings, **Computers**, and press **Set up** on the computer's row (or **Re-run setup** in its **…** menu). **Set up**, the last step of **Add a computer**, opens the same screen.
 2. Each provider T3 Code lists on the computer has a row with a switch. Switch off any provider you don't use. The switch saves straight away, so a provider you switch off stops showing in the model pickers for plays and chat.
 3. Pick the model each provider's setup turn runs on, beside its name, or leave **Provider default**.
-4. Under the list, **Runs in** picks which of T3 Code's projects the turns run in. Setup only writes files in your home folder, so any of them works; change it if the preselected folder no longer exists. A computer with no T3 project has nothing to pick: setup refuses and says to create one, with **Create empty project** under Settings → Computers → Projects or `computer_project_create` with a `name`.
+4. Above the list, **Runs in** picks which of T3 Code's projects the turns run in. Setup only writes files in your home folder, so any of them works; change it if the preselected folder no longer exists. A computer with no T3 project has nothing to pick: setup refuses and says to create one, with **Create empty project** under Settings → Computers → Projects or `computer_project_create` with a `name`.
 5. Press **Set up all** to set up every switched-on provider at once, or **Set up** on one row to run just that provider. Providers set up side by side, and you can start another row while one is still running.
-6. Click a provider's name to open or fold the agent's steps; the running one opens by itself. Each ends confirmed or failed. A failed row opens on its reason; press **Retry** on it to run only that provider again.
+6. The count at the top shows how many switched-on providers are confirmed, and each row's state sits on the line under it. Click a provider's name to open or fold the agent's steps; when one provider runs on its own its steps open by itself. Each ends confirmed or failed, and a failed row shows its reason in full; press **Retry** on it to run only that provider again, or **Re-run** on a confirmed one.
 
 **Done** keeps your model and folder choices without running anything; **Cancel** drops them. The switches are already saved.
 
@@ -30,9 +30,9 @@ A play stopped because setup isn't done shows a **Set up** button that opens the
 
 ## Check the state
 
-The computer's row reads **Setup confirmed** with the providers it covers, **Needs setup**, **Setup failed** with the providers that failed, or the provider being set up right now. Unfold the row for a line per provider and when it was confirmed.
+The computer's row reads **Setup confirmed** with the providers it covers, **Needs setup**, **Setup failed** with the providers that failed, or the provider being set up right now. Unfold the row for a line per provider and when it was confirmed. A provider T3 Code no longer lists keeps its last state on the setup screen, marked **No longer in T3 Code**.
 
-Press **Re-run setup** in the row's **…** menu, or **Run all again** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it never overwrites an installed skill and keeps the token the providers hold.
+Press **Re-run setup** in the row's **…** menu, or **Re-run all** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it never overwrites an installed skill and keeps the token the providers hold.
 
 Plays that push a branch or open a pull request use the computer's own GitHub sign-in, `gh auth login` or a git credential helper, because Nexul never gives a run write access to your repositories. The computer's details show whether one is set under **GitHub** (see [the computer's facts](/docs/guide/paired-computers/#the-computers-facts)).
 

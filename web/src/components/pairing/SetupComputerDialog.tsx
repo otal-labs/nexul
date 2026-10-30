@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-import { PAIR_DIALOG_FRAME, SETUP_DIALOG_FRAME, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
+import { PAIR_DIALOG_FRAME, PAIR_DIALOG_HEADER, SETUP_BODY, SETUP_DIALOG_FRAME, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
 import { SetupDoneButton } from "@/components/pairing/SetupDoneButton";
 import { SetupStep } from "@/components/pairing/SetupStep";
 import { Button } from "@/components/ui/button";
@@ -35,16 +35,21 @@ export const SetupComputerDialog = ({ trigger, computer, onClosed, open: control
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
-        className={cn(PAIR_DIALOG_FRAME, SETUP_DIALOG_FRAME)}
+        className={cn(PAIR_DIALOG_FRAME, SETUP_DIALOG_FRAME, "quiet-focus")}
         // A stray click beside a long setup must not throw the step's choices away; Cancel and Esc close it on purpose.
         onInteractOutside={(e) => e.preventDefault()}
+        // Setup loads after the dialog opens, so the first control would be Cancel; the dialog itself takes focus instead.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).focus();
+        }}
       >
-        <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
+        <DialogHeader className={PAIR_DIALOG_HEADER}>
           <DialogTitle className="pr-8">{`Set up ${computer.name}`}</DialogTitle>
           <DialogDescription>{SETUP_LEAD}</DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-          <SetupStep computer={computer} />
+        <div className={SETUP_BODY}>
+          <SetupStep computer={computer} framed />
         </div>
         <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
           <DialogClose asChild>

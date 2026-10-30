@@ -51,6 +51,7 @@ let setup: Record<string, unknown> = unconfirmed;
 const serveComputers = (computers: unknown[]) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url.endsWith("/setup")) return { data: setup };
+    if (url.endsWith("/providers")) return { data: { providers: [] } };
     return { data: computerList(computers) };
   });
 

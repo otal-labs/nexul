@@ -1,4 +1,5 @@
 import { segmentSteps } from "@nexul/client-core/agentSteps";
+import { useEffect, useRef } from "react";
 
 import {
   MessageScroller,
@@ -7,8 +8,6 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
-import { EmptyRow } from "@/components/EmptyRow";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SetupStateGlyph } from "@/components/pairing/SetupStateGlyph";
 import { TurnSegment } from "@/components/play/TurnSegment";
 import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
@@ -40,25 +39,36 @@ interface SetupTranscriptProps {
   row: SetupRunRow;
 }
 
-// One provider's turn read like a play run's, newest at the bottom, in a well under its row; a live turn scrolls in a fixed height.
+// One provider's kept steps read like a play run's, newest at the bottom, in a well under its row; a long turn scrolls past 280px.
 export const SetupTranscript = ({ row }: SetupTranscriptProps) => {
   const steps = useSetupActivityStore((s) => (row.turnId && s.steps[row.turnId]) || EMPTY);
   const segments = segmentSteps(steps, row.state === "running");
+  const section = useRef<HTMLElement>(null);
+  // An opening well that would end below a scrolling list's fade lifts its row to the top, so the name and the live step show
+  // together; one that fits, or a list that doesn't scroll (the welcome page), stays where it is.
+  useEffect(() => {
+    const item = section.current?.closest("li");
+    const list = item?.parentElement;
+    if (!item || !list || list.scrollHeight <= list.clientHeight) return;
+    if (item.getBoundingClientRect().bottom > list.getBoundingClientRect().bottom - 40) item.scrollIntoView({ block: "start" });
+  }, []);
   return (
-    <section aria-label={`${row.name} transcript`} className={cn("flex min-h-0 flex-col rounded-md bg-surface-2", steps.length > 0 && "h-60")}>
+    <section
+      ref={section}
+      aria-label={`${row.name} transcript`}
+      className="setup-transcript flex max-h-70 min-h-0 flex-col overflow-hidden rounded-lg bg-surface-2"
+    >
       <MessageScrollerProvider key={row.provider} autoScroll>
-        <MessageScroller className="min-h-0 flex-1">
-          <MessageScrollerViewport>
+        <MessageScroller className="min-h-0 flex-1 py-1.5">
+          <MessageScrollerViewport className="scroll-edge">
             <MessageScrollerContent role="log" aria-live="polite" aria-label={`${row.name} steps`} className="gap-1 px-3 py-3">
               {segments.map((segment, i) => (
                 <MessageScrollerItem key={i} messageId={`${row.provider}-${i}`} className={SEGMENT_ITEM}>
                   <TurnSegment segment={segment} />
                 </MessageScrollerItem>
               ))}
-              {row.state === "running" && steps.length === 0 && <LoadingDisplay label={row.status} className="justify-start p-0" />}
-              {row.state === "queued" && <EmptyRow className="text-left">Starting its turn.</EmptyRow>}
               {(row.state === "confirmed" || row.state === "failed") && (
-                <MessageScrollerItem messageId={`${row.provider}-outcome`} className={cn(SEGMENT_ITEM, steps.length > 0 && "mt-2 border-t border-border px-1 pt-3")}>
+                <MessageScrollerItem messageId={`${row.provider}-outcome`} className={cn(SEGMENT_ITEM, "mt-2 border-t border-border px-1 pt-3")}>
                   <SetupOutcome row={row} />
                 </MessageScrollerItem>
               )}

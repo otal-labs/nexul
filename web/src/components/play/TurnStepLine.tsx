@@ -20,7 +20,7 @@ export const TurnStepLine = ({ entry, live, root }: TurnStepLineProps) => {
     <span className="flex min-w-0 items-center gap-2 text-[13px] leading-5">
       <TurnStepIcon act={stepAct(entry)} tool={entry.tool} />
       <span className="shrink-0 text-muted-foreground">{verb}</span>
-      <span className="min-w-0 truncate font-mono text-xs text-foreground/80" title={object}>
+      <span className="min-w-0 truncate font-mono text-xs leading-5 text-foreground/80" title={object}>
         {object}
       </span>
       <StepStatusMark live={live} failed={isFailedStep(entry)} />

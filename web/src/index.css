@@ -611,6 +611,12 @@ body {
   line-height: 1.6;
 }
 
+/* A setup turn's well reads quieter than the provider rows above it. */
+.setup-transcript .prose-rich {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
 /* A body quoted in a rail takes the rail's 12px text. */
 .prose-rich.text-xs {
   font-size: 0.75rem;
