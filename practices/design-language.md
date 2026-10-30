@@ -584,8 +584,35 @@ that stays still and, while more lies below, fade over their last 40px (`scroll-
 padding that clears the fade at the end, so content never meets a panel's
 rounded edge on one flat line. Once scrolled, the top fades over 24px too,
 growing with the first 24px of scroll so the first row at rest is never
-washed out. `ListDetailLayout` and `ListPaneRow` in
+washed out. The open record's scroller sits inset by the panel's radius top
+and bottom, so its scrollbar never runs under the rounded corners.
+`ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
+
+Plays. Each type group's microheader carries a mono count. A play's row is
+the label (two lines at most, as every list pane title) with the last run's
+mono time in the title line's corner (none while a run is in flight), so
+the line under it takes the row's full width: a muted line of
+where it shows (`On In progress`, or the type for other plays), a bolt and
+`2 auto on` counting the auto plays switched on, `Off` and a muted label when disabled, and only when the play needs a
+look now a status mark and word, first that applies: `3 running`,
+`2 need answers`, `Last run failed`. The open play is one page of sections, not
+tabs: the header (the Enabled switch in its action cluster before Edit and
+the `…`, and under the description a mono health line, busiest first, zero
+figures left out: `5 running · 6 need answers · 1 failed this week · 17 runs
+this week · last 2h ago`, the last dropped while a run is in flight, `Not
+run yet` before the first), a facts strip (Shows on, Excluded, Template),
+Starts by itself (one bordered list; a row is the moment in 14px medium,
+then every condition and every priority rule in 12px, values in foreground
+and the glue muted, never "and 2 more"; the queue and limits in a footer on
+`surface-2`), Runs (a Needs answer block of the waiting runs, oldest first and
+five at most with Show all N, then Recent, newest first, ten at a time with
+Show more; each 40px row the status mark, a ticket's key in a mono column,
+the target's title in medium, the run's summary muted ("Needs Sam's
+answer" for a waiting run), who started it, and the mono time; in narrow
+runs the starter gives way first, then the summary, so the title keeps
+its room; an empty Runs is the same card with one muted line), then Instructions in a well, ten lines then Show all.
+`PlayDetail` and `PlayListRow` in `web/src/components/play/` are the reference.
 
 Inbox. One row per doc or ticket however many notifications it has: the
 title, over a meta line saying what happened ("created · 2 updates",
@@ -1610,7 +1637,7 @@ scrolling sideways at narrow widths, the active tab the last
 path segment (`/settings/connectors/github-app`) with the query left alone,
 the first visible tab when the segment is missing or unknown. The first tab
 has no segment of its own. A tab the viewer lacks permission for is hidden,
-not disabled, and a view left with one tab drops the row, unless it has a `trailing` control: a switch that belongs to the whole record rather than one tab (a play's Enabled) sits right-aligned on the tab row and keeps the row. Anything that
+not disabled, and a view left with one tab drops the row, unless it has a `trailing` control, which sits right-aligned on the tab row and keeps the row (the ticket thread's menu while the Thread tab is open). Anything that
 deep-links into a tabbed view builds its path with `useTabPath`, never by
 hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
@@ -1736,6 +1763,7 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
+| An open play is one page of sections with its runs, and its list row carries its run health (2026-10-30) | Against the Play and Auto plays tabs: the Play tab was a short facts block over an empty panel, and a play's runs were nowhere on its page, only on each ticket. Runs only make sense read beside the auto plays that start them, so they share one page, and the list row marks a play running, waiting on answers, or failed so a lead finds the one that needs a look without opening each |
 | On the board card a label is a pill in its own hue, and the type stays its icon (2026-10-29) | Reverses the neutral chip for the card only, on the owner's call: with the type reduced to an icon and the key on a mono eyebrow, the labels are the card's only tinted shape, so they no longer compete with a type pill, and a hue read at a glance across a column beats a 6px dot. The tint stays at 15% under the hue's ink, so a label stays quieter than the title. The ticket page and the phone card keep the neutral chip until they are brought in line |
 | The agent turn: an outcome mark over a rule, every step one row of one weight, commands listed like files (2026-10-29) | Against the fold as shipped: each command took two rows ("Ran a command" over a well holding the whole command), a leading `cd` into the run's directory pushed the command itself off the clamp, commands never grouped while reads and edits did, a tool was a bare line while a command was a box, and the muted 12px header weighed less than the body under it. One row per step and a count over neighbours keeps a run of twelve commands to about thirteen rows. The done mark stays muted rather than `success`: a long run is a column of turns, and a check in a hue on each read as a status board; failure keeps its hue. Rejected: a task card per turn (still the box the fold replaced) and a timer that moves through steps known up front (the Agent does not know its steps ahead) |
 | Docs opens on an overview, and its rows are one line with a time (2026-10-29) | Against "Select a doc" beside a list of titles alone: at 1440 the open pane gave about 900px to one sentence, the list could not say what moved lately, and a doc a play waited on hid in a collapsed folder. Rejected: a column table (it lost the folder and creator at 1024, where the list beside it already shows title and time) and a narrow column led by faces (it left the wide pane empty) |

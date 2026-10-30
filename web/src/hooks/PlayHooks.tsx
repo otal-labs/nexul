@@ -7,7 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
-import type { ListedPlay, Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
+import type { ListedPlay, Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData, WorkspacePlay } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -23,7 +23,7 @@ export const getPlayRenameImpactKey = "getPlayRenameImpact";
 export const useFetchWorkspacePlays = (workspaceId: string) =>
   useQuery({
     queryKey: [getWorkspacePlaysKey, workspaceId],
-    queryFn: async () => (await api.get<ListedPlay[]>(`/api/workspaces/${workspaceId}/plays`)).data,
+    queryFn: async () => (await api.get<WorkspacePlay[]>(`/api/workspaces/${workspaceId}/plays`)).data,
     enabled: workspaceId !== "",
   });
 

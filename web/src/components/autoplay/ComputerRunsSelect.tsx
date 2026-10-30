@@ -8,15 +8,18 @@ interface ComputerRunsSelectProps {
   computer: Computer;
   lead: string;
   tail: string;
+  /** Opens the last item with "and", kept on the item's line so it never ends one alone. */
+  and?: boolean;
 }
 
 // One component per computer because the update hook is bound to a single computer id.
-export const ComputerRunsSelect = ({ computer, lead, tail }: ComputerRunsSelectProps) => {
+export const ComputerRunsSelect = ({ computer, lead, tail, and = false }: ComputerRunsSelectProps) => {
   const update = useUpdateComputerSettings(computer.id);
 
   return (
     <>
       <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle">
+        {and && "and"}
         <InlineSelect
           label={`Runs at once on ${computer.name}`}
           value={String(computer.runs_at_once)}
@@ -27,7 +30,7 @@ export const ComputerRunsSelect = ({ computer, lead, tail }: ComputerRunsSelectP
         />
         {lead}
         <span>
-          <span className="inline-block max-w-40 truncate align-bottom text-foreground" title={computer.name}>
+          <span className="inline-block max-w-56 truncate align-bottom lg:max-w-40 xl:max-w-96 text-foreground" title={computer.name}>
             {computer.name}
           </span>
           {tail}

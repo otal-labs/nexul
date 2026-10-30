@@ -35,7 +35,7 @@ describe("switchWorkspacePath", () => {
     ["/a/stacks/s-1/deploys/d-1", "/b/topology"],
     ["/a/automations/au-1", "/b/automations"],
     ["/a/wizard/project/service?project=p-1", "/b/wizard/project/project"],
-    ["/a/plays/pl-1/auto-plays", "/b/plays"],
+    ["/a/plays/pl-1", "/b/plays"],
     ["/a/configuration/general", "/b/configuration/general"],
     ["/a/nowhere", "/b"],
   ])("%s lands on %s", (from, to) => {

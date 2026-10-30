@@ -7,14 +7,14 @@ import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { groupPlaysByType } from "@/components/play/playGroups";
 import { PlayListRow } from "@/components/play/PlayListRow";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
-import { PLAY_TYPE_LABELS, type Play } from "@/models/Play";
+import { PLAY_TYPE_LABELS, type WorkspacePlay } from "@/models/Play";
 
 interface PlaysListPaneProps {
-  plays: Play[];
+  plays: WorkspacePlay[];
   selectedId: string | undefined;
 }
 
-const matches = (play: Play, query: string) => [play.label, play.description].some((text) => text.toLowerCase().includes(query));
+const matches = (play: WorkspacePlay, query: string) => [play.label, play.description].some((text) => text.toLowerCase().includes(query));
 
 export const PlaysListPane = ({ plays, selectedId }: PlaysListPaneProps) => {
   const [search, setSearch] = useState("");
@@ -38,7 +38,7 @@ export const PlaysListPane = ({ plays, selectedId }: PlaysListPaneProps) => {
         {plays.length === 0 && <ListPaneEmpty icon={SparklesIcon} message="No plays yet" />}
         {plays.length > 0 && groups.length === 0 && <ListPaneNoMatch onClear={() => setSearch("")} />}
         {groups.map((group) => (
-          <ListPaneGroup key={group.type} label={PLAY_TYPE_LABELS[group.type]}>
+          <ListPaneGroup key={group.type} label={PLAY_TYPE_LABELS[group.type]} count={group.plays.length}>
             {group.plays.map((play) => (
               <PlayListRow key={play.id} play={play} selected={play.id === selectedId} />
             ))}

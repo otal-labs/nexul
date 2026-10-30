@@ -39,7 +39,7 @@ export const waitingWhy = (item: PlayQueueItem): string => {
   if (item.reason === "ticket busy") return `${item.target_type} busy`;
   if (item.reason === "paused") return "paused";
   if (onlyFull(item)) return "computers busy";
-  return setupGaps[item.reason]?.why ?? "waiting its turn";
+  return setupGaps[item.reason]?.why ?? "next in line";
 };
 
 // Every computer that couldn't take the run was only busy, so it starts once one of them frees up.

@@ -28,7 +28,7 @@ describe("outcomeText", () => {
 
 describe("waitingWhy and waitingSentence", () => {
   it.each([
-    ["", "waiting its turn", "waiting its turn"],
+    ["", "next in line", "next in line"],
     ["offline", "computer offline", "their computer is offline"],
     ["unpaired", "no computer paired", "no computer is paired to run it on"],
     ["expired_token", "computer session expired", "the paired computer's session expired"],

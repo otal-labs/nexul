@@ -10,7 +10,7 @@ export const renderPlaysPage = (path = "/acme/plays") => {
   const router = createMemoryRouter(
     [
       { path: "/acme/plays", element: <PlaysPage /> },
-      { path: "/acme/plays/:playId/:tab?", element: <PlaysPage /> },
+      { path: "/acme/plays/:playId", element: <PlaysPage /> },
     ],
     { initialEntries: [path] },
   );

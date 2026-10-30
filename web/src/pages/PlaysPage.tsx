@@ -27,6 +27,7 @@ export const PlaysPage = () => {
       {plays && (
         <ListDetailLayout
           hasSelection={!!playId}
+          stableGutter
           list={<PlaysListPane plays={plays} selectedId={playId} />}
           placeholder={
             <ListDetailPlaceholder
