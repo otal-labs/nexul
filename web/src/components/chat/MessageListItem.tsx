@@ -17,6 +17,8 @@ interface MessageListItemProps {
   author: Person;
   isOwn: boolean;
   continuation: boolean;
+  runName: string | undefined;
+  runDay: string | undefined;
   newDay: boolean;
   newest: boolean;
   entrance: Entrance | undefined;
@@ -30,7 +32,7 @@ interface MessageListItemProps {
 
 // One message in the scroller, memoized so a new message or a streamed token renders only the items it changed.
 export const MessageListItem = memo(
-  ({ message, author, isOwn, continuation, newDay, newest, entrance, scrollAnchor, questionAnswered, trailBlock, ticketId, onEdit, onDelete }: MessageListItemProps) => (
+  ({ message, author, isOwn, continuation, runName, runDay, newDay, newest, entrance, scrollAnchor, questionAnswered, trailBlock, ticketId, onEdit, onDelete }: MessageListItemProps) => (
     <MessageScrollerItem
       ref={entrance === "send" ? playSend : undefined}
       messageId={message.id}
@@ -42,6 +44,9 @@ export const MessageListItem = memo(
         entrance === "arrive" && "arrive",
       )}
       scrollAnchor={scrollAnchor}
+      data-run-name={runName}
+      data-run-day={runDay}
+      data-run-head={continuation ? undefined : ""}
     >
       {newDay && <ChatDayDivider createdAt={message.created_at} />}
       <MessageRow

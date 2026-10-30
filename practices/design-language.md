@@ -1354,7 +1354,7 @@ sidebar's own conversation sections. Your own messages are the one bubble
 of the name in 13px semibold and the mono clock time (the full time on hover),
 2px over the text and held to 72ch, so a long thread reads as a transcript instead of a stack of
 boxes. A new author starts 12px under the last message; a run of one person's messages drops the avatar and header after the
-first and keeps 6px between messages. On hover or focus a row's actions pill
+first and keeps 6px between messages. Once a run's header has scrolled above the stream's top edge, a pill pinned there over the body indent names it, the sender in semibold `foreground` and the day muted ("Deploy Notifier · Thu 8 Oct", `bg-card`, `shadow-card`, a ring), until a row with its own header reaches the edge. On hover or focus a row's actions pill
 sits at the row's top-right, beside the header line and clear of the 72ch text;
 your own bubble keeps it on the bubble's corner. Each day opens with a divider: the
 microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it

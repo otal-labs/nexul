@@ -16,6 +16,7 @@ import {
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageListItem, type Entrance } from "@/components/chat/MessageListItem";
+import { PinnedRunSender } from "@/components/chat/PinnedRunSender";
 import { QueueEventLine } from "@/components/chat/QueueEventLine";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
@@ -24,6 +25,7 @@ import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
+import { runLabels } from "@/utils/ChatRunUtility";
 import { placeQueueEvents } from "@/utils/PlayQueueUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
@@ -93,6 +95,7 @@ export const MessageList = ({
   const blocks = useThreadTrailBlocks(conversation);
   const queueEvents = useThreadQueueEvents(conversation);
   const placed = useMemo(() => placeQueueEvents(messages, queueEvents), [messages, queueEvents]);
+  const runs = useMemo(() => runLabels(messages, resolveAuthor, currentUserId), [messages, resolveAuthor, currentUserId]);
 
   const [seen] = useState(() => new Set(messages.map(rowKey)));
   const [openedAt] = useState(() => Date.now());
@@ -125,6 +128,8 @@ export const MessageList = ({
                         author={resolveAuthor(message.author_id)}
                         isOwn={own}
                         continuation={isContinuation(messages[i - 1], message)}
+                        runName={runs[i]?.name}
+                        runDay={runs[i]?.day}
                         newDay={placed.opensDay.has(message.id)}
                         newest={newest}
                         entrance={entranceOf(message, seen, own)}
@@ -149,6 +154,7 @@ export const MessageList = ({
                 )}
               </MessageScrollerContent>
             </MessageScrollerViewport>
+            <PinnedRunSender />
             <TranscriptScrollButton />
             {messages.length > 0 && (
               <OwnMessageScroller
