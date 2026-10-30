@@ -1136,7 +1136,7 @@ is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, a stack's Settings);
 a nav with two jobs (Your settings' You and Instance settings)
 labels each group with a mono microheader in the side column and a hairline
-between the groups in the top row, which fades over its last 24px, and a group
+between the groups in the top row, which fades over 48px on each side that has more to scroll to, and a group
 with nothing the viewer may open shows no label. Danger zone is set apart the
 same way: a hairline above it in the side column, with even space either side,
 and before it in the top row. Each label holds its medium-weight width, so the
@@ -1218,7 +1218,7 @@ optional footer strip (`bg-muted/30` behind a hairline), which only a card with 
 one quiet action, sits top right beside the title (`aside`: Up to date,
 Enabled, Registered). Inside, settings are rows (`SettingsRow` in
 `SettingsRows`): the label over its description on the left, the control on
-the right once the card is 34rem wide and under
+the right once the card is 27rem wide (a settings card at 1024px) and under
 the text below that; a rule above the first row and between rows. A list
 inside a card is the same: hairline rows straight on the card, about 56px, no
 box of their own and no hover lift unless the row is a link. State is a

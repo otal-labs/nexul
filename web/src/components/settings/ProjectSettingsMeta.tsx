@@ -88,7 +88,7 @@ const ServicesMeta = ({ projectId }: { projectId: string }) => {
 export const ProjectSettingsMeta = ({ project, section }: ProjectSettingsMetaProps) => (
   <>
     {section === "general" && <SizeMeta project={project} />}
-    {section === "danger" && <Facts parts={[project.prefix, "removing a project can't be undone"]} />}
+    {section === "danger" && <Facts parts={[project.prefix]} />}
     {section === "access" && <AccessMeta projectId={project.id} />}
     {section === "statuses" && <StatusesMeta projectId={project.id} />}
     {section === "categories" && <CategoriesMeta projectId={project.id} />}
