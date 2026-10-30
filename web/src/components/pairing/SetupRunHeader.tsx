@@ -39,7 +39,7 @@ export const SetupRunHeader = ({ rows, providers, busy, running, confirmed: comp
     <div className="relative flex min-h-12 flex-wrap items-center justify-between gap-3 pb-5">
       <div role="status" className="flex min-h-10 min-w-0 items-center gap-3">
         {counting && (
-          <span className="mt-[3px] font-mono text-2xl leading-none font-medium tabular-nums">
+          <span className="mt-[3px] text-2xl leading-none font-medium tabular-nums">
             {confirmed}
             <span className="text-muted-foreground">/{rows.length}</span>
           </span>
