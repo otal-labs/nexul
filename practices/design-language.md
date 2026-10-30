@@ -822,7 +822,8 @@ an outline. A destructive row is `destructive` text and icon over a
 cards take the same panel. The sidebar's nav rows keep their own height at
 the same `text-sm`.
 
-Dialog. A `glass-popover` panel (the palette's surface) at 12px over a
+Dialog. A `glass-popover` panel (the palette's surface at 96%, so no page
+text reads through it or its fields) at 12px over a
 scrim in the canvas colour, not black, at the Appearance slider's opacity
 with a 4px blur, so a light page dims to a soft wash instead of grey. Up to
 `100dvh - 4rem` tall and 32rem wide by default; it is a header (the 16px
