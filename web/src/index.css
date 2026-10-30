@@ -391,11 +391,12 @@ body {
     var(--shadow-card);
 }
 
-/* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour. */
+/* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour, at 96% so
+   the page's text never reads through it, inside its fields included, wherever the blur is not drawn. */
 @utility glass-popover {
   border: 1px solid transparent;
   border-top-color: var(--panel-highlight);
-  background-color: color-mix(in oklab, var(--popover) 88%, transparent);
+  background-color: color-mix(in oklab, var(--popover) 96%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
     0 0 0 1px var(--panel-ring),
