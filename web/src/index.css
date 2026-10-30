@@ -44,6 +44,7 @@
   --color-media: var(--media);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-tint: var(--brand-tint);
   --color-panel: var(--panel);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
@@ -104,6 +105,8 @@
   --primary-foreground: oklch(0.99 0 0);
   --brand: oklch(0.565 0.19 35);
   --brand-foreground: oklch(1 0 0);
+  /* Your own chat bubble: the brand as a tint, so the stream's one bubble reads as yours without shouting. */
+  --brand-tint: color-mix(in oklab, var(--brand) 12%, transparent);
 
   /* status — green for success/health only; the rest cool + AA-checked */
   --success: #15803d;
@@ -169,6 +172,7 @@
   --primary-foreground: oklch(0.17 0.005 265);
   --brand: oklch(0.68 0.2 35);
   --brand-foreground: oklch(0.16 0.03 35);
+  --brand-tint: color-mix(in oklab, var(--brand) 16%, transparent);
 
   --success: #4ade80;
   --warning: #fbbf24;

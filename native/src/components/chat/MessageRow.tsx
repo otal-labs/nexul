@@ -19,7 +19,7 @@ import { useMessageEditStore } from "@/stores/messageEditStore";
 
 interface MessageRowProps {
   message: Message;
-  // Your own message is the one ember bubble, on the right with no header.
+  // Your own message is the one bubble, an ember tint on the right with no header.
   own: boolean;
   // The previous message is the same author's, so this one drops its avatar and header.
   continuation?: boolean;
@@ -46,9 +46,9 @@ const OwnMessage = ({ message, continuation }: { message: Message; continuation:
         onLongPress={() => open()}
         accessibilityActions={actionable ? ownMessageActions : []}
         onAccessibilityAction={({ nativeEvent }) => (nativeEvent.actionName === "delete" ? open("delete") : edit())}
-        className="max-w-[82%] rounded-xl rounded-br-sm bg-brand px-3.5 py-2 active:opacity-90"
+        className="max-w-[82%] rounded-xl rounded-br-sm bg-brand-tint px-3.5 py-2 active:opacity-90"
       >
-        <MessageBody body={message.body} own />
+        <MessageBody body={message.body} />
       </Pressable>
       {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
     </View>

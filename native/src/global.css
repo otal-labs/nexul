@@ -39,6 +39,8 @@
       --color-primary-foreground: oklch(0.17 0.005 265);
       --color-brand: oklch(0.68 0.2 35);
       --color-brand-foreground: oklch(0.16 0.03 35);
+      /* Your own chat bubble: brand at 16% over the background, precomputed because the native renderer cannot mix colours. */
+      --color-brand-tint: oklch(0.218 0.029 29);
 
       --color-success: #4ade80;
       --color-warning: #fbbf24;
@@ -78,6 +80,7 @@
       --color-primary-foreground: oklch(0.99 0 0);
       --color-brand: oklch(0.565 0.19 35);
       --color-brand-foreground: oklch(1 0 0);
+      --color-brand-tint: oklch(0.904 0.021 28);
 
       --color-success: #15803d;
       --color-warning: #8a6100;
