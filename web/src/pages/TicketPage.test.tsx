@@ -285,6 +285,25 @@ describe("TicketPage sections", () => {
     expect(screen.queryByRole("link", { name: "Blocked by BE-2" })).not.toBeInTheDocument();
   });
 
+  it("folds blockers past the first and pull requests past the second into a count that names them", async () => {
+    const linked = (id: string, number: number) => ({ id, project_id: "p-1", prefix: "BE", number, title: `Ticket ${number}`, status: "st-progress", done: false, finished: false });
+    const pr = (number: number) => ({ owner: "acme", repo: "api", number, title: `Change ${number}`, state: "open" });
+    mockTicket({
+      "/api/tickets/t-1/ticket-links": { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [linked("t-2", 2), linked("t-3", 3), linked("t-4", 4)], blocks: [], blocked: true },
+      "/api/tickets/t-1/links": { prs: [pr(11), pr(12), pr(13)], branches: [] },
+    });
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "Blocked by BE-2" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Blocked by BE-3" })).not.toBeInTheDocument();
+    expect(screen.getByTitle("BE-3, BE-4")).toHaveTextContent("2 more blockers: BE-3, BE-4");
+    expect(await screen.findByTitle("#13")).toBeInTheDocument();
+    // The rail lists every pull request; the strip adds a second chip for each of the first two only.
+    expect(screen.getAllByRole("link", { name: "#12 Change 12, open" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "#13 Change 13, open" })).toHaveLength(1);
+    expect(screen.getByTitle("#13")).toHaveTextContent("1 more pull request: #13");
+  });
+
   it("never opens a thread for the preview when the ticket has none", async () => {
     mockTicket();
     renderPage();
