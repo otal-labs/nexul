@@ -48,7 +48,7 @@ const CrumbItem = ({ crumb, first, last }: CrumbItemProps) => (
 
 export const PageBreadcrumb = ({ crumbs, className }: PageBreadcrumbProps) => (
   <Breadcrumb className={className}>
-    <BreadcrumbList className="flex-nowrap gap-1.5 font-mono text-xs sm:gap-1.5">
+    <BreadcrumbList className="flex-nowrap gap-1.5 text-xs sm:gap-1.5">
       {crumbs.map((crumb, index) => (
         <CrumbItem
           key={`${index}-${crumb.label}`}
