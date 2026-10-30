@@ -3,12 +3,11 @@ import { useState } from "react";
 
 import { ConversationThread } from "@/components/chat/ConversationThread";
 import { QueueEventList } from "@/components/chat/QueueEventList";
+import { TicketThreadMenu } from "@/components/chat/TicketThreadMenu";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { RowActions } from "@/components/listpane/RowActions";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { useFetchOrCreateTicketThread, useFetchTicketThreadStatus } from "@/hooks/ChatHooks";
-import { useBotsDialog } from "@/hooks/useBotsDialog";
 import { cn } from "@/lib/utils";
 
 interface TicketThreadSectionProps {
@@ -26,7 +25,6 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
   const shouldLoad = hasThread || starting;
   const showStart = !statusPending && !shouldLoad;
   const { data: conversation, error, isPending } = useFetchOrCreateTicketThread(workspaceId, ticketId, shouldLoad);
-  const { onBots, botsDialog } = useBotsDialog(conversation, "Ticket thread");
 
   return (
     <div
@@ -35,14 +33,12 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         pane && "flex min-h-0 flex-1 flex-col border-t-0 pt-0",
       )}
     >
-      {(!pane || onBots) && (
+      {!pane && (
         <div className="flex shrink-0 items-center justify-between gap-2">
-          {!pane && <h2 className="text-sm font-semibold tracking-tight">Thread</h2>}
-          {onBots && (
-            <span className="-my-1.5 ml-auto">
-              <RowActions itemLabel="the thread" onBots={onBots} />
-            </span>
-          )}
+          <h2 className="text-sm font-semibold tracking-tight">Thread</h2>
+          <span className="-my-1.5 ml-auto">
+            <TicketThreadMenu workspaceId={workspaceId} ticketId={ticketId} />
+          </span>
         </div>
       )}
       {statusPending && <LoadingDisplay label="Loading thread…" />}
@@ -60,13 +56,12 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         <div
           className={cn(
             "h-96 overflow-hidden rounded-lg border border-border",
-            pane && "h-auto min-h-0 flex-1 rounded-none border-0",
+            pane && "-mx-3 h-auto min-h-0 flex-1 rounded-none border-0 [--chat-column:50rem]",
           )}
         >
           <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />
         </div>
       )}
-      {botsDialog}
     </div>
   );
 };
