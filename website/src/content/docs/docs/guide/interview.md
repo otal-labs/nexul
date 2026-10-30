@@ -20,7 +20,7 @@ The page follows the **Memories and interview** area in the role editor: someone
 3. The agent reads your answers and the code, then asks follow-ups about skipped questions, gaps, and anything the code contradicts. They appear on the page a round at a time, each with a recommended answer and a line on why it's asked. Answer them the same way.
 4. When nothing is left to ask, the agent writes the memory, on the **Memory** tab.
 
-The run happens on your paired computer, like any [play](/docs/guide/plays/). The line above the tabs shows where it is: **Agent working**, **Agent asking**, **Memory ready**, **Memory out of date**, or **Run failed**.
+The run happens on your paired computer, like any [play](/docs/guide/plays/). The line above the tabs shows where it is: **Agent working**, **Agent asking**, **Memory ready**, **Memory out of date**, or **Run failed**. While the agent asks, **Answer** beside it opens the question.
 
 The agent records nothing from the code that you didn't confirm, and it writes rules, not a transcript of your answers.
 
@@ -44,7 +44,7 @@ Give each a stance:
 - **Follow** means the team stands behind it. Drafting reads it to propose answers.
 - **Question** means it shows how something was done, not how it should be, such as a predecessor's code. The follow-up run asks you about it and never drafts from it.
 
-Sources are listed in two groups, **Follow** and **Question**, each row with the number of drafts that cite it. Hover a row, or tab to it, for its buttons: move it to the other group, remove it, and for pasted text edit its label and text in place.
+Sources are listed in two groups, **Follow** and **Question**, each row with the number of drafts that cite it. Hover a row, or tab to it, for its buttons: move it to the other group, remove it, and for pasted text edit its label and text in place. With the sources beside the questions, hovering a source lights the questions whose drafts cite it, and hovering a draft's source lights the source.
 
 A project holds up to 50 sources. A source is read where it lives, never copied in.
 
