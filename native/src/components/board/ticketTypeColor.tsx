@@ -45,6 +45,14 @@ const LABEL_DOTS = [
   "bg-pink-500",
 ];
 
+const HUE_DOT_CLASS: Record<string, string> = {
+  cyan: "bg-cyan-500",
+  emerald: "bg-emerald-500",
+  orange: "bg-orange-500",
+  fuchsia: "bg-fuchsia-500",
+  lime: "bg-lime-600 dark:bg-lime-500",
+};
+
 const CONFIGURABLE_HUES = new Set(["cyan", "emerald", "orange", "fuchsia", "lime"]);
 
 const hashIndex = (value: string, length: number): number => {
@@ -71,4 +79,14 @@ export const ticketTypeColor = (typeName: string, color?: string): string => {
   return HUE_ICON_CLASS[TYPE_HUES[key] ?? TYPE_FALLBACK_HUES[hashIndex(key, TYPE_FALLBACK_HUES.length)]!]!;
 };
 
-export const labelDot = (label: string): string => LABEL_DOTS[hashIndex(label.trim().toLowerCase(), LABEL_DOTS.length)]!;
+// A label's configured hue or hex wins; unset hashes its name onto a hue, the same as the web.
+export const labelDot = (label: string, color?: string): string => {
+  if (hexColor(color)) return "";
+  if (color && HUE_DOT_CLASS[color]) return HUE_DOT_CLASS[color];
+  return LABEL_DOTS[hashIndex(label.trim().toLowerCase(), LABEL_DOTS.length)]!;
+};
+
+export const labelDotStyle = (color?: string): { backgroundColor: string } | undefined => {
+  const hex = hexColor(color);
+  return hex ? { backgroundColor: hex } : undefined;
+};
