@@ -17,35 +17,18 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 
 const isBlocked = (impact: DeleteImpact) => impact.tickets > 0 || impact.repos > 0 || impact.services > 0;
 
-const buildImpactMessage = (impact: DeleteImpact): string =>
-  [
-    "This project still has work in it:",
-    `- ${impact.tickets} ticket${impact.tickets === 1 ? "" : "s"}`,
-    `- ${impact.repos} repo${impact.repos === 1 ? "" : "s"}`,
-    `- ${impact.services} service${impact.services === 1 ? "" : "s"}`,
-    "",
-    "Move or delete them first. Every ticket, repo, and service needs a project.",
-  ].join("\n");
-
 export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionProps) => {
   const navigate = useNavigate();
   const deleteProject = useDeleteProject();
   const { data: impact } = useFetchProjectDeleteImpact(project.id);
   const { data: people } = useFetchProjectPeople(project.id);
   const { open: confirmDelete } = useConfirmationDialog();
+  // A project that still holds anything can't be removed; the Still holds line under it says what.
+  const blocked = !impact || isBlocked(impact);
   const answer = useEntityActions("project", project.id);
 
   const onDelete = async () => {
-    if (!impact) return;
-    if (isBlocked(impact)) {
-      await confirmDelete({
-        message: buildImpactMessage(impact),
-        title: `Remove ${project.name}?`,
-        confirmLabel: "Got it",
-        destructive: false,
-      });
-      return;
-    }
+    if (blocked) return;
     const losing = people?.length ?? 0;
     const ok = await confirmDelete({
       message: "The project is empty. Removing it can't be undone.",
@@ -79,7 +62,8 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
             answer={answer("projects:delete")}
             variant="outline"
             size="sm"
-            liveClassName={dangerButtonClass}
+            liveClassName={blocked ? "" : dangerButtonClass}
+            disabled={blocked}
             loading={deleteProject.isPending}
             onClick={() => void onDelete()}
           >

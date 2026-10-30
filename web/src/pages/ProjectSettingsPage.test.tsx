@@ -161,8 +161,7 @@ describe("ProjectSettingsPage", () => {
     expect(screen.getByRole("button", { name: "Remove project" })).toHaveAccessibleDescription(sentence);
   });
 
-  it("blocks removal of a project with affected work from the danger zone", async () => {
-    const user = userEvent.setup();
+  it("keeps Remove disabled while the project still holds work, and says what", async () => {
     const defaultGet = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0 } };
@@ -170,13 +169,8 @@ describe("ProjectSettingsPage", () => {
     });
     renderPage("/acme/projects/p-1/settings/danger");
 
-    await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/still has work in it/i)).toBeInTheDocument();
-    expect(within(dialog).getByText(/3 tickets/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Got it" }));
-
-    expect(api.delete).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Remove project" })).toBeDisabled());
+    expect(screen.getByText(/Still holds 3 tickets/)).toBeInTheDocument();
   });
 
   it("removes an empty project from the danger zone after confirming", async () => {

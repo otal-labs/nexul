@@ -8,7 +8,7 @@ interface SettingsRowProps {
   description?: ReactNode;
   /** Makes the label a <label> for the control's id, so a click on it focuses the field. */
   htmlFor?: string;
-  /** The control, right of the text from a 34rem card and under it below that. */
+  /** The control, right of the text from a 27rem card (a settings card at 1024px) and under it below that. */
   children?: ReactNode;
   /** Puts the control under the text at every width, for a control that needs the room (a list, a textarea). */
   stacked?: boolean;
@@ -22,18 +22,18 @@ export const SettingsRow = ({ label, description, htmlFor, children, stacked = f
     <div
       className={cn(
         "flex flex-col gap-3 py-4 last:pb-0",
-        !stacked && "@[34rem]:flex-row @[34rem]:items-center @[34rem]:justify-between @[34rem]:gap-8",
+        !stacked && "@[27rem]:flex-row @[27rem]:items-center @[27rem]:justify-between @[27rem]:gap-8",
         className,
       )}
     >
-      <div className={cn("min-w-0 space-y-1", !stacked && "@[34rem]:max-w-[24rem]")}>
+      <div className={cn("min-w-0 space-y-1", !stacked && "@[27rem]:max-w-[24rem]")}>
         <Label {...(htmlFor ? { htmlFor } : {})} className="block text-sm font-medium text-pretty text-foreground">
           {label}
         </Label>
         {description && <SettingsHint>{description}</SettingsHint>}
       </div>
       {children && (
-        <div className={cn("min-w-0", !stacked && "@[34rem]:flex @[34rem]:shrink-0 @[34rem]:justify-end @[34rem]:w-[min(20rem,50%)]")}>
+        <div className={cn("min-w-0", !stacked && "@[27rem]:flex @[27rem]:shrink-0 @[27rem]:justify-end @[27rem]:w-[min(20rem,50%)]")}>
           {children}
         </div>
       )}

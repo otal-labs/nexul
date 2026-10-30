@@ -14,13 +14,21 @@ const itemClass = (isActive: boolean) =>
     isActive ? "font-medium text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
-// Once the narrow top row is scrolled its left edge fades too, so a label cut there reads as more, not as half a word.
+// The narrow top row fades on each side that has more to scroll to, so a cut label reads as more, not as half a word.
 const markScrolled = (el: HTMLUListElement | null) => {
   if (!el) return;
-  const mark = () => el.toggleAttribute("data-scrolled", el.scrollLeft > 0);
+  const mark = () => {
+    el.toggleAttribute("data-scrolled", el.scrollLeft > 0);
+    el.toggleAttribute("data-more", el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  };
   mark();
   el.addEventListener("scroll", mark, { passive: true });
-  return () => el.removeEventListener("scroll", mark);
+  const resized = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(mark);
+  resized?.observe(el);
+  return () => {
+    el.removeEventListener("scroll", mark);
+    resized?.disconnect();
+  };
 };
 
 // A deep link can land on an item past the right edge of the narrow top row; bring it into view.
@@ -49,7 +57,7 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
     <ul
       ref={markScrolled}
-      className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none scroll-px-6 pb-1 max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-1.5rem),transparent)] max-lg:data-scrolled:[mask-image:linear-gradient(to_right,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)] lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0"
+      className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none scroll-px-12 pb-1 max-lg:data-more:[mask-image:linear-gradient(to_right,#000_calc(100%-3rem),transparent)] max-lg:data-scrolled:[mask-image:linear-gradient(to_right,transparent,#000_3rem)] max-lg:data-scrolled:data-more:[mask-image:linear-gradient(to_right,transparent,#000_3rem,#000_calc(100%-3rem),transparent)] lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0"
     >
       <ActiveIndicator selector='[aria-current="page"]' className={cn("rounded-md", currentRowFillClass)}>
         <CurrentRowEdge className="hidden lg:block" />
