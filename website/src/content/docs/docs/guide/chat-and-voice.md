@@ -13,7 +13,7 @@ Press **+** beside Channels, Voice channels, or Direct messages. Every workspace
 
 A direct message shows in every workspace you and the other people all belong to, not only the one you started it in, so it stays in the sidebar when you switch.
 
-When the sidebar is folded to its icons, the conversation's name at the top of the page opens the same list, with the unread count of everything else beside it. A channel's header also holds its **Settings** gear, and a private channel's members, which open the same settings.
+When the sidebar is folded to its icons, the conversation's name at the top of the page opens the same list, with what is unread elsewhere beside it, such as **3 elsewhere**. A channel's header also holds its **Settings** gear, and a private channel's members, which open the same settings.
 
 Right-click a channel in the sidebar to rename it, open its **Settings** or **Permissions…**, or delete it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
 

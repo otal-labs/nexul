@@ -1377,7 +1377,7 @@ conversation header is 48px, its hairline running the panel's width: the icon
 members as three 20px avatars and a mono count, and the channel settings gear
 for whoever has settings there, both opening the dialog the sidebar row's menu
 opens. While the sidebar is the icon rail, the name is a switcher: a chevron and the
-mono unread count of every other listed conversation, opening a popover of the
+unread count of every other listed conversation as a dot and "3 elsewhere", opening a 20rem popover of the
 sidebar's own conversation sections. Your own messages are the one bubble
 (`brand`); everyone else's text runs plain under a 32px avatar and a header
 of the name in 13px semibold and the mono clock time (the full time on hover),
@@ -1435,7 +1435,7 @@ right. Its focus ring draws inside the row (`inset-focus`), where the list's
 clip cannot cut it off.
 
 Bot message. A bot's post sits plain like a person's, under the
-name and avatar it posted with (the Nexul glyph without one) and a `BOT`
+name and avatar it posted with (the Nexul glyph on a `muted` disc without one) and a `BOT`
 outline tag, running the column's width when it carries an embed. Each embed is a report on
 the panel, no box: a 3px rounded leading edge, 16px of indent, then the
 heading, the description, the facts and a footer line. The server drops the sender's
@@ -1450,8 +1450,8 @@ the facts read as sentences (`embedFacts`): short inline fields share one
 full-width field takes a line of its own, six at most; three or more fields
 whose value is a state word become one tally, the problems by name worst first
 and the rest counted ("● cache stopped · 2 redeployed · 6 healthy"); fewer
-keep their dot on the fact line. The footer text and time follow as one mono
-11px line with the ghost fold toggle after it ("Show all 9 fields" for a tally,
+keep their dot on the fact line, and a long fact on one line is mono like the line's values. The last line leads with the ghost fold toggle, the footer text and time trailing right as one mono
+11px line ("9 Oct 16:02", "Today 16:02"); the toggle reads "Show all 9 fields" for a tally,
 "Show 6 more fields" past six long ones, "Show the rest" for a long
 description, which shows its first six lines whole rather than a clamp that cuts the last or ends it in an ellipsis); opened, the fields lay out as the sender's grid, each name in
 muted 12px sans over its value, as the fact line names it, inline ones three

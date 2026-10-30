@@ -48,7 +48,9 @@ const FactBlock = ({ field }: { field: EmbedField }) => (
   <div className="flex min-w-0 items-baseline gap-2 text-[13px] leading-5">
     <span className="shrink-0 text-muted-foreground">{field.name}</span>
     <Dot field={field} />
-    <DiscordMarkdown text={field.value} className="min-w-0 text-foreground" />
+    {/* A one-line value is data like the fact line's; a value over several lines is the sender's prose. */}
+    {!field.value.includes("\n") && <DiscordInline text={field.value} className="min-w-0 font-mono text-xs text-foreground" />}
+    {field.value.includes("\n") && <DiscordMarkdown text={field.value} className="min-w-0 text-foreground" />}
   </div>
 );
 

@@ -101,7 +101,7 @@ describe("MessageRow for a bot", () => {
     ["a javascript: avatar", "javascript:alert(1)"],
   ])("shows the glyph for %s and asks nothing of the proxy", (_name, avatar) => {
     const { container } = renderBot(botMessage({ ...(avatar ? { author_avatar_url: avatar } : {}), body: "hi" }));
-    expect(container.querySelector("img")).toHaveAttribute("src", "/favicon.svg");
+    expect(container.querySelector("img")).toBeNull();
     expect(mediaCalls()).toEqual([]);
   });
 
@@ -118,7 +118,7 @@ describe("MessageRow for a bot", () => {
     );
     await vi.waitFor(() => expect(mediaCalls()).toHaveLength(2));
     await act(async () => {});
-    expect(imageSources(container)).toEqual(["/favicon.svg"]);
+    expect(imageSources(container)).toEqual([]);
   });
 
   it("loads the bot's own served avatar through the authenticated client", async () => {
@@ -161,7 +161,7 @@ describe("MessageRow for a bot", () => {
     expect(screen.getByText("Unsafe")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "alice" })).toHaveAttribute("href", "https://example.com/alice");
     expect(screen.queryByRole("link", { name: "bob" })).not.toBeInTheDocument();
-    await vi.waitFor(() => expect(imageSources(container)).toEqual(["/favicon.svg", "blob:media"]));
+    await vi.waitFor(() => expect(imageSources(container)).toEqual(["blob:media"]));
     expect(mediaCalls()).toEqual([media("https://example.com/chart.png")]);
   });
 
@@ -212,7 +212,7 @@ describe("MessageRow for a bot", () => {
     vi.setSystemTime(new Date("2026-10-06T22:00:00Z"));
     try {
       renderBot(botMessage({ embeds: [{ title: "Down", footer: { text: "Uptime Kuma" }, timestamp: "2026-10-06 20:10:00.000" }] }));
-      expect(screen.getByText("Today at 01:40")).toBeInTheDocument();
+      expect(screen.getByText("Today 01:40")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
       vi.unstubAllEnvs();

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { MessagesSquare } from "lucide-react";
 
 import type { Person } from "@nexul/client-core/person";
 import { isContinuation, isNote, type Conversation } from "@nexul/client-core/chat";
@@ -103,7 +104,7 @@ export const MessageList = ({
     <>
       {empty && (
         <ChatPaneState>
-          <NoDataDisplay message="No messages yet. Say hello." size="compact" />
+          <NoDataDisplay icon={MessagesSquare} message="No messages yet. Say hello." size="compact" />
         </ChatPaneState>
       )}
       {!empty && (

@@ -3,7 +3,6 @@ import { useState, type MouseEvent } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
-import { UnreadBadge } from "@/components/UnreadBadge";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
 import { cn } from "@/lib/utils";
 import { listedUnread } from "@/models/Chat";
@@ -45,10 +44,16 @@ export const ConversationSwitcher = ({ workspaceId, conversationId, label, icon:
             {label}
           </span>
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          <UnreadBadge count={waiting} />
+          {waiting > 0 && (
+            <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <span aria-hidden className="size-1.5 rounded-full bg-foreground" />
+              <span className="font-mono tabular-nums">{waiting > 99 ? "99+" : waiting}</span>
+              elsewhere
+            </span>
+          )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className={cn("max-h-[min(32rem,70dvh)] w-64 overflow-y-auto p-1.5", openRowClass)} onClickCapture={closeOnPick}>
+      <PopoverContent className={cn("max-h-[min(32rem,70dvh)] w-80 overflow-y-auto p-1.5", openRowClass)} onClickCapture={closeOnPick}>
         <ChatSidebarSection collapsed={false} />
       </PopoverContent>
     </Popover>

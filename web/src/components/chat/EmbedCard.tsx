@@ -46,8 +46,8 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
       </div>
       {(hasFooter || foldLabel) && (
         <div className="mt-1 flex min-h-5 flex-wrap items-baseline gap-x-3">
-          {hasFooter && <EmbedFooter embed={embed} />}
           {foldLabel && <FoldBar label={open ? "Show less" : foldLabel} open={open} onToggle={() => setOpen(!open)} />}
+          {hasFooter && <EmbedFooter embed={embed} className="ml-auto" />}
         </div>
       )}
     </article>
