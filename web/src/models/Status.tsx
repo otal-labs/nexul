@@ -14,7 +14,7 @@ export type StatusKind = (typeof StatusKind)[keyof typeof StatusKind];
 export const STATUS_STAGES: { kind: StatusKind; label: string; text: string; dot: string }[] = [
   { kind: StatusKind.Backlog, label: "Backlog", text: "text-muted-foreground", dot: "bg-muted-foreground" },
   { kind: StatusKind.Progress, label: "Progress", text: "text-info", dot: "bg-info" },
-  { kind: StatusKind.Review, label: "Review", text: "text-warning", dot: "bg-warning" },
+  { kind: StatusKind.Review, label: "Review", text: "text-warning", dot: "bg-warning-mark" },
   { kind: StatusKind.Testing, label: "Testing", text: "text-merged", dot: "bg-merged" },
   { kind: StatusKind.Done, label: "Done", text: "text-success", dot: "bg-success" },
 ];

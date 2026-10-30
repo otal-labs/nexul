@@ -74,7 +74,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
       <span className="flex min-w-0 flex-1 items-baseline gap-2">
         {source.gone && (
           <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-            <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning" />
+            <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning-mark" />
             <span className="truncate">{SOURCE_KIND_LABEL[source.kind]} deleted</span>
           </span>
         )}

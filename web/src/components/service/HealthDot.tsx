@@ -3,7 +3,7 @@ import { DeployStatus, type DeployStatus as DeployStatusType } from "@/models/Se
 
 // Only "healthy" pulses; others stay still since this page is read under stress, where calm color reads clearer.
 const dotClass: Record<DeployStatusType, string> = {
-  [DeployStatus.Pending]: "bg-warning",
+  [DeployStatus.Pending]: "bg-warning-mark",
   [DeployStatus.Running]: "bg-info",
   [DeployStatus.Healthy]: "bg-success animate-[status-pulse_2.4s_ease-standard_infinite]",
   [DeployStatus.Failed]: "bg-destructive",

@@ -18,7 +18,7 @@ const IDLE_DOT = "bg-muted-foreground/50";
 
 // One word, so the row never cuts it; the reason is the title. Connection trouble outranks the reader's own state: Paused is the button, Scrolled up is following let go by scrolling.
 const describeMarker = (status: LogStatus, paused: boolean, scrolledUp: boolean): Marker => {
-  if (status === "offline") return { label: "Offline", dot: "bg-warning" };
+  if (status === "offline") return { label: "Offline", dot: "bg-warning-mark" };
   if (status === "ended") return { label: "Ended", dot: IDLE_DOT };
   if (status === "connecting") return { label: "Connecting…", dot: IDLE_DOT };
   if (status === "forbidden") return { label: "Not allowed", dot: IDLE_DOT };

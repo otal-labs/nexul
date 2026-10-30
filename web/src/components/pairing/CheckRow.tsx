@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const STATE_DOT: Record<CheckState, string> = {
   waiting: "bg-muted-foreground/60 animate-[status-pulse_2.4s_ease-standard_infinite]",
   passed: "bg-success",
-  warning: "bg-warning",
+  warning: "bg-warning-mark",
   failed: "bg-destructive",
 };
 

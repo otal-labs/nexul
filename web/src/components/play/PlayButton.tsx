@@ -95,7 +95,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           title={reason || play.description || play.label}
           onClick={() => setDialogOpen(true)}
         >
-          {outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning" />}
+          {outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning-mark" />}
           {!outOfDate && <Sparkles className="size-3.5" aria-hidden />}
           <span className="min-w-0 truncate">{label ?? play.label}</span>
         </Button>

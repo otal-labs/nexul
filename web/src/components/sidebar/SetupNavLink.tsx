@@ -22,7 +22,7 @@ export const SetupNavLink = ({ to, label, icon: Icon, collapsed }: SetupNavLinkP
       {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
       <span
         aria-hidden
-        className={cn("size-1.5 shrink-0 rounded-full bg-warning", collapsed && railDotClass)}
+        className={cn("size-1.5 shrink-0 rounded-full bg-warning-mark", collapsed && railDotClass)}
       />
     </NavLink>
   </RailTooltip>

@@ -141,7 +141,7 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
         <div className="flex min-w-0 items-baseline gap-x-3 text-xs text-muted-foreground">
           <Count n={summary.services} label="services" className="hidden @5xl:inline" />
           {summary.failed > 0 && <AttentionCount n={summary.failed} label="failed" dot="bg-destructive" onClick={() => onFrame(ServiceStatus.Failed)} />}
-          {summary.stopped > 0 && <AttentionCount n={summary.stopped} label="stopped" dot="bg-warning" onClick={() => onFrame(ServiceStatus.Stopped)} />}
+          {summary.stopped > 0 && <AttentionCount n={summary.stopped} label="stopped" dot="bg-warning-mark" onClick={() => onFrame(ServiceStatus.Stopped)} />}
           <Count n={summary.hostnames} label="hostnames" className="hidden @5xl:inline" />
         </div>
       </div>

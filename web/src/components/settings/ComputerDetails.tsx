@@ -19,7 +19,7 @@ import { formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
 
 const LINE_DOT: Record<ProviderSetupLine["state"], string> = {
   confirmed: "bg-success",
-  running: "bg-warning animate-[status-pulse_2.4s_ease-standard_infinite]",
+  running: "bg-warning-mark animate-[status-pulse_2.4s_ease-standard_infinite]",
   failed: "bg-destructive",
   unconfirmed: "bg-muted-foreground/40",
 };

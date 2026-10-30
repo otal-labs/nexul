@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const dotClass: Record<string, string> = {
   [ContainerStatus.Healthy]: "bg-success",
   [ContainerStatus.Running]: "bg-info",
-  [ContainerStatus.Pending]: "bg-warning",
+  [ContainerStatus.Pending]: "bg-warning-mark",
   [ContainerStatus.Exited]: "bg-destructive",
 };
 

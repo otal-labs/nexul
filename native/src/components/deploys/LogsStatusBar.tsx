@@ -10,7 +10,7 @@ interface LogsStatusBarProps {
 }
 
 const describe = (status: LogStatus, following: boolean): { label: string; dot: string } => {
-  if (status === "offline") return { label: "Runner offline, reconnecting…", dot: "bg-warning" };
+  if (status === "offline") return { label: "Runner offline, reconnecting…", dot: "bg-warning-mark" };
   if (status === "ended") return { label: "Stream ended", dot: "bg-muted-foreground" };
   if (status === "connecting") return { label: "Connecting…", dot: "bg-muted-foreground" };
   if (!following) return { label: "Paused", dot: "bg-muted-foreground" };

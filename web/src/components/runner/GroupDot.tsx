@@ -9,7 +9,7 @@ export const GroupDot = ({ tone }: { tone: GroupTone }) => (
       className={cn(
         "size-2 rounded-full",
         tone === "online" && "bg-success",
-        tone === "partial" && "bg-warning",
+        tone === "partial" && "bg-warning-mark",
         tone === "offline" && "ring-[1.5px] ring-muted-foreground/60 ring-inset",
       )}
     />

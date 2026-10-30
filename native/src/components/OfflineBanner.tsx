@@ -24,7 +24,7 @@ export const OfflineBanner = () => {
       style={{ height: OFFLINE_BANNER_HEIGHT }}
       className="flex-row items-center gap-2 border-b border-border bg-surface-2 px-4"
     >
-      <View className="size-2 rounded-full bg-warning" />
+      <View className="size-2 rounded-full bg-warning-mark" />
       <Text variant="small" numberOfLines={1} className="flex-1 text-muted-foreground">
         Offline. Retrying when the connection returns.
       </Text>

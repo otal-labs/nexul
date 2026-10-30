@@ -99,7 +99,8 @@ in the three token files; this table holds the roles.
 | `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
 | `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light | |
 | `success` | `#4ade80` | `#15803d` | health, success, and open pull requests | |
-| `warning` | `#fbbf24` | `#8a6100` | in-flight states | |
+| `warning` | `#fbbf24` | `#8a6100` | in-flight states, as text and icons | |
+| `warning-mark` | `#fbbf24` | `#a07800` | a `warning` dot or fill; 3.5:1 on every light surface, enough for a mark, and a clear amber beside the `brand` ember where `warning` reads as a darker orange at dot size | site: none, it has no status dot |
 | `info` | `#5cc8f5` | `#0369a1` | open and informational states | |
 | `merged` | `#a371f7` | `#8250df` | merged pull requests only | |
 | `destructive` | `#f26074` | `#c41945` | errors, danger zone, closed pull requests; crimson, 20° off the `brand` ember's hue | |

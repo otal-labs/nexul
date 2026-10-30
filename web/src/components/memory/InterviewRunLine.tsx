@@ -41,7 +41,7 @@ export const InterviewRunLine = ({ projectId, memory, changed }: InterviewRunLin
     <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
       {stale && (
         <span role="img" aria-label="out of date" className="flex size-3.5 shrink-0 items-center justify-center">
-          <span className="size-2 rounded-full bg-warning" />
+          <span className="size-2 rounded-full bg-warning-mark" />
         </span>
       )}
       {!stale && icon && <TrailStateIcon state={icon} />}

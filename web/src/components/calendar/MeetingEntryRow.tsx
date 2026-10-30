@@ -46,7 +46,7 @@ export const MeetingEntryRow = ({ entry: { meeting, occurrence }, detailed = fal
       {detailed && (
         <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground tabular-nums">
           <span className="flex size-1.5 shrink-0">
-            {overlaps && <span role="img" aria-label="Overlaps another meeting" title="Overlaps another meeting" className="size-1.5 rounded-full bg-warning" />}
+            {overlaps && <span role="img" aria-label="Overlaps another meeting" title="Overlaps another meeting" className="size-1.5 rounded-full bg-warning-mark" />}
           </span>
           <time dateTime={occurrence.starts_at} className="relative top-px">
             {range}

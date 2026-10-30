@@ -28,7 +28,7 @@ export const ClarificationStatusLine = ({ clarification, locked }: Clarification
       {changed > 0 && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <span role="img" aria-label="out of date" className="flex size-3.5 shrink-0 items-center justify-center">
-            <span className="size-2 rounded-full bg-warning" />
+            <span className="size-2 rounded-full bg-warning-mark" />
           </span>
           {changed} {changed === 1 ? "answer" : "answers"} changed since the doc was written
         </p>
