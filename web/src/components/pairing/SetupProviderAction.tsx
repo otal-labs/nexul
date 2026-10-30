@@ -29,13 +29,13 @@ export const SetupProviderAction = ({ row, busy, stopping, onRun, onStop }: Setu
         </Button>
       )}
       {row.state === "running" && (
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" loading={stopping} onClick={() => onStop(row.provider)} aria-label={`Stop ${row.name}`}>
+        <Button type="button" variant="ghost" size="sm" loading={stopping} onClick={() => onStop(row.provider)} aria-label={`Stop ${row.name}`}>
           <Square className="size-3 fill-current" aria-hidden />
           Stop
         </Button>
       )}
       {row.state === "confirmed" && (
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" loading={busy} onClick={run} aria-label={`Re-run setup for ${row.name}`}>
+        <Button type="button" variant="ghost" size="sm" loading={busy} onClick={run} aria-label={`Re-run setup for ${row.name}`}>
           Re-run
         </Button>
       )}
