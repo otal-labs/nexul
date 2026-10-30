@@ -30,7 +30,7 @@ export const SetupProviderItem = ({ row, model, options, open, next, busy, onInc
   return (
     <li className={cn("transition-colors duration-150 ease-standard", next && "bg-accent/40")}>
       <div className="flex min-h-14 items-center gap-3 px-3 py-2">
-        <Switch aria-label={`Use ${row.name}`} checked={row.on} disabled={!row.choice || running} onCheckedChange={(on) => onInclude(row.provider, on)} />
+        <Switch aria-label={`Use ${row.name}`} checked={row.on} disabled={running} onCheckedChange={(on) => onInclude(row.provider, on)} />
         <HarnessProviderMark driver={row.driver} className={cn("size-4 shrink-0", !row.on && "opacity-50")} />
         <button
           type="button"
