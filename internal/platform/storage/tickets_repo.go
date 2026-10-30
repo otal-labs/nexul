@@ -742,6 +742,27 @@ func (r *TicketsRepo) LabelColors(ctx context.Context, projectID string, labels 
 	return out, nil
 }
 
+func (r *TicketsRepo) ColoredLabels(ctx context.Context, projectID string) ([]string, error) {
+	out, err := r.q.ListProjectColoredLabels(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list colored labels: %w", err)
+	}
+	return out, nil
+}
+
+func (r *TicketsRepo) DeleteUnusedLabel(ctx context.Context, projectID, label string) (bool, error) {
+	var n int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		var err error
+		n, err = r.q.WithTx(tx).DeleteUnusedLabelColor(ctx, sqlcgen.DeleteUnusedLabelColorParams{ProjectID: projectID, Label: label})
+		return err
+	})
+	if err != nil {
+		return false, fmt.Errorf("delete label %q: %w", label, err)
+	}
+	return n > 0, nil
+}
+
 // attachLabels loads labels for every ticket in one query, so responses carry the filter bar's label dimension.
 // ProjectsOf maps each of ids naming a ticket to its project id; an unknown id is left out.
 func (r *TicketsRepo) ProjectsOf(ctx context.Context, ids []string) (map[string]string, error) {

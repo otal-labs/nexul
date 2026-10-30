@@ -25,3 +25,12 @@ way `StatusIcon` validates against `validStatusIcons`. An unset color on
 either falls back to the existing hash-based color
 (`ticketTypeColor.tsx`'s pattern) so nothing looks broken before an owner
 configures anything.
+
+## Amendment: a label can be made before a ticket carries it
+
+A project's labels are the ones its tickets carry plus the ones with a row in
+`label_colors`, so a label made in Settings → Labels (a name given a color)
+is offered when tagging a ticket before any ticket has it. Deleting removes
+that row, and only while no ticket in the project carries the label, because
+a label on a ticket lives in the ticket and would stay listed anyway. Rename
+and a delete that strips a label from its tickets are still out of scope.

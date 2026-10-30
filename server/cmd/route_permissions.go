@@ -280,6 +280,7 @@ var routePermissions = map[string][]string{
 	"POST /api/tickets/dev-status":                      {"tickets:read"},
 	"POST /api/tickets/labels/colors":                   {"tickets:read"},
 	"PUT /api/tickets/labels/{label}/color":             {"tickets:write"},
+	"DELETE /api/tickets/labels/colors/{label}":         {"tickets:write"},
 	"DELETE /api/tickets/{id}":                          {"tickets:delete"},
 	"PATCH /api/tickets/{id}":                           {"tickets:write"},
 	"POST /api/tickets/{id}/blocked-by":                 {"tickets:write"},

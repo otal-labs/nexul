@@ -164,6 +164,14 @@ ON CONFLICT(project_id, label) DO UPDATE SET color = excluded.color, updated_at 
 -- name: ListLabelColors :many
 SELECT label, color FROM label_colors WHERE project_id = ? AND label IN (sqlc.slice('labels'));
 
+-- name: ListProjectColoredLabels :many
+SELECT label FROM label_colors WHERE project_id = ?;
+
+-- name: DeleteUnusedLabelColor :execrows
+DELETE FROM label_colors WHERE label_colors.project_id = sqlc.arg(project_id) AND label_colors.label = sqlc.arg(label)
+  AND NOT EXISTS (SELECT 1 FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id
+                  WHERE tickets.project_id = sqlc.arg(project_id) AND ticket_labels.label = sqlc.arg(label));
+
 -- name: UpdateTicketDueOn :execrows
 UPDATE tickets SET due_on = ?, updated_at = ? WHERE id = ?;
 

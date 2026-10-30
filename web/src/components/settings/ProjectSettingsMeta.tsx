@@ -6,7 +6,7 @@ import { useFetchGrants } from "@/hooks/PermissionHooks";
 import { useFetchProjectDeleteImpact, useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/TicketHooks";
+import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import type { Project } from "@/models/Project";
 import { projectPeopleRules } from "@/models/ProjectPeople";

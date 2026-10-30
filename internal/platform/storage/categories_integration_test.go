@@ -333,6 +333,38 @@ func TestTicketsRepo_LabelColors(t *testing.T) {
 	assert.Equal(t, colors.Fuchsia, gotP2["bug"], "p-2's bug color is independent of p-1's")
 }
 
+func TestTicketsRepo_DeleteUnusedLabel(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-1", "Backend", 0)))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-2", "Mobile", 1)))
+	require.NoError(t, s.Tickets.Create(ctx, &tickets.Ticket{
+		ID: "t-1", ProjectID: "p-1", Title: "x", Status: "open", Labels: []string{"bug"}, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}))
+	for _, lc := range [][2]string{{"p-1", "bug"}, {"p-1", "spare"}, {"p-2", "bug"}} {
+		require.NoError(t, s.Tickets.SetLabelColor(ctx, lc[0], lc[1], colors.Cyan))
+	}
+
+	tests := []struct {
+		name, project, label string
+		want                 bool
+	}{
+		{"a label a ticket carries stays", "p-1", "bug", false},
+		{"another project's ticket does not hold it", "p-2", "bug", true},
+		{"an unused label goes", "p-1", "spare", true},
+		{"a label with no row is not deleted", "p-1", "nope", false},
+	}
+	for _, tt := range tests {
+		deleted, err := s.Tickets.DeleteUnusedLabel(ctx, tt.project, tt.label)
+		require.NoError(t, err)
+		assert.Equal(t, tt.want, deleted, tt.name)
+	}
+	left, err := s.Tickets.ColoredLabels(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"bug"}, left)
+}
+
 func errorsIsNotFound(err error) bool {
 	return errors.Is(err, apperrs.ErrNotFound)
 }

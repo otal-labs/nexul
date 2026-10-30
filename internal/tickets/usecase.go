@@ -747,7 +747,7 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 	return labels, nil
 }
 
-// ListAllLabels returns the sorted distinct labels on tickets the caller may read in projectID, or anywhere when empty.
+// ListAllLabels returns the sorted distinct labels on readable tickets in projectID (anywhere when empty), plus the project's colored ones.
 func (s *Service) ListAllLabels(ctx context.Context, projectID string) ([]string, error) {
 	list := s.List
 	if projectID != "" {
@@ -758,6 +758,13 @@ func (s *Service) ListAllLabels(ctx context.Context, projectID string) ([]string
 		return nil, fmt.Errorf("list all labels: %w", err)
 	}
 	var labels []string
+	if projectID != "" {
+		colored, err := s.repo.ColoredLabels(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("list all labels: %w", err)
+		}
+		labels = colored
+	}
 	for _, t := range ts {
 		labels = append(labels, t.Labels...)
 	}
@@ -785,6 +792,29 @@ func (s *Service) SetLabelColor(ctx context.Context, projectID, label string, co
 		return nil, fmt.Errorf("set color for label %q: %w", label, err)
 	}
 	return &LabelColor{Label: label, Color: color}, nil
+}
+
+// DeleteLabel removes a label made in the project; one a ticket still carries stays, since it lives on the ticket.
+func (s *Service) DeleteLabel(ctx context.Context, projectID, label string) error {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, projectID, permissions.TicketsWrite); err != nil {
+		return fmt.Errorf("delete label %q: %w", label, err)
+	}
+	deleted, err := s.repo.DeleteUnusedLabel(ctx, projectID, label)
+	if err != nil {
+		return fmt.Errorf("delete label %q: %w", label, err)
+	}
+	if !deleted {
+		return fmt.Errorf("%w: label %q is on a ticket, or is not a label in this project", apperrs.ErrConflict, label)
+	}
+	return nil
 }
 
 // LabelColors batches lookups in one call since the board renders many badges per screen.

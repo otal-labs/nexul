@@ -85,6 +85,38 @@ func TestListAllLabels(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"bug", "chore"}, labels)
 	})
+	t.Run("lists a label made in the project before any ticket carries it", func(t *testing.T) {
+		_, err := s.SetLabelColor(context.Background(), "p-1", "urgent", colors.Lime)
+		require.NoError(t, err)
+		labels, err := s.ListAllLabels(context.Background(), "p-1")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bug", "urgent"}, labels)
+	})
+}
+
+func TestDeleteLabel(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService(newFakeRepo())
+	created, err := s.Create(ctx, "p-1", "a", "", "", "")
+	require.NoError(t, err)
+	_, err = s.AddLabel(ctx, created.ID, "bug")
+	require.NoError(t, err)
+	for _, l := range []string{"bug", "urgent"} {
+		_, err = s.SetLabelColor(ctx, "p-1", l, colors.Cyan)
+		require.NoError(t, err)
+	}
+	t.Run("deletes a label no ticket carries", func(t *testing.T) {
+		require.NoError(t, s.DeleteLabel(ctx, "p-1", "urgent"))
+		labels, err := s.ListAllLabels(ctx, "p-1")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bug"}, labels)
+	})
+	t.Run("keeps a label a ticket carries", func(t *testing.T) {
+		require.ErrorIs(t, s.DeleteLabel(ctx, "p-1", "bug"), apperrs.ErrConflict)
+		got, err := s.LabelColors(ctx, "p-1", []string{"bug"})
+		require.NoError(t, err)
+		assert.Equal(t, colors.Cyan, got["bug"])
+	})
 }
 
 func TestSetLabelColor(t *testing.T) {
@@ -175,6 +207,9 @@ func TestLabelRefusals(t *testing.T) {
 			_, err := s.LabelColors(ctx, "p-1", []string{"bug"})
 			return err
 		}, errDown},
+		{"delete a label without a project", nil, func(s *Service) error { return s.DeleteLabel(ctx, " ", "bug") }, apperrs.ErrInvalid},
+		{"delete a blank label", nil, func(s *Service) error { return s.DeleteLabel(ctx, "p-1", " ") }, apperrs.ErrInvalid},
+		{"delete a label when the repo fails", func(r *fakeRepo) { r.labelColorErr = errDown }, func(s *Service) error { return s.DeleteLabel(ctx, "p-1", "bug") }, errDown},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

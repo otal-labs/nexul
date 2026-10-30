@@ -305,6 +305,11 @@ func TestTicketsHandler_LabelColors(t *testing.T) {
 		_, ok := got["nope"]
 		assert.False(t, ok)
 	})
+	t.Run("deletes a label no ticket carries", func(t *testing.T) {
+		rec := serve(t, h, http.MethodDelete, "/api/tickets/labels/colors/urgent?project_id=p-1", "")
+		require.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusConflict, serve(t, h, http.MethodDelete, "/api/tickets/labels/colors/urgent?project_id=p-1", "").Code)
+	})
 }
 
 func TestTicketsHandler_Refusals(t *testing.T) {

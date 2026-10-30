@@ -16,6 +16,7 @@ import {
   ticketFetched,
   ticketRemoved,
 } from "@/hooks/TicketCache";
+import { getAllLabelsKey } from "@/hooks/LabelHooks";
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
   TicketRole,
@@ -32,8 +33,6 @@ import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTicketLinksKey = "getTicketLinks";
 const getTicketIdByKeyKey = "getTicketIdByKey";
-export const getAllLabelsKey = "getAllLabels";
-const getLabelColorsKey = "getLabelColors";
 
 // The board and pickers show titles only, so the lists leave bodies out; a ticket's page reads its own.
 export const useFetchTickets = () =>
@@ -284,42 +283,6 @@ export const useUnlinkPR = () =>
       (await api.delete<TicketLinks>(`/api/tickets/${id}/prs`, { params: { owner: pr.owner, repo: pr.repo, number: pr.number } })).data),
     "Pull request unlinked",
   );
-
-// Without a project, the labels on every ticket the caller may read.
-export const useFetchAllLabels = (projectId?: string) =>
-  useQuery({
-    queryKey: [getAllLabelsKey, projectId],
-    queryFn: async () => (await api.get<string[]>("/api/tickets/labels", { params: { project_id: projectId } })).data,
-  });
-
-// TanStack dedupes identical queryKeys, so every TicketCard sharing this hook still fires one HTTP call.
-export const useFetchLabelColors = (projectId: string | undefined) => {
-  const { data: labels } = useFetchAllLabels(projectId);
-  return useQuery({
-    queryKey: [getLabelColorsKey, projectId, labels],
-    queryFn: requires("tickets:read", async () =>
-      (await api.post<Record<string, string>>("/api/tickets/labels/colors", { project_id: projectId, labels })).data),
-    enabled: !!projectId && !!labels && labels.length > 0,
-  });
-};
-
-export const useSetLabelColor = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ label, color, project_id }: { label: string; color: string; project_id: string }) =>
-      (
-        await api.put<{ label: string; color: string }>(`/api/tickets/labels/${encodeURIComponent(label)}/color`, {
-          project_id,
-          color,
-        })
-      ).data),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getLabelColorsKey] });
-      toast.success("Label color updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
 
 // Ticket frames carry the whole ticket after the change (internal/tickets/events.go).
 interface TicketPayload {

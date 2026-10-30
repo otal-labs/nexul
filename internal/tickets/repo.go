@@ -111,6 +111,10 @@ type Repo interface {
 	SetLabelColor(ctx context.Context, projectID, label string, color colors.Color) error
 	// LabelColors batches lookups in one query for the board, which renders many labels per screen.
 	LabelColors(ctx context.Context, projectID string, labels []string) (map[string]colors.Color, error)
+	// ColoredLabels returns every label with a color in a project, including ones no ticket carries.
+	ColoredLabels(ctx context.Context, projectID string) ([]string, error)
+	// DeleteUnusedLabel removes a label's color unless a ticket in the project carries the label, reporting whether it did.
+	DeleteUnusedLabel(ctx context.Context, projectID, label string) (bool, error)
 	Delete(ctx context.Context, id string, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
 	LinkPR(ctx context.Context, id string, ref PRRef, state PRState) error
