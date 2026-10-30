@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { HarnessProject } from "@/models/Pairing";
+import { parentFolder, type HarnessProject } from "@/models/Pairing";
 
 interface SetupFolderPickProps {
   projects: HarnessProject[];
@@ -42,9 +42,9 @@ export const SetupFolderPick = ({ projects, folder, disabled, onPick }: SetupFol
       {pick && (
         <div className="flex min-w-0 items-baseline gap-2">
           {pick}
-          {/* Cut from the start, so the folder's own name, the part that tells two apart, stays. */}
+          {/* The select names the folder; beside it, where it lives, cut from the start so the nearest parents stay. */}
           <span title={folder} className="min-w-0 truncate font-mono [direction:rtl]">
-            <bdi>{folder}</bdi>
+            <bdi>in {parentFolder(folder)}</bdi>
           </span>
         </div>
       )}

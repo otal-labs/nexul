@@ -376,7 +376,7 @@ describe("SetupComputerDialog", () => {
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", expect.objectContaining({ folder: "/home/me/StreamerBotChat" })));
 
     await pickOption(user, "Runs in", /^App/);
-    expect(screen.getByText("/home/me/app")).toBeInTheDocument();
+    expect(screen.getByTitle("/home/me/app")).toHaveTextContent("in /home/me/");
     await user.click(await screen.findByRole("button", { name: /^retry codex$/i }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "gpt", model_options: [], folder: "/home/me/app" }),

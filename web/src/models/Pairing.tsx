@@ -272,6 +272,9 @@ export const setupProviderLine = (row: SetupProviderRow) => {
   return row.run?.status || SETUP_STATE_LABEL[row.state];
 };
 
+// The folder a path sits in, with its trailing separator: /home/me/code/app is in /home/me/code/, C:\code\app in C:\code\.
+export const parentFolder = (path: string) => path.replace(/[^/\\]+[/\\]?$/, "");
+
 export interface ProviderSetupLine {
   provider: string;
   name: string;
