@@ -17,30 +17,32 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
 
   return (
     <NodeViewWrapper className="code-block-view">
-      <div className="code-block-view__lang" contentEditable={false}>
-        {editor.isEditable ? (
-          <Select value={language} onValueChange={(value) => updateAttributes({ language: value })}>
-            <SelectTrigger
-              aria-label="Code language"
-              className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-xs shadow-none focus-visible:ring-0 dark:bg-transparent"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {codeLanguageOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <span>{codeLanguageOptions.find((opt) => opt.value === language)?.label ?? language}</span>
-        )}
+      <div className="code-block-view__well">
+        <div className="code-block-view__lang" contentEditable={false}>
+          {editor.isEditable ? (
+            <Select value={language} onValueChange={(value) => updateAttributes({ language: value })}>
+              <SelectTrigger
+                aria-label="Code language"
+                className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-xs shadow-none focus-visible:ring-0 dark:bg-transparent"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {codeLanguageOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span>{codeLanguageOptions.find((opt) => opt.value === language)?.label ?? language}</span>
+          )}
+        </div>
+        <pre>
+          <NodeViewContent<"code"> as="code" />
+        </pre>
       </div>
-      <pre>
-        <NodeViewContent<"code"> as="code" />
-      </pre>
       {language === "mermaid" && (
         <Suspense fallback={null}>
           <MermaidDiagram code={node.textContent} />

@@ -228,14 +228,21 @@ describe("RichTextEditor", () => {
     });
   });
 
-  it("shows the gutter '+' only on the current empty line", async () => {
+  it("shows the gutter '+' only on the current empty line of a focused body", async () => {
     const user = userEvent.setup();
     renderEditor(emptyDocJson);
 
+    expect(document.querySelector(".plus-menu-button")).toHaveStyle({ display: "none" });
     const body = screen.getByLabelText(/doc body/i);
     await user.click(body);
     expect(document.querySelector(".plus-menu-button")).toHaveStyle({ display: "flex" });
 
+    await user.click(document.body);
+    await waitFor(() => {
+      expect(document.querySelector(".plus-menu-button")).toHaveStyle({ display: "none" });
+    });
+
+    await user.click(body);
     await user.keyboard("Hello");
     await waitFor(() => {
       expect(document.querySelector(".plus-menu-button")).toHaveStyle({ display: "none" });

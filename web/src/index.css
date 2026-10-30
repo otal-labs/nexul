@@ -680,6 +680,16 @@ body {
   margin-top: 0;
 }
 
+/* The last block ends at the editor's bottom edge, so the space below a body is the page's rhythm, not a leftover margin. */
+.prose-rich .tiptap > :last-child {
+  margin-bottom: 0;
+}
+
+/* The empty line the editor keeps after a closing code block or list shows only while writing, so at rest the body ends at its last real block. */
+.prose-rich .tiptap:not(.ProseMirror-focused) > p:last-child:not(:first-child):has(> br.ProseMirror-trailingBreak:only-child) {
+  display: none;
+}
+
 .prose-rich ul,
 .prose-rich ol {
   margin: 0.5em 0;
@@ -788,13 +798,20 @@ body {
   padding: 0.1em 0.3em;
 }
 
-/* Code blocks: a dark console panel on any canvas. */
+/* Code blocks: a surface-2 well, the same rank on either canvas. Syntax hues
+   are set per mode so each holds 4.5:1 on its well. */
 .prose-rich pre {
-  background: #0b0b0b;
-  border: 1px solid #232323;
+  --code-keyword: #4f46e5;
+  --code-string: #15803d;
+  --code-number: #c2410c;
+  --code-title: #0369a1;
+  --code-type: #854d0e;
+  --code-attr: #be185d;
+  --code-deletion: #b91c1c;
+
+  background: var(--surface-2);
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 8%, transparent);
-  color: #ededed;
+  color: var(--foreground);
   font-family: var(--font-mono-stack);
   font-size: 0.8125rem;
   line-height: 1.65;
@@ -803,89 +820,98 @@ body {
   tab-size: 2;
 }
 
+.dark .prose-rich pre {
+  --code-keyword: #818cf8;
+  --code-string: #4ade80;
+  --code-number: #fb923c;
+  --code-title: #38bdf8;
+  --code-type: #facc15;
+  --code-attr: #f472b6;
+  --code-deletion: #f87171;
+}
+
 .prose-rich pre code {
   background: transparent;
   border: none;
   padding: 0;
 }
 
-/* CodeBlockView's language picker header — same dark terminal panel, a
-   quiet row above the code rather than an overlay fighting the scrollbar. */
+/* The language picker is the well's header row, so it reads as part of the block. */
 .code-block-view {
   margin: 1.25em 0;
 }
 
+.code-block-view__well {
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+}
+
 .code-block-view__lang {
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 0.35em;
+  padding: 0.5rem 0.625rem 0;
 }
 
-.code-block-view__lang select,
 .code-block-view__lang span {
-  color: #9a9a9a;
+  color: var(--muted-foreground);
   font-family: var(--font-mono-stack);
-  font-size: 0.75em;
+  font-size: 0.75rem;
 }
 
-.code-block-view__lang select {
-  background: transparent;
-  border: 1px solid #232323;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  padding: 0.15em 0.5em;
+/* The read-only label sits where the picker's text does. */
+.code-block-view__lang > span {
+  padding: 0.125rem 0.375rem;
 }
 
 .code-block-view pre {
+  background: transparent;
   margin: 0;
+  padding-top: 0.5em;
 }
 
-/* lowlight/highlight.js token colors — cool family, same accent language as
-   the presence palette, tuned for readability on the #0b0b0b panel. */
 .hljs-comment,
 .hljs-quote {
-  color: #64748b;
+  color: var(--muted-foreground);
   font-style: italic;
 }
 
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-doctag {
-  color: #818cf8;
+  color: var(--code-keyword);
 }
 
 .hljs-string,
 .hljs-addition,
 .hljs-regexp {
-  color: #4ade80;
+  color: var(--code-string);
 }
 
 .hljs-number,
 .hljs-literal {
-  color: #fb923c;
+  color: var(--code-number);
 }
 
 .hljs-title,
 .hljs-title.function_,
 .hljs-section {
-  color: #38bdf8;
+  color: var(--code-title);
 }
 
 .hljs-built_in,
 .hljs-type,
 .hljs-class .hljs-title {
-  color: #facc15;
+  color: var(--code-type);
 }
 
 .hljs-attr,
 .hljs-attribute,
 .hljs-name,
 .hljs-tag {
-  color: #f472b6;
+  color: var(--code-attr);
 }
 
 .hljs-deletion {
-  color: #f87171;
+  color: var(--code-deletion);
 }
 
 .hljs-emphasis {
@@ -992,14 +1018,8 @@ body {
    area breathes and the caret is the primary ink. The placeholder hint is a
    React overlay (.doc-editor.is-empty), so no extension needed. */
 .prose-rich .tiptap {
-  min-height: 12rem;
   caret-color: var(--brand);
   outline: none;
-}
-
-/* Read-only body (fallback) collapses the editing min-height again. */
-.doc-readonly .tiptap {
-  min-height: 0;
 }
 
 /* A create dialog's body sits under the title like the ticket dialog's description, not a page. */

@@ -53,7 +53,7 @@ function isEmptyParagraph(view: EditorView): boolean {
   return $from.parent.type.name === "paragraph" && $from.parent.content.size === 0;
 }
 
-// Only shows next to the current empty paragraph (no mousemove tracking); click just types "/".
+// Only shows next to the current empty paragraph while the body has focus, so at rest nothing sits in the gutter; click just types "/".
 export const PlusMenuExtension = Extension.create({
   name: "plusMenu",
 
@@ -82,7 +82,7 @@ export const PlusMenuExtension = Extension.create({
           parent.appendChild(button);
 
           const update = (view: EditorView): void => {
-            if (!view.editable || !isEmptyParagraph(view)) {
+            if (!view.editable || !view.hasFocus() || !isEmptyParagraph(view)) {
               button.style.display = "none";
               return;
             }

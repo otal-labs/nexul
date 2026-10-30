@@ -791,7 +791,11 @@ either way. Only an editable body toggles it; a read-only body and a rendered
 reply show the state and ignore the pointer. Tables are ruled data, not boxed
 cells: a hairline under each row, a muted 13px header over a stronger rule,
 tabular figures. Images take the large radius, a black or white 10% outline
-drawn inside, and the card shadow. Code blocks stay consoles at 13px. A
+drawn inside, and the card shadow. A code block is a `surface-2` well at
+13px in both modes, its language picker the well's header row and its syntax
+hues set per mode to hold 4.5:1 on the well. The body's last block keeps no
+bottom margin and the editor has no minimum height, so a short or empty body
+ends where its text does; the gutter `+` shows only while the body has focus. A
 blockquote is a 2px rule in `foreground` at 25%.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Runners,
@@ -1868,6 +1872,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Roles as a checklist with a Can't give group, chips on the rows | Against held roles as chips with an × beside an "Add role" menu of checkable roles (the menu hid the full set and every reason until it opened) and the roles as plain muted text on Team rows (read like any other meta line); every role and why one is out of reach shows at once |
 | Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
 | A stack page is ops tabs (Overview, Deploys, Logs) with its configuration behind a Settings tab, Deploy in the header | Against the settings shell for the whole page: the three daily views shared a 12rem section nav with five configuration sections, so logs and the deploy list got about half the width, the deploy action was the last card under every service, and the history repeated a day header on each deploy. A Settings tab holding the section nav is the one place a tab holds a section nav, because a stack is a record you watch first and configure second |
+| A body's code block is a `surface-2` well in both modes, its language picker inside the well (2026-10-30) | Against the `#0b0b0b` console on any canvas: on a dark panel it was a quiet box, on a white panel the heaviest thing on the page. The picker sat 10px above the block at 9px in a grey of its own and read as a stray caption |
 | Body headings at 20, 18 and 16px, not 26, 21 and 17px | Against the old scale (an `h1` at 26px sat next to the 28px page title and the two read as one level) and 20, 17 and 15px (a 15px `h3` is smaller than the 16px text it opens, so only weight told it from a paragraph); the 1.9em lead-in does the separating the size no longer has to |
 
 ### Motion baseline
@@ -2313,7 +2318,7 @@ each for a reason recorded below:
 - The header is the canvas colour with a hairline foot, not frosted.
 - Fraunces ships as one pinned file, and the landing pages set their section
   titles in it.
-- Code blocks are the app's console in both modes.
+- Code blocks are a console in both modes.
 - Each docs page is a full page load, so the docs sidebar's active row stays
   still.
 
@@ -2427,7 +2432,7 @@ groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
 lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
 from its top and bottom.
 
-Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 8px,
+Code. A console in both modes: `#0b0b0b`, a `#232323` hairline, 8px,
 13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
 `#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
 ember keywords (the accent on something that is not an action; YAML keys read
