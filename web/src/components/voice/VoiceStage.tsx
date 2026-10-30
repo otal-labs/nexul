@@ -2,10 +2,13 @@ import { isTrackReference, useTracks } from "@livekit/components-react";
 import { Track } from "livekit-client";
 
 import { VoiceShareLayout } from "@/components/voice/VoiceShareLayout";
+import { VoiceSpeakerLayout } from "@/components/voice/VoiceSpeakerLayout";
 import { VoiceStageGrid } from "@/components/voice/VoiceStageGrid";
+import { useVoiceStageViewStore } from "@/stores/voiceStageViewStore";
 
-// Placeholders give audio-only people a tile; a shared screen takes the stage instead of the grid.
+// Placeholders give audio-only people a tile; a shared screen takes the stage in either view.
 export const VoiceStage = () => {
+  const view = useVoiceStageViewStore((s) => s.view);
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -18,7 +21,8 @@ export const VoiceStage = () => {
   return (
     <>
       {share && isTrackReference(share) && <VoiceShareLayout share={share} />}
-      {!share && <VoiceStageGrid tracks={cameras} />}
+      {!share && view === "grid" && <VoiceStageGrid tracks={cameras} />}
+      {!share && view === "speaker" && <VoiceSpeakerLayout tracks={cameras} />}
     </>
   );
 };

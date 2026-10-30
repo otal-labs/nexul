@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VoiceCallControls } from "@/components/voice/VoiceCallControls";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
+import { useVoiceStageViewStore } from "@/stores/voiceStageViewStore";
 
 const initialState = useVoiceCallStore.getState();
 
 beforeEach(() => {
   useVoiceCallStore.setState(initialState, true);
+  useVoiceStageViewStore.setState({ view: "grid" });
 });
 
 describe("VoiceCallControls", () => {
@@ -39,5 +41,14 @@ describe("VoiceCallControls", () => {
 
     await user.click(screen.getByRole("button", { name: "Leave call" }));
     expect(leave).toHaveBeenCalled();
+  });
+
+  it("switches between the grid and the speaker view, naming the view it switches to", async () => {
+    const user = userEvent.setup();
+    render(<VoiceCallControls />);
+
+    await user.click(screen.getByRole("button", { name: "Speaker view" }));
+    expect(useVoiceStageViewStore.getState().view).toBe("speaker");
+    expect(screen.getByRole("button", { name: "Grid view" })).toHaveAttribute("aria-pressed", "true");
   });
 });

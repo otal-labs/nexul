@@ -26,6 +26,8 @@ export type VoiceCallStore = {
   micEnabled: boolean;
   cameraEnabled: boolean;
   screenShareEnabled: boolean;
+  /** The stage hidden behind one row, until the call ends. */
+  stageCollapsed: boolean;
   join: (conversationId: string, channelName: string) => Promise<void>;
   leave: () => void;
   clearLeftAlone: (conversationId: string) => void;
@@ -33,6 +35,7 @@ export type VoiceCallStore = {
   toggleMic: () => void;
   toggleCamera: () => void;
   toggleScreenShare: () => void;
+  toggleStageCollapsed: () => void;
 };
 
 // Monotonic guard: any teardown or newer join bumps it; every await in join() re-checks before touching state.
@@ -62,6 +65,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
   micEnabled: false,
   cameraEnabled: false,
   screenShareEnabled: false,
+  stageCollapsed: false,
 
   join: async (conversationId, channelName) => {
     const prev = get();
@@ -70,7 +74,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
     const seq = ++joinSeq;
     stopAloneTimer();
     disconnectRoom(prev.room, prev.room ? prev.activeConversationId : null);
-    set({ activeConversationId: conversationId, activeChannelName: channelName, leftAlone: null, status: "connecting", connectedAt: null, room: null, error: undefined });
+    set({ activeConversationId: conversationId, activeChannelName: channelName, leftAlone: null, status: "connecting", connectedAt: null, room: null, error: undefined, stageCollapsed: false });
     try {
       const [{ data }, livekit] = await Promise.all([
         requires("none", api.post<VoiceJoinToken>(`/api/voice/${conversationId}/token`)),
@@ -141,6 +145,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
       micEnabled: false,
       cameraEnabled: false,
       screenShareEnabled: false,
+      stageCollapsed: false,
     });
   },
 
@@ -176,4 +181,6 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
     void room.localParticipant.setScreenShareEnabled(next);
     set({ screenShareEnabled: next });
   },
+
+  toggleStageCollapsed: () => set((s) => ({ stageCollapsed: !s.stageCollapsed })),
 }));
