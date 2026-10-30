@@ -43,7 +43,7 @@ export const TicketThreadPreview = ({ workspaceId, ticketId, threadPath }: Ticke
             Open thread
           </Link>
         </div>
-        <ul className="flex flex-col">
+        <ul className="grid grid-cols-[auto_auto_auto_minmax(0,1fr)] gap-x-2">
           {latest.map((message) => (
             <ThreadPreviewRow key={message.id} message={message} author={resolvePerson(message.author_id)} />
           ))}

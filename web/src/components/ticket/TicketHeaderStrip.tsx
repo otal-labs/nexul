@@ -19,6 +19,25 @@ interface TicketHeaderStripProps {
   ticketLabel: string;
 }
 
+const shownBlockers = 1;
+const shownPRs = 2;
+
+interface FoldedCountProps {
+  keys: string[];
+  noun: string;
+}
+
+const FoldedCount = ({ keys, noun }: FoldedCountProps) =>
+  keys.length > 0 && (
+    <span title={keys.join(", ")} className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+      <span aria-hidden>+{keys.length}</span>
+      <span className="sr-only">
+        {keys.length} more {noun}
+        {keys.length === 1 ? "" : "s"}: {keys.join(", ")}
+      </span>
+    </span>
+  );
+
 // The ticket's standing in the board card's marks, the same on every tab: key, status, who acts next, what still
 // blocks it, its pull requests. Read only; the rail edits.
 export const TicketHeaderStrip = ({ ticket, ticketLabel }: TicketHeaderStripProps) => {
@@ -29,6 +48,7 @@ export const TicketHeaderStrip = ({ ticket, ticketLabel }: TicketHeaderStripProp
   const { data: development } = useFetchTicketLinks(ticket.id);
   const wsPath = useWorkspacePath();
   const waitingOn = (links?.blocked_by ?? []).filter((t) => !t.done && !t.finished);
+  const prs = development?.prs ?? [];
   const role = ref.role === TicketRole.Tester ? "Tester" : "Developer";
 
   return (
@@ -43,7 +63,7 @@ export const TicketHeaderStrip = ({ ticket, ticketLabel }: TicketHeaderStripProp
           </span>
         </span>
       )}
-      {waitingOn.map((blocker) => (
+      {waitingOn.slice(0, shownBlockers).map((blocker) => (
         <Link
           key={blocker.id}
           to={wsPath(`/tickets/${linkedTicketKey(blocker)}`)}
@@ -55,9 +75,11 @@ export const TicketHeaderStrip = ({ ticket, ticketLabel }: TicketHeaderStripProp
           {linkedTicketKey(blocker)}
         </Link>
       ))}
-      {(development?.prs ?? []).map((pr) => (
+      <FoldedCount keys={waitingOn.slice(shownBlockers).map(linkedTicketKey)} noun="blocker" />
+      {prs.slice(0, shownPRs).map((pr) => (
         <PRChip key={`${pr.owner}/${pr.repo}#${pr.number}`} pr={pr} />
       ))}
+      <FoldedCount keys={prs.slice(shownPRs).map((pr) => `#${pr.number}`)} noun="pull request" />
     </>
   );
 };

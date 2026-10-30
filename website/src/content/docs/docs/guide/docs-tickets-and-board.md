@@ -71,7 +71,7 @@ On the [phone app](/docs/guide/phone-app/) the same **Doc | Questions** switch s
 
 Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. Set a **Developer** to build it and a **Tester** to check it, both optional.
 
-The ticket page has everything else. The line under the title shows where the ticket stands, on every tab: its key, its status, whoever acts next (the tester while it sits in a Testing column, otherwise the developer), each blocker still open, and its pull requests. The properties and the sections below sit beside the ticket and its thread; on a narrow window they fold behind **Details** above the tabs.
+The ticket page has everything else. The line under the title shows where the ticket stands, on every tab: its key, its status, whoever acts next (the tester while it sits in a Testing column, otherwise the developer), its first open blocker and two of its pull requests, with a count for the rest. The properties and the sections below sit beside the ticket and its thread; on a narrow window they fold behind **Details** above the tabs.
 
 - **Due date.** Pick a day in the **Due** row of the properties; the **×** in it clears the date. Anyone who can edit the ticket sets or clears it, and anyone who can see the ticket sees it. The date is a plain day with no time or timezone. Agents set it with `due_on` on `ticket_update` (a date as `2026-10-30`, or an empty string to clear it) and find tickets by day with `due_from` and `due_to` on `ticket_list`.
 

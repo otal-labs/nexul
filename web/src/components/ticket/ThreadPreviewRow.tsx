@@ -4,6 +4,7 @@ import { personLabel, type Person } from "@nexul/client-core/person";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
+import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 import { parseQuestionMessage } from "@/models/Question";
 import { parseSecretMessage } from "@/models/Secret";
@@ -33,27 +34,32 @@ export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => 
   const isSystem = message.author_kind === "system";
   const line = lineOf(message.body);
   return (
-    <li className="flex min-w-0 items-center gap-2 py-1 text-sm">
+    <li className="col-span-full grid min-w-0 grid-cols-subgrid items-baseline py-1 text-sm">
       {isAgent && (
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+        <span className="flex size-5 shrink-0 items-center justify-center self-center rounded-full bg-accent text-accent-foreground">
           <Bot className="size-3" aria-hidden />
         </span>
       )}
       {!isAgent && !isSystem && (
-        <PersonAvatar login={author.login} src={message.author_avatar_url || author.avatar_url} className="size-5 text-[10px]" />
+        <PersonAvatar
+          login={author.login}
+          src={message.author_avatar_url || author.avatar_url}
+          className="size-5 self-center text-[10px]"
+        />
       )}
-      <span className="flex min-w-0 flex-1 items-baseline gap-2">
-        {!isSystem && (
-          <span dir="auto" className="shrink-0 font-medium text-foreground">
-            {nameOf(message, author)}
-          </span>
-        )}
-        <time dateTime={message.created_at} className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-          {formatUpdatedAgo(message.created_at)}
-        </time>
-        <span dir="auto" className="min-w-0 truncate text-muted-foreground" title={line}>
-          {line}
+      {!isSystem && (
+        <span dir="auto" className="max-w-40 justify-self-start truncate font-medium text-foreground" title={nameOf(message, author)}>
+          {nameOf(message, author)}
         </span>
+      )}
+      <time
+        dateTime={message.created_at}
+        className={cn("font-mono text-xs text-muted-foreground tabular-nums", isSystem && "col-start-3")}
+      >
+        {formatUpdatedAgo(message.created_at)}
+      </time>
+      <span dir="auto" className="min-w-0 truncate text-muted-foreground" title={line}>
+        {line}
       </span>
     </li>
   );
