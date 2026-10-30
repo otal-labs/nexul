@@ -1,4 +1,4 @@
-import { FocusLayout } from "@livekit/components-react";
+import { VideoTrack } from "@livekit/components-react";
 import type { TrackReference } from "@livekit/components-core";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useRef, useSyncExternalStore } from "react";
@@ -17,12 +17,13 @@ interface ScreenShareTileProps {
   trackRef: TrackReference;
 }
 
-// The wrapper, not the video, goes full screen so the button stays reachable; the share video is already object-fit: contain.
+// The wrapper, not the video, goes full screen so the button stays reachable; the screen keeps its whole frame on the media surface.
 export const ScreenShareTile = ({ trackRef }: ScreenShareTileProps) => {
   const tile = useRef<HTMLDivElement>(null);
   const fullscreen = useSyncExternalStore(subscribeFullscreen, isTileFullscreen);
   const label = fullscreen ? "Exit full screen" : "Full screen";
   const Icon = fullscreen ? Minimize2 : Maximize2;
+  const sharer = trackRef.participant.name || trackRef.participant.identity;
 
   const toggle = () => {
     const request = fullscreen ? document.exitFullscreen() : tile.current?.requestFullscreen();
@@ -33,20 +34,25 @@ export const ScreenShareTile = ({ trackRef }: ScreenShareTileProps) => {
     <div
       ref={tile}
       data-screen-share-tile=""
-      className="group relative min-h-0 min-w-0 [&:fullscreen]:bg-black [&:fullscreen_video]:bg-black! [&>.lk-participant-tile]:size-full"
+      className="relative min-h-0 min-w-0 bg-media"
       onDoubleClick={toggle}
     >
-      <FocusLayout trackRef={trackRef} />
+      <VideoTrack trackRef={trackRef} className="size-full object-contain" />
+      <span className="dark absolute bottom-2 left-2 flex h-5 max-w-[calc(100%-16px)] items-center rounded-sm bg-media/80 px-1.5 text-xs font-medium text-white">
+        <span className="truncate" dir="auto">
+          {sharer}'s screen
+        </span>
+      </span>
       {document.fullscreenEnabled && (
         <Button
           type="button"
           size="icon"
-          variant="outline"
+          variant="ghost"
           aria-label={label}
           title={label}
           onClick={toggle}
           onDoubleClick={(e) => e.stopPropagation()}
-          className="absolute top-2 right-2 size-8 bg-background/80 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+          className="dark absolute top-2 right-2 size-8 bg-media/60 text-white hover:bg-media/80 hover:text-white"
         >
           <Icon aria-hidden />
         </Button>

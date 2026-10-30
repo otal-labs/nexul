@@ -20,7 +20,8 @@ vi.mock("@livekit/components-react", () => ({
   RoomAudioRenderer: () => <div data-testid="room-audio" />,
   RoomContext: { Provider: ({ children }: { children: React.ReactNode }) => children },
 }));
-vi.mock("@/components/chat/VoiceCallStage", () => ({ VoiceCallStage: () => null }));
+vi.mock("@/components/voice/VoiceStage", () => ({ VoiceStage: () => null }));
+vi.mock("@/components/voice/VoiceCallControls", () => ({ VoiceCallControls: () => null }));
 
 const room = {} as Room;
 const initialState = useVoiceCallStore.getState();

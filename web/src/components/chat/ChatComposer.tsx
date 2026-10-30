@@ -164,18 +164,26 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
         {/* One framed field holding attach, text and emoji; the frame takes the focus ring, not the textarea. */}
         <div className="flex items-start gap-1 rounded-lg bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
           <ComposerAttachButton onFiles={addFiles} />
-          <Textarea
-            ref={textareaRef}
-            aria-label="Message"
-            placeholder={placeholder}
-            value={value}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onClick={handleClickOrKeyUp}
-            onPaste={handlePaste}
-            rows={1}
-            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
-          />
+          {/* The placeholder is drawn over the field, since a textarea's own cannot end in an ellipsis. */}
+          <div className="relative min-w-0 flex-1">
+            <Textarea
+              ref={textareaRef}
+              aria-label="Message"
+              placeholder={placeholder}
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onClick={handleClickOrKeyUp}
+              onPaste={handlePaste}
+              rows={1}
+              className="quiet-focus field-sizing-content max-h-[50dvh] min-h-9 placeholder:truncate placeholder:text-transparent resize-none border-0 bg-transparent px-1.5 py-2 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
+            />
+            {!value && (
+              <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 truncate px-1.5 py-2 text-sm text-muted-foreground">
+                {placeholder}
+              </span>
+            )}
+          </div>
           <EmojiPickerPopover onPick={insertEmoji} align="end" restoreFocus={false}>
             <Button type="button" size="icon" variant="ghost" aria-label="Add emoji" className="text-muted-foreground hover:text-foreground">
               <Smile className="size-4" aria-hidden />

@@ -12,6 +12,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import { ReadOnlyComposer } from "@/components/chat/ReadOnlyComposer";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { VoiceLobbySlot } from "@/components/voice/VoiceLobbyRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import {
@@ -26,6 +27,7 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useChannelPostRefusal } from "@/hooks/useChannelPosting";
+import { cn } from "@/lib/utils";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { channelMention } from "@/models/Chat";
 import { type Doc } from "@/models/Doc";
@@ -75,6 +77,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const subjectPath = subjectPathOf(doc, ticket, projects);
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
+  const inCall = useVoiceCallStore((s) => isCallActive && s.status === "connected" && !!s.room);
   const postRefusal = useChannelPostRefusal(conversation);
 
   // Fires when the newest message is actually seen, not on open, so a scrolled-up chat keeps its unread count.
@@ -104,13 +107,16 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
 
   return (
     <CalendarTitleContext value={label}>
-      <div className="flex h-full min-h-0 flex-col">
-        {showHeader && <ConversationHeader conversation={conversation} label={label} icon={Icon} subjectPath={subjectPath} />}
+      <div className="@container/thread flex h-full min-h-0 flex-col">
+        {showHeader && <ConversationHeader conversation={conversation} label={label} icon={Icon} subjectPath={subjectPath} inCall={inCall} />}
+        {/* In a call the stage and the chat sit side by side from 1000px, the chat a 380px column. */}
+        <div className={cn("flex min-h-0 flex-1 flex-col", inCall && "@[1000px]/thread:flex-row")}>
         {isVoiceChannel && (
-          <Suspense fallback={<LoadingDisplay label="Loading voice…" />}>
+          <Suspense fallback={<VoiceLobbySlot />}>
             <LazyVoiceCallSection conversation={conversation} active={isCallActive} />
           </Suspense>
         )}
+        <div className={cn("flex min-h-0 flex-1 flex-col", inCall && "@[1000px]/thread:w-95 @[1000px]/thread:flex-none @[1000px]/thread:border-l @[1000px]/thread:border-border")}>
         {isPending && (
           <ChatPaneState>
             <LoadingDisplay label="Loading messages…" />
@@ -144,6 +150,8 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
             await postMessage.mutateAsync({ body, queue });
           }}
         />}
+        </div>
+        </div>
       </div>
     </CalendarTitleContext>
   );

@@ -24,3 +24,11 @@ export const isVoiceNotConfiguredError = (error: unknown): boolean => {
   const body = (error as AxiosError<ApiErrorBody> | undefined)?.response?.data;
   return body?.code === "INVALID" && !!body.message?.includes("LiveKit connector");
 };
+
+// "Lena, Sam and Bob" from display names; past three, "Lena, Sam and 6 others".
+export const roomNames = (names: string[]): string => {
+  const first = names.map((name) => name.trim().split(/\s+/)[0] || name);
+  if (first.length <= 1) return first.join("");
+  if (first.length <= 3) return `${first.slice(0, -1).join(", ")} and ${first.at(-1)}`;
+  return `${first.slice(0, 2).join(", ")} and ${first.length - 2} others`;
+};
