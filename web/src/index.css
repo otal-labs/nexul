@@ -459,7 +459,7 @@ body {
   scrollbar-gutter: auto;
 }
 
-/* The light field behind the app: the brand's tint top right and bottom left, a lift of the card between.
+/* The light field behind the app: the brand's tint top right and bottom left, nothing between, where a glow showed through the panels as a disc.
    Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
 .light-field {
   position: fixed;
@@ -468,7 +468,6 @@ body {
   pointer-events: none;
   background:
     radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
-    radial-gradient(30% 34% at 60% 38%, var(--field-mid), transparent 70%),
     radial-gradient(44% 48% at 10% 92%, var(--field-low), transparent 72%);
 }
 
