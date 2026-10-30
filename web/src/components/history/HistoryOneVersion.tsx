@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { personLabel } from "@nexul/client-core/person";
 
 import { footerTrayClass } from "@/components/history/HistoryFooter";
@@ -11,10 +13,12 @@ import { formatVersionTime } from "@/utils/TimeUtility";
 
 interface HistoryOneVersionProps {
   version: HistoryVersionSummary;
+  /** An item's own tray for this version, in place of Close alone. */
+  footer?: ReactNode;
 }
 
 // A single version has nothing to compare or restore, so the dialog shrinks to what there is to say, with Close alone.
-export const HistoryOneVersion = ({ version }: HistoryOneVersionProps) => {
+export const HistoryOneVersion = ({ version, footer }: HistoryOneVersionProps) => {
   const person = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const people = version.editor_ids.map((id) => personLabel(person(id)));
   const by = people.length > 0 ? ` by ${people.join(", ")}` : "";
@@ -30,11 +34,14 @@ export const HistoryOneVersion = ({ version }: HistoryOneVersionProps) => {
         </span>{" "}
         Older versions show here after the next edit.
       </p>
-      <div className={`${footerTrayClass} justify-end`}>
-        <DialogClose asChild>
-          <Button variant="ghost">Close</Button>
-        </DialogClose>
-      </div>
+      {footer}
+      {!footer && (
+        <div className={`${footerTrayClass} justify-end`}>
+          <DialogClose asChild>
+            <Button variant="ghost">Close</Button>
+          </DialogClose>
+        </div>
+      )}
     </>
   );
 };

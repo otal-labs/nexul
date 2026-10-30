@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { HistoryCompare } from "@/components/history/HistoryCompare";
-import { HistoryFooter } from "@/components/history/HistoryFooter";
+import { HistoryRestoreFooter } from "@/components/history/HistoryRestoreFooter";
 import { HistoryHeader } from "@/components/history/HistoryHeader";
 import { HistoryOneVersion } from "@/components/history/HistoryOneVersion";
 import { HistoryVersionList } from "@/components/history/HistoryVersionList";
@@ -14,7 +14,7 @@ import { useFetchHistory } from "@/hooks/HistoryHooks";
 import { useChangeStepper } from "@/hooks/HistoryStepperHooks";
 import { cn } from "@/lib/utils";
 import { restoredLabel } from "@/utils/HistoryVersionUtility";
-import type { HistoryBodyKind, HistoryFieldChange, HistoryRestore, HistoryView } from "@/models/History";
+import type { HistoryBodyKind, HistoryFieldChange, HistoryRestore, HistoryRetention, HistoryVersionSummary, HistoryView } from "@/models/History";
 
 interface HistoryDialogProps {
   /** The entity's history route, and the route of one version. */
@@ -22,20 +22,22 @@ interface HistoryDialogProps {
   versionUrl: (version: number) => string;
   /** The item's name, in the header. */
   name: string;
-  restore: HistoryRestore;
+  /** What the footer offers for the item: Restore, or, for an item that acts on its versions another way, its own tray for the picked one. */
+  restore?: HistoryRestore;
+  footer?: (version: HistoryVersionSummary) => ReactNode;
   /** How the item stores its versions' bodies; Tiptap JSON unless said otherwise. */
   bodyKind?: HistoryBodyKind;
   /** The version the dialog opens on, instead of the newest. */
   initialVersion?: number;
-  /** False for an item that can never have a named version (memories, tickets, plays); docs leave it on. */
-  namesVersions?: boolean;
+  /** What the rail says is kept: ten plus named versions (docs), ten (items that can't name versions), or every version. */
+  retention?: HistoryRetention;
   /** Turns a field change into the words the rail shows; the rows draw the change as it comes when it is left out. */
   readChange?: (change: HistoryFieldChange) => HistoryFieldChange;
   onClose: () => void;
 }
 
 // One dialog for every item that keeps versions; mounted while open, so each open reads the list again.
-export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, bodyKind = "tiptap", initialVersion, namesVersions = true, readChange, onClose }: HistoryDialogProps) => {
+export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, footer, bodyKind = "tiptap", initialVersion, retention = "ten-plus-named", readChange, onClose }: HistoryDialogProps) => {
   const { data: history, error, isPending } = useFetchHistory(historyUrl);
   const [picked, setPicked] = useState(initialVersion);
   const [view, setView] = useState<HistoryView>("changes");
@@ -71,14 +73,14 @@ export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, bodyKind 
         {isPending && <LoadingDisplay className="flex-1" />}
         {error && <ErrorDisplay error={error} title="Couldn't load the history." className="m-6" />}
         {versions && versions.length === 0 && <NoDataDisplay message="No versions yet" className="flex-1" />}
-        {versions && current && single && <HistoryOneVersion version={current} />}
+        {versions && current && single && <HistoryOneVersion version={current} footer={footer?.(current)} />}
         {versions && current && !single && (
           <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] border-t border-border">
             <HistoryCompare ref={scroller} picked={current} restored={restoredLabel(current, versions)} previous={previous} compare={compare} view={view} onView={changeView} step={stepper.step} onHop={stepper.hop} />
-            <HistoryVersionList versions={versions} changes={changes} selected={current.version} namesVersions={namesVersions} onSelect={pick} />
+            <HistoryVersionList versions={versions} changes={changes} selected={current.version} retention={retention} onSelect={pick} />
           </div>
         )}
-        {versions && current && !single && <HistoryFooter version={current.version} savedAt={current.created_at} isCurrent={current.current} restore={restore} />}
+        {versions && current && !single && (footer?.(current) ?? (restore && <HistoryRestoreFooter version={current.version} savedAt={current.created_at} isCurrent={current.current} restore={restore} />))}
       </DialogContent>
     </Dialog>
   );

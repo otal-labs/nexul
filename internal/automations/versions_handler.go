@@ -2,6 +2,7 @@ package automations
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
@@ -9,6 +10,7 @@ import (
 // versionRoutes registers the version-history endpoints, called only when a VersionsService is wired.
 func (h *Handler) versionRoutes(mux *httpx.ServeMux) {
 	mux.HandleFunc("POST /api/automations/{id}/versions", h.pushVersion)
+	mux.HandleFunc("GET /api/automations/{id}/history", h.history)
 	mux.HandleFunc("GET /api/automations/{id}/versions", h.listVersions)
 	mux.HandleFunc("GET /api/automations/{id}/versions/diff", h.diffVersions)
 	mux.HandleFunc("GET /api/automations/{id}/versions/{versionID}", h.getVersion)
@@ -45,7 +47,27 @@ func (h *Handler) listVersions(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	out, err := h.versions.History(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// getVersion answers a version id with the whole version, and a number with the history dialog's shape: that sequence with
+// its code as the body. An id is a UUID, never all digits.
 func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
+	if sequence, err := strconv.Atoi(r.PathValue("versionID")); err == nil {
+		out, err := h.versions.VersionBody(r.Context(), actorID(r), r.PathValue("id"), sequence)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, out)
+		return
+	}
 	v, err := h.versions.Get(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("versionID"))
 	if err != nil {
 		httpx.WriteError(w, err)

@@ -101,6 +101,32 @@ func (q *Queries) GetAutomationVersionByID(ctx context.Context, id string) (Auto
 	return i, err
 }
 
+const getAutomationVersionBySequence = `-- name: GetAutomationVersionBySequence :one
+SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE automation_id = ? AND sequence = ?
+`
+
+type GetAutomationVersionBySequenceParams struct {
+	AutomationID string
+	Sequence     int64
+}
+
+func (q *Queries) GetAutomationVersionBySequence(ctx context.Context, arg GetAutomationVersionBySequenceParams) (AutomationVersion, error) {
+	row := q.db.QueryRowContext(ctx, getAutomationVersionBySequence, arg.AutomationID, arg.Sequence)
+	var i AutomationVersion
+	err := row.Scan(
+		&i.ID,
+		&i.AutomationID,
+		&i.Sequence,
+		&i.Code,
+		&i.PusherID,
+		&i.Message,
+		&i.Status,
+		&i.CreatedAt,
+		&i.Source,
+	)
+	return i, err
+}
+
 const getAutomationVersionByStatus = `-- name: GetAutomationVersionByStatus :one
 SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE automation_id = ? AND status = ?
 `
@@ -156,6 +182,51 @@ func (q *Queries) InsertAutomationVersion(ctx context.Context, arg InsertAutomat
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const listAutomationVersionSummaries = `-- name: ListAutomationVersionSummaries :many
+SELECT id, automation_id, sequence, pusher_id, message, status, created_at FROM automation_versions WHERE automation_id = ? ORDER BY sequence DESC
+`
+
+type ListAutomationVersionSummariesRow struct {
+	ID           string
+	AutomationID string
+	Sequence     int64
+	PusherID     string
+	Message      string
+	Status       string
+	CreatedAt    int64
+}
+
+func (q *Queries) ListAutomationVersionSummaries(ctx context.Context, automationID string) ([]ListAutomationVersionSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationVersionSummaries, automationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAutomationVersionSummariesRow
+	for rows.Next() {
+		var i ListAutomationVersionSummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AutomationID,
+			&i.Sequence,
+			&i.PusherID,
+			&i.Message,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listAutomationVersionsByAutomation = `-- name: ListAutomationVersionsByAutomation :many

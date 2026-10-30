@@ -4,8 +4,8 @@ import { HistoryFieldRow } from "@/components/history/HistoryFieldRow";
 import { HistoryScrollFade } from "@/components/history/HistoryScrollFade";
 import { HistoryVersionRow } from "@/components/history/HistoryVersionRow";
 import { cn } from "@/lib/utils";
-import type { HistoryFieldChange, HistoryVersionSummary } from "@/models/History";
-import { keepsNamed, keptCounts, KEPT_UNNAMED_VERSIONS, railItems, restoredWhen } from "@/utils/HistoryVersionUtility";
+import type { HistoryFieldChange, HistoryRetention, HistoryVersionSummary } from "@/models/History";
+import { keptCounts, railItems, restoredWhen, retentionNote } from "@/utils/HistoryVersionUtility";
 
 const ARROWS: Record<string, number> = { ArrowUp: -1, ArrowDown: 1 };
 
@@ -13,15 +13,14 @@ interface HistoryVersionListProps {
   versions: HistoryVersionSummary[];
   changes?: HistoryFieldChange[] | undefined;
   selected: number;
-  /** False where an item can never have a named version (memories, tickets, plays). */
-  namesVersions?: boolean;
+  retention?: HistoryRetention;
   onSelect: (version: number) => void;
 }
 
 // The rail: the versions newest first on a timeline, ending with the rule that decides what is kept. It is opaque and scrolls
 // on its own; its gutter is reserved so the 200px of content at 768 never moves when the scrollbar comes in.
-export const HistoryVersionList = ({ versions, changes, selected, namesVersions = true, onSelect }: HistoryVersionListProps) => {
-  const counts = keptCounts(versions, namesVersions);
+export const HistoryVersionList = ({ versions, changes, selected, retention = "ten-plus-named", onSelect }: HistoryVersionListProps) => {
+  const counts = keptCounts(versions, retention);
   const items = railItems(versions, changes);
   const picks = versions.map((v) => v.version);
 
@@ -70,7 +69,7 @@ export const HistoryVersionList = ({ versions, changes, selected, namesVersions 
             {item.kind === "field" && <HistoryFieldRow change={item.change} first={i === 0} last={i === items.length - 1} />}
           </li>
         ))}
-        <li className="border-t border-border px-4 py-2 text-xs text-muted-foreground">Only the last {KEPT_UNNAMED_VERSIONS} versions are kept{keepsNamed(versions, namesVersions) ? ", plus named ones" : ""}.</li>
+        <li className="border-t border-border px-4 py-2 text-xs text-muted-foreground">{retentionNote(versions, retention)}</li>
       </ul>
       <HistoryScrollFade edge="bottom" />
     </aside>

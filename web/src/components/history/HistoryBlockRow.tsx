@@ -29,7 +29,7 @@ export const HistoryBlockRow = ({ row }: HistoryBlockRowProps) => {
       {block.kind === "heading" && <Heading>{text}</Heading>}
       {(block.kind === "paragraph" || block.kind === "other") && <p style={{ marginInlineStart: `${block.depth * 1.5}em` }}>{text}</p>}
       {block.kind === "quote" && <blockquote>{text}</blockquote>}
-      {block.kind === "line" && <div className="min-h-[1lh] font-mono text-xs break-words whitespace-pre-wrap">{text}</div>}
+      {block.kind === "line" && <div className="min-h-[1lh] font-mono text-xs break-words whitespace-pre-wrap [font-variant-ligatures:none]">{text}</div>}
       {block.kind === "code" && (
         <pre>
           <code className="whitespace-pre-wrap">{text}</code>

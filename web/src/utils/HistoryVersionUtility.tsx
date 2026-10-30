@@ -1,4 +1,4 @@
-import type { HistoryFieldChange, HistoryVersionSummary } from "@/models/History";
+import type { HistoryFieldChange, HistoryRetention, HistoryVersionSummary } from "@/models/History";
 import { formatVersionTime } from "@/utils/TimeUtility";
 
 // The server keeps this many unnamed versions per item (internal/docs/model.go KeptUnnamedVersions).
@@ -47,12 +47,21 @@ export interface KeptCounts {
   long: string;
 }
 
-// The rule says "plus named ones" only where a named version can exist: the item can name versions, or one is already kept.
-export const keepsNamed = (versions: HistoryVersionSummary[], namesVersions: boolean): boolean => namesVersions || versions.some((v) => v.name);
+export const KEEPS_ALL_NOTE = "Every version is kept.";
 
-export const keptCounts = (versions: HistoryVersionSummary[], namesVersions = true): KeptCounts => {
+// The rule says "plus named ones" only where a named version can exist: the item can name versions, or one is already kept.
+export const keepsNamed = (versions: HistoryVersionSummary[], retention: HistoryRetention): boolean => retention === "ten-plus-named" || versions.some((v) => v.name);
+
+// The line that ends the rail; "all" is an item that prunes nothing, such as an automation's code.
+export const retentionNote = (versions: HistoryVersionSummary[], retention: HistoryRetention): string => {
+  if (retention === "all") return KEEPS_ALL_NOTE;
+  return `Only the last ${KEPT_UNNAMED_VERSIONS} versions are kept${keepsNamed(versions, retention) ? ", plus named ones" : ""}.`;
+};
+
+export const keptCounts = (versions: HistoryVersionSummary[], retention: HistoryRetention = "ten-plus-named"): KeptCounts => {
   const named = versions.filter((v) => v.name).length;
-  const keeps = keepsNamed(versions, namesVersions);
+  if (retention === "all") return { short: `${versions.length} ${versions.length === 1 ? "version" : "versions"}`, long: KEEPS_ALL_NOTE };
+  const keeps = keepsNamed(versions, retention);
   return {
     short: `${versions.length} ${versions.length === 1 ? "version" : "versions"}${named > 0 ? ` · ${named} named` : ""}`,
     long: keeps ? `Only the last ${KEPT_UNNAMED_VERSIONS} unnamed versions are kept, plus named ones.` : `Only the last ${KEPT_UNNAMED_VERSIONS} versions are kept.`,

@@ -48,6 +48,10 @@ type VersionsRepo interface {
 	Activate(ctx context.Context, automationID, versionID string) (*Version, error)
 	Get(ctx context.Context, automationID, versionID string) (*Version, error)
 	ListByAutomation(ctx context.Context, automationID string) ([]Version, error)
+	// ListSummaries is ListByAutomation without each version's code and source, newest first.
+	ListSummaries(ctx context.Context, automationID string) ([]Version, error)
+	// GetBySequence returns apperrs.ErrNotFound when the automation never had that sequence, or discarded it as a replaced pending version.
+	GetBySequence(ctx context.Context, automationID string, sequence int) (*Version, error)
 	// Pending and Active return apperrs.ErrNotFound when automationID has no version in that state.
 	Pending(ctx context.Context, automationID string) (*Version, error)
 	Active(ctx context.Context, automationID string) (*Version, error)

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { HistoryVersionList } from "@/components/history/HistoryVersionList";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { HistoryFieldChange, HistoryVersionSummary } from "@/models/History";
+import type { HistoryFieldChange, HistoryRetention, HistoryVersionSummary } from "@/models/History";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() } }));
 
@@ -67,13 +67,13 @@ describe("HistoryVersionList", () => {
   });
 
   it("says 'plus named ones' only where a version can be named: docs always, others only once one is kept", () => {
-    const render_ = (props: { namesVersions?: boolean; named?: boolean }) =>
+    const render_ = (props: { retention?: HistoryRetention; named?: boolean }) =>
       render(
         <QueryClientProvider client={new QueryClient()}>
           <HistoryVersionList
             versions={[version(2, 3, true), { ...version(1, 1), name: props.named ? "Q3 freeze" : "" }]}
             selected={2}
-            {...(props.namesVersions !== undefined && { namesVersions: props.namesVersions })}
+            {...(props.retention !== undefined && { retention: props.retention })}
             onSelect={vi.fn()}
           />
         </QueryClientProvider>,
@@ -82,11 +82,16 @@ describe("HistoryVersionList", () => {
     const first = render_({});
     expect(screen.getByText("Only the last 10 versions are kept, plus named ones.")).toBeInTheDocument();
     first.unmount();
-    const second = render_({ namesVersions: false });
+    const second = render_({ retention: "ten" });
     expect(screen.getByText("Only the last 10 versions are kept.")).toBeInTheDocument();
     second.unmount();
-    render_({ namesVersions: false, named: true });
+    const third = render_({ retention: "ten", named: true });
     expect(screen.getByText("Only the last 10 versions are kept, plus named ones.")).toBeInTheDocument();
+    third.unmount();
+    render_({ retention: "all" });
+    expect(screen.getByText("Every version is kept.")).toBeInTheDocument();
+    expect(screen.queryByText(/Only the last 10/)).not.toBeInTheDocument();
+    expect(screen.getByTitle("Every version is kept.")).toHaveTextContent("2 versions");
   });
 
   describe("below 1024px", () => {

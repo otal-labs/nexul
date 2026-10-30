@@ -15,7 +15,7 @@ export const TicketHistoryDialog = ({ ticket, onClose }: TicketHistoryDialogProp
       historyUrl={ticketHistoryUrl(ticket.id)}
       versionUrl={(version) => ticketVersionUrl(ticket.id, version)}
       name={ticket.title}
-      namesVersions={false}
+      retention="ten"
       restore={{
         permission: "tickets:write",
         projectId: ticket.project_id,

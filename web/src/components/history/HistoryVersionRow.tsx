@@ -28,6 +28,7 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
   const size = versionSize(summary);
   const headline = summary.name || (summary.builtin_default ? "Built-in default" : "");
   const date = formatVersionTime(summary.created_at);
+  const pending = summary.status === "pending";
   const label = [
     date,
     people.map(personLabel).join(", "),
@@ -35,6 +36,7 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
     headline,
     size?.exact,
     summary.current && "current version",
+    pending && "pending version",
     restoredWhen && `Restored from ${restoredWhen}`,
   ]
     .filter(Boolean)
@@ -57,7 +59,7 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
       <HistorySpine node={headline ? "named" : "save"} selected={selected} first={first} last={last} />
       <span className="min-w-0 flex-1">
         {headline && (
-          <span className="mb-0.5 line-clamp-2 text-[13px] leading-[1.3] font-semibold text-balance" title={headline}>
+          <span className="mb-0.5 line-clamp-2 text-[13px] leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
             {headline}
           </span>
         )}
@@ -72,9 +74,10 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
           )}
         </span>
         <HistoryAuthor people={people} via={summary.via} />
-        {(summary.current || restoredWhen) && (
+        {(summary.current || pending || restoredWhen) && (
           <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
             {summary.current && <span className="block">Current</span>}
+            {pending && <span className="block">Pending</span>}
             {restoredWhen && (
               <span className="block truncate">
                 <span className="text-foreground">Restored from </span>
