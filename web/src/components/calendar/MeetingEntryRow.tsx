@@ -36,9 +36,12 @@ export const MeetingEntryRow = ({ entry: { meeting, occurrence }, detailed = fal
       )}
     >
       {!detailed && (
-        <time dateTime={occurrence.starts_at} className="font-mono text-[11px] text-muted-foreground tabular-nums @max-[55rem]:sr-only">
-          {formatTime(occurrence.starts_at)}
-        </time>
+        <span className="flex items-center">
+          <time dateTime={occurrence.starts_at} className="font-mono text-[11px] text-muted-foreground tabular-nums @max-[55rem]:sr-only">
+            {formatTime(occurrence.starts_at)}
+          </time>
+          <span aria-hidden className="hidden size-1.5 rounded-full bg-muted-foreground/60 @max-[55rem]:block" />
+        </span>
       )}
       {detailed && (
         <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground tabular-nums">
