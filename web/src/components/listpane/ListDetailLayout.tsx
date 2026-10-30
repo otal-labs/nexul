@@ -21,11 +21,11 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
 
   return (
     <div data-pane-layout className="flex h-full gap-2">
-      {/* The max-width keeps the open record readable whatever width was saved on a wider window. */}
+      {/* The max-width keeps the open record readable whatever width was saved on a wider window; the bottom inset keeps the list's scrollbar off the rounded corner. */}
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "panel relative min-h-0",
+          "panel relative min-h-0 pb-(--radius-xl)",
           split && "lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
           hasSelection ? "hidden" : "block w-full",
         )}

@@ -90,6 +90,7 @@ in the three token files; this table holds the roles.
 | `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
 | `media` | `oklch(0.16 0 0)` | `oklch(0.16 0 0)` | behind a camera feed or a shared screen, and the name chip over one (at 80%): it frames media, not the theme, so it stays near-black in every palette and mode | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
+| `panel-opaque` | `panel` at `--panel-opacity` over `background` | same | a band rows scroll under inside a panel (a list's pinned group row, a record's pinned crumbs): the panel as it reads, but opaque | web only |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
 | `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
@@ -594,7 +595,12 @@ padding that clears the fade at the end, so content never meets a panel's
 rounded edge on one flat line. Once scrolled, the top fades over 24px too,
 growing with the first 24px of scroll so the first row at rest is never
 washed out. The open record's scroller sits inset by the panel's radius top
-and bottom, so its scrollbar never runs under the rounded corners.
+and bottom, and the list's at the bottom, so no scrollbar runs under the
+rounded corners. Every list scroller keeps a stable scrollbar gutter, and so
+does each band of `ListPaneHeader`, so the `+` and the search field end on
+the rows' edge. In a grouped list (Docs, Memories, Plays) the group row you
+are scrolled into stays pinned at the top on `panel-opaque`, 36px tall, and
+the top fade runs under it instead of over it (`sticky-group-head`).
 `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
@@ -754,7 +760,9 @@ A list pane (Docs, Memories, Plays, Inbox) keeps its pane title bar instead of a
 header, and the open record beside it takes the page header with crumbs back
 to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
 is three lines with no closing hairline (`actionsOn="crumbs"`): the
-breadcrumb with the actions on its right (Doc | Questions first, then a
+breadcrumb with the actions on its right, pinned to the top of the record's
+scroll on `panel-opaque` so the actions never scroll away, with a 16px fade
+under it once scrolled (`sticky-crumbs`) (Doc | Questions first, then a
 hairline divider, Plays, watch, thread and the `…` menu; they wrap under the
 breadcrumb rather than cut it), the title with the pane's full width, and
 the meta line (up to three 24px faces, the live dot and its word, live or

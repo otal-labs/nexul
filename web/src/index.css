@@ -135,6 +135,8 @@
   /* The frosted panel every page floats in; derived from card so a palette's panels follow it. */
   --panel: var(--card);
   --panel-opacity: 85%;
+  /* The panel as it reads over the canvas, for a band that rows scroll under: opaque, so nothing shows through it. */
+  --panel-opaque: color-mix(in oklab, var(--panel) var(--panel-opacity), var(--background));
   --panel-ring: oklch(0.2 0.01 265 / 0.08);
   --panel-highlight: oklch(1 0 0 / 0.9);
   --panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
@@ -1167,7 +1169,14 @@ button.mention-chip:hover {
    rows still reads as more below; driven by its own scroll, the fade clears once the end is in view. Its top fades in over
    the first 24px of scroll, so the first row at rest is never washed out. */
 .scroll-edge {
-  mask-image: linear-gradient(to bottom, transparent, #000 var(--edge-fade-top), #000 calc(100% - var(--scroll-edge)), transparent);
+  mask-image: linear-gradient(
+    to bottom,
+    #000 var(--edge-sticky, 0px),
+    transparent var(--edge-sticky, 0px),
+    #000 calc(var(--edge-sticky, 0px) + var(--edge-fade-top)),
+    #000 calc(100% - var(--scroll-edge)),
+    transparent
+  );
   animation:
     edge-fade-top linear both,
     scroll-edge linear both;
@@ -1175,6 +1184,47 @@ button.mention-chip:hover {
   animation-range:
     0 24px,
     calc(100% - 40px) 100%;
+}
+/* A grouped list pins the group it is scrolled into; its top fade then runs under that opaque row instead of over it. */
+.sticky-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 2.25rem;
+  background-color: var(--panel-opaque);
+}
+.scroll-edge:has(.sticky-group-head) {
+  --edge-sticky: 2.25rem;
+}
+/* A record's crumbs row stays pinned while it scrolls. Once scrolled, a 16px fade under it softens what passes beneath;
+   it grows over the first 24px of scroll, so the title at rest is never washed. Without scroll timelines, an 8px fade inside the row. */
+.sticky-crumbs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(var(--panel-opaque) calc(100% - 0.5rem), transparent);
+}
+@supports (animation-timeline: scroll()) {
+  .sticky-crumbs {
+    background: var(--panel-opaque);
+  }
+  .sticky-crumbs::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 1rem;
+    pointer-events: none;
+    background: linear-gradient(var(--panel-opaque), transparent);
+    animation: crumbs-fade linear both;
+    animation-timeline: scroll();
+    animation-range: 0 24px;
+  }
+}
+@keyframes crumbs-fade {
+  from {
+    opacity: 0;
+  }
 }
 @keyframes scroll-edge {
   from {
@@ -1185,7 +1235,8 @@ button.mention-chip:hover {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .scroll-edge.scroll-edge {
+  .scroll-edge.scroll-edge,
+  .sticky-crumbs.sticky-crumbs::after {
     animation-duration: auto !important;
   }
 }

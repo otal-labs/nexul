@@ -51,6 +51,9 @@ export const ClampedTitle = ({ title, children }: ClampedTitleProps) => {
   );
 };
 
+// A rail beside a record whose crumbs stay pinned: it sticks just under them.
+export const stickyRailClass = "sticky top-[4.5rem] max-h-[calc(100vh-6rem)]";
+
 interface PageHeaderProps {
   title: ReactNode;
   crumbs?: Crumb[];
@@ -66,13 +69,15 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", leading, actionsClassName, className }: PageHeaderProps) => (
+  <>
+  {actionsOn === "crumbs" && (
+    // Outside the header so it stays pinned for the whole record; its 24px lead sits under the scroller's top fade.
+    <div className="sticky-crumbs -mt-6 flex min-h-7 flex-wrap items-center gap-x-4 gap-y-2 pt-6 pb-2">
+      {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="min-w-0" />}
+      {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
+    </div>
+  )}
   <header className={cn("border-b border-border pb-5", className)}>
-    {actionsOn === "crumbs" && (
-      <div className="mb-2 flex min-h-7 flex-wrap items-center gap-x-4 gap-y-2">
-        {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="min-w-0" />}
-        {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
-      </div>
-    )}
     {actionsOn === "title" && crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="mb-2" />}
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-1 basis-80 items-center gap-3.5">
@@ -96,4 +101,5 @@ export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", 
       {actionsOn === "title" && actions && <div className={cn("flex shrink-0 flex-wrap items-center gap-2", actionsClassName)}>{actions}</div>}
     </div>
   </header>
+  </>
 );

@@ -21,7 +21,7 @@ import { useArticlePointer } from "@/components/doc/collab/useArticlePointer";
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { extractDocHeadings, type DocHeading } from "@/components/doc/docHeadings";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader, stickyRailClass } from "@/components/PageHeader";
 import { PlaysMenu } from "@/components/play/PlaysMenu";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -32,6 +32,7 @@ import { useActionState } from "@/hooks/useActionState";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
+import { cn } from "@/lib/utils";
 import type { Doc } from "@/models/Doc";
 import type { MeResponse } from "@/models/User";
 
@@ -142,7 +143,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
 
         {/* After the body, so the body keeps the title's edge; has() skips the rail when no section renders. */}
         <div className="hidden w-52 shrink-0 @min-[50rem]:has-[section]:block">
-          <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
+          <div className={cn(stickyRailClass, "-mx-2 flex flex-col gap-8 overflow-y-auto px-2")}>
             <DocToc headings={view === "doc" ? headings : []} />
             {canThread && <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />}
             {canThread && (

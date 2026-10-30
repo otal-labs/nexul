@@ -10,11 +10,12 @@ import { memoryFolderOptions } from "@/components/memory/memoryGroups";
 import { MemorySections } from "@/components/memory/MemorySections";
 import { MemorySettingsLine } from "@/components/memory/MemorySettingsLine";
 import { MemoryWhenToUse } from "@/components/memory/MemoryWhenToUse";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader, stickyRailClass } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { useActionState } from "@/hooks/useActionState";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { cn } from "@/lib/utils";
 import { isInterviewMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
@@ -76,7 +77,7 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
           </div>
         </article>
         <div className="hidden w-52 shrink-0 @min-[50rem]:block">
-          <div className="sticky top-6 -mr-2.5 -ml-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto pl-2 [scrollbar-gutter:stable]">
+          <div className={cn(stickyRailClass, "-mr-2.5 -ml-2 flex flex-col gap-8 overflow-y-auto pl-2 [scrollbar-gutter:stable]")}>
             <MemorySections memoryId={memory.id} />
           </div>
         </div>

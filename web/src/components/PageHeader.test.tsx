@@ -38,3 +38,11 @@ describe("ClampedTitle", () => {
     expect(screen.getByRole("heading").parentElement?.parentElement?.hasAttribute("data-clamped")).toBe(clamped);
   });
 });
+
+describe("PageHeader", () => {
+  it("keeps the crumbs row outside the header, so it stays pinned past the header's end", () => {
+    const { container } = render(<PageHeader title="Release runbook" actionsOn="crumbs" actions={<button type="button">Save</button>} />);
+
+    expect(container.querySelector("header")?.contains(screen.getByRole("button", { name: "Save" }))).toBe(false);
+  });
+});

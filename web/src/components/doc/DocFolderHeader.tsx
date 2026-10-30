@@ -24,7 +24,7 @@ export const DocFolderHeader = ({ folder, total, open, onToggle }: DocFolderHead
   const manages = useCanManageAccess(hasOwnActions(menu) || menu.onDelete ? undefined : menu.permissions?.entity);
   return (
     <RowContextMenu menu={menu} manages={manages}>
-      <div className="group/folder relative flex h-9 items-center gap-1 pr-3 pl-3">
+      <div className="group/folder sticky-group-head flex items-center gap-1 pr-3 pl-3">
         <FolderToggle
           name={folder.name}
           open={open}
