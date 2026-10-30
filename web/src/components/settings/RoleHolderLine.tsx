@@ -24,6 +24,7 @@ export const RoleHolderLine = ({ holders }: RoleHolderLineProps) => (
           <PersonAvatar
             key={person.id}
             login={person.login}
+            name={personName(person)}
             src={person.avatar_url}
             label={personName(person)}
             className="size-5 text-[10px] ring-2 ring-popover"

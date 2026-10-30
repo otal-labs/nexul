@@ -41,7 +41,7 @@ export const OwnerRow = ({ person, workspaceId }: OwnerRowProps) => {
         aria-label={`Message ${personLabel(person)}`}
         className="flex w-full items-center gap-3 px-1 py-2 text-left transition-colors duration-150 ease-standard hover:bg-accent"
       >
-        <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" />
+        <PersonAvatar login={person.login} name={personLabel(person)} src={person.avatar_url} className="size-6" />
         <span className="min-w-0 flex-1 truncate text-sm">{personLabel(person)}</span>
         <span className="font-mono text-xs text-muted-foreground">{loginHandle(person.login)}</span>
       </button>

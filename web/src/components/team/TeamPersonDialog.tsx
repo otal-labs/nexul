@@ -80,7 +80,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
       <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[40rem]">
         {person && (
           <DialogHeader className="flex-row items-center gap-3 px-6 pt-6 pb-4 pr-12 text-left">
-            <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />
+            <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-10" />
             <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle dir="auto" className="line-clamp-2 break-words">{personName(person)}</DialogTitle>
               <DialogDescription className="truncate font-mono text-xs">{loginHandle(person.login)}</DialogDescription>

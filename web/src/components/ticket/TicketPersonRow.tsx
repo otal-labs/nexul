@@ -35,7 +35,7 @@ export const TicketPersonRow = ({ ticket, role }: TicketPersonRowProps) => {
       <PopoverTrigger asChild>
         <PropertyRowTrigger projectId={ticket.project_id} verb="assign tickets" label={`${label}: ${name || "no one"}`}>
           <span className={rowIconClass}>
-            {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4" />}
+            {login && <PersonAvatar login={login} name={name} src={person.avatar_url} className="size-4" />}
             {!login && <UserIcon className="size-3.5" aria-hidden />}
           </span>
           <span className={rowLabelClass}>{label}</span>

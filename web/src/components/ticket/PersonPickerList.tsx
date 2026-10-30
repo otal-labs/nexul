@@ -41,7 +41,7 @@ export const PersonPickerList = ({ projectId, onSelect }: PersonPickerListProps)
             className={menuItemClass}
             onClick={() => onSelect(member.login)}
           >
-            <PersonAvatar login={member.login} src={member.avatar_url} />
+            <PersonAvatar login={member.login} name={personLabel(member)} src={member.avatar_url} />
             {personLabel(member)}
           </button>
         ))}

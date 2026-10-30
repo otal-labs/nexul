@@ -48,7 +48,7 @@ export const VoiceTile = ({ style }: VoiceTileProps) => {
       )}
       {!video && (
         <span style={{ "--avatar": `${avatarSize}px` } as CSSProperties}>
-          <PersonAvatar login={person.login} src={person.avatar_url} label={name} className="size-(--avatar) text-base" />
+          <PersonAvatar login={person.login} name={name} src={person.avatar_url} label={name} className="size-(--avatar) text-base" />
         </span>
       )}
       {!video && (

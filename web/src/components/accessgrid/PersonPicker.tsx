@@ -31,7 +31,7 @@ export const PersonPicker = ({ named, onToggle }: PersonPickerProps) => {
       <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
         {shown.map((person) => (
           <button key={person.user_id} type="button" className={menuItemClass} aria-pressed={named.includes(person.user_id)} onClick={() => onToggle(person.user_id)}>
-            <PersonAvatar login={person.login} src={person.avatar_url} className="size-5" />
+            <PersonAvatar login={person.login} name={personLabel(person)} src={person.avatar_url} className="size-5" />
             <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>
             {named.includes(person.user_id) && <Check className="size-4 text-foreground" aria-hidden />}
           </button>

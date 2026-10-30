@@ -28,7 +28,7 @@ export const PersonMentionChip = ({ id, label }: PersonMentionChipProps) => {
     >
       {person && (
         <span className="size-[1.1em] shrink-0">
-          <PersonAvatar login={person.login} src={person.avatar_url} className="size-full" />
+          <PersonAvatar login={person.login} name={personLabel(person)} src={person.avatar_url} className="size-full" />
         </span>
       )}
       <span className="mention-chip__label">{person ? personLabel(person) : fallback}</span>

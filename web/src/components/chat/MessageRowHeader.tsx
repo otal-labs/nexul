@@ -19,7 +19,7 @@ export const MessageRowAvatar = ({ isAgent, author }: { isAgent: boolean; author
         <Bot className="size-4" aria-hidden />
       </span>
     )}
-    {!isAgent && <PersonAvatar login={author.login} src={author.avatar_url} className="size-8 text-xs" />}
+    {!isAgent && <PersonAvatar login={author.login} name={personLabel(author)} src={author.avatar_url} className="size-8 text-xs" />}
   </>
 );
 

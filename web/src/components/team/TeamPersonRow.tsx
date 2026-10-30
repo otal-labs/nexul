@@ -29,7 +29,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
       >
         {/* Top-aligned like the other multi-line rows: the avatar and chevron sit on the name's 24px line. */}
         <span className="relative -mt-1 shrink-0">
-          <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />
+          <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-8" />
           <span
             aria-hidden
             data-presence=""

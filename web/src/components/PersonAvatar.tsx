@@ -11,8 +11,8 @@ interface PersonAvatarProps {
   className?: string | undefined;
   /** The hover text; the login when omitted. */
   label?: string | undefined;
-  /** The display name, whose initials stand in for a missing picture; the login's when omitted. */
-  name?: string | undefined;
+  /** The display name, whose initials stand in for a missing picture; the login's when empty. Required, so no caller forgets it. */
+  name: string;
 }
 
 // The flat circle covers a picture that is missing, still loading, or 404s; under 24px it keeps one initial at 10px.

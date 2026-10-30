@@ -54,7 +54,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-      <PersonAvatar login={person.login} src={shown.avatar_url} className="size-4 text-[10px]" />
+      <PersonAvatar login={person.login} name={personLabel(shown)} src={shown.avatar_url} className="size-4 text-[10px]" />
     </span>
   );
   const hiddenLabels = labels.slice(fitting);

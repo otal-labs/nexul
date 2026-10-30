@@ -57,7 +57,7 @@ export const TicketHeaderStrip = ({ ticket, ticketLabel }: TicketHeaderStripProp
       <TicketStatusBadge ticket={ticket} />
       {ref.login && (
         <span className="inline-flex min-w-0 items-center gap-1.5 text-xs" title={role}>
-          <PersonAvatar login={ref.login} src={person.avatar_url} className="size-4 text-[10px]" label={role} />
+          <PersonAvatar login={ref.login} name={personLabel(person)} src={person.avatar_url} className="size-4 text-[10px]" label={role} />
           <span dir="auto" className="truncate text-foreground">
             {personLabel(person)}
           </span>

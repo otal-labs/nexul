@@ -57,7 +57,7 @@ export const CreateDMForm = ({ workspaceId, onCreated }: CreateDMFormProps) => {
                       )
                     }
                   />
-                  <PersonAvatar login={member.login} src={member.avatar_url} />
+                  <PersonAvatar login={member.login} name={personLabel(member)} src={member.avatar_url} />
                   {personLabel(member)}
                   {member.user_id === me?.user.id && <span className="text-muted-foreground">(you)</span>}
                 </label>

@@ -27,7 +27,7 @@ const Starter = ({ run }: { run: PlayRun }) => {
       {auto && <span>Auto</span>}
       {automation && <WorkflowIcon aria-hidden className="size-3.5 shrink-0" />}
       {automation && <span>Automation</span>}
-      {!auto && !automation && <PersonAvatar login={person.login} src={person.avatar_url} label={name} className="size-5" />}
+      {!auto && !automation && <PersonAvatar login={person.login} name={name} src={person.avatar_url} label={name} className="size-5" />}
       {!auto && !automation && <span className="min-w-0 truncate">{name}</span>}
     </span>
   );

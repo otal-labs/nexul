@@ -20,7 +20,7 @@ const repositoryLabel = (installation: Installation): string => {
 export const GitHubInstallationRow = ({ installation }: GitHubInstallationRowProps) => {
   return (
     <li className="flex items-center gap-3 px-3 py-2.5">
-      <PersonAvatar login={installation.account_login} src={installation.account_avatar_url} className="size-6" />
+      <PersonAvatar login={installation.account_login} name={installation.account_login} src={installation.account_avatar_url} className="size-6" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-mono text-sm">{installation.account_login}</p>
         <p className="truncate text-xs text-muted-foreground">

@@ -22,6 +22,7 @@ export const VoiceStripAvatar = ({ participant }: VoiceStripAvatarProps) => {
     <span className="relative shrink-0" title={micMuted ? `${name}, muted` : name}>
       <PersonAvatar
         login={person.login}
+        name={name}
         src={person.avatar_url}
         label={name}
         className={cn("size-6 ring-2 ring-surface-2 transition-shadow duration-150 ease-standard", speaking && "ring-success")}

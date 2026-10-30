@@ -34,7 +34,7 @@ const MentionSuggestionRow = ({ item, selected, onSelect }: MentionSuggestionRow
       onMouseDown={(event) => event.preventDefault()}
       onClick={onSelect}
     >
-      {isPerson && <PersonAvatar login={item.login ?? item.title} src={item.avatar_url} className="size-4" />}
+      {isPerson && <PersonAvatar login={item.login ?? item.title} name={item.title} src={item.avatar_url} className="size-4" />}
       {!isPerson && <Icon className="h-4 w-4 shrink-0" />}
       <span className="min-w-0 truncate">{item.title}</span>
       {isPerson && item.login && item.login !== item.title && (
