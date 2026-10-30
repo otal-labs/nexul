@@ -273,7 +273,7 @@ describe("InboxPage", () => {
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n2/unread");
   });
 
-  it("marks all notifications read", async () => {
+  it("marks all notifications read and moves focus to the first row as the button leaves", async () => {
     mockApi();
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
@@ -281,11 +281,13 @@ describe("InboxPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Mark all read" }));
     expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all", undefined, expect.anything());
+    expect(within(screen.getByRole("navigation", { name: "Notifications" })).getAllByRole("button")[0]).toHaveFocus();
   });
 
   it("shows the empty state when there are no notifications", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [] });
     renderPage();
     expect(await screen.findByText("No notifications")).toBeInTheDocument();
+    expect(screen.getByText("Assignments, mentions and changes to what you follow land here.")).toBeInTheDocument();
   });
 });

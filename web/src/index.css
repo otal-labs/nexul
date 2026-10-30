@@ -230,13 +230,13 @@ body {
   initial-value: 0px;
 }
 
-/* The command palette's edge fades, driven by its own scroll so each shows only while more rows lie past that edge. */
+/* The command palette's and the scroll-edge lists' top fades, driven by their own scroll so each shows only once scrolled. */
 @property --results-fade {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
 }
-@property --results-fade-top {
+@property --edge-fade-top {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
@@ -1123,12 +1123,17 @@ button.mention-chip:hover {
   }
 }
 /* A scrolling list under fixed chrome fades out over its last 40px, more than a row's pitch, so a cut that lands between
-   rows still reads as more below; driven by its own scroll, the fade clears once the end is in view. */
+   rows still reads as more below; driven by its own scroll, the fade clears once the end is in view. Its top fades in over
+   the first 24px of scroll, so the first row at rest is never washed out. */
 .scroll-edge {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-edge)), transparent);
-  animation: scroll-edge linear both;
-  animation-timeline: scroll(self);
-  animation-range: calc(100% - 40px) 100%;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--edge-fade-top), #000 calc(100% - var(--scroll-edge)), transparent);
+  animation:
+    edge-fade-top linear both,
+    scroll-edge linear both;
+  animation-timeline: scroll(self), scroll(self);
+  animation-range:
+    0 24px,
+    calc(100% - 40px) 100%;
 }
 @keyframes scroll-edge {
   from {
@@ -1136,6 +1141,11 @@ button.mention-chip:hover {
   }
   to {
     --scroll-edge: 0px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-edge.scroll-edge {
+    animation-duration: auto !important;
   }
 }
 
@@ -1539,24 +1549,24 @@ button.mention-chip:hover {
   mask-image: linear-gradient(
     to bottom,
     transparent,
-    black var(--results-fade-top),
+    black var(--edge-fade-top),
     black calc(100% - var(--results-fade)),
     transparent
   );
   animation:
-    results-fade-top linear both,
+    edge-fade-top linear both,
     results-fade linear both;
   animation-timeline: scroll(self), scroll(self);
   animation-range:
     0 24px,
     calc(100% - 40px) 100%;
 }
-@keyframes results-fade-top {
+@keyframes edge-fade-top {
   from {
-    --results-fade-top: 0px;
+    --edge-fade-top: 0px;
   }
   to {
-    --results-fade-top: 24px;
+    --edge-fade-top: 24px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

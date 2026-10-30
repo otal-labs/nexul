@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 interface ListPaneEmptyProps {
   icon: ComponentType<{ className?: string }>;
   message: string;
+  /** A line under the message saying what will land here. */
+  hint?: string;
 }
 
-export const ListPaneEmpty = ({ icon, message }: ListPaneEmptyProps) => (
-  <EmptyState role="status" icon={icon} title={message} size="compact" className="border-0" />
+export const ListPaneEmpty = ({ icon, message, hint }: ListPaneEmptyProps) => (
+  <EmptyState role="status" icon={icon} title={message} {...(hint && { message: hint })} size="compact" className="border-0" />
 );
 
 interface ListPaneNoMatchProps {
