@@ -11,6 +11,7 @@ import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import type { Project } from "@/models/Project";
 import { projectPeopleRules } from "@/models/ProjectPeople";
 import { RepoRole } from "@/enums/Project";
+import { STATUS_STAGES } from "@/models/Status";
 
 interface ProjectSettingsMetaProps {
   project: Project;
@@ -53,7 +54,7 @@ const AccessMeta = ({ projectId }: { projectId: string }) => {
 const StatusesMeta = ({ projectId }: { projectId: string }) => {
   const { data: statuses } = useFetchProjectStatuses(projectId);
   const stages = statuses && new Set(statuses.map((s) => s.kind)).size;
-  return <Facts parts={[statuses && count(statuses.length, "status", "statuses"), stages !== undefined && count(stages, "stage")]} />;
+  return <Facts parts={[statuses && count(statuses.length, "status", "statuses"), stages !== undefined && `${stages} of ${STATUS_STAGES.length} stages in use`]} />;
 };
 
 const CategoriesMeta = ({ projectId }: { projectId: string }) => {

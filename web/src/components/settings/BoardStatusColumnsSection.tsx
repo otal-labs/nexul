@@ -1,3 +1,4 @@
+import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -17,15 +18,12 @@ export const BoardStatusColumnsSection = ({ projectId }: BoardStatusColumnsSecti
   const reorderStatuses = useReorderStatuses();
   const [addingKind, setAddingKind] = useState<StatusKind | null>(null);
 
-  const moveStatus = (index: number, direction: -1 | 1) => {
+  const reorder = (activeId: string, overId: string) => {
     const ids = (statuses ?? []).map((s) => s.id);
-    const target = index + direction;
-    const from = ids[index];
-    const to = ids[target];
-    if (from === undefined || to === undefined) return;
-    ids[index] = to;
-    ids[target] = from;
-    void reorderStatuses.mutateAsync({ project_id: projectId, ids });
+    const from = ids.indexOf(activeId);
+    const to = ids.indexOf(overId);
+    if (from < 0 || to < 0 || from === to) return;
+    void reorderStatuses.mutateAsync({ project_id: projectId, ids: arrayMove(ids, from, to) });
   };
 
   // Each group's own "+" presets kind — no separate selector; clicking again closes it.
@@ -35,7 +33,7 @@ export const BoardStatusColumnsSection = ({ projectId }: BoardStatusColumnsSecti
     <SettingsCard
       id="statuses"
       title="Columns"
-      description="Every swimlane on this board shows these columns, grouped under five fixed stages. Leave a stage empty to skip it."
+      description="Every swimlane on this board shows these columns, grouped under five fixed stages. Leave a stage empty to skip it, and drag a row to reorder it within its stage."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -47,11 +45,10 @@ export const BoardStatusColumnsSection = ({ projectId }: BoardStatusColumnsSecti
               projectId={projectId}
               kind={kind}
               label={label}
-              rows={statuses.map((status, index) => ({ status, index })).filter(({ status }) => status.kind === kind)}
-              total={statuses.length}
+              statuses={statuses.filter((status) => status.kind === kind)}
               adding={addingKind === kind}
               onToggleAdding={() => toggleAdding(kind)}
-              onMove={moveStatus}
+              onReorder={reorder}
             />
           ))}
         </div>

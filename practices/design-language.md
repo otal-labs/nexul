@@ -1314,14 +1314,15 @@ repository's role; the meta gives way before the name), a right-aligned mono
 count that says what it counts ("8 tickets", "No tickets", from the project's
 grouped ticket counts), and the `⋯`, shown on hover or keyboard focus where the
 device can hover and always where it can't. The row lifts on hover inside its
-hairlines. The leading slot is a colour's dot, or a hollow ring when none is
-set (never the hue the board falls back to); a status's icon or its stage's
+hairlines. The leading slot is a colour's dot, or a hollow ring with "No color"
+beside the name when none is set (never the hue the board falls back to); a status's icon or its stage's
 dot; the GitHub mark on a repository; a service's strategy icon. A ticket
 type's dot and a label's pill are the colour button itself; a label has no
 `⋯`, its colour being its one action. A status or type that still holds
 tickets keeps Delete in its menu, disabled, with the reason under it ("Used
-by 8 tickets"). Statuses group under the five stages, each a mono microheader with
-its `+` in the rows' `⋯` column. The section nav groups them under Project
+by 8 tickets"). A meta keeps its width up to half the line; a long name
+truncates first. Statuses group under the five stages, each a mono microheader with
+its `+` in the rows' `⋯` column, and drag (or move from the menu) only within their stage, as categories drag within their list. The section nav groups them under Project
 (General, Access), Board (Statuses, Categories, Ticket types, Labels) and
 Delivery (Repositories, Services), then Danger zone.
 

@@ -94,9 +94,10 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
               <ColorDot className={isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : undefined} />
             </span>
             <span className="flex min-w-0 flex-1 items-baseline gap-2">
-              <span className="min-w-0 truncate font-medium" title={category.name}>
+              <span className="min-w-0 shrink-[3] truncate font-medium" title={category.name}>
                 {category.name}
               </span>
+              {!isConfigurableColor(category.color) && <span className="shrink-0 text-xs text-muted-foreground">No color</span>}
               {count !== undefined && <span className="ml-auto shrink-0 pl-2 font-mono text-xs text-muted-foreground tabular-nums">{countLabel(count, "ticket")}</span>}
             </span>
           </div>
