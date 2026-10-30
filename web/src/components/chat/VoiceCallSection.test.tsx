@@ -21,6 +21,9 @@ vi.mock("@/hooks/PeopleHooks", () => ({
   usePersonLookup: () => (identity: string) => ({ user_id: identity, login: identity, display_name: "", avatar_url: "" }),
 }));
 
+const room = vi.hoisted(() => ({ occupants: [] as { identity: string; name: string }[] }));
+vi.mock("@/hooks/VoiceHooks", () => ({ useVoiceOccupancy: () => ({ c1: room.occupants }) }));
+
 const conversation: Conversation = {
   id: "c1",
   workspace_id: "ws-1",
@@ -48,18 +51,44 @@ const initialState = useVoiceCallStore.getState();
 
 beforeEach(() => {
   useVoiceCallStore.setState(initialState, true);
+  room.occupants = [];
 });
 
 describe("VoiceCallSection", () => {
-  it("shows an inactive join bar when not connected, and joining marks the store's active channel", async () => {
+  it("names who is in the room before joining, and Join joins this channel", async () => {
+    const user = userEvent.setup();
+    const join = vi.fn();
+    useVoiceCallStore.setState({ join });
+    room.occupants = [
+      { identity: "u2", name: "Lena Kowalski" },
+      { identity: "u3", name: "Sam Okafor" },
+    ];
+    renderSection(false);
+
+    expect(screen.getByText("Lena and Sam")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("2 in the call");
+    await user.click(screen.getByRole("button", { name: "Join" }));
+    expect(join).toHaveBeenCalledWith("c1", "huddle");
+  });
+
+  it("offers to start the call in an empty room", async () => {
     const user = userEvent.setup();
     const join = vi.fn();
     useVoiceCallStore.setState({ join });
     renderSection(false);
 
-    expect(screen.getByText("You're not in this call")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Join call" }));
+    expect(screen.getByText("Nobody's here")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start call" }));
     expect(join).toHaveBeenCalledWith("c1", "huddle");
+  });
+
+  it("says which call joining would leave when another channel's call is on", () => {
+    useVoiceCallStore.setState({ activeConversationId: "c2", activeChannelName: "#standup", status: "connected" });
+    room.occupants = [{ identity: "u2", name: "Lena Kowalski" }];
+    renderSection(false);
+
+    expect(screen.getByText("You're in #standup")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch call" })).toBeInTheDocument();
   });
 
   it("after leaving a call for being alone, says why in place of the join bar and Rejoin rejoins the channel", async () => {
@@ -69,8 +98,8 @@ describe("VoiceCallSection", () => {
     useVoiceCallStore.setState({ join, leftAlone: { conversationId: "c1", reason } });
     renderSection(false);
 
-    expect(screen.getByText(reason)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
+    expect(screen.getByText("You left after 5 minutes alone")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start call" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Rejoin" }));
     expect(join).toHaveBeenCalledWith("c1", "huddle");
   });
@@ -96,11 +125,11 @@ describe("VoiceCallSection", () => {
     stageCall("not_configured");
     renderSection(true);
 
-    expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
+    expect(screen.getByText("Voice isn't set up")).toBeInTheDocument();
     const settingsLink = screen.getByRole("link", { name: "Open connectors" });
     expect(settingsLink).toHaveAttribute("href", "/settings/connectors");
     // No disabled/dead join control in this state.
-    expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start call" })).not.toBeInTheDocument();
   });
 
   it("dismissing the owner-setup-needed state clears the active channel", async () => {
@@ -118,17 +147,18 @@ describe("VoiceCallSection", () => {
     stageCall("error", { error: "network unreachable", retry });
     renderSection(true);
 
+    expect(screen.getByText("Couldn't connect")).toBeInTheDocument();
     expect(screen.getByText("network unreachable")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalled();
   });
 
-  it("keeps the Open Settings link away from a viewer who can't open Connectors", () => {
+  it("tells a viewer who can't open Connectors who can fix it, instead of linking there", () => {
     access.sections = [];
     stageCall("not_configured");
     renderSection(true);
 
-    expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
+    expect(screen.getByText("Ask someone who manages connectors to add LiveKit")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open connectors" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });

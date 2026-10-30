@@ -80,10 +80,11 @@ Automations and integrations never receive a private channel's events, or a dire
 
 A voice channel is a call with its own text chat. Its row shows who's in the call without joining.
 
-1. Select the voice channel's row to join the call. Its message button opens the text chat without joining; **Join call** there joins.
-2. While connected, use the buttons to mute your microphone, turn on your camera, **Share screen**, or **Leave call**.
-3. A shared screen has a **Full screen** button; Esc exits.
+1. Select the voice channel's row to join the call. Opened any other way, by a link or after you leave, the channel shows who's in the call above its chat, with **Join**, or **Start call** when nobody is there. If you're already in another channel's call, the button reads **Switch call**.
+2. In the call, everyone has a tile: their camera, or their avatar with their name. A green ring marks whoever is talking, and a crossed-out microphone marks whoever is muted. At wider screens the chat sits beside the call.
+3. Use the buttons under the tiles to mute your microphone, turn on your camera, share your screen, or leave. A muted microphone shows in red.
+4. A shared screen takes the call area, with everyone in the call listed beside it, or as avatars under it on a narrower screen. It has a **Full screen** button; Esc exits.
 
 If you're alone in a call for 5 minutes you leave it automatically, and the channel offers **Rejoin**.
 
-Voice runs on your own LiveKit server. Until someone connects it in **Settings → Connectors**, joining shows "Voice needs a LiveKit connector" with a link to set it up for those who can. A failed connection offers **Retry**.
+Voice runs on your own LiveKit server. Until someone connects it in **Settings → Connectors**, joining shows "Voice isn't set up", with a link to set it up for those who can, and tells everyone else who to ask. A failed connection says "Couldn't connect" and offers **Retry**.

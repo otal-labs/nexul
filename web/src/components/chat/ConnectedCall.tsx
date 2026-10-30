@@ -1,66 +1,21 @@
 import { RoomContext } from "@livekit/components-react";
-import { Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Video, VideoOff } from "lucide-react";
 import type { Room } from "livekit-client";
-import { useShallow } from "zustand/react/shallow";
 
-import { VoiceCallControlButton } from "@/components/chat/VoiceCallControlButton";
-import { VoiceCallStage } from "@/components/chat/VoiceCallStage";
-import { Button } from "@/components/ui/button";
-import { useVoiceCallStore } from "@/stores/voiceCallStore";
+import { VoiceCallControls } from "@/components/voice/VoiceCallControls";
+import { VoiceStage } from "@/components/voice/VoiceStage";
 
 interface ConnectedCallProps {
   room: Room;
 }
 
-// Built from shadcn Button, not the library's ControlBar, so controls read as the app's own, not the default look.
+// Stacked over the chat when narrow; beside it, at the panel's full height, from 1000px (the thread's container query).
 export const ConnectedCall = ({ room }: ConnectedCallProps) => {
-  const { micEnabled, cameraEnabled, screenShareEnabled, leave, toggleMic, toggleCamera, toggleScreenShare } = useVoiceCallStore(
-    useShallow((s) => ({
-      micEnabled: s.micEnabled,
-      cameraEnabled: s.cameraEnabled,
-      screenShareEnabled: s.screenShareEnabled,
-      leave: s.leave,
-      toggleMic: s.toggleMic,
-      toggleCamera: s.toggleCamera,
-      toggleScreenShare: s.toggleScreenShare,
-    })),
-  );
   return (
     <RoomContext.Provider value={room}>
-      {/* Remaps the library's --lk-* theme onto the app's tokens; bounded height leaves room for chat below. */}
-      <div
-        data-lk-theme="default"
-        className="voice-call-stage flex h-[45vh] min-h-56 shrink-0 flex-col gap-2 border-b border-border bg-background p-2"
-      >
-        <VoiceCallStage />
-        <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border pt-2">
-          <VoiceCallControlButton
-            enabled={micEnabled}
-            onClick={toggleMic}
-            onLabel="Mute microphone"
-            offLabel="Unmute microphone"
-            OnIcon={Mic}
-            OffIcon={MicOff}
-          />
-          <VoiceCallControlButton
-            enabled={cameraEnabled}
-            onClick={toggleCamera}
-            onLabel="Turn off camera"
-            offLabel="Turn on camera"
-            OnIcon={Video}
-            OffIcon={VideoOff}
-          />
-          <VoiceCallControlButton
-            enabled={screenShareEnabled}
-            onClick={toggleScreenShare}
-            onLabel="Stop screen share"
-            offLabel="Share screen"
-            OnIcon={ScreenShare}
-            OffIcon={ScreenShareOff}
-          />
-          <Button variant="destructive" size="icon" aria-label="Leave call" onClick={leave}>
-            <PhoneOff className="size-4" aria-hidden />
-          </Button>
+      <div className="h-[clamp(260px,46vh,460px)] shrink-0 border-b border-border p-3 has-[[data-screen-share-tile]]:h-[clamp(320px,66vh,640px)] @[1000px]/thread:h-auto @[1000px]/thread:flex-1 @[1000px]/thread:border-b-0">
+        <div role="region" aria-label="Call" className="flex size-full flex-col gap-3 rounded-lg bg-surface-2 p-3">
+          <VoiceStage />
+          <VoiceCallControls />
         </div>
       </div>
     </RoomContext.Provider>

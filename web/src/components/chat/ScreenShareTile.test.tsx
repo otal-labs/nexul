@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScreenShareTile } from "@/components/chat/ScreenShareTile";
 
-vi.mock("@livekit/components-react", () => ({ FocusLayout: () => <video data-testid="share" /> }));
+vi.mock("@livekit/components-react", () => ({ VideoTrack: () => <video data-testid="share" /> }));
 
-const trackRef = {} as Parameters<typeof ScreenShareTile>[0]["trackRef"];
+const trackRef = { participant: { name: "Bob Tanaka", identity: "u2" } } as Parameters<typeof ScreenShareTile>[0]["trackRef"];
 
 // jsdom ships no Fullscreen API, so the browser's contract is stood in by a small fake that
 // tracks `document.fullscreenElement` and announces changes the way a real browser does.

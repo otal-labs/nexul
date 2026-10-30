@@ -1,14 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@xyflow/react/dist/style.css";
-/* Lean subset of LiveKit's stylesheet: only the theme vars + the participant/layout component
-   CSS the call view actually renders (GridLayout/ParticipantTile/FocusLayout/CarouselLayout) — skips
-   the controls/prefabs CSS since VoiceCallSection builds its own controls bar instead
-   of the library's ControlBar. Every class/var ships "lk-"-prefixed (packages/styles/README.md), so a
-   global import can't collide with the app's own classes. */
-@import "@livekit/components-styles/themes/default";
-@import "@livekit/components-styles/components/layout";
-@import "@livekit/components-styles/components/participant";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -48,6 +40,7 @@
   --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
   --color-well-shade: var(--well-shade);
+  --color-media: var(--media);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-panel: var(--panel);
@@ -91,6 +84,8 @@
   --surface-2: oklch(0.965 0.004 265);
   /* The board's column well, laid over the panel: a shade, not a colour, so it reads in every palette. */
   --well-shade: color-mix(in oklab, var(--foreground) 7%, transparent);
+  /* Behind a camera feed or a shared screen: near-black in every palette and mode, because it frames media, not the theme. */
+  --media: oklch(0.16 0 0);
   --foreground: oklch(0.2 0.01 265);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.2 0.01 265);
@@ -1763,33 +1758,6 @@ button.mention-chip:hover {
   user-select: none;
   /* The chip sits over the line above, so the text under it stays readable. */
   opacity: 0.55;
-}
-
-/* LiveKit components ship their own dark-only default theme (--lk-*, all values hardcoded hex — see
-   default.css). Scoped to the call stage and remapped onto the tokens above so a voice
-   call reads as part of the app in both light and dark mode, not an embedded third-party widget
-   in the chat surface. */
-.voice-call-stage[data-lk-theme="default"] {
-  --lk-bg: var(--background);
-  --lk-bg2: var(--card);
-  --lk-bg3: var(--muted);
-  --lk-bg4: var(--muted);
-  --lk-bg5: var(--border);
-  --lk-fg: var(--foreground);
-  --lk-fg2: var(--foreground);
-  --lk-fg3: var(--muted-foreground);
-  --lk-fg4: var(--muted-foreground);
-  --lk-border-color: var(--border);
-  --lk-accent-bg: var(--brand);
-  --lk-accent-fg: var(--brand-foreground);
-  --lk-danger: var(--destructive);
-  --lk-danger-fg: #fff;
-  --lk-control-fg: var(--foreground);
-  --lk-control-bg: var(--card);
-  --lk-control-hover-bg: var(--muted);
-  --lk-control-active-bg: var(--muted);
-  --lk-font-family: var(--font-sans);
-  --lk-border-radius: var(--radius-md);
 }
 
 /* The grid's sticky name column shades its edge once scrolled sideways; a gradient even along each cell joins up across rows. */

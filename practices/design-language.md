@@ -88,6 +88,7 @@ in the three token files; this table holds the roles.
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
 | `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 7% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
 | `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
+| `media` | `oklch(0.16 0 0)` | `oklch(0.16 0 0)` | behind a camera feed or a shared screen, and the name chip over one (at 80%): it frames media, not the theme, so it stays near-black in every palette and mode | web only |
 | `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
@@ -1376,7 +1377,8 @@ the scroller keeps a scrollbar gutter on both sides, so the column centres on
 the header and composer; narrower it draws no scrollbar, so the column spans
 their width. The stream fades out over 16px under the header and 12px over the
 composer, never cut on a flat line. The
-conversation header is 48px, its hairline running the panel's width: the icon
+conversation header is 48px, its hairline running the panel's width (in a wide
+voice call its name sits over the stage instead, see Voice call): the icon
 (a private channel's lock) and name, then on the right a private channel's
 members as three 20px avatars and a mono count, and the channel settings gear
 for whoever has settings there, both opening the dialog the sidebar row's menu
@@ -1395,6 +1397,46 @@ is not this one) between two hairlines. The composer is one framed field
 (`bg-card`, `rounded-lg`, the `input` ring turning to the focus ring) holding
 attach, the text and emoji. `MessageList`, `ConversationHeader` and `ChatComposer` are the
 reference.
+
+Voice call. A voice channel is a chat stream with the call at its head.
+Before joining, one lobby row sits above the messages in the stream's column:
+a `surface-2` well at `rounded-lg`, 64px, holding a stack of up to five 28px
+avatars (then a mono `+N`), the first names in medium ("Lena, Sam and Bob",
+"Lena, Sam and 6 others") over the count ("3 in the call", the number in
+mono), and Join at the right; an empty room leads with a dashed 28px ghost
+avatar and reads "Nobody's here" with Start call, and Switch call names the
+call you are in. Every other state takes the same slot, height and button
+place: left after five minutes alone, connecting, voice not set up (a link
+for whoever can fix it, who to ask for everyone else) and couldn't connect,
+the library's own error demoted to a mono second line; so does the empty slot
+shown while the voice code loads. In a call the
+stage is a `surface-2` well under the header, `clamp(260px, 46vh, 460px)` tall
+over the stream, and from a 1000px thread (the `thread` container query) the
+full height beside it, the stream then a 380px column behind a hairline and
+the header's name over the stage, not the stream. The tiles fill the well on
+both axes: the column count gives a camera the largest 16:9 picture with every
+cell at least 160 by 100 (`lib/stageGrid.ts`), one or two people sit in 16:9
+tiles up to 480px wide, tiles sit 12px apart so two speaking rings never
+touch, a last row that is not full centres, and the people who don't fit go
+behind a `+N` tile opening the list of everyone. A tile is
+`card` with the hairline: an avatar with the name under it in muted 12px and a
+`destructive` slashed mic on the avatar's corner when muted, or a camera on
+`media` with the name in a chip over it. Speaking is a 2px `success` ring
+outside the tile, 2px off it on the well, so it reads the same over a camera.
+A shared screen takes the stage on `media`, whole (`object-fit: contain`),
+with its full screen button always shown on a dark chip; everyone is listed
+beside it as 32px rows, or as 24px avatars under it in a narrower thread, their mute
+marks muted, since nine red marks would drown the one that matters. The
+controls are icon buttons centred under a hairline: a muted microphone is the
+one state in colour (`destructive` at 12% with the slashed mic in
+`destructive`), a camera or share that is on reads as pressed in ink
+(`foreground` at 10% under a 25% border), never the ember, which beside the
+reds reads as a third alarm, and Leave is a solid `destructive` button past a
+short divider, each with a tooltip. Your own tile and row add "(you)"; while a
+screen is shared, the stacked stage grows to `clamp(320px, 66vh, 640px)`, and
+when people overflow, whoever starts talking swaps in from behind the `+N`
+without moving the others.
+`VoiceCallSection`, `ConnectedCall` and `components/voice/` are the reference.
 
 Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
 setup transcript is a fold with no box. Its header is one line led by a 16px
