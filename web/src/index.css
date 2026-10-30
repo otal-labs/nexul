@@ -399,11 +399,10 @@ body {
     var(--shadow-overlay);
 }
 
-/* A menu, select or popover over the live page: the same glass, lifted only as far as the elevated shadow. */
+/* A menu, select or popover over the live page, with no scrim between: solid, so dense content under it never reads through. */
 @utility glass-menu {
   border: 1px solid transparent;
-  background-color: color-mix(in oklab, var(--popover) 88%, transparent);
-  backdrop-filter: blur(24px) saturate(1.4);
+  background-color: var(--popover);
   box-shadow:
     inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
@@ -1241,16 +1240,15 @@ button.mention-chip:hover {
     translate 0s linear 120ms;
 }
 
-/* Toasts: the menus' glass, the status hue on the icon only. :root and the theme attribute outrank the library's own
+/* Toasts: the menus' solid surface, the status hue on the icon only. :root and the theme attribute outrank the library's own
    per-theme variables. */
 :root [data-sonner-toaster][data-sonner-theme] {
-  --normal-bg: color-mix(in oklab, var(--popover) 88%, transparent);
+  --normal-bg: var(--popover);
   --normal-border: transparent;
   --normal-text: var(--popover-foreground);
   --border-radius: var(--radius-lg);
 }
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
-  backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
     inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),

@@ -763,7 +763,8 @@ text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 
 Menu. Every menu, custom on a popover, a dropdown or a right-click, is one anatomy: a
-`glass-menu` panel (the frosted recipe on `popover` at 88%, the elevated
+`glass-menu` panel (the frosted recipe's ring and lit edge on solid `popover`,
+since with no scrim under it the page would read through, and the elevated
 shadow) at 8px with 4px padding; rows of at least 32px in `text-sm` with
 `px-2 gap-2.5` on a 4px corner, concentric in the panel's 8px, a muted 16px
 icon column, the label, then a trailing mono hint (`DropdownMenuShortcut`)
@@ -794,7 +795,7 @@ Tooltip. A small `glass-menu` label (`text-xs`, `px-2 py-1`, 6px) for an
 icon-only control; the first waits 500ms, the next shows at once
 (`TooltipProvider` in `App.tsx`).
 
-Toast. The menus' glass at 8px, the status hue on the icon only, the action
+Toast. The menus' solid surface at 8px, the status hue on the icon only, the action
 in `brand`; bottom right, stacked by the library.
 
 Detail page header. The page header above, with the record's mono id chip
