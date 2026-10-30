@@ -108,11 +108,11 @@ export const answerValue = (answer: ChecklistAnswer | undefined): AnswerValue | 
 export const valueLine = (value: AnswerValue | undefined): string =>
   value ? [...(value.selected ?? []), value.text ?? ""].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
 
-// A doc question's suggested option keeps its "(Suggested)" mark as picked; the one-line answer reads without it.
-const withoutSuggested = (label: string): string => label.replace(/\s*\(Suggested\)$/, "");
+// An option keeps its "(Suggested)" or "(Recommended)" mark as picked; once answered, the one-line answer reads without it.
+const withoutMark = (label: string): string => label.replace(/\s*\((?:Suggested|Recommended)\)$/, "");
 
 export const answerLine = (answer: ChecklistAnswer | undefined): string =>
-  answer ? valueLine({ selected: answer.selected.map(withoutSuggested), text: answer.text }) : "";
+  answer ? valueLine({ selected: answer.selected.map(withoutMark), text: answer.text }) : "";
 
 // The rows either side of the one at key, for Back and Next: Next skips to the next row still pending.
 export const keysAround = (rows: ChecklistRow[], key: string): { prevKey: string | null; nextKey: string | null } => {

@@ -4,14 +4,14 @@ import { describe, expect, it } from "vitest";
 import { answerLine, followOpenKey, openRow, progressCounts, type ChecklistRow } from "@nexul/client-core/questionChecklist";
 
 describe("answerLine", () => {
-  it("reads a picked suggested option without its (Suggested) mark, keeping the rest of the answer", () => {
-    const answer = { selected: ["Text message (Suggested)", "Email"], text: "Also a call", skipped: false };
-    expect(answerLine(answer)).toBe("Text message · Email · Also a call");
+  it("reads a picked suggested or recommended option without its mark, keeping the rest of the answer", () => {
+    const answer = { selected: ["Text message (Suggested)", "Weekly (Recommended)", "Email"], text: "Also a call", skipped: false };
+    expect(answerLine(answer)).toBe("Text message · Weekly · Email · Also a call");
   });
 
-  it("leaves a (Suggested) that is not the label's ending, and the interview's (Recommended), as written", () => {
-    const answer = { selected: ["(Suggested) times only", "Weekly (Recommended)"], text: "", skipped: false };
-    expect(answerLine(answer)).toBe("(Suggested) times only · Weekly (Recommended)");
+  it("leaves a mark that is not the label's ending as written", () => {
+    const answer = { selected: ["(Suggested) times only", "(Recommended) daily"], text: "", skipped: false };
+    expect(answerLine(answer)).toBe("(Suggested) times only · (Recommended) daily");
   });
 });
 

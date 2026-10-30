@@ -1,12 +1,23 @@
 import { create } from "zustand";
 
+// A draft's chip lights its source's rail row; a rail row lights the questions whose drafts cite it.
+export interface InterviewSourceFocus {
+  sourceId: string;
+  from: "chip" | "rail";
+}
+
 export type InterviewSourceFocusStore = {
-  sourceId: string | null;
-  setSourceId: (sourceId: string | null) => void;
+  focus: InterviewSourceFocus | null;
+  setFocus: (focus: InterviewSourceFocus | null) => void;
 };
 
-// The source a draft's chip is hovered or focused on, so its row in the sources rail can light up beside it.
+// The rail is sticky only beside the questions; stacked under them, whatever lights up is off screen, so nothing does.
+const railBeside = () => {
+  const rail = document.querySelector("[data-source-rail]");
+  return !!rail && getComputedStyle(rail).position === "sticky";
+};
+
 export const useInterviewSourceFocusStore = create<InterviewSourceFocusStore>((set) => ({
-  sourceId: null,
-  setSourceId: (sourceId) => set({ sourceId }),
+  focus: null,
+  setFocus: (focus) => set({ focus: focus && railBeside() ? focus : null }),
 }));

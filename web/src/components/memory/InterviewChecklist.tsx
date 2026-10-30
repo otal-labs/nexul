@@ -17,7 +17,7 @@ export const InterviewChecklist = ({ projectId }: InterviewChecklistProps) => {
   const hasMemory = !!memories && hasInterview(memories, projectId);
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 @min-[60rem]:contents">
       {isPending && !error && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {sections && (

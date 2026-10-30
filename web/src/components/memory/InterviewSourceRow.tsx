@@ -23,9 +23,10 @@ interface InterviewSourceRowProps {
 const iconButton = "size-6 shrink-0 text-muted-foreground";
 
 // Lit while a draft's chip for it is hovered or focused; scrolls its own rail, never the page, which a rail that is not
-// height-capped (the stacked layout) leaves alone.
+// height-capped (the stacked layout) leaves alone. Hovering or focusing the row lights the questions that cite it.
 const useLit = (sourceId: string) => {
-  const lit = useInterviewSourceFocusStore((s) => s.sourceId === sourceId);
+  const lit = useInterviewSourceFocusStore((s) => s.focus?.from === "chip" && s.focus.sourceId === sourceId);
+  const setFocus = useInterviewSourceFocusStore((s) => s.setFocus);
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
     const row = ref.current;
@@ -36,7 +37,9 @@ const useLit = (sourceId: string) => {
       rail.scrollTo({ top: top - rail.clientHeight / 3, behavior: "smooth" });
     }
   }, [lit]);
-  return { lit, ref };
+  const on = () => setFocus({ sourceId, from: "rail" });
+  const off = () => setFocus(null);
+  return { lit, ref, handlers: { onMouseEnter: on, onFocus: on, onMouseLeave: off, onBlur: off } };
 };
 
 // One source as a compact row: kind icon, name, how many drafts cite it, and its actions on hover or focus; a gone source
@@ -45,7 +48,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
   const setStance = useSetInterviewSourceStance(source.project_id);
   const remove = useRemoveInterviewSource(source.project_id);
   const [editing, setEditing] = useState(false);
-  const { lit, ref } = useLit(source.id);
+  const { lit, ref, handlers } = useLit(source.id);
   const name = sourceName(source);
   const named = isNamed(source);
   const mono = source.kind === "path" && !isRepositoryRoot(source);
@@ -60,6 +63,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
   return (
     <li
       ref={ref}
+      {...handlers}
       className={cn(
         "group/source relative flex min-h-9 items-center gap-2 rounded-md px-1.5 py-1 transition-colors duration-150 ease-standard",
         lit ? currentRowFillClass : "hover:bg-accent/40",

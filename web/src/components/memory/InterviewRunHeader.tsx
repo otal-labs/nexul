@@ -13,7 +13,7 @@ interface InterviewRunHeaderProps {
   project: Project;
 }
 
-// The latest run's state, Regenerate, and Audit via AI above every tab; during a run only that run's own button shows.
+// Each run's state beside its own action (Regenerate, Audit via AI) above every tab; during a run only that run's own button shows.
 export const InterviewRunHeader = ({ project }: InterviewRunHeaderProps) => {
   const { data: memories } = useFetchMemoriesByProject(project.id);
   const { data: answers } = useFetchInterviewAnswers(project.id);
@@ -26,17 +26,21 @@ export const InterviewRunHeader = ({ project }: InterviewRunHeaderProps) => {
   const stale = changed > 0 && !active;
 
   return (
-    <header className="flex min-h-9 flex-wrap items-center gap-3">
-      <InterviewRunLine projectId={project.id} memory={memory} changed={changed} />
-      {((memory && !active) || followUpActive) && (
-        <InterviewRunButton
-          projectId={project.id}
-          label={stale ? "Regenerate the memory" : "Regenerate"}
-          variant={stale ? "default" : "outline"}
-        />
-      )}
-      {((memory && !active) || auditActive) && <InterviewAuditButton projectId={project.id} />}
-      <InterviewAuditLine project={project} />
+    <header className="flex flex-wrap items-center gap-x-8 gap-y-2">
+      <div className="flex min-h-9 min-w-0 grow basis-md items-center gap-3">
+        <InterviewRunLine projectId={project.id} memory={memory} changed={changed} />
+        {((memory && !active) || followUpActive) && (
+          <InterviewRunButton
+            projectId={project.id}
+            label={stale ? "Regenerate the memory" : "Regenerate"}
+            variant={stale ? "default" : "outline"}
+          />
+        )}
+      </div>
+      <div className="flex min-h-9 min-w-0 grow items-center justify-end gap-3 empty:hidden has-[>p]:basis-full">
+        <InterviewAuditLine project={project} />
+        {((memory && !active) || auditActive) && <InterviewAuditButton projectId={project.id} />}
+      </div>
     </header>
   );
 };

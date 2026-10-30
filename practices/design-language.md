@@ -1586,21 +1586,25 @@ written and its reply under its header, folded or not. The page opens on
 Questions while some wait. `DocQuestionsPanel` in
 `web/src/components/doc/clarification/` is the reference.
 
-Interview. The page caps at 68rem and has two tabs, Questions and Memory.
+Interview. The page caps at 68rem; each run's state sits beside its own
+action (the memory's with Regenerate, the audit's with Audit via AI, on its
+own row once written). Two tabs, Questions and Memory.
 Questions opens on a meter, one 4px segment per question grouped by round
 (answered ink at 55%, skipped at 20%, a draft or suggestion waiting `warning`
 at 45%, unanswered a hairline, the open one `brand`), over one mono line from
 the same partition: answered, skipped, and a "need you" button that opens the
-first. The rows are the shared checklist: one glyph each (a check, a dash, or
+first, and a key naming each kind of segment on screen. The rows are the shared checklist: one glyph each (a check, a dash, or
 the number with a `warning` dot while a draft waits), titles that wait on the
 person in ink at 500, settled ones muted, and the open row as the current row.
 A draft names its sources as neutral chips that open them. A suggested change
 is a `surface-2` well: Now, then each pick or sentence it adds (+, `success`)
-or drops (−, `destructive`). From a 60rem container the sources sit in a 20rem
-rail beside the list, sticky with its own scroll, grouped Follow and Question
+or drops (−, `destructive`). From a 60rem container the meter takes the grid's
+first row and the sources sit in a 20rem rail beside the list, its header a
+section header's height so the two rules meet, sticky with its own scroll, grouped Follow and Question
 under microheaders, each row's citation count giving way to its actions on
-hover and focus; a chip hovered lights its row there. Below 60rem the rail
-stacks under the list. `ProjectInterview` and `InterviewSourcesSection` in
+hover and focus. A chip hovered lights its row there, and a row hovered lights
+the questions that cite it, only while the two sit side by side. Below 60rem
+the rail stacks under the list. `ProjectInterview` and `InterviewSourcesSection` in
 `web/src/components/memory/` are the reference.
 
 Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,

@@ -7,6 +7,7 @@ import { InterviewSuggestionCard } from "@/components/memory/InterviewSuggestion
 import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
 import { QuestionSection } from "@/components/questions/QuestionSection";
 import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
+import { useInterviewSourceFocusStore } from "@/stores/interviewSourceFocusStore";
 import type { AnswerValue } from "@nexul/client-core/question";
 import type { InterviewRow, InterviewSectionData } from "@/models/InterviewAnswer";
 import { firstPendingKey, nextPendingKey, progressCounts, rowProgress, rowStatus } from "@nexul/client-core/questionChecklist";
@@ -24,6 +25,7 @@ interface InterviewChecklistFeedProps {
 // The questions as numbered rows in foldable sections; one row is open at a time, the first unanswered on load.
 export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, hasMemory, memoryWithoutAnswers }: InterviewChecklistFeedProps) => {
   const live = useInterviewLiveRound(projectId, stored);
+  const railSource = useInterviewSourceFocusStore((s) => (s.focus?.from === "rail" ? s.focus.sourceId : null));
   const sections = live.section ? [...stored, live.section] : stored;
   const rows = sections.flatMap((s) => s.rows);
   // Chosen once, so someone else's answer arriving live never moves the row this person is typing in.
@@ -61,44 +63,48 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
     return { row, projectId, progress, prevKey, nextKey: nextPendingKey(rows, row.key), onMove: move, onAnswer, pending: live.pending };
   };
 
+  // Beside the sources the meter takes the grid's first row, so the first section and the rail start on one line.
   return (
-    <div className="min-w-0 space-y-6">
+    <div className="min-w-0 space-y-6 @min-[60rem]:row-span-2 @min-[60rem]:grid @min-[60rem]:grid-rows-subgrid @min-[60rem]:space-y-0">
       <InterviewProgress sections={sections} current={current} onJump={() => move(rows.find((r) => rowProgress(r) === "drafted" || rowProgress(r) === "waiting")?.key ?? null)} />
-      {memoryWithoutAnswers && (
-        <p className="text-sm text-muted-foreground">
-          An earlier interview wrote this memory. Answer these and the agent updates it.
-        </p>
-      )}
-      {sections.map((section) => (
-        <QuestionSection
-          key={section.key}
-          label={section.label}
-          meta={settled(section)}
-          folded={folded(section)}
-          onToggle={() => setFolds((f) => ({ ...f, [section.key]: !folded(section) }))}
-        >
-          <ol>
-            {section.rows.map((row, i) => (
-              <QuestionChecklistRow
-                key={row.key}
-                row={row}
-                number={rows.indexOf(row) + 1}
-                open={row.key === current}
-                readOnly={readOnly}
-                skippedLabel="Skipped · the agent will ask about it"
-                onToggle={() => move(row.key === current ? null : row.key)}
-              >
-                {row.draft?.state === "suggested" && (
-                  <InterviewSuggestionCard row={row} draft={row.draft} projectId={projectId} progress={progressOf(section, i)} onMove={move} />
-                )}
-                {/* Keyed on the draft so one that lands while its card is open seeds the form; confirming keeps the key. */}
-                {row.draft?.state !== "suggested" && <InterviewQuestionForm key={row.draft?.id ?? "none"} {...formProps(section, row, i)} />}
-              </QuestionChecklistRow>
-            ))}
-          </ol>
-        </QuestionSection>
-      ))}
-      {templateDone && !hasMemory && !live.section && <InterviewDoneRow projectId={projectId} />}
+      <div className="min-w-0 space-y-6">
+        {memoryWithoutAnswers && (
+          <p className="text-sm text-muted-foreground">
+            An earlier interview wrote this memory. Answer these and the agent updates it.
+          </p>
+        )}
+        {sections.map((section) => (
+          <QuestionSection
+            key={section.key}
+            label={section.label}
+            meta={settled(section)}
+            folded={folded(section)}
+            onToggle={() => setFolds((f) => ({ ...f, [section.key]: !folded(section) }))}
+          >
+            <ol>
+              {section.rows.map((row, i) => (
+                <QuestionChecklistRow
+                  key={row.key}
+                  row={row}
+                  number={rows.indexOf(row) + 1}
+                  open={row.key === current}
+                  lit={railSource !== null && !!row.draft?.cited.some((s) => s.id === railSource)}
+                  readOnly={readOnly}
+                  skippedLabel="Skipped · the agent will ask about it"
+                  onToggle={() => move(row.key === current ? null : row.key)}
+                >
+                  {row.draft?.state === "suggested" && (
+                    <InterviewSuggestionCard row={row} draft={row.draft} projectId={projectId} progress={progressOf(section, i)} onMove={move} />
+                  )}
+                  {/* Keyed on the draft so one that lands while its card is open seeds the form; confirming keeps the key. */}
+                  {row.draft?.state !== "suggested" && <InterviewQuestionForm key={row.draft?.id ?? "none"} {...formProps(section, row, i)} />}
+                </QuestionChecklistRow>
+              ))}
+            </ol>
+          </QuestionSection>
+        ))}
+        {templateDone && !hasMemory && !live.section && <InterviewDoneRow projectId={projectId} />}
+      </div>
     </div>
   );
 };

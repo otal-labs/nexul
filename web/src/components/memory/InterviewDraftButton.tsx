@@ -21,6 +21,7 @@ export const InterviewDraftButton = ({ projectId }: InterviewDraftButtonProps) =
       label="Draft answers"
       outOfDate={sourcesChangedSince(sources, drafting ?? [])}
       className="shrink-0"
+      compact
     />
   );
 };

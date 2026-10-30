@@ -9,6 +9,8 @@ interface QuestionChecklistRowProps {
   row: ChecklistRow;
   number: number;
   open: boolean;
+  // Tinted like the current row while something outside the list points at it.
+  lit?: boolean;
   readOnly: boolean;
   onToggle: () => void;
   // What a skipped row says under its question.
@@ -49,7 +51,7 @@ const fromPart = (sources: number | undefined, from: string): string => {
 };
 
 // One question as a hairline row: its marker, title, and one plain line of where it stands; the open row holds the question under it.
-export const QuestionChecklistRow = ({ row, number, open, readOnly, onToggle, skippedLabel = "Skipped", children }: QuestionChecklistRowProps) => {
+export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly, onToggle, skippedLabel = "Skipped", children }: QuestionChecklistRowProps) => {
   const progress = rowProgress(row);
   const waiting = progress === "drafted" || progress === "waiting";
   const suggested = row.draft?.state === "suggested";
@@ -74,7 +76,7 @@ export const QuestionChecklistRow = ({ row, number, open, readOnly, onToggle, sk
   return (
     <li className="relative border-b border-border">
       {open && <CurrentRowEdge />}
-      {readOnly && <div className={cn("flex min-h-11 items-start gap-3 rounded-md px-2.5 py-3", open && currentRowFillClass)}>{summary}</div>}
+      {readOnly && <div className={cn("flex min-h-11 items-start gap-3 rounded-md px-2.5 py-3", (open || lit) && currentRowFillClass)}>{summary}</div>}
       {!readOnly && (
         <button
           type="button"
@@ -82,7 +84,7 @@ export const QuestionChecklistRow = ({ row, number, open, readOnly, onToggle, sk
           onClick={onToggle}
           className={cn(
             "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md px-2.5 py-3 text-left focus-visible:-outline-offset-3!",
-            open && currentRowFillClass,
+            (open || lit) && currentRowFillClass,
             !open && "transition-colors duration-150 ease-standard hover:bg-accent/40",
           )}
         >

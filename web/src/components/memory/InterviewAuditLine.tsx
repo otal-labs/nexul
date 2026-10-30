@@ -31,7 +31,7 @@ export const InterviewAuditLine = ({ project }: InterviewAuditLineProps) => {
   const doc = latest && docs ? auditDocOf(latest, docs) : undefined;
   if (!latest || !state) return null;
   return (
-    <p className="flex min-w-0 basis-full items-center gap-2 text-sm">
+    <p className="flex min-w-0 flex-1 items-center gap-2 text-sm">
       <TrailStateIcon state={state} />
       <span className="shrink-0 font-medium">{STATE_LABEL[state]}</span>
       {doc && (
