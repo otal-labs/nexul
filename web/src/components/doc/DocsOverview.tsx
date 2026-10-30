@@ -32,7 +32,9 @@ export const DocsOverview = ({ docs, project, query }: DocsOverviewProps) => {
   const live = docs.filter((doc) => doc.can_open && !doc.archived);
   const shown = query === "" ? listed : listed.filter(docMatches(query));
   const states = useDocRunStates(project.id, shown.map((doc) => doc.id));
-  const { attention, recent } = overviewLists(shown, states);
+  // A search or the archived view reads as one flat set, so nothing is held back for "Needs attention".
+  const digest = query === "" && !showArchived;
+  const { attention, recent } = overviewLists(shown, digest ? states : []);
   const empty = live.length === 0 && !showArchived;
   const newDoc = useNewDoc(project);
   const token = projectToken(project);
@@ -52,7 +54,7 @@ export const DocsOverview = ({ docs, project, query }: DocsOverviewProps) => {
         />
       )}
       {!empty && <DocsOverviewHeader docs={listed} project={project} />}
-      {!showArchived && attention.length > 0 && <DocsAttentionSection items={attention} projectId={project.id} projectToken={token} />}
+      {attention.length > 0 && <DocsAttentionSection items={attention} projectId={project.id} projectToken={token} />}
       {!empty && (recent.length > 0 || query !== "") && <DocsRecentSection docs={recent} projectId={project.id} projectToken={token} heading={recentHeading(query, showArchived)} />}
     </section>
   );

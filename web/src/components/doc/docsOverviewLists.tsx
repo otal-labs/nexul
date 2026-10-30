@@ -10,7 +10,7 @@ export interface AttentionDoc {
 export interface DocsOverviewLists {
   /** Waiting docs first, then running, newest edit first within each; at most five. */
   attention: AttentionDoc[];
-  /** The newest edits; at most twenty. */
+  /** The newest edits other than those, so no doc shows twice; at most twenty. */
   recent: DocListItem[];
 }
 
@@ -24,7 +24,8 @@ export const overviewLists = (docs: DocListItem[], states: (TrailState | undefin
   });
   const rank = (a: AttentionDoc) => (a.state === "waiting" ? 0 : 1);
   const attention = withState.sort((a, b) => rank(a) - rank(b) || newestEdit(a.doc, b.doc)).slice(0, 5);
-  return { attention, recent: [...docs].sort(newestEdit).slice(0, 20) };
+  const held = new Set(attention.map((item) => item.doc.id));
+  return { attention, recent: docs.filter((doc) => !held.has(doc.id)).sort(newestEdit).slice(0, 20) };
 };
 
 export const docMatches = (query: string) => (doc: DocListItem) =>

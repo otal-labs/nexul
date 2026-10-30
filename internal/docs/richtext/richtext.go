@@ -143,32 +143,32 @@ func firstText(blocks []Node, skipHeadings bool) string {
 		if skipHeadings && n.Type == "heading" {
 			continue
 		}
-		if text := strings.TrimSpace(plainText(n)); text != "" {
+		if text := strings.TrimSpace(plainText(n, " · ")); text != "" {
 			return text
 		}
 	}
 	return ""
 }
 
-// plainText joins a text block's runs as written and a container's blocks with a space, so list items stay apart.
-func plainText(n Node) string {
+// plainText joins a text block's runs as written, and puts gap between a container's blocks and at a hard break, so list items stay apart.
+func plainText(n Node, gap string) string {
 	if n.Text != "" {
 		return n.Text
 	}
 	if n.Type == "hardBreak" {
-		return " "
+		return gap
 	}
 	if n.Type == "mention" {
 		label, _ := n.Attrs["label"].(string)
 		return label
 	}
-	sep := " "
+	sep := gap
 	if n.Type == "paragraph" || n.Type == "heading" || n.Type == "codeBlock" {
 		sep = ""
 	}
 	parts := make([]string, 0, len(n.Content))
 	for _, child := range n.Content {
-		if text := plainText(child); text != "" {
+		if text := plainText(child, gap); text != "" {
 			parts = append(parts, text)
 		}
 	}
@@ -198,5 +198,5 @@ func PlainText(body string) string {
 	if err != nil {
 		return body
 	}
-	return plainText(Node{Content: doc.Content})
+	return plainText(Node{Content: doc.Content}, " ")
 }

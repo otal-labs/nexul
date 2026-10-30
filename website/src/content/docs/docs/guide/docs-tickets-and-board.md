@@ -11,7 +11,7 @@ Work in Nexul usually starts with a doc: what you want and why. Tickets are the 
 
 Open **Docs** under the project. The list groups docs by folder, newest first, one line each with the time it was made; the **Created** menu in its header sorts by last edited instead, and each row then shows its last edit. **Pin** a doc from its row menu to keep it at the top. Pins and collapsed folders are kept in your browser, so they're yours alone.
 
-Before you open a doc, the space beside the list shows what is moving: **Needs attention** lists the docs a play is writing or waiting on an answer for, and **Recently edited** lists the newest edits by day, each with its folder, who started it and its first line. **New doc** sits at its top. The list's search narrows both. On a narrow window the list fills the page, and the docs that need attention lead it.
+Before you open a doc, the space beside the list shows what is moving: **Needs attention** lists the docs a play is writing or waiting on an answer for, and the newest edits follow under **Today**, **Last 7 days** and **Earlier**, each with its folder, who started it and its first line. **New doc** sits at its top. The list's search narrows it to one **Matching** list. On a narrow window the list fills the page, and the docs that need attention lead it.
 
 Write in the editor with formatting, tables, task lists, and code blocks; type `/` for the block menu. A task list is `- [ ]` lines or **Task list** in that menu; click a box to tick it. A body you can't edit shows its boxes ticked or empty but won't toggle them. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
 

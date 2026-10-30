@@ -1,5 +1,3 @@
-import { LockIcon } from "lucide-react";
-
 import { DocStateIcon } from "@/components/doc/DocStateIcon";
 import { formatShortAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
@@ -28,14 +26,11 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       to={wsPath(docPath(projectToken, doc.id))}
       title={doc.title}
       dense
-      leading={<DocStateIcon runState={runState} questionsClosed={!!doc.clarification_closed} className="ml-5" />}
+      leading={<DocStateIcon runState={runState} locked={!!doc.locked} questionsClosed={!!doc.clarification_closed} className="ml-5" />}
       meta={
-        <>
-          {doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
-          <span title={`${sortBy === "created_at" ? "Created" : "Edited"} ${formatFullTime(doc[sortBy])}`} className="font-mono text-[11px] text-muted-foreground tabular-nums">
-            {formatShortAgo(doc[sortBy])}
-          </span>
-        </>
+        <span title={`${sortBy === "created_at" ? "Created" : "Edited"} ${formatFullTime(doc[sortBy])}`} className="font-mono text-[11px] text-muted-foreground tabular-nums">
+          {formatShortAgo(doc[sortBy])}
+        </span>
       }
       selected={selected}
       menu={menu}

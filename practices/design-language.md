@@ -529,9 +529,9 @@ own padding and its hover lift separate them: a 13px normal-weight title in
 title wraps to two lines at most, the full text in its tooltip, and sets its
 own direction so an Arabic title reads right to left. A
 row whose record already shows its details when open (Docs) is one line at
-32px: a 14px state slot under the folder icon (a play waiting or running, questions closed) that is
+32px: a 14px state slot under the folder icon holding the doc's one mark (a play waiting or running, then the lock, then questions closed) that is
 empty at rest, the title truncated with its full text in the tooltip, then the
-lock when locked and the mono time the list is sorted by ("14m", "20 Oct"). The
+mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
 `bg-accent/40` lift, never a boxed border. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
@@ -550,13 +550,13 @@ its shortcut ("Ctrl K to search"); `ListDetailPlaceholder` is the
 reference. Docs instead opens on its overview (`DocsOverview`), read from the
 set the list shows (live docs, or archived ones while that view is on) and
 filtered by the list's search: a muted line of the folder count and the last
-edit with the pane's one primary `New doc` at its right, a "Needs attention"
+edit (mono only as a relative figure, "14m ago"; a date stays in the line's sans) with the pane's one primary `New doc` at its right, the list's `+` hidden beside it, a "Needs attention"
 group of the docs a play is writing or waiting on (waiting first, at most
-five), and "Recently edited" (the newest twenty, split under Today, Last 7 days
-and Earlier in 12px muted sans once there is more than one). Each overview row
+five), and the rest of the newest twenty under Today, Last 7 days
+and Earlier as its group labels; a search reads "Matching" and its count, the archived view "Archived", each one flat set. Each overview row
 is the state slot, the title in 13px medium on the baseline of its mono time,
 and one muted line: the folder and either the run's state or "created by" and the creator and
-the doc's first line. An empty project's overview is the `EmptyState` with
+the doc's first line, its blocks apart by " · ". An empty project's overview is the `EmptyState` with
 `New doc`; the list then shows its header alone. Docs groups its rows by
 folder below Pinned, the default folder first and the rest in creation order:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
@@ -574,7 +574,7 @@ puts a ghost menu button before them that names the sort and the view ("Created"
 list is the page, so the docs a play holds lead it under "Needs attention". No
 folder carries a color. Below 1024px one pane
 shows at a time. The list and the open record each scroll inside a panel
-that stays still and fade over their last 24px (`scroll-edge`), with bottom
+that stays still and, while more lies below, fade over their last 40px (`scroll-edge`, driven by their own scroll), with bottom
 padding that clears the fade at the end, so content never meets a panel's
 rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.

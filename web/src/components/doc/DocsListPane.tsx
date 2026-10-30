@@ -72,6 +72,7 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
         newVerb="create docs"
         projectId={project.id}
         onNew={() => void newDoc()}
+        {...(!selectedId && { newClassName: "lg:hidden" })}
         search={search}
         {...(docs.some((doc) => doc.can_open) && { onSearch })}
         controls={

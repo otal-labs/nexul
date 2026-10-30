@@ -223,6 +223,13 @@ body {
   initial-value: 0px;
 }
 
+/* The list scrollers' bottom fade, driven by each one's own scroll. */
+@property --scroll-edge {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 /* The command palette's edge fades, driven by its own scroll so each shows only while more rows lie past that edge. */
 @property --results-fade {
   syntax: "<length>";
@@ -1116,10 +1123,21 @@ button.mention-chip:hover {
     transition-duration: 0ms;
   }
 }
-/* A scrolling list under fixed chrome fades out over its last 24px instead of cutting a row in half at the edge; the
-   list's own bottom padding clears the fade once it is scrolled to the end. */
+/* A scrolling list under fixed chrome fades out over its last 40px, more than a row's pitch, so a cut that lands between
+   rows still reads as more below; driven by its own scroll, the fade clears once the end is in view. */
 .scroll-edge {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-edge)), transparent);
+  animation: scroll-edge linear both;
+  animation-timeline: scroll(self);
+  animation-range: calc(100% - 40px) 100%;
+}
+@keyframes scroll-edge {
+  from {
+    --scroll-edge: 40px;
+  }
+  to {
+    --scroll-edge: 0px;
+  }
 }
 
 /* Two layers trading places in one spot (the rail's logo and its expand glyph). */
