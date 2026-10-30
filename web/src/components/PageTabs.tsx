@@ -53,7 +53,7 @@ export const PageTabs = ({ label, tabs, children, className, trailing }: PageTab
             variant="line"
             aria-label={label}
             className={cn(
-              "relative isolate w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border p-0",
+              "relative isolate w-full justify-start gap-6 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border p-0",
               trailing && "pr-32",
             )}
           >
@@ -62,7 +62,7 @@ export const PageTabs = ({ label, tabs, children, className, trailing }: PageTab
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="flex-none px-3 after:hidden"
+                className="flex-none border-x-0 px-0 after:hidden"
                 onMouseDown={(event) => {
                   // Radix focuses the trigger from script on mousedown, which Chrome draws as keyboard focus.
                   if (event.button !== 0 || event.ctrlKey) return;
