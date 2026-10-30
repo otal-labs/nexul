@@ -104,7 +104,7 @@ in the three token files; this table holds the roles.
 | `warning-mark` | `#fbbf24` | `#a07800` | a `warning` dot or fill; 3.5:1 on every light surface, enough for a mark, and a clear amber beside the `brand` ember where `warning` reads as a darker orange at dot size | site: none, it has no status dot |
 | `info` | `#5cc8f5` | `#0369a1` | open and informational states | |
 | `merged` | `#a371f7` | `#8250df` | merged pull requests only | |
-| `destructive` | `#f26074` | `#c41945` | errors, danger zone, closed pull requests; crimson, 20° off the `brand` ember's hue | |
+| `destructive` | `#f26074` | `#c41945` | errors, danger zone, closed pull requests; crimson, 20° off the `brand` ember's hue | web: a palette whose card would hold it under 4.5:1, or whose accent sits on its hue, sets its own (Clay dark, Brutalism) |
 | `destructive-fill` | `oklch(0.55 0.2 15)` | `#a80f39` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember | site: none, it has no destructive button |
 | `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface | |
 | `ring` | `brand` | `brand` | canvas selection and the console glow | site: none; Fumadocs' `fd-ring` is `focus` |
@@ -121,7 +121,8 @@ How each surface spells the names: the web app defines bare names
 uses the same bare names, writes each colour once with `light-dark()`, and maps
 Fumadocs' `--color-fd-*` onto them; the phone defines `--color-*` directly for
 Uniwind, because it reads every colour through `useCSSVariable`. Palettes,
-which retheme the surface, text and accent roles, exist only in the web app;
+which retheme the surface, text and accent roles (and `destructive` where the
+default would fail on them), exist only in the web app;
 the site and the phone show the default palette.
 
 A token that a design needs and this table lacks is added to the token file of

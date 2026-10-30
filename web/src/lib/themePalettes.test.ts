@@ -70,3 +70,53 @@ describe("applyThemePalette", () => {
     expect(root.getAttribute("style")).toBeFalsy();
   });
 });
+
+// index.css's defaults for the two roles a palette may leave out.
+const DEFAULTS = {
+  light: { card: "oklch(1 0 0)", destructive: "#c41945" },
+  dark: { card: "oklch(0.21 0.005 265)", destructive: "#f26074" },
+};
+
+const srgb = (color: string): [number, number, number] => {
+  if (color.startsWith("#")) return [1, 3, 5].map((i) => Number.parseInt(color.slice(i, i + 2), 16) / 255) as [number, number, number];
+  const [l, c, h] = color.replace(/^oklch\(|\)$/g, "").split(/\s+/).map(Number) as [number, number, number];
+  const a = c * Math.cos((h * Math.PI) / 180);
+  const b = c * Math.sin((h * Math.PI) / 180);
+  const lms = [l + 0.3963377774 * a + 0.2158037573 * b, l - 0.1055613458 * a - 0.0638541728 * b, l - 0.0894841775 * a - 1.291485548 * b].map((x) => x ** 3) as [number, number, number];
+  const linear = [
+    4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2],
+    -1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2],
+    -0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2],
+  ];
+  return linear.map((x) => Math.min(1, Math.max(0, x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055))) as [number, number, number];
+};
+
+const luminance = (color: string) =>
+  srgb(color)
+    .map((x) => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, x, i) => sum + x * [0.2126, 0.7152, 0.0722][i]!, 0);
+
+const contrast = (a: string, b: string) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+describe("destructive in every palette", () => {
+  it.each(THEME_DEFINITIONS.flatMap((theme) => (["light", "dark"] as const).map((mode) => ({ label: `${theme.label} ${mode}`, theme, mode }))))(
+    "$label keeps error text at 4.5:1 on its cards",
+    ({ theme, mode }) => {
+      const roles = theme.colors?.[mode];
+      const card = roles?.card ?? DEFAULTS[mode].card;
+      const destructive = roles?.destructive ?? DEFAULTS[mode].destructive;
+      expect(contrast(destructive, card)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  it("moves Brutalism's errors off its pure-red accent's hue", () => {
+    const brutalism = getThemeDefinition(ThemeId.Brutalism).colors!;
+    for (const mode of ["light", "dark"] as const) {
+      const hue = (color: string) => Number(color.replace(/^oklch\(|\)$/g, "").split(/\s+/)[2]);
+      expect(Math.abs(hue(brutalism[mode].primary!) - hue(brutalism[mode].destructive!))).toBeGreaterThanOrEqual(25);
+    }
+  });
+});
