@@ -314,6 +314,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	accessSvc.SetComputers(store.Access)
 	accessSvc.SetMachines(accessMachines{machines: store.Machines})
 	docsSvc.SetClarifyGate(clarifyPlayGate{access: accessSvc, plays: store.Plays, projects: store.Projects})
+	docsSvc.SetRunningPlays(store.PlayTrails)
+	ticketsSvc.SetRunningPlays(store.PlayTrails)
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
 	chatSvc.SetGate(accessSvc)

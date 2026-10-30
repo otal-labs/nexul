@@ -288,3 +288,54 @@ func TestPlayTrailsRepo_ListRunning_SkipsWaitingAndEnded(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{"starting", "running"}, ids)
 }
+
+func TestPlayTrailsRepo_RunningOn_FindsOnlyTheStartersOwnLiveRunOnTheTarget(t *testing.T) {
+	t.Parallel()
+	s := newTrailStore(t)
+	at := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	seed := func(id string, startedAt time.Time, mutate func(*plays.Trail)) {
+		tr := newTestTrail(id, startedAt)
+		mutate(tr)
+		require.NoError(t, s.PlayTrails.CreateTrail(t.Context(), tr))
+	}
+	seed("finished", at.Add(4*time.Hour), func(tr *plays.Trail) { tr.State = plays.TrailDone })
+	seed("older", at, func(tr *plays.Trail) { tr.State, tr.PlayLabel = plays.TrailRunning, "Older play" })
+	seed("newer", at.Add(time.Hour), func(tr *plays.Trail) { tr.State, tr.PlayLabel = plays.TrailStarting, "Newer play" })
+	seed("bobs", at.Add(2*time.Hour), func(tr *plays.Trail) { tr.State, tr.StarterID = plays.TrailRunning, "bob" })
+	seed("elsewhere", at.Add(3*time.Hour), func(tr *plays.Trail) { tr.State, tr.TargetID = plays.TrailRunning, "t-2" })
+	seed("asking", at.Add(5*time.Hour), func(tr *plays.Trail) { tr.State, tr.TargetID = plays.TrailWaiting, "t-3" })
+
+	label, trailID, ok, err := s.PlayTrails.RunningOn(t.Context(), "u-1", "ticket", "t-1")
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "newer", trailID, "the most recently started live run wins")
+	assert.Equal(t, "Newer play", label)
+
+	_, _, ok, err = s.PlayTrails.RunningOn(t.Context(), "carol", "ticket", "t-1")
+	require.NoError(t, err)
+	assert.False(t, ok, "another person's run never credits the caller")
+	_, _, ok, err = s.PlayTrails.RunningOn(t.Context(), "u-1", "ticket", "t-3")
+	require.NoError(t, err)
+	assert.False(t, ok, "a run stopped on a question is not saving anything")
+	_, _, ok, err = s.PlayTrails.RunningOn(t.Context(), "u-1", "doc", "t-1")
+	require.NoError(t, err)
+	assert.False(t, ok, "the target type is part of the match")
+}
+
+func TestPlayTrailsRepo_RunningOn_SeeksTheTargetIndex(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	rows, err := s.db.QueryContext(t.Context(), `EXPLAIN QUERY PLAN SELECT id, play_label FROM play_trails WHERE target_type = 'ticket' AND target_id = 't-1' AND starter_id = 'u-1' AND state IN ('starting', 'running') ORDER BY started_at DESC, id DESC LIMIT 1`)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, rows.Close()) }()
+	var plan string
+	for rows.Next() {
+		var id, parent, notused int
+		var detail string
+		require.NoError(t, rows.Scan(&id, &parent, &notused, &detail))
+		plan += detail + "\n"
+	}
+	require.NoError(t, rows.Err())
+	assert.Contains(t, plan, "idx_play_trails_target", "the lookup reads only the target's own trails")
+	assert.NotContains(t, plan, "SCAN play_trails", "a save never scans every trail")
+}

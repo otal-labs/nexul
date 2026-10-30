@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -59,6 +60,7 @@ type Service struct {
 	attachments AttachmentsCopier
 	live        LiveSessions
 	clarify     ClarifyGate
+	runs        RunningPlays
 	now         func() time.Time
 }
 
@@ -210,6 +212,37 @@ func withViaMCP(ctx context.Context) context.Context {
 	return context.WithValue(ctx, viaMCPKey{}, true)
 }
 
+// RunningPlays finds a person's play run on a target, crediting their MCP saves to it; docs never imports plays (ADR 0017).
+type RunningPlays interface {
+	RunningOn(ctx context.Context, userID, targetType, targetID string) (label, trailID string, ok bool, err error)
+}
+
+// SetRunningPlays wires the run lookup; without it an MCP save is always credited to the person's agent.
+func (s *Service) SetRunningPlays(r RunningPlays) { s.runs = r }
+
+type playLabelKey struct{}
+
+// playRunTarget is the plays domain's target type for a doc.
+const playRunTarget = "doc"
+
+// withViaMCPOn marks a call as an agent's over MCP on a doc and, when the person has a play running on it, as that run's.
+func (s *Service) withViaMCPOn(ctx context.Context, docID string) context.Context {
+	ctx = withViaMCP(ctx)
+	a, _ := identity.ActorFromCtx(ctx)
+	if s.runs == nil || a.ID == "" || a.Automation != nil {
+		return ctx
+	}
+	label, _, ok, err := s.runs.RunningOn(ctx, a.ID, playRunTarget, docID)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("find the play run behind an MCP save", "doc", docID, "error", err)
+		return ctx
+	}
+	if !ok {
+		return ctx
+	}
+	return context.WithValue(ctx, playLabelKey{}, label)
+}
+
 // settler is who an edit settles the doc for: "" when nothing changed or an agent, automation, or the server made it.
 func settler(ctx context.Context, edited bool) string {
 	a, ok := identity.ActorFromCtx(ctx)
@@ -219,11 +252,14 @@ func settler(ctx context.Context, edited bool) string {
 	return a.ID
 }
 
-// viaOf is what a version records as the way a save came: the automation's name, "mcp" for an agent's call, else "".
+// viaOf is a version's via: the automation's name, the running play's label, "mcp" for an agent's call, else "".
 func viaOf(ctx context.Context) string {
 	a, _ := identity.ActorFromCtx(ctx)
 	if a.Automation != nil {
 		return a.Automation.Name
+	}
+	if label, ok := ctx.Value(playLabelKey{}).(string); ok {
+		return label
 	}
 	if ctx.Value(viaMCPKey{}) != nil {
 		return viaMCP

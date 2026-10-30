@@ -39,3 +39,9 @@ LEFT JOIN docs d ON play_trails.target_type = 'doc' AND d.id = play_trails.targe
 LEFT JOIN stacks s ON play_trails.target_type = 'stack' AND s.id = play_trails.target_id
 LEFT JOIN projects ip ON play_trails.target_type = 'interview' AND ip.id = play_trails.target_id
 WHERE play_trails.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
+
+-- name: LatestRunningPlayTrailOn :one
+-- Served by idx_play_trails_target: the target's trails newest first, stopping at the starter's running one.
+SELECT id, play_label FROM play_trails
+WHERE target_type = ? AND target_id = ? AND starter_id = ? AND state IN ('starting', 'running')
+ORDER BY started_at DESC, id DESC LIMIT 1;

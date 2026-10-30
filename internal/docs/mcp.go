@@ -213,7 +213,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			if in.RevertToVersion != nil {
 				apply = revertDoc
 			}
-			d, err := apply(withViaMCP(ctx), s, in)
+			d, err := apply(s.withViaMCPOn(ctx, in.ID), s, in)
 			if err != nil {
 				return nil, err
 			}

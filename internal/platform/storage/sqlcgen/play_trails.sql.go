@@ -217,6 +217,31 @@ func (q *Queries) LatestPlayTrailInConversation(ctx context.Context, conversatio
 	return i, err
 }
 
+const latestRunningPlayTrailOn = `-- name: LatestRunningPlayTrailOn :one
+SELECT id, play_label FROM play_trails
+WHERE target_type = ? AND target_id = ? AND starter_id = ? AND state IN ('starting', 'running')
+ORDER BY started_at DESC, id DESC LIMIT 1
+`
+
+type LatestRunningPlayTrailOnParams struct {
+	TargetType string
+	TargetID   string
+	StarterID  string
+}
+
+type LatestRunningPlayTrailOnRow struct {
+	ID        string
+	PlayLabel string
+}
+
+// Served by idx_play_trails_target: the target's trails newest first, stopping at the starter's running one.
+func (q *Queries) LatestRunningPlayTrailOn(ctx context.Context, arg LatestRunningPlayTrailOnParams) (LatestRunningPlayTrailOnRow, error) {
+	row := q.db.QueryRowContext(ctx, latestRunningPlayTrailOn, arg.TargetType, arg.TargetID, arg.StarterID)
+	var i LatestRunningPlayTrailOnRow
+	err := row.Scan(&i.ID, &i.PlayLabel)
+	return i, err
+}
+
 const listActivePlayTrailsByTargets = `-- name: ListActivePlayTrailsByTargets :many
 SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree, passed_over, instructions_version FROM play_trails WHERE target_type = ? AND target_id IN (/*SLICE:ids*/?) AND state IN ('starting', 'running', 'waiting')
 `

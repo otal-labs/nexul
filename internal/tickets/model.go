@@ -145,6 +145,7 @@ const (
 	ActorKindUserMCP    = ActorKindUser + ":mcp"
 	ActorKindAutomation = "automation"
 	ActorKindPlay       = "play"
+	ActorKindPlayMCP    = ActorKindPlay + ":mcp"
 )
 
 // Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), or an automation.
