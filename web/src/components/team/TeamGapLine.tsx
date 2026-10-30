@@ -10,7 +10,7 @@ export const TeamGapLine = ({ person }: { person: TeamPerson }) => {
   const { done, steps, left, skipped } = progress;
   const count = (
     <>
-      <span className="font-mono font-normal tabular-nums">
+      <span className="tabular-nums">
         {done} of {steps.length}
       </span>{" "}
       set up

@@ -525,6 +525,7 @@ export type HarnessReadiness =
   | {
       state: "unpaired" | "expired" | "needs_location" | "no_computer_ready" | "offline";
       message: string;
+      computerId?: string;
       link?: ReadinessLink;
       passedOver?: PassOver[];
     };

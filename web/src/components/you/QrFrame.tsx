@@ -18,7 +18,7 @@ interface QrFrameProps {
 export const QrFrame = ({ link, dimmed, action, children }: QrFrameProps) => (
   <div className="@container w-full">
     {/* A container has no width of its own, so it takes its slot's; the text drops under the QR until there is room. */}
-    <div className="flex flex-col items-start gap-5 @sm:flex-row">
+    <div className="flex flex-col items-start gap-5 @sm:flex-row @sm:items-center">
       <div className="relative shrink-0 rounded-md bg-white p-2.5">
         <img
           key={link}

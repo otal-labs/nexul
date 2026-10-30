@@ -49,11 +49,11 @@ export const IssuedConnectCode = ({ code, onNewCode, generating, hint = true }: 
       }
     >
       {hint && <SettingsHint>Works once, for two minutes.</SettingsHint>}
-      <p className="font-mono text-xs tabular-nums">
+      <p className="text-xs">
         <span className="text-muted-foreground">Code </span>
-        {code.code}
+        <span className="font-mono tabular-nums">{code.code}</span>
       </p>
-      <p className="font-mono text-xs tabular-nums text-muted-foreground">{expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}</p>
+      <p className="text-xs tabular-nums text-muted-foreground">{expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}</p>
     </QrFrame>
   );
 };

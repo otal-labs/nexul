@@ -11,18 +11,23 @@ export const HarnessReadinessLine = () => {
   if (!readiness) return null;
 
   const ready = readiness.state === "ready";
-  const computerName = ready ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
+  const computerName = readiness.computerId ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
   const passes = readiness.state === "no_computer_ready" ? (readiness.passedOver ?? []) : [];
   return (
     <p className="flex items-start gap-1.5 text-xs">
       <span aria-hidden className={cn("mt-[5px] size-1.5 shrink-0 rounded-full", ready ? "bg-success" : "bg-warning")} />
       {ready && `${CHATS} start on ${computerName ?? "your first computer"}.`}
+      {readiness.state === "offline" && (
+        <span className="text-muted-foreground">
+          {CHATS} wait for T3 Code on {computerName ?? "your first computer"}.
+        </span>
+      )}
       {readiness.state === "no_computer_ready" && (
         <span className="text-muted-foreground">
           {CHATS} can't start{passes.length > 0 && `: ${passOverLines(passes)}`}.
         </span>
       )}
-      {readiness.state !== "ready" && readiness.state !== "no_computer_ready" && <span className="text-muted-foreground">{readiness.message}</span>}
+      {readiness.state !== "ready" && readiness.state !== "no_computer_ready" && readiness.state !== "offline" && <span className="text-muted-foreground">{readiness.message}</span>}
     </p>
   );
 };

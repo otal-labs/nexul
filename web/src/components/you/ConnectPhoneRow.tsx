@@ -14,7 +14,7 @@ export const ConnectPhoneRow = () => {
   // A phone that signed in after this row appeared is the one this row's code let in; it stays confirmed until the page is left.
   const [mountedAt] = useState(() => Date.now());
   const connected = useDeviceArrivalStore((s) => s.arrivals.filter((a) => a.at >= mountedAt).at(-1));
-  const { mutate, data, error, isPending } = useConnectCode();
+  const { mutate, reset, data, error, isPending } = useConnectCode();
   const generate = () => mutate();
 
   return (
@@ -28,10 +28,15 @@ export const ConnectPhoneRow = () => {
           </Button>
         )}
         {!connected && data && (
-          <Button variant="outline" size="sm" onClick={generate} loading={isPending}>
-            <RefreshCw className="size-4" aria-hidden />
-            New code
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={reset} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button variant="outline" size="sm" onClick={generate} loading={isPending}>
+              <RefreshCw className="size-4" aria-hidden />
+              New code
+            </Button>
+          </div>
         )}
       </SettingsRow>
       {connected && (

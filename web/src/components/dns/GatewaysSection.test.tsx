@@ -89,7 +89,7 @@ describe("GatewaysSection", () => {
     renderSection();
     expect(await screen.findByText("nexul")).toBeInTheDocument();
     expect(screen.getByText("Cloudflare tunnel")).toBeInTheDocument();
-    expect(screen.getByText("cloudflared-instance · zone example.com")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "cloudflared-instance · zone example.com")).toBeInTheDocument();
   });
 
   it("creates a tunnel-kind gateway", async () => {

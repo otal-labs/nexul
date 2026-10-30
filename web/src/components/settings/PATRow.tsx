@@ -33,8 +33,8 @@ export const PATRow = ({ token }: PATRowProps) => {
           {token.revoked_at && <SettingsStatus tone="muted">Revoked {formatShortDate(token.revoked_at)}</SettingsStatus>}
           {!token.revoked_at && <SettingsStatus tone="success" detail={lastUsed}>Active</SettingsStatus>}
         </p>
-        <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-          dep_…{token.prefix} · created {formatShortDate(token.created_at)}
+        <p className="truncate text-xs text-muted-foreground tabular-nums">
+          <span className="font-mono">dep_…{token.prefix}</span> · created {formatShortDate(token.created_at)}
         </p>
       </div>
       {!token.revoked_at && (

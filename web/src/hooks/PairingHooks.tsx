@@ -171,7 +171,7 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
     return { state: "expired", ...HARNESS_READINESS_COPY.expired };
   }
   if (presence.data?.[computerId] !== "connected") {
-    return { state: "offline", ...HARNESS_READINESS_COPY.offline };
+    return { state: "offline", computerId, ...HARNESS_READINESS_COPY.offline };
   }
   return {
     state: "ready",

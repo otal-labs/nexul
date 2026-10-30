@@ -55,7 +55,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "offline", message: "T3 Code on your computer is offline." }),
+      expect(result.current).toEqual({ state: "offline", computerId: "c1", message: "T3 Code on your computer is offline." }),
     );
   });
 
@@ -63,7 +63,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connecting" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "offline", message: "T3 Code on your computer is offline." }),
+      expect(result.current).toEqual({ state: "offline", computerId: "c1", message: "T3 Code on your computer is offline." }),
     );
   });
 

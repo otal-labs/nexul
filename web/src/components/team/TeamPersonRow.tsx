@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { RoleChipRow } from "@/components/role/RoleChipRow";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
 import { TeamGapLine } from "@/components/team/TeamGapLine";
 import { TeamSignInAccounts } from "@/components/team/TeamSignInAccounts";
@@ -26,7 +27,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
         aria-label={`Open ${personName(person)}`}
         className="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
-        {/* Top-aligned like the other multi-line rows: each piece sits on the name's 24px line, the 14px presence nudged onto its baseline. */}
+        {/* Top-aligned like the other multi-line rows: the avatar and chevron sit on the name's 24px line. */}
         <span className="relative -mt-1 shrink-0">
           <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />
           <span
@@ -42,6 +43,10 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <span dir="auto" className="line-clamp-2 font-medium break-words" title={personName(person)}>
             {personName(person)}
           </span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <SettingsStatus tone={person.online ? "success" : "muted"}>{presenceText(person)}</SettingsStatus>
+            <AccountStatusLabel status={person.status} />
+          </span>
           {/* The 20px chips overhang the 16px line instead of growing it, so both meta lines keep one height. */}
           <span className="flex min-w-0 items-center gap-1.5 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
             <TeamSignInAccounts person={person} />
@@ -54,10 +59,6 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
             {!only && <span className="truncate">No workspace</span>}
           </span>
           <TeamGapLine person={person} />
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm text-muted-foreground">
-          <span className={cn("translate-y-px leading-6", person.online && "text-foreground")}>{presenceText(person)}</span>
-          <AccountStatusLabel status={person.status} />
         </span>
         <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
       </button>

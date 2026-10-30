@@ -69,8 +69,8 @@ describe("Your computers", () => {
 
     expect(await screen.findByText("#1")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
-    expect(await screen.findByText("1 of 2 running")).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 running")).toBeInTheDocument();
+    expect(await screen.findByText("1 of 2 play runs")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 play runs")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reorder laptop" })).toBeInTheDocument();
   });
 
@@ -109,6 +109,6 @@ describe("Your computers", () => {
     await user.click(within(await screen.findByRole("radiogroup", { name: "Runs at once on laptop" })).getByRole("radio", { name: "4" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });
-    expect(await screen.findByText("1 of 4 running")).toBeInTheDocument();
+    expect(await screen.findByText("1 of 4 play runs")).toBeInTheDocument();
   });
 });

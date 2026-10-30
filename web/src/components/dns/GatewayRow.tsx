@@ -37,10 +37,17 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
           </>
         )}
         {hostnames && hostnames.length === 0 && <SettingsStatus tone="muted">No hostnames yet</SettingsStatus>}
-        <p className="truncate font-mono text-xs text-muted-foreground">
-          {[[gateway.service_name, gateway.machine && `on ${gateway.machine}`].filter(Boolean).join(" "), `zone ${gateway.zone}`]
-            .filter(Boolean)
-            .join(" · ")}
+        {/* Mono for the names only; the words between them read as prose. */}
+        <p className="truncate text-xs text-muted-foreground">
+          {gateway.service_name && <span className="font-mono">{gateway.service_name}</span>}
+          {gateway.machine && (
+            <>
+              {" "}
+              on <span className="font-mono">{gateway.machine}</span>
+            </>
+          )}
+          {(gateway.service_name || gateway.machine) && " · "}
+          zone <span className="font-mono">{gateway.zone}</span>
         </p>
       </div>
       <span className="-mt-1.5">

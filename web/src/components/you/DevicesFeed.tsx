@@ -51,8 +51,9 @@ export const DevicesFeed = () => {
           <>
             <SettingsHint>Every other device will have to sign in again.</SettingsHint>
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
+              className="hover:text-destructive"
               loading={signOutOthers.isPending}
               onClick={signOutAll}
             >

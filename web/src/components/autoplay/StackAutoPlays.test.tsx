@@ -138,7 +138,7 @@ describe("a stack play's auto plays", () => {
     expect(within(runOn).getByRole("combobox", { name: "Run on" })).toHaveTextContent("Your computers");
     const list = await within(runOn).findByRole("list", { name: "This auto play's computers" });
     expect(rowNames(list)).toEqual(["Alice laptop", "Home server"]);
-    expect(within(list).getByText("1 of 3 running")).toBeInTheDocument();
+    expect(within(list).getByText("1 of 3 play runs")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).not.toBeInTheDocument();
     expect(await within(runOn).findByText("Runs as you.")).toBeInTheDocument();
 
