@@ -23,16 +23,16 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.TicketDueSoon]: "due tomorrow",
 };
 
-/** One inbox row: a doc with every notification about it, or any other notification on its own. */
+/** One inbox row: a doc or ticket with every notification about it, or any other notification on its own. */
 export interface InboxRow {
-  type: "doc" | "notification";
+  type: "doc" | "ticket" | "notification";
   key: string;
   /** The newest notification, which places the row and is what the detail pane opens. */
   notification: Notification;
   title: string;
   summary: string;
   unreadIds: string[];
-  /** Every notification the row holds, a doc row counting each of its own. */
+  /** Every notification the row holds, a doc or ticket row counting each of its own. */
   count: number;
 }
 
@@ -66,6 +66,34 @@ const docSummary = (ns: Notification[]) => {
   return parts.filter(Boolean).join(" · ");
 };
 
+const ticketSummary = (ns: Notification[]) => {
+  const count = (kind: NotificationKind) => ns.filter((n) => n.kind === kind).length;
+  const mentions = count(NotificationKind.TicketMentioned);
+  const changes = count(NotificationKind.TicketStatusChanged);
+  const parts = [
+    count(NotificationKind.PlayRunWaiting) > 0 && kindLabels[NotificationKind.PlayRunWaiting],
+    mentions === 1 && "mentioned you",
+    mentions > 1 && `mentioned you ${mentions} times`,
+    count(NotificationKind.TicketDueSoon) > 0 && kindLabels[NotificationKind.TicketDueSoon],
+    count(NotificationKind.TicketAssigned) > 0 && kindLabels[NotificationKind.TicketAssigned],
+    changes === 1 && kindLabels[NotificationKind.TicketStatusChanged],
+    changes > 1 && plural(changes, "status change"),
+    count(NotificationKind.PlayRunFinished) > 0 && kindLabels[NotificationKind.PlayRunFinished],
+  ];
+  return parts.filter(Boolean).join(" · ");
+};
+
+// These kinds word their title around the subject's, so the subject's own title comes from any other notification when there is one.
+const titleWorded: NotificationKind[] = [
+  NotificationKind.DocMentioned,
+  NotificationKind.DocQuestionsAsked,
+  NotificationKind.DocQuestionsAnswered,
+  NotificationKind.TicketMentioned,
+  NotificationKind.TicketDueSoon,
+  NotificationKind.PlayRunFinished,
+  NotificationKind.PlayRunWaiting,
+];
+
 // "GetSource EP07: Bluesky" under GetSource reads "EP07: Bluesky"; a title that is only the name stays whole.
 const stripFolderPrefix = (title: string, folder: string) => {
   const escaped = folder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -73,15 +101,22 @@ const stripFolderPrefix = (title: string, folder: string) => {
   return rest === "" ? title : rest;
 };
 
+const subjectKey = (n: Notification) => {
+  if (n.subject_type === SubjectType.Doc) return `doc:${n.subject_id}`;
+  if (n.subject_type === SubjectType.Ticket) return `ticket:${n.subject_id}`;
+  return undefined;
+};
+
 const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => {
   const newest = ns[0] as Notification;
   const unreadIds = ns.filter((n) => !n.read).map((n) => n.id);
+  const title = (ns.find((n) => !titleWorded.includes(n.kind)) ?? newest).subject_title;
+  if (newest.subject_type === SubjectType.Ticket) {
+    return { type: "ticket", key: `ticket:${newest.subject_id}`, notification: newest, title, summary: ticketSummary(ns), unreadIds, count: ns.length };
+  }
   if (newest.subject_type !== SubjectType.Doc) {
     return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: kindLabels[newest.kind], unreadIds, count: ns.length };
   }
-  // These kinds word their title around the doc's, so the doc's own title comes from any other notification when there is one.
-  const titleWorded: NotificationKind[] = [NotificationKind.DocMentioned, NotificationKind.DocQuestionsAsked, NotificationKind.DocQuestionsAnswered];
-  const title = (ns.find((n) => !titleWorded.includes(n.kind)) ?? newest).subject_title;
   return {
     type: "doc",
     key: `doc:${newest.subject_id}`,
@@ -97,25 +132,27 @@ const groupedFolderId = (n: Notification) =>
   n.subject_type === SubjectType.Doc && n.folder_id && !n.folder_is_default ? n.folder_id : undefined;
 
 /**
- * Groups an inbox, newest first as the server lists it, into rows and folder groups: one row per doc, docs of a
- * non-default folder under that folder, and every other notification on its own row, all ordered by newest activity.
+ * Groups an inbox, newest first as the server lists it, into rows and folder groups: one row per doc or ticket, docs of
+ * a non-default folder under that folder, and every other notification on its own row, all ordered by newest activity.
  */
 export const groupInbox = (notifications: Notification[]): InboxEntry[] => {
   const newestFirst = [...notifications].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  const docs = new Map<string, Notification[]>();
+  const subjects = new Map<string, Notification[]>();
   for (const n of newestFirst) {
-    if (n.subject_type !== SubjectType.Doc) continue;
-    docs.set(n.subject_id, [...(docs.get(n.subject_id) ?? []), n]);
+    const key = subjectKey(n);
+    if (!key) continue;
+    subjects.set(key, [...(subjects.get(key) ?? []), n]);
   }
 
   const entries: InboxEntry[] = [];
   const folders = new Map<string, InboxFolder>();
   for (const n of newestFirst) {
-    if (n.subject_type !== SubjectType.Doc) {
+    const key = subjectKey(n);
+    if (!key) {
       entries.push(rowOf([n], undefined));
       continue;
     }
-    const ns = docs.get(n.subject_id);
+    const ns = subjects.get(key);
     if (!ns || ns[0] !== n) continue;
     const folderId = groupedFolderId(n);
     if (!folderId) {
@@ -141,7 +178,7 @@ export const groupInbox = (notifications: Notification[]): InboxEntry[] => {
 export const inboxRows = (entries: InboxEntry[]): InboxRow[] =>
   entries.flatMap((e) => (e.type === "folder" ? e.rows : [e]));
 
-/** Unread notifications across every row, a doc row counting each of its own. */
+/** Unread notifications across every row, a doc or ticket row counting each of its own. */
 export const inboxUnreadCount = (entries: InboxEntry[]): number =>
   inboxRows(entries).reduce((sum, row) => sum + row.unreadIds.length, 0);
 

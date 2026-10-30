@@ -33,7 +33,7 @@ describe("groupInbox", () => {
     ]);
 
     expect(entries.map((e) => [e.key, (e as InboxRow).summary])).toEqual([
-      ["n:c4", "due tomorrow"],
+      ["ticket:t-1", "due tomorrow"],
       ["n:c3", "starting soon"],
       ["n:c2", "cancelled"],
       ["n:c1", "invited"],
@@ -69,7 +69,7 @@ describe("groupInbox", () => {
       note({ id: "c1", kind: "doc.created", subject_id: "d-spec", created_at: at(9), ...inMain }),
     ]);
 
-    expect(entries.map((e) => e.key)).toEqual(["doc:d-spec", "n:t1"]);
+    expect(entries.map((e) => e.key)).toEqual(["doc:d-spec", "ticket:t-1"]);
     const doc = entries[0] as InboxRow;
     expect(doc.type).toBe("doc");
     expect(doc.notification.id).toBe("u2");
@@ -160,26 +160,36 @@ describe("groupInbox", () => {
       note({ id: "t1", subject_type: "ticket", kind: "ticket.status_changed", subject_id: "t-1", created_at: at(9) }),
     ]);
 
-    expect(entries.map((e) => e.key)).toEqual(["n:m1", "folder:f-gs", "doc:d-main", "n:t1"]);
+    expect(entries.map((e) => e.key)).toEqual(["n:m1", "folder:f-gs", "doc:d-main", "ticket:t-1"]);
   });
 
-  it("leaves every non-doc notification as its own row, even about the same ticket", () => {
+  it("collapses every notification about one ticket into a single row titled by the ticket", () => {
     const entries = groupInbox([
-      note({ id: "t1", subject_type: "ticket", kind: "ticket.status_changed", subject_id: "t-1", subject_title: "Fix it", read: false }),
-      note({ id: "t2", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", subject_title: "Fix it" }),
+      note({ id: "t4", subject_type: "ticket", kind: "ticket.mentioned", subject_id: "t-1", subject_title: "Lena mentioned you in Fix it", read: false, created_at: at(13) }),
+      note({ id: "t3", subject_type: "ticket", kind: "ticket.status_changed", subject_id: "t-1", subject_title: "Fix it", read: false, created_at: at(12) }),
+      note({ id: "t2", subject_type: "ticket", kind: "ticket.status_changed", subject_id: "t-1", subject_title: "Fix it", created_at: at(11) }),
+      note({ id: "t1", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", subject_title: "Fix it", created_at: at(10) }),
     ]) as InboxRow[];
 
-    expect(entries.map((e) => [e.type, e.notification.id, e.title, e.summary, e.unreadIds])).toEqual([
-      ["notification", "t1", "Fix it", "status changed", ["t1"]],
-      ["notification", "t2", "Fix it", "assigned to you", []],
+    expect(entries.map((e) => [e.key, e.type, e.notification.id, e.title, e.summary, e.unreadIds, e.count])).toEqual([
+      ["ticket:t-1", "ticket", "t4", "Fix it", "mentioned you · assigned to you · 2 status changes", ["t4", "t3"], 4],
     ]);
+  });
+
+  it("folds a play run's notice into its ticket's row, leading with a run that waits on you", () => {
+    const entries = groupInbox([
+      note({ id: "p1", subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-1", subject_title: "Fix with AI waiting on Fix it", created_at: at(12) }),
+      note({ id: "t1", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", subject_title: "Fix it", created_at: at(11) }),
+    ]) as InboxRow[];
+
+    expect(entries.map((e) => [e.key, e.title, e.summary])).toEqual([["ticket:t-1", "Fix it", "needs your answer · assigned to you"]]);
   });
 
   it("names what happened to a memory or a play run", () => {
     const entries = groupInbox([
       note({ subject_type: "memory", kind: "memory.updated", subject_id: "mem-1", created_at: at(12) }),
       note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-1", created_at: at(11) }),
-      note({ subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-1", created_at: at(10) }),
+      note({ subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-2", created_at: at(10) }),
     ]) as InboxRow[];
     expect(entries.map((e) => e.summary)).toEqual(["memory updated", "play run ended", "needs your answer"]);
   });
@@ -194,8 +204,8 @@ describe("inboxRows", () => {
   it("lists every row in display order, a group's rows in place of the group", () => {
     const entries = groupInbox([
       note({ subject_id: "d-ep01", created_at: at(12), ...inGetSource }),
-      note({ id: "t1", subject_type: "ticket", subject_id: "t-1", created_at: at(11) }),
+      note({ id: "t1", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", created_at: at(11) }),
     ]);
-    expect(inboxRows(entries).map((r) => r.key)).toEqual(["doc:d-ep01", "n:t1"]);
+    expect(inboxRows(entries).map((r) => r.key)).toEqual(["doc:d-ep01", "ticket:t-1"]);
   });
 });
