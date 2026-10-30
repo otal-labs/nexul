@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,8 +84,10 @@ describe("WorkspaceGeneralSection", () => {
     await user.click(save());
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1", { slug: "acme-labs" });
-    expect(await screen.findByTestId("location")).toHaveTextContent("/acme-labs/configuration/general");
-    expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("acme-labs");
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/acme-labs/configuration/general");
+      expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("acme-labs");
+    });
   });
 
   it("refuses a reserved address inline, keeps Discard, and never sends it", async () => {
