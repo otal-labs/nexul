@@ -82,7 +82,7 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
           </>
         }
       />
-      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable]">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
         {groups && openable.length === 0 && !searching && !showArchived && (

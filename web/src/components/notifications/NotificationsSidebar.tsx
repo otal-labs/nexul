@@ -55,7 +55,7 @@ export const NotificationsSidebar = ({
           </>
         }
       />
-      <nav ref={listRef} aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
+      <nav ref={listRef} aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable]">
         {isLoading && <LoadingDisplay />}
         {Boolean(error) && <ErrorDisplay error={error} />}
         {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" hint="Assignments, mentions and changes to what you follow land here." />}
