@@ -436,6 +436,18 @@ body {
   @apply panel;
 }
 
+/* A page cut by the panel's bottom edge fades over its last 40px instead of stopping on a flat line; it sits over the page's own end padding once scrolled there. */
+.app-frame:not(:has([data-pane-layout], [data-canvas-page]))::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 40px;
+  margin-top: -40px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--panel) var(--panel-opacity), transparent));
+}
+
 .app-frame:has([data-pane-layout]) {
   overflow: visible;
 }
@@ -486,7 +498,7 @@ body {
   border-radius: var(--radius-lg);
   background: #0b0b0b;
   box-shadow:
-    0 0 40px 0 color-mix(in oklab, var(--ring) 14%, transparent),
+    0 0 40px 0 color-mix(in oklab, var(--foreground) 8%, transparent),
     var(--shadow-elevated);
 }
 

@@ -107,7 +107,7 @@ in the three token files; this table holds the roles.
 | `destructive` | `#f26074` | `#c41945` | errors, danger zone, closed pull requests; crimson, 20° off the `brand` ember's hue | web: a palette whose card would hold it under 4.5:1, or whose accent sits on its hue, sets its own (Clay dark, Brutalism) |
 | `destructive-fill` | `oklch(0.55 0.2 15)` | `#a80f39` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember | site: none, it has no destructive button |
 | `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface | |
-| `ring` | `brand` | `brand` | canvas selection and the console glow | site: none; Fumadocs' `fd-ring` is `focus` |
+| `ring` | `brand` | `brand` | canvas selection | site: none; Fumadocs' `fd-ring` is `focus` |
 | `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
 | `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's three glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
@@ -796,7 +796,9 @@ blockquote is a 2px rule in `foreground` at 25%.
 Page width. `Container` is `max-w-7xl` for lists and grids (Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
 single-record pages (Configuration, Your settings, Project settings, Stack,
-Deploy, Automation); every page pads `py-8` inside its panel. Pages built
+Deploy, Automation); every page pads `py-8` inside its panel. A page taller than its
+panel fades over its last 40px at the panel's bottom edge rather than stopping
+on a flat line. Pages built
 from panes (Docs, Memories, Plays, Inbox, Ticket) run the full width with no
 Container, one panel per pane; Chat is one conversation panel.
 
@@ -830,8 +832,9 @@ above) that stays in view. A dialog that stacks its fields without a body
 scrolls as one with the footer pinned. A form dialog wider than its fields
 (New automation's scope rows) takes 36rem rather than truncating them.
 
-Sheet. The same frosted panel floating 8px from its edge at 12px, like the
-page panels; its header is the grip, and dragging it toward the edge moves
+Sheet. A solid panel (`glass-menu`, the menus' surface) floating 8px from its
+edge at 12px: a sheet holds dense content (a run's log, a form) over the page,
+and a frosted one let the page read through its empty lower half. Its header is the grip, and dragging it toward the edge moves
 the sheet 1:1 with the scrim fading in step (Motion baseline).
 
 Tooltip. A small `glass-menu` label (`text-xs`, `px-2 py-1`, 6px) for an
@@ -2383,7 +2386,7 @@ filled shape outweighed every other control).
 
 Phone menu. Below 768px every page shows the wordmark, search on docs pages,
 the theme toggle and a menu button. The menu is one sheet everywhere: the
-app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
+site's frosted sheet, 8px from the right edge at 12px, up to 320px wide, over
 the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
 Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
 sidebar drawer, the page tree first and the same links at its foot. GitHub is
