@@ -37,7 +37,7 @@ export const InterviewRunHeader = ({ project }: InterviewRunHeaderProps) => {
           />
         )}
       </div>
-      <div className="flex min-h-9 min-w-0 grow items-center justify-end gap-3 empty:hidden">
+      <div className="flex min-h-9 min-w-0 grow items-center justify-end gap-3 empty:hidden has-[>p]:basis-full">
         <InterviewAuditLine project={project} />
         {((memory && !active) || auditActive) && <InterviewAuditButton projectId={project.id} />}
       </div>

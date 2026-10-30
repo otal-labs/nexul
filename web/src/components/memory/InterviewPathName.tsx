@@ -7,7 +7,7 @@ interface InterviewPathNameProps {
 
 const TAIL = 10;
 
-// Marks the head data-cut while its text runs past it: the mono ellipsis sits left in its cell, so the tail shifts left (a shift, not a margin, which would hand the folders the space).
+// Marks the head data-cut while cut: its mono ellipsis sits left in its cell, so the tail shifts left (a margin would feed the folders).
 const markCut = (el: HTMLSpanElement | null) => {
   if (!el) return;
   const observer = new ResizeObserver(() => el.toggleAttribute("data-cut", el.scrollWidth > el.clientWidth));
