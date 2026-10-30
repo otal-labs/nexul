@@ -1,4 +1,5 @@
 import { CheckCheckIcon, InboxIcon } from "lucide-react";
+import { useRef } from "react";
 
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -25,6 +26,12 @@ export const NotificationsSidebar = ({
   isMarkingAllRead,
 }: NotificationsSidebarProps) => {
   const unread = entries ? inboxUnreadCount(entries) : 0;
+  const listRef = useRef<HTMLElement>(null);
+  // The button leaves once nothing is unread, so focus moves to the list's first row instead of dropping to the page.
+  const markAllRead = () => {
+    listRef.current?.querySelector<HTMLElement>("button")?.focus();
+    onMarkAllRead();
+  };
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ListPaneHeader
@@ -33,16 +40,16 @@ export const NotificationsSidebar = ({
         hideZeroCount
         controls={
           unread > 0 && (
-            <Button variant="ghost" size="icon" className="size-8" onClick={onMarkAllRead} loading={isMarkingAllRead} aria-label="Mark all read" title="Mark all read">
+            <Button variant="ghost" size="icon" className="size-8" onClick={markAllRead} loading={isMarkingAllRead} aria-label="Mark all read" title="Mark all read">
               <CheckCheckIcon aria-hidden />
             </Button>
           )
         }
       />
-      <nav aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
+      <nav ref={listRef} aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6">
         {isLoading && <LoadingDisplay />}
         {Boolean(error) && <ErrorDisplay error={error} />}
-        {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" />}
+        {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" hint="Assignments, mentions and changes to what you follow land here." />}
         {entries && entries.length > 0 && (
           <EnterList as="div" arrival="rise">
             {entries.map((e) => <InboxEntryRow key={e.key} entry={e} />)}

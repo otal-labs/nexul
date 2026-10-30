@@ -580,7 +580,9 @@ folder carries a color. Below 1024px one pane
 shows at a time. The list and the open record each scroll inside a panel
 that stays still and, while more lies below, fade over their last 40px (`scroll-edge`, driven by their own scroll), with bottom
 padding that clears the fade at the end, so content never meets a panel's
-rounded edge on one flat line. `ListDetailLayout` and `ListPaneRow` in
+rounded edge on one flat line. Once scrolled, the top fades over 24px too,
+growing with the first 24px of scroll so the first row at rest is never
+washed out. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
 Inbox. One row per doc or ticket however many notifications it has: the
@@ -1617,9 +1619,9 @@ sits on the icon's corner over a canvas cut-out). The Automations "WIP" tag
 is a microheader in `muted-foreground`, no hue. Rows are `nav-row`s: muted at rest, the
 `bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
 full-width row scaling from its centre shifts its text). The scroll fades
-out over its last 24px under the account row (`scroll-edge`) instead of
+out over its last 40px under the account row (`scroll-edge`) instead of
 cutting a heading in half, and its bottom padding clears the fade at the
-end. The account row sits under the scroll on a hairline, the gear beside it
+end; once scrolled, its top fades the same way. The account row sits under the scroll on a hairline, the gear beside it
 named by a tooltip. The icon rail (below 1024px or collapsed) is 68px, so
 every icon, tile and avatar keeps the x it has in the open sidebar; it keeps
 every page in the same order, with hairlines between the groups, and stands
