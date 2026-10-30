@@ -111,6 +111,7 @@ export const MessageList = ({
       )}
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+          <PinnedRunSender />
           <MessageScroller className="@container/scroller min-h-0 flex-1">
             {/* A gutter each side centres the column on the header and composer; narrower, no scrollbar takes the column's width. */}
             <MessageScrollerViewport className="[mask-image:linear-gradient(to_bottom,transparent,black_1rem,black_calc(100%-0.75rem),transparent)] [scrollbar-gutter:auto]! [scrollbar-width:none]! @min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]! @min-[50rem]/scroller:[scrollbar-width:thin]!">
@@ -154,7 +155,6 @@ export const MessageList = ({
                 )}
               </MessageScrollerContent>
             </MessageScrollerViewport>
-            <PinnedRunSender />
             <TranscriptScrollButton />
             {messages.length > 0 && (
               <OwnMessageScroller
