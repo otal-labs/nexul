@@ -101,7 +101,7 @@ type DeployRequestedEvent struct {
 	GatewayContainer string    `json:"gateway_container,omitempty"`
 	JoinNetworks     []string  `json:"join_networks,omitempty"`
 	TriggeredBy      string    `json:"triggered_by,omitempty" jsonschema:"Who started the deploy; empty when nobody did."`
-	RequestedAt      time.Time `json:"requested_at" jsonschema:"When the deploy was created."`
+	RequestedAt      time.Time `json:"requested_at,omitzero" jsonschema:"When the deploy was created; absent on a deploy requested before this field existed."`
 }
 
 // DeployStatusChangedEvent is the deploy.status_changed payload: a deploy's terminal state, reported by the runner.

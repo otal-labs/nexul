@@ -221,7 +221,7 @@ type DeployRequestedEvent struct {
 	JoinNetworks     []string `json:"join_networks,omitempty"`
 	// TriggeredBy is who started the deploy; RequestedAt is when it was created.
 	TriggeredBy string    `json:"triggered_by,omitempty"`
-	RequestedAt time.Time `json:"requested_at"`
+	RequestedAt time.Time `json:"requested_at,omitzero"`
 }
 
 // StackDeletedEvent is the slice of the service.deleted payload the runner acts on.

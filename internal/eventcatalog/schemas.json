@@ -2627,15 +2627,14 @@
       },
       "requested_at": {
         "type": "string",
-        "description": "When the deploy was created.",
+        "description": "When the deploy was created; absent on a deploy requested before this field existed.",
         "format": "date-time"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "id",
-      "kind",
-      "requested_at"
+      "kind"
     ]
   },
   "deploy.retried": {
