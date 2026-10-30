@@ -37,10 +37,10 @@ Runners on other machines update themselves the next time they connect to the up
 ## Pinning and rolling back
 
 ```sh
-sudo nexul upgrade --version v0.2.0
+sudo nexul upgrade --version vX.Y.Z
 ```
 
-This installs that exact release, newer or older than what runs now. If the rollback crosses a database change, [restore a snapshot](#restoring-a-database-snapshot) too.
+This installs that exact release, newer or older than what runs now. `vX.Y.Z` is a placeholder. The current version is on the [releases page](https://github.com/otal-labs/nexul/releases). If the rollback crosses a database change, [restore a snapshot](#restoring-a-database-snapshot) too.
 
 ## What happens to the database
 
