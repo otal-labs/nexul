@@ -9,7 +9,7 @@ describe("settings (web)", () => {
   it("renders the default section and switches sections via the nav", async () => {
     const page = await authedPage("/settings");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: "Profile", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
     await page.getByRole("link", { name: "Instance", exact: true }).click();
     await expect(page.getByText("Instance URL").first()).toBeVisible();
     await page.getByRole("link", { name: "Security", exact: true }).click();
