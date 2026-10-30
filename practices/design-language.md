@@ -1459,13 +1459,20 @@ signal-low mark after the name (and in the call list), `muted-foreground` when
 poor and `destructive` once lost, nothing while it is good. Speaking is a 2px `success` ring
 outside the tile, 2px off it on the well, so it reads the same over a camera; an avatar in a list or under a
 shared screen takes the same ring.
-A shared screen takes the stage on `media`, whole (`object-fit: contain`),
+The grid has a second view, speaker: one 16:9 tile for whoever is speaking
+(the last to speak while it is quiet, a camera or the first person before
+anyone has), as large as the well allows, with everyone else as the 24px
+avatar strip under it and its `+N` list; the large tile changes hands at most
+once every 2 seconds, so a short noise never moves the view. The choice
+outlives a reload. A shared screen takes the stage in either view, on `media`, whole (`object-fit: contain`),
 with its full screen button always shown on a dark chip, across the stage's
 full width; under it, whose screen it is and everyone in the call as 24px
 avatars, their mute marks muted, since nine red marks would drown the one
 that matters. Your own shared screen is not played back to you (you see it,
 and a mirror of it loops): its place says so, with Stop sharing. The
-controls are icon buttons centred under a hairline: a muted microphone is the
+controls are icon buttons centred under a hairline, with the view switch (a
+grid or a speaker mark naming the view it goes to, pressed in ink while the
+speaker view is on) and Hide call at its right end: a muted microphone is the
 one state in colour (`destructive` at 12% with the slashed mic in
 `destructive`), a camera or share that is on reads as pressed in ink
 (`foreground` at 10% under a 25% border), never the ember, which beside the
@@ -1476,6 +1483,10 @@ tabular `muted-foreground`, the buttons staying centred. Your own tile and row a
 screen is shared, the stacked stage grows to `clamp(320px, 66vh, 640px)`, and
 when people overflow, whoever starts talking swaps in from behind the `+N`
 without moving the others.
+Hide call folds the stage into one row in the lobby row's slot, look and
+edges: the avatar stack of who is in the call, "3 in the call" (the number in
+mono), the microphone, camera, share and Leave buttons, and Show call, with the
+chat back at the thread's full width; the fold lasts until you leave the call.
 `VoiceCallSection`, `ConnectedCall` and `components/voice/` are the reference.
 
 Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
