@@ -20,10 +20,14 @@ describe("stageGrid", () => {
     expect([grid.columns, grid.rows, grid.overflow]).toEqual([columns, rows, 0]);
   });
 
-  it("fills the well on both axes, every cell at least the minimum", () => {
-    const grid = stageGrid(9, 760, 420);
-    expect(grid.columns * grid.cellWidth + (grid.columns - 1) * 12).toBeCloseTo(760);
-    expect(grid.rows * grid.cellHeight + (grid.rows - 1) * 12).toBeCloseTo(420);
+  it.each([
+    [9, 760, 420],
+    [4, 771, 739],
+  ])("cuts %i cells in a %ix%i well to 16:9 inside it, every cell at least the minimum", (n, w, h) => {
+    const grid = stageGrid(n, w, h);
+    expect(grid.cellWidth / grid.cellHeight).toBeCloseTo(16 / 9);
+    expect(grid.columns * grid.cellWidth + (grid.columns - 1) * 12).toBeLessThanOrEqual(w + 0.01);
+    expect(grid.rows * grid.cellHeight + (grid.rows - 1) * 12).toBeLessThanOrEqual(h + 0.01);
     expect(grid.cellWidth).toBeGreaterThanOrEqual(160);
     expect(grid.cellHeight).toBeGreaterThanOrEqual(100);
   });

@@ -12,7 +12,7 @@ interface VoiceTileProps {
   style: CSSProperties;
 }
 
-// One person in the call: their camera with a name chip over it, or their avatar with the name under it.
+// One person in the call: their camera with a name chip over it, or their avatar with the name under it; a mute mark follows the name in both.
 export const VoiceTile = ({ style }: VoiceTileProps) => {
   const trackRef = useTrackRefContext();
   const participant = trackRef.participant;
@@ -44,18 +44,14 @@ export const VoiceTile = ({ style }: VoiceTileProps) => {
         </span>
       )}
       {!video && (
-        <span className="relative" style={{ "--avatar": `${avatarSize}px` } as CSSProperties}>
+        <span style={{ "--avatar": `${avatarSize}px` } as CSSProperties}>
           <PersonAvatar login={person.login} src={person.avatar_url} label={name} className="size-(--avatar) text-base" />
-          {micMuted && (
-            <span className="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-card">
-              <MicOff className="size-3 text-destructive" aria-label="Muted" />
-            </span>
-          )}
         </span>
       )}
       {!video && (
-        <span dir="auto" className="max-w-[calc(100%-16px)] truncate text-xs text-muted-foreground">
-          {name}
+        <span className="flex max-w-[calc(100%-16px)] items-center gap-1 text-xs text-muted-foreground">
+          <span dir="auto" className="truncate">{name}</span>
+          {micMuted && <MicOff className="size-3 shrink-0 text-destructive" aria-label="Muted" />}
         </span>
       )}
     </div>

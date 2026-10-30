@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Loader2, Settings, UserRound } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Unplug, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router";
 import type { Room } from "livekit-client";
@@ -72,7 +72,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
           lead={<VoiceLobbyIcon icon={Clock} />}
           title="You left after 5 minutes alone"
           detail={!empty && callCount(occupants.length)}
-          actions={<Button size="sm" onClick={joinThis}>Rejoin</Button>}
+          actions={
+            <>
+              <Button size="sm" onClick={joinThis}>Rejoin</Button>
+              <VoiceDismissButton onClick={() => clearLeftAlone(conversation.id)} />
+            </>
+          }
         />
       )}
       {phase === "joinPrompt" && empty && (
@@ -91,7 +96,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
         <VoiceLobbyRow
           lead={<VoiceRoomAvatars occupants={occupants} />}
           title={roomNames(occupants.map((o) => o.name))}
-          detail={otherCall ? `You're in ${otherCall}` : callCount(occupants.length)}
+          detail={
+            <>
+              {callCount(occupants.length)}
+              {otherCall && ` · You're in ${otherCall}`}
+            </>
+          }
           actions={<Button size="sm" onClick={joinThis}>{otherCall ? "Switch call" : "Join"}</Button>}
         />
       )}
@@ -105,7 +115,7 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
       {/* Never a dead button: whoever can fix it gets the link, everyone else is told who can. */}
       {phase === "notConfigured" && (
         <VoiceLobbyRow
-          lead={<VoiceLobbyIcon icon={Settings} />}
+          lead={<VoiceLobbyIcon icon={Unplug} />}
           title="Voice isn't set up"
           detail={!canConfigure && "Ask someone who manages connectors to add LiveKit"}
           actions={
@@ -122,13 +132,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
       )}
       {phase === "error" && (
         <VoiceLobbyRow
-          tone="destructive"
           lead={<VoiceLobbyIcon icon={AlertTriangle} className="size-4 text-destructive" />}
           title="Couldn't connect"
           detail={error && <span title={error} className="font-mono">{error}</span>}
           actions={
             <>
-              <Button size="sm" variant="outline" onClick={retry}>
+              <Button size="sm" onClick={retry}>
                 Retry
               </Button>
               <VoiceDismissButton onClick={leave} />

@@ -1432,25 +1432,28 @@ a `surface-2` well at `rounded-lg`, 64px, holding a stack of up to five 28px
 avatars (then a mono `+N`), the first names in medium ("Lena, Sam and Bob",
 "Lena, Sam and 6 others") over the count ("3 in the call", the number in
 mono), and Join at the right; an empty room leads with a dashed 28px ghost
-avatar and reads "Nobody's here" with Start call, and Switch call names the
-call you are in. Every other state takes the same slot, height and button
-place: left after five minutes alone, connecting, voice not set up (a link
-for whoever can fix it, who to ask for everyone else) and couldn't connect,
-the library's own error demoted to a mono second line; so does the empty slot
+avatar and reads "Nobody's here" with Start call, and Switch call keeps the
+count and names the call you are in. Every other state takes the same slot,
+height and button place, its one action a primary button and a dismiss beside
+it: left after five minutes alone, connecting, voice not set up (an unplugged
+mark, not a gear; a link for whoever can fix it, who to ask for everyone else)
+and couldn't connect (an ink title beside a `destructive` alert mark, the
+library's own error demoted to a mono second line); so does the empty slot
 shown while the voice code loads. In a call the
 stage is a `surface-2` well under the header, `clamp(260px, 46vh, 460px)` tall
 over the stream, and from a 1000px thread (the `thread` container query) the
 full height beside it, the stream then a 380px column behind a hairline and
-the header's name over the stage, not the stream. The tiles fill the well on
-both axes: the column count gives a camera the largest 16:9 picture with every
-cell at least 160 by 100 (`lib/stageGrid.ts`), one or two people sit in 16:9
+the header's name over the stage, not the stream. The tiles are 16:9 cells as
+large as the well allows: the column count gives a camera the largest 16:9
+picture with every cell at least 160 by 100, and the grid centres in the well (`lib/stageGrid.ts`), one or two people sit in 16:9
 tiles up to 480px wide, tiles sit 12px apart so two speaking rings never
 touch, a last row that is not full centres, and the people who don't fit go
 behind a `+N` tile opening the list of everyone. A tile is
 `card` with the hairline: an avatar with the name under it in muted 12px and a
-`destructive` slashed mic on the avatar's corner when muted, or a camera on
+`destructive` slashed mic after the name when muted, or a camera on
 `media` with the name in a chip over it. Speaking is a 2px `success` ring
-outside the tile, 2px off it on the well, so it reads the same over a camera.
+outside the tile, 2px off it on the well, so it reads the same over a camera; an avatar in a list or under a
+shared screen takes the same ring.
 A shared screen takes the stage on `media`, whole (`object-fit: contain`),
 with its full screen button always shown on a dark chip, across the stage's
 full width; under it, whose screen it is and everyone in the call as 24px
