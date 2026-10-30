@@ -10,7 +10,7 @@ import Wrench from "lucide-react-native/icons/wrench";
 import type { LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 
-import { ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { hexIconColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 
@@ -30,7 +30,7 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
 // A type is its icon in the type hue beside plain muted text, never a filled chip.
 export const TicketTypeBadge = ({ name, color }: { name: string; color: string | undefined }) => (
   <View className="flex-row items-center gap-1">
-    <Icon as={TYPE_ICONS[name.trim().toLowerCase()] ?? Shapes} className={`size-3 ${ticketTypeColor(name, color)}`} />
+    <Icon as={TYPE_ICONS[name.trim().toLowerCase()] ?? Shapes} className={`size-3 ${ticketTypeColor(name, color)}`} {...hexIconColor(color)} />
     <Text numberOfLines={1} className="shrink text-xs font-medium text-muted-foreground">
       {name}
     </Text>

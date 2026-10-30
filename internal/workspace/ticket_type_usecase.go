@@ -28,7 +28,7 @@ func (s *Service) CreateTicketType(ctx context.Context, projectID, name string, 
 	}
 	color = colors.Color(strings.TrimSpace(string(color)))
 	if color != "" && !colors.Valid(color) {
-		return nil, fmt.Errorf("%w: ticket type color must be one of the suggested colors", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: ticket type color must be a suggested hue or a #rrggbb hex", apperrs.ErrInvalid)
 	}
 	types, err := s.types.ListByProject(ctx, projectID)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *Service) RenameTicketType(ctx context.Context, id, name string, color c
 	}
 	color = colors.Color(strings.TrimSpace(string(color)))
 	if color != "" && !colors.Valid(color) {
-		return nil, fmt.Errorf("%w: ticket type color must be one of the suggested colors", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: ticket type color must be a suggested hue or a #rrggbb hex", apperrs.ErrInvalid)
 	}
 	current, err := s.types.Get(ctx, id)
 	if err != nil {

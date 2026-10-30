@@ -77,17 +77,13 @@ export const AddCategoryForm = ({ projectId, onCreated }: AddCategoryFormProps) 
         data-1p-ignore
         data-lpignore="true"
       />
-      <div className="space-y-2">
+      <div className="flex flex-col items-start gap-2">
         <span className="text-sm font-medium">Color</span>
-        <div className="rounded-md border border-input px-2 py-1.5 dark:bg-input/20">
-          <Controller
-            control={control}
-            name="color"
-            render={({ field }) => (
-              <ColorPicker label="Category color" value={field.value ?? ""} onChange={field.onChange} />
-            )}
-          />
-        </div>
+        <Controller
+          control={control}
+          name="color"
+          render={({ field }) => <ColorPicker label="Category color" value={field.value ?? ""} onChange={field.onChange} />}
+        />
       </div>
     </div>
   );

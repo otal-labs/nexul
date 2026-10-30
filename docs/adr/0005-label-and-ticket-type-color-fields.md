@@ -20,7 +20,7 @@ purely additive, zero changes to existing label CRUD.
 plain additive `color` column on `ticket_types`, the same shape as
 `Status.icon`.
 
-Both use a fixed suggested palette (not freeform hex), validated the same
+Both use a fixed suggested palette (not freeform hex; superseded by ADR 0176), validated the same
 way `StatusIcon` validates against `validStatusIcons`. An unset color on
 either falls back to the existing hash-based color
 (`ticketTypeColor.tsx`'s pattern) so nothing looks broken before an owner

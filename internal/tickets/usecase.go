@@ -783,7 +783,7 @@ func (s *Service) SetLabelColor(ctx context.Context, projectID, label string, co
 		return nil, fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
 	}
 	if !colors.Valid(color) {
-		return nil, fmt.Errorf("%w: color must be one of the suggested palette colors", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: color must be a suggested hue or a #rrggbb hex", apperrs.ErrInvalid)
 	}
 	if err := s.require(ctx, projectID, permissions.TicketsWrite); err != nil {
 		return nil, fmt.Errorf("set color for label %q: %w", label, err)

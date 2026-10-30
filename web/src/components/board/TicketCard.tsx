@@ -12,7 +12,7 @@ import type { DropTargetData } from "@/components/board/dragMove";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
-import { labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
@@ -68,6 +68,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
             key={label}
             data-slot="label-chip"
             title={label}
+            style={hueStyle(labelColors?.[label])}
             className={cn(
               "inline-flex h-[18px] min-w-0 items-center rounded-full px-1.5 font-medium",
               labelPillColor(label, labelColors?.[label]),
@@ -141,7 +142,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] leading-4 text-muted-foreground">
           {type !== "" && (
             // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
-            <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} title={type} className="shrink-0 [&>svg]:size-3.5">
+            <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} style={hueStyle(ticketType?.color)} title={type} className="shrink-0 [&>svg]:size-3.5">
               <span className="sr-only">{type}</span>
             </NoFillBadge>
           )}

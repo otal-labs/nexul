@@ -1,3 +1,7 @@
+import type { CSSProperties } from "react";
+
+import { HEX_COLOR } from "@/lib/hsv";
+
 // A type's icon color, 700 light and 400 dark to hold 3:1 on either canvas.
 const TICKET_TYPE_COLORS: Record<string, string> = {
   task: "text-slate-700 dark:text-slate-400",
@@ -43,11 +47,6 @@ const hashIndex = (value: string, length: number): number => {
   return Math.abs(hash) % length;
 };
 
-// Shared with the backend; reused (not duplicated) by ColorPicker so swatches and badges always agree.
-export const CONFIGURABLE_COLOR_NAMES = ["cyan", "emerald", "orange", "fuchsia", "lime"] as const;
-
-export type ConfigurableColorName = (typeof CONFIGURABLE_COLOR_NAMES)[number];
-
 const HUE_TEXT_CLASS: Record<string, string> = {
   cyan: "text-cyan-700 dark:text-cyan-400",
   emerald: "text-emerald-700 dark:text-emerald-400",
@@ -55,6 +54,12 @@ const HUE_TEXT_CLASS: Record<string, string> = {
   fuchsia: "text-fuchsia-700 dark:text-fuchsia-400",
   lime: "text-lime-700 dark:text-lime-400",
 };
+
+// The suggested hues as the picker shows them, so a named color opens on its own spot.
+export const NAMED_HEX: Record<string, string> = { cyan: "#06b6d4", emerald: "#10b981", orange: "#f97316", fuchsia: "#d946ef", lime: "#84cc16" };
+
+// The backend's suggested hues, which a new label takes in turn.
+export const CONFIGURABLE_COLOR_NAMES = Object.keys(NAMED_HEX);
 
 export const HUE_DOT_CLASS: Record<string, string> = {
   cyan: "bg-cyan-500",
@@ -64,15 +69,30 @@ export const HUE_DOT_CLASS: Record<string, string> = {
   lime: "bg-lime-600 dark:bg-lime-500",
 };
 
+export const isHexColor = (color?: string): color is string => !!color && HEX_COLOR.test(color);
+
+// True for a suggested hue or an owner's own hex; anything else reads as unset.
+export const hasColor = (color?: string): boolean => !!color && (!!HUE_DOT_CLASS[color] || isHexColor(color));
+
+// An owner's hex has no light and dark shade, so it rides in as --hue and draws as picked in every theme.
+export const hueStyle = (color?: string): CSSProperties | undefined => (isHexColor(color) ? ({ "--hue": color } as CSSProperties) : undefined);
+
+export const hueDotClass = (color?: string): string | undefined => {
+  if (isHexColor(color)) return "bg-(--hue)";
+  return color ? HUE_DOT_CLASS[color] : undefined;
+};
+
 // An unrecognized `color` value falls through to the hash exactly like unset does; it can't crash the board.
 export const ticketTypeColor = (typeName: string, color?: string): string => {
+  if (isHexColor(color)) return "text-(--hue)";
   if (color && HUE_TEXT_CLASS[color]) return HUE_TEXT_CLASS[color];
   const key = typeName.trim().toLowerCase();
   return TICKET_TYPE_COLORS[key] ?? TYPE_FALLBACK_PALETTE[hashIndex(key, TYPE_FALLBACK_PALETTE.length)]!;
 };
 
 export const labelDotColor = (label: string, color?: string): string => {
-  if (color && HUE_DOT_CLASS[color]) return HUE_DOT_CLASS[color];
+  const dot = hueDotClass(color);
+  if (dot) return dot;
   return LABEL_DOT_PALETTE[hashIndex(label.trim().toLowerCase(), LABEL_DOT_PALETTE.length)]!;
 };
 
@@ -94,6 +114,7 @@ const LABEL_PILL: Record<string, string> = {
 const LABEL_PILL_ORDER = ["cyan", "emerald", "orange", "fuchsia", "lime", "red", "violet", "amber", "blue", "indigo", "teal", "pink"];
 
 export const labelPillColor = (label: string, color?: string): string => {
+  if (isHexColor(color)) return "bg-(--hue)/15 text-[color-mix(in_oklab,var(--hue)_65%,var(--foreground))]";
   if (color && LABEL_PILL[color]) return LABEL_PILL[color];
   return LABEL_PILL[LABEL_PILL_ORDER[hashIndex(label.trim().toLowerCase(), LABEL_PILL_ORDER.length)]!]!;
 };

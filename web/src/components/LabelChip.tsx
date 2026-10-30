@@ -1,9 +1,9 @@
-import { labelDotColor } from "@/components/board/ticketTypeColor";
+import { hueStyle, labelDotColor } from "@/components/board/ticketTypeColor";
 import { cn } from "@/lib/utils";
 
 interface LabelChipProps extends React.ComponentProps<"span"> {
   label: string;
-  /** The label's configured hue name; unset falls back to a hue hashed from the text. */
+  /** The label's configured hue name or hex; unset falls back to a hue hashed from the text. */
   color?: string | undefined;
 }
 
@@ -17,7 +17,7 @@ export const LabelChip = ({ label, color, className, ...props }: LabelChipProps)
     )}
     {...props}
   >
-    <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} aria-hidden />
+    <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} style={hueStyle(color)} aria-hidden />
     <span className="truncate">{label}</span>
   </span>
 );

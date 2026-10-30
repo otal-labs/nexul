@@ -1,4 +1,4 @@
-import { HUE_DOT_CLASS } from "@/components/board/ticketTypeColor";
+import { hasColor } from "@/components/board/ticketTypeColor";
 import type { ProjectSettingsSection } from "@/components/settings/ProjectSettingsNav";
 import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -70,7 +70,7 @@ const TypesMeta = ({ projectId }: { projectId: string }) => {
 const LabelsMeta = ({ projectId }: { projectId: string }) => {
   const { data: labels } = useFetchAllLabels(projectId);
   const { data: colors } = useFetchLabelColors(projectId);
-  const unset = labels && colors && labels.filter((label) => !HUE_DOT_CLASS[colors[label] ?? ""]).length;
+  const unset = labels && colors && labels.filter((label) => !hasColor(colors[label])).length;
   return <Facts parts={[labels && count(labels.length, "label"), !!unset && `${unset} without a color`]} />;
 };
 

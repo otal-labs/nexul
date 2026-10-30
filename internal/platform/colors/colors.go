@@ -1,7 +1,9 @@
-// Package colors defines the fixed suggested color palette shared by every owner-configurable color field.
+// Package colors defines what every owner-configurable color field accepts: a suggested hue or any hex color.
 package colors
 
-// Color is a curated hue name; Valid("") is deliberately false so callers check for "unset" before validating.
+import "regexp"
+
+// Color is a suggested hue name or a #rrggbb hex; Valid("") is deliberately false so callers check for "unset" before validating.
 type Color string
 
 // The five hues match web/src/components/board/ticketTypeColor.tsx's TYPE_FALLBACK_PALETTE.
@@ -21,9 +23,11 @@ var valid = map[Color]bool{
 	Lime:    true,
 }
 
-// Valid reports whether c is one of the suggested palette hues.
+var hex = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// Valid reports whether c is one of the suggested hues or a #rrggbb hex color.
 func Valid(c Color) bool {
-	return valid[c]
+	return valid[c] || hex.MatchString(string(c))
 }
 
 // All returns the suggested palette in a stable order, for API/MCP schemas

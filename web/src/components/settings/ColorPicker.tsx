@@ -1,55 +1,32 @@
-import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS } from "@/components/board/ticketTypeColor";
-import { cn } from "@/lib/utils";
+import { NAMED_HEX } from "@/components/board/ticketTypeColor";
+import { ColorPanel } from "@/components/settings/ColorPanel";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ColorPickerProps {
   label: string;
   value: string;
   onChange: (color: string) => void;
-  /** Labels can't be cleared (no unset path); ticket types can, since color is nullable. */
-  allowNone?: boolean;
 }
 
-// Selection uses a ring, not an underline (a border-bottom read as a rendering glitch); the hues not picked sit back so a long list of rows shows its choices.
-const optionClass = (active: boolean) =>
-  cn(
-    "group/swatch inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150 ease-standard focus-visible:border-ring focus-visible:outline-none",
-    active ? "border-foreground/60" : "border-transparent hover:border-border",
+// A form's color field: the swatch and its hex, opening the color panel.
+export const ColorPicker = ({ label, value, onChange }: ColorPickerProps) => {
+  const hex = NAMED_HEX[value] ?? value;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className="inline-flex h-8 items-center gap-2 rounded-md border border-input px-2.5 text-xs transition-colors duration-150 ease-standard hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none dark:bg-input/20"
+        >
+          {hex && <span className="size-3.5 rounded-full" style={{ backgroundColor: hex }} aria-hidden />}
+          {!hex && <span className="size-3.5 rounded-full border border-dashed border-muted-foreground" aria-hidden />}
+          <span className="font-mono text-muted-foreground uppercase">{hex || "No color"}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-2.5">
+        <ColorPanel value={value} onChange={onChange} />
+      </PopoverContent>
+    </Popover>
   );
-
-// Shared 5-hue palette (ADR 0005); plain controlled props so rows can reuse it without a form lib.
-export const ColorPicker = ({ label, value, onChange, allowNone = true }: ColorPickerProps) => (
-  <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1">
-    {allowNone && (
-      <button
-        type="button"
-        role="radio"
-        aria-checked={value === ""}
-        aria-label="No color"
-        className={optionClass(value === "")}
-        onClick={() => onChange("")}
-      >
-        <span className="size-4 rounded-full border border-dashed border-muted-foreground" aria-hidden />
-      </button>
-    )}
-    {CONFIGURABLE_COLOR_NAMES.map((hue) => (
-      <button
-        key={hue}
-        type="button"
-        role="radio"
-        aria-checked={value === hue}
-        aria-label={hue}
-        className={optionClass(value === hue)}
-        onClick={() => onChange(hue)}
-      >
-        <span
-          className={cn(
-            "size-4 rounded-full transition-opacity duration-150 ease-standard",
-            HUE_DOT_CLASS[hue],
-            value !== hue && "opacity-35 group-hover/swatch:opacity-100 group-focus-visible/swatch:opacity-100",
-          )}
-          aria-hidden
-        />
-      </button>
-    ))}
-  </div>
-);
+};

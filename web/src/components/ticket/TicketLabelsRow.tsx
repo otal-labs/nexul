@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { Input } from "@/components/ui/input";
 import { LabelChip } from "@/components/LabelChip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { labelDotColor } from "@/components/board/ticketTypeColor";
+import { hueStyle, labelDotColor } from "@/components/board/ticketTypeColor";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { rowClass, rowIconClass, rowLabelClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
@@ -72,7 +72,7 @@ const AddLabelPopover = ({ projectId, existingLabels, onAdd }: AddLabelPopoverPr
         <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
           {filtered.map((label) => (
             <button key={label} type="button" className={menuItemClass} onClick={() => pick(label)}>
-              <span className={cn("size-1.5 shrink-0 rounded-full", labelDotColor(label, labelColors?.[label]))} aria-hidden />
+              <span className={cn("size-1.5 shrink-0 rounded-full", labelDotColor(label, labelColors?.[label]))} style={hueStyle(labelColors?.[label])} aria-hidden />
               {label}
             </button>
           ))}

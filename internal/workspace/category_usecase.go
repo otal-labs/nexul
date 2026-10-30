@@ -27,7 +27,7 @@ func (s *Service) CreateCategory(ctx context.Context, projectID, name string, co
 	}
 	color = colors.Color(strings.TrimSpace(string(color)))
 	if color != "" && !colors.Valid(color) {
-		return nil, fmt.Errorf("%w: category color must be one of the suggested colors", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: category color must be a suggested hue or a #rrggbb hex", apperrs.ErrInvalid)
 	}
 	cats, err := s.cats.ListByProject(ctx, projectID)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *Service) RenameCategory(ctx context.Context, id, name string, color col
 	}
 	color = colors.Color(strings.TrimSpace(string(color)))
 	if color != "" && !colors.Valid(color) {
-		return nil, fmt.Errorf("%w: category color must be one of the suggested colors", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: category color must be a suggested hue or a #rrggbb hex", apperrs.ErrInvalid)
 	}
 	current, err := s.cats.Get(ctx, id)
 	if err != nil {

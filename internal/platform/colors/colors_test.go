@@ -15,6 +15,9 @@ func TestValid(t *testing.T) {
 		{"cyan is valid", Cyan, true},
 		{"empty is not valid", Color(""), false},
 		{"unknown hue is not valid", Color("magenta"), false},
+		{"a hex color is valid", Color("#3B82f6"), true},
+		{"a short hex is not valid", Color("#38f"), false},
+		{"a hex without its hash is not valid", Color("3b82f6"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

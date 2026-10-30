@@ -268,13 +268,13 @@ type categoryChanges struct {
 
 type categoryCreateIn struct {
 	Name  string `json:"name" jsonschema:"The category's name."`
-	Color string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, or lime."`
+	Color string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
 }
 
 type categoryUpdateIn struct {
 	ID       string  `json:"id" jsonschema:"The category's id, from project_get."`
 	Name     *string `json:"name,omitempty" jsonschema:"A new name."`
-	Color    *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, or lime; an empty string clears it."`
+	Color    *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex; an empty string clears it."`
 	Position *int    `json:"position,omitempty" jsonschema:"The category's place in the project's order, 0 for first."`
 }
 
@@ -286,21 +286,21 @@ type ticketTypeChanges struct {
 
 type ticketTypeCreateIn struct {
 	Name         string `json:"name" jsonschema:"The type's name. A type named bug requires a found-in on its tickets."`
-	Color        string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, or lime."`
+	Color        string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
 	BodyTemplate string `json:"body_template,omitempty" jsonschema:"Markdown sections that pre-fill a new ticket of this type."`
 }
 
 type ticketTypeUpdateIn struct {
 	ID           string  `json:"id" jsonschema:"The ticket type's id, from project_get."`
 	Name         *string `json:"name,omitempty" jsonschema:"A new name."`
-	Color        *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, or lime; an empty string clears it."`
+	Color        *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex; an empty string clears it."`
 	BodyTemplate *string `json:"body_template,omitempty" jsonschema:"A new body template in markdown; existing tickets are never rewritten, and an empty string clears it."`
 	Position     *int    `json:"position,omitempty" jsonschema:"The type's place in the project's order, 0 for first."`
 }
 
 type labelColorIn struct {
 	Label string `json:"label" jsonschema:"The label."`
-	Color string `json:"color" jsonschema:"cyan, emerald, orange, fuchsia, or lime."`
+	Color string `json:"color" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
 }
 
 type projectUpdateResult struct {

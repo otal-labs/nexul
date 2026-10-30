@@ -1,4 +1,4 @@
-import { labelDotColor } from "@/components/board/ticketTypeColor";
+import { hueStyle, labelDotColor } from "@/components/board/ticketTypeColor";
 import type { ChipOption } from "@/components/board/FilterChipRow";
 import type { Category } from "@/models/Category";
 import type { Project } from "@/models/Project";
@@ -74,6 +74,7 @@ export const buildLabelChips = (
     key: label,
     label,
     dotClass: labelDotColor(label, colors?.[label]),
+    dotStyle: hueStyle(colors?.[label]),
     active: filters.labels.includes(label),
     onToggle: () => onToggle(label),
   }));
