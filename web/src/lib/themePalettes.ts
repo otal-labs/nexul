@@ -480,7 +480,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
   {
     id: ThemeId.Brutalism,
     label: "Brutalism",
-    swatch: ["oklch(0.5799 0.238 29.23)", "oklch(0.628 0.2577 29.23)"],
+    swatch: ["oklch(0.5799 0.238 29.23)", "oklch(0.5799 0.238 29.23)"],
     colors: {
       light: {
         background: "oklch(1.0 0.0 0.0)",
@@ -511,8 +511,9 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         "card-foreground": "oklch(1.0 0.0 0.0)",
         popover: "oklch(0.1457 0.0 0.0)",
         "popover-foreground": "oklch(1.0 0.0 0.0)",
-        primary: "oklch(0.628 0.2577 29.23)",
-        "primary-foreground": "oklch(0.0 0.0 0.0)",
+        // Black ink on sRGB red blurs to maroon at label size, so dark takes the light red and its white label.
+        primary: "oklch(0.5799 0.238 29.23)",
+        "primary-foreground": "oklch(1.0 0.0 0.0)",
         secondary: "oklch(1.0 0.0 0.0)",
         "secondary-foreground": "oklch(0.0 0.0 0.0)",
         muted: "oklch(0.2376 0.0 0.0)",
@@ -521,7 +522,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         "accent-foreground": "oklch(0.0 0.0 0.0)",
         border: "oklch(1.0 0.0 0.0 / 0.2)",
         input: "oklch(1.0 0.0 0.0)",
-        ring: "oklch(0.628 0.2577 29.23)",
+        ring: "oklch(0.5799 0.238 29.23)",
         "surface-2": "oklch(0.1157 0.0 0.0)",
         destructive: "oklch(0.72 0.19 0)",
         // A black panel has no darker step to give, so its column wells sit a step lighter instead.
