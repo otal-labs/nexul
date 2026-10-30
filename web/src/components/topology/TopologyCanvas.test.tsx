@@ -110,6 +110,14 @@ describe("TopologyCanvas", () => {
     expect(screen.getAllByRole("button", { name: "Arrange in lanes" }).length).toBeGreaterThan(0);
   });
 
+  it("turns a count that needs attention into a button that steps through those services", async () => {
+    const failing: Canvas = { ...canvas, nodes: canvas.nodes.map((n) => (n.id === "svc-api" ? { ...n, data: { ...n.data, status: ServiceStatus.Failed } } : n)) as Canvas["nodes"] };
+    mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/topology" ? failing : (responses[url] ?? []) }));
+    render(wrap(<TopologyCanvas />));
+    fireEvent.click(await screen.findByRole("button", { name: "Show the next failed service, of 1" }));
+    expect(screen.queryByRole("button", { name: /next running service/ })).not.toBeInTheDocument();
+  });
+
   it("lays out for a viewer who can't write topology without saving it, and offers no External node", async () => {
     viewer.instance = [];
     render(wrap(<TopologyCanvas />));

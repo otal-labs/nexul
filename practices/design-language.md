@@ -444,11 +444,13 @@ The canvas is the page: it fills the panel edge to edge as a `surface-2`
 field with a faint `muted-foreground` dot pattern, and one bar across its top
 is the page's header: the title in Fraunces at 20px, then the counts in
 tabular figures (services, the failed and stopped ones each after their
-status dot, hostnames), then the zoom (−, the percentage, +), Fit, Show more
-lanes (only while lanes continue past the right edge), Lock, Arrange in lanes
-and "+ External" as the outline button. Below 1024px the bar keeps only the
-failed and stopped counts, and Show more lanes, Lock and Arrange fold into a
-"…" menu. There is no floating control strip, no minimap (at the canvas's
+status dot, hostnames), then the zoom (−, the percentage, +), Fit, Back and
+More (each disabled while there is no lane that way, so nothing shifts),
+Lock, Arrange in lanes and "+ External" as the outline button. The failed and
+stopped counts are buttons: each press centres the next service in that state
+at a zoom that reads. The bar folds by its own width: under 64rem it keeps
+only the failed and stopped counts and Lock and Arrange fold into a "…" menu,
+and under 42rem Back and More fold too. There is no floating control strip, no minimap (at the canvas's
 size it covered a fifth of the map and showed grey blocks) and no library
 attribution.
 

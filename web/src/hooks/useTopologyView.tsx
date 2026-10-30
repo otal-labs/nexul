@@ -8,13 +8,14 @@ import { useFetchAllContainers, useFetchStacks } from "@/hooks/StackHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
-import { RelationKind, type HostnameNode, type RelationEdge, type TopologyNode } from "@/models/Topology";
+import { RelationKind, type AttentionStatus, type HostnameNode, type RelationEdge, type TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 import {
   alignPillsToRows,
   buildNetworkRects,
   LANE_LAYOUT,
   laneCamera,
+  MIN_FIT_ZOOM,
   laneLayout,
   lanesOf,
   overlaps,
@@ -30,7 +31,7 @@ const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "var
 
 // The canvas as rendered, stored and derived nodes in lanes. Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const useTopologyView = () => {
-  const { setViewport } = useReactFlow();
+  const { setViewport, fitView } = useReactFlow();
   const flow = useStoreApi();
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
@@ -166,6 +167,15 @@ export const useTopologyView = () => {
     setMeasured(new Map(next.map((h) => [h.id, h.measured])));
   };
 
+  // Each press of the bar's failed or stopped count centres the next service in that state, at a zoom that reads.
+  const framed = useRef(-1);
+  const frame = (status: AttentionStatus) => {
+    const ids = wiring.nodes.filter((n) => (n.type === "service" || n.type === "gateway") && n.data.status === status).map((n) => n.id);
+    if (ids.length === 0) return;
+    framed.current = (framed.current + 1) % ids.length;
+    void fitView({ nodes: [{ id: ids[framed.current]! }], minZoom: MIN_FIT_ZOOM, maxZoom: 1, padding: 0.4 });
+  };
+
   const fit = () => void setViewport(cameraFor(new Map(viewNodes.map((n) => [n.id, n.position])), flow.getState().width));
 
   return {
@@ -177,6 +187,7 @@ export const useTopologyView = () => {
     summary,
     arrange: () => arrange(),
     fit,
+    frame,
     trace: { set: setHovered },
   };
 };

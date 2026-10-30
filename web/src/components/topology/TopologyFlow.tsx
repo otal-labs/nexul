@@ -59,7 +59,7 @@ export const TopologyFlow = () => {
   const selectNode = useFlowStore((s) => s.selectNode);
   const save = useSaveTopology();
   const { isPending } = useFetchTopology();
-  const { viewNodes, viewEdges, networkRects, lanes, handleNodesChange, summary, arrange, fit, trace } = useTopologyView();
+  const { viewNodes, viewEdges, networkRects, lanes, handleNodesChange, summary, arrange, fit, frame, trace } = useTopologyView();
 
   const [addingExternal, setAddingExternal] = useState(false);
 
@@ -105,7 +105,7 @@ export const TopologyFlow = () => {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <TopologyToolbar summary={summary} lanes={lanes} onAddExternal={() => setAddingExternal(true)} onArrange={arrange} onFit={fit} />
+      <TopologyToolbar summary={summary} lanes={lanes} onAddExternal={() => setAddingExternal(true)} onArrange={arrange} onFit={fit} onFrame={frame} />
       <div className="relative min-h-0 flex-1">
       <ReactFlow<TopologyNode, RelationEdge>
         nodes={viewNodes}
