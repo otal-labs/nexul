@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandler_Join(t *testing.T) {
@@ -76,5 +79,42 @@ func TestHandler_Occupancy(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("occupancy on a fresh service = %+v, want empty", got)
+	}
+}
+
+func TestHandler_Listen(t *testing.T) {
+	tests := []struct {
+		name       string
+		voice      bool
+		userID     string
+		wantStatus int
+	}{
+		{"a voice channel mints a listen token", true, "u-1", http.StatusOK},
+		{"not a voice channel is a 4xx", false, "u-1", http.StatusBadRequest},
+		{"no signed-in user is a 4xx", true, "", http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewService(Config{
+				Conversations: &fakeConversations{voiceChannels: map[string]bool{"conv-1": tt.voice}},
+				Credentials:   &fakeCredentials{client: livekitTestClient("secret1")},
+				Users:         &fakeUserNames{},
+				Bus:           &fakePublisher{},
+			})
+			req := httptest.NewRequest(http.MethodPost, "/api/voice/conv-1/listen", nil)
+			req = req.WithContext(WithUserID(req.Context(), tt.userID))
+			rec := httptest.NewRecorder()
+			NewHandler(svc).Routes().ServeHTTP(rec, req)
+
+			require.Equal(t, tt.wantStatus, rec.Code, rec.Body.String())
+			if tt.wantStatus != http.StatusOK {
+				return
+			}
+			var got JoinToken
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			claims, err := parseTestJWT(got.Token, "secret1")
+			require.NoError(t, err)
+			assert.Equal(t, "listen:u-1", claims["sub"])
+		})
 	}
 }

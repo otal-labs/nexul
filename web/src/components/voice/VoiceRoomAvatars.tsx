@@ -1,16 +1,19 @@
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
+import { cn } from "@/lib/utils";
 import type { VoiceOccupant } from "@/models/Voice";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface VoiceRoomAvatarsProps {
   occupants: VoiceOccupant[];
+  /** Identities speaking right now; each ring in the success hue, as in the call. */
+  speaking?: ReadonlySet<string>;
 }
 
 const SHOWN = 5;
 
 // Who is in the room before you join: a stack of up to five, then a +N count.
-export const VoiceRoomAvatars = ({ occupants }: VoiceRoomAvatarsProps) => {
+export const VoiceRoomAvatars = ({ occupants, speaking }: VoiceRoomAvatarsProps) => {
   const lookup = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const rest = occupants.length - SHOWN;
   return (
@@ -21,7 +24,10 @@ export const VoiceRoomAvatars = ({ occupants }: VoiceRoomAvatarsProps) => {
           login={lookup(occupant.identity).login}
           src={lookup(occupant.identity).avatar_url}
           label={occupant.name}
-          className="size-7 text-[11px] ring-2 ring-surface-2"
+          className={cn(
+            "size-7 text-[11px] ring-2 ring-surface-2 transition-shadow duration-150 ease-standard",
+            speaking?.has(occupant.identity) && "ring-success",
+          )}
         />
       ))}
       {rest > 0 && (

@@ -337,7 +337,7 @@ func TestRemoveFromCall(t *testing.T) {
 		s.occupancy.join("conv-1", Occupant{Identity: "u-1", Name: "Ada"})
 
 		require.NoError(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-owner", "u-1"}))
-		assert.Equal(t, []string{"RemoveParticipant conv-1 u-1"}, *calls)
+		assert.Equal(t, []string{"RemoveParticipant conv-1 u-1", "RemoveParticipant conv-1 listen:u-1"}, *calls, "their lobby listener goes with them")
 		assert.Equal(t, []Occupant{{Identity: "u-owner", Name: "Owner"}}, s.occupancy.room("conv-1"))
 		assert.Len(t, bus.all(), 1)
 	})
@@ -403,4 +403,98 @@ func TestOccupancyEvents_MarkPrivateVoiceChannelsMembersOnly(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListen(t *testing.T) {
+	tests := []struct {
+		name           string
+		conv           *fakeConversations
+		cred           *fakeCredentials
+		conversationID string
+		userID         string
+		wantErr        error
+	}{
+		{"empty conversation id", nil, nil, "  ", "u-1", apperrs.ErrInvalid},
+		{"empty user id", nil, nil, "conv-1", "  ", apperrs.ErrInvalid},
+		{"a conversation the caller cannot read", &fakeConversations{err: apperrs.ErrNotFound}, nil, "conv-x", "u-1", apperrs.ErrNotFound},
+		{"not a voice channel", &fakeConversations{voiceChannels: map[string]bool{"conv-1": false}}, nil, "conv-1", "u-1", apperrs.ErrInvalid},
+		{"no LiveKit connector is invalid, not not-found", nil, &fakeCredentials{err: errNotConfigured}, "conv-1", "u-1", apperrs.ErrInvalid},
+		{"a voice channel with a connector", nil, nil, "conv-1", "u-1", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bus := &fakePublisher{}
+			s := newTestService(t, tt.conv, tt.cred, nil, bus)
+			tok, err := s.Listen(t.Context(), tt.conversationID, tt.userID)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "wss://lk.example.com", tok.WSURL)
+			claims, err := parseTestJWT(tok.Token, "secret1")
+			require.NoError(t, err)
+			assert.Equal(t, "listen:u-1", claims["sub"])
+			video, _ := claims["video"].(map[string]any)
+			assert.Equal(t, "conv-1", video["room"])
+			assert.Equal(t, true, video["hidden"])
+			assert.Equal(t, false, video["canPublish"])
+			assert.Equal(t, false, video["canPublishData"])
+			assert.Empty(t, s.Occupancy(t.Context()), "listening is not presence")
+			assert.Empty(t, bus.all(), "listening publishes no occupancy")
+		})
+	}
+}
+
+func TestListenerIsNeverOccupancy(t *testing.T) {
+	listener := livekit.ListenerIdentity("u-1")
+	t.Run("a webhook join and leave of a listener change nothing", func(t *testing.T) {
+		bus := &fakePublisher{}
+		s := newTestService(t, nil, nil, nil, bus)
+		require.NoError(t, s.HandleWebhook(t.Context(), livekit.Event{Type: "participant_joined", Room: "conv-1", ParticipantIdentity: listener, ParticipantName: "Listener"}))
+		require.NoError(t, s.HandleWebhook(t.Context(), livekit.Event{Type: "participant_left", Room: "conv-1", ParticipantIdentity: listener}))
+		assert.Empty(t, s.Occupancy(t.Context()))
+		assert.Empty(t, bus.all())
+	})
+
+	t.Run("a listener beside a person is left out of the room and its event", func(t *testing.T) {
+		bus := &fakePublisher{}
+		s := newTestService(t, nil, nil, nil, bus)
+		require.NoError(t, s.HandleWebhook(t.Context(), livekit.Event{Type: "participant_joined", Room: "conv-1", ParticipantIdentity: "u-2", ParticipantName: "Lena"}))
+		require.NoError(t, s.HandleWebhook(t.Context(), livekit.Event{Type: "participant_joined", Room: "conv-1", ParticipantIdentity: listener, ParticipantName: "Listener"}))
+		assert.Equal(t, []Occupant{{Identity: "u-2", Name: "Lena"}}, s.occupancy.room("conv-1"))
+		events := bus.all()
+		require.Len(t, events, 1, "only the person's join published")
+		assert.Equal(t, []Occupant{{Identity: "u-2", Name: "Lena"}}, events[0].Occupants)
+	})
+
+	reconcile := func(t *testing.T, participants ...map[string]any) (*Service, *fakePublisher) {
+		t.Helper()
+		srv := twirpStub(t, map[string]func() any{
+			"ListRooms": func() any {
+				return map[string]any{"rooms": []map[string]any{{"name": "conv-1", "numParticipants": len(participants)}}}
+			},
+			"ListParticipants": func() any { return map[string]any{"participants": participants} },
+		})
+		t.Cleanup(srv.Close)
+		bus := &fakePublisher{}
+		cred := &fakeCredentials{client: livekit.Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}}
+		s := newTestService(t, nil, cred, nil, bus)
+		s.reconcileOnce(t.Context(), nil)
+		return s, bus
+	}
+
+	t.Run("the reconciliation poll drops a listener from a room with a person", func(t *testing.T) {
+		s, bus := reconcile(t, map[string]any{"identity": "u-2", "name": "Lena"}, map[string]any{"identity": listener, "name": "Listener"})
+		assert.Equal(t, []Occupant{{Identity: "u-2", Name: "Lena"}}, s.occupancy.room("conv-1"))
+		events := bus.all()
+		require.Len(t, events, 1)
+		assert.Equal(t, []Occupant{{Identity: "u-2", Name: "Lena"}}, events[0].Occupants)
+	})
+
+	t.Run("a room holding only a listener is not a call", func(t *testing.T) {
+		s, bus := reconcile(t, map[string]any{"identity": listener, "name": "Listener"})
+		assert.Empty(t, s.Occupancy(t.Context()))
+		assert.Empty(t, bus.all())
+	})
 }

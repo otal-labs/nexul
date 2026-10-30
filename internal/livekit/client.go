@@ -18,6 +18,12 @@ import (
 // tokenTTL is a join token's lifetime ("short-lived").
 const tokenTTL = 6 * time.Hour
 
+// listenTokenTTL is a lobby listener's token lifetime, short because it is only presented once, to connect; LiveKit refreshes a connected participant's token itself.
+const listenTokenTTL = 5 * time.Minute
+
+// listenerPrefix starts the identity of a hidden lobby listener, which is never a person's presence.
+const listenerPrefix = "listen:"
+
 // serviceTokenTTL is a Twirp API token's lifetime; used once and discarded, never handed to a browser.
 const serviceTokenTTL = 5 * time.Minute
 
@@ -46,6 +52,38 @@ func (c *Client) MintToken(identity, name, room string) (string, error) {
 			"roomCreate":        true,
 			"canSubscribe":      true,
 			"canPublishSources": []string{"microphone", "camera", "screen_share", "screen_share_audio"},
+		},
+	}
+	return signJWT(claims, c.APISecret)
+}
+
+// ListenerIdentity is the identity userID's lobby listener joins a room under, distinct from the userID of a real join.
+func ListenerIdentity(userID string) string {
+	return listenerPrefix + userID
+}
+
+// IsListener reports whether identity belongs to a lobby listener, which occupancy never counts.
+func IsListener(identity string) bool {
+	return strings.HasPrefix(identity, listenerPrefix)
+}
+
+// MintListenToken builds a token for a hidden participant that publishes nothing and cannot create the room: it is
+// there for LiveKit's speaker updates, which reach only a participant subscribed to the speaker (ADR 0175).
+func (c *Client) MintListenToken(userID, room string) (string, error) {
+	now := time.Now().UTC()
+	claims := map[string]any{
+		"iss":  c.APIKey,
+		"sub":  ListenerIdentity(userID),
+		"name": "Listener",
+		"nbf":  now.Unix(),
+		"exp":  now.Add(listenTokenTTL).Unix(),
+		"video": map[string]any{
+			"room":           room,
+			"roomJoin":       true,
+			"hidden":         true,
+			"canPublish":     false,
+			"canPublishData": false,
+			"canSubscribe":   true,
 		},
 	}
 	return signJWT(claims, c.APISecret)

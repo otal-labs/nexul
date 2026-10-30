@@ -328,3 +328,40 @@ func TestRemoveParticipant(t *testing.T) {
 		require.NoError(t, c.RemoveParticipant(t.Context(), "conv-1", "u-1"))
 	})
 }
+
+func TestMintListenToken_ClaimStructure(t *testing.T) {
+	c := &Client{WSURL: "wss://lk.example.com", APIKey: "APIkey1", APISecret: "secret1"}
+	token, err := c.MintListenToken("user-1", "room-42")
+	require.NoError(t, err)
+
+	claims, err := parseJWT(token, "secret1")
+	require.NoError(t, err)
+	assert.Equal(t, "APIkey1", claims["iss"])
+	assert.Equal(t, "listen:user-1", claims["sub"], "a listener never shares the person's own identity")
+	assert.Equal(t, listenTokenTTL.Seconds(), claims["exp"].(float64)-claims["nbf"].(float64))
+	assert.Equal(t, map[string]any{
+		"room":           "room-42",
+		"roomJoin":       true,
+		"hidden":         true,
+		"canPublish":     false,
+		"canPublishData": false,
+		"canSubscribe":   true,
+	}, claims["video"], "hidden, publishes nothing, cannot create the room, and keeps canSubscribe for speaker updates")
+}
+
+func TestIsListener(t *testing.T) {
+	tests := []struct {
+		name, identity string
+		want           bool
+	}{
+		{"a listener's identity", ListenerIdentity("user-1"), true},
+		{"a person's identity", "user-1", false},
+		{"empty", "", false},
+		{"the prefix inside an identity", "user-listen:1", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsListener(tt.identity))
+		})
+	}
+}

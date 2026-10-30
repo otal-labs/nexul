@@ -1431,7 +1431,8 @@ reference.
 Voice call. A voice channel is a chat stream with the call at its head.
 Before joining, one lobby row sits above the messages in the stream's column:
 a `surface-2` well at `rounded-lg`, 64px, holding a stack of up to five 28px
-avatars (then a mono `+N`), the first names in medium ("Lena, Sam and Bob",
+avatars (then a mono `+N`; whoever is speaking wears the call's 2px `success` ring, 150ms, read by a hidden
+listener that is not presence, ADR 0175), the first names in medium ("Lena, Sam and Bob",
 "Lena, Sam and 6 others") over the count ("3 in the call", the number in
 mono), and Join at the right, a 32px mic toggle just left of it (a slashed mic in
 `destructive` when you join muted, remembered across reloads); an empty room leads with a dashed 28px ghost

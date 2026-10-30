@@ -309,8 +309,9 @@ var routePermissions = map[string][]string{
 	"POST /api/topology/nodes":        {"topology:write"},
 	"DELETE /api/topology/nodes/{id}": {"topology:delete"},
 
-	"POST /api/voice/{conversationID}/leave": none,
-	"POST /api/voice/{conversationID}/token": none,
+	"POST /api/voice/{conversationID}/leave":  none,
+	"POST /api/voice/{conversationID}/listen": none,
+	"POST /api/voice/{conversationID}/token":  none,
 
 	"POST /api/workspaces":                                                        {"workspaces:create"},
 	"PATCH /api/workspaces/{workspaceID}":                                         {"workspaces:write"},

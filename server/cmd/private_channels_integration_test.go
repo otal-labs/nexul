@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
+	"github.com/otal-labs/nexul/internal/livekit"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
@@ -68,6 +69,10 @@ func TestIntegration_PrivateChannel(t *testing.T) {
 		}, reads},
 		{"voice join", func(ctx context.Context, user string) error {
 			_, err := s.voiceSvc.Join(ctx, call.ID, user)
+			return err
+		}, joins},
+		{"voice listen", func(ctx context.Context, user string) error {
+			_, err := s.voiceSvc.Listen(ctx, call.ID, user)
 			return err
 		}, joins},
 		{"live frame", func(ctx context.Context, _ string) error {
@@ -164,10 +169,10 @@ func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
 	deliver()
 	_, err = s.chatSvc.RemoveChannelMembers(as(uWriter), call.ID, []string{uPlain})
 	require.NoError(t, err)
-	assert.Equal(t, []string{uPlain}, deliver(), "removed by someone else")
+	assert.Equal(t, []string{livekit.ListenerIdentity(uPlain), uPlain}, deliver(), "removed by someone else, with their lobby listener")
 	_, err = s.chatSvc.RemoveChannelMembers(as(uReader), call.ID, []string{uReader})
 	require.NoError(t, err)
-	assert.Equal(t, []string{uReader}, deliver(), "left")
+	assert.Equal(t, []string{livekit.ListenerIdentity(uReader), uReader}, deliver(), "left")
 	_, err = s.chatSvc.RemoveChannelMembers(as(uOwner), call.ID, []string{uOwner})
 	require.NoError(t, err)
 	assert.Empty(t, deliver(), "the Owner left but still reads it")

@@ -14,7 +14,7 @@ import { VoiceLobbyIcon } from "@/components/voice/VoiceLobbyIcon";
 import { VoiceLobbyRow } from "@/components/voice/VoiceLobbyRow";
 import { VoiceRoomAvatars } from "@/components/voice/VoiceRoomAvatars";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
-import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
+import { useVoiceLobbySpeakers, useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { channelMention } from "@/models/Chat";
 import { roomNames } from "@/models/Voice";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
@@ -63,6 +63,7 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
   const phase = deriveCallPhase(active, leftAlone !== undefined, status, room);
   const joinThis = () => void join(conversation.id, channelMention(conversation));
   const empty = occupants.length === 0;
+  const speaking = useVoiceLobbySpeakers(conversation.id, phase === "joinPrompt" && !empty);
   // The reason stays only while this channel stays open; moving to another one drops it.
   useEffect(() => () => clearLeftAlone(conversation.id), [clearLeftAlone, conversation.id]);
 
@@ -101,7 +102,7 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
       )}
       {phase === "joinPrompt" && !empty && (
         <VoiceLobbyRow
-          lead={<VoiceRoomAvatars occupants={occupants} />}
+          lead={<VoiceRoomAvatars occupants={occupants} speaking={speaking} />}
           title={roomNames(occupants.map((o) => o.name))}
           detail={
             <>
