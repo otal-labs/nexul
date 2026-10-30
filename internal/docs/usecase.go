@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // AccessChecker is the slice of access docs consumes, defined consumer-side so docs never imports it (ADR 0017).
@@ -411,6 +412,30 @@ func (s *Service) requireProject(ctx context.Context, projectID string, action p
 // and enqueues doc.updated; requires the edit bit.
 func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, error) {
 	return s.update(ctx, id, title, body, 0)
+}
+
+// ApplyEdits is the body doc_get shows with edits applied, ready for Update; it needs the edit bit, like the save.
+// ponytail: the read and the save are two steps, so a body saved between them is overwritten; a repo-level apply closes it
+func (s *Service) ApplyEdits(ctx context.Context, id string, edits []textedit.Edit) (string, error) {
+	if strings.TrimSpace(id) == "" {
+		return "", fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("edit doc %s: %w", id, err)
+	}
+	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
+		return "", err
+	}
+	md, err := richtext.ToMarkdown(current.Body)
+	if err != nil {
+		return "", fmt.Errorf("render doc %s: %w", id, err)
+	}
+	body, err := textedit.Apply(md, edits)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", apperrs.ErrInvalid, err)
+	}
+	return body, nil
 }
 
 // update is Update that records the version a restore copied the text from, zero for an ordinary save.

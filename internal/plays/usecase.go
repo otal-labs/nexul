@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // Seeded instruction texts (spec "Prompt composition"), editable like any other play once created.
@@ -233,6 +234,23 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 		return nil, labelTaken(p, fmt.Errorf("create play in workspace %s: %w", workspaceID, err))
 	}
 	return p, nil
+}
+
+// ApplyEdits is the instructions play_list shows for a play with edits applied, ready for Update; it needs plays:write.
+// ponytail: the read and the save are two steps, so instructions saved between them are overwritten; a repo-level apply closes it
+func (s *Service) ApplyEdits(ctx context.Context, workspaceID, id string, edits []textedit.Edit) (string, error) {
+	p, err := s.seen(ctx, workspaceID, id)
+	if err != nil {
+		return "", err
+	}
+	if err := s.requireOn(ctx, p, permissions.PlaysWrite); err != nil {
+		return "", err
+	}
+	text, err := textedit.Apply(p.Instructions, edits)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", apperrs.ErrInvalid, err)
+	}
+	return text, nil
 }
 
 // Update replaces a play's owner-edited fields (plays:write on it); the play's type never changes after create.

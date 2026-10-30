@@ -241,6 +241,13 @@ decide whether an agent picks the right tool.
   be cleared, the description says how (an empty string clears a category).
   Required fields in the schema are exactly the fields the call cannot run
   without.
+- **A long body takes `edits`.** An update of a body agents rewrite in small
+  pieces (a doc, a ticket's description, a play's instructions, a memory) also
+  takes `edits`, `internal/platform/textedit`'s find-and-replace pairs. The
+  use-case applies them to the text the matching get tool returns and the tool
+  saves the result as one ordinary update; the rules (one match each, all or
+  nothing) live in the server instructions, and the clash with the body field
+  or a revert is left to its error message (ADR 0174).
 - **Say each rule once.** Every session pays for every word of
   `tools/list`, which stays under `advertisedBudget` in
   `internal/mcp/surface_test.go`. Patch semantics, paging, and ids live in

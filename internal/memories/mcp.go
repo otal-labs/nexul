@@ -8,6 +8,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // viaMCP is the author_via of every version saved through an MCP tool call (ADR 0049).
@@ -41,6 +42,8 @@ type memoryUpdateIn struct {
 	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first."`
 	Footer          *bool   `json:"footer,omitempty" jsonschema:"Whether the memory sits in the Footer folder: a play run names it last, to read once its work is done and conclude the run. Ordinary memories only."`
 	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new version. Send it alone."`
+
+	Edits []textedit.Edit `json:"edits,omitempty" jsonschema:"Replace text in the body instead of resending it."`
 
 	Answers []answerIn `json:"answers,omitempty" jsonschema:"Answers to the Interview template's questions, each replacing that question's stored answer. Follow-up rounds are recorded by the run."`
 
@@ -276,6 +279,10 @@ func memoryUpdateTool(s *Service) mcptool.Tool {
 			"the sources fields change what it is pointed at, and drafts write or delete draft answers, which never count as answers.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in memoryUpdateIn) (any, error) {
+			in, err := overlayEdits(ctx, s, in)
+			if err != nil {
+				return nil, err
+			}
 			m, err := updateMemory(ctx, s, in)
 			if err != nil {
 				return nil, err
@@ -303,6 +310,19 @@ func updateMemory(ctx context.Context, s *Service, in memoryUpdateIn) (*Memory, 
 	}
 	return s.UpdateWithFooter(ctx, in.ID, deref(in.Title, m.Title), deref(in.WhenToUse, m.WhenToUse), deref(in.Body, m.Body),
 		deref(in.AlwaysIncluded, m.AlwaysIncluded), in.Footer, viaMCP)
+}
+
+// overlayEdits turns edits into the body they produce, so the save below sees an ordinary body field.
+func overlayEdits(ctx context.Context, s *Service, in memoryUpdateIn) (memoryUpdateIn, error) {
+	if len(in.Edits) == 0 {
+		return in, nil
+	}
+	if in.Body != nil {
+		return in, fmt.Errorf("%w: edits change the current body; send edits or body, not both", apperrs.ErrInvalid)
+	}
+	body, err := s.ApplyEdits(ctx, in.ID, in.Edits)
+	in.Body = &body
+	return in, err
 }
 
 func memoryDeleteTool(s *Service) mcptool.Tool {

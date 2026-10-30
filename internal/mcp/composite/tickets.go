@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -478,6 +479,8 @@ type ticketUpdateIn struct {
 	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink; one that is not linked changes nothing."`
 	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink; one that is not linked changes nothing."`
 	RevertToVersion  *int          `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
+
+	Edits []textedit.Edit `json:"edits,omitempty" jsonschema:"Replace text in the body instead of resending it."`
 }
 
 // revertsAlone reports a revert sent with no other field, which would otherwise be half applied.
@@ -526,6 +529,9 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			}
 			if in.RevertToVersion != nil && !in.revertsAlone() {
 				return nil, fmt.Errorf("%w: revert_to_version restores that version's whole body; send it alone, then update again", apperrs.ErrInvalid)
+			}
+			if len(in.Edits) > 0 && in.Body != nil {
+				return nil, fmt.Errorf("%w: edits change the current body; send edits or body, not both", apperrs.ErrInvalid)
 			}
 			tk, err := resolveTicket(ctx, t, in.Workspace, in.ID)
 			if err != nil {
@@ -586,8 +592,9 @@ func (u ticketUpdate) allSteps(in ticketUpdateIn) []step {
 
 func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 	var steps []step
-	if in.Title != nil || in.Body != nil {
-		steps = append(steps, step{field: pairLabel("title", in.Title != nil, "body", in.Body != nil), run: func(ctx context.Context) error { return u.content(ctx, in.Title, in.Body) }})
+	edits := len(in.Edits) > 0
+	if in.Title != nil || in.Body != nil || edits {
+		steps = append(steps, step{field: pairLabel("title", in.Title != nil, "body", in.Body != nil || edits), run: func(ctx context.Context) error { return u.content(ctx, in.Title, in.Body, in.Edits) }})
 	}
 	fields := []struct {
 		sent bool
@@ -656,11 +663,18 @@ func (u ticketUpdate) place(ctx context.Context, index int) error {
 	return nil
 }
 
-// content overlays the sent title and body on the stored ones, since the use-case replaces both.
-func (u ticketUpdate) content(ctx context.Context, title, body *string) error {
+// content overlays the sent title and body (or the body with edits applied) on the stored ones, since the use-case replaces both.
+func (u ticketUpdate) content(ctx context.Context, title, body *string, edits []textedit.Edit) error {
 	current, err := u.t.Get(ctx, u.id)
 	if err != nil {
 		return err
+	}
+	if len(edits) > 0 {
+		edited, err := u.t.ApplyEdits(ctx, u.id, edits)
+		if err != nil {
+			return err
+		}
+		body = &edited
 	}
 	return discard(u.t.UpdateTicket(ctx, u.id, valueOr(title, current.Title), valueOr(body, current.Body)))
 }

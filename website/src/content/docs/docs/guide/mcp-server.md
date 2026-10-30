@@ -100,6 +100,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 A few things that save an agent a wasted call:
 
 - **Updates are patches.** Send only the fields to change; the rest keep their values.
+- **Edit a body without resending it.** `doc_update`, `ticket_update`, `play_update`, and `memory_update` take `edits`, a list of `find` and `replace` pairs applied in order to the body (a ticket's description, a play's instructions) as `doc_get`, `ticket_get`, `play_list`, and `memory_get` return it. Each `find` must match exactly once; if any fails, nothing is saved. `edits` does not go with the whole body field or `revert_to_version`, and the result is one saved version.
 - **Lists page.** They take `limit` (50 by default, 100 at most) and `offset` and return `items`, `total`, `has_more`, and `next_offset`. `total` counts everything you can see, searches included, so paging with `next_offset` reaches every match. A row added ahead of your place while you page shifts the later pages by one.
 - **A list given an id returns that one record.** `deploy_list` with a deploy's `id` returns it with its log; `trail_list`, `automation_list`, `computer_list`, and `dns_tunnel_list` work the same way. A field's description lists the values it takes.
 - **Tickets by key.** Ticket tools take an id or a key such as `WEB-12`. A key is unique only within a workspace, so when you hold it in two, pass `workspace` too, or the call is refused with the workspaces to choose from.

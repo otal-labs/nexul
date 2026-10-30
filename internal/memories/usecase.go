@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // maxWhenToUseChars caps the one-line when-to-use field, mirroring docs' former memory field.
@@ -216,6 +217,27 @@ func (s *Service) ListMemoryItems(ctx context.Context, projectID string) ([]Memo
 		out[i] = MemoryItem{ID: m.ID, Title: m.Title, AlwaysIncluded: m.AlwaysIncluded, Kind: m.Kind}
 	}
 	return out, nil
+}
+
+// ApplyEdits is the body memory_get shows with edits applied, ready for Update; it needs memories:write.
+// ponytail: the read and the save are two steps, so a body saved between them is overwritten; a repo-level apply closes it
+func (s *Service) ApplyEdits(ctx context.Context, id string, edits []textedit.Edit) (string, error) {
+	if strings.TrimSpace(id) == "" {
+		return "", fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.getChecked(ctx, id, permissions.MemoriesWrite)
+	if err != nil {
+		return "", err
+	}
+	md, err := richtext.ToMarkdown(current.Body)
+	if err != nil {
+		return "", fmt.Errorf("render memory %s: %w", id, err)
+	}
+	body, err := textedit.Apply(md, edits)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", apperrs.ErrInvalid, err)
+	}
+	return body, nil
 }
 
 // Update replaces title/when-to-use/body/always-included and appends a version unless nothing changed, keeping the
