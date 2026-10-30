@@ -342,12 +342,12 @@ div:has(+ #nd-sidebar-mobile) {
 
 .site-search-dialog {
 	border: 1px solid transparent !important;
+	border-top-color: var(--panel-highlight) !important;
 	border-radius: var(--shape-xl) !important;
 	background: color-mix(in oklab, var(--popover) 88%, transparent) !important;
 	-webkit-backdrop-filter: blur(24px) saturate(1.4);
 	backdrop-filter: blur(24px) saturate(1.4);
 	box-shadow:
-		inset 0 1px 0 0 var(--panel-highlight),
 		0 0 0 1px var(--panel-ring),
 		var(--shadow-overlay) !important;
 }

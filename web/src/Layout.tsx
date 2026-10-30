@@ -31,22 +31,25 @@ export const Layout = () => {
   useEnsureWorkspaceSelected(isLoggedIn);
   useUnreadTitle(isLoggedIn);
   useReportTimezone(isLoggedIn);
-  // Wizards, the invite page and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
-  const onboarding = /^\/(?:(?:[^/]+\/)?wizard\/|invite$)/.test(useLocation().pathname);
+  const { pathname } = useLocation();
+  // Wizards own the whole app frame; the sidebar's nav has nothing to point at there.
+  const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(pathname);
+  // Sign-in, the invitation and setup draw their own full-screen frame, signed in or not.
+  const shell = isLoggedIn && !/^\/(?:login|invite|setup)$/.test(pathname);
   const frame = useRef<HTMLDivElement>(null);
   usePageEntrance(frame);
 
-  // Signed out, the hero pages paint their own full-screen canvas; signed in, every page floats on the light field.
+  // Outside the shell a page paints its own full-screen canvas; inside it, every page floats on the light field.
   return (
     <>
-      {!isLoggedIn && (
+      {!shell && (
         <main className="min-h-screen">
           <Suspense fallback={<LoadingDisplay />}>
             <Outlet />
           </Suspense>
         </main>
       )}
-      {isLoggedIn && (
+      {shell && (
         <div className="flex h-dvh">
           <div className="light-field" aria-hidden />
           {!onboarding && (

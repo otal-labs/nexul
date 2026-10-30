@@ -371,11 +371,11 @@ body {
 /* A raised frosted panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */
 @utility panel {
   border: 1px solid transparent;
+  border-top-color: var(--panel-highlight);
   border-radius: var(--radius-xl);
   background-color: color-mix(in oklab, var(--panel) var(--panel-opacity), transparent);
   backdrop-filter: blur(20px) saturate(1.3);
   box-shadow:
-    inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--panel-shadow);
 }
@@ -383,10 +383,10 @@ body {
 /* A card on the topology canvas: the panel's ring and lit top edge on the card colour, no blur (nodes move on pan). */
 @utility canvas-card {
   border: 1px solid transparent;
+  border-top-color: var(--panel-highlight);
   border-radius: var(--radius-lg);
   background-color: var(--card);
   box-shadow:
-    inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-card);
 }
@@ -394,10 +394,10 @@ body {
 /* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour. */
 @utility glass-popover {
   border: 1px solid transparent;
+  border-top-color: var(--panel-highlight);
   background-color: color-mix(in oklab, var(--popover) 88%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
-    inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-overlay);
 }
@@ -405,9 +405,9 @@ body {
 /* A menu, select or popover over the live page, with no scrim between: solid, so dense content under it never reads through. */
 @utility glass-menu {
   border: 1px solid transparent;
+  border-top-color: var(--panel-highlight);
   background-color: var(--popover);
   box-shadow:
-    inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-elevated);
 }
@@ -1262,8 +1262,8 @@ button.mention-chip:hover {
   --border-radius: var(--radius-lg);
 }
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  border-top-color: var(--panel-highlight);
   box-shadow:
-    inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-elevated);
 }

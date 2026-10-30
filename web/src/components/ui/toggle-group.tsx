@@ -10,7 +10,7 @@ import { ActiveIndicator } from "@/components/ActiveIndicator"
 
 // One segmented control: a well with a raised thumb that slides to the chosen side (practices/design-language.md, Navigation).
 const SEGMENTED_TRACK = "relative isolate gap-0.5 bg-surface-2 p-0.5 ring-1 ring-border ring-inset"
-const SEGMENTED_THUMB = "rounded-sm bg-card shadow-card ring-1 ring-border dark:ring-input"
+const SEGMENTED_THUMB = "rounded-sm bg-card shadow-card ring-1 ring-border ring-inset dark:ring-input"
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
