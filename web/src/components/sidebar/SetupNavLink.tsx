@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { NavLink } from "react-router";
 
-import { navLinkClass } from "@/components/SidebarNav";
+import { navLinkClass, railDotClass } from "@/components/SidebarNav";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,7 @@ export const SetupNavLink = ({ to, label, icon: Icon, collapsed }: SetupNavLinkP
       {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
       <span
         aria-hidden
-        className={cn("size-1.5 shrink-0 rounded-full bg-warning", collapsed && "absolute top-1.5 left-[31px] size-2 ring-2 ring-background")}
+        className={cn("size-1.5 shrink-0 rounded-full bg-warning", collapsed && railDotClass)}
       />
     </NavLink>
   </RailTooltip>

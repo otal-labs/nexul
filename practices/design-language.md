@@ -1614,8 +1614,8 @@ sentence case at 80% of `muted-foreground`, with their create `+` trailing; a di
 their avatar, a group with the people icon, and a private channel's lock
 takes the place of its `#` or speaker. A row with unread messages sets its
 name in medium `foreground` and trails the count as an `UnreadBadge`, mono
-`tabular-nums` in `muted-foreground` with no disc (on the rail the count
-sits on the icon's corner over a canvas cut-out). The Automations "WIP" tag
+`tabular-nums` in `muted-foreground` with no disc (on the rail a dot
+above the icon's corner over a canvas cut-out, the count in its tooltip). The Automations "WIP" tag
 is a microheader in `muted-foreground`, no hue. Rows are `nav-row`s: muted at rest, the
 `bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
 full-width row scaling from its centre shifts its text). The scroll fades
@@ -1630,8 +1630,8 @@ Its logo is the way back out: under the pointer or focus it turns into the
 expand glyph on an accent tile (120ms crossfade), where a separate button
 crowded the logo and hung over the panel's edge. Every rail item names
 itself in a tooltip to its right (`RailTooltip`, on the app's tooltip clock,
-so the next item along the rail names itself at once), and a count or dot sits on
-its icon's top-right corner, cut out by a canvas ring (`railBadgeClass`).
+so the next item along the rail names itself at once), and every badge is one 8px dot above
+its icon's top-right corner, cut out by a canvas ring (`railDotClass`): `foreground` for unread, `warning` for setup still open, the count in the tooltip.
 The switchers work the same on the rail: the tile opens the same menu.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens

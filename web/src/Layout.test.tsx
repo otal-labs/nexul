@@ -100,7 +100,7 @@ describe("Layout", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
     // The Workspace section starts folded; these tests read its links, so they open it as a person would once.
-    useSidebarStore.setState({ workspaceNavOpen: true });
+    useSidebarStore.setState({ workspaceNavOpen: true, collapsed: false });
     vi.mocked(api.get).mockReset();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       // The auth profile (AccountMenu/WorkspaceSwitcher read it via useFetchMe) must match exactly before the workspace-scoped /me, which this URL also ends with.
@@ -160,6 +160,16 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveTextContent("3");
+  });
+
+  it("names the Inbox count on the rail, where only a dot shows", () => {
+    vi.mocked(useFetchUnreadCount).mockReturnValueOnce({ data: { count: 3 } } as ReturnType<
+      typeof useFetchUnreadCount
+    >);
+    useSessionStore.setState({ token: "t", isLoggedIn: true });
+    useSidebarStore.setState({ collapsed: true });
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Inbox, 3 unread" })).not.toHaveTextContent("3");
   });
 
   it("reaches Configuration from the Workspace section and Your settings from the footer gear, with no Members or Settings links", async () => {
