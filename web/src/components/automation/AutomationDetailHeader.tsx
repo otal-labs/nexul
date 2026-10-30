@@ -1,8 +1,9 @@
 import { useState } from "react";
 
-import { AutomationConfigStatusBadge } from "@/components/automation/AutomationConfigStatusBadge";
 import { AutomationHistoryDialog } from "@/components/automation/AutomationHistoryDialog";
-import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
+import { AutomationDescription } from "@/components/automation/AutomationDescription";
+import { AutomationMetaLine } from "@/components/automation/AutomationMetaLine";
+import { AutomationProblemChips } from "@/components/automation/AutomationProblemChips";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { Button } from "@/components/ui/button";
@@ -31,15 +32,17 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
               {automation.name}
             </h1>
           </ClampedTitle>
-          {automation.description && (
-            <p className="mt-1.5 max-w-2xl text-sm text-pretty text-muted-foreground">{automation.description}</p>
-          )}
+          {automation.description && <AutomationDescription description={automation.description} />}
         </>
       }
       meta={
         <>
-          <AutomationKindBadge kind={automation.kind} />
-          <AutomationConfigStatusBadge automation={automation} />
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <AutomationMetaLine automation={automation} />
+          </span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">
+            <AutomationProblemChips automation={automation} />
+          </span>
         </>
       }
       actions={

@@ -60,7 +60,7 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
     >
       {fields.length === 0 && <EmptyRow>This automation has no settings.</EmptyRow>}
       {fields.length > 0 && (
-        <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="max-w-[36rem] space-y-4">
           {fields.map((field) => (
             <AutomationConfigFieldControl key={field.key} control={form.control} field={field} />
           ))}
