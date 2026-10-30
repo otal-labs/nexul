@@ -62,6 +62,8 @@ type setupFixture struct {
 	projects    []string
 	fail        map[string]harness.Update
 	skipConfirm map[string]bool
+	// started closes when a session with a title in hold starts; that session never ends on its own.
+	hold        map[string]chan struct{}
 	interrupted int
 }
 
@@ -83,7 +85,7 @@ func newSetupFixture(t *testing.T) *setupFixture {
 	}
 	var clockMu sync.Mutex
 	now := testNow
-	f := &setupFixture{repo: repo, exch: exch, tokens: newFakeTokens(), bus: &setupBus{}, fail: map[string]harness.Update{}, skipConfirm: map[string]bool{}}
+	f := &setupFixture{repo: repo, exch: exch, tokens: newFakeTokens(), bus: &setupBus{}, fail: map[string]harness.Update{}, skipConfirm: map[string]bool{}, hold: map[string]chan struct{}{}}
 	f.svc = NewService(Config{
 		Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Tokens: f.tokens, Bus: f.bus,
 		Instance: fakeInstance{url: "https://nexul.example.com/app"},
@@ -120,9 +122,14 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	f.projects = append(f.projects, target.ProjectID)
 	last, failing := f.fail[title]
 	skip := f.skipConfirm[title]
+	started, held := f.hold[title]
 	f.mu.Unlock()
 	updates := make(chan harness.Update, 4)
 	updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "bash", Summary: "writing the config", Detail: prompts.Full}}
+	if held {
+		close(started)
+		return harness.StartResult{SessionID: "s-" + title, Updates: updates}, nil
+	}
 	if !failing && !skip && (strings.HasPrefix(title, "Nexul setup check") || strings.HasPrefix(title, "Nexul skills update")) {
 		if err := f.confirmAsPrompted(ctx, setupDrivers[target.Provider], prompts.Full); err != nil {
 			return harness.StartResult{}, err
@@ -355,6 +362,29 @@ func TestStartSetup_OneProviderFails_OthersConfirmAndItRetriesAlone(t *testing.T
 	assert.Equal(t, SetupTurnConfirmed, f.turns(retry.RunID)["codex"].State)
 	assert.Empty(t, f.tokens.revoked, "the retry reuses the token the other providers already hold")
 	require.NoError(t, f.resolveForPlay(t, "codex-main"))
+}
+
+func TestStopSetupProvider_EndsTheRunningTurnAsStoppedAndLeavesTheOthersRunning(t *testing.T) {
+	f := newSetupFixture(t)
+	started := make(chan struct{})
+	f.hold["Nexul setup: Claude"] = started
+
+	err := f.svc.StopSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "nothing runs yet")
+
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, nil, "", nil)
+	require.NoError(t, err)
+	<-started
+	require.ErrorIs(t, f.svc.StopSetupProvider(t.Context(), "u2", f.computer.ID, "claudeAgent"), apperrs.ErrNotFound, "only the computer's owner stops its setup")
+	require.NoError(t, f.svc.StopSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent"))
+	f.svc.setupRuns.Wait()
+
+	turns := f.turns(run.RunID)
+	assert.Equal(t, SetupTurnFailed, turns["claudeagent"].State)
+	assert.Equal(t, "Stopped", turns["claudeagent"].Status)
+	assert.Equal(t, SetupTurnConfirmed, turns["codex"].State, "the other provider's turn ran on")
+	assert.Equal(t, 1, f.interrupted, "the stopped session is interrupted on the computer")
+	require.ErrorIs(t, f.svc.StopSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent"), apperrs.ErrInvalid, "a finished turn has nothing to stop")
 }
 
 func TestStartSetup_Rerun_ReverifiesWithoutReplacingTheToken(t *testing.T) {

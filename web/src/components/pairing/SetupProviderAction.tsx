@@ -1,4 +1,4 @@
-import { Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { SetupProviderRow } from "@/models/Pairing";
@@ -6,11 +6,13 @@ import type { SetupProviderRow } from "@/models/Pairing";
 interface SetupProviderActionProps {
   row: SetupProviderRow;
   busy: boolean;
+  stopping: boolean;
   onRun: (provider: string) => void;
+  onStop: (provider: string) => void;
 }
 
-// The one thing at a row's end: Set up or Retry while it waits on the person, a quiet Re-run once confirmed, nothing while it runs.
-export const SetupProviderAction = ({ row, busy, onRun }: SetupProviderActionProps) => {
+// The one thing at a row's end: Set up or Retry while it waits on the person, a quiet Re-run once confirmed, Stop while it runs.
+export const SetupProviderAction = ({ row, busy, stopping, onRun, onStop }: SetupProviderActionProps) => {
   const run = () => onRun(row.provider);
   return (
     <div className="flex justify-end">
@@ -24,6 +26,12 @@ export const SetupProviderAction = ({ row, busy, onRun }: SetupProviderActionPro
         <Button type="button" variant="outline" size="sm" loading={busy} onClick={run} aria-label={`Retry ${row.name}`}>
           <RotateCcw className="size-3.5" aria-hidden />
           Retry
+        </Button>
+      )}
+      {row.state === "running" && (
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" loading={stopping} onClick={() => onStop(row.provider)} aria-label={`Stop ${row.name}`}>
+          <Square className="size-3 fill-current" aria-hidden />
+          Stop
         </Button>
       )}
       {row.state === "confirmed" && (

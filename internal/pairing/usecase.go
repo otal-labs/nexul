@@ -82,8 +82,9 @@ type Service struct {
 	repositories   ProjectRemotes
 	cloner         RepositoryCloner
 	setupMu        sync.Mutex
-	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
-	settingUp map[string]bool
+	// settingUp holds a computer's drivers with a setup turn claimed, keyed by setupKey, each with the stop for its running
+	// turn, nil until that turn starts.
+	settingUp map[string]context.CancelCauseFunc
 	setupRuns sync.WaitGroup
 	// tokenMu keeps two setup runs starting at once from each minting the computer's token, which would revoke the other's.
 	tokenMu sync.Mutex
@@ -99,7 +100,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, settingUp: map[string]context.CancelCauseFunc{},
 		pairFailures: map[string]string{},
 	}
 }

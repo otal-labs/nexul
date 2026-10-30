@@ -218,6 +218,7 @@ var routePermissions = map[string][]string{
 	"POST /api/pairing/computers/{id}/repair":                           none,
 	"PUT /api/pairing/computers/{id}/setup/choices":                     none,
 	"POST /api/pairing/computers/{id}/setup/providers/{provider}/retry": none,
+	"POST /api/pairing/computers/{id}/setup/providers/{provider}/stop":  none,
 	"POST /api/pairing/computers/{id}/setup/runs":                       none,
 	"POST /api/pairing/computers/{id}/setup/skills":                     none,
 	"PUT /api/pairing/computers/order":                                  none,
