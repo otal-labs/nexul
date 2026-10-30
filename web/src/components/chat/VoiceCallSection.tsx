@@ -9,6 +9,7 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { ConnectedCall } from "@/components/chat/ConnectedCall";
 import { Button } from "@/components/ui/button";
 import { VoiceDismissButton } from "@/components/voice/VoiceDismissButton";
+import { VoiceJoinMutedToggle } from "@/components/voice/VoiceJoinMutedToggle";
 import { VoiceLobbyIcon } from "@/components/voice/VoiceLobbyIcon";
 import { VoiceLobbyRow } from "@/components/voice/VoiceLobbyRow";
 import { VoiceRoomAvatars } from "@/components/voice/VoiceRoomAvatars";
@@ -74,6 +75,7 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
           detail={!empty && callCount(occupants.length)}
           actions={
             <>
+              <VoiceJoinMutedToggle />
               <Button size="sm" onClick={joinThis}>Rejoin</Button>
               <VoiceDismissButton onClick={() => clearLeftAlone(conversation.id)} />
             </>
@@ -89,7 +91,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
           }
           title="Nobody's here"
           detail={otherCall ? `You're in ${otherCall}` : "Start the call and others can join"}
-          actions={<Button size="sm" onClick={joinThis}>{otherCall ? "Switch call" : "Start call"}</Button>}
+          actions={
+            <>
+              <VoiceJoinMutedToggle />
+              <Button size="sm" onClick={joinThis}>{otherCall ? "Switch call" : "Start call"}</Button>
+            </>
+          }
         />
       )}
       {phase === "joinPrompt" && !empty && (
@@ -102,7 +109,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
               {otherCall && ` · You're in ${otherCall}`}
             </>
           }
-          actions={<Button size="sm" onClick={joinThis}>{otherCall ? "Switch call" : "Join"}</Button>}
+          actions={
+            <>
+              <VoiceJoinMutedToggle />
+              <Button size="sm" onClick={joinThis}>{otherCall ? "Switch call" : "Join"}</Button>
+            </>
+          }
         />
       )}
       {phase === "connecting" && (

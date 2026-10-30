@@ -43,6 +43,15 @@ export const formatDurationMs = (ms: number): string => {
   return `${(ms / 1000).toFixed(1)}s`;
 };
 
+// How long a call has run: m:ss, then h:mm:ss from the first hour.
+export const formatCallElapsed = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600);
+  const mm = Math.floor((seconds % 3600) / 60);
+  const ss = String(seconds % 60).padStart(2, "0");
+  if (hours === 0) return `${mm}:${ss}`;
+  return `${hours}:${String(mm).padStart(2, "0")}:${ss}`;
+};
+
 // The exact moment as a tooltip: the relative forms above lose it.
 export const formatFullTime = (ts: string): string => {
   const date = new Date(ts);

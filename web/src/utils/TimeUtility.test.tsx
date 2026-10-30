@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatCalendarTime, formatColumnTime, formatDateParts, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatCallElapsed, formatColumnTime, formatDateParts, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -53,6 +53,22 @@ describe("formatDurationMs", () => {
   it("formats one second and above in seconds", () => {
     expect(formatDurationMs(2300)).toBe("2.3s");
     expect(formatDurationMs(1000)).toBe("1.0s");
+  });
+});
+
+describe("formatCallElapsed", () => {
+  it.each([
+    [0, "0:00"],
+    [9, "0:09"],
+    [59, "0:59"],
+    [60, "1:00"],
+    [754, "12:34"],
+    [3599, "59:59"],
+    [3600, "1:00:00"],
+    [3661, "1:01:01"],
+    [36000, "10:00:00"],
+  ])("formats %i seconds as %s", (seconds, expected) => {
+    expect(formatCallElapsed(seconds)).toBe(expected);
   });
 });
 
