@@ -12,8 +12,10 @@ const runner = (id: string, connected: boolean, busy = false) => ({
   id, name: id, connected, last_seen: "2026-08-12T12:00:00Z", version: "", running_job: busy ? { id: `d-${id}`, kind: "deploy" } : null,
 });
 
-const serve = (runners: unknown[], queue: unknown[]) =>
-  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/runners" ? runners : queue }));
+const serve = (runners: unknown[], queue: unknown[], codes: unknown[] = []) => {
+  const data: Record<string, unknown[]> = { "/api/runners": runners, "/api/runners/queue": queue, "/api/runners/enrollments": codes };
+  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: data[url] }));
+};
 
 const renderHealth = () =>
   render(
@@ -27,11 +29,11 @@ describe("RunnersHealth", () => {
     mocks.get.mockReset();
   });
 
-  it("counts online, busy, offline and waiting in one line", async () => {
-    serve([runner("a", true, true), runner("b", true), runner("c", false)], [{ id: "q-1", kind: "deploy" }]);
+  it("counts online, busy, offline, unused codes and waiting in one line", async () => {
+    serve([runner("a", true, true), runner("b", true), runner("c", false)], [{ id: "q-1", kind: "deploy" }], [{ id: "c-1", name: "next" }, { id: "c-2", name: "laptop", computer_id: "pc-1" }]);
     renderHealth();
 
-    expect(await screen.findByLabelText("Fleet health")).toHaveTextContent("2 of 3online1busy1offline1waiting");
+    expect(await screen.findByLabelText("Fleet health")).toHaveTextContent("2 of 3 online1 busy1 offline1 unused code1 waiting");
   });
 
   it("leaves out a clause whose count is zero", async () => {
@@ -39,8 +41,8 @@ describe("RunnersHealth", () => {
     renderHealth();
 
     const line = await screen.findByLabelText("Fleet health");
-    expect(line).toHaveTextContent("1 of 1online");
-    expect(line).not.toHaveTextContent(/busy|offline|waiting/);
+    expect(line).toHaveTextContent("1 of 1 online");
+    expect(line).not.toHaveTextContent(/busy|offline|code|waiting/);
   });
 
   it("says there are no runners yet on an empty fleet", async () => {

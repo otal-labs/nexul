@@ -13,7 +13,7 @@ interface FleetCodeRowProps {
   code: OpenEnrollment;
 }
 
-// A runner not yet added: its code works once, until the time shown, which is the last thing to truncate.
+// A runner not yet added: its code works once, until the time shown.
 export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
   const revoke = useRevokeEnrollment();
   const until = formatClockTime(code.expires_at);
@@ -26,9 +26,8 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
         <RunnerName name={code.name} muted />
       </span>
       <span />
-      <span className="flex min-w-0 items-baseline text-[13px] text-muted-foreground" title={`Works once, until ${until}`}>
-        <span className="truncate">unused code · until&nbsp;</span>
-        <span className="shrink-0 font-mono text-xs tabular-nums">{until}</span>
+      <span className="truncate text-[13px] text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
+        unused code · until {until}
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

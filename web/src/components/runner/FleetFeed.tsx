@@ -10,7 +10,7 @@ interface FleetFeedProps {
 
 // Every machine in one list, so the runner rows share their columns from the first machine to the last.
 export const FleetFeed = ({ groups }: FleetFeedProps) => (
-  <div className="@container divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+  <div className="@container divide-y divide-border overflow-clip rounded-lg border border-border bg-card">
     <div className={cn(fleetTracks, "h-8 items-center gap-x-4 px-4", microheaderClass)} aria-hidden>
       <span className="pl-5">Runner</span>
       <span>Version</span>

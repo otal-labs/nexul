@@ -97,7 +97,7 @@ describe("AddRunnerDialog", () => {
   it("adds to a known machine without asking for it", async () => {
     const user = userEvent.setup();
     renderDialog("prod");
-    await user.click(screen.getByRole("button", { name: "Add a runner to this machine" }));
+    await user.click(screen.getByRole("button", { name: "Add runner to this machine" }));
 
     expect(screen.queryByLabelText("Machine")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Runner name"), "build-box");

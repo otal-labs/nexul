@@ -23,12 +23,12 @@ interface AddRunnerDialogProps {
   machine?: Pick<Machine, "name" | "actions">;
   triggerSize?: "default" | "sm";
   triggerVariant?: "default" | "outline" | "ghost" | "link";
-  // A machine's band shows the + alone, named by its tooltip.
-  iconOnly?: boolean;
+  // A machine's band names the + from 44rem of list; below it the + is named by its tooltip.
+  compact?: boolean;
 }
 
 // Closing the dialog drops the enrollment, so reopening always starts from a fresh form and a fresh code.
-export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVariant = "default", iconOnly = false }: AddRunnerDialogProps) => {
+export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVariant = "default", compact = false }: AddRunnerDialogProps) => {
   const [open, setOpen] = useState(false);
   const machineName = machine?.name;
   const enroll = useCreateRunnerEnrollment();
@@ -48,10 +48,10 @@ export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVaria
           size={triggerSize}
           variant={triggerVariant}
           icon={Plus}
-          className={cn(triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-[13px] leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
-          {...(machineName && { "aria-label": "Add a runner to this machine", title: "Add a runner to this machine" })}
+          className={cn(triggerVariant === "ghost" && "font-normal text-muted-foreground", triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-[13px] leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
+          {...(machineName && { "aria-label": "Add runner to this machine", title: "Add runner to this machine" })}
         >
-          {!iconOnly && <span className={cn(machineName && "hidden @lg:inline")}>Add runner</span>}
+          <span className={cn(machineName && "hidden @lg:inline", compact && "@lg:hidden @[44rem]:inline")}>Add runner</span>
         </ActionButton>
       </DialogTrigger>
       <DialogContent>

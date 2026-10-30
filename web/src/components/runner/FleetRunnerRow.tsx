@@ -12,14 +12,14 @@ interface FleetRunnerRowProps {
   machine?: Machine | undefined;
 }
 
-// One line on the list's shared tracks; a name that only repeats its machine's reads "Runner".
+// One line on the list's shared tracks.
 export const FleetRunnerRow = ({ runner, machine }: FleetRunnerRowProps) => (
   <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent/40")}>
     <span className="flex min-w-0 items-baseline gap-3">
       <span className="flex self-center">
         <RunnerStatusDot connected={runner.connected} />
       </span>
-      <RunnerName name={runner.name && runner.name !== machine?.name ? runner.name : "Runner"} muted={!runner.connected} />
+      <RunnerName name={runner.name} muted={!runner.connected} />
     </span>
     <RunnerVersion version={runner.version} />
     <RunnerActivity runner={runner} />

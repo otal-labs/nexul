@@ -1,4 +1,5 @@
 import type { Machine, OpenEnrollment, QueuedJob, Runner } from "@/models/Runner";
+import { formatRelativeTime } from "@/utils/TimeUtility";
 
 /** One machine's band in the fleet list, or the last group (machine undefined) for what no machine holds yet. */
 export interface FleetGroup {
@@ -51,4 +52,16 @@ export const splitTail = (name: string): [head: string, tail: string] => {
   for (let at = name.lastIndexOf("-"); at > 0 && name.length - at <= 10; at = name.lastIndexOf("-", at - 1)) cut = at;
   if (cut <= 0) return [name, ""];
   return [name.slice(0, cut + 1), name.slice(cut + 1)];
+};
+
+export type GroupTone = "online" | "partial" | "offline";
+
+// A group's dot and its state in words; unused codes are named, since they are rows but not runners.
+export const groupState = (runners: Runner[], codes: number, lastSeen?: string): { tone: GroupTone; words: string } => {
+  const online = runners.filter((r) => r.connected).length;
+  const codeWords = codes > 0 ? ` · ${codes} unused code${codes === 1 ? "" : "s"}` : "";
+  if (runners.length > 0 && online === runners.length) return { tone: "online", words: `online${codeWords}` };
+  if (online > 0) return { tone: "partial", words: `${online} of ${runners.length} online${codeWords}` };
+  const seen = lastSeen ? ` · seen ${formatRelativeTime(lastSeen)}` : "";
+  return { tone: "offline", words: `offline${seen}${codeWords}` };
 };

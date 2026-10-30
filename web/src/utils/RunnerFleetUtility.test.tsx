@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Machine, OpenEnrollment, Runner } from "@/models/Runner";
-import { fleetCounts, groupFleet, queueReason, splitTail } from "@/utils/RunnerFleetUtility";
+import { fleetCounts, groupFleet, groupState, queueReason, splitTail } from "@/utils/RunnerFleetUtility";
 
 const runner = (name: string, machine: string | undefined, connected: boolean, busy = false): Runner => ({
   id: name,
@@ -74,5 +74,16 @@ describe("splitTail", () => {
     ["runner-averyveryverylongtail", ["runner-averyveryverylongtail", ""]],
   ])("%s", (name, want) => {
     expect(splitTail(name)).toEqual(want);
+  });
+});
+
+describe("groupState", () => {
+  it.each([
+    { name: "every runner up", runners: [runner("a", "p", true)], codes: 0, want: { tone: "online", words: "online" } },
+    { name: "some up, a code waiting", runners: [runner("a", "p", true), runner("b", "p", false)], codes: 1, want: { tone: "partial", words: "1 of 2 online · 1 unused code" } },
+    { name: "none up, no last seen", runners: [runner("a", "p", false)], codes: 2, want: { tone: "offline", words: "offline · 2 unused codes" } },
+    { name: "only codes", runners: [], codes: 1, want: { tone: "offline", words: "offline · 1 unused code" } },
+  ])("$name", ({ runners, codes, want }) => {
+    expect(groupState(runners, codes)).toEqual(want);
   });
 });
