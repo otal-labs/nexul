@@ -378,6 +378,18 @@ developer the day before it's due. Only the people invited see a meeting.
 Agents plan meetings over MCP, and the phone app lists the next 30 days.
 ADR 0168.
 
+### Change history
+
+Docs, ticket descriptions, play instructions and memories keep their last ten
+versions (a doc also keeps every version it names), and automations keep
+every push. One History dialog shows each version against the one before it,
+word by word, steps through the changes, and puts an older version back as a
+new one on top. A doc edited live writes one version per sitting, credited to
+everyone in it. A ticket's and a play's field changes sit in the same list,
+so this is also the ticket activity timeline, and each change names who made
+it and through which play or automation. Agents read and restore versions over
+MCP.
+
 ---
 
 ## Now — improving what's built
@@ -438,11 +450,6 @@ without changing the core architecture.
   access domain regains a `comment` action when this lands.
 - **Runner labels and selectors** for routing a job to the right runners,
   beyond the machine a stack targets.
-- **Change history** — every doc, ticket, play, memory and automation keeps
-  its recent versions, and a History dialog shows what changed between them
-  word by word, with restore (`.scratch/change-history/`). A ticket's and a
-  play's field changes sit in the same list, so this is also the ticket
-  activity timeline.
 - **Ticket workflow depth** — custom fields on ticket
   types (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page
   (`.scratch/branch-from-ticket/`); one search box across every entity

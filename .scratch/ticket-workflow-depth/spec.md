@@ -6,7 +6,7 @@
 > decided on 2026-09-23 with a lighter rule, a blocked ticket shows an icon and
 > never refuses to move, and shipped in #51 to #53: found-in and blocked-by
 > links, body templates on every ticket type, and bug flows. A ticket's thread
-> is its comments. The activity timeline moved to `.scratch/change-history/`
+> is its comments. The activity timeline shipped with change history
 > (a ticket's history as a list of changes). Only custom fields remain for
 > triage here.
 
