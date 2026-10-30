@@ -23,10 +23,10 @@ describe("the light field's colours", () => {
     expect(fieldTokens.filter((value) => literals(value).length > 0)).toEqual([]);
   });
 
-  it("are painted from the field tokens in the app shell's gradients", () => {
+  // The mid glow lit the middle, under the panels, where their flat fill turned its falloff into a disc.
+  it("are painted from the warm and low field tokens in the app shell's gradients, never the mid glow", () => {
     const stops = [...lightField.matchAll(/radial-gradient\([^,]+,\s*([^,]+),/g)].map((m) => m[1]);
-    expect(stops).toHaveLength(3);
-    expect(stops.filter((stop) => !/^var\(--field-/.test(stop!))).toEqual([]);
+    expect(stops).toEqual(["var(--field-warm)", "var(--field-low)"]);
   });
 
   it("are painted from the field tokens on the showcase surfaces", () => {

@@ -24,5 +24,5 @@ export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground active:bg-accent",
   );
 
-// On the icon rail every badge is one dot above its icon's top-right corner, cut out by a canvas-coloured ring.
-export const railDotClass = "absolute top-0 left-[31px] size-2 rounded-full ring-2 ring-background";
+// On the icon rail every badge is one dot clear of its icon's top-right corner: a canvas ring cutting into the icon showed dark on the current row's tint.
+export const railDotClass = "absolute top-0.5 left-[34px] size-2 rounded-full";

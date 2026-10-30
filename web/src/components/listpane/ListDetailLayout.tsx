@@ -34,7 +34,8 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
         {split && <ListPaneResizeHandle />}
       </div>
       {/* The inner box scrolls, inset by the panel's radius so its scrollbar clears the rounded corners; relative keeps sr-only file inputs inside the clip. */}
-      <div className={cn("panel min-w-0 flex-1 overflow-hidden", split && "lg:block", hasSelection ? "block" : "hidden")}>
+      {/* The clip keeps the record's shadow off the list's edge, where it drew a strip under the resize handle; the ring stays. */}
+      <div className={cn("panel min-w-0 flex-1 overflow-hidden [clip-path:inset(-4rem_-4rem_-4rem_-1px)]", split && "lg:block", hasSelection ? "block" : "hidden")}>
         <div className={cn("scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto", stableGutter && "[scrollbar-gutter:stable]")}>
           {hasSelection && detail}
           {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}

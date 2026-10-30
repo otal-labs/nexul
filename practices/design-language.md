@@ -60,8 +60,8 @@ and the site's build in the contributing page `website.md`.
 
 Content floats over a still light field. The canvas is near-black in dark mode
 and a soft grey in light mode, and behind everything sits a still, soft light
-field drawn from the palette: a tint of the brand top right and bottom left, a
-lift of the card between, so a palette never shows a hue that is not its own.
+field drawn from the palette: a tint of the brand top right and bottom left, so a
+palette never shows a hue that is not its own.
 Content sits on raised surfaces, a step lighter than the canvas with a hairline
 ring: frosted panels in the web app, solid cards and sheets on the
 phone, and on the site's reading pages the canvas itself. One ember accent
@@ -110,7 +110,7 @@ in the three token files; this table holds the roles.
 | `ring` | `brand` | `brand` | canvas selection | site: none; Fumadocs' `fd-ring` is `focus` |
 | `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
-| `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's three glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
+| `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain. The still field behind the app draws warm and low only: `field-mid` lit the middle, under the panels, whose flat fill turned its falloff into a disc, so it stays for the showcase surfaces' live field | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
 | `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
@@ -392,7 +392,9 @@ with the same hairline ring. The panel is the `panel` utility in `index.css`,
 applied once by the layout. A single page gets one panel for its whole content
 (`.app-frame` in `Layout.tsx`); a page built from panes marks its root
 `data-pane-layout`, which turns the frame off, and gives each pane its own
-`panel` with an 8px (`gap-2`) gutter. Never a panel inside a panel.
+`panel` with an 8px (`gap-2`) gutter; the open record's pane clips its shadow
+at its left edge, which otherwise reached past the gutter and drew a strip
+down the list's edge. Never a panel inside a panel.
 
 Palettes. Appearance settings (`web/src/lib/themePalettes.ts`) override the
 surface and text roles; a palette's `primary` becomes its `brand` (and so the
@@ -754,8 +756,8 @@ is three lines with no closing hairline (`actionsOn="crumbs"`): the
 breadcrumb with the actions on its right (Doc | Questions first, then a
 hairline divider, Plays, watch, thread and the `…` menu; they wrap under the
 breadcrumb rather than cut it), the title with the pane's full width, and
-the meta line (up to three 24px faces, the live dot named by its tooltip,
-the mono date). Watch is always the open eye with its count, ink while you
+the meta line (up to three 24px faces, the live dot and its word, live or
+offline, then the mono date; a lone green dot read as a second status). Watch is always the open eye with its count, ink while you
 watch and muted while you don't. The body sits straight on the page panel
 (no fill, ring or shadow, no side margin), 24px under the meta line, in a
 42rem reading measure that starts at the title's left edge. Once the doc's
@@ -905,8 +907,8 @@ name, one `⦸ KEY` per blocker still open, one pull request mark per linked PR,
 then the presence bar; it is read only, and the rail edits. Under the header a
 line tab row holds Ticket and Thread, each tab past the first at its own path
 segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
-rail sits beside the tabs behind a hairline rule, level with the tab row, on
-Ticket and Thread alike, and the tabs and the rail scroll on their own;
+rail sits beside the tabs behind a hairline rule that runs down from the
+header's rule, so it never floats, on Ticket and Thread alike, and the tabs and the rail scroll on their own;
 narrower, the rail folds behind a Details row above the tab row, closed by
 default, so the body starts under the header; open, it takes the height the
 tabs leave above 10rem. Notes is laid out as Ticket: the
@@ -1752,8 +1754,8 @@ Its logo is the way back out: under the pointer or focus it turns into the
 expand glyph on an accent tile (120ms crossfade), where a separate button
 crowded the logo and hung over the panel's edge. Every rail item names
 itself in a tooltip to its right (`RailTooltip`, on the app's tooltip clock,
-so the next item along the rail names itself at once), and every badge is one 8px dot above
-its icon's top-right corner, cut out by a canvas ring (`railDotClass`): `foreground` for unread, `warning` for setup still open, the count in the tooltip.
+so the next item along the rail names itself at once), and every badge is one 8px dot just clear
+of its icon's top-right corner, with no ring (`railDotClass`): `foreground` for unread, `warning` for setup still open, the count in the tooltip. A dot cut into the icon by a canvas ring covered the icon's corner and drew a dark ring on the current row's tint.
 The switchers work the same on the rail: the tile opens the same menu.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
