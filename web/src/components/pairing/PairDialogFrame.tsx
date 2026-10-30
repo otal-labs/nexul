@@ -12,3 +12,6 @@ export const SETUP_DIALOG_FRAME = "md:h-[min(90dvh,46rem)] md:max-w-[min(55rem,c
 export const SETUP_BODY = "flex min-h-0 flex-1 flex-col px-4 pt-4 sm:px-6";
 
 export const SETUP_LEAD = "Each provider you switch on runs one short turn to connect Nexul and install its skills.";
+
+// Beside Cancel and Done on the setup step: what Done saves, since the switches save on their own and Cancel drops only the rest.
+export const SETUP_DONE_HINT = "Switches save as you flip them; Done keeps the models and folder.";

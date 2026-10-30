@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { AddComputerStep } from "@/components/pairing/AddComputerStep";
-import { PAIR_DIALOG_FRAME, PAIR_DIALOG_HEADER, SETUP_BODY, SETUP_DIALOG_FRAME, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
+import { PAIR_DIALOG_FRAME, PAIR_DIALOG_HEADER, SETUP_BODY, SETUP_DIALOG_FRAME, SETUP_DONE_HINT, SETUP_LEAD } from "@/components/pairing/PairDialogFrame";
 import { SetupDoneButton } from "@/components/pairing/SetupDoneButton";
 import { SetupStep } from "@/components/pairing/SetupStep";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ export const AddComputerDialog = ({ trigger, again }: AddComputerDialogProps) =>
           {computer && step === "setup" && <SetupStep computer={computer} framed />}
         </div>
         <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
+          {computer && step === "setup" && <p className="mr-auto min-w-0 self-center text-xs text-muted-foreground">{SETUP_DONE_HINT}</p>}
           <DialogClose asChild>
             <Button type="button" variant="outline">
               Cancel
