@@ -67,14 +67,14 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         >
           {waiting && <CircleHelp className="size-3.5 text-info" aria-hidden />}
           {!waiting && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />}
-          {waiting ? "Waiting for your answer" : play.label}
+          {waiting ? "Answer" : play.label}
         </Button>
       )}
       {canStop && (
         <Button
           size="icon"
-          variant="ghost"
-          className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+          variant={variant === "ghost" ? "ghost" : "outline"}
+          className={cn("shrink-0 text-muted-foreground hover:text-foreground", variant === "ghost" ? "size-7" : "size-8")}
           title="Stop this run"
           aria-label={`Stop ${play.label}`}
           disabled={stopTrail.isPending}

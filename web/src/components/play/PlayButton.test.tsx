@@ -176,7 +176,7 @@ describe("PlayButton", () => {
     expect(api.post).toHaveBeenCalledWith("/api/plays/runs/tr-1/stop");
   });
 
-  it("reads 'Waiting for your answer' when the run stopped on a question, and opens the trail with the card", async () => {
+  it("reads Answer when the run stopped on a question, and opens the trail with the card", async () => {
     const user = userEvent.setup();
     const waiting: Trail = {
       ...runningTrail("u-me"),
@@ -194,7 +194,7 @@ describe("PlayButton", () => {
     });
     renderButton();
 
-    const button = await screen.findByRole("button", { name: "Waiting for your answer" });
+    const button = await screen.findByRole("button", { name: "Answer" });
     expect(screen.getByRole("button", { name: "Stop Fix with AI" })).toBeInTheDocument();
     await user.click(button);
     expect(await screen.findByRole("heading", { name: "Proceed?" })).toBeInTheDocument();
