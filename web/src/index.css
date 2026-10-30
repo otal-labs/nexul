@@ -216,7 +216,7 @@ body {
 @property --list-pane-width {
   syntax: "<length>";
   inherits: false;
-  initial-value: 300px;
+  initial-value: 360px;
 }
 
 /* The scroll lock under every modal overlay sets this on body; not inherited, opening one restyles body instead of the whole page. */

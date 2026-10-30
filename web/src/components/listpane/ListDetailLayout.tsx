@@ -8,8 +8,8 @@ interface ListDetailLayoutProps {
   list: ReactNode;
   detail: ReactNode;
   hasSelection: boolean;
-  /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. */
-  placeholder: ReactNode;
+  /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. Left out, the list fills the page until a row is picked (the inbox). */
+  placeholder?: ReactNode;
   /** Reserves the record's scrollbar so it never shifts the record; the record then gives that width back from its right padding. */
   stableGutter?: boolean;
 }
@@ -17,6 +17,7 @@ interface ListDetailLayoutProps {
 // The app sidebar, a list, and the open record, for an editor: below lg one pane shows at a time, since the editor needs the width.
 export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stableGutter = false }: ListDetailLayoutProps) => {
   const width = useListPaneStore((s) => s.width);
+  const split = hasSelection || placeholder !== undefined;
 
   return (
     <div data-pane-layout className="flex h-full gap-2">
@@ -24,15 +25,16 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "panel relative min-h-0 lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
+          "panel relative min-h-0",
+          split && "lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
           hasSelection ? "hidden" : "block w-full",
         )}
       >
         {list}
-        <ListPaneResizeHandle />
+        {split && <ListPaneResizeHandle />}
       </div>
       {/* The inner box scrolls, inset by the panel's radius so its scrollbar clears the rounded corners; relative keeps sr-only file inputs inside the clip. */}
-      <div className={cn("panel min-w-0 flex-1 overflow-hidden lg:block", hasSelection ? "block" : "hidden")}>
+      <div className={cn("panel min-w-0 flex-1 overflow-hidden", split && "lg:block", hasSelection ? "block" : "hidden")}>
         <div className={cn("scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto", stableGutter && "[scrollbar-gutter:stable]")}>
           {hasSelection && detail}
           {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}
