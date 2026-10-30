@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
 
-import { useAutoPlayValues, type FieldValues } from "@/hooks/AutoPlayValueHooks";
+import { useAutoPlayValues } from "@/hooks/AutoPlayValueHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useComputerNames } from "@/hooks/ComputerHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
@@ -15,12 +15,17 @@ import {
   storedComputerIds,
   type AutoPlay,
   type AutoPlayGroup,
+  type AutoPlayMatch,
   type AutoPlayRule,
   type AutoPlaySubject,
 } from "@/models/AutoPlay";
 import { PLAY_STAGE_LABELS } from "@/models/Play";
+import { cn } from "@/lib/utils";
 
-const Part = ({ children }: { children: ReactNode }) => <span className="font-medium text-foreground">{children}</span>;
+const Part = ({ children, className }: { children: ReactNode; className?: string }) => <span className={cn("font-medium text-foreground", className)}>{children}</span>;
+
+// A value list reads "frontend, backend or infrastructure", so its own "or" is never confused with the one between rules.
+const listed = (values: string[]) => (values.length < 2 ? values.join("") : `${values.slice(0, -1).join(", ")} or ${values.at(-1)}`);
 
 // The computers a chosen-computer auto play tries, in order, named as the viewer reads them; its person's own order when it names none.
 const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
@@ -36,68 +41,71 @@ const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
   return names.map((name) => name || "a computer you can't see").join(", then ");
 };
 
-const ruleText = (rule: AutoPlayRule | undefined, values: FieldValues) =>
-  rule && [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), (rule.values ?? []).map(values.label).join(" or ")]
-    .filter(Boolean)
-    .join(" ");
+// One rule in words, "Type is Bug or Incident"; each reads its own field's values. A short rule never breaks across lines.
+const RuleText = ({ rule }: { rule: AutoPlayRule }) => {
+  const values = useAutoPlayValues(rule.field);
+  const text = [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), listed((rule.values ?? []).map(values.label))].filter(Boolean).join(" ");
+  return <Part className={cn(text.length <= 32 && "whitespace-nowrap")}>{text}</Part>;
+};
 
-// How many rules follow the one spelled out, joined the way their group matches.
-const More = ({ count, match }: { count: number; match: AutoPlayGroup["match"] }) =>
-  count > 0 && (
+const joined = (parts: ReactNode[], match: AutoPlayMatch) =>
+  parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`j${i}`}>{match === "all" ? " and " : " or "}</span>, part]));
+
+const GroupText = ({ group, bracket }: { group: AutoPlayGroup; bracket: boolean }) => {
+  const rules = joined(group.rules.map((rule, i) => <RuleText key={i} rule={rule} />), group.match);
+  return (
     <>
-      {" "}
-      {match === "all" ? "and" : "or"} <Part>{count} more</Part>
+      {bracket && group.rules.length > 1 && "("}
+      {rules}
+      {bracket && group.rules.length > 1 && ")"}
     </>
   );
+};
 
 interface AutoPlaySentenceProps {
   autoPlay: AutoPlay;
   subject: AutoPlaySubject;
 }
 
-// The variable parts in foreground weight and the glue words muted, so the row reads as one sentence.
+// The moment that starts it: "enters In progress".
+const momentPhrase = (autoPlay: AutoPlay) =>
+  `${MOMENT_PHRASES[autoPlay.moment]}${autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : ""}`;
+
+// The moment as the title, then every condition and every priority rule in full; values in foreground weight, the glue muted.
 export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) => {
-  const rules = autoPlay.conditions.groups.flatMap((group) => group.rules);
-  const [first] = rules;
-  const values = useAutoPlayValues(first?.field ?? "project");
-  const top = autoPlay.priority.rules[0];
-  const [topFirst] = top?.when.rules ?? [];
-  const topValues = useAutoPlayValues(topFirst?.field ?? "project");
-  const stage = autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : "";
-  const condition = ruleText(first, values);
-  const topCondition = ruleText(topFirst, topValues);
+  const groups = autoPlay.conditions.groups.filter((group) => group.rules.length > 0);
+  const priority = autoPlay.priority.rules.filter((rule) => rule.when.rules.length > 0);
 
   return (
-    <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-      When a {subject}{" "}
-      <Part>
-        {MOMENT_PHRASES[autoPlay.moment]}
-        {stage}
-      </Part>
-      {condition && (
-        <>
-          , if <Part>{condition}</Part>
-        </>
+    <span className="flex min-w-0 flex-col gap-0.5 [overflow-wrap:anywhere]">
+      <span className="text-sm font-medium text-foreground">
+        When a {subject} {momentPhrase(autoPlay)}
+      </span>
+      {groups.length > 0 && (
+        <span className="text-xs text-pretty text-muted-foreground">
+          {" "}if {joined(groups.map((group, i) => <GroupText key={i} group={group} bracket={groups.length > 1} />), autoPlay.conditions.match)}
+        </span>
       )}
-      <More count={rules.length - 1} match={autoPlay.conditions.match} />{" "}
-      → <Part>{LEVEL_LABELS[top?.level ?? autoPlay.priority.otherwise]}</Part>
-      {top && topCondition && (
-        <>
-          {" "}
-          if <Part>{topCondition}</Part>
-          <More count={top.when.rules.length - 1} match={top.when.match} />
-        </>
-      )}
-      {top && (
-        <>
-          , else <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>
-        </>
-      )}
-      , runs on{" "}
-      <Part>
-        {autoPlay.run_on !== "computer" && RUN_ON_LABELS[autoPlay.run_on]}
-        {autoPlay.run_on === "computer" && <ComputersPhrase autoPlay={autoPlay} />}
-      </Part>
-    </p>
+      <span className="text-xs text-pretty text-muted-foreground">
+        {" "}
+        <span aria-hidden className="relative -top-0.5">
+          →
+        </span>{" "}
+        {priority.map((rule, i) => (
+          <span key={i}>
+            <Part>{LEVEL_LABELS[rule.level]}</Part>{"\u00a0if\u00a0"}<GroupText group={rule.when} bracket={false} />,{" "}
+          </span>
+        ))}
+        {priority.length > 0 && "else\u00a0"}
+        <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>,{" "}
+        <span className={cn(autoPlay.run_on !== "computer" && "whitespace-nowrap")}>
+          runs on{" "}
+          <Part>
+            {autoPlay.run_on !== "computer" && RUN_ON_LABELS[autoPlay.run_on]}
+            {autoPlay.run_on === "computer" && <ComputersPhrase autoPlay={autoPlay} />}
+          </Part>
+        </span>
+      </span>
+    </span>
   );
 };

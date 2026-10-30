@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { TrailState } from "@/models/Trail";
+
 // An interview play runs on a project's Interview page; its run target id is the project id. A stack play runs on a stack.
 export const PLAY_TYPES = ["ticket", "doc", "interview", "stack"] as const;
 export type PlayType = (typeof PLAY_TYPES)[number];
@@ -57,6 +59,28 @@ export interface Play {
 // A play as a list hands it to one person: can_run is whether its own rules and their roles let them run it.
 export interface ListedPlay extends Play {
   can_run: boolean;
+}
+
+// A play on the workspace's plays list, which alone carries what its runs say about it.
+export interface WorkspacePlay extends ListedPlay, PlayRunHealth {}
+
+export const needAnswers = (n: number) => (n === 1 ? "1 needs an answer" : `${n} need answers`);
+
+// What needs a look now, busiest first: runs in flight, then runs waiting on an answer, then a newest run that failed.
+export const playAttention = (play: WorkspacePlay): { state: TrailState; text: string } | undefined => {
+  if (play.running > 0) return { state: "running", text: `${play.running} running` };
+  if (play.waiting > 0) return { state: "waiting", text: needAnswers(play.waiting) };
+  if (play.last_run?.state === "failed") return { state: "failed", text: "Last run failed" };
+  return undefined;
+};
+
+// Mirrors internal/plays.RunHealth: what the runs this person can see say about a play. last_run is null until it has run.
+export interface PlayRunHealth {
+  last_run: { state: TrailState; started_at: string } | null;
+  runs_7d: number;
+  failed_7d: number;
+  waiting: number;
+  running: number;
 }
 
 // show_when_stage is "" for no stage (any play but a ticket play) rather than null, so it plugs straight into FormSelect's

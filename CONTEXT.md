@@ -396,8 +396,8 @@ found, while its runs stay readable to whoever started them.
 _Avoid_: Agent action, button, automation (that is event-driven code)
 
 **Auto play**:
-A play starting by itself when a moment matches, set up on the Auto plays tab
-of the play's page under Plays in the sidebar; a play can have several. Each names one moment (a ticket
+A play starting by itself when a moment matches, set up under Starts by itself
+on the play's page under Plays in the sidebar; a play can have several. Each names one moment (a ticket
 becomes unblocked, enters a stage, is created, gets a developer or tester,
 fails a test; a doc is created, or changed once edits have settled and not
 by an agent; a stack's service crashes, or recovers), conditions on the

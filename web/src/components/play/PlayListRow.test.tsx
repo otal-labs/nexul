@@ -9,7 +9,7 @@ import { api } from "@/api/client";
 import { PlayListRow } from "@/components/play/PlayListRow";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { settle } from "@/test/viewer";
-import type { Play } from "@/models/Play";
+import { playAttention, type WorkspacePlay } from "@/models/Play";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -20,7 +20,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const catalog = [{ value: "plays:run", label: "Run plays", domain: "plays", action: "run" }];
 
-const play: Play = {
+const play: WorkspacePlay = {
   id: "play-1",
   workspace_id: "ws-1",
   label: "Fix with AI",
@@ -34,6 +34,12 @@ const play: Play = {
   created_by: "",
   created_at: "",
   updated_at: "",
+  can_run: true,
+  last_run: null,
+  runs_7d: 0,
+  failed_7d: 0,
+  waiting: 0,
+  running: 0,
 };
 
 const WRITER = ["plays:write", "plays:delete"];
@@ -54,7 +60,7 @@ const mockGet = (grants: unknown[] = [], me: unknown = { role_name: "Member", pe
 };
 
 // The row's menu opens once the viewer's permissions have landed.
-const renderRow = async (shown: Play = play) => {
+const renderRow = async (shown: WorkspacePlay = play) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -138,5 +144,20 @@ describe("PlayListRow", () => {
     expect(within(run).getByRole("radio", { name: "Deny" })).toBeChecked();
     expect(screen.getByRole("button", { name: "Remove bob" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
+  });
+});
+
+describe("playAttention", () => {
+  const failed = { state: "failed" as const, started_at: "2026-01-01T00:00:00Z" };
+  it.each([
+    ["runs in flight first", { running: 2, waiting: 1, last_run: failed }, "2 running"],
+    ["then runs waiting on an answer", { waiting: 1, last_run: failed }, "1 needs an answer"],
+    ["then a newest run that failed", { last_run: failed }, "Last run failed"],
+  ])("marks %s", (_, health, text) => {
+    expect(playAttention({ ...play, ...health })?.text).toBe(text);
+  });
+
+  it("marks nothing when the newest run went through", () => {
+    expect(playAttention({ ...play, last_run: { state: "done", started_at: "2026-01-01T00:00:00Z" } })).toBeUndefined();
   });
 });

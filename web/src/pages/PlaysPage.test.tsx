@@ -39,6 +39,7 @@ const rest = (plays: unknown[]) => (url: string) => {
   if (url === "/api/projects") return [{ id: "p-1", name: "Website" }];
   if (url === "/api/workspaces/ws-1/plays/pl-x/auto-plays") return [];
   if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { daily_cap_per_ticket: 5 };
+  if (url === "/api/plays/runs") return { items: [], total: 0 };
   throw new Error(`unexpected GET ${url}`);
 };
 
@@ -80,11 +81,11 @@ describe("the plays list", () => {
     await screen.findByText("3 plays in Acme");
 
     expect(screen.getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Ticket", "Stack", "Interview"]);
-    expect(within(screen.getByRole("region", { name: "Ticket" })).getByText("In progress")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Stack" })).getByText("Disabled")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Ticket" })).getByText("On In progress")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Stack" })).getByText("Off")).toBeInTheDocument();
   });
 
-  it("says a play starts by itself only when one of its auto plays is on, between its stage and Disabled", async () => {
+  it("says how many auto plays start a play by itself, between its stage and Off, and nothing when none is on", async () => {
     serve([
       play({ id: "on", label: "Fix with AI", auto_plays_on: 2, enabled: false }),
       play({ id: "off", label: "Test with AI", type: "doc", show_when_stage: null, auto_plays_on: 0 }),
@@ -93,7 +94,7 @@ describe("the plays list", () => {
     renderPlaysPage();
     await screen.findByText("3 plays in Acme");
 
-    expect(screen.getAllByText(/Starts by itself/).map((row) => row.textContent)).toEqual(["In progress · Starts by itself · Disabled"]);
+    expect(screen.getAllByText(/ auto on$/).map((mark) => mark.parentElement?.textContent)).toEqual(["On In progress·2 auto on·Off"]);
   });
 
   it.each([
@@ -176,20 +177,20 @@ describe("an open play", () => {
     );
   });
 
-  it("has no Auto plays tab on an interview play", async () => {
+  it("has no auto plays section on an interview play", async () => {
     mocks.get.mockImplementation(asReader({ permissions: ["plays:read", "autoplays:read"] }, rest([play({ id: "i", label: "Interview a project", type: "interview", show_when_stage: null })])));
     renderPlaysPage("/acme/plays/i");
     await screen.findByRole("heading", { name: "Interview a project", level: 1 });
-    expect(screen.getByRole("tab", { name: "Play" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Auto plays" })).not.toBeInTheDocument();
+    await settle();
+    expect(screen.queryByRole("region", { name: "Starts by itself" })).not.toBeInTheDocument();
   });
 
-  it("has no Auto plays tab without autoplays:read", async () => {
+  it("has no auto plays section without autoplays:read", async () => {
     mocks.get.mockImplementation(asReader({ permissions: ["plays:read"] }, rest([play()])));
     renderPlaysPage("/acme/plays/play-fix");
     await screen.findByRole("heading", { name: "Fix with AI", level: 1 });
     await settle();
-    expect(screen.queryByRole("tab", { name: "Auto plays" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Starts by itself" })).not.toBeInTheDocument();
   });
 
   it("deletes the open play after confirming and goes back to the list", async () => {

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
@@ -7,14 +7,14 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
-import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
+import { getWorkspacePlaysKey, useApplicableTicketPlays } from "@/hooks/PlayHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type PlayRunsPage, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 import type { LiveFollower } from "@/lib/live";
@@ -23,6 +23,7 @@ export const getTrailsKey = "getTrails";
 export const getTrailKey = "getTrail";
 export const getActiveTrailsKey = "getActiveTrails";
 export const getLatestChoicesKey = "getLatestChoices";
+export const getPlayRunsKey = "getPlayRuns";
 
 // Each run with only its newest step, which is all a row shows; a thread reads every step with useFetchTrailsWithSteps.
 export const useFetchTrails = (targetType: PlayType, targetId: string) =>
@@ -40,6 +41,17 @@ const useFetchTrailsWithSteps = (targetType: PlayType, targetId: string) =>
     queryFn: async () =>
       (await api.get<Trail[]>("/api/plays/runs", { params: { target_type: targetType, target_id: targetId } })).data,
     enabled: targetId !== "",
+  });
+
+// One play's runs on every target, newest first, or only those waiting on an answer, oldest first; each with its newest step.
+// A longer page keeps the shorter one on screen while it loads, so Show more never blanks the list.
+export const useFetchPlayRuns = (playId: string, waiting: boolean, limit: number) =>
+  useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: [getPlayRunsKey, playId, waiting, limit],
+    queryFn: async () =>
+      (await api.get<PlayRunsPage>("/api/plays/runs", { params: { play_id: playId, limit, ...(waiting && { state: "waiting" }) } })).data,
+    enabled: playId !== "",
   });
 
 export const useFetchTrail = (trailId: string | null) =>
@@ -285,7 +297,8 @@ export const useDocRunState = (projectId: string, docId: string): TrailState | u
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);
 
 export const trailFollower: LiveFollower = {
-  // Activity lines only move the store; a state change refetches the run, its target's runs, and its project's active set.
+  // Activity lines only move the store; a state change refetches the run, its target's and its play's runs, its project's
+  // active set, and the plays list whose rows read the play's run health.
   "play.run": (run: RunFrame & RunPlace, { client }) => {
     const previous = usePlayRunStore.getState().frames[run.trail_id]?.state;
     usePlayRunStore.getState().applyFrame(run);
@@ -294,6 +307,8 @@ export const trailFollower: LiveFollower = {
       client.invalidateQueries({ queryKey: [getTrailsKey, run.target_type, run.target_id] }),
       client.invalidateQueries({ queryKey: [getTrailKey, run.trail_id], exact: true }),
       client.invalidateQueries({ queryKey: [getActiveTrailsKey, run.target_type, run.project_id], exact: true }),
+      client.invalidateQueries({ queryKey: [getPlayRunsKey, run.play_id] }),
+      client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, run.workspace_id], exact: true }),
     ]);
   },
 };

@@ -65,9 +65,11 @@ let memories = MEMORIES;
 const serve = () =>
   mocks.get.mockImplementation(async (url: string, config?: AxiosRequestConfig) => {
     const projectId = (config?.params as { project_id?: string } | undefined)?.project_id;
-    if (url === "/api/workspaces/ws-1/plays") return { data: [play] };
+    if (url === "/api/workspaces/ws-1/plays") return { data: [play, { ...play, id: "pl-2", label: "Test with AI" }] };
+    if (url === "/api/plays/runs") return { data: { items: [], total: 0 } };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
+    if (url === "/api/workspaces/ws-1/plays/pl-2/auto-plays") return { data: [] };
     if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
     if (url === "/api/memories") return { data: memories };
@@ -81,8 +83,8 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  const router = renderPlaysPage("/acme/plays/pl-1/auto-plays");
-  await screen.findByRole("tab", { name: "Auto plays", selected: true });
+  const router = renderPlaysPage("/acme/plays/pl-1");
+  await screen.findByRole("region", { name: "Starts by itself" });
   return { user, router };
 };
 
@@ -105,10 +107,8 @@ describe("a play's auto plays", () => {
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
     const { user } = await openAutoPlays();
     const rows = await screen.findAllByRole("button", { name: /becomes unblocked/ });
-    await waitFor(() =>
-      expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High if Type is Bug, else Normal, runs on Developer"),
-    );
-    expect(rows[1]).toHaveTextContent("→ High if Type is Bug or 1 more, else Low, runs on Developer");
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked if Type is Bug → High if Type is Bug, else Normal, runs on Developer"));
+    expect(rows[1]).toHaveTextContent("→ High if Type is Bug or Label is urgent, else Low, runs on Developer");
 
     let refuse: (error: Error) => void = () => {};
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));
@@ -143,40 +143,39 @@ describe("a play's auto plays", () => {
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 
-  it("keeps the composer's edits when switching to Play is cancelled", async () => {
-    const { user } = await openAutoPlays();
-    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
-    await pickOption(user, "Moment", "Ticket is created");
-
-    await user.click(screen.getByRole("tab", { name: "Play" }));
-    await user.click(within(await discardPrompt()).getByRole("button", { name: "Cancel" }));
-
-    expect(screen.getByRole("tab", { name: "Auto plays" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
-  });
-
-  it("drops the composer's edits and shows Play when switching is confirmed, and asks nothing when clean", async () => {
+  it("keeps the composer's edits when leaving for another play is cancelled", async () => {
     const { user, router } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
     await pickOption(user, "Moment", "Ticket is created");
 
-    await user.click(screen.getByRole("tab", { name: "Play" }));
-    await user.click(within(await discardPrompt()).getByRole("button", { name: "Discard changes" }));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true"));
-    expect(router.state.location.pathname).toBe("/acme/plays/pl-1");
-    expect(screen.queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /Test with AI/ }));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Cancel" }));
 
-    await user.click(screen.getByRole("tab", { name: "Auto plays" }));
+    expect(router.state.location.pathname).toBe("/acme/plays/pl-1");
+    expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
+  });
+
+  it("drops the composer's edits and opens the other play when leaving is confirmed, and asks nothing when clean", async () => {
+    const { user, router } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
-    await user.click(screen.getByRole("tab", { name: "Play" }));
-    expect(screen.getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true");
+    await pickOption(user, "Moment", "Ticket is created");
+
+    await user.click(screen.getByRole("link", { name: /Test with AI/ }));
+    await user.click(within(await discardPrompt()).getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays/pl-2"));
+    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("link", { name: /Fix with AI/ }));
+    await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
+    await user.click(screen.getByRole("link", { name: /Test with AI/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays/pl-2"));
     expect(screen.queryByRole("dialog", { name: "Discard changes?" })).not.toBeInTheDocument();
   });
 
   it("builds a condition and a nested group, and Save creates the auto play and goes back to the list", async () => {
     autoPlays = [];
     const { user } = await openAutoPlays();
-    expect(await screen.findByText(/No auto plays yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/Starts only when someone runs it/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add auto play" }));
 
     await user.click(screen.getByRole("button", { name: "Add a condition" }));

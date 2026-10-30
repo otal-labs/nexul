@@ -26,6 +26,8 @@ The agent decides where the ticket goes when it finishes. It reads your footer m
 
 While a play runs, its button shows a spinner and opens the run; the other plays wait, greyed out. Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did. While the agent works, one line names the step it is on, such as "Running bun run test". Each stretch of work then folds to a line such as "Worked for 14s · explored 2 files, ran 1 command". Open the fold to see the files it read or edited, the commands it ran (neighbours listed under one count, without the `cd` into the run's own folder), and any other tool it called. Click a file name, a command, or a tool to see its arguments and result.
 
+A play's own page in **Plays** lists every run of it you can see, on any ticket, doc, stack, or Interview page. Runs waiting on an answer come first under **Needs answer**, oldest first, then **Recent**, newest first. Each row shows what it ran on, the step it is on or how it ended, who started it (or **Auto** when an auto play did), and when. Press a row to open its trail. A line under the play's description counts what is running, what needs an answer, and the runs and failures this week.
+
 While a run is going:
 
 - **The agent asks you something.** A question card shows on the trail and in the thread, and a dot on the ticket's **Thread** tab marks it until it is answered. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer. A secret the agent asks for, such as an API key, gets a secret card in the thread the same way; what you save goes to T3 Code, never into the thread.
@@ -60,14 +62,14 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 ## Create or change a play
 
-Open **Plays** in the sidebar. Plays are grouped by type, and a row says the stage a ticket play shows on, when it starts by itself, and when it is off. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
+Open **Plays** in the sidebar. Plays are grouped by type. A row shows when its last run started, the stage a ticket play shows on, how many of its auto plays are on, and when it is off. A play that needs a look says so on the row: how many runs are going, how many need an answer, or that its last run failed. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
 - **Description**, shown as the button's tooltip.
 - **Instructions**, what the agent should do on every run.
-- **Enabled**, and **Excluded projects** where it never shows. The **Enabled** switch also sits beside the tabs on the play's page and saves as soon as you flip it.
+- **Enabled**, and **Excluded projects** where it never shows. The **Enabled** switch also sits beside **Edit** at the top of the play's page and saves as soon as you flip it.
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
@@ -77,9 +79,9 @@ A play someone can't see is gone for them: from **Plays**, the buttons and menus
 
 ## Auto plays
 
-An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Plays** and go to its **Auto plays** tab. Interview plays have none.
+An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Plays**; they are listed under **Starts by itself**. Interview plays have none.
 
-Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
+Each auto play is a row headed by its moment, such as "When a ticket becomes unblocked", then every condition on its own line, such as "if **Type is Bug** and **Label is urgent**", then its priority and whom it runs on, such as "→ **High** if **Label is incident**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
 
 An auto play has:
 
@@ -112,7 +114,7 @@ Nexul checks that you still own each computer or hold **Run agents** on it when 
 
 ## Investigate a crash
 
-**Investigate a crash** is a built-in stack play with one auto play, "When a stack **service crashes**", that starts off. A service crashes when its container dies with a non-zero exit code or is killed for running out of memory, outside a deploy; a service that keeps restarting counts once. To switch it on, open **Plays**, open **Investigate a crash**, go to its **Auto plays** tab, pick the computers it runs on, and turn it on. You can add conditions on the project, the stack or the service, such as only `api`.
+**Investigate a crash** is a built-in stack play with one auto play, "When a stack **service crashes**", that starts off. A service crashes when its container dies with a non-zero exit code or is killed for running out of memory, outside a deploy; a service that keeps restarting counts once. To switch it on, open **Plays**, open **Investigate a crash**, press its auto play under **Starts by itself**, pick the computers it runs on, and turn it on. You can add conditions on the project, the stack or the service, such as only `api`.
 
 The agent reads the stack with `stack_get`, the crashed service's logs, and the stack's recent deploys, and finds the cause in the project's repository. It writes what it found on the crash's ticket if one is open for that service, or on a new ticket in the stack's project. It never deploys, restarts or edits the stack, and opens a fix pull request only if you edit the play's instructions to say so. If it thinks the fault is in Nexul rather than your app, it says so and points to the [triage skill](/docs/guide/triage/).
 
@@ -122,7 +124,7 @@ A stack run is recorded as a trail under the person whose computer it ran on, in
 
 The **Decisions check** is a built-in play with one auto play, so nobody has to press it. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
 
-Its auto play starts off. To switch it on for a workspace, open **Plays**, open **Decisions check**, go to its **Auto plays** tab, and turn on "When a ticket **enters Done**". It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it. You can add conditions to it like any auto play, or press the play on a done ticket to run it by hand.
+Its auto play starts off. To switch it on for a workspace, open **Plays**, open **Decisions check**, and under **Starts by itself** turn on "When a ticket **enters Done**". It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it. You can add conditions to it like any auto play, or press the play on a done ticket to run it by hand.
 
 If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 

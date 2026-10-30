@@ -8,6 +8,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { Microheader } from "@/components/Microheader";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useActionState } from "@/hooks/useActionState";
 import { useFetchAutoPlays } from "@/hooks/PlayHooks";
@@ -27,36 +28,33 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
-    <div className="space-y-4">
+    <section aria-labelledby="play-auto-plays" className="space-y-3">
+      <div className="flex h-7 items-center gap-2">
+        <Microheader id="play-auto-plays">Starts by itself</Microheader>
+        {autoPlays && autoPlays.length > 0 && <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{autoPlays.length}</span>}
+        <ActionButton permission="autoplays:write" verb="add auto plays" icon={PlusIcon} type="button" variant="ghost" size="sm" className="ml-auto" aria-label="Add auto play" onClick={() => onOpen(null)}>
+          Add
+        </ActionButton>
+      </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {autoPlays && autoPlays.length === 0 && (
-        <EmptyRow flush>No auto plays yet. Add one and this play starts by itself when a {subject} matches it.</EmptyRow>
-      )}
-      {autoPlays && autoPlays.length > 0 && (
-        <div ref={glideRef}>
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-            {autoPlays.map((autoPlay) => (
-              <AutoPlayRow
-                key={autoPlay.id}
-                autoPlay={autoPlay}
-                subject={subject}
-                canWrite={canWrite}
-                onOpen={onOpen}
-                onLeave={prepareGlide}
-              />
-            ))}
-          </EnterList>
+      {autoPlays && (
+        <div ref={glideRef} className="overflow-hidden rounded-lg border bg-card">
+          {autoPlays.length === 0 && <EmptyRow className="text-pretty">Starts only when someone runs it. Add an auto play and it starts by itself when a {subject} matches.</EmptyRow>}
+          {autoPlays.length > 0 && (
+            <EnterList className="divide-y divide-border">
+              {autoPlays.map((autoPlay) => (
+                <AutoPlayRow key={autoPlay.id} autoPlay={autoPlay} subject={subject} canWrite={canWrite} onOpen={onOpen} onLeave={prepareGlide} />
+              ))}
+            </EnterList>
+          )}
+          <div className="space-y-1 border-t bg-surface-2 px-4 py-2.5 empty:hidden">
+            <PlayQueueNowLine play={play} />
+            {subject === "ticket" && <AutoPlayCapLine workspaceId={play.workspace_id} canWrite={canWrite} />}
+            <ComputerRunsLine />
+          </div>
         </div>
       )}
-      <ActionButton permission="autoplays:write" verb="add auto plays" icon={PlusIcon} type="button" variant="outline" size="sm" onClick={() => onOpen(null)}>
-        Add auto play
-      </ActionButton>
-      <div className="space-y-1 empty:hidden">
-        <PlayQueueNowLine play={play} />
-        {subject === "ticket" && <AutoPlayCapLine workspaceId={play.workspace_id} canWrite={canWrite} />}
-        <ComputerRunsLine />
-      </div>
-    </div>
+    </section>
   );
 };

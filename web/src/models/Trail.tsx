@@ -71,6 +71,19 @@ export interface Trail {
   instructions_version?: number;
 }
 
+// Mirrors internal/plays.PlayRun: a run on a play's runs list with what it ran on (a ticket's key and title, or a doc's,
+// stack's or project's name) and the auto play that started it, "" for one a person or an automation started.
+export interface PlayRun extends Trail {
+  target_key: string;
+  target_title: string;
+  auto_play_id: string;
+}
+
+export interface PlayRunsPage {
+  items: PlayRun[];
+  total: number;
+}
+
 // Mirrors internal/plays.RunFrame, the live-hub payload on topic play.run.
 export interface RunFrame {
   trail_id: string;

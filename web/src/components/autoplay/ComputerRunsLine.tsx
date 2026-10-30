@@ -1,10 +1,10 @@
 import { ComputerRunsSelect } from "@/components/autoplay/ComputerRunsSelect";
 import { useListComputers } from "@/hooks/PairingHooks";
 
-// The tail closes the item: a comma, "and" before the last, and the full stop after it.
+// The tail closes the item: a comma, nothing before the last (which opens with its own "and"), and the full stop after it.
 const tailOf = (index: number, count: number) => {
   if (index === count - 1) return ".";
-  if (index === count - 2) return " and";
+  if (index === count - 2) return "";
   return ",";
 };
 
@@ -18,7 +18,7 @@ export const ComputerRunsLine = () => {
       <p className="text-xs leading-7 text-muted-foreground">
         At once,{" "}
         {computers.map((computer, i) => (
-          <ComputerRunsSelect key={computer.id} computer={computer} lead={i === 0 ? "runs on" : "on"} tail={tailOf(i, computers.length)} />
+          <ComputerRunsSelect key={computer.id} computer={computer} lead={i === 0 ? "runs on" : "on"} tail={tailOf(i, computers.length)} and={i > 0 && i === computers.length - 1} />
         ))}
       </p>
     )

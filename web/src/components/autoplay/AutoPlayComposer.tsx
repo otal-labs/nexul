@@ -26,7 +26,7 @@ interface AutoPlayComposerProps {
   onClose: () => void;
 }
 
-// Takes the list's place on the play's Auto plays tab; Save and Cancel act on this auto play.
+// Takes the list's place under Starts by itself; Save and Cancel act on this auto play.
 export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerProps) => {
   const subject = subjectOf(play);
   const can = useAreaAccess();

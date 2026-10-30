@@ -1,39 +1,29 @@
 import { AutoPlaysPanel } from "@/components/autoplay/AutoPlaysPanel";
 import { Container } from "@/components/Container";
-import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { PlayDetailHeader } from "@/components/play/PlayDetailHeader";
-import { PlayEnabledSwitch } from "@/components/play/PlayEnabledSwitch";
-import { PlayFacts } from "@/components/play/PlayFacts";
+import { PlayFactsStrip } from "@/components/play/PlayFactsStrip";
+import { PlayInstructionsSection } from "@/components/play/PlayInstructionsSection";
+import { PlayRunsSection } from "@/components/play/PlayRunsSection";
 import { useAreaAccess } from "@/hooks/AccessHooks";
-import type { Play } from "@/models/Play";
+import type { WorkspacePlay } from "@/models/Play";
 
 interface PlayDetailProps {
-  play: Play;
+  play: WorkspacePlay;
 }
 
+// One page in the order a lead reads a play: what it is, when it starts by itself, how its runs went, what it says.
 export const PlayDetail = ({ play }: PlayDetailProps) => {
   const can = useAreaAccess();
   // An interview play takes no auto plays.
-  const noAutoPlays = play.type === "interview" || !can?.("autoPlays");
+  const autoPlays = play.type !== "interview" && !!can?.("autoPlays");
 
   return (
-    <Container className="space-y-6 py-8">
+    <Container className="space-y-8 py-8 sm:pr-3.5">
       <PlayDetailHeader play={play} />
-      <PageTabs
-        label="Play sections"
-        trailing={<PlayEnabledSwitch play={play} />}
-        tabs={[
-          { value: "play", label: "Play" },
-          { value: "auto-plays", label: "Auto plays", hidden: noAutoPlays },
-        ]}
-      >
-        <PageTabsContent value="play">
-          <PlayFacts play={play} />
-        </PageTabsContent>
-        <PageTabsContent value="auto-plays">
-          <AutoPlaysPanel play={play} />
-        </PageTabsContent>
-      </PageTabs>
+      <PlayFactsStrip play={play} />
+      {autoPlays && <AutoPlaysPanel play={play} />}
+      <PlayRunsSection play={play} />
+      <PlayInstructionsSection play={play} />
     </Container>
   );
 };

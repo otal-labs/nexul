@@ -5,15 +5,17 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { RowActions } from "@/components/listpane/RowActions";
 import { offersMenu } from "@/components/listpane/rowMenu";
 import { PlayHistoryDialog } from "@/components/play/PlayHistoryDialog";
+import { PlayEnabledSwitch } from "@/components/play/PlayEnabledSwitch";
+import { PlayHealthLine } from "@/components/play/PlayHealthLine";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 import { usePlayMenu } from "@/hooks/usePlayMenu";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { PLAY_TYPE_LABELS, type Play } from "@/models/Play";
+import { PLAY_TYPE_LABELS, type WorkspacePlay } from "@/models/Play";
 
 interface PlayDetailHeaderProps {
-  play: Play;
+  play: WorkspacePlay;
 }
 
 export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
@@ -28,9 +30,16 @@ export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
     <PageHeader
       crumbs={crumbs}
       title={play.label}
-      meta={play.description && <span className="max-w-prose">{play.description}</span>}
+      meta={
+        <div className="flex min-w-0 flex-col gap-2">
+          {play.description && <span className="max-w-prose text-pretty">{play.description}</span>}
+          <PlayHealthLine health={play} />
+        </div>
+      }
       actions={
         <>
+          <PlayEnabledSwitch play={play} />
+          <span aria-hidden className="mx-1 h-5 w-px bg-border" />
           <ActionButton permission="plays:write" answer={answer("plays:write")} verb="edit plays" variant="outline" size="sm" onClick={() => void edit(play)}>
             Edit
           </ActionButton>

@@ -61,9 +61,9 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
         checked={autoPlay.enabled}
         onCheckedChange={toggle}
         aria-label={`Switch ${name} on or off`}
-        className="mt-0.5"
+        className="mt-px"
       />
-      <div className="-my-1">
+      <div className="-mt-1.5 -mb-1">
         <RowActionsMenu subject={name} actions={actions} />
       </div>
     </li>

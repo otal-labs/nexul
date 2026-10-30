@@ -88,8 +88,8 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  renderPlaysPage("/acme/plays/pl-1/auto-plays");
-  await screen.findByRole("tab", { name: "Auto plays", selected: true });
+  renderPlaysPage("/acme/plays/pl-1");
+  await screen.findByRole("region", { name: "Starts by itself" });
   return { user };
 };
 

@@ -31,9 +31,9 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
         {list}
         <ListPaneResizeHandle />
       </div>
-      {/* The inner box scrolls so its bottom fade spares the panel's edge; relative keeps sr-only file inputs inside the clip. */}
+      {/* The inner box scrolls, inset by the panel's radius so its scrollbar clears the rounded corners; relative keeps sr-only file inputs inside the clip. */}
       <div className={cn("panel min-w-0 flex-1 overflow-hidden lg:block", hasSelection ? "block" : "hidden")}>
-        <div className={cn("scroll-edge relative h-full overflow-y-auto", stableGutter && "[scrollbar-gutter:stable]")}>
+        <div className={cn("scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto", stableGutter && "[scrollbar-gutter:stable]")}>
           {hasSelection && detail}
           {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}
         </div>
