@@ -8,6 +8,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // playResult is a play as the model reads it; audit timestamps are left out.
@@ -81,10 +82,11 @@ type playUpdateIn struct {
 	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes by auto play id, from play_list; only the fields passed change."`
 	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete, from play_list."`
 	RevertToVersion    *int               `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
+	Edits              []textedit.Edit    `json:"edits,omitempty" jsonschema:"Replace text in the instructions instead of resending them."`
 }
 
 func (in playUpdateIn) changesPlay() bool {
-	return in.Label != nil || in.Description != nil || in.Instructions != nil || in.Enabled != nil || in.ShowWhenStage != nil || in.ExcludedProjectIDs != nil
+	return in.Label != nil || in.Description != nil || in.Instructions != nil || in.Enabled != nil || in.ShowWhenStage != nil || in.ExcludedProjectIDs != nil || len(in.Edits) > 0
 }
 
 type playDeleteIn struct {
@@ -227,6 +229,9 @@ func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
 	}
 	var applied, warnings []string
 	if in.changesPlay() {
+		if in, err = overlayEdits(ctx, s, in); err != nil {
+			return nil, err
+		}
 		if warnings, err = renameWarnings(ctx, s, p, in.Label); err != nil {
 			return nil, err
 		}
@@ -248,6 +253,19 @@ func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
 		return nil, err
 	}
 	return out[0], nil
+}
+
+// overlayEdits turns edits into the instructions they produce, so the rest of the update sees an ordinary field.
+func overlayEdits(ctx context.Context, s *Service, in playUpdateIn) (playUpdateIn, error) {
+	if len(in.Edits) == 0 {
+		return in, nil
+	}
+	if in.Instructions != nil {
+		return in, fmt.Errorf("%w: edits change the current instructions; send edits or instructions, not both", apperrs.ErrInvalid)
+	}
+	text, err := s.ApplyEdits(ctx, in.WorkspaceID, in.ID, in.Edits)
+	in.Instructions = &text
+	return in, err
 }
 
 // revertPlay restores one version's instructions; it takes no other field, since the restore is its own save.

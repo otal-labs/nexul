@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // Service is the tickets use-case layer (ADR 0019); mutations enqueue events into the transactional outbox.
@@ -576,6 +577,24 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	return &updated, nil
+}
+
+// ApplyEdits is the description ticket_get shows with edits applied, ready for UpdateTicket; it needs tickets:write.
+// ponytail: the read and the save are two steps, so a description saved between them is overwritten; a repo-level apply closes it
+func (s *Service) ApplyEdits(ctx context.Context, id string, edits []textedit.Edit) (string, error) {
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
+	if err != nil {
+		return "", fmt.Errorf("edit ticket %s: %w", id, err)
+	}
+	shown, err := richtext.ToMarkdown(current.Body)
+	if err != nil {
+		shown = current.Body
+	}
+	body, err := textedit.Apply(shown, edits)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", apperrs.ErrInvalid, err)
+	}
+	return body, nil
 }
 
 // UpdateTicket keeps title non-empty like Create; body may be cleared.

@@ -9,6 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/textedit"
 )
 
 // docResult is a doc as the model reads it: the body as markdown, never the stored rich-text tree.
@@ -69,6 +70,8 @@ type docUpdateIn struct {
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher, so its edits reach your notifications; false stops that, and your own later edits do not start it again."`
 
 	RevertToVersion *int `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
+
+	Edits []textedit.Edit `json:"edits,omitempty" jsonschema:"Replace text in the body instead of resending it."`
 
 	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Works on a locked doc."`
 	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once, only by that round's own run. Post them, then end the turn."`
@@ -209,6 +212,10 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			"questions, anything_else_reply, and no_gaps are for the running Clarify via AI or Update doc via AI round's own run.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docUpdateIn) (any, error) {
+			in, err := overlayEdits(ctx, s, in)
+			if err != nil {
+				return nil, err
+			}
 			apply := updateDoc
 			if in.RevertToVersion != nil {
 				apply = revertDoc
@@ -277,6 +284,19 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 		return nil, err
 	}
 	return d, nil
+}
+
+// overlayEdits turns edits into the body they produce, so the save below sees an ordinary body field.
+func overlayEdits(ctx context.Context, s *Service, in docUpdateIn) (docUpdateIn, error) {
+	if len(in.Edits) == 0 {
+		return in, nil
+	}
+	if in.Body != nil {
+		return in, fmt.Errorf("%w: edits change the current body; send edits or body, not both", apperrs.ErrInvalid)
+	}
+	body, err := s.ApplyEdits(ctx, in.ID, in.Edits)
+	in.Body = &body
+	return in, err
 }
 
 // revertDoc restores a version on its own: it replaces the whole text, so a field beside it would be ambiguous.
