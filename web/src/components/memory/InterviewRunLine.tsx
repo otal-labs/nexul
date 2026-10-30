@@ -38,7 +38,7 @@ export const InterviewRunLine = ({ projectId, memory, changed }: InterviewRunLin
   const icon = state ?? (memory ? "done" : undefined);
   const { label, detail } = lineFor(state, memory, changed);
   return (
-    <p className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-2 gap-y-0.5 text-sm @min-[60rem]/interview:basis-64">
+    <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
       {stale && (
         <span role="img" aria-label="out of date" className="flex size-3.5 shrink-0 items-center justify-center">
           <span className="size-2 rounded-full bg-warning" />

@@ -39,7 +39,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
       ]}
     >
       <PageTabsContent value="questions" className="@container">
-        <div className="grid items-start gap-x-12 gap-y-10 @min-[60rem]:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid items-start gap-x-12 gap-y-10 @min-[60rem]:grid-cols-[minmax(0,1fr)_20rem] @min-[60rem]:gap-y-6">
           <InterviewChecklist projectId={project.id} />
           <InterviewSourcesSection projectId={project.id} />
         </div>

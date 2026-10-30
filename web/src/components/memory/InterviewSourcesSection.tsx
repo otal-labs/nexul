@@ -27,10 +27,11 @@ export const InterviewSourcesSection = ({ projectId }: InterviewSourcesSectionPr
     <section
       aria-label="Sources"
       data-source-rail
-      className="min-w-0 space-y-4 @min-[60rem]:sticky @min-[60rem]:top-6 @min-[60rem]:-mx-2 @min-[60rem]:max-h-[calc(100vh-3rem)] @min-[60rem]:overflow-y-auto @min-[60rem]:px-2 @min-[60rem]:pb-6 @min-[60rem]:[mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]"
+      className="min-w-0 space-y-4 @min-[60rem]:col-start-2 @min-[60rem]:row-start-2 @min-[60rem]:sticky @min-[60rem]:top-6 @min-[60rem]:-mx-2 @min-[60rem]:max-h-[calc(100vh-3rem)] @min-[60rem]:overflow-y-auto @min-[60rem]:px-2 @min-[60rem]:pb-6 @min-[60rem]:[mask-image:linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]"
     >
-      <header className="space-y-1.5 border-b border-border pb-2">
-        <div className="flex min-h-8 items-center gap-2">
+      {/* A section header's height (a 28px row over 4px), so its rule meets the first section's. */}
+      <header className="border-b border-border pb-1">
+        <div className="flex min-h-7 items-center gap-2">
           <h2 className="flex flex-1 items-baseline gap-2 px-1.5 text-sm font-semibold">
             Sources
             {sources && sources.length > 0 && <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{sources.length}</span>}
@@ -43,14 +44,14 @@ export const InterviewSourcesSection = ({ projectId }: InterviewSourcesSectionPr
             icon={Plus}
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0 text-muted-foreground"
+            className="size-7 shrink-0 text-muted-foreground"
             aria-label="Add source"
             title="Add source"
             onClick={() => setAdding(true)}
           />
         </div>
-        <InterviewDraftRunLine projectId={projectId} />
       </header>
+      <InterviewDraftRunLine projectId={projectId} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {adding && <InterviewSourceAddForm projectId={projectId} onClose={() => setAdding(false)} />}
