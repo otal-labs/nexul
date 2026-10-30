@@ -398,7 +398,8 @@ of OKLCH lightness above the panel it is drawn on, the panel taken as it renders
 (its `card` mix over the canvas at `--panel-opacity`), so cards read as raised on
 the page and never dissolve into it; light palettes keep a white or near-white
 card and separate it by the ring and shadow. Every palette holds 4.5:1 for its text
-roles and the label on its accent, on each surface they sit on, in both modes
+roles, the label on its accent, and a highlighted row's ink on its `accent`
+lift, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
 

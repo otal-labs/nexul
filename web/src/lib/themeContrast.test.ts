@@ -94,7 +94,7 @@ const withTint = (mode: Mode, surface: Rgb): Rgb => {
   return ink(mode, "brand").map((v, i) => v * share + surface[i]! * (1 - share)) as Rgb;
 };
 
-// Every pair a palette paints text on: body ink and secondary ink on each surface, ink on the current row's brand tint over each, and the label on the brand fill.
+// Every pair a palette paints text on: body ink and secondary ink on each surface, ink on the current row's brand tint over each, the label on the brand fill, and a hovered or highlighted row's ink on its accent lift.
 const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   const onSurface = surfaces(mode);
   const pairs: [string, number, number][] = [];
@@ -108,6 +108,9 @@ const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
     pairs.push([`foreground on the current row over ${surface}`, ratio(ink(mode, "foreground"), withTint(mode, rgb)), MIN_RATIO]);
   }
   pairs.push(["brand-foreground on brand", ratio(ink(mode, "brand-foreground"), ink(mode, "brand")), MIN_RATIO]);
+  const accent = rootValue(mode, "accent");
+  const lift = toSrgb(oklab(accent)).map((v, i) => v * alphaOf(accent) + onSurface.popover![i]! * (1 - alphaOf(accent))) as Rgb;
+  pairs.push(["accent-foreground on the accent lift over popover", ratio(ink(mode, "accent-foreground"), lift), MIN_RATIO]);
   return pairs.filter(([, value, floor]) => value < floor).map(([pair, value, floor]) => `${pair}: ${value.toFixed(2)} < ${floor}`);
 };
 
