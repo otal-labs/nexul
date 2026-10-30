@@ -87,7 +87,7 @@ describe("VoiceCallSection", () => {
     room.occupants = [{ identity: "u2", name: "Lena Kowalski" }];
     renderSection(false);
 
-    expect(screen.getByText("You're in #standup")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 in the call · You're in #standup");
     expect(screen.getByRole("button", { name: "Switch call" })).toBeInTheDocument();
   });
 
