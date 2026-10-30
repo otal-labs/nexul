@@ -6,7 +6,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SetupFolderPick } from "@/components/pairing/SetupFolderPick";
 import { SetupProviderItem } from "@/components/pairing/SetupProviderItem";
 import { SetupRunHeader } from "@/components/pairing/SetupRunHeader";
-import { useFetchComputerSetup, useRunSetup, useStopSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
+import { useFetchComputerSetup, useForgetSetupProvider, useRunSetup, useStopSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
 import { useSetupChoices } from "@/hooks/useSetupChoices";
 import { openSetupRow, setupProviderRows, setupRunRows, type Computer, type ComputerSetup } from "@/models/Pairing";
@@ -27,6 +27,7 @@ const SetupRunSection = ({ setup, framed }: SetupRunSectionProps) => {
   const run = useRunSetup(setup.computer_id);
   const update = useUpdateSkills(setup.computer_id);
   const stop = useStopSetup(setup.computer_id);
+  const forget = useForgetSetupProvider(setup.computer_id);
   const { choices, models, options, pick, pickOptions, included, include, projects, folder, pickFolder } = useSetupChoices(setup);
   const listing = useFetchHarnessProviders(setup.computer_id);
   const providers = listing.isPending ? "pending" : listing.error ? "error" : "ready";
@@ -78,11 +79,13 @@ const SetupRunSection = ({ setup, framed }: SetupRunSectionProps) => {
               open={row.provider === open}
               busy={pending === row.provider}
               stopping={stop.isPending && stop.variables === row.provider}
+              forgetting={forget.isPending && forget.variables === row.provider}
               onInclude={include}
               onPick={pick}
               onOptions={pickOptions}
               onRun={runOne}
               onStop={stop.mutate}
+              onForget={forget.mutate}
               onToggle={toggle}
             />
           ))}

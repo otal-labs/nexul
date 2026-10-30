@@ -110,6 +110,34 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, arg DeletePairin
 	return err
 }
 
+const deletePairingProviderSetup = `-- name: DeletePairingProviderSetup :exec
+DELETE FROM pairing_provider_setups WHERE computer_id = ? AND provider = ?
+`
+
+type DeletePairingProviderSetupParams struct {
+	ComputerID string
+	Provider   string
+}
+
+func (q *Queries) DeletePairingProviderSetup(ctx context.Context, arg DeletePairingProviderSetupParams) error {
+	_, err := q.db.ExecContext(ctx, deletePairingProviderSetup, arg.ComputerID, arg.Provider)
+	return err
+}
+
+const deletePairingSetupTurnsForProvider = `-- name: DeletePairingSetupTurnsForProvider :exec
+DELETE FROM pairing_setup_turns WHERE computer_id = ? AND provider = ?
+`
+
+type DeletePairingSetupTurnsForProviderParams struct {
+	ComputerID string
+	Provider   string
+}
+
+func (q *Queries) DeletePairingSetupTurnsForProvider(ctx context.Context, arg DeletePairingSetupTurnsForProviderParams) error {
+	_, err := q.db.ExecContext(ctx, deletePairingSetupTurnsForProvider, arg.ComputerID, arg.Provider)
+	return err
+}
+
 const getPairingComputer = `-- name: GetPairingComputer :one
 SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id FROM pairing_computers WHERE id = ? AND user_id = ?
 `

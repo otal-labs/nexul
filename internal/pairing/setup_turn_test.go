@@ -387,6 +387,29 @@ func TestStopSetupProvider_EndsTheRunningTurnAsStoppedAndLeavesTheOthersRunning(
 	require.ErrorIs(t, f.svc.StopSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent"), apperrs.ErrInvalid, "a finished turn has nothing to stop")
 }
 
+func TestForgetSetupProvider_RemovesOnlyAProviderT3CodeNoLongerLists(t *testing.T) {
+	f := newSetupFixture(t)
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, nil, "", nil)
+	require.NoError(t, err)
+	f.svc.setupRuns.Wait()
+	require.Equal(t, SetupTurnConfirmed, f.turns(run.RunID)["claudeagent"].State)
+
+	err = f.svc.ForgetSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "T3 Code still lists Claude")
+
+	f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+		return []harness.Provider{{ID: "codex-main", Driver: "codex", Name: "Codex"}}, nil
+	}
+	require.ErrorIs(t, f.svc.ForgetSetupProvider(t.Context(), "u2", f.computer.ID, "claudeAgent"), apperrs.ErrNotFound, "only the owner")
+	require.NoError(t, f.svc.ForgetSetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent"))
+
+	setup, err := f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.False(t, slices.ContainsFunc(setup.Providers, func(p ProviderSetup) bool { return p.Provider == "claudeagent" }), "its confirmation is gone")
+	assert.False(t, slices.ContainsFunc(setup.Turns, func(t SetupTurnSummary) bool { return t.Provider == "claudeagent" }), "its turns are gone")
+	assert.True(t, slices.ContainsFunc(setup.Turns, func(t SetupTurnSummary) bool { return t.Provider == "codex" }), "the other provider keeps its own")
+}
+
 func TestStartSetup_Rerun_ReverifiesWithoutReplacingTheToken(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)

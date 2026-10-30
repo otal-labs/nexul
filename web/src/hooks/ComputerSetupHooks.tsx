@@ -67,6 +67,18 @@ export const useStopSetup = (computerId: string) =>
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+// Removes a provider T3 Code no longer lists from the computer's setup: its confirmation and its turns.
+export const useForgetSetupProvider = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (provider: string) => {
+      await api.delete(`/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}`);
+    }),
+    onSuccess: () => client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId], exact: true }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // One short turn on the computer's first confirmed provider rewrites Nexul's skills for every provider there.
 export const useUpdateSkills = (computerId: string) => {
   const client = useQueryClient();

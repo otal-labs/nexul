@@ -49,6 +49,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/runs", h.startSetup)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/providers/{provider}/retry", h.retrySetupProvider)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/providers/{provider}/stop", h.stopSetupProvider)
+	mux.HandleFunc("DELETE /api/pairing/computers/{id}/setup/providers/{provider}", h.forgetSetupProvider)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/skills", h.updateSkills)
 	mux.HandleFunc("GET /api/pairing/resolve", h.resolve)
 	mux.HandleFunc("GET /api/pairing/defaults", h.getDefaults)
@@ -203,6 +204,14 @@ func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusAccepted, run)
+}
+
+func (h *Handler) forgetSetupProvider(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.ForgetSetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) stopSetupProvider(w http.ResponseWriter, r *http.Request) {

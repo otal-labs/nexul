@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useId } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { HarnessProviderMark } from "@/components/model/HarnessProviderMark";
 import { ModelChoice } from "@/components/model/ModelChoice";
@@ -19,21 +20,24 @@ interface SetupProviderItemProps {
   open: boolean;
   busy: boolean;
   stopping: boolean;
+  forgetting: boolean;
   onInclude: (provider: string, on: boolean) => void;
   onPick: (provider: string, model: string) => void;
   onOptions: (provider: string, options: OptionSetting[]) => void;
   onRun: (provider: string) => void;
   onStop: (provider: string) => void;
+  onForget: (provider: string) => void;
   onToggle: (provider: string) => void;
 }
 
 // One provider on one grid: mark, name, the model its turn runs on, its own run and its switch, then its state across the row; the name opens its transcript.
-export const SetupProviderItem = ({ row, model, options, open, busy, stopping, onInclude, onPick, onOptions, onRun, onStop, onToggle }: SetupProviderItemProps) => {
+export const SetupProviderItem = ({ row, model, options, open, busy, stopping, forgetting, onInclude, onPick, onOptions, onRun, onStop, onForget, onToggle }: SetupProviderItemProps) => {
   const statusId = useId();
   const running = row.state === "running" || row.state === "queued";
   const listed = !!row.choice;
-  // Off or gone, a row has no picker or action, and its name takes their columns.
+  // Off or gone, a row has no picker, and its name takes the picker's column; off, the action's too.
   const picking = row.on && listed;
+  const nameSpan = !picking && (row.gone ? "col-span-2" : "col-span-3");
   // Steps live only in this tab and arrive a while after a turn starts; until there are some, the state line says it all.
   const kept = useSetupActivityStore((s) => !!row.run?.turnId && (s.steps[row.run.turnId]?.length ?? 0) > 0);
   const transcript = kept ? row.run : undefined;
@@ -52,13 +56,13 @@ export const SetupProviderItem = ({ row, model, options, open, busy, stopping, o
             aria-expanded={open}
             aria-describedby={statusId}
             onClick={() => onToggle(row.provider)}
-            className={cn("flex min-w-0 items-center gap-1 justify-self-start rounded-sm text-left", !picking && "col-span-3")}
+            className={cn("flex min-w-0 items-center gap-1 justify-self-start rounded-sm text-left", nameSpan)}
           >
             {name}
             <ChevronRight aria-hidden className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard", open && "rotate-90")} />
           </button>
         )}
-        {!transcript && <span className={cn("flex min-w-0", !picking && "col-span-3")}>{name}</span>}
+        {!transcript && <span className={cn("flex min-w-0", nameSpan)}>{name}</span>}
         {picking && row.choice && !running && (
           <ModelChoice
             providers={[row.choice.instance]}
@@ -74,6 +78,11 @@ export const SetupProviderItem = ({ row, model, options, open, busy, stopping, o
         )}
         {picking && row.choice && running && <SetupModelText choice={row.choice} model={model} options={options} />}
         {picking && <SetupProviderAction row={row} busy={busy} stopping={stopping} onRun={onRun} onStop={onStop} />}
+        {row.gone && (
+          <Button type="button" variant="ghost" size="sm" className="justify-self-end text-muted-foreground" loading={forgetting} onClick={() => onForget(row.provider)} aria-label={`Remove ${row.name}`}>
+            Remove
+          </Button>
+        )}
         <Switch
           aria-label={`Use ${row.name}`}
           checked={row.on}

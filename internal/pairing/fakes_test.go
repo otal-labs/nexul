@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -369,6 +370,18 @@ func (f *fakeRepo) SaveProviderSetup(_ context.Context, computerID string, p Pro
 	}
 	rows := slices.DeleteFunc(f.setups[computerID], func(existing ProviderSetup) bool { return existing.Provider == p.Provider })
 	f.setups[computerID] = append(rows, p)
+	f.outbox = append(f.outbox, evt)
+	return nil
+}
+
+func (f *fakeRepo) ForgetSetupProvider(_ context.Context, computerID, provider string, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	f.setups[computerID] = slices.DeleteFunc(f.setups[computerID], func(p ProviderSetup) bool { return p.Provider == provider })
+	maps.DeleteFunc(f.turns, func(_ string, t SetupTurn) bool { return t.ComputerID == computerID && t.Provider == provider })
 	f.outbox = append(f.outbox, evt)
 	return nil
 }
