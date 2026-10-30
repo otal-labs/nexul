@@ -512,6 +512,19 @@ func (r *PairingRepo) SaveProviderSetup(ctx context.Context, computerID string, 
 	})
 }
 
+func (r *PairingRepo) ForgetSetupProvider(ctx context.Context, computerID, provider string, evt eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if err := q.DeletePairingProviderSetup(ctx, sqlcgen.DeletePairingProviderSetupParams{ComputerID: computerID, Provider: provider}); err != nil {
+			return fmt.Errorf("delete %s setup for %s: %w", provider, computerID, err)
+		}
+		if err := q.DeletePairingSetupTurnsForProvider(ctx, sqlcgen.DeletePairingSetupTurnsForProviderParams{ComputerID: computerID, Provider: provider}); err != nil {
+			return fmt.Errorf("delete %s setup turns for %s: %w", provider, computerID, err)
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
+	})
+}
+
 func (r *PairingRepo) SaveSetupTurn(ctx context.Context, t pairing.SetupTurn, evts ...eventbus.OutboxEvent) error {
 	transcript, err := json.Marshal(t.Transcript)
 	if err != nil {

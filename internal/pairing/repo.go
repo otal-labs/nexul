@@ -72,6 +72,8 @@ type SetupStore interface {
 	ListOutdatedSkillsComputers(ctx context.Context, userID, version string) ([]string, error)
 	// SaveProviderSetup upserts one provider's row on a computer; a nil ConfirmedAt records an un-confirmation.
 	SaveProviderSetup(ctx context.Context, computerID string, p ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error
+	// ForgetSetupProvider deletes one provider's confirmation and setup turns on a computer, with its event, in one transaction.
+	ForgetSetupProvider(ctx context.Context, computerID, provider string, evt eventbus.OutboxEvent) error
 	// SaveSetupTurn upserts one provider's setup turn and its events; the transcript arrives redacted.
 	SaveSetupTurn(ctx context.Context, t SetupTurn, evts ...eventbus.OutboxEvent) error
 	// ListLatestSetupTurns returns each provider's newest setup turn on a computer, ordered by provider.

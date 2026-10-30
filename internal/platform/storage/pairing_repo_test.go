@@ -602,6 +602,32 @@ func TestPairingRepo_ListLatestSetupTurns_NewestPerProvider(t *testing.T) {
 	assert.Empty(t, none)
 }
 
+func TestPairingRepo_ForgetSetupProvider_DeletesOnlyThatProvidersRows(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	at := time.Unix(1_700_000_000, 0).UTC()
+	for _, provider := range []string{"cursor", "codex"} {
+		require.NoError(t, s.Pairing.SaveProviderSetup(t.Context(), "c1", pairing.ProviderSetup{Provider: provider, ConfirmedAt: &at, Skills: []string{}}, at,
+			eventbus.OutboxEvent{ID: uuid.NewString(), Topic: pairing.TopicSetupConfirmed, Payload: pairing.SetupChangedEvent{ComputerID: "c1", UserID: "u1"}}))
+		require.NoError(t, s.Pairing.SaveSetupTurn(t.Context(), pairing.SetupTurn{
+			ID: "t-" + provider, RunID: "r1", ComputerID: "c1", UserID: "u1", Provider: provider, ProviderName: provider,
+			State: pairing.SetupTurnConfirmed, StartedAt: at, UpdatedAt: at,
+		}))
+	}
+
+	evt := eventbus.OutboxEvent{ID: uuid.NewString(), Topic: pairing.TopicSetupUnconfirmed, Payload: pairing.SetupChangedEvent{ComputerID: "c1", UserID: "u1", Provider: "cursor"}}
+	require.NoError(t, s.Pairing.ForgetSetupProvider(t.Context(), "c1", "cursor", evt))
+
+	setups, err := s.Pairing.ListProviderSetups(t.Context(), "c1")
+	require.NoError(t, err)
+	require.Len(t, setups, 1)
+	assert.Equal(t, "codex", setups[0].Provider)
+	turns, err := s.Pairing.ListLatestSetupTurns(t.Context(), "c1")
+	require.NoError(t, err)
+	require.Len(t, turns, 1)
+	assert.Equal(t, "codex", turns[0].Provider)
+}
+
 func switchedEvt(userID string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: uuid.NewString(), Topic: pairing.TopicHarnessSwitched, Payload: pairing.HarnessSwitchedEvent{ComputerID: "c1", UserID: userID}}
 }

@@ -106,6 +106,12 @@ ON CONFLICT(computer_id, provider) DO UPDATE SET
   confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, skills_version = excluded.skills_version,
   updated_at = excluded.updated_at;
 
+-- name: DeletePairingProviderSetup :exec
+DELETE FROM pairing_provider_setups WHERE computer_id = ? AND provider = ?;
+
+-- name: DeletePairingSetupTurnsForProvider :exec
+DELETE FROM pairing_setup_turns WHERE computer_id = ? AND provider = ?;
+
 -- name: SetPairingComputerSetupMCPToken :execrows
 UPDATE pairing_computers SET setup_mcp_token = ? WHERE id = ? AND user_id = ?;
 

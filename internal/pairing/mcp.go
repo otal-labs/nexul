@@ -89,6 +89,7 @@ type computerSetupRunIn struct {
 	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default."`
 	SkillsOnly   bool                               `json:"skills_only,omitempty" jsonschema:"true only updates Nexul's skills and goes alone with computer_id: one turn on the first confirmed provider, on its saved model and folder."`
 	Stop         bool                               `json:"stop,omitempty" jsonschema:"true with provider stops that provider's running setup or skills turn; it ends failed as Stopped."`
+	Forget       bool                               `json:"forget,omitempty" jsonschema:"true with provider removes a provider T3 Code no longer lists from the computer's setup: its confirmation and its turns. One T3 Code still lists is refused; switch it off instead."`
 }
 
 type computerSetupUpdateIn struct {
@@ -389,11 +390,11 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			"provider rewrites Nexul's skills from skill_get and reports the version for all. Returns at once with "+
 			"the run; computer_list shows each turn's state. Pass folder to run in any project folder when the "+
 			"default is gone. One setup or skills update runs per computer at a time. Pass stop with provider to stop "+
-			"that provider's running turn.",
+			"that provider's running turn, or forget with provider to remove one T3 Code no longer lists.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerSetupRunIn) (any, error) {
-			if in.Stop {
-				return stopSetup(ctx, s, in)
+			if in.Stop || in.Forget {
+				return stopOrForget(ctx, s, in)
 			}
 			if in.SkillsOnly {
 				return updateSkills(ctx, s, in)
@@ -414,10 +415,16 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 		})
 }
 
-// stopSetup is computer_setup_run's stop mode, which ends one provider's running turn.
-func stopSetup(ctx context.Context, s *Service, in computerSetupRunIn) (any, error) {
-	if in.Provider == "" || in.SkillsOnly || in.Model != "" || len(in.Providers) > 0 || len(in.Models) > 0 || len(in.ModelOptions) > 0 || in.Folder != "" {
-		return nil, fmt.Errorf("%w: stop goes with computer_id and provider only", apperrs.ErrInvalid)
+// stopOrForget is computer_setup_run's stop and forget modes, each acting on one provider.
+func stopOrForget(ctx context.Context, s *Service, in computerSetupRunIn) (any, error) {
+	if in.Provider == "" || (in.Stop && in.Forget) || in.SkillsOnly || in.Model != "" || len(in.Providers) > 0 || len(in.Models) > 0 || len(in.ModelOptions) > 0 || in.Folder != "" {
+		return nil, fmt.Errorf("%w: stop or forget goes alone with computer_id and provider", apperrs.ErrInvalid)
+	}
+	if in.Forget {
+		if err := s.ForgetSetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider); err != nil {
+			return nil, err
+		}
+		return map[string]any{"forgotten": in.Provider}, nil
 	}
 	if err := s.StopSetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider); err != nil {
 		return nil, err

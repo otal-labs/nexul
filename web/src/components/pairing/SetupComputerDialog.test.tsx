@@ -12,10 +12,10 @@ import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingD
 import type { ActivityKind } from "@/models/Trail";
 import { pickOption } from "@/test/pickOption";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post, put: mocks.put },
+  api: { get: mocks.get, post: mocks.post, put: mocks.put, delete: mocks.delete },
   errorMessage: (e: { response?: { data?: { message?: string } } }) => e?.response?.data?.message ?? "Something went wrong",
 }));
 
@@ -214,6 +214,19 @@ describe("SetupComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /^claude/i }));
     expect(screen.getByRole("button", { name: /^claude/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
+  });
+
+  it("removes a provider T3 Code no longer lists, and offers no Remove on a listed one", async () => {
+    setup = { ...emptySetup, turns: [turn("grok", "Grok", "confirmed", "Confirmed with 12 skills", "r0", "t0")] };
+    mocks.delete.mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    expect(await screen.findByText("No longer in T3 Code")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Codex" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove Grok" }));
+    await waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/grok"));
   });
 
   it("stops a running provider's turn from its row", async () => {

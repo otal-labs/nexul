@@ -363,6 +363,38 @@ func (s *Service) stoppable(ctx context.Context, computerID, driver string) (con
 	return ctx, stop
 }
 
+// ForgetSetupProvider removes a provider T3 Code no longer lists from the caller's computer: its confirmation and its setup turns.
+// A provider T3 Code still lists is switched off instead, and one with a turn running is stopped first.
+func (s *Service) ForgetSetupProvider(ctx context.Context, userID, computerID, provider string) error {
+	provider, err := validateProvider(provider)
+	if err != nil {
+		return err
+	}
+	driver := strings.ToLower(provider)
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return err
+	}
+	s.setupMu.Lock()
+	_, running := s.settingUp[setupKey(session.ID, driver)]
+	s.setupMu.Unlock()
+	if running {
+		return fmt.Errorf("%w: %s has a setup turn running on %s; stop it first", apperrs.ErrInvalid, provider, session.Name)
+	}
+	listed, err := s.harnessProviders(ctx, session)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(listed, func(p harness.Provider) bool { return strings.EqualFold(p.Driver, driver) }) {
+		return fmt.Errorf("%w: T3 Code on %s still lists %s; switch it off instead", apperrs.ErrInvalid, session.Name, provider)
+	}
+	evt := setupEvent(SetupChangedEvent{ComputerID: session.ID, UserID: userID, Provider: driver})
+	if err := s.repo.ForgetSetupProvider(ctx, session.ID, driver, evt); err != nil {
+		return fmt.Errorf("forget %s on %s: %w", driver, session.ID, err)
+	}
+	return nil
+}
+
 // StopSetupProvider ends a provider's running setup or skills turn on the caller's computer; the turn ends failed as Stopped.
 func (s *Service) StopSetupProvider(ctx context.Context, userID, computerID, provider string) error {
 	provider, err := validateProvider(provider)

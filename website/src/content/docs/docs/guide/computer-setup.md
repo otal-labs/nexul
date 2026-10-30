@@ -30,7 +30,7 @@ A play stopped because setup isn't done shows a **Set up** button that opens the
 
 ## Check the state
 
-The computer's row reads **Setup confirmed** with the providers it covers, **Needs setup**, **Setup failed** with the providers that failed, or the provider being set up right now. Unfold the row for a line per provider and when it was confirmed. A provider T3 Code no longer lists keeps its last state on the setup screen, marked **No longer in T3 Code**.
+The computer's row reads **Setup confirmed** with the providers it covers, **Needs setup**, **Setup failed** with the providers that failed, or the provider being set up right now. Unfold the row for a line per provider and when it was confirmed. A provider T3 Code no longer lists keeps its last state on the setup screen, marked **No longer in T3 Code**; **Remove** on its row forgets it, its confirmation and its turns.
 
 Press **Re-run setup** in the row's **…** menu, or **Re-run all** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it never overwrites an installed skill and keeps the token the providers hold.
 

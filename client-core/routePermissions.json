@@ -38,6 +38,7 @@
   "DELETE /api/memories/{id}": ["memories:delete"],
   "DELETE /api/pairing/computers/{id}": ["none"],
   "DELETE /api/pairing/computers/{id}/mcp-token": ["none"],
+  "DELETE /api/pairing/computers/{id}/setup/providers/{provider}": ["none"],
   "DELETE /api/pairing/projects/{id}": ["none"],
   "DELETE /api/projects/repos/{owner}/{name}": ["projects:write"],
   "DELETE /api/projects/{id}": ["projects:delete"],
