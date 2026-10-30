@@ -131,7 +131,7 @@ export const gatewayHeight = (data: GatewayNodeData, pills?: Map<string, Hostnam
 
 export const serviceHeight = (data: ServiceNodeData & ServiceNodeExtras): number => {
   const nameLines = lineCount(hyphenTokens(data.name), Math.floor((SERVICE_W - 24) / SANS_14));
-  return CARD_BORDER + 10 + 20 * nameLines + 4 + LINE + 8 + (data.target ? 1 + 12 + LINE : 0);
+  return CARD_BORDER + 10 + 20 * nameLines + 4 + LINE + 8 + (data.target && !data.machineInBox ? 1 + 12 + LINE : 0);
 };
 
 export const externalHeight = (name: string, url?: string): number => {
@@ -143,6 +143,6 @@ export const externalHeight = (name: string, url?: string): number => {
 // The box's microheader is mono 11px with 0.12em tracking, across the box less its 12px insets and the count.
 const NETWORK_LABEL_CHARS = Math.floor((SERVICE_W + 48 - 24 - 24) / (MONO_11 + 1.32));
 
-// Room above a network box's first card: its padding, then the microheader's lines.
-export const networkBoxTop = (name: string): number =>
-  24 + 24 + LINE * (lineCount(`network · ${name}`.split(/(?<=[-_ ])/), NETWORK_LABEL_CHARS) - 1);
+// Room above a network box's first card: its padding, the microheader's lines, and the machine its members share.
+export const networkBoxTop = (name: string, machine?: string): number =>
+  24 + 24 + LINE * (lineCount(`network · ${name}`.split(/(?<=[-_ ])/), NETWORK_LABEL_CHARS) - 1) + (machine ? LINE : 0);

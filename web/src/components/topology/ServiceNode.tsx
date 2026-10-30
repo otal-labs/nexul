@@ -24,9 +24,9 @@ export const ServiceNode = ({ data, selected }: NodeProps<ServiceNodeType>) => (
         </a>
       )}
     </div>
-    {(data.target || data.replicas != null || data.volume) && (
+    {((data.target && !data.machineInBox) || data.replicas != null || data.volume) && (
       <div className="flex flex-col gap-0.5 border-t border-border px-3 py-1.5 font-mono text-[11px] leading-4 text-muted-foreground">
-        {data.target && <span>{data.target}</span>}
+        {data.target && !data.machineInBox && <span>{data.target}</span>}
         {data.replicas != null && <span className="tabular-nums">{data.replicas} replicas</span>}
         {data.volume && <span>{data.volume}</span>}
       </div>

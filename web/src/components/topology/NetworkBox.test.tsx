@@ -34,4 +34,9 @@ describe("NetworkBox", () => {
     expect(box).toHaveStyle({ zIndex: -1, pointerEvents: "none", left: "10px", top: "20px", width: "200px", height: "100px" });
     expect(box).toHaveTextContent("network · app-net3");
   });
+
+  it("names the machine its services share under the label, once for the whole box", () => {
+    const { container } = render(<NetworkBox rect={{ name: "app-net", x: 0, y: 0, width: 200, height: 100, count: 2, machine: "edge-1" }} />);
+    expect(container.firstElementChild).toHaveTextContent("network · app-net2edge-1");
+  });
 });

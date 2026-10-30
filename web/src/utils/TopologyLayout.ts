@@ -136,7 +136,7 @@ export const laneLayout = (nodes: TopologyNode[], edges: RelationEdge[], network
   const byRank = (a: TopologyNode, b: TopologyNode) => order(a.id) - order(b.id) || a.id.localeCompare(b.id);
   // A box holds its network's services; a service on no network is a group of one, ranked among the boxes.
   const groups = [
-    ...networks.map((g) => ({ boxed: true, top: networkBoxTop(g.name), members: services.filter((s) => home.get(s.id) === g.name).sort(byRank) })),
+    ...networks.map((g) => ({ boxed: true, top: networkBoxTop(g.name, g.machine), members: services.filter((s) => home.get(s.id) === g.name).sort(byRank) })),
     ...services.filter((s) => !home.has(s.id)).map((s) => ({ boxed: false, top: 0, members: [s] })),
   ]
     .filter((g) => g.members.length > 0)
@@ -209,6 +209,7 @@ export interface NetworkRect {
   width: number;
   height: number;
   count: number;
+  machine?: string;
   // Set while a hover traces routes that none of the box's services are on.
   dim?: boolean;
 }
@@ -234,10 +235,11 @@ export const buildNetworkRects = (networks: NetworkGroup[], nodes: TopologyNode[
       {
         name: group.name,
         x: bounds.minX - PADDING,
-        y: bounds.minY - networkBoxTop(group.name),
+        y: bounds.minY - networkBoxTop(group.name, group.machine),
         width: bounds.maxX - bounds.minX + PADDING * 2,
-        height: bounds.maxY - bounds.minY + networkBoxTop(group.name) + PADDING,
+        height: bounds.maxY - bounds.minY + networkBoxTop(group.name, group.machine) + PADDING,
         count: members.length,
+        ...(group.machine ? { machine: group.machine } : {}),
       },
     ];
   });
