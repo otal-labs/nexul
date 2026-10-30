@@ -79,7 +79,7 @@ export const SetupProviderItem = ({ row, model, options, open, busy, stopping, f
         {picking && row.choice && running && <SetupModelText choice={row.choice} model={model} options={options} />}
         {picking && <SetupProviderAction row={row} busy={busy} stopping={stopping} onRun={onRun} onStop={onStop} />}
         {row.gone && (
-          <Button type="button" variant="ghost" size="sm" className="justify-self-end text-muted-foreground" loading={forgetting} onClick={() => onForget(row.provider)} aria-label={`Remove ${row.name}`}>
+          <Button type="button" variant="ghost" size="sm" className="justify-self-end" loading={forgetting} onClick={() => onForget(row.provider)} aria-label={`Remove ${row.name}`}>
             Remove
           </Button>
         )}
