@@ -98,6 +98,7 @@ in the three token files; this table holds the roles.
 | `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour | site: Fumadocs' `fd-primary` is this ink |
 | `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
 | `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light | |
+| `brand-tint` | `brand` at 16% | `brand` at 12% | your own chat bubble, under ink: the one bubble in the stream reads as yours without shouting over it | web mixes it from `brand` per palette; phone: precomputed over `background`, `oklch(0.218 0.029 29)` dark, `oklch(0.904 0.021 28)` light |
 | `success` | `#4ade80` | `#15803d` | health, success, and open pull requests | |
 | `warning` | `#fbbf24` | `#8a6100` | in-flight states, as text and icons | |
 | `warning-mark` | `#fbbf24` | `#a07800` | a `warning` dot or fill; 3.5:1 on every light surface, enough for a mark, and a clear amber beside the `brand` ember where `warning` reads as a darker orange at dot size | site: none, it has no status dot |
@@ -135,8 +136,8 @@ class is drift.
 |---|---|---|---|
 | Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
-| Selection | the current row's tint (`brand` at 12%, 16% in dark), selected rows, the chosen access level, an unsaved Access grid cell, canvas selection (`ring`), text selection (`brand-foreground` at 30% inside your own bubble) | text selection (`brand` at 32%) | the drop target a held card is over |
-| Your own messages | the chat bubble | | the chat bubble |
+| Selection | the current row's tint (`brand` at 12%, 16% in dark), selected rows, the chosen access level, an unsaved Access grid cell, canvas selection (`ring`), text selection (`brand` at 32%) | text selection (`brand` at 32%) | the drop target a held card is over |
+| Your own messages | the chat bubble, as `brand-tint` under ink | | the chat bubble, as `brand-tint` under ink |
 | Checked controls | checkbox, switch (not the Access grids' cells, which are ink; see Access grid) | | the "Only mine" switch |
 | Progress | progress fills, the loader's dot | | pull to refresh |
 | Prose links | `brand` text | ink text with a `brand` underline (see [Docs pages](#docs-pages)) | |
@@ -1413,7 +1414,7 @@ for whoever has settings there, both opening the dialog the sidebar row's menu
 opens. While the sidebar is the icon rail, the name is a switcher: a chevron and the
 unread count of every other listed conversation as a dot and "3 elsewhere", opening a 20rem popover of the
 sidebar's own conversation sections. Your own messages are the one bubble
-(`brand`); everyone else's text runs plain under a 32px avatar and a header
+(`brand-tint` under ink); everyone else's text runs plain under a 32px avatar and a header
 of the name in 13px semibold and the mono clock time (the full time on hover),
 2px over the text and held to 72ch, so a long thread reads as a transcript instead of a stack of
 boxes. A new author starts 12px under the last message; a run of one person's messages drops the avatar and header after the
@@ -1774,7 +1775,7 @@ The web app's pattern decisions, each with what it was picked over.
 | A board card's type is its icon alone (2026-10-28) | Against the icon beside the type's name: on a card the name was a third kind of label in the meta row, beside the mono key and the label chips, and it took the width a second label needed; the type is a bounded set whose hue and icon already tell bug from feature, and the name stays in the tooltip and for screen readers |
 | Board cards: the key as an eyebrow with the person at its end, the pills on a row of their own (2026-10-28) | Against the avatar-beside-title card, a card with a ruled footer, and the person opposite the pills: with the avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the key's line had room the pills' row did not, where a 20px avatar pushed a third chip onto another line in a 220px column; the footer rule made every card taller for a line that spacing already separates |
 | Board: every column on a well, cards raised on it (2026-10-28) | Against no well at rest, each column taking it only while a card is held: the cards and the columns shared the page panel, separated by a hairline, so in dark the board read as a wireframe and in light as white boxes on white. Three surface steps (panel, well, card) carry the depth, and the card drops its hairline in dark, where its fill already separates it. This reverses the earlier call that a well under the cards made three nested surfaces: on the board the nesting is the structure |
-| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
+| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember-tinted bubble to mean "you" |
 | Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
 | Services rows straight on the card, the last deploy in deploy words | Against the rows in their own bordered box with a tinted footer (a box inside a card, and the strip made one muted line look like an action area), and "Healthy" for a deploy that came up (green beside a Health fact reading "db-migrate down", the strip contradicted itself) |
@@ -2662,7 +2663,7 @@ the web palette's groups as microheaders over plain rows (a muted kind icon,
 the title, the mono key trailing), tickets and docs found only in their text
 under In text, and a quiet line under the list when a kind had more.
 
-Chat. Your messages are the ember bubble on the right (12pt corners, the
+Chat. Your messages are the ember-tinted bubble (`brand-tint` under ink) on the right (12pt corners, the
 bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
 with the name and mono clock time; day dividers are the microheader between
 hairlines. Bot embeds are the web's status-edged cards with facts. The

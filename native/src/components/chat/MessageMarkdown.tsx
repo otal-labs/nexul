@@ -14,20 +14,10 @@ import { useSessionStore } from "@/stores/sessionStore";
 const sans = "Inter";
 const mono = "JetBrains Mono";
 
-// The native renderer cannot read the stylesheet, so it takes the same tokens as values; on your own bubble the ink is the
-// brand's foreground and code sits on a darker tint of the bubble.
-const useMarkdownStyle = (own: boolean): MarkdownStyle => {
-  const [fg, muted, line, fill, brandFg] = useCSSVariable([
-    "--color-foreground",
-    "--color-muted-foreground",
-    "--color-border",
-    "--color-surface-2",
-    "--color-brand-foreground",
-  ]);
-  const ink = own ? String(brandFg) : String(fg);
-  const [foreground, mutedForeground, border, surface] = own
-    ? [ink, ink, "#00000033", "#0000001f"]
-    : [ink, String(muted), String(line), String(fill)];
+// The native renderer cannot read the stylesheet, so it takes the same tokens as values.
+const useMarkdownStyle = (): MarkdownStyle => {
+  const [fg, muted, line, fill] = useCSSVariable(["--color-foreground", "--color-muted-foreground", "--color-border", "--color-surface-2"]);
+  const [foreground, mutedForeground, border, surface] = [String(fg), String(muted), String(line), String(fill)];
   return useMemo(() => {
     const body = { fontFamily: sans, fontSize: 15, lineHeight: 21, color: foreground };
     const heading = { fontFamily: sans, fontWeight: "600", color: foreground };
@@ -109,10 +99,9 @@ const timeAt = (url: string): OpenTime | null => {
 
 interface MessageMarkdownProps {
   markdown: string;
-  own?: boolean;
 }
 
-export const MessageMarkdown = ({ markdown, own = false }: MessageMarkdownProps) => {
+export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => {
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
   const live = useMemo(() => hasRelativeTime(markdown), [markdown]);
   // Only a message with a relative time follows the clock, so the minute tick leaves every other one alone.
@@ -126,7 +115,7 @@ export const MessageMarkdown = ({ markdown, own = false }: MessageMarkdownProps)
   };
   return (
     <>
-      <EnrichedMarkdownText markdown={timed} flavor="github" markdownStyle={useMarkdownStyle(own)} onLinkPress={onLinkPress} />
+      <EnrichedMarkdownText markdown={timed} flavor="github" markdownStyle={useMarkdownStyle()} onLinkPress={onLinkPress} />
       <DiscordTimePopover open={open} onClose={() => setOpen(null)} />
     </>
   );
