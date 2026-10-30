@@ -13,12 +13,14 @@ import { TicketHeaderStrip } from "@/components/ticket/TicketHeaderStrip";
 import { TicketHistoryDialog } from "@/components/ticket/TicketHistoryDialog";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
+import { useTicketThreadMessages } from "@/hooks/ChatHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { getTicketKey } from "@/hooks/TicketCache";
 import { useTicketActions } from "@/hooks/useTicketActions";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
+import type { Message } from "@/models/Chat";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 import { effectiveAvatar } from "@/models/User";
@@ -27,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 interface TicketDetailProps {
   ticket: Ticket;
+  workspaceId: string;
   project?: Project;
   /** Where the header and the body sit in the ticket page's grid; they stack when omitted. */
   layout?: Pick<TicketPageLayout, "header" | "article">;
@@ -36,9 +39,16 @@ interface TicketDetailProps {
   wsFactory?: (url: string) => LiveSocket;
 }
 
+// A thread message doesn't move the ticket's own updated time, so the later of the two is when anything last happened.
+const lastActivityAt = (updatedAt: string, messages: Message[] | undefined): string =>
+  (messages ?? []).reduce(
+    (latest, m) => (!m.deleted_at && Date.parse(m.created_at) > Date.parse(latest) ? m.created_at : latest),
+    updatedAt,
+  );
+
 // Mounted with key={ticket.id}: the title seeds once, so switching tickets must remount, not update in place.
 // A writer edits the title and body live in the ticket's room, the way a doc is edited; a reader sees them static.
-export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: TicketDetailProps) => {
+export const TicketDetail = ({ ticket, workspaceId, project, layout, frameBody, wsFactory }: TicketDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
   const canEdit = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
@@ -52,6 +62,9 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
     ...(avatar ? { avatar } : {}),
   });
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
+
+  const { data: messages } = useTicketThreadMessages(workspaceId, ticket.id);
+  const updatedAt = lastActivityAt(ticket.updated_at, messages);
 
   const ticketLabel = project ? `${project.prefix}-${ticket.number}` : ticket.id;
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -113,7 +126,7 @@ export const TicketDetail = ({ ticket, project, layout, frameBody, wsFactory }: 
           <>
             <TicketHeaderStrip ticket={ticket} ticketLabel={ticketLabel} />
             <span className="border-l border-border pl-3">
-              <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} size="sm" />
+              <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={updatedAt} size="sm" />
             </span>
           </>
         }

@@ -322,6 +322,21 @@ describe("TicketPage sections", () => {
     expect(within(preview).getByRole("link", { name: "Open thread" })).toHaveAttribute("href", "/tickets/t-1/thread");
   });
 
+  it("dates the header by the newest thread message that stands, when it is later than the ticket", async () => {
+    const message = (id: string, minutesAgo: number, deleted = false) => ({
+      id, conversation_id: "c-1", author_id: "u-1", author_kind: "user", body: id, mentions: null,
+      created_at: new Date(Date.now() - minutesAgo * 60_000).toISOString(), updated_at: "", ...(deleted ? { deleted_at: new Date().toISOString() } : {}),
+    });
+    mockTicket({
+      "/api/chat/tickets/thread-status": { "t-1": true },
+      "/api/chat/conversations/c-1/messages": [message("older", 30), message("newest", 5), message("gone", 1, true)],
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "c-1", workspace_id: "ws-1", kind: "thread", ticket_id: "t-1" } });
+    renderPage();
+
+    expect(await screen.findByText("updated 5m ago")).toBeInTheDocument();
+  });
+
   it("puts links, pull requests and testing under Properties, above Plays", async () => {
     mockTicket({
       "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { microheaderClass } from "@/components/Microheader";
 import { ThreadPreviewRow } from "@/components/ticket/ThreadPreviewRow";
-import { useFetchMessages, useFetchOrCreateTicketThread, useFetchTicketThreadStatus } from "@/hooks/ChatHooks";
+import { useTicketThreadMessages } from "@/hooks/ChatHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import type { Message } from "@/models/Chat";
 
@@ -26,9 +26,7 @@ const latestLines = (messages: Message[]): Message[] =>
 // It reads the messages the Thread tab loads, and never opens a thread that doesn't exist yet.
 export const TicketThreadPreview = ({ workspaceId, ticketId, threadPath }: TicketThreadPreviewProps) => {
   const headingId = useId();
-  const { data: status } = useFetchTicketThreadStatus(ticketId);
-  const { data: conversation } = useFetchOrCreateTicketThread(workspaceId, ticketId, status?.[ticketId] === true);
-  const { data: messages } = useFetchMessages(conversation?.id);
+  const { data: messages } = useTicketThreadMessages(workspaceId, ticketId);
   const resolvePerson = usePersonLookup(workspaceId);
   const latest = messages ? latestLines(messages) : [];
 

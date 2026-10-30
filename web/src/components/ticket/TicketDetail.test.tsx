@@ -52,6 +52,7 @@ const renderDetail = async (ticket: Ticket, opts: { project?: Project; permissio
       <MemoryRouter>
         <TicketDetail
           ticket={ticket}
+          workspaceId="ws-1"
           {...(opts.project ? { project: opts.project } : {})}
           wsFactory={(url) => {
             urls.push(url);

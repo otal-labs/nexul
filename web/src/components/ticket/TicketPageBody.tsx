@@ -49,6 +49,7 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
       <TicketDetail
         key={ticket.id}
         ticket={ticket}
+        workspaceId={workspaceId}
         layout={layout}
         {...projectProp}
         frameBody={(article) => (

@@ -1,5 +1,6 @@
 import type { HistoryActor } from "@/models/History";
 import { viaLabel } from "@/utils/HistoryVersionUtility";
+import { formatDateParts } from "@/utils/TimeUtility";
 
 const FIELD_NAMES: Record<string, string> = {
   due_on: "Due",
@@ -36,5 +37,5 @@ export const dayLabel = (day: string): string => {
   const [year, month, date] = day.split("-").map(Number);
   if (!year || !month || !date) return day;
   const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", ...(year === new Date().getFullYear() ? {} : { year: "numeric" }) };
-  return new Date(year, month - 1, date).toLocaleDateString(undefined, options);
+  return formatDateParts(new Date(year, month - 1, date), options);
 };

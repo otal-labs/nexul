@@ -1,5 +1,5 @@
 import { PlusIcon } from "lucide-react";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { AttachmentRow } from "@/components/attachment/AttachmentRow";
@@ -18,6 +18,8 @@ interface AttachmentsSectionProps {
   projectId?: string | undefined;
   className?: string;
   actionPlacement?: "beside-label" | "end";
+  // Drawn under the files, and in place of "No files yet." when there are none.
+  aside?: ReactNode;
 }
 
 // Chat attachments take only read access to the conversation, so no section shows for one.
@@ -30,7 +32,7 @@ const writePermission = (owner: SectionOwner): "docs:write" | "tickets:write" | 
 };
 
 // Everything pasted into the body shows up here too; files render as hover-revealing pills.
-export const AttachmentsSection = ({ owner, projectId, className, actionPlacement = "beside-label" }: AttachmentsSectionProps) => {
+export const AttachmentsSection = ({ owner, projectId, className, actionPlacement = "beside-label", aside }: AttachmentsSectionProps) => {
   const { data, error, isPending } = useFetchAttachments(owner);
   const upload = useUploadAttachment();
   const permission = writePermission(owner);
@@ -72,7 +74,7 @@ export const AttachmentsSection = ({ owner, projectId, className, actionPlacemen
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <EmptyRow flush>No files yet.</EmptyRow>}
+      {data && data.length === 0 && !aside && <EmptyRow flush>No files yet.</EmptyRow>}
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (
@@ -80,6 +82,7 @@ export const AttachmentsSection = ({ owner, projectId, className, actionPlacemen
           ))}
         </ul>
       )}
+      {data && aside}
     </section>
   );
 };

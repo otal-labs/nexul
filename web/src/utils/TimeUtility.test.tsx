@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatCalendarTime, formatColumnTime, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatColumnTime, formatDateParts, formatDurationMs, formatRelativeTime, formatVersionTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -102,5 +102,18 @@ describe("formatColumnTime", () => {
   it("writes every month in three letters, so a right-aligned column keeps one width", () => {
     expect(formatColumnTime(new Date(2026, 8, 29, 17, 7).toISOString())).toMatch(/^29 Sep \d\d:\d\d$/);
     expect(formatColumnTime(new Date(2026, 9, 6, 9, 5).toISOString())).toMatch(/^\u20076 Oct \d\d:\d\d$/);
+  });
+});
+
+describe("formatDateParts", () => {
+  const options = { day: "numeric", month: "short" } as const;
+
+  it("cuts the four-letter September of en-GB to three and leaves the other months alone", () => {
+    expect(formatDateParts(new Date(2026, 8, 29), options, "en-GB")).toBe("29 Sep");
+    expect(formatDateParts(new Date(2026, 9, 29), options, "en-GB")).toBe("29 Oct");
+  });
+
+  it("leaves the text of another locale as it was", () => {
+    expect(formatDateParts(new Date(2026, 8, 29), options, "en-US")).toBe("Sep 29");
   });
 });
