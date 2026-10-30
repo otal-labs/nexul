@@ -17,6 +17,7 @@ import {
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageListItem, type Entrance } from "@/components/chat/MessageListItem";
+import { PinnedRunSender } from "@/components/chat/PinnedRunSender";
 import { QueueEventLine } from "@/components/chat/QueueEventLine";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
@@ -25,6 +26,7 @@ import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
+import { runLabels } from "@/utils/ChatRunUtility";
 import { placeQueueEvents } from "@/utils/PlayQueueUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
@@ -94,6 +96,7 @@ export const MessageList = ({
   const blocks = useThreadTrailBlocks(conversation);
   const queueEvents = useThreadQueueEvents(conversation);
   const placed = useMemo(() => placeQueueEvents(messages, queueEvents), [messages, queueEvents]);
+  const runs = useMemo(() => runLabels(messages, resolveAuthor, currentUserId), [messages, resolveAuthor, currentUserId]);
 
   const [seen] = useState(() => new Set(messages.map(rowKey)));
   const [openedAt] = useState(() => Date.now());
@@ -109,6 +112,7 @@ export const MessageList = ({
       )}
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+          <PinnedRunSender />
           <MessageScroller className="@container/scroller min-h-0 flex-1">
             {/* A gutter each side centres the column on the header and composer; narrower, no scrollbar takes the column's width. */}
             <MessageScrollerViewport className="[mask-image:linear-gradient(to_bottom,transparent,black_1rem,black_calc(100%-0.75rem),transparent)] [scrollbar-gutter:auto]! [scrollbar-width:none]! @min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]! @min-[50rem]/scroller:[scrollbar-width:thin]!">
@@ -126,6 +130,8 @@ export const MessageList = ({
                         author={resolveAuthor(message.author_id)}
                         isOwn={own}
                         continuation={isContinuation(messages[i - 1], message)}
+                        runName={runs[i]?.name}
+                        runDay={runs[i]?.day}
                         newDay={placed.opensDay.has(message.id)}
                         newest={newest}
                         entrance={entranceOf(message, seen, own)}

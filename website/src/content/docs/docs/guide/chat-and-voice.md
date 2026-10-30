@@ -17,6 +17,8 @@ When the sidebar is folded to its icons, the conversation's name at the top of t
 
 Right-click a channel in the sidebar to rename it, open its **Settings** or **Permissions…**, or delete it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
 
+Scrolling through several posts in a row from one sender, such as a bot's reports, keeps their name and the day pinned at the top of the conversation until the next sender's name comes into view.
+
 ## Who sees and posts in a channel
 
 Posting in a channel takes **Post in channels** (`channels:post`), which a role allows like any other permission. A channel's own rules can change that for a role or a person: open **Permissions…** from the channel's right-click menu, or **Who sees and posts here** in its **Settings**, pick a role or a person, and set **See this channel** and **Post in this channel** to Allow, Fallback, or Deny.
