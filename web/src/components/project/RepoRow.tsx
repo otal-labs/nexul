@@ -44,7 +44,7 @@ export const RepoRow = ({ projectId, onLeave, repo, services }: RepoRowProps) =>
       lead={<GithubMark className="size-3.5 text-muted-foreground" />}
       name={<span className="truncate font-mono text-[13px]" title={repo.full_name}>{repo.full_name}</span>}
       meta={tests ? "Tests, never deployed" : "App"}
-      count={!tests && services !== undefined && countLabel(services, "service")}
+      count={services !== undefined && countLabel(services, "service")}
       actions={
         <RowActionsMenu
           subject={repo.full_name}

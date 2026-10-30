@@ -31,7 +31,7 @@ const renderRow = (overrides: Partial<BoardStatus> = {}) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <StatusRow projectId="p-1" status={status(overrides)} index={0} total={1} onMove={vi.fn()} />
+      <StatusRow projectId="p-1" status={status(overrides)} first last onMoveUp={vi.fn()} onMoveDown={vi.fn()} />
     </QueryClientProvider>,
   );
 };

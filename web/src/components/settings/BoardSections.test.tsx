@@ -179,14 +179,14 @@ describe("Statuses, Ticket types and Labels", () => {
     expect(mocks.del).toHaveBeenCalledWith("/api/statuses/blocked");
   });
 
-  it("reorders status columns with the arrows, disabled at the list edges", async () => {
+  it("reorders status columns within their stage with the arrows, disabled at the stage's edges", async () => {
     mocks.post.mockResolvedValue({ data: undefined });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/statuses") {
         return Promise.resolve({
           data: [
             statusColumn(),
-            statusColumn({ id: "done", name: "Done", position: 1, kind: "done" }),
+            statusColumn({ id: "review", name: "Review", position: 1 }),
           ],
         });
       }
@@ -195,7 +195,7 @@ describe("Statuses, Ticket types and Labels", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Actions for Done" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Review" }));
     expect(screen.getByRole("button", { name: "Move up" })).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Move down" })).toBeDisabled();
     await user.keyboard("{Escape}");
@@ -206,7 +206,7 @@ describe("Statuses, Ticket types and Labels", () => {
 
     expect(mocks.post).toHaveBeenCalledWith("/api/statuses/reorder", {
       project_id: PROJECT_ID,
-      ids: ["done", "open"],
+      ids: ["review", "open"],
     });
   });
 

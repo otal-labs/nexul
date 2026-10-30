@@ -61,7 +61,7 @@ export const HUE_DOT_CLASS: Record<string, string> = {
   emerald: "bg-emerald-500",
   orange: "bg-orange-500",
   fuchsia: "bg-fuchsia-500",
-  lime: "bg-lime-500",
+  lime: "bg-lime-600 dark:bg-lime-500",
 };
 
 // An unrecognized `color` value falls through to the hash exactly like unset does; it can't crash the board.

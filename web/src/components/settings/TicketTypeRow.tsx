@@ -1,5 +1,6 @@
 import { useState, type FocusEvent } from "react";
 
+import { HUE_DOT_CLASS } from "@/components/board/ticketTypeColor";
 import { ColorSwatchButton } from "@/components/settings/ColorSwatchButton";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { SettingsListRow } from "@/components/settings/SettingsListRow";
@@ -114,7 +115,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
         <SettingsListRow
           lead={colorButton}
           name={<span className="truncate font-medium" title={type.name}>{type.name}</span>}
-          meta={templates && templateState(type.body_template, instance?.body)}
+          meta={[!HUE_DOT_CLASS[type.color] && "No color", templates && templateState(type.body_template, instance?.body)].filter(Boolean).join(" · ") || undefined}
           count={counts && countLabel(used, "ticket")}
           actions={
             <RowActionsMenu

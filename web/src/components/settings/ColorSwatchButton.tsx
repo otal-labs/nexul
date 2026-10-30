@@ -39,7 +39,7 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
       {pill && <span className="truncate">{pill}</span>}
     </>
   );
-  const pillClass = "inline-flex h-6 max-w-full min-w-0 items-baseline gap-1.5 py-0.5 leading-[1.125rem] rounded-full border border-border bg-foreground/[0.04] px-2 text-xs font-medium text-muted-foreground";
+  const pillClass = "inline-flex h-6 max-w-full min-w-0 shrink items-baseline gap-1.5 py-0.5 leading-[1.125rem] rounded-full border border-border bg-foreground/[0.04] px-2 text-xs font-medium text-muted-foreground";
 
   return (
     <>

@@ -1,3 +1,4 @@
+import { useSortable } from "@dnd-kit/sortable";
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { isStatusIconName, StatusIcon } from "@/components/board/StatusIcon";
@@ -5,7 +6,9 @@ import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { SettingsListRow } from "@/components/settings/SettingsListRow";
 import { StatusIconPicker } from "@/components/settings/StatusIconPicker";
 import { useFetchProjectTicketCounts } from "@/hooks/ProjectHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useDeleteStatus, useRenameStatus } from "@/hooks/StatusHooks";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { statusStage, type BoardStatus } from "@/models/Status";
 import { countLabel } from "@/utils/CountUtility";
@@ -13,12 +16,14 @@ import { countLabel } from "@/utils/CountUtility";
 interface StatusRowProps {
   projectId: string;
   status: BoardStatus;
-  index: number;
-  total: number;
-  onMove: (direction: -1 | 1) => void;
+  // First and last within its stage: a status moves only among its stage's columns.
+  first: boolean;
+  last: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }
 
-export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRowProps) => {
+export const StatusRow = ({ projectId, status, first, last, onMoveUp, onMoveDown }: StatusRowProps) => {
   const renameStatus = useRenameStatus();
   const deleteStatus = useDeleteStatus();
   const [editing, setEditing] = useState(false);
@@ -26,6 +31,12 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
   const [iconDraft, setIconDraft] = useState(status.icon);
   const { data: counts } = useFetchProjectTicketCounts(projectId);
   const held = counts?.tickets_by_status[status.id] ?? 0;
+  const draggable = useActionState({ permission: "projects:write", projectId }).state === "live";
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: status.id,
+    disabled: editing || !draggable,
+    transition: { duration: 200, easing: EASE_OUT },
+  });
 
   const startEditing = () => {
     setNameDraft(status.name);
@@ -58,8 +69,8 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
       projectId={projectId}
       actions={[
         { label: "Rename", permission: "projects:write", verb: "rename statuses", onSelect: startEditing },
-        { label: "Move up", permission: "projects:write", verb: "reorder statuses", disabled: index === 0, onSelect: () => onMove(-1) },
-        { label: "Move down", permission: "projects:write", verb: "reorder statuses", disabled: index === total - 1, onSelect: () => onMove(1) },
+        { label: "Move up", permission: "projects:write", verb: "reorder statuses", disabled: first, onSelect: onMoveUp },
+        { label: "Move down", permission: "projects:write", verb: "reorder statuses", disabled: last, onSelect: onMoveDown },
         {
           label: "Delete",
           destructive: true,
@@ -93,6 +104,11 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
       )}
       {!editing && (
         <SettingsListRow
+          ref={setNodeRef}
+          style={{ transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined, transition }}
+          className={cn("bg-card", isDragging && "z-10 rounded-md shadow-elevated")}
+          handleRef={setActivatorNodeRef}
+          handleProps={draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${status.name}` } : undefined}
           lead={
             <>
               {isStatusIconName(status.icon) && <StatusIcon icon={status.icon} className={cn("size-3.5", stage.text)} />}

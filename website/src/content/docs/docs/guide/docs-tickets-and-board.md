@@ -110,4 +110,4 @@ A stack you watch adds a row when one of its services crashes and another when i
 - **Filter** by category, label, type, and status, or **Search**.
 - **Playing** narrows the board to tickets with a play running or waiting on an answer. It shows while at least one is.
 
-Columns, categories, ticket types with their icons and body templates, and label colors are set per project, in the project's **Settings → Statuses**, **Categories**, **Ticket types** and **Labels**. Each row says how many tickets it holds; a column or type that still holds tickets can't be deleted, and its menu says so.
+Columns, categories, ticket types with their icons and body templates, and label colors are set per project, in the project's **Settings → Statuses**, **Categories**, **Ticket types** and **Labels**. Each row says how many tickets it holds; a column or type that still holds tickets can't be deleted, and its menu says so. Drag a column to reorder it within its stage, or a category within the list.
