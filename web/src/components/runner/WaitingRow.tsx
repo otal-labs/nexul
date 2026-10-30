@@ -14,7 +14,7 @@ interface WaitingRowProps {
 
 // On the runner list's tracks, so the kind sits under Version and why it waits under Doing, wrapping rather than cut.
 export const WaitingRow = ({ job, position, reason, className }: WaitingRowProps) => (
-  <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 text-[13px] leading-5 transition-colors duration-150 ease-standard hover:bg-accent/40", className)}>
+  <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 text-[13px] leading-5 transition-colors duration-150 ease-standard hover:bg-accent", className)}>
     <span className="flex min-w-0 items-baseline gap-1.5">
       <span className="w-3.5 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums" aria-label={`Queue position ${position}`}>
         {position}

@@ -21,7 +21,7 @@ export const NoteRow = ({ note, fileName, selected, onSelect }: NoteRowProps) =>
       aria-current={selected ? "true" : undefined}
       className={cn(
         "relative flex w-full min-w-0 flex-col gap-0.5 px-2 py-1.5 text-left transition-colors duration-150 ease-standard",
-        selected ? currentRowFillClass : "hover:bg-accent/40",
+        selected ? currentRowFillClass : "hover:bg-accent",
       )}
     >
       {selected && <CurrentRowEdge />}

@@ -14,7 +14,7 @@ interface FleetRunnerRowProps {
 
 // One line on the list's shared tracks.
 export const FleetRunnerRow = ({ runner, machine }: FleetRunnerRowProps) => (
-  <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent/40")}>
+  <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
     <span className="flex min-w-0 items-baseline gap-3">
       <span className="flex self-center">
         <RunnerStatusDot connected={runner.connected} />

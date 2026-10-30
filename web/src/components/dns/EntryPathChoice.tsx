@@ -20,7 +20,7 @@ const EntryPathRow = ({ option }: EntryPathRowProps) => {
     <label
       htmlFor={`entry-path-${option.value}`}
       className={cn(
-        !inWizard && "flex cursor-pointer items-start gap-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
+        !inWizard && "flex cursor-pointer items-start gap-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent",
         inWizard && wizardOptionClass,
       )}
     >

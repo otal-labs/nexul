@@ -50,7 +50,7 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
 // A bot's post under the name and avatar it posted with; the BOT tag keeps a post calling itself "GitHub" from passing for a person.
 export const BotMessageRow = ({ message, continuation }: { message: ChatMessage; continuation: boolean }) => (
   <BotMessageIdContext value={message.id}>
-    <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent">
       {!continuation && (
         <MessageAvatar className="size-8 self-start bg-transparent">
           <BotAvatar src={message.author_avatar_url} />

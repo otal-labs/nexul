@@ -13,7 +13,7 @@ interface BrowserTabProps {
 export const BrowserTab = ({ value, pending, children }: BrowserTabProps) => (
   <TabsTrigger
     value={value}
-    className="-mb-px h-9 flex-none gap-2 rounded-t-md rounded-b-none border-b-0 px-3.5 after:hidden hover:bg-accent/40 data-[state=active]:border-border! data-[state=active]:bg-popover! data-[state=active]:hover:bg-popover"
+    className="-mb-px h-9 flex-none gap-2 rounded-t-md rounded-b-none border-b-0 px-3.5 after:hidden hover:bg-accent data-[state=active]:border-border! data-[state=active]:bg-popover! data-[state=active]:hover:bg-popover"
   >
     <span className="inline-flex items-baseline gap-2">{children}</span>
     <span aria-hidden className={cn("size-1.5 rounded-full bg-foreground", !pending && "invisible")} />

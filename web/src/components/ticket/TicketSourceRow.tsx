@@ -21,7 +21,7 @@ export const TicketSourceRow = ({ docId, projectId, onRemove }: TicketSourceRowP
   const wsPath = useWorkspacePath();
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="group flex items-center gap-2 rounded-md px-2 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent">
       <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
       {doc && projects && (
         <Link

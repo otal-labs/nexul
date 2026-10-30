@@ -142,7 +142,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
       {isSystem && <SystemMessageRow body={message.body} trailBlock={trailBlock} />}
       {isBot && <BotMessageRow message={message} continuation={continuation} />}
       {!isSystem && !isBot && (
-        <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40", message.pending && "opacity-60")}>
+        <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
             <MessageAvatar className="size-8 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />

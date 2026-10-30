@@ -512,7 +512,7 @@ surfaces implement against it rather than inventing a shape per page.
 List and row. A row is a `border-b border-border` hairline division, not a
 bordered card. Cards are reserved for units that are draggable or clickable as
 a whole (the kanban `TicketCard`). Row hover is a
-`bg-accent/40` background lift only, no shadow, no scale; lift and scale are
+`bg-accent` background lift only, no shadow, no scale; lift and scale are
 reserved for draggable cards. The primary field sits left in normal weight;
 secondary and meta fields trail right in `muted-foreground`, and in mono with
 `tabular-nums` whenever the value is a count, amount, id, or timestamp. Status
@@ -538,7 +538,7 @@ row whose record already shows its details when open (Docs) is one line at
 empty at rest, the title truncated with its full text in the tooltip, then the
 mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
-`bg-accent/40` lift, never a boxed border. A row's actions are its right-click menu,
+`bg-accent` lift, never a boxed border. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
 whoever may manage the record's access, then Delete in destructive), each item
@@ -990,7 +990,7 @@ owner made, a later import stage needs the discovery). A step opens with
 `WizardStepHeader`, a Fraunces title at 2rem that asks the step's question
 over one muted line. Lists and choices inside a step are a card per row
 (`WizardCardList`, `wizardCardClass`, `wizardOptionClass`): `bg-card` at 60%
-with a hairline border, the whole card the control, `bg-accent/40` on hover,
+with a hairline border, the whole card the control, `bg-accent` on hover,
 a picked choice ringed in the brand; a list that navigates ends each card in
 a chevron, and a level reads as a mono chip. `WizardShell` is the reference.
 

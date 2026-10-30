@@ -14,7 +14,7 @@ interface QuestionOptionRowProps {
 
 // One hairline option row: its number key, the control, the label, and the description muted beneath.
 export const QuestionOptionRow = ({ number, option, checked, control, htmlFor }: QuestionOptionRowProps) => (
-  <li className={cn("transition-colors duration-150 ease-standard hover:bg-accent/40", checked && "bg-accent/40")}>
+  <li className={cn("transition-colors duration-150 ease-standard hover:bg-accent", checked && "bg-accent/40")}>
     <label htmlFor={htmlFor} className="flex cursor-pointer items-start gap-2.5 px-3 py-2">
       <span className="w-3 shrink-0 font-mono text-[10px] leading-5 text-muted-foreground tabular-nums">{number}</span>
       <span className="flex h-5 shrink-0 items-center">{control}</span>

@@ -21,7 +21,7 @@ const RailButton = ({ label, active, onClick, children }: RailButtonProps) => (
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      "flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/40 hover:text-foreground",
+      "flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground",
       active && "bg-accent text-foreground",
     )}
   >

@@ -12,7 +12,7 @@ interface OpenEnrollmentRowProps {
 export const OpenEnrollmentRow = ({ code, label }: OpenEnrollmentRowProps) => {
   const revoke = useRevokeEnrollment();
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent">
       <div className="min-w-0 flex-1">
         <span className="block truncate font-mono text-sm" title={label}>
           {label}

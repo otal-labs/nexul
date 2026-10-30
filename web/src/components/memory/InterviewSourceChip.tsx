@@ -18,7 +18,7 @@ interface InterviewSourceChipProps {
 }
 
 const chipClass =
-  "inline-flex h-6 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/40 hover:text-foreground";
+  "inline-flex h-6 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground";
 
 const useFocusHandlers = (sourceId: string) => {
   const setFocus = useInterviewSourceFocusStore((s) => s.setFocus);

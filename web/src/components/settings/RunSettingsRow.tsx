@@ -21,7 +21,7 @@ export const RunSettingsRow = ({ mark, title, summary, open, onToggle, children 
       type="button"
       aria-expanded={open}
       onClick={onToggle}
-      className="group flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+      className="group flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 ease-standard hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
     >
       {mark}
       <span className="min-w-0 flex-1">

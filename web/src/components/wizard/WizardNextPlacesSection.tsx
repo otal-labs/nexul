@@ -18,7 +18,7 @@ const WizardNextPlaceRow = ({ icon: Icon, label, why, onOpen }: WizardNextPlaceR
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-2 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+      className="flex w-full items-center gap-3 px-2 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent"
     >
       <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 flex-1">
