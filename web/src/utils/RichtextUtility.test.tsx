@@ -1,4 +1,7 @@
+import { getSchema, type JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
+
+import { buildEditorExtensions } from "@/components/doc/mention/editorExtensions";
 
 import { bodyToHtml, bodyToMarkdown, parseBodyToJSON } from "@/utils/RichtextUtility";
 
@@ -123,3 +126,34 @@ describe("task lists", () => {
     expect(bodyToHtml(old)).toContain('data-type="taskList"');
   });
 });
+
+describe("parseBodyToJSON with images in markdown", () => {
+  const schema = getSchema(buildEditorExtensions());
+  const typesOf = (node: JSONContent): string[] => [node.type ?? "", ...(node.content ?? []).flatMap(typesOf)];
+
+  it("lifts an image written under a list item's text into a block, so a live room accepts the body", () => {
+    const body = "1. The gap remains:\n  ![one.png](/api/attachments/a-1)\n2. Wasted space\n  ![two.png](/api/attachments/a-2)\n  Columns should resize.";
+    const doc: JSONContent = parseBodyToJSON(body);
+
+    expect(() => schema.nodeFromJSON(doc).check()).not.toThrow();
+    const [first, second] = doc.content?.[0]?.content ?? [];
+    expect(first?.content?.map((n) => n.type)).toEqual(["paragraph", "image"]);
+    expect(first?.content?.[0]?.content?.[0]?.text).toBe("The gap remains:");
+    expect(second?.content?.map((n) => n.type)).toEqual(["paragraph", "image", "paragraph"]);
+    expect(second?.content?.[2]?.content?.[0]?.text).toBe("Columns should resize.");
+  });
+
+  it("opens a list item that starts with an image with an empty paragraph, which a list item requires", () => {
+    const doc: JSONContent = parseBodyToJSON("- ![shot.png](/api/attachments/a-1)\n- text");
+
+    expect(() => schema.nodeFromJSON(doc).check()).not.toThrow();
+    expect(doc.content?.[0]?.content?.[0]?.content?.map((n) => n.type)).toEqual(["paragraph", "image"]);
+  });
+
+  it("keeps a paragraph without images as the parser wrote it", () => {
+    const doc: JSONContent = parseBodyToJSON("Plain line\nsecond line");
+    expect(typesOf(doc)).not.toContain("image");
+    expect(doc.content?.[0]?.content?.[0]?.text).toBe("Plain line\nsecond line");
+  });
+});
+

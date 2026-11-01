@@ -2,6 +2,7 @@ import { generateText } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { generateHTML } from "@tiptap/html";
 
+import { liftImages } from "@/components/doc/blockImages";
 import { upgradeChecklists } from "@/components/doc/legacyChecklist";
 import { buildEditorExtensions } from "@/components/doc/mention/editorExtensions";
 
@@ -36,7 +37,7 @@ export function parseBodyToJSON(body: string) {
   if (isStructuredBody(body)) {
     return upgradeChecklists(JSON.parse(body));
   }
-  return manager().parse(body);
+  return liftImages(manager().parse(body));
 }
 
 // Legacy markdown docs are parsed through the same pipeline the editor uses so the round-trip stays consistent.
