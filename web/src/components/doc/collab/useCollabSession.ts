@@ -3,7 +3,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 
 import * as Y from "yjs";
 
-import { avatarFill } from "@nexul/client-core/avatarFill";
+import { avatarFillHex } from "@nexul/client-core/avatarFill";
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
 
 import { getDocKey } from "@/hooks/DocHooks";
@@ -122,7 +122,7 @@ export const useCollabSession = (
     const doc = new Y.Doc();
     const user: CollabUser = {
       name: name || "You",
-      color: opts.login ? avatarFill(opts.login) : colorFor(doc.clientID),
+      color: opts.login ? avatarFillHex(opts.login) : colorFor(doc.clientID),
       activity: mode === "edit" ? "editing" : "viewing",
       ...(opts.userId ? { id: opts.userId } : {}),
     };

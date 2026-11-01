@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { avatarFill, avatarOklch } from "@nexul/client-core/avatarFill";
+import { avatarFill, avatarFillHex, avatarOklch } from "@nexul/client-core/avatarFill";
 
 // WCAG relative luminance of an oklch colour, clipped to sRGB as a browser does.
 const luminance = (l: number, c: number, hue: number): number => {
@@ -38,5 +38,13 @@ describe("avatarFill", () => {
     const hues = huesOf(["aleksandra_nw", "alice_nw", "bartholomew_nw", "bob_nw", "jo_nw", "lena_nw", "noor_nw", "priya_nw", "sam_nw"]);
     const closest = Math.min(...hues.flatMap((hue, i) => hues.slice(i + 1).map((other) => gap(hue, other))));
     expect(closest).toBeGreaterThanOrEqual(30);
+  });
+
+  it("writes the same fill as #rrggbb for consumers that take no oklch", () => {
+    const [l, c, hue] = avatarOklch("bob_nw");
+    const channels = (avatarFillHex("bob_nw").match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/) ?? []).slice(1).map((v) => parseInt(v, 16) / 255);
+    const linear = channels.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    expect(channels).toHaveLength(3);
+    expect(0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!).toBeCloseTo(luminance(l, c, hue), 2);
   });
 });

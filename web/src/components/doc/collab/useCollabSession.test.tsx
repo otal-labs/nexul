@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { Doc } from "yjs";
 
-import { avatarFill } from "@nexul/client-core/avatarFill";
+import { avatarFillHex } from "@nexul/client-core/avatarFill";
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
 
 import { api } from "@/api/client";
@@ -107,14 +107,15 @@ describe("useCollabSession", () => {
     await waitFor(() => expect(framesOf(socket, "hello")).toHaveLength(1));
   });
 
-  it("colours a known person with their avatar fill, so their face is the same in every session", () => {
+  it("colours a known person's cursor with their avatar fill as hex, the only form the cursor plugin draws a selection from", () => {
     const { factory } = makeSocket();
     const opts = { wsFactory: factory, login: "alice" };
     const first = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", opts), { wrapper: withClient });
     const second = renderHook(() => useCollabSession("doc-2", "edit", "Alice", "token-1", opts), { wrapper: withClient });
 
-    expect(first.result.current!.user.color).toBe(avatarFill("alice"));
-    expect(second.result.current!.user.color).toBe(avatarFill("alice"));
+    expect(first.result.current!.user.color).toMatch(/^#[0-9a-f]{6}$/);
+    expect(first.result.current!.user.color).toBe(avatarFillHex("alice"));
+    expect(second.result.current!.user.color).toBe(avatarFillHex("alice"));
   });
 
   it("derives participants from relayed awareness (viewers included)", async () => {
