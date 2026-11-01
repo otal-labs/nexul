@@ -3,6 +3,7 @@ import {
   get,
   useFormState,
   type Control,
+  type FieldError,
   type FieldValues,
   type Path,
 } from "react-hook-form";
@@ -40,7 +41,7 @@ export const FormSelect = <T extends FieldValues>({
   onChangeValue,
 }: FormSelectProps<T>) => {
   const { errors } = useFormState({ control });
-  const message = (get(errors, name)?.message as string | undefined) ?? undefined;
+  const message = get<typeof errors, FieldError | undefined>(errors, name)?.message;
   const labelId = `${name}-label`;
 
   return (
