@@ -5471,6 +5471,46 @@
       "notifications"
     ]
   },
+  "passkey.added": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "passkey_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "passkey_id",
+      "name"
+    ]
+  },
+  "passkey.removed": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "passkey_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "passkey_id",
+      "name"
+    ]
+  },
   "personal_access_token.minted": {
     "type": "object",
     "properties": {

@@ -1276,6 +1276,15 @@ signed in, unlinked from there too, never down to none.
 _Avoid_: Account (that is the user), login method, connected account (a
 Connector is the instance's credential, not a person's)
 
+**Passkey**:
+A WebAuthn credential a person makes on their own device and signs in with
+by fingerprint, face, PIN or security key, from Profile and the sign-in page.
+It belongs to the one domain it was made for, is never a person's only way
+in (a sign-in identity always stays), and is listed, renamed and removed from
+Profile. No permission bit and no MCP tool.
+_Avoid_: Security key (one kind of authenticator), password, 2FA (it is a
+sign-in on its own, not a second factor)
+
 **GitHub link**:
 A person's own GitHub App user token, kept encrypted from their GitHub sign-in
 or from Connect GitHub (which links the GitHub sign-in to their existing

@@ -546,6 +546,8 @@ These choices are settled. Reopen one only with a written reason.
 - `testify` is the assertion library across the test suite.
 - `goldmark` renders markdown; it is the CommonMark-compliant standard
   choice for Go.
+- `github.com/go-webauthn/webauthn` verifies passkeys (ADR 0177): attestation
+  and assertion checks are cryptography the codebase must not write itself.
 - `go.yaml.in/yaml/v3` is the YAML library, the maintained successor path
   now that the original `go-yaml` repository stopped taking changes.
 - `github.com/modelcontextprotocol/go-sdk` serves the MCP protocol (ADR 0067)

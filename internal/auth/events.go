@@ -19,6 +19,8 @@ const (
 	TopicIdentityLinked     = "identity.linked"
 	TopicIdentityUnlinked   = "identity.unlinked"
 	TopicGitHubLinkChanged  = "github_link.changed"
+	TopicPasskeyAdded       = "passkey.added"
+	TopicPasskeyRemoved     = "passkey.removed"
 )
 
 // GitHubLinkEvent is a person's GitHub link being made, needing a reconnect, or forgotten; it never carries a token.
@@ -36,6 +38,13 @@ type IdentityChangedEvent struct {
 	UserID   string   `json:"user_id"`
 	Provider Provider `json:"provider"`
 	Login    string   `json:"login"`
+}
+
+// PasskeyChangedEvent is the payload for both passkey topics; it never carries the credential or its public key.
+type PasskeyChangedEvent struct {
+	UserID    string `json:"user_id"`
+	PasskeyID string `json:"passkey_id"`
+	Name      string `json:"name"`
 }
 
 // AccountLifecycleEvent is the durable payload for account state changes.
@@ -77,5 +86,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicIdentityLinked, Payload: IdentityChangedEvent{}},
 		{Name: TopicIdentityUnlinked, Payload: IdentityChangedEvent{}},
 		{Name: TopicGitHubLinkChanged, Payload: GitHubLinkEvent{}},
+		{Name: TopicPasskeyAdded, Payload: PasskeyChangedEvent{}},
+		{Name: TopicPasskeyRemoved, Payload: PasskeyChangedEvent{}},
 	}
 }

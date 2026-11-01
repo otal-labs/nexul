@@ -125,6 +125,17 @@ type SessionStore interface {
 	LastActiveByUser(ctx context.Context) (map[string]time.Time, error)
 }
 
+// PasskeyStore persists passkeys; rename and delete are user-scoped so nobody touches another person's.
+type PasskeyStore interface {
+	// InsertPasskey is ErrConflict when the credential id is stored already.
+	InsertPasskey(ctx context.Context, p *Passkey, events ...eventbus.OutboxEvent) error
+	GetPasskey(ctx context.Context, id string) (*Passkey, error)
+	ListPasskeys(ctx context.Context, userID string) ([]Passkey, error)
+	UpdatePasskeyUse(ctx context.Context, id string, credential []byte, usedAt time.Time) error
+	RenamePasskey(ctx context.Context, userID, id, name string) error
+	DeletePasskey(ctx context.Context, userID, id string, events ...eventbus.OutboxEvent) error
+}
+
 // GitHubLinkStore keeps each person's GitHub link, its tokens encrypted at rest.
 type GitHubLinkStore interface {
 	// GetGitHubLink returns ErrNotFound for a person who never connected GitHub.

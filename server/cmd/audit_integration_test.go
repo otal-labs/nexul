@@ -29,6 +29,8 @@ import (
 // readOnlyRoutes are the non-GET routes that only read, so they write no audit row; every other non-GET route does.
 var readOnlyRoutes = []string{
 	"POST /api/auth/bootstrap/verify",
+	"POST /api/auth/passkeys/login/start",
+	"POST /api/auth/passkeys/start",
 	"POST /api/automation-hosts/self/logs",
 	"POST /api/connectors/{id}/manual/verify",
 	"POST /api/connectors/{id}/private-key/verify",

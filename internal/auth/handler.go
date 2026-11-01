@@ -48,6 +48,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/auth/bootstrap/verify", h.bootstrapVerify)
 	mux.HandleFunc("POST /api/setup/unlock", h.unlockSetup)
 	mux.HandleFunc("POST /api/auth/connect-codes/exchange", h.exchangeConnectCode)
+	mux.HandleFunc("POST /api/auth/passkeys/login/start", h.startPasskeyLogin)
+	mux.HandleFunc("POST /api/auth/passkeys/login/finish", h.finishPasskeyLogin)
 	if h.svc.DevLoginEnabled() {
 		mux.HandleFunc("GET /auth/dev-login", h.devLogin)
 	}
@@ -74,6 +76,7 @@ func (h *Handler) bootstrapStatus(w http.ResponseWriter, r *http.Request) {
 		"setup_open":         open,
 		"instance_url":       st.InstanceURL,
 		"local":              h.svc.cfg.Local,
+		"passkeys":           h.svc.PasskeysAvailable(h.spaOrigin(r)),
 	})
 }
 
@@ -232,6 +235,11 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/identities", h.listIdentities)
 	mux.HandleFunc("POST /api/auth/identities/link", h.startIdentityLink)
 	mux.HandleFunc("DELETE /api/auth/identities/{provider}", h.unlinkIdentity)
+	mux.HandleFunc("GET /api/auth/passkeys", h.listPasskeys)
+	mux.HandleFunc("POST /api/auth/passkeys/start", h.startPasskeyRegistration)
+	mux.HandleFunc("POST /api/auth/passkeys", h.addPasskey)
+	mux.HandleFunc("PATCH /api/auth/passkeys/{id}", h.renamePasskey)
+	mux.HandleFunc("DELETE /api/auth/passkeys/{id}", h.deletePasskey)
 	mux.HandleFunc("GET /api/auth/github-link", h.githubLink)
 	mux.HandleFunc("DELETE /api/auth/github-link", h.disconnectGitHub)
 	mux.HandleFunc("GET /api/auth/members", h.listMembers)
