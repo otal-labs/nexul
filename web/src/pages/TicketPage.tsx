@@ -41,7 +41,7 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
     <Container className={ticketPageLayout(embedded).container}>
       {!error && isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={embedded} />}
-      {data && (
+      {data && !error && (
         <TicketPageBody
           ticket={data}
           project={project || undefined}

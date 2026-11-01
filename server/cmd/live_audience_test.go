@@ -77,6 +77,8 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{access.TopicGrantChanged, access.GrantEvent{ResourceType: "doc", ResourceID: "doc-gone", Target: access.TargetRole, RoleID: "role-reader"},
 			map[string]bool{uReader: true, uPlain: false, uOwner: false, uOutsider: false}},
 		{roles.TopicUpdated, roles.RoleEvent{RoleID: "role-1", WorkspaceID: "workspace-default"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
+		{docs.TopicDeleted, docs.DeletedEvent{ID: "doc-gone", Title: "Runbook", ProjectID: "project-general"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
+		{docs.TopicDeleted, docs.DeletedEvent{ID: "doc-gone", Title: "Runbook"}, map[string]bool{uOwner: false}},
 		{docs.TopicFolderCreated, docs.FolderEvent{Folder: docs.Folder{ID: "f-1", ProjectID: "project-general", Name: "GetSource"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicUpdated, memories.UpdatedEvent{Memory: memories.MemoryRef{ID: "memory-1", WorkspaceID: "workspace-default", ProjectID: "project-general"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicAnswerSaved, memories.AnswerEvent{WorkspaceID: "workspace-default", ProjectID: "project-general", Question: "Testing"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},

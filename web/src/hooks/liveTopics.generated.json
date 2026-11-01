@@ -58,6 +58,7 @@
   "doc.clarification.round_posted",
   "doc.clarification.round_started",
   "doc.created",
+  "doc.deleted",
   "doc.folder.created",
   "doc.folder.deleted",
   "doc.folder.updated",

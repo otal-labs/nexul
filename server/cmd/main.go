@@ -228,6 +228,7 @@ var livePushTopics = []string{
 	docs.TopicCreated,
 	docs.TopicUpdated,
 	docs.TopicMoved,
+	docs.TopicDeleted,
 	docs.TopicFolderCreated,
 	docs.TopicFolderUpdated,
 	docs.TopicFolderDeleted,

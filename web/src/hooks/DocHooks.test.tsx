@@ -153,6 +153,14 @@ describe("the doc follower", () => {
     expect(client.getQueryData<DocListItem>(["getDoc", "d-1"])?.folder_id).toBe("f-0");
   });
 
+  it("drops a deleted doc from every list and sends its open page back to the server", async () => {
+    const client = views();
+    const ids = (key: unknown[]) => client.getQueryData<DocListItem[]>(key)?.map((d) => d.id);
+    await followFrame(docFollower, "doc.deleted", { id: "d-1", title: "Runbook", project_id: "p-1" }, client);
+    expect([ids(["getDocs"]), ids(["getDocs", "byProject", "p-1"]), ids(["getDocs", "byProject", "p-2"])]).toEqual([["d-2"], ["d-2"], ["d-3"]]);
+    expect(isStale(client, ["getDoc", "d-1"])).toBe(true);
+  });
+
   it("refetches the lists a new doc belongs to and one doc's clarification, and leaves the rest", async () => {
     const client = views();
     await followFrame(docFollower, "doc.created", { doc: { ...doc, id: "d-4", project_id: "p-1" } }, client);

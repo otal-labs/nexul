@@ -277,6 +277,11 @@ export const docFollower: LiveFollower = {
     return refetch(client, [getDocWatchersKey, doc.id]);
   },
   "doc.moved": ({ doc }: DocPayload, { client }) => docChanged(client, doc),
+  // A deleted doc leaves every list, and an open page of it refetches into its not-found state.
+  "doc.deleted": ({ id }: { id: string }, { client }) => {
+    client.setQueriesData<DocListItem[]>({ queryKey: [getDocsKey] }, (list) => (list?.some((d) => d.id === id) ? list.filter((d) => d.id !== id) : list));
+    return refetch(client, [getDocKey, id]);
+  },
   "doc.folder.deleted": ({ folder, moved_to_folder_id: to }: { folder: { id: string }; moved_to_folder_id: string }, { client }) =>
     followFolderDeleted(client, folder.id, to),
   "doc.watchers.changed": ({ doc }: DocRefPayload, { client }) => refetch(client, [getDocWatchersKey, doc.id]),

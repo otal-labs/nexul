@@ -24,7 +24,7 @@ const noClarification = { rounds: [], running: false, closed: false, can_answer:
 
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
         <MemoryRouter initialEntries={["/docs/doc-1"]}>
@@ -34,6 +34,7 @@ const renderPage = () => {
         </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 };
 
 const docData = {
@@ -63,6 +64,21 @@ const ticketData = (id: string, title: string, docId: string) => ({
   updated_at: "2026-08-02T12:00:00Z",
 });
 
+// The reads a doc page makes, each answered as a member who may write tickets sees them.
+const serveDoc = (url: string) => {
+  if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
+  if (url === "/api/tickets") return Promise.resolve({ data: [ticketData("t-1", "Write migrations", "doc-1")] });
+  if (url.startsWith("/api/projects")) return Promise.resolve({ data: [projectData] });
+  if (url.startsWith("/api/ticket-types"))
+    return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["tickets:write"] } });
+  if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
+  if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
+  if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
+  if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
+  return Promise.resolve({ data: [] });
+};
+
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
@@ -73,19 +89,7 @@ beforeEach(() => {
 describe("DocPage", () => {
   it("renders the doc and its derived tickets", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
-      if (url === "/api/tickets") return Promise.resolve({ data: [ticketData("t-1", "Write migrations", "doc-1")] });
-      if (url.startsWith("/api/projects")) return Promise.resolve({ data: [projectData] });
-      if (url.startsWith("/api/ticket-types"))
-        return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
-      if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["tickets:write"] } });
-      if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
-      if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
-      if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
-      if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
-      return Promise.resolve({ data: [] });
-    });
+    vi.mocked(api.get).mockImplementation(serveDoc);
 
     renderPage();
     expect(await screen.findByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
@@ -144,6 +148,20 @@ describe("DocPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Doc actions" }));
     expect(await screen.findByRole("button", { name: "Permissions…" })).toBeInTheDocument();
+  });
+
+  it("swaps the open doc for not-found once it is deleted elsewhere", async () => {
+    let deleted = false;
+    vi.mocked(api.get).mockImplementation((url: string) =>
+      deleted && url === "/api/docs/doc-1" ? Promise.reject(Object.assign(new Error("not found"), { response: { status: 404 } })) : serveDoc(url),
+    );
+    const client = renderPage();
+    expect(await screen.findByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
+
+    deleted = true;
+    await client.invalidateQueries({ queryKey: ["getDoc", "doc-1"] });
+    expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Storage Spine" })).not.toBeInTheDocument();
   });
 
   it("shows the shared error display", async () => {
