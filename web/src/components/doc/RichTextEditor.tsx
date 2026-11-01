@@ -25,7 +25,7 @@ import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
 import { useResolveMentions } from "@/hooks/MentionHooks";
 import type { AttachmentOwner } from "@/models/Attachment";
 import { cn } from "@/lib/utils";
-import { isStructuredBody, parseBodyToJSON } from "@/utils/RichtextUtility";
+import { parseBodyToJSON } from "@/utils/RichtextUtility";
 import type { RelayCollabProvider } from "@/lib/collab/provider";
 
 interface RichTextEditorProps {
@@ -49,14 +49,8 @@ interface RichTextEditorProps {
   };
 }
 
-// Structured JSON bodies load as-is; anything else is legacy markdown.
-const setBody = (editor: Editor, value: string, emitUpdate = true) => {
-  if (isStructuredBody(value)) {
-    editor.commands.setContent(parseBodyToJSON(value), { emitUpdate });
-    return;
-  }
-  editor.commands.setContent(value, { contentType: "markdown", emitUpdate });
-};
+// JSON and legacy markdown both load through the shared parser, so the editor holds what every other surface renders.
+const setBody = (editor: Editor, value: string, emitUpdate = true) => editor.commands.setContent(parseBodyToJSON(value), { emitUpdate });
 
 // Only a lone empty paragraph takes the hint; an empty list, quote, or code block sits where the hint would draw.
 const isBlankDoc = (doc: Editor["state"]["doc"]) =>
