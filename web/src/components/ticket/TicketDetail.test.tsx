@@ -37,15 +37,18 @@ const commitsOf = (socket: FakeSocket) =>
     .map((c) => JSON.parse(c[0] as string) as { type: string; title?: string })
     .filter((f) => f.type === "commit");
 
+const framesOf = (socket: FakeSocket, type: string) =>
+  socket.send.mock.calls.map((c) => c[0] as string).filter((raw) => (JSON.parse(raw) as { type: string }).type === type);
+
 const writer = ["tickets:read", "tickets:write"];
 const reader = ["tickets:read"];
 
-const renderDetail = async (ticket: Ticket, opts: { project?: Project; permissions?: string[] } = {}) => {
+const renderDetail = async (ticket: Ticket, opts: { project?: Project; permissions?: string[]; user?: Record<string, string> } = {}) => {
   const socket = new FakeSocket();
   const urls: string[] = [];
   // Primed queries never refetch, so the blanket api mock cannot clobber the role or profile.
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-  client.setQueryData([getMeKey], { user: { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false });
+  client.setQueryData([getMeKey], { user: opts.user ?? { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false });
   client.setQueryData([getMyRoleKey, "ws-1"], { role_name: "Member", permissions: opts.permissions ?? reader });
   const result = render(
     <QueryClientProvider client={client}>
@@ -155,5 +158,16 @@ describe("TicketDetail", () => {
 
     expect(title).toHaveValue("First line Second line");
     expect(commitsOf(socket).at(-1)?.title).toBe("First line Second line");
+  });
+
+  it("keeps the caret's presence frame small when the editor has an uploaded picture, since it is re-sent on every keystroke", async () => {
+    const picture = `data:image/webp;base64,${"A".repeat(32_000)}`;
+    const user = { id: "u-alice", login: "alice", name: "Alice", avatar_url: "", avatar_override_url: picture };
+    const { socket } = await renderDetail(ticket, { permissions: writer, user });
+    await act(async () => socket.onopen?.({}));
+
+    const presence = framesOf(socket, "presence");
+    expect(presence.length).toBeGreaterThan(0);
+    for (const raw of presence) expect(raw.length).toBeLessThan(1_000);
   });
 });

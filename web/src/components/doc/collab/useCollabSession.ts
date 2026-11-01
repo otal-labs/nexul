@@ -29,11 +29,9 @@ export const colorFor = (clientID: number) => PRESENCE_COLORS[clientID % PRESENC
 export interface CollabUser {
   name: string;
   color: string;
-  // The account id: what folds one person's several tabs into one avatar.
+  // The account id: what folds one person's several tabs into one avatar, and where peers look up the picture.
   id?: string;
   activity: "viewing" | "editing";
-  // Rides awareness state so every participant sees everyone's real avatar; empty means initials.
-  avatar?: string;
 }
 
 export interface CollabParticipant {
@@ -43,7 +41,6 @@ export interface CollabParticipant {
   name: string;
   color: string;
   activity: "viewing" | "editing";
-  avatar?: string;
 }
 
 export interface CollabSession {
@@ -70,7 +67,6 @@ export interface CollabSessionOptions {
   /** Colours this person's face and cursor with their avatar fill, the same in every session. */
   login?: string;
   wsFactory?: (url: string) => LiveSocket;
-  avatar?: string;
   /** The query a reset reloads before the fresh session starts; a doc room reloads its doc. */
   reloadKey?: QueryKey;
 }
@@ -89,7 +85,6 @@ const participantsFrom = (states: Map<number, unknown>): CollabParticipant[] => 
       name: u.name,
       color: u.color ?? colorFor(clientID),
       activity: u.activity === "viewing" ? "viewing" : "editing",
-      ...(u.avatar ? { avatar: u.avatar } : {}),
     });
   }
   return [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -130,7 +125,6 @@ export const useCollabSession = (
       color: opts.login ? avatarFill(opts.login) : colorFor(doc.clientID),
       activity: mode === "edit" ? "editing" : "viewing",
       ...(opts.userId ? { id: opts.userId } : {}),
-      ...(opts.avatar ? { avatar: opts.avatar } : {}),
     };
     const provider = new RelayCollabProvider({
       url: buildCollabURL(room, token, mode),
@@ -175,7 +169,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.avatar, opts.userId, opts.login, queryClient]);
+  }, [room, mode, name, token, viewing, sessionKey, opts.wsFactory, opts.userId, opts.login, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {

@@ -23,7 +23,6 @@ import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import type { Message } from "@/models/Chat";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
-import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
 import { cn } from "@/lib/utils";
 
@@ -52,14 +51,12 @@ export const TicketDetail = ({ ticket, workspaceId, project, layout, frameBody, 
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
   const canEdit = useActionState({ permission: "tickets:write", projectId: ticket.project_id }).state === "live";
-  const avatar = me?.user ? effectiveAvatar(me.user) : "";
   // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
   const session = useCollabSession(canEdit && me ? `tickets/${ticket.id}` : undefined, "edit", me?.user?.name ?? "", token, {
     reloadKey: [getTicketKey, ticket.id],
     ...(me?.user?.id ? { userId: me.user.id } : {}),
     ...(me?.user?.login ? { login: me.user.login } : {}),
     ...(wsFactory ? { wsFactory } : {}),
-    ...(avatar ? { avatar } : {}),
   });
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
 
