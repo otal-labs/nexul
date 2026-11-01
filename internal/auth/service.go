@@ -199,6 +199,8 @@ type Config struct {
 	Permissions PermissionGate
 	// GitHubLinks keeps each person's GitHub user token (ADR 0147); nil keeps none, so nobody can list repositories.
 	GitHubLinks GitHubLinkStore
+	// Passkeys stores each person's passkeys; nil turns passkeys off.
+	Passkeys PasskeyStore
 }
 
 // PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds on an instance area, by a
@@ -225,6 +227,8 @@ type Service struct {
 	githubRefresh sync.Mutex
 	// welcome reads a person's Welcome wizard progress for account_get; unset, it returns none.
 	welcome WelcomeReader
+	// ceremonies holds each passkey ceremony between its start and finish.
+	ceremonies *passkeyCeremonies
 }
 
 // WelcomeReader reads a person's Welcome wizard progress without auth importing the welcome domain (ADR 0017).
@@ -247,9 +251,10 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, probeClient: freshdns.New().Client(15 * time.Second),
-		searchURL: githubSearchUsersURL,
-		unlocks:   newFailureLimiter(unlockMaxFailures, unlockWindow),
-		exchanges: newFailureLimiter(exchangeMaxFailures, exchangeWindow),
+		searchURL:  githubSearchUsersURL,
+		unlocks:    newFailureLimiter(unlockMaxFailures, unlockWindow),
+		exchanges:  newFailureLimiter(exchangeMaxFailures, exchangeWindow),
+		ceremonies: newPasskeyCeremonies(),
 	}
 }
 

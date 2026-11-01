@@ -209,6 +209,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Local:               cfg.Local,
 		Permissions:         accessSvc,
 		GitHubLinks:         store.GitHubUserLinks,
+		Passkeys:            store.Passkeys,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)

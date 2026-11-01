@@ -37,6 +37,7 @@ var scopeRules = map[string]scopeRule{
 	"account.profile_updated": instanceScope, "account.presence_changed": instanceScope,
 	"session.created": instanceScope, "session.revoked": instanceScope,
 	"identity.linked": instanceScope, "identity.unlinked": instanceScope,
+	"passkey.added": instanceScope, "passkey.removed": instanceScope,
 	"personal_access_token.minted": instanceScope, "personal_access_token.revoked": instanceScope,
 	"computer.paired": instanceScope, "computer.setup_confirmed": instanceScope,
 	"computer.setup_unconfirmed": instanceScope, "computer.tunnel_created": instanceScope,

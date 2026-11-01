@@ -42,6 +42,18 @@ type User struct {
 	AvatarOverrideURL *string `json:"avatar_override_url,omitempty"`
 }
 
+// Passkey is one WebAuthn credential signing its owner in on the one domain (RPID) it was made for.
+type Passkey struct {
+	ID     string `json:"id"`
+	UserID string `json:"-"`
+	Name   string `json:"name"`
+	RPID   string `json:"rp_id"`
+	// Credential is the verifier's record as JSON: public key, sign count, flags; never sent to a client.
+	Credential []byte     `json:"-"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+}
+
 // Identity is one provider account a user signs in through (ADR 0040), keyed by the provider's own id since logins rename.
 type Identity struct {
 	UserID         string    `json:"-"`

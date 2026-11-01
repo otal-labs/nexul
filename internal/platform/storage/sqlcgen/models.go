@@ -1337,6 +1337,16 @@ type UserIdentity struct {
 	Username       string
 }
 
+type UserPasskey struct {
+	ID         string
+	UserID     string
+	Name       string
+	RpID       string
+	Credential string
+	CreatedAt  int64
+	LastUsedAt sql.NullInt64
+}
+
 type WelcomeStepState struct {
 	UserID    string
 	Step      string

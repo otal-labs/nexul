@@ -149,6 +149,8 @@ export interface BootstrapStatus {
   instance_url?: string;
   // Desktop install: first run keeps localhost and skips the domain step.
   local?: boolean;
+  // This address can use passkeys: https, or localhost.
+  passkeys?: boolean;
 }
 
 export interface BootstrapResponse {

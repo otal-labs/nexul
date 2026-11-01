@@ -390,6 +390,13 @@ so this is also the ticket activity timeline, and each change names who made
 it and through which play or automation. Agents read and restore versions over
 MCP.
 
+### Passkeys
+
+Add a passkey from Profile and sign in with your fingerprint, face, PIN or
+security key instead of a round trip to GitHub, Google or Discord. Passkeys
+sit beside your linked accounts, never in place of them, need the instance on
+https, and each signs in only on the domain it was made for. ADR 0177.
+
 ---
 
 ## Now — improving what's built

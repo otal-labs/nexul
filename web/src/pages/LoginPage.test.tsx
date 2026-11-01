@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +13,14 @@ const mocks = vi.hoisted(() => ({
     const body = (error as { response?: { data?: { message?: string } } })?.response?.data;
     return body?.message ?? "Something went wrong";
   }),
+}));
+
+const passkeys = vi.hoisted(() => ({ supported: vi.fn(() => true), get: vi.fn() }));
+
+vi.mock("@/lib/passkeys", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/passkeys")>()),
+  passkeysSupported: passkeys.supported,
+  getPasskey: passkeys.get,
 }));
 
 vi.mock("@/api/client", () => ({
@@ -152,5 +160,52 @@ describe("LoginPage", () => {
   it("shows no error when the page is opened plainly", () => {
     renderPage();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("LoginPage passkey sign-in", () => {
+  beforeEach(() => {
+    mocks.post.mockReset();
+    mocks.get.mockReset();
+    passkeys.supported.mockReturnValue(true);
+    useSessionStore.setState({ token: null, isLoggedIn: false });
+  });
+
+  it("is offered only where the server says passkeys work", async () => {
+    mocks.get.mockResolvedValue({ data: { configured: true, passkeys: false } });
+    renderPage();
+    await screen.findByRole("button", { name: /continue with github/i });
+    expect(screen.queryByRole("button", { name: "Sign in with a passkey" })).not.toBeInTheDocument();
+  });
+
+  it("signs in with the session the passkey's assertion earns", async () => {
+    mocks.get.mockResolvedValue({ data: { configured: true, passkeys: true } });
+    mocks.post.mockImplementation((url: string) => {
+      if (url === "/api/auth/passkeys/login/start") return Promise.resolve({ data: { ceremony: "pkc_1", options: { challenge: "abc" } } });
+      return Promise.resolve({ data: { token: "ses_passkey" } });
+    });
+    passkeys.get.mockResolvedValue({ id: "cred-1" });
+    const user = (await import("@testing-library/user-event")).default.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+
+    await waitFor(() => expect(useSessionStore.getState().token).toBe("ses_passkey"));
+    expect(mocks.post).toHaveBeenCalledWith("/api/auth/passkeys/login/finish", { ceremony: "pkc_1", credential: { id: "cred-1" } });
+  });
+
+  it("shows why a passkey was refused", async () => {
+    mocks.get.mockResolvedValue({ data: { configured: true, passkeys: true } });
+    mocks.post.mockImplementation((url: string) => {
+      if (url === "/api/auth/passkeys/login/start") return Promise.resolve({ data: { ceremony: "pkc_1", options: {} } });
+      return Promise.reject({ response: { data: { message: "that passkey isn't recognised here" } } });
+    });
+    passkeys.get.mockResolvedValue({ id: "cred-1" });
+    const user = (await import("@testing-library/user-event")).default.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+
+    expect(await screen.findByText("that passkey isn't recognised here")).toBeInTheDocument();
   });
 });

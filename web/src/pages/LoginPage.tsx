@@ -5,12 +5,14 @@ import { useMutation } from "@tanstack/react-query";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage, joinAPIURL } from "@/api/client";
+import { PasskeySignInButton } from "@/components/auth/PasskeySignInButton";
 import { ProviderButton } from "@/components/auth/ProviderButton";
 import { SignedOutFrame } from "@/components/auth/SignedOutFrame";
 import { SignedOutHeader } from "@/components/auth/SignedOutHeader";
 import { InlineNotice } from "@/components/InlineNotice";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
+import { passkeysSupported } from "@/lib/passkeys";
 import { useSessionStore } from "@/stores/sessionStore";
 import { signInErrorMessage } from "@/models/SignInError";
 import type { Provider } from "@/models/User";
@@ -24,6 +26,7 @@ export const LoginPage = () => {
   const googleEnabled = bootstrapStatus?.google_configured ?? false;
   const discordEnabled = bootstrapStatus?.discord_configured ?? false;
   const clientsEnabled = googleEnabled || discordEnabled;
+  const passkeysEnabled = (bootstrapStatus?.passkeys ?? false) && passkeysSupported();
 
   const exchange = useMutation({
     mutationFn: requires("none", async (code: string) =>
@@ -72,6 +75,7 @@ export const LoginPage = () => {
             <ProviderButton provider="github" primary onSelect={startOAuth} />
             {googleEnabled && <ProviderButton provider="google" primary={false} onSelect={startOAuth} />}
             {discordEnabled && <ProviderButton provider="discord" primary={false} onSelect={startOAuth} />}
+            {passkeysEnabled && <PasskeySignInButton />}
           </div>
           {bootstrapStatus?.reconfigurable && (
             <p className="mt-5 text-[13px] text-muted-foreground">

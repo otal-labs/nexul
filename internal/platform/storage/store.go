@@ -45,6 +45,7 @@ type Store struct {
 	Access                *AccessRepo
 	PATs                  *PATsRepo
 	Sessions              *SessionsRepo
+	Passkeys              *PasskeysRepo
 	Projects              *ProjectsRepo
 	Categories            *CategoriesRepo
 	TicketTypes           *TicketTypesRepo
@@ -125,6 +126,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Access:                &AccessRepo{db: db, w: w, q: q, hot: hot},
 		PATs:                  &PATsRepo{db: db, w: w, q: q},
 		Sessions:              &SessionsRepo{db: db, w: w, q: q},
+		Passkeys:              &PasskeysRepo{db: db, w: w, q: q},
 		Projects:              &ProjectsRepo{db: db, w: w, q: q},
 		Categories:            &CategoriesRepo{db: db, w: w, q: q},
 		TicketTypes:           &TicketTypesRepo{db: db, w: w, q: q},

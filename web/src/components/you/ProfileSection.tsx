@@ -3,6 +3,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { GitHubAccessSection } from "@/components/you/GitHubAccessSection";
 import { ProfileCard } from "@/components/you/ProfileCard";
+import { PasskeysSection } from "@/components/you/PasskeysSection";
 import { SignInAccountsSection } from "@/components/you/SignInAccountsSection";
 import { YourRolesCard } from "@/components/you/YourRolesCard";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -24,6 +25,7 @@ export const ProfileSection = () => {
       )}
       {data && <ProfileCard user={data.user} />}
       <SignInAccountsSection />
+      <PasskeysSection />
       <YourRolesCard />
       <GitHubAccessSection />
     </>
