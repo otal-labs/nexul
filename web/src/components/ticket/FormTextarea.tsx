@@ -4,6 +4,7 @@ import {
   get,
   useFormState,
   type Control,
+  type FieldError,
   type FieldValues,
   type Path,
 } from "react-hook-form";
@@ -25,7 +26,7 @@ export const FormTextarea = <T extends FieldValues>({
   ...props
 }: FormTextareaProps<T>) => {
   const { errors } = useFormState({ control });
-  const message = (get(errors, name)?.message as string | undefined) ?? undefined;
+  const message = get<typeof errors, FieldError | undefined>(errors, name)?.message;
 
   return (
     <div className="space-y-2">
