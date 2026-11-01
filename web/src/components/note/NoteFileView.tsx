@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useIsViewingAs } from "@/stores/viewAsStore";
 import type { Message } from "@/models/Chat";
-import { effectiveAvatar } from "@/models/User";
 
 interface NoteFileViewProps {
   message: Message;
@@ -30,7 +29,6 @@ export const NoteFileView = ({ message, fileName, canEdit, inline = false }: Not
   const Description = inline ? "p" : DialogDescription;
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
-  const avatar = me?.user ? effectiveAvatar(me.user) : "";
   const { data: markdown, dataUpdatedAt, error, isPending } = useFetchNoteText(message.attachment_id);
   const viewing = useIsViewingAs();
   const editable = canEdit && !viewing && markdown !== undefined;
@@ -39,7 +37,6 @@ export const NoteFileView = ({ message, fileName, canEdit, inline = false }: Not
     reloadKey: [getNoteTextKey, message.attachment_id],
     ...(me?.user?.id ? { userId: me.user.id } : {}),
     ...(me?.user?.login ? { login: me.user.login } : {}),
-    ...(avatar ? { avatar } : {}),
   });
 
   return (

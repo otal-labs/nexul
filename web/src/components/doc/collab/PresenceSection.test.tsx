@@ -30,17 +30,14 @@ describe("PresenceSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows an avatar per participant with their activity, the image when one carries it and initials otherwise", () => {
-    const withAvatar: CollabParticipant[] = [
-      { clientID: 1, name: "Alice", color: "#ef4444", activity: "editing", avatar: "https://avatars.example/alice.png" },
-      { clientID: 2, name: "Bob", color: "#22c55e", activity: "viewing" },
-    ];
-    render(<PresenceSection participants={withAvatar} />);
+  it("shows an avatar per participant with their activity, the person's picture when the people list has one and initials otherwise", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { people: [{ user_id: "u-alice", login: "alice", name: "Alice", avatar_url: "https://avatars.example/alice.png" }] } });
+    render(<PresenceSection participants={[{ ...participants[0]!, id: "u-alice" }, participants[1]!]} />);
     const bubbles = screen.getAllByTestId("presence-avatar");
     expect(bubbles).toHaveLength(2);
     expect(screen.getByLabelText("Alice editing")).toBeInTheDocument();
     expect(screen.getByLabelText("Bob viewing")).toBeInTheDocument();
-    expect(bubbles[0]?.querySelector("img")).toHaveAttribute("src", "https://avatars.example/alice.png");
+    await vi.waitFor(() => expect(bubbles[0]?.querySelector("img")).toHaveAttribute("src", "https://avatars.example/alice.png"));
     expect(bubbles[1]?.querySelector("img")).toBeNull();
     expect(bubbles[1]).toHaveTextContent("B");
   });

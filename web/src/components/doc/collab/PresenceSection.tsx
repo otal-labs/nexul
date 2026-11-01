@@ -1,6 +1,7 @@
 import { avatarFill } from "@nexul/client-core/avatarFill";
 
 import type { CollabParticipant } from "@/components/doc/collab/useCollabSession";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +37,12 @@ export const PresenceSection = ({ participants, max = 4, size = "md" }: Presence
   );
 };
 
-// A known account takes the fill its avatar has everywhere else; the session's colour stays for its cursor.
+// A known account takes the fill and picture it has everywhere else; the session's colour stays for its cursor.
+// The picture comes from the people list, never awareness, which re-sends its whole state on every caret move.
 const PresenceAvatar = ({ participant: p, sizeClass }: { participant: CollabParticipant; sizeClass: string }) => {
   const person = usePerson(p.id ?? "");
   const fill = p.id ? avatarFill(person.login) : p.color;
+  const picture = p.id ? person.avatar_url : "";
   return (
     <span
       title={`${p.name} (${p.activity})`}
@@ -51,8 +54,8 @@ const PresenceAvatar = ({ participant: p, sizeClass }: { participant: CollabPart
       style={{ backgroundColor: fill }}
       data-testid="presence-avatar"
     >
-      {p.avatar && <img src={p.avatar} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />}
-      {!p.avatar && p.name.charAt(0).toUpperCase()}
+      {picture && <PersonAvatar login={person.login} name={p.name} src={picture} label={`${p.name} (${p.activity})`} className="size-full" />}
+      {!picture && p.name.charAt(0).toUpperCase()}
     </span>
   );
 };
