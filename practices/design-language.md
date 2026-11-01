@@ -2059,14 +2059,22 @@ Each was built as three live variants on the real surface, recorded at 1x
 and 0.25x, and picked against the motion character above.
 
 Board drop: decided 2026-10-08.
-- Direction: Settle. Picked up, the card lifts to 1.03 with the elevated
-  shadow in 150ms (no tilt). Dropped, dnd-kit's overlay glides onto the slot
-  in 220ms `--ease-out`, coming down to 1 and losing its shadow on the way, and
-  hands over to the card already sitting there in the same frame (the card
-  never transitions its opacity, so the handover cannot blink).
-- Reduced motion: no lift scale; the glide stays (the card has to reach its
-  slot), the done wash stays as a fade.
-- Rejected: Land (a tilted card that levels as it glides, then a 1.04 and
+- Direction: Settle with Swing. Picked up, the card lifts to 1.03 with the
+  elevated shadow in 150ms. While dragged it hangs from the point it was
+  grabbed and leans with the pointer's horizontal speed, never its position:
+  3.5° per px/ms eased into a 5° cap by `tanh`, on a spring of stiffness 200
+  and damping ratio 0.45, so it sways back a little when the hand stops and
+  rests level when it holds still (`dragTilt.ts`). Dropped, dnd-kit's overlay
+  glides onto the slot in 220ms `--ease-out`, coming down to 1 and losing its
+  shadow on the way, while the lean eases to level in 200ms, and hands over to
+  the card already sitting there in the same frame (the card never
+  transitions its opacity, so the handover cannot blink).
+- Reduced motion and keyboard drags: no lean, and reduced motion drops the
+  lift scale too; the glide stays (the card has to reach its slot), the done
+  wash stays as a fade.
+- Rejected: Lean (the same speed lean about the card's centre, critically
+  damped, 4° cap) and Settle with no lean were tried beside Swing on the live
+  board and passed over. Land (a tilted card that levels as it glides, then a 1.04 and
   -1.2° settle on a bouncy spring) took two stages and about 440ms and read as
   playful on the gesture the board is used for all day. Snap and ring (a 160ms
   snap, then a brand ring fading over 600ms) put the accent on something that
