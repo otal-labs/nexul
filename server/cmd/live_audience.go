@@ -115,6 +115,7 @@ var liveRules = map[string]liveRule{
 	docs.TopicCreated:                        docFrame,
 	docs.TopicUpdated:                        docFrame,
 	docs.TopicMoved:                          docFrame,
+	docs.TopicDeleted:                        docDeletedFrame,
 	docs.TopicFolderCreated:                  docFolderFrame,
 	docs.TopicFolderUpdated:                  docFolderFrame,
 	docs.TopicFolderDeleted:                  docFolderFrame,
@@ -435,6 +436,14 @@ func docFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		} `json:"doc"`
 	}
 	return decode(raw, &p) && readsDoc(ctx, a, p.Doc.ID)
+}
+
+// docDeletedFrame carries the gone doc's title, which a reader of its project's docs saw in the Docs list.
+func docDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		ProjectID string `json:"project_id"`
+	}
+	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.DocsRead) == nil
 }
 
 // docFolderFrame carries a folder's name, which a reader of the project's docs sees in the Docs list.
