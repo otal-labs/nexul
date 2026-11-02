@@ -1533,13 +1533,22 @@ Agent turn. Each turn of the Agent in a thread, a trail, a hand-off or a
 setup transcript is a fold with no box. Its header is one line led by a 16px
 outcome mark: a muted spinner while it runs, a muted check once done, a muted
 dashed circle when a call never came back, and a `destructive` warning when a
-step failed, the one mark with a hue. While the turn runs, the step in flight
-in plain words ("Running bun run lint", "Reading BoardOrder.ts", "Thinking"
-between steps) under the `shimmer-text` sweep, then the clock ("· 12s"); once
-over, "Worked for 14s" in medium ink and what it did ("· explored 2 files, 1
-search, ran 3 commands") muted, then the chevron. It is open while it runs,
-folded once over, and opens at any time, a running turn beside it included.
-Opened, the steps hang off a hairline rule dropped from the mark, every step
+step failed, the one mark with a hue. While the turn runs the header has no
+mark and reads "Working for 12s", muted; once over, "Worked for 14s" in medium
+ink and what it did ("· explored 2 files, 1 search, ran 3 commands, used Nexul
+2 times", MCP calls counted by server) muted, then the chevron. It is open
+while it runs, folded once over, and opens at any time, a running turn beside
+it included. Opened, under a hairline, it is a feed: what the Agent said
+between steps as prose, and the tools it ran between two sentences folded to
+one 13px muted line each, led by the icon of their one kind of step (a wrench
+when mixed, the `destructive` warning when one failed), "Used Nexul 5 times,
+ran 2 commands" and a chevron. The run in flight is the feed's last line: a
+spinning loader and the step in plain words ("Running bun run lint",
+"Reading BoardOrder.ts", "Thinking" between steps) under the `shimmer-text`
+sweep. A run line opens to its steps; a run of one kind of step opens straight
+to its names, since the line already says how many. A finished turn the Agent
+said nothing in skips the feed and lists its steps at once.
+The steps hang off a hairline rule, every step
 one 13px row of the same weight: a muted 14px icon (a file search, a file pen,
 a terminal, a plug for an MCP tool, a wrench for any other) in the column the
 header's words start at, the verb muted and the name in mono. Neighbouring
@@ -1556,7 +1565,16 @@ or a tool row opens its time, arguments and result. A failed step adds a
 `destructive` circled cross and the word "failed"; the step in flight spins a
 muted loader. A transcript's scroll-to-end button sits in its scroller's
 bottom-right corner (`TranscriptScrollButton`), never across the column.
-`TrailTurnGroup` and `TurnStepGroup` are the reference.
+`TrailTurnGroup`, `TurnRunLine` and `TurnStepGroup` are the reference.
+
+Sub-agents. The agents an Agent reply handed work to are one fold under it, a
+`card` with the hairline border and an 8px radius, at most 28rem wide: up to
+four provider marks overlapped 4px in 24px `surface-2` discs ringed in `card`,
+"3 sub-agents" in 12px semibold over how they stand ("2 working, 1 done", in
+`info` while one runs, muted after), then the mono time since the first one's
+first step and a chevron. Opened, one 13px row per agent under a hairline: its
+mark, its title, its model in muted mono cut to fit, and its state dot; a row
+opens that agent's conversation in a dialog. `HandoffGroup` is the reference.
 
 Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, level
 with the title's first line (it shrinks to 0.6 as it fades over 150ms when
@@ -2102,10 +2120,15 @@ Opening a ticket from the board: decided 2026-10-08.
   panels, which never move on a route change, and 0.98 was too small to read
   as coming from the card.
 
-Agent's live step: decided 2026-10-15.
+Agent's live step: decided 2026-10-15, moved 2026-11-02.
 - Direction: a highlight sweeps left across the step's muted label, 2s a
   pass, linear, looping while the step runs; steps that join the open fold
   settle in 4px over 200ms (`settle-in`); the loader on the step's row spins.
+- Since 2026-11-02 the label is the last line of the turn's feed rather than
+  its header, which reads "Working for": the owner picked the feed (the
+  Agent's sentences as prose between one-line tool runs) over a rail and a
+  latest-update-only view, for reading what the Agent is doing as it says it.
+  Each run line still opens to its commands.
 - Reduced motion: the label sits still in `muted-foreground`.
 - Rejected: task cards (a bordered card per turn with the live step as its
   title and the steps on a rail) put a box around every turn of a long run;

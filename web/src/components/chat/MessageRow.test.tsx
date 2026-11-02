@@ -209,8 +209,11 @@ const handoff = (overrides: Partial<Handoff>): Handoff => ({
   ...overrides,
 });
 
+const openSubAgents = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: /^\d+ sub-agents?,/ }));
+
 describe("MessageRow hand-offs", () => {
-  it("shows one pill per hand-off on the Agent's reply, each naming its state", () => {
+  it("folds every hand-off into one row counting them by state, which opens to a row per agent naming its state", async () => {
+    const user = userEvent.setup();
     const states: [HandoffState, string][] = [
       ["running", "Running"],
       ["done", "Done"],
@@ -223,11 +226,15 @@ describe("MessageRow hand-offs", () => {
       <MessageRow message={message({ author_kind: "agent", body: "Every helper reported back.", handoffs })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
     );
 
+    expect(screen.getByRole("button", { name: "5 sub-agents, 1 working, 1 failed, 1 left running, 1 interrupted, 1 done" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Helper/ })).not.toBeInTheDocument();
+    await openSubAgents(user);
     expect(screen.getAllByRole("button", { name: /^Helper/ })).toHaveLength(5);
     states.forEach(([, label], i) => expect(screen.getByRole("button", { name: `Helper ${i} claude-sonnet-4-5, ${label}` })).toBeInTheDocument());
   });
 
-  it("names a pill without a model by its title and state alone", () => {
+  it("names a row without a model by its title and state alone", async () => {
+    const user = userEvent.setup();
     renderRow(
       <MessageRow
         message={message({ author_kind: "agent", body: "Done.", handoffs: [handoff({ model: "" })] })}
@@ -238,6 +245,7 @@ describe("MessageRow hand-offs", () => {
       />,
     );
 
+    await openSubAgents(user);
     expect(screen.getByRole("button", { name: "Review the auth module, Done" })).toBeInTheDocument();
   });
 
@@ -250,6 +258,7 @@ describe("MessageRow hand-offs", () => {
       <MessageRow message={message({ author_kind: "agent", body: "Done.", handoffs: [handoff({ state })] })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
     );
 
+    await openSubAgents(user);
     await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
     const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
     expect(within(dialog).getByRole("status")).toHaveTextContent(line);
@@ -271,6 +280,8 @@ describe("MessageRow hand-offs", () => {
       />,
     );
 
+    expect(screen.getByRole("button", { name: "1 sub-agent, 1 done, 5s" })).toBeInTheDocument();
+    await openSubAgents(user);
     await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
     const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
     expect(within(dialog).getByText("Check the token refresh for races")).toBeInTheDocument();

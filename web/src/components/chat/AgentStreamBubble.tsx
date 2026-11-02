@@ -1,7 +1,7 @@
 import { Bot, Square } from "lucide-react";
 
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
-import { HandoffPills } from "@/components/handoff/HandoffPills";
+import { HandoffGroup } from "@/components/handoff/HandoffGroup";
 import { TrailTurnGroup } from "@/components/play/TrailTurnGroup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
         {live !== null && <MessageTrailTurns turns={live.turns} />}
         {live !== null && frame.text && <p className="px-1 py-1 text-sm break-words whitespace-pre-wrap">{frame.text}</p>}
         {showSteps && <TrailTurnGroup entries={frame.steps} running={frame.streaming} from={new Date(frame.startedAt).toISOString()} until={null} />}
-        {frame.handoffs.length > 0 && <HandoffPills handoffs={frame.handoffs} />}
+        {frame.handoffs.length > 0 && <HandoffGroup handoffs={frame.handoffs} />}
       </div>
       {frame.streaming && (
         <Button size="icon" variant="ghost" className="size-6 shrink-0" aria-label="Stop agent" onClick={onInterrupt}>

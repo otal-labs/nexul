@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
@@ -42,5 +43,18 @@ describe("AgentStreamBubble", () => {
     render(<AgentStreamBubble frame={frame({ text: "Master hasn't moved.", steps })} onInterrupt={() => {}} live={null} />);
     expect(screen.getByText("Express is confirmed.")).toBeInTheDocument();
     expect(screen.getByText("Master hasn't moved.")).toBeInTheDocument();
+  });
+
+  it("reads each sentence as prose and folds the tools between two of them into one line that opens to its steps", async () => {
+    const user = userEvent.setup();
+    const steps = [said("Reading the ticket first."), docUpdate("tool_result"), said("Now the frontend."), { ...docUpdate("tool_call"), call_id: "t2" }];
+    render(<AgentStreamBubble frame={frame({ steps })} onInterrupt={() => {}} live={null} />);
+    expect(screen.getByText("Reading the ticket first.")).toBeInTheDocument();
+    expect(screen.getByText("Now the frontend.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Calling Nexul · doc_update/ })).toBeInTheDocument();
+    expect(screen.queryByText("Called")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Used Nexul/ }));
+    expect(screen.getByText("Called")).toBeInTheDocument();
   });
 });

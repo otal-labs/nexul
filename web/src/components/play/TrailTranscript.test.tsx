@@ -95,6 +95,8 @@ describe("TrailTranscript as a conversation", () => {
     expect(group.queryByText("Reading the handler first.")).not.toBeInTheDocument();
     await user.click(group.getByRole("button", { name: /Worked for 3s/ }));
     expect(group.getByText("Reading the handler first.")).toBeInTheDocument();
+    expect(group.queryByText("Explored 1 file")).not.toBeInTheDocument();
+    await user.click(group.getByRole("button", { name: /^Explored 1 file, ran 1 command, a step failed/ }));
     expect(group.getByText("Explored 1 file")).toBeInTheDocument();
     expect(group.getByRole("button", { name: "handler.go" })).toBeInTheDocument();
     expect(group.getByText("Ran")).toBeInTheDocument();
@@ -103,10 +105,12 @@ describe("TrailTranscript as a conversation", () => {
     expect(group.queryByText(/· failed/)).not.toBeInTheDocument();
   });
 
-  it("a running trail keeps its group open with the newest row spinning, and no reply is split off yet", () => {
+  it("a running trail keeps its group open on what the Agent said and the step in flight, whose row spins once opened", async () => {
+    const user = userEvent.setup();
     renderTranscript(trail({ state: "running", ended_at: null, question: null, activity: [thinking, { ...read, kind: "tool_call" }] }));
-    expect(screen.getByRole("button", { name: /^Reading handler\.go/ })).toBeInTheDocument();
-    expect(screen.getByText("Exploring 1 file")).toBeInTheDocument();
+    expect(screen.getByText("Reading the handler first.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Reading handler\.go/ }));
+    expect(screen.getByRole("button", { name: "handler.go" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
 

@@ -193,7 +193,8 @@ describe("TrailSection", () => {
 
     await user.click(await screen.findByRole("button", { name: /Fix with AI/ }));
     const dialog = await screen.findByRole("dialog");
-    await waitFor(() => expect(within(dialog).getAllByRole("listitem")).toHaveLength(1));
+    await user.click(await within(dialog).findByRole("button", { name: /^Running go test/ }));
+    expect(within(dialog).getAllByRole("listitem")).toHaveLength(1);
     expect(within(within(dialog).getAllByRole("listitem")[0]!).getByRole("img", { name: "running" })).toBeInTheDocument();
 
     act(() =>

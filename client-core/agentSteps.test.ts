@@ -160,8 +160,13 @@ describe("groupSteps and turnPhrase", () => {
   });
 
   it("counts a file read twice once, leaves the Agent's sentences out, and says nothing for a turn of sentences", () => {
-    expect(turnPhrase(turn)).toBe("explored 1 file, 1 search, edited 2 files, ran 1 command, used 1 tool");
+    expect(turnPhrase(turn)).toBe("explored 1 file, 1 search, edited 2 files, ran 1 command, used Github");
     expect(turnPhrase([text("Looking.")])).toBe("");
+  });
+
+  it("counts MCP calls by their server and every other tool together", () => {
+    const calls = [step("mcp__nexul__ticket_get", "{}"), step("ToolSearch", "{}"), step("nexul · doc_get", "{}"), step("Skill", "{}"), step("mcp__github__get_me", "{}")];
+    expect(turnPhrase(calls)).toBe("used Nexul 2 times, used Github, used 2 tools");
   });
 });
 
