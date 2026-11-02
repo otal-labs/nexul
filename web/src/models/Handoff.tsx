@@ -1,7 +1,6 @@
-import type { ActivityEntry } from "@/models/Trail";
+import type { HandoffState } from "@nexul/client-core/handoffs";
 
-// Mirrors internal/harness's Handoff states; left_running is work still running when the turn stopped waiting for it.
-export type HandoffState = "running" | "done" | "failed" | "interrupted" | "left_running";
+import type { ActivityEntry } from "@/models/Trail";
 
 // Mirrors internal/chat.Handoff: work an Agent reply handed to another agent, its steps shaped like a trail's.
 export interface Handoff {

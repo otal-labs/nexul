@@ -2765,13 +2765,19 @@ bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
 with the name and mono clock time; day dividers are the microheader between
 hairlines. Bot embeds are the web's status-edged cards with facts. The
 composer is one framed field with the send button inside it, ember once there
-is text. A hand-off folds each turn of the helper agent into one
+is text. An Agent reply's hand-offs are the web's sub-agents fold: a `card`
+with the hairline border, the provider marks overlapped 4pt in 24pt
+`surface-2` discs, "3 sub-agents" over how they stand (`info` while one
+runs), the time once none runs, and a chevron; opened, one 44pt row per agent
+behind a hairline (its mark, title, model in muted mono, state dot), pushing
+its conversation. A hand-off folds each turn of the helper agent into one
 row: the web's outcome mark (the orbit while it runs, a muted check, a
 `destructive` warning when a step failed, a muted dashed circle when a call
 never came back), the step in flight or "Worked for" in medium ink over what it
 did ("Explored 2 files, ran 3 commands"), folding open to the web's step rows
 on a hairline rule dropped from the mark, a listed group's names one to a
-line. Open while it runs, folded once it ends.
+line; a turn of one kind of step opens straight to its names. Open while it
+runs, folded once it ends.
 
 ### Phone motion
 

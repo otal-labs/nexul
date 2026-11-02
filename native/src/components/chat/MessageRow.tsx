@@ -6,7 +6,7 @@ import { isNote } from "@nexul/client-core/chat";
 
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedStack } from "@/components/chat/EmbedStack";
-import { HandoffPill } from "@/components/chat/HandoffPill";
+import { HandoffGroup } from "@/components/chat/HandoffGroup";
 import { MessageAuthorLine, MessageAvatar } from "@/components/chat/MessageAuthor";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageReactions } from "@/components/chat/MessageReactions";
@@ -68,13 +68,7 @@ const OtherMessage = ({ message, continuation }: { message: Message; continuatio
         {isBot && message.body !== "" && <DiscordMarkdown text={message.body} mentionHandles={(message.mentions ?? []).map((m) => m.handle)} />}
         {embeds.length > 0 && <EmbedStack embeds={embeds} />}
         {isNote(message) && <NoteFilePill conversationId={message.conversation_id} attachmentId={message.attachment_id ?? ""} />}
-        {message.handoffs && message.handoffs.length > 0 && (
-          <View className="flex-row flex-wrap gap-x-1.5">
-            {message.handoffs.map((handoff) => (
-              <HandoffPill key={handoff.id} message={message} handoff={handoff} />
-            ))}
-          </View>
-        )}
+        {message.handoffs && message.handoffs.length > 0 && <HandoffGroup message={message} handoffs={message.handoffs} />}
         {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
       </View>
     </View>

@@ -7,7 +7,7 @@ import { Pressable, View } from "react-native";
 import Animated, { interpolate, useAnimatedStyle } from "react-native-reanimated";
 import { useCSSVariable } from "uniwind";
 
-import { formatElapsed, groupSteps, liveStepLabel, runDirectory, turnOutcome, turnPhrase, turnSpanSeconds, type TurnOutcome } from "@nexul/client-core/agentSteps";
+import { formatElapsed, groupSteps, listedAct, liveStepLabel, runDirectory, turnOutcome, turnPhrase, turnSpanSeconds, type TurnOutcome } from "@nexul/client-core/agentSteps";
 
 import { HandoffStepGroup } from "@/components/chat/HandoffStepGroup";
 import { Orbit } from "@/components/LoadingDisplay";
@@ -57,6 +57,9 @@ export const HandoffTurnGroup = ({ entries, running, from, until }: HandoffTurnG
   const title = running ? liveStepLabel(entries) : worked(turnSpanSeconds(entries, until, from));
   const phrase = sentence(turnPhrase(entries));
   const root = runDirectory(entries);
+  const groups = groupSteps(entries);
+  // A turn of one kind of step opens straight to its names, since its line already says how many.
+  const bare = groups.length === 1 && groups[0] !== undefined && listedAct(groups[0]) !== null;
   return (
     <View>
       <Pressable
@@ -78,8 +81,8 @@ export const HandoffTurnGroup = ({ entries, running, from, until }: HandoffTurnG
       {open && entries.length > 0 && (
         <Reveal>
           <View className="mb-2 ml-[11px] mt-1 border-l border-border pl-[18px]">
-            {groupSteps(entries).map((group, i) => (
-              <HandoffStepGroup key={`${group.act}-${i}`} group={group} root={root} running={running} />
+            {groups.map((group, i) => (
+              <HandoffStepGroup key={`${group.act}-${i}`} group={group} root={root} running={running} bare={bare} />
             ))}
           </View>
         </Reveal>

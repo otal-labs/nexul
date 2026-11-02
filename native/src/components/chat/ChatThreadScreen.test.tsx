@@ -147,14 +147,17 @@ describe("ChatThreadScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/note/[id]", params: { id: "f1", name: "findings.md" } });
   });
 
-  test("an Agent reply that handed off work shows a pill per hand-off, and a pill opens that hand-off", async () => {
+  test("an Agent reply that handed off work folds them into one sub-agents row, whose rows open each hand-off", async () => {
     const handoff = (id: string, title: string, state: "running" | "done") => ({
       id, driver: "codex", model: "gpt-5.5", title, prompt: "p", state, reply: "", steps: [],
     });
     thread = [{ ...message("r1", "Both checks are in", 1), author_kind: "agent", handoffs: [handoff("h1", "Run the tests", "done"), handoff("h2", "Check the docs", "running")] }];
     await renderThread();
 
-    expect(await screen.findByRole("button", { name: "Open Run the tests, Done" })).toBeTruthy();
+    const group = await screen.findByRole("button", { name: "2 sub-agents, 1 working, 1 done" });
+    expect(screen.queryByRole("button", { name: /^Open Run the tests/ })).toBeNull();
+    await userEvent.press(group);
+    expect(screen.getByRole("button", { name: "Open Run the tests, Done" })).toBeTruthy();
     await userEvent.press(screen.getByRole("button", { name: "Open Check the docs, Running" }));
 
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/handoff/[id]", params: { id: "h2", conversationId: "c1", messageId: "r1" } });

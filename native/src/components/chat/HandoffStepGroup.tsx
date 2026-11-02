@@ -20,6 +20,8 @@ interface HandoffStepGroupProps {
   root: string | null;
   // running reads an unanswered call in the present.
   running: boolean;
+  // bare leaves a group's count out where the turn's own line already says it.
+  bare?: boolean;
 }
 
 // The web's step icons: a file search for reads, a file pen for edits, a terminal for a command, a plug for an MCP
@@ -60,12 +62,14 @@ const NameLine = ({ step, root }: { step: HandoffStep; root: string | null }) =>
   );
 };
 
-const StepList = ({ act, entries, root }: { act: ListedAct; entries: HandoffStep[]; root: string | null }) => (
+const StepList = ({ act, entries, root, bare }: { act: ListedAct; entries: HandoffStep[]; root: string | null; bare: boolean }) => (
   <View className="gap-0.5 py-1">
-    <View className="flex-row items-center gap-2">
-      <StepIcon act={act} tool={undefined} />
-      <Text className="text-sm text-muted-foreground">{groupHeadline(act, entries, false)}</Text>
-    </View>
+    {!bare && (
+      <View className="flex-row items-center gap-2">
+        <StepIcon act={act} tool={undefined} />
+        <Text className="text-sm text-muted-foreground">{groupHeadline(act, entries, false)}</Text>
+      </View>
+    )}
     {entries.map((step, i) => (
       <NameLine key={`${step.call_id ?? step.at}-${i}`} step={step} root={root} />
     ))}
@@ -89,12 +93,12 @@ const StepLine = ({ step, root, running }: { step: HandoffStep; root: string | n
 
 // One step group of a helper's turn, the web's rows in the phone's type: neighbouring files or commands under a count,
 // one name a line; a lone command or tool as its icon, verb and mono name; the helper's own sentence as text.
-export const HandoffStepGroup = ({ group, root, running }: HandoffStepGroupProps) => {
+export const HandoffStepGroup = ({ group, root, running, bare = false }: HandoffStepGroupProps) => {
   const first = group.entries[0];
   const listed = listedAct(group);
   return (
     <>
-      {listed !== null && <StepList act={listed} entries={group.entries} root={root} />}
+      {listed !== null && <StepList act={listed} entries={group.entries} root={root} bare={bare} />}
       {listed === null && first && group.act === "say" && (
         <Text className={cn("py-1 text-sm text-foreground/85", first.kind === "note" && "italic text-muted-foreground")}>{first.detail || first.summary}</Text>
       )}
