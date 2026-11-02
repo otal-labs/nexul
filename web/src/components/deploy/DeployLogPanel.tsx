@@ -20,7 +20,7 @@ interface DeployLogRowProps {
 const DeployLogRow = ({ line, startsPhase }: DeployLogRowProps) => (
   <li className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
     {startsPhase && line.phase !== "" && (
-      <span className="col-span-2 mt-2 mb-1 select-none text-[11px] tracking-[0.12em] text-muted-foreground uppercase in-[li:first-child]:mt-0">
+      <span className="col-span-2 mt-2 mb-1 select-none text-micro tracking-[0.12em] text-muted-foreground uppercase in-[li:first-child]:mt-0">
         {phaseLabels[line.phase]}
       </span>
     )}

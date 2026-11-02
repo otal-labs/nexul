@@ -15,7 +15,7 @@ export const WeekDaySection = ({ day, entries, today }: WeekDaySectionProps) => 
   const empty = entries.due.length + entries.meetings.length === 0;
   return (
     <section aria-label={formatLongDay(day.toISOString())} className="py-2">
-      <h3 className="flex h-6 items-center gap-2 px-1.5 text-[13px] font-medium">
+      <h3 className="flex h-6 items-center gap-2 px-1.5 text-row font-medium">
         <DayNumber day={day} today={today} />
         <span className={cn(!today && "text-muted-foreground")}>{formatWeekdayName(day)}</span>
       </h3>

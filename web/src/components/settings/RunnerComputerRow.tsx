@@ -107,7 +107,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
           type="button"
           aria-expanded={!folded}
           onClick={() => setFolded(!folded)}
-          className="group -ml-1 flex min-w-[min(12rem,100%)] flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:outline-2 focus-visible:outline-focus"
+          className="group -ml-1 flex min-w-[min(12rem,100%)] flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left"
         >
           <ChevronRight
             aria-hidden

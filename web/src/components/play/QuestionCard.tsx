@@ -65,7 +65,7 @@ const QuestionSteps = ({ question, answer, onSubmit, pending = false, className 
       aria-label="Question from the Agent"
       tabIndex={0}
       onKeyDown={onKeyDown}
-      className={cn("rounded-lg border border-border bg-card p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
+      className={cn("rounded-lg border border-border bg-card p-3 outline-none", className)}
     >
       {readOnly && <QuestionAnsweredList question={question} answer={answer} />}
       {!readOnly && item && (

@@ -15,7 +15,7 @@ export const RoleColumnHead = ({ role }: RoleColumnHeadProps) => (
       </TooltipTrigger>
       <TooltipContent>{role.name}</TooltipContent>
     </Tooltip>
-    <span className="mt-0.5 block text-center font-mono text-[11px] text-muted-foreground tabular-nums" aria-label={`${role.holders} holding it`}>
+    <span className="mt-0.5 block text-center font-mono text-micro text-muted-foreground tabular-nums" aria-label={`${role.holders} holding it`}>
       {role.holders === 0 ? "nobody" : role.holders}
     </span>
   </th>

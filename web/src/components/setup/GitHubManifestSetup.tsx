@@ -35,7 +35,7 @@ export const GitHubManifestSetup = () => {
 
   return (
     <div className="space-y-3">
-      <p className="text-[13px] text-pretty text-muted-foreground">
+      <p className="text-row text-pretty text-muted-foreground">
         {callback ? "GitHub has created the App. Finish setup to store its credentials and sign in." : "GitHub creates an App with the permissions and addresses filled in, and returns its private key straight to Nexul."}
       </p>
       {callback && (

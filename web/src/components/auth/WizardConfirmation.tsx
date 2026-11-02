@@ -13,7 +13,7 @@ export const WizardConfirmation = ({ title, subtitle }: WizardConfirmationProps)
     <span className="flex size-12 items-center justify-center rounded-full border border-border">
       <Check className="size-6 text-success" aria-hidden />
     </span>
-    <h1 className={cn(displayTitleClass, "text-[2rem]")}>{title}</h1>
+    <h1 className={cn(displayTitleClass, "text-headline")}>{title}</h1>
     {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
   </div>
 );

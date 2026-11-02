@@ -58,7 +58,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
   const avatar = person.login && (
     <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-      <PersonAvatar login={person.login} name={personLabel(shown)} src={shown.avatar_url} className="size-4 text-[10px]" />
+      <PersonAvatar login={person.login} name={personLabel(shown)} src={shown.avatar_url} className="size-4" />
     </span>
   );
   const hiddenLabels = labels.slice(fitting);
@@ -140,7 +140,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   return (
     <>
       {/* The key leads like an eyebrow so the title gets the card's full width; who acts next closes the same line, leaving the labels a row of their own. */}
-      <span className="flex h-4 items-center gap-1.5 font-mono text-[11px] leading-4 text-muted-foreground">
+      <span className="flex h-4 items-center gap-1.5 font-mono text-micro leading-4 text-muted-foreground">
         <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
         {/* Marks wrap out of the clipped line from the end, the thread first, then the timer; the empty before keeps a lone icon on the key's line. */}
         <span className="flex h-4 min-w-0 flex-1 flex-wrap content-start items-center justify-end gap-x-1.5 overflow-hidden before:h-4 before:content-['']">
@@ -150,10 +150,10 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         {avatar}
       </span>
       {/* Balanced, not pretty: pretty leaves a title like "…with open blockers" on a one-word last line. */}
-      <span dir="auto" title={ticket.title} className="line-clamp-3 text-[13px] font-[450] leading-snug break-words text-balance">{ticket.title}</span>
+      <span dir="auto" title={ticket.title} className="line-clamp-3 text-row font-book leading-snug break-words text-balance">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
       {(type !== "" || labels.length > 0) && (
-        <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] leading-4 text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-micro leading-4 text-muted-foreground">
           {type !== "" && (
             // The type is its icon in its hue, named by the tooltip: the word beside it was a third kind of label on the row.
             <NoFillBadge icon={ticketTypeIcon(type)} color={typeIconColor} style={hueStyle(ticketType?.color)} title={type} className="shrink-0 [&>svg]:size-3.5">
@@ -213,7 +213,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
         if (draggable) listeners?.onKeyDown?.(event);
       }}
       className={cn(
-        "group relative flex select-none flex-col gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40",
         draggable && "cursor-grab active:cursor-grabbing",
         !draggable && "cursor-pointer",
         // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.

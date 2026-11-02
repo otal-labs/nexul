@@ -29,7 +29,7 @@ export const AccessGridLeadCell = ({ on, rows, marks, label, onSetAll }: AccessG
         aria-label={label}
         className="group/cell block h-11 w-full cursor-pointer rounded-md p-0.5 outline-none focus-visible:!-outline-offset-2"
       >
-        <span className="flex size-full items-center justify-center gap-1.5 rounded-md font-mono text-[11px] text-muted-foreground tabular-nums transition-colors duration-150 ease-standard group-hover/cell:bg-accent">
+        <span className="flex size-full items-center justify-center gap-1.5 rounded-md font-mono text-micro text-muted-foreground tabular-nums transition-colors duration-150 ease-standard group-hover/cell:bg-accent">
         {marks === "ticks" && state === true && <Check className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && state === "indeterminate" && <Minus className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && `${on}/${rows}`}

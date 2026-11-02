@@ -32,7 +32,7 @@ export const NetworkBox = ({ rect }: NetworkBoxProps) => (
         </span>
         <span className="ml-auto shrink-0 tabular-nums">{rect.count}</span>
       </span>
-      {rect.machine && <span className="truncate font-mono text-[11px] leading-4 text-muted-foreground">{rect.machine}</span>}
+      {rect.machine && <span className="truncate font-mono text-micro leading-4 text-muted-foreground">{rect.machine}</span>}
     </span>
   </div>
 );

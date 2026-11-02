@@ -42,7 +42,7 @@ export const RepoRow = ({ projectId, onLeave, repo, services }: RepoRowProps) =>
       data-leaving={leaving || undefined}
       className={leavingRowClass}
       lead={<GithubMark className="size-3.5 text-muted-foreground" />}
-      name={<span className="truncate font-mono text-[13px]" title={repo.full_name}>{repo.full_name}</span>}
+      name={<span className="truncate font-mono text-row" title={repo.full_name}>{repo.full_name}</span>}
       meta={tests ? "Tests, never deployed" : "App"}
       count={services !== undefined && countLabel(services, "service")}
       actions={

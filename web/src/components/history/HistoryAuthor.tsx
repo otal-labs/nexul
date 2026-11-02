@@ -34,7 +34,7 @@ export const HistoryAuthor = ({ people, via }: HistoryAuthorProps) => {
           <ViaMark via={via} className="size-3" />
         </span>
       )}
-      <span className="flex min-w-0 items-center gap-1.5 text-[13px] leading-[18px]">
+      <span className="flex min-w-0 items-center gap-1.5 text-row leading-[18px]">
         {first && <span className="min-w-0 truncate">{personLabel(first)}</span>}
         {people.length > 1 && (
           <span aria-hidden className="flex shrink-0 -space-x-1">

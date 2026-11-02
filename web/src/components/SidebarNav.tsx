@@ -18,7 +18,7 @@ export const sectionLabelClass = "px-2.5 pt-5 pb-1 text-xs font-medium text-mute
 
 export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "nav-row relative flex items-center gap-2.5 rounded-md px-2.5 py-1 text-[13px]",
+    "nav-row relative flex items-center gap-2.5 rounded-md px-2.5 py-1 text-row",
     isActive
       ? "font-medium text-foreground"
       : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground active:bg-accent",

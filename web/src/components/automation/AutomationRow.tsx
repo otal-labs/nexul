@@ -58,11 +58,11 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
         </p>
       )}
       {!failing && automation.description && (
-        <p className="col-span-2 col-start-2 truncate text-[13px] leading-5 text-muted-foreground" title={automation.description}>
+        <p className="col-span-2 col-start-2 truncate text-row leading-5 text-muted-foreground" title={automation.description}>
           {automation.description}
         </p>
       )}
-      {!failing && !automation.description && <p className="col-span-2 col-start-2 text-[13px] leading-5 text-muted-foreground italic">No description</p>}
+      {!failing && !automation.description && <p className="col-span-2 col-start-2 text-row leading-5 text-muted-foreground italic">No description</p>}
     </li>
   );
 };

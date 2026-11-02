@@ -44,7 +44,7 @@ export const SetupRunHeader = ({ rows, providers, busy, running, confirmed: comp
             <span className="text-muted-foreground">/{rows.length}</span>
           </span>
         )}
-        <span className="min-w-0 text-[13px] leading-5 font-medium">
+        <span className="min-w-0 text-row leading-5 font-medium">
           {counting && overall(rows)}
           {providers === "pending" && (
             <span className="flex items-center gap-2 text-muted-foreground">

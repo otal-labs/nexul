@@ -18,7 +18,7 @@ export const RunnerName = ({ name, muted = false }: RunnerNameProps) => {
   return (
     <Tooltip open={cut ? undefined : false}>
       <TooltipTrigger asChild>
-        <span ref={ref} className={cn("min-w-0 flex-1 overflow-hidden font-mono text-[13px] whitespace-nowrap", muted && "text-muted-foreground")}>
+        <span ref={ref} className={cn("min-w-0 flex-1 overflow-hidden font-mono text-row whitespace-nowrap", muted && "text-muted-foreground")}>
           {!cut && name}
           {cut && <span aria-hidden>{shown}</span>}
           {cut && <span className="sr-only">{name}</span>}

@@ -28,7 +28,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       dense
       leading={<DocStateIcon runState={runState} locked={!!doc.locked} questionsClosed={!!doc.clarification_closed} className="ml-5" />}
       meta={
-        <span title={`${sortBy === "created_at" ? "Created" : "Edited"} ${formatFullTime(doc[sortBy])}`} className="font-mono text-[11px] text-muted-foreground tabular-nums">
+        <span title={`${sortBy === "created_at" ? "Created" : "Edited"} ${formatFullTime(doc[sortBy])}`} className="font-mono text-micro text-muted-foreground tabular-nums">
           {formatShortAgo(doc[sortBy])}
         </span>
       }

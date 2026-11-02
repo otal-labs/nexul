@@ -14,7 +14,7 @@ export const InvitationNotYou = ({ canRestart, onRestart }: InvitationNotYouProp
   return (
     <>
       {!asked && (
-        <Button type="button" variant="ghost" size="sm" className="-my-1 -mr-3 h-8 shrink-0 text-[13px] text-muted-foreground" onClick={() => (canRestart ? onRestart() : setAsked(true))}>
+        <Button type="button" variant="ghost" size="sm" className="-my-1 -mr-3 h-8 shrink-0 text-row text-muted-foreground" onClick={() => (canRestart ? onRestart() : setAsked(true))}>
           Not you?
         </Button>
       )}

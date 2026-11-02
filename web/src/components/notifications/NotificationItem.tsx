@@ -27,7 +27,7 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
         onClick={() => open(row)}
         aria-current={selected}
         className={cn(
-          "relative flex w-full items-start px-3 py-2 inset-focus text-left focus-visible:rounded-md text-[13px] leading-5 transition-colors duration-150 ease-standard",
+          "relative flex w-full items-start px-3 py-2 inset-focus text-left focus-visible:rounded-md text-row leading-5 transition-colors duration-150 ease-standard",
           selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
@@ -50,7 +50,7 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <KindIcon className={cn("size-3.5 shrink-0", notificationToneText[row.notification.kind])} aria-hidden />
             <span title={row.summary} className="min-w-0 flex-1 truncate">{row.summary}</span>
-            <span className="shrink-0 font-mono text-[11px] tabular-nums">{formatUpdatedAgo(row.notification.created_at)}</span>
+            <span className="shrink-0 font-mono text-micro tabular-nums">{formatUpdatedAgo(row.notification.created_at)}</span>
           </span>
         </span>
       </button>

@@ -56,7 +56,7 @@ export const RelationEdge = (props: EdgeProps) => {
         <EdgeLabelRenderer>
           <span
             className={cn(
-              "absolute rounded-sm bg-surface-2 px-1 font-mono text-[10px] leading-4 text-muted-foreground transition-opacity duration-150 ease-standard",
+              "absolute rounded-sm bg-surface-2 px-1 font-mono text-micro leading-4 text-muted-foreground transition-opacity duration-150 ease-standard",
               emphasized && "text-primary outline-1 outline-ring",
               props.data?.dim === true && "opacity-35",
             )}

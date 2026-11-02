@@ -195,7 +195,7 @@ function ContextMenuLabel({
       data-slot="context-menu-label"
       data-inset={inset}
       className={cn(
-        "px-2 pt-2 pb-1 font-mono text-[11px] font-medium tracking-[0.12em] uppercase text-muted-foreground data-[inset]:pl-8",
+        "px-2 pt-2 pb-1 font-mono text-micro font-medium tracking-[0.12em] uppercase text-muted-foreground data-[inset]:pl-8",
         className
       )}
       {...props}
@@ -224,7 +224,7 @@ function ContextMenuShortcut({
     <span
       data-slot="context-menu-shortcut"
       className={cn(
-        "ml-auto pl-4 font-mono text-[11px] text-muted-foreground",
+        "ml-auto pl-4 font-mono text-micro text-muted-foreground",
         className
       )}
       {...props}

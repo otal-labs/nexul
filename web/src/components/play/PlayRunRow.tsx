@@ -55,7 +55,7 @@ export const PlayRunRow = ({ run, onOpen }: PlayRunRowProps) => {
       >
         <TrailStateIcon state={run.state} />
         {key}
-        <span className="flex min-w-0 flex-1 items-baseline gap-2 text-[13px]">
+        <span className="flex min-w-0 flex-1 items-baseline gap-2 text-row">
           <span dir="auto" className="min-w-0 shrink truncate font-medium text-foreground">
             {run.target_title}
           </span>

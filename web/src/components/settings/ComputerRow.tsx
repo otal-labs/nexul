@@ -42,7 +42,7 @@ export const ComputerRow = ({ computer, onMove }: ComputerRowProps) => {
           type="button"
           aria-expanded={!folded}
           onClick={() => setFolded(!folded)}
-          className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:outline-2 focus-visible:outline-focus"
+          className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left"
         >
           <ChevronRight
             aria-hidden

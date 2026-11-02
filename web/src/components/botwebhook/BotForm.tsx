@@ -65,7 +65,7 @@ export const BotForm = ({ conversationId, bot, note, onNavigate }: BotFormProps)
       <button
         type="button"
         onClick={() => onNavigate(null)}
-        className="-ml-1 flex items-center gap-1 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="-ml-1 flex items-center gap-1 rounded-md px-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="size-4" aria-hidden />
         Bots

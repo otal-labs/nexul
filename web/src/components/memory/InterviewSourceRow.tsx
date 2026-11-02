@@ -81,7 +81,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
         {source.not_visible && <span className="truncate text-sm text-muted-foreground">{SOURCE_KIND_LABEL[source.kind]} · Not visible to you</span>}
         {named && (
           <>
-            {mono && <InterviewPathName path={name} className="text-[13px]" />}
+            {mono && <InterviewPathName path={name} className="text-row" />}
             {!mono && (
               <span className="truncate text-sm" title={name}>
                 {name}
@@ -89,7 +89,7 @@ export const InterviewSourceRow = ({ source, change, cites, readOnly }: Intervie
             )}
           </>
         )}
-        {change !== null && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{change}</span>}
+        {change !== null && <span className="shrink-0 font-mono text-micro text-muted-foreground">{change}</span>}
       </span>
       {source.gone && (
         <ActionButton

@@ -48,7 +48,7 @@ export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVaria
           size={triggerSize}
           variant={triggerVariant}
           icon={Plus}
-          className={cn(triggerVariant === "ghost" && "font-normal text-muted-foreground", triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-[13px] leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
+          className={cn(triggerVariant === "ghost" && "font-normal text-muted-foreground", triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-row leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
           {...(machineName && { "aria-label": "Add runner to this machine", title: "Add runner to this machine" })}
         >
           <span className={cn(machineName && "hidden @lg:inline", compact && "@lg:hidden @[44rem]:inline")}>Add runner</span>

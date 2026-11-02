@@ -20,7 +20,7 @@ const Separated = ({ children, first }: { children: ReactNode; first: boolean })
 );
 
 const FactLine = ({ fields }: { fields: EmbedField[] }) => (
-  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[13px] leading-5">
+  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-row leading-5">
     {fields.map((field, i) => (
       <Separated key={i} first={i === 0}>
         <span className="text-muted-foreground">{field.name}</span>
@@ -32,7 +32,7 @@ const FactLine = ({ fields }: { fields: EmbedField[] }) => (
 );
 
 const TallyLine = ({ tally }: { tally: EmbedTallyEntry[] }) => (
-  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[13px] leading-5">
+  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-row leading-5">
     {tally.map((entry, i) => (
       <Separated key={i} first={i === 0}>
         <Dot tone={entry.tone} />
@@ -45,7 +45,7 @@ const TallyLine = ({ tally }: { tally: EmbedTallyEntry[] }) => (
 );
 
 const FactBlock = ({ field }: { field: EmbedField }) => (
-  <div className="flex min-w-0 items-baseline gap-2 text-[13px] leading-5">
+  <div className="flex min-w-0 items-baseline gap-2 text-row leading-5">
     <span className="shrink-0 text-muted-foreground">{field.name}</span>
     <Dot field={field} />
     {/* A one-line value is data like the fact line's; a value over several lines is the sender's prose. */}

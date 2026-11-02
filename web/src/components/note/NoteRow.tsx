@@ -28,7 +28,7 @@ export const NoteRow = ({ note, fileName, selected, onSelect }: NoteRowProps) =>
       <span className={cn("flex min-w-0 items-center gap-1.5 font-mono text-xs text-foreground", selected && "font-medium")}>
         <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <span className="truncate">{fileName}</span>
-        <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums">{formatRelativeTime(note.created_at)}</span>
+        <span className="ml-auto shrink-0 text-micro text-muted-foreground tabular-nums">{formatRelativeTime(note.created_at)}</span>
       </span>
       <span dir="auto" className="line-clamp-2 text-xs text-muted-foreground">
         {note.body}

@@ -12,7 +12,7 @@ export const NotePill = ({ file, onOpen }: NotePillProps) => (
   <DialogPill
     icon={<FileText className="size-3 text-muted-foreground" aria-hidden />}
     label={file.name}
-    trailing={<span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">{formatBytes(file.size)}</span>}
+    trailing={<span className="shrink-0 font-mono text-micro text-muted-foreground tabular-nums">{formatBytes(file.size)}</span>}
     onOpen={onOpen}
   />
 );

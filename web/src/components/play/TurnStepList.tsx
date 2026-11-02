@@ -31,7 +31,7 @@ export const TurnStepList = ({ act, entries, live, root, bare = false }: TurnSte
   const opened = openAt === null ? undefined : entries[openAt];
   const running = live !== undefined && entries.includes(live);
   return (
-    <div className="text-[13px] leading-5">
+    <div className="text-row leading-5">
       {!bare && (
         <p className="flex items-center gap-2 text-muted-foreground">
           <TurnStepIcon act={act} tool={undefined} />

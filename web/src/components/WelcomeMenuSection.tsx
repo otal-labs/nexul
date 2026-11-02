@@ -33,7 +33,7 @@ export const WelcomeMenuSection = ({ onClose }: WelcomeMenuSectionProps) => {
       {open.map((step) => (
         <Link key={step.key} to={`/wizard/welcome?step=${step.key}`} className={cn(menuItemClass, "pl-8.5")} onClick={onClose}>
           <span className="flex-1 truncate text-muted-foreground">{WELCOME_STEP_NAMES[step.key]}</span>
-          {step.state === "skipped" && <span className="font-mono text-[11px] text-muted-foreground/80">Skipped</span>}
+          {step.state === "skipped" && <span className="font-mono text-micro text-muted-foreground/80">Skipped</span>}
         </Link>
       ))}
       <MenuSeparator />

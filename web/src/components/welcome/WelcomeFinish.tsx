@@ -34,7 +34,7 @@ export const WelcomeFinish = () => {
   const later = steps.filter((step) => marks[step] !== "done");
   return (
     <>
-      <h1 className={cn(displayTitleClass, "text-[2rem]")}>{laterTitle(later.length)}</h1>
+      <h1 className={cn(displayTitleClass, "text-headline")}>{laterTitle(later.length)}</h1>
       {later.length === 0 && <p className="mt-2 text-muted-foreground">Everything on your list is done.</p>}
       {later.length > 0 && (
         <p className="mt-2 text-muted-foreground">

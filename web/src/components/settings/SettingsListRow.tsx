@@ -33,7 +33,7 @@ export const SettingsListRow = ({ lead, name, meta, count, actions, showActions 
       {...handleProps}
       className={cn(
         "relative flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md",
-        handleProps && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
+        handleProps && "cursor-grab select-none active:cursor-grabbing",
       )}
     >
       {lead !== undefined && <span className="flex size-4 shrink-0 items-center justify-center">{lead}</span>}

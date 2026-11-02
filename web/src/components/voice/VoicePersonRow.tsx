@@ -34,7 +34,7 @@ export const VoicePersonRow = ({ participant }: VoicePersonRowProps) => {
       <span
         dir="auto"
         className={cn(
-          "min-w-0 flex-1 truncate text-left text-[13px] text-foreground",
+          "min-w-0 flex-1 truncate text-left text-row text-foreground",
           micMuted && "pr-5.5",
           !cameraOff && "pr-11",
           isWeakConnection(quality) && "pr-17",

@@ -35,7 +35,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
             <DiscordMarkdown
               text={embed.description}
               maxLines={manyLines ? DESCRIPTION_LINES : undefined}
-              className={cn("space-y-0.5 text-[13px] leading-5 text-foreground/80", clamp && !manyLines && "line-clamp-6")}
+              className={cn("space-y-0.5 text-row leading-5 text-foreground/80", clamp && !manyLines && "line-clamp-6")}
             />
           )}
           {!open && <EmbedFactLines facts={facts} />}

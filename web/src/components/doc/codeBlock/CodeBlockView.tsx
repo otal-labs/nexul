@@ -23,7 +23,7 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
             <Select value={language} onValueChange={(value) => updateAttributes({ language: value })}>
               <SelectTrigger
                 aria-label="Code language"
-                className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-xs shadow-none focus-visible:ring-0 dark:bg-transparent"
+                className="h-6 w-auto gap-1 border-0 bg-transparent px-1.5 text-xs shadow-none dark:bg-transparent"
               >
                 <SelectValue />
               </SelectTrigger>

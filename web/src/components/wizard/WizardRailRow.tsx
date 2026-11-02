@@ -55,7 +55,7 @@ export const WizardRailRow = ({ label, mark, ordinal, total, onOpen, nested = fa
           >
             {label}
           </span>
-          <span className="font-mono text-[11px] leading-4 tracking-[0.06em] text-muted-foreground uppercase tabular-nums">
+          <span className="font-mono text-micro leading-4 tracking-[0.06em] text-muted-foreground uppercase tabular-nums">
             <span className="sr-only">, </span>
             {metaLine(mark, ordinal, total)}
           </span>

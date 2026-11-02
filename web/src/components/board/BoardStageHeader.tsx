@@ -54,7 +54,7 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
         >
           <StatusMark status={column} className="size-3.5 shrink-0" />
           <span className="flex min-w-0 items-baseline gap-1.5">
-            <span className="truncate text-[13px] font-semibold text-foreground">{column.name}</span>
+            <span className="truncate text-row font-semibold text-foreground">{column.name}</span>
             <span className="font-mono text-xs tabular-nums">{count}</span>
           </span>
           <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden />
@@ -72,11 +72,11 @@ const StageHeaderCell = memo(({ column, count, folded, onAddTicket }: StageHeade
         {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${column.name}` } : {})}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-1.5 rounded-md",
-          draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
+          draggable && "cursor-grab select-none active:cursor-grabbing",
         )}
       >
         <StatusMark status={column} className="size-3.5" />
-        <span title={column.name} className="truncate text-[13px] font-semibold">{column.name}</span>
+        <span title={column.name} className="truncate text-row font-semibold">{column.name}</span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${count} tickets`}>
           {count}
         </span>

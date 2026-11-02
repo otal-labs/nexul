@@ -84,7 +84,7 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
             {...(draggable ? { ...attributes, ...listeners, "aria-label": `Reorder ${category.name}` } : {})}
             className={cn(
               "flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md",
-              draggable && "cursor-grab select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing",
+              draggable && "cursor-grab select-none active:cursor-grabbing",
             )}
           >
             <span className="flex size-4 shrink-0 items-center justify-center" style={hueStyle(category.color)}>

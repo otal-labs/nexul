@@ -14,7 +14,7 @@ const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
     <dt>
       <Microheader>{label}</Microheader>
     </dt>
-    <dd className="text-[13px] text-foreground [&>div]:text-[13px] [&>div]:leading-[inherit]">{children}</dd>
+    <dd className="text-row text-foreground [&>div]:text-row [&>div]:leading-[inherit]">{children}</dd>
   </div>
 );
 

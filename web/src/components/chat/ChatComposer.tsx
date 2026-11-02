@@ -176,7 +176,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
               onClick={handleClickOrKeyUp}
               onPaste={handlePaste}
               rows={1}
-              className="quiet-focus field-sizing-content max-h-[50dvh] min-h-9 placeholder:truncate placeholder:text-transparent resize-none border-0 bg-transparent px-1.5 py-2 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="quiet-focus field-sizing-content max-h-[50dvh] min-h-9 placeholder:truncate placeholder:text-transparent resize-none border-0 bg-transparent px-1.5 py-2 text-sm shadow-none dark:bg-transparent"
             />
             {!value && (
               <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 truncate px-1.5 py-2 text-sm text-muted-foreground">

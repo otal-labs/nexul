@@ -98,7 +98,7 @@ export const ModelPickerPanel = ({ providers, value, allowDefault, defaultLabel,
           {current.map((entry, index) => row(entry, index))}
           {legacy.length > 0 && (
             <div role="group" aria-labelledby={`${listId}-legacy`}>
-              <p id={`${listId}-legacy`} className="px-2 pt-2 pb-1 font-mono text-[11px] text-muted-foreground uppercase">
+              <p id={`${listId}-legacy`} className="px-2 pt-2 pb-1 font-mono text-micro text-muted-foreground uppercase">
                 Legacy models
               </p>
               {legacy.map((entry, index) => row(entry, current.length + index))}

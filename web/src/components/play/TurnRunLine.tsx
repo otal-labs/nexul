@@ -32,7 +32,7 @@ export const TurnRunLine = ({ entries, running, root }: TurnRunLineProps) => {
     <Collapsible className="px-1 py-0.5">
       <CollapsibleTrigger
         disabled={entries.length === 0}
-        className="group flex max-w-full items-start gap-2 rounded-md text-left text-[13px] leading-5 text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground disabled:hover:text-muted-foreground"
+        className="group flex max-w-full items-start gap-2 rounded-md text-left text-row leading-5 text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground disabled:hover:text-muted-foreground"
       >
         <span className="flex h-5 shrink-0 items-center">
           {running && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />}

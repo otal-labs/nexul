@@ -116,7 +116,7 @@ export const CommandPaletteBody = () => {
           onKeyDown={onKeyDown}
           spellCheck={false}
           autoComplete="off"
-          className="quiet-focus h-12 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+          className="quiet-focus h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
         />
         {searching && <Spinner className="size-3.5 text-muted-foreground" />}
       </div>
@@ -138,7 +138,7 @@ export const CommandPaletteBody = () => {
           />
         ))}
       </div>
-      {nothing && <EmptyRow className="pt-1 pr-4 pb-4 pl-12 text-[13px] wrap-anywhere">Nothing titled or mentioning “{query.trim()}”</EmptyRow>}
+      {nothing && <EmptyRow className="pt-1 pr-4 pb-4 pl-12 text-row wrap-anywhere">Nothing titled or mentioning “{query.trim()}”</EmptyRow>}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>

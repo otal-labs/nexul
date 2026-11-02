@@ -28,7 +28,7 @@ export const CommandPaletteTrigger = ({ collapsed }: CommandPaletteTriggerProps)
         </span>
         {!collapsed && <span className="flex-1 text-left">Search</span>}
         {!collapsed && (
-          <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-[11px] text-muted-foreground">{shortcut}</kbd>
+          <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-micro text-muted-foreground">{shortcut}</kbd>
         )}
       </button>
     </RailTooltip>

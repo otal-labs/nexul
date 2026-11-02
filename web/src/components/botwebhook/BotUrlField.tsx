@@ -28,7 +28,7 @@ export const BotUrlField = ({ name, url: sent }: BotUrlFieldProps) => {
       <button
         type="button"
         onClick={() => void copy()}
-        className="flex shrink-0 items-center gap-1.5 border-l border-input px-3 text-xs font-medium transition-colors duration-150 ease-standard hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+        className="flex shrink-0 items-center gap-1.5 border-l border-input px-3 text-xs font-medium transition-colors duration-150 ease-standard hover:bg-accent focus-visible:bg-accent"
       >
         {copied && <Check className="size-3.5" aria-hidden />}
         {!copied && <Copy className="size-3.5" aria-hidden />}

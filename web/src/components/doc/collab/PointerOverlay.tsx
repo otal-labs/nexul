@@ -60,7 +60,7 @@ export const PointerOverlay = ({ awareness, selfID }: PointerOverlayProps) => {
             <path d="M1 1l12 9-5.2 1L4.6 17z" fill={pointer.color} stroke="#fff" strokeWidth="1" />
           </svg>
           <span
-            className="absolute top-4 left-3 rounded-sm px-1.5 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-white"
+            className="absolute top-4 left-3 rounded-sm px-1.5 py-0.5 text-micro leading-tight font-medium whitespace-nowrap text-white"
             style={{ backgroundColor: pointer.color }}
           >
             {pointer.name}

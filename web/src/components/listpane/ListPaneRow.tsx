@@ -34,7 +34,7 @@ interface ListPaneRowProps {
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
 export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false }: ListPaneRowProps) => {
-  const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-[13px]";
+  const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-row";
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.
@@ -63,7 +63,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
           aria-current={selected ? "page" : undefined}
           className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-sm focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
         >
-          <span className={cn("flex min-w-0 items-start gap-1.5 text-[13px]", cornerMeta && "pr-12")}>
+          <span className={cn("flex min-w-0 items-start gap-1.5 text-row", cornerMeta && "pr-12")}>
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
             <span dir="auto" title={title} className={cn("min-w-0 text-foreground", muted && "text-muted-foreground", dense ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
               {title}

@@ -34,7 +34,7 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
   <>
     {align === "start" && (
       <MessageHeader className="gap-2 px-0">
-        <span className="truncate text-[13px] font-semibold text-foreground">{isAgent ? "Agent" : personLabel(author)}</span>
+        <span className="truncate text-row font-semibold text-foreground">{isAgent ? "Agent" : personLabel(author)}</span>
         {isAgent && (
           <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
             App

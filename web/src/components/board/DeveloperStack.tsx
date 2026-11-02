@@ -33,12 +33,12 @@ const DeveloperStackAvatar = ({ developer, active, dimmed, onToggle }: Developer
     aria-label={`Developer ${personLabel(person)}`}
     onClick={() => onToggle(developer.key)}
     className={cn(
-      "relative rounded-full ring-2 ring-card transition-[transform,opacity,box-shadow] duration-150 ease-standard hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring",
+      "relative rounded-full ring-2 ring-card transition-[transform,opacity,box-shadow] duration-150 ease-standard hover:z-10 hover:scale-110 focus-visible:z-10",
       active && "z-10 ring-primary",
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={person.login} src={person.avatar_url} label={personLabel(person)} name={person.display_name} className="size-7 text-[11px]" />
+    <PersonAvatar login={person.login} src={person.avatar_url} label={personLabel(person)} name={person.display_name} className="size-7 text-micro" />
   </button>
   );
 };
@@ -85,7 +85,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
             <button
               type="button"
               aria-label={`${overflow.length} more developers`}
-              className="avatar-more relative size-7 text-[11px] ring-2 ring-card transition-[background-color] duration-150 ease-standard hover:bg-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
+              className="avatar-more relative size-7 text-micro ring-2 ring-card transition-[background-color] duration-150 ease-standard hover:bg-foreground focus-visible:z-10"
             >
               +{overflow.length}
             </button>

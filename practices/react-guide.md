@@ -1535,7 +1535,10 @@ bun run build       # vite build (catches what tsc/eslint miss)
 Configured ESLint bases, from `web/eslint.config.js`: `eslint:recommended`
 (flat), `typescript-eslint` recommended, `@tanstack/eslint-plugin-query`
 flat/recommended, `eslint-plugin-react-hooks` recommended, plus a standalone
-`react-refresh/only-export-components` warning. There is no
+`react-refresh/only-export-components` warning and a `no-restricted-syntax`
+error on an arbitrary text size or weight (`text-[13px]`, `font-[450]`) and on
+`focus-visible:ring-*` or `focus-visible:outline-*` (the design language's
+[Type](design-language.md#type) and [Focus](design-language.md#focus)). There is no
 `react-refresh` recommended preset enabled, only that one rule. Enable
 `verbatimModuleSyntax` in `tsconfig` so type-only imports are enforced
 (matches the import rules above).

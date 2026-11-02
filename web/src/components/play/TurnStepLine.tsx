@@ -17,7 +17,7 @@ export const TurnStepLine = ({ entry, live, root }: TurnStepLineProps) => {
   const { verb, object } = stepPhrase(entry, live, root);
   const said = verb === "";
   const line = (
-    <span className="flex min-w-0 items-center gap-2 text-[13px] leading-5">
+    <span className="flex min-w-0 items-center gap-2 text-row leading-5">
       <TurnStepIcon act={stepAct(entry)} tool={entry.tool} />
       <span className="shrink-0 text-muted-foreground">{verb}</span>
       <span className="min-w-0 truncate font-mono text-xs leading-5 text-foreground/80" title={object}>

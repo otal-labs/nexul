@@ -12,7 +12,7 @@ const EmbedFieldItem = ({ field }: { field: EmbedField }) => {
   return (
     <div className={cn("min-w-0", field.value.length > LONG_VALUE && "col-span-2", !field.inline && "col-span-full")}>
       <dt className="text-xs text-muted-foreground wrap-anywhere">{field.name}</dt>
-      <dd className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-[13px] text-foreground">
+      <dd className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-row text-foreground">
         {tone && <span aria-hidden className={cn("size-1.5 shrink-0 translate-y-[-1px] rounded-full", toneBg[tone])} />}
         <DiscordMarkdown text={field.value} className="min-w-0 wrap-anywhere" />
       </dd>

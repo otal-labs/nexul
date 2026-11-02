@@ -25,7 +25,7 @@ export const HistoryStepper = ({ changes, step, onHop, wide }: HistoryStepperPro
         </Button>
       </span>
     )}
-    <span className="text-[13px] font-medium whitespace-nowrap tabular-nums" aria-live="polite">
+    <span className="text-row font-medium whitespace-nowrap tabular-nums" aria-live="polite">
       {changes > 0 && `${step} of ${changes}${wide ? (changes === 1 ? " change" : " changes") : ""}`}
       {changes === 0 && "No text changes"}
     </span>

@@ -14,7 +14,7 @@ export const RowGrip = ({ name, sortable: { setActivatorNodeRef, attributes, lis
     {...attributes}
     {...listeners}
     aria-label={`Reorder ${name}`}
-    className="-ml-1 flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/70 transition-colors duration-150 ease-standard hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus active:cursor-grabbing"
+    className="-ml-1 flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/70 transition-colors duration-150 ease-standard hover:text-foreground active:cursor-grabbing"
   >
     <GripVertical className="size-4" aria-hidden />
   </button>
