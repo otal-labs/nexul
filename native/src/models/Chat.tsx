@@ -1,12 +1,10 @@
 import type { ChatMessage, Conversation } from "@nexul/client-core/chat";
+import type { HandoffState } from "@nexul/client-core/handoffs";
 
 export interface Message extends ChatMessage {
   // Only an Agent reply that handed work to other agents carries it (ADR 0116).
   handoffs?: Handoff[];
 }
-
-// Mirrors internal/harness's Handoff states; left_running is work still running in T3 Code when the reply stopped waiting.
-export type HandoffState = "running" | "done" | "failed" | "interrupted" | "left_running";
 
 // Mirrors internal/chat.HandoffStep, one step of the handed-off agent's conversation.
 export interface HandoffStep {

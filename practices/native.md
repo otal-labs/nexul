@@ -50,7 +50,7 @@ as written. In particular:
   for types, no barrels, no `index.ts`. A module the web runs too is imported
   from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:
   the permission table, chat, embed and time code rules, mention text, people, the live
-  socket, the query retry rule, a doc's questions with their rules and an agent's steps. tsconfig's `paths` name it for Metro, which watches the
+  socket, the query retry rule, a doc's questions with their rules, an agent's steps, its hand-offs' counts and the provider marks. tsconfig's `paths` name it for Metro, which watches the
   folder, and `jest.config.js` maps it; its tests run once, in the web's job.
 - Naming: `XxxScreen`, `XxxFeed`, `XxxRow`, `XxxHooks.tsx`, `xxxStore.tsx`,
   `src/models/Xxx.tsx` with the interface and its Zod schema together.

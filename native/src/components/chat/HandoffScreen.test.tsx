@@ -112,14 +112,14 @@ test("a running turn is open on its steps, and a message between turns reads as 
   expect(screen.getAllByText("bun run test")).toHaveLength(1);
 });
 
-test("neighbouring commands list under one count, without the leading cd into the run's directory", async () => {
+test("neighbouring commands list under the turn's one count, without the leading cd into the run's directory", async () => {
   const root = "/home/dev/.t3/worktrees/nexul/run-the-tests";
   const command = (id: string, summary: string) => ({ kind: "tool_result", call_id: id, tool: "Shell", summary, at: "2026-10-04T10:00:00Z" }) as const;
   get.mockResolvedValue([reply([{ ...handoff, steps: [command("t5", `/bin/bash -lc "cd ${root} && git status"`), command("t6", `cd ${root}/web && bun run lint · failed`)] }])]);
   await renderHandoff();
 
   await fireEvent.press(await screen.findByRole("button", { name: /^Worked/ }));
-  expect(screen.getAllByText("Ran 2 commands")).toHaveLength(2);
+  expect(screen.getAllByText("Ran 2 commands")).toHaveLength(1);
   expect(screen.getByLabelText("git status")).toBeTruthy();
   expect(screen.getByLabelText("cd web && bun run lint, failed")).toBeTruthy();
 });

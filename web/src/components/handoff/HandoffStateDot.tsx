@@ -1,4 +1,4 @@
-import type { HandoffState } from "@/models/Handoff";
+import type { HandoffState } from "@nexul/client-core/handoffs";
 
 import { cn } from "@/lib/utils";
 

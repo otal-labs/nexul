@@ -12,7 +12,9 @@ import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import type { Message } from "@/models/Chat";
-import type { Handoff, HandoffState } from "@/models/Handoff";
+import type { HandoffState } from "@nexul/client-core/handoffs";
+
+import type { Handoff } from "@/models/Handoff";
 import type { Trail } from "@/models/Trail";
 
 vi.mock("@/api/client", () => ({
