@@ -5,7 +5,11 @@ import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { notificationKindIcon } from "@/components/notifications/notificationKindIcon";
 import { notificationToneText } from "@/components/notifications/notificationTone";
+import { docQuery } from "@/hooks/DocHooks";
 import { useMarkNotificationUnread, useOpenInboxRow, useSelectedInboxRow } from "@/hooks/NotificationHooks";
+import { ticketQuery } from "@/hooks/TicketHooks";
+import { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
+import { SubjectType } from "@/models/Notification";
 import type { InboxRow } from "@/utils/InboxUtility";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +24,18 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
   const markUnread = useMarkNotificationUnread();
   const unread = row.unreadIds.length > 0;
   const KindIcon = notificationKindIcon[row.notification.kind] ?? CircleIcon;
+  const { subject_type, subject_id } = row.notification;
+  // The detail pane reads a ticket or a doc by its id; the other subjects load nothing worth fetching early.
+  const prefetch = useHoverPrefetch((client) => {
+    if (subject_type === SubjectType.Ticket) return client.prefetchQuery(ticketQuery(subject_id));
+    if (subject_type === SubjectType.Doc) return client.prefetchQuery(docQuery(subject_id));
+    return undefined;
+  });
   return (
     <RowContextMenu menu={unread ? undefined : { onMarkUnread: () => markUnread.mutate(row.notification.id) }}>
       <button
         type="button"
+        {...prefetch}
         onClick={() => open(row)}
         aria-current={selected}
         className={cn(

@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
 
+import { Container } from "@/components/Container";
+import { DocSkeleton } from "@/components/doc/DocSkeleton";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerMoveDetail } from "@/components/notifications/ComputerMoveDetail";
 import { InterviewNoticeDetail } from "@/components/notifications/InterviewNoticeDetail";
@@ -22,7 +24,13 @@ export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelPro
   <div className="h-full">
     {selected && selected.subject_type === SubjectType.Ticket && <TicketPage ticketId={selected.subject_id} />}
     {selected && selected.subject_type === SubjectType.Doc && (
-      <Suspense fallback={<LoadingDisplay />}>
+      <Suspense
+        fallback={
+          <Container className="py-8">
+            <DocSkeleton />
+          </Container>
+        }
+      >
         <DocPage docId={selected.subject_id} />
       </Suspense>
     )}

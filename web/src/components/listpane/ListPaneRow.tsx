@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
+import type { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
 import { cn } from "@/lib/utils";
 
 interface ListPaneRowProps {
@@ -30,10 +31,12 @@ interface ListPaneRowProps {
   dense?: boolean;
   /** Sets meta and trailing on the title's first line instead of centring them on a row whose title may wrap. */
   metaOnTitleLine?: boolean;
+  /** Loads what the row opens once the pointer rests on it or it takes focus. */
+  prefetch?: ReturnType<typeof useHoverPrefetch>;
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
   const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-row";
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
@@ -49,6 +52,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
     <RowContextMenu menu={menu}>
       <li
         ref={ref}
+        {...prefetch}
         className={cn(
           "group relative flex gap-2 px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",

@@ -6,9 +6,9 @@ import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneEmpty } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InboxEntryRow } from "@/components/notifications/InboxEntryRow";
 import { InboxFilterToggle } from "@/components/notifications/InboxFilterToggle";
+import { InboxListSkeleton } from "@/components/notifications/InboxListSkeleton";
 import { Button } from "@/components/ui/button";
 import { useInboxFilterStore } from "@/stores/inboxFilterStore";
 import { inboxUnreadCount, unreadEntries, type InboxEntry } from "@/utils/InboxUtility";
@@ -56,7 +56,7 @@ export const NotificationsSidebar = ({
         }
       />
       <nav ref={listRef} aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable]">
-        {isLoading && <LoadingDisplay />}
+        {isLoading && <InboxListSkeleton />}
         {Boolean(error) && <ErrorDisplay error={error} />}
         {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" hint="Assignments, mentions and changes to what you follow land here." />}
         {entries && entries.length > 0 && shown && shown.length === 0 && <ListPaneEmpty icon={InboxIcon} message="Nothing unread" hint="All shows what you've read." />}

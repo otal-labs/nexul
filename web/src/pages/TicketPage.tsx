@@ -2,9 +2,9 @@ import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { TicketPageBody } from "@/components/ticket/TicketPageBody";
 import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
+import { TicketSkeleton } from "@/components/ticket/TicketSkeleton";
 import {
   useAddLabel,
   useFetchTicket,
@@ -39,7 +39,7 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
 
   return (
     <Container className={ticketPageLayout(embedded).container}>
-      {!error && isPending && <LoadingDisplay />}
+      {!error && isPending && <TicketSkeleton embedded={embedded} />}
       {error && <DetailErrorDisplay error={error} embedded={embedded} />}
       {data && !error && (
         <TicketPageBody

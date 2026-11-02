@@ -995,8 +995,15 @@ mark at 56px with a 14px Inter title, because Fraunces never goes under 20px.
 The mark is SVG on every surface and still once it has arrived (its entrance
 is in the Motion baseline); the live field never runs inside a panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
 page. Loading is the same orbit at 16px, the ember dot circling a faint ring
-(1.2s a turn, still under reduced motion), plus a label, held back 300ms; no
-skeleton screens. `EmptyState` is for a whole empty page; an empty list inside
+(1.2s a turn, still under reduced motion), plus a label, held back 300ms. It
+stays for app boot and content whose shape is unknown; a page whose layout is
+known loads in its own shape instead (`LoadingPlaceholder` and `PlaceholderBar`:
+`muted` bars at 40% on the real layout's containers, pulsing, still under reduced
+motion, held back the same 300ms, the content taking their place without the
+hand-off's rise): `TicketSkeleton`, `DocSkeleton`,
+`InboxListSkeleton`, `ChatTranscriptSkeleton` and `BoardSkeleton`. A row that
+opens one of those pages prefetches it once the pointer rests on it for 150ms or
+it takes focus (`useHoverPrefetch`), so most opens show no loader. `EmptyState` is for a whole empty page; an empty list inside
 a card is a single `EmptyRow` sentence where the rows would be, `flush` when it
 sits in a card body and lines up with the text around it.
 
@@ -1907,6 +1914,7 @@ The web app's pattern decisions, each with what it was picked over.
 | The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
+| Loading a known layout: placeholders in the page's own shape (2026-11-02) | The orbit centred in a ticket, doc, inbox list or channel was swapped for a full layout of a different shape, so every open jumped; bars on the real containers keep the header and the body where they land. The orbit stays for app boot and unknown shapes, where no layout is there to hold |
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
 | Bot embeds as status-edged reports, facts as sentences and a state tally (2026-10-28) | As cards (fill, ring, shadow, a label grid and a footer strip) two deploy posts took about 400 of the 750px a channel shows at 1440, a summary spent a 3×3 grid saying "healthy" to report one stopped cache, and the people sat in the bottom third. Without the box and with the facts on a line a deploy is about 90px and a summary names its one problem. Against folding every healthy post to one line behind a chevron (the facts are what people read in a deploy channel, so it traded height for a click on every post) and against dropping the edge (with the box gone it is what marks where a report starts); the leading edge is the topology node's status signal reused, picked earlier over a 2px bar across the top, which read as the accent's decoration rather than state |
 | The command palette is one list of two-line rows, its meta under the title, its typed runs at one pitch (2026-10-29) | Against a microheader per result kind ("deploy" spent five headers on six hits, and the row showed only a title and a key while the search also returned the status and the kind), a one-line row with the meta right-aligned at 36px or in fixed 32px columns (the status and kind squeezed long titles, and a fixed rail cut a settings row's place), and the old row with only its baseline fixed. Two lines show every title whole on the first and the key, status and kind on the second, at the cost of about two rows in the 26rem list |

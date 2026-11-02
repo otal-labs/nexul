@@ -308,6 +308,14 @@ describe("TicketCard", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
   });
 
+  it("reads the ticket its key opens once the pointer rests on the card, so the page opens without a loader", async () => {
+    const user = userEvent.setup();
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    await screen.findByText("REF-142");
+    await user.hover(screen.getByRole("button", { name: /Fix login/ }));
+    await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/tickets/REF-142", expect.anything()));
+  });
+
   // T10: colors come from the backend (ticket_types.color, label_colors) once fetched, hash as
   // fallback for anything unset; an unconfigured workspace must look pixel-identical to before.
   describe("backend-sourced colors (T10)", () => {

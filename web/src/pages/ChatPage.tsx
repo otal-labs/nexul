@@ -1,9 +1,9 @@
 import { Navigate, useParams } from "react-router";
 
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
+import { ChatTranscriptSkeleton } from "@/components/chat/ChatTranscriptSkeleton";
 import { ConversationThread } from "@/components/chat/ConversationThread";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useFetchConversations } from "@/hooks/ChatHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -21,11 +21,7 @@ export const ChatPage = () => {
 
   return (
     <div className="flex h-full min-w-0 flex-col">
-      {isPending && (
-        <ChatPaneState>
-          <LoadingDisplay label="Loading chat…" />
-        </ChatPaneState>
-      )}
+      {isPending && <ChatTranscriptSkeleton header />}
       {error && (
         <ChatPaneState>
           <ErrorDisplay error={error} title="Couldn't load chat." />

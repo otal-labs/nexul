@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -27,12 +27,15 @@ export const useFetchDocsByProject = (projectId: string) =>
     enabled: !!projectId,
   });
 
-export const useFetchDoc = (id: string | undefined) =>
-  useQuery({
+// Shared by the doc page and the hover prefetch of whatever opens it.
+export const docQuery = (id: string | undefined) =>
+  queryOptions({
     queryKey: [getDocKey, id],
     queryFn: async () => (await api.get<Doc>(`/api/docs/${id}`)).data,
     enabled: !!id,
   });
+
+export const useFetchDoc = (id: string | undefined) => useQuery(docQuery(id));
 
 export const useFetchDocClarification = (id: string | undefined) =>
   useQuery({

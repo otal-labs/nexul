@@ -4,6 +4,8 @@ export const EASE_STANDARD = "cubic-bezier(0.25, 0.1, 0.25, 1)";
 // A row moved within its list glides to its new place on the row-removal glide's numbers (200ms, the strong ease-out).
 export const ROW_GLIDE = { duration: 0.2, ease: [0.16, 1, 0.3, 1] } as const;
 export const SPRING_POP = "linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1)";
+// A loader shows only after this long, so a fast load never flashes one.
+export const LOADER_DELAY_MS = 300;
 
 const STAGGER_STEP_MS = 25;
 const STAGGER_ROWS = 8;
